@@ -469,8 +469,12 @@ test_run_js_comp_test_parameter_search <- function() {
   # best_candidate_pair_confidence_interval to -1.0 throughout
   # (test_param_search_no_plateau_falls_back_to_finest).
   # ============================================================
+  bounds <- calc_js_comp_test_candidate_bounds(max_n_genes_all_studies)
   result <- run_js_comp_test_parameter_search(gene_means, residuals, shared_residual_range = 1.0, n_bootstraps = 10L,
-                                               join_method = "join_min", min_residuals_per_bin = 1000000L,
+                                               join_method = "join_min",
+                                               max_n_points_candidate = bounds$max_n_points_candidate,
+                                               max_n_neighbors_candidate = bounds$max_n_neighbors_candidate,
+                                               min_residuals_per_bin = 1000000L,
                                                random_seed = 1L)
 
   assert_equal_int(as.integer(result$n_points), 300L, "expected n_points=300")
@@ -495,8 +499,11 @@ test_run_js_comp_test_parameter_search <- function() {
     }
   }
 
+  bounds_2 <- calc_js_comp_test_candidate_bounds(max_n_genes_2)
   result2 <- run_js_comp_test_parameter_search(gene_means_2, residuals_2, shared_residual_range = 1.0,
                                                 n_bootstraps = 5L, join_method = "join_min",
+                                                max_n_points_candidate = bounds_2$max_n_points_candidate,
+                                                max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
                                                 min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
                                                 random_seed = 1L)
 
@@ -515,6 +522,8 @@ test_run_js_comp_test_parameter_search <- function() {
   # ============================================================
   result3 <- run_js_comp_test_parameter_search(gene_means_2, residuals_2, shared_residual_range = 1.0,
                                                 n_bootstraps = 5L, join_method = "join_min",
+                                                max_n_points_candidate = bounds_2$max_n_points_candidate,
+                                                max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
                                                 min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
                                                 plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05,
                                                 delta_max_threshold = 0.10, delta_epsilon = 1e-10,
@@ -535,6 +544,41 @@ test_run_js_comp_test_parameter_search <- function() {
               "trace_ci_width_relative shape matches trace_ci_width")
   # The first (and here, only) admissible candidate has no predecessor to diff against.
   assert_equal_numeric(result3$trace_delta[, 1], c(-1.0, -1.0), TOL, "first candidate's delta is the -1.0 sentinel")
+
+  # ============================================================
+  # Test 4 -- callability/shape coverage for the Issue #187 per-point outputs added by this
+  # signature change: n_bins_per_point (replacing the old scalar n_bins) and the 8 new trace_*
+  # diagnostics from determine_bin_count_occupancy. Numerical correctness of the occupancy search
+  # itself is Fortran-only (mod_test_data_integration_js_comp_test.F90's
+  # test_param_search_occupancy_failure_rejects_candidate/
+  # test_param_search_different_neighborhoods_different_m_j/
+  # test_param_search_final_n_bins_matches_selected_trace_column).
+  # ============================================================
+  for (key in c("n_bins_per_point", "trace_selected_n_bins", "trace_occupancy_failed",
+                "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy",
+                "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins")) {
+    assert_true(!is.null(result2[[key]]), paste0("missing expected output '", key, "'"))
+  }
+  assert_true(is.integer(result2$n_bins_per_point), "n_bins_per_point should be an integer vector")
+  assert_true(length(result2$n_bins_per_point) == bounds_2$max_n_points_candidate,
+              "n_bins_per_point should be sized to max_n_points_candidate")
+  assert_true(is.integer(result2$trace_selected_n_bins), "trace_selected_n_bins should be an integer matrix")
+  assert_true(nrow(result2$trace_selected_n_bins) == bounds_2$max_n_points_candidate,
+              "trace_selected_n_bins should have max_n_points_candidate rows")
+  assert_true(is.logical(result2$trace_occupancy_failed), "trace_occupancy_failed should be logical")
+  assert_true(all(dim(result2$trace_occupancy_failed) == dim(result2$trace_selected_n_bins)),
+              "trace_occupancy_failed shape matches trace_selected_n_bins")
+  for (key in c("trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_max_bin_occupancy",
+                "trace_sturges_bins", "trace_fd_bins")) {
+    assert_true(all(dim(result2[[key]]) == dim(result2$trace_selected_n_bins)),
+                paste0(key, " shape mismatch"))
+  }
+  # n_points=300 leading entries of n_bins_per_point must match the sole admissible candidate's
+  # own trace_selected_n_bins column (test_param_search_final_n_bins_matches_selected_trace_column
+  # is the Fortran suite's rigorous version of this same wiring check).
+  n_points_2 <- result2$n_points
+  assert_true(all(result2$n_bins_per_point[1:n_points_2] == result2$trace_selected_n_bins[1:n_points_2, 1]),
+              "n_bins_per_point matches the sole admissible candidate's trace column")
 }
 
 run_all_tests()

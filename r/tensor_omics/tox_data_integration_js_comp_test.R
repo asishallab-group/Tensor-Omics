@@ -1031,8 +1031,11 @@ run_js_comp_test <- function(n_neighbors, n_bins, shared_residual_range, gene_me
 #' Per the plan's work-array translation for this routine specifically: `max_n_bins_all_candidates`
 #' (data-dependent, not cheaply closed-form in 125) is replaced by the fixed
 #' \code{MAX_N_BINS} ceiling, so every
-#' bin-dimensioned work array below is sized to MAX_N_BINS and sliced `(1:n_bins, ...)` per
+#' bin-dimensioned work array below is sized to MAX_N_BINS and sliced `(1:max_n_bins, ...)` per
 #' candidate, rather than carrying a separate recommend-sized dimension argument for it.
+#' `max_n_bins` is the widest per-point bin count Issue #187's occupancy search (Pass B below)
+#' chose for the current candidate, `maxval(tmp_n_bins_per_point(1:n_points))` -- it replaces
+#' the old single scalar `n_bins` that used to come from the global-pool Sturges/FD estimate.
 #' `residuals`/`gene_means` are passed to
 #' \code{\link{generate_js_comp_test_candidates}}/\code{sort_real_heapsort_expl_size}
 #' as their own multi-dimensional selves -- both callees declare their matching dummy with an
@@ -1058,6 +1061,22 @@ run_js_comp_test <- function(n_neighbors, n_bins, shared_residual_range, gene_me
 #'   The minimum valid value is `1`.
 #' @param join_method a string, one of "join_min", "join_max", "join_median". The way to evaluate all studies' confidence-interval overlaps for the plateau
 #'   condition, forwarded to check_plateau_condition_impl
+#' @param max_n_points_candidate a integer scalar. Exact upper bound on the grid's first (largest) `n_points` candidate. Issue #187's
+#'   per-point outputs below (`n_bins_per_point`, `trace_selected_n_bins`, and the other
+#'   jagged `trace_*` arrays) are sized by this argument, so unlike before Issue #187 it
+#'   is no longer purely an internal sizing detail the plain wrapper can compute and
+#'   hide -- the caller must know it up front to receive those arrays, hence JUST_INFO
+#'   rather than AUTO here now
+#'   It is recommended to compute this argument from the `max_n_points_candidate` output produced by \code{\link{calc_js_comp_test_candidate_bounds}}.
+#'   The minimum valid value is `1`.
+#' @param max_n_neighbors_candidate a integer scalar. Safe upper bound on the grid's largest `n_neighbors` candidate. Also JUST_INFO, not
+#'   because anything returned is sized by it (nothing is), but because it comes from the
+#'   same `calc_js_comp_test_candidate_bounds` call as `max_n_points_candidate` above --
+#'   now that that call can no longer run automatically inside this wrapper, splitting
+#'   this one back into an AUTO call would just be a second, redundant call to the same
+#'   routine for no benefit
+#'   It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by \code{\link{calc_js_comp_test_candidate_bounds}}.
+#'   The minimum valid value is `1`.
 #' @param min_residuals_per_bin a integer scalar. Minimum count each bin of the consensus pmf must reach to pass the second
 #'   admissibility gate. Reuses Issue #187's occupancy-search default rather than an
 #'   independently-tunable threshold of its own: once
@@ -1098,6 +1117,22 @@ run_js_comp_test <- function(n_neighbors, n_bins, shared_residual_range, gene_me
 #'   plateau, forwarded to check_effect_size_plateau_condition_impl
 #'   The minimum valid value is `1`.
 #'   The default value is `2`.
+#' @param m_min a integer scalar. Smallest candidate bin count Pass B's occupancy search will ever test (M_min),
+#'   forwarded to determine_bin_count_occupancy_impl
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_N_BINS`.
+#'   The default value is `3`.
+#' @param m_max a integer scalar. Largest candidate bin count Pass B's occupancy search will ever test (M_max),
+#'   forwarded to determine_bin_count_occupancy_impl; if a caller passes `m_max < m_min`,
+#'   determine_bin_count_occupancy_impl clamps it up to `m_min` internally
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_N_BINS`.
+#'   The default value is `120`.
+#' @param gamma_occupancy a numeric scalar. Geometric growth factor for Pass B's occupancy search's coarse search stage,
+#'   forwarded to determine_bin_count_occupancy_impl; must exceed 1 or the search never
+#'   advances
+#'   The minimum valid value is `above(1.0)`.
+#'   The default value is `1.25`.
 #' @param two_sided_bootstrapping_significance_level a numeric scalar. Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
 #'   to bootstrap_histogram_impl itself
 #'   The minimum valid value is `0.0`.
@@ -1108,7 +1143,10 @@ run_js_comp_test <- function(n_neighbors, n_bins, shared_residual_range, gene_me
 #' @return a named list with elements:
 #'   \item{n_points}{a integer scalar. The finally chosen candidate's `n_points`}
 #'   \item{n_neighbors}{a integer scalar. The finally chosen candidate's `n_neighbors`}
-#'   \item{n_bins}{a integer scalar. The finally chosen candidate's bin count}
+#'   \item{n_bins_per_point}{a integer vector. The finally chosen candidate's per-point histogram bin count, one per reference
+#'     point (Issue #187: every neighborhood may use a different bin count). Only the
+#'     leading `n_points` entries are meaningful, mirroring how `n_points`/`n_neighbors`
+#'     above are the finally chosen candidate's own values}
 #'   \item{best_candidate_pair_confidence_interval}{a numeric matrix. The bootstrapped JSD confidence interval for the finally chosen candidate pair;
 #'     `-1.0` throughout only when `plateau_established` is `FALSE` and no
 #'     smallest-bootstrap-uncertainty candidate could be substituted either (see
@@ -1159,13 +1197,66 @@ run_js_comp_test <- function(n_neighbors, n_bins, shared_residual_range, gene_me
 #'   \item{trace_delta_max}{a numeric vector. Per-admissible-candidate maximum of trace_delta across studies (Delta^max_t);
 #'     `-1.0` at the first admissible candidate, see trace_delta above
 #'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_selected_n_bins}{a integer matrix. Per-admissible-candidate, per-reference-point selected histogram bin count
+#'     (Issue #187's `M_j`), from determine_bin_count_occupancy_impl. Unlike every OTHER
+#'     trace_* array above, whose first extent is a fixed thing like `n_studies`, this
+#'     array's first extent is `max_n_points_candidate`, NOT `n_points`, because `n_points`
+#'     itself varies per candidate (that is why `trace_n_points(16)` exists as its own
+#'     array): this array is genuinely JAGGED per candidate column `t` -- only rows
+#'     `1:trace_n_points(t)` are meaningful for that column, rows beyond that are undefined
+#'     padding. The result-size directive below only trims the LAST extent (candidates, via
+#'     `n_admissible_evaluated`), not this row dimension, so a Python/R caller must
+#'     additionally slice `[:trace_n_points[t], t]` themselves
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_occupancy_failed}{a logical matrix. Per-admissible-candidate, per-reference-point `occupancy_failed` flag from
+#'     determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+#'     trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+#'     column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_n_pooled_residuals}{a integer matrix. Per-admissible-candidate, per-reference-point pooled residual count (`N_j`) from
+#'     determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+#'     trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+#'     column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_min_bin_occupancy}{a integer matrix. Per-admissible-candidate, per-reference-point minimum bin occupancy at
+#'     trace_selected_n_bins, from determine_bin_count_occupancy_impl. Jagged per candidate
+#'     column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
+#'     meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
+#'     themselves
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_mean_bin_occupancy}{a numeric matrix. Per-admissible-candidate, per-reference-point mean bin occupancy at
+#'     trace_selected_n_bins, from determine_bin_count_occupancy_impl. Jagged per candidate
+#'     column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
+#'     meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
+#'     themselves
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_max_bin_occupancy}{a integer matrix. Per-admissible-candidate, per-reference-point maximum bin occupancy at
+#'     trace_selected_n_bins, from determine_bin_count_occupancy_impl. Jagged per candidate
+#'     column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
+#'     meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
+#'     themselves
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_sturges_bins}{a integer matrix. Per-admissible-candidate, per-reference-point Sturges' rule bin-count diagnostic
+#'     from determine_bin_count_occupancy_impl (never part of the occupancy search's own
+#'     decision). Jagged per candidate column exactly as trace_selected_n_bins above --
+#'     only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R caller
+#'     must slice `[:trace_n_points[t], t]` themselves
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_fd_bins}{a integer matrix. Per-admissible-candidate, per-reference-point Freedman-Diaconis rule bin-count
+#'     diagnostic from determine_bin_count_occupancy_impl (never part of the occupancy
+#'     search's own decision). Jagged per candidate column exactly as trace_selected_n_bins
+#'     above -- only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R
+#'     caller must slice `[:trace_n_points[t], t]` themselves
+#'     The first `n_admissible_evaluated` elements will hold the results.}
 #' @export
-run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_residual_range, n_bootstraps, join_method, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_ci_overlap", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L) {
+run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_residual_range, n_bootstraps, join_method, max_n_points_candidate, max_n_neighbors_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_ci_overlap", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L) {
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
     shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
     n_bootstraps <- .tox_as_integer_scalar(n_bootstraps, "n_bootstraps")
     join_method <- .tox_as_mode(join_method, "join_method", c("join_min", "join_max", "join_median"))
+    max_n_points_candidate <- .tox_as_integer_scalar(max_n_points_candidate, "max_n_points_candidate")
+    max_n_neighbors_candidate <- .tox_as_integer_scalar(max_n_neighbors_candidate, "max_n_neighbors_candidate")
     min_residuals_per_bin <- .tox_as_integer_scalar(min_residuals_per_bin, "min_residuals_per_bin")
     min_neighbor_overlap <- .tox_as_double_scalar(min_neighbor_overlap, "min_neighbor_overlap")
     succeeding_ci_overlap <- .tox_as_double_scalar(succeeding_ci_overlap, "succeeding_ci_overlap")
@@ -1174,6 +1265,9 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_resi
     delta_max_threshold <- .tox_as_double_scalar(delta_max_threshold, "delta_max_threshold")
     delta_epsilon <- .tox_as_double_scalar(delta_epsilon, "delta_epsilon")
     delta_min_consecutive_transitions <- .tox_as_integer_scalar(delta_min_consecutive_transitions, "delta_min_consecutive_transitions")
+    m_min <- .tox_as_integer_scalar(m_min, "m_min")
+    m_max <- .tox_as_integer_scalar(m_max, "m_max")
+    gamma_occupancy <- .tox_as_double_scalar(gamma_occupancy, "gamma_occupancy")
     two_sided_bootstrapping_significance_level <- .tox_as_double_scalar(two_sided_bootstrapping_significance_level, "two_sided_bootstrapping_significance_level")
     random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
     if (dim(residuals)[3] != dim(gene_means)[2])
@@ -1181,15 +1275,15 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_resi
     if (dim(residuals)[2] != dim(gene_means)[1])
         .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
 
-    .result <- .Call("run_js_comp_test_parameter_search_call", gene_means, residuals, shared_residual_range, n_bootstraps, join_method, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, two_sided_bootstrapping_significance_level, random_seed)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "two_sided_bootstrapping_significance_level", "random_seed", "ierr")
-    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("run_js_comp_test_parameter_search_call", gene_means, residuals, shared_residual_range, n_bootstraps, join_method, max_n_points_candidate, max_n_neighbors_candidate, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, two_sided_bootstrapping_significance_level, random_seed)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "two_sided_bootstrapping_significance_level", "random_seed", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "n_bins_per_point", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         n_points = .result$n_points,
         n_neighbors = .result$n_neighbors,
-        n_bins = .result$n_bins,
+        n_bins_per_point = .result$n_bins_per_point,
         best_candidate_pair_confidence_interval = .result$best_candidate_pair_confidence_interval,
         plateau_established = .result$plateau_established,
         trace_n_points = utils::head(.result$trace_n_points, .result$n_admissible_evaluated),
@@ -1201,6 +1295,14 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_resi
         trace_ci_width_relative = .result$trace_ci_width_relative[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
         trace_delta = .result$trace_delta[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
         trace_delta_median = utils::head(.result$trace_delta_median, .result$n_admissible_evaluated),
-        trace_delta_max = utils::head(.result$trace_delta_max, .result$n_admissible_evaluated)
+        trace_delta_max = utils::head(.result$trace_delta_max, .result$n_admissible_evaluated),
+        trace_selected_n_bins = .result$trace_selected_n_bins[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_occupancy_failed = .result$trace_occupancy_failed[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_n_pooled_residuals = .result$trace_n_pooled_residuals[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_min_bin_occupancy = .result$trace_min_bin_occupancy[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_mean_bin_occupancy = .result$trace_mean_bin_occupancy[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_max_bin_occupancy = .result$trace_max_bin_occupancy[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_sturges_bins = .result$trace_sturges_bins[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_fd_bins = .result$trace_fd_bins[, seq_len(.result$n_admissible_evaluated), drop = FALSE]
     )
 }

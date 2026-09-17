@@ -20,7 +20,8 @@ module mod_test_data_integration_js_comp_test
                                                   run_js_comp_test_parameter_search
     use tox_data_integration_js_comp_test_impl, only: METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, &
                                                        MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, &
-                                                       MODE_PLATEAU_BOTH, calc_js_comp_test_n_top_k_jsds
+                                                       MODE_PLATEAU_BOTH, calc_js_comp_test_n_top_k_jsds, &
+                                                       calc_js_comp_test_candidate_bounds
     use tox_errors
     use f42_math_impl, only: above, below
     use test_suite, only: test_case
@@ -34,7 +35,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(67))
+        allocate (all_tests(70))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -179,6 +180,13 @@ contains
                                   test_mean_pmf_min_counts_per_point_bins_differ_all_pass)
         all_tests(67) = test_case("test_mean_pmf_min_counts_per_point_bins_differ_one_point_fails", &
                                   test_mean_pmf_min_counts_per_point_bins_differ_one_point_fails)
+
+        all_tests(68) = test_case("test_param_search_occupancy_failure_rejects_candidate", &
+                                  test_param_search_occupancy_failure_rejects_candidate)
+        all_tests(69) = test_case("test_param_search_different_neighborhoods_different_m_j", &
+                                  test_param_search_different_neighborhoods_different_m_j)
+        all_tests(70) = test_case("test_param_search_final_n_bins_matches_selected_trace_column", &
+                                  test_param_search_final_n_bins_matches_selected_trace_column)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -1773,7 +1781,13 @@ contains
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-        integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
+        integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
+        integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
+        integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
+        real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
+        logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
@@ -1789,13 +1803,25 @@ contains
             end do
         end do
 
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        allocate (n_bins_per_point(max_n_points_candidate))
+        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
-                                               n_bins, best_candidate_pair_confidence_interval, plateau_established, &
+                                               residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, &
+                                               max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
+                                               n_bins_per_point, best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
-                                               trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               trace_delta_median, trace_delta_max, &
+                                               trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
+                                               trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
+                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
                                                min_residuals_per_bin=1000000_int32, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
@@ -1832,7 +1858,13 @@ contains
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 100, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-        integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
+        integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
+        integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
+        integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
+        real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
+        logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
@@ -1848,13 +1880,25 @@ contains
             end do
         end do
 
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        allocate (n_bins_per_point(max_n_points_candidate))
+        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 1.0_real64, 5_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
-                                               n_bins, best_candidate_pair_confidence_interval, plateau_established, &
+                                               residuals, 1.0_real64, 5_int32, METHOD_JOIN_MIN, &
+                                               max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
+                                               n_bins_per_point, best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
-                                               trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               trace_delta_median, trace_delta_max, &
+                                               trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
+                                               trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
+                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                random_seed=1_int32)
 
@@ -1922,7 +1966,13 @@ contains
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 10000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-        integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
+        integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
+        integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
+        integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
+        real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
+        logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
@@ -1938,13 +1988,25 @@ contains
             end do
         end do
 
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        allocate (n_bins_per_point(max_n_points_candidate))
+        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
-                                               n_bins, best_candidate_pair_confidence_interval, plateau_established, &
+                                               residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, &
+                                               max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
+                                               n_bins_per_point, best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
-                                               trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               trace_delta_median, trace_delta_max, &
+                                               trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
+                                               trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
+                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                random_seed=1_int32)
 
@@ -2035,7 +2097,13 @@ contains
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 10000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-        integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
+        integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
+        integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
+        integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
+        real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
+        logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
@@ -2051,13 +2119,25 @@ contains
             end do
         end do
 
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        allocate (n_bins_per_point(max_n_points_candidate))
+        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
-                                               n_bins, best_candidate_pair_confidence_interval, plateau_established, &
+                                               residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, &
+                                               max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
+                                               n_bins_per_point, best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
-                                               trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               trace_delta_median, trace_delta_max, &
+                                               trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
+                                               trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
+                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_EFFECT_SIZE, random_seed=1_int32)
 
@@ -2093,7 +2173,13 @@ contains
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 10000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-        integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
+        integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
+        integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
+        integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
+        real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
+        logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
@@ -2109,13 +2195,25 @@ contains
             end do
         end do
 
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        allocate (n_bins_per_point(max_n_points_candidate))
+        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
-                                               n_bins, best_candidate_pair_confidence_interval, plateau_established, &
+                                               residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, &
+                                               max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
+                                               n_bins_per_point, best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
-                                               trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               trace_delta_median, trace_delta_max, &
+                                               trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
+                                               trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
+                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_BOTH, random_seed=1_int32)
 
@@ -2152,19 +2250,31 @@ contains
     !| construction/iteration, not something derivable on paper) -- confirmed via direct
     !| experimentation that every candidate here is genuinely evaluated, no plateau is ever found
     !| under any of the three `join_method`s, and candidate 5 = `(362, 220)` has a distinctly
-    !| smaller confidence-interval width than every other candidate, in both studies (median CI
-    !| width per candidate: `0.00167, 0.00250, 0.00121, 0.00218, 0.00110, 0.00200` -- candidate 5's
-    !| `0.00110` is the unambiguous minimum). The routine must therefore return candidate 5's own
-    !| `(n_points, n_neighbors)` and its real, bootstrapped confidence interval (not `-1.0`), with
-    !| `plateau_established = .false.` The exact confidence-interval values below come directly
-    !| from running this fixture through the actual implementation (not hand-derived), since they
-    !| depend on the real bootstrap resampling -- reproducible bit-for-bit given the fixed
-    !| `random_seed` and deterministic input data.
+    !| smaller confidence-interval width than every other candidate, in both studies. The routine
+    !| must therefore return candidate 5's own `(n_points, n_neighbors)` and its real, bootstrapped
+    !| confidence interval (not `-1.0`), with `plateau_established = .false.` The exact
+    !| confidence-interval values below come directly from running this fixture through the actual
+    !| implementation (not hand-derived), since they depend on the real bootstrap resampling --
+    !| reproducible bit-for-bit given the fixed `random_seed` and deterministic input data.
+    !| Re-verified after Issue #187's per-point occupancy search replaced the old global-pool
+    !| Sturges/Freedman-Diaconis bin-count broadcast this routine used to use: with
+    !| `min_residuals_per_bin=0` here, every neighborhood's occupancy search is trivially satisfied
+    !| at every candidate bin count up to `m_max` (default 120), so it always selects the ceiling
+    !| `m_max=120` bins per point -- a real, different bin count from before, which is why the
+    !| bootstrapped confidence-interval values below (script-verified via a temporary debug print,
+    !| not hand-derived) differ from this test's pre-#187 values, even though the candidate
+    !| selection itself (still candidate 5) does not.
     subroutine test_param_search_no_plateau_uses_smallest_uncertainty()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 20000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-        integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
+        integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
+        integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
+        integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
+        real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
+        logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
@@ -2186,13 +2296,25 @@ contains
             end do
         end do
 
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        allocate (n_bins_per_point(max_n_points_candidate))
+        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 3.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
-                                               n_bins, best_candidate_pair_confidence_interval, plateau_established, &
+                                               residuals, 3.0_real64, 10_int32, METHOD_JOIN_MIN, &
+                                               max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
+                                               n_bins_per_point, best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
-                                               trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               trace_delta_median, trace_delta_max, &
+                                               trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
+                                               trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
+                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                random_seed=1_int32)
 
@@ -2214,11 +2336,12 @@ contains
                          "test_param_search_no_plateau_uses_smallest_uncertainty: "// &
                          "a real confidence interval is returned, not the -1.0 sentinel")
         call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), &
-                                     [5.212653804e-05_real64, 1.149283224e-03_real64], 2_int32, TOL, &
+                                     [4.1542644883962090e-04_real64, 1.1633554673480007e-02_real64], 2_int32, TOL, &
                                      "test_param_search_no_plateau_uses_smallest_uncertainty: study 1 CI")
         call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 2), &
-                                     [5.212150674e-05_real64, 1.150810589e-03_real64], 2_int32, TOL, &
+                                     [4.1545307590114001e-04_real64, 1.1622383168417013e-02_real64], 2_int32, TOL, &
                                      "test_param_search_no_plateau_uses_smallest_uncertainty: study 2 CI")
+
     end subroutine test_param_search_no_plateau_uses_smallest_uncertainty
 
     !> Same LCG-residual fixture as `test_param_search_no_plateau_uses_smallest_uncertainty`
@@ -2233,7 +2356,13 @@ contains
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 20000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-        integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
+        integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
+        integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
+        integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
+        real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
+        logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
@@ -2255,13 +2384,25 @@ contains
             end do
         end do
 
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        allocate (n_bins_per_point(max_n_points_candidate))
+        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 3.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
-                                               n_bins, best_candidate_pair_confidence_interval, plateau_established, &
+                                               residuals, 3.0_real64, 10_int32, METHOD_JOIN_MIN, &
+                                               max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
+                                               n_bins_per_point, best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
-                                               trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               trace_delta_median, trace_delta_max, &
+                                               trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
+                                               trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
+                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_EFFECT_SIZE, random_seed=1_int32)
 
@@ -2296,7 +2437,13 @@ contains
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 20000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-        integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
+        integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
+        integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
+        integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
+        real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
+        logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
@@ -2318,13 +2465,25 @@ contains
             end do
         end do
 
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        allocate (n_bins_per_point(max_n_points_candidate))
+        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 3.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
-                                               n_bins, best_candidate_pair_confidence_interval, plateau_established, &
+                                               residuals, 3.0_real64, 10_int32, METHOD_JOIN_MIN, &
+                                               max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
+                                               n_bins_per_point, best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
-                                               trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               trace_delta_median, trace_delta_max, &
+                                               trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
+                                               trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
+                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_BOTH, random_seed=1_int32)
 
@@ -2346,6 +2505,343 @@ contains
                                      "test_param_search_no_plateau_both_falls_back: "// &
                                      "study 2 CI reset to -1.0")
     end subroutine test_param_search_no_plateau_both_falls_back
+
+    !> Issue #187's occupancy FAILURE policy, end to end through the parameter search: a genuinely
+    !| degenerate neighborhood (not merely an artificially huge `min_residuals_per_bin`, contrast
+    !| `test_param_search_no_plateau_falls_back_to_finest` above, which forces failure that way)
+    !| must make gate 2 (`check_mean_pmf_min_counts_impl`) reject the candidate, so it is never
+    !| counted as admissible.
+    !|
+    !| Same grid as `test_param_search_no_plateau_falls_back_to_finest`
+    !| (`max_n_genes_all_studies=2000`, finest candidate `(300, 26)`), and `min_neighbor_overlap=0.0`
+    !| so gate 1 always passes trivially (tie-extended full-range neighborhoods from constant gene
+    !| means, exactly as that test's own comment explains). Unlike that test, `min_residuals_per_bin`
+    !| is left at its DEFAULT (10) here -- the rejection instead comes from making every residual in
+    !| the whole dataset exactly `0.0_real64`. A pooled neighborhood's residuals are then ALL identical,
+    !| so at any bin count `M >= 2` every bin except the one containing `0.0` has occupancy exactly
+    !| `0 < 10`, and `M=1` is never tried (the default `m_min=3`) -- so
+    !| `determine_bin_count_occupancy_impl` cannot find any admissible `M` for ANY point, in ANY
+    !| candidate: `occupancy_failed=.true.` throughout, `selected_n_bins=m_min=3`, and the resulting
+    !| 3-bin mean pmf (also all mass in one bin) then fails gate 2's own `min_residuals_per_bin` check
+    !| the same way, for every candidate in the grid -- not just the first one tested. This is a
+    !| stronger, more literal reading of "genuine occupancy FAILURE" than an oversized threshold: the
+    !| data itself cannot support ANY histogram resolution above 1 bin.
+    !|
+    !| `n_admissible_evaluated` must therefore be exactly `0` (no `trace_*` columns at all, per Issue
+    !| #178's own "a candidate that failed either gate has no trace_* entry at all" convention), and
+    !| the routine falls back to the finest-resolution candidate `(300, 26)` with the confidence
+    !| interval reset to `-1.0` and `plateau_established=.false.` -- case 3 of the final
+    !| candidate-selection block, exactly like `test_param_search_no_plateau_falls_back_to_finest`,
+    !| but reached here via genuine data sparsity rather than an artificial threshold. Values below
+    !| are script-verified against the actual implementation (not hand-derived beyond the reasoning
+    !| above), via a temporary debug print removed before landing this test.
+    subroutine test_param_search_occupancy_failure_rejects_candidate()
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2000, max_n_reps_all_studies = 3
+        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
+        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+        integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
+        integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
+        integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
+        real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
+        logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
+        real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        logical(c_bool) :: plateau_established
+        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
+        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: i_gene, i_study
+
+        do i_study = 1, n_studies
+            do i_gene = 1, max_n_genes_all_studies
+                gene_means(i_gene, i_study) = real(i_gene, real64)
+                residuals(:, i_gene, i_study) = 0.0_real64
+            end do
+        end do
+
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        allocate (n_bins_per_point(max_n_points_candidate))
+        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+
+        call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
+                                               residuals, 1.0_real64, 5_int32, METHOD_JOIN_MIN, &
+                                               max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
+                                               n_bins_per_point, best_candidate_pair_confidence_interval, &
+                                               plateau_established, &
+                                               n_admissible_evaluated, &
+                                               trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_delta_median, trace_delta_max, &
+                                               trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
+                                               trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
+                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
+                                               min_neighbor_overlap=0.0_real64, random_seed=1_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_occupancy_failure_rejects_candidate: ierr should be OK")
+        call assert_equal_int(n_admissible_evaluated, 0_int32, &
+                              "test_param_search_occupancy_failure_rejects_candidate: "// &
+                              "every candidate's genuine occupancy failure makes gate 2 reject it, "// &
+                              "so none is ever counted admissible")
+        call assert_false(plateau_established, &
+                          "test_param_search_occupancy_failure_rejects_candidate: "// &
+                          "no candidate was ever admissible, so no plateau could be established")
+        call assert_equal_int(n_points, 300_int32, &
+                              "test_param_search_occupancy_failure_rejects_candidate: "// &
+                              "falls back to the finest-resolution n_points")
+        call assert_equal_int(n_neighbors, 26_int32, &
+                              "test_param_search_occupancy_failure_rejects_candidate: "// &
+                              "falls back to the finest-resolution n_neighbors")
+        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), [-1.0_real64, -1.0_real64], 2_int32, TOL, &
+                                     "test_param_search_occupancy_failure_rejects_candidate: "// &
+                                     "study 1 CI reset to -1.0, since gate 2 rejected every candidate")
+        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 2), [-1.0_real64, -1.0_real64], 2_int32, TOL, &
+                                     "test_param_search_occupancy_failure_rejects_candidate: "// &
+                                     "study 2 CI reset to -1.0")
+    end subroutine test_param_search_occupancy_failure_rejects_candidate
+
+    !> Issue #187's central claim -- "different neighborhoods may use different numbers of bins" --
+    !| verified through `trace_selected_n_bins`, not just through `determine_bin_count_occupancy`
+    !| directly (already covered by the `test_determine_bin_count_occupancy_*` suite below): a
+    !| SINGLE candidate whose 300 reference points split into two clearly different residual
+    !| dispersion regimes must end up with a genuinely non-constant `trace_selected_n_bins` column.
+    !|
+    !| `max_n_genes_all_studies=100` collapses the grid to exactly one candidate, `(300, 1)` --
+    !| exactly `test_param_search_single_candidate_bypasses_plateau`'s own grid collapse, so with
+    !| `n_neighbors=1` every reference point's pooled neighborhood is just ONE gene's residuals,
+    !| repeated across `max_n_reps_all_studies=3` replicates and `n_studies=2` studies: exactly 6
+    !| pooled residuals per point, regardless of which gene. Genes 1-50 ("clustered") all get the
+    !| SAME residual, `0.0_real64`, on every replicate of every study. Genes 51-100 ("spread") get 6
+    !| DISTINCT values laid out across `(rep, study)` -- `{-2.5, -1.5, -0.5, 0.5, 1.5, 2.5}` -- evenly
+    !| spanning `[-shared_residual_range, shared_residual_range] = [-3, 3]`.
+    !|
+    !| `m_min=1` (overriding the default 3) and `min_residuals_per_bin=1` (overriding the default 10)
+    !| are both necessary for this fixture: a clustered point's 6 identical values can never fill more
+    !| than 1 bin without leaving another one empty, so at the default `m_min=3` it would be a genuine
+    !| occupancy FAILURE (`test_param_search_occupancy_failure_rejects_candidate` above already covers
+    !| that path) rather than a valid, admissible, small `M_j` -- `m_min=1` lets a clustered point
+    !| legitimately select `M_j=1` instead. Hand-traced through
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+    !| own geometric search (`gamma_occupancy` default 1.25):
+    !| - Clustered (all six residuals `0.0`): `M=1`, bin_width=6, all six land in the one bin,
+    !|   `min_occ=6>=1` -> valid. `M=2` next (`ceil(1.25*1)=2`): bin_width=3, all six still land in
+    !|   the bin covering `[0,3]`, the other bin empty -> `min_occ=0<1` -> invalid immediately. Stage 2
+    !|   refines the (2,1) interval, which is empty (nothing strictly between 1 and 2) -> `best_m=1`.
+    !| - Spread (`{-2.5,-1.5,-0.5,0.5,1.5,2.5}`): `M=1,2,3,4,5` are all valid (traced by hand: minimum
+    !|   occupancy 6,3,2,1,1 respectively, always `>=1`); `M=7` (`ceil(1.25*5)=6.25->7`) is the first
+    !|   invalid one (pigeonhole: 6 values can never fill 7 bins without leaving one empty -- `min_occ=0`).
+    !|   Stage 2 then refines `M=6` alone (the only integer strictly between `m_valid=5` and
+    !|   `m_invalid=7`): bin_width=1.0 puts each of the 6 values in its own bin, `min_occ=1>=1` ->
+    !|   valid, `best_m=6`.
+    !| So `trace_selected_n_bins(:, 1)` must contain BOTH `1` (every point whose nearest gene is
+    !| clustered) and `6` (every point whose nearest gene is spread) -- never a single constant value
+    !| across all 300 rows. `min_neighbor_overlap=0.0` keeps gate 1 trivial (as in the single-candidate
+    !| test above), and since every point's own selected `M_j` is, by construction, the LARGEST `M`
+    !| its own pooled residuals actually support, gate 2 also passes for every point, so the single
+    !| candidate is genuinely admissible (`n_admissible_evaluated=1`) -- script-verified against the
+    !| actual implementation, matching this hand trace exactly.
+    subroutine test_param_search_different_neighborhoods_different_m_j()
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 100, max_n_reps_all_studies = 3
+        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
+        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+        integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate, i_gene, i_study
+        integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
+        integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
+        real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
+        logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
+        real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        logical(c_bool) :: plateau_established
+        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
+        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+
+        do i_study = 1, n_studies
+            do i_gene = 1, max_n_genes_all_studies
+                gene_means(i_gene, i_study) = real(i_gene, real64)
+            end do
+        end do
+        do i_gene = 1, 50
+            residuals(:, i_gene, :) = 0.0_real64
+        end do
+        do i_gene = 51, max_n_genes_all_studies
+            residuals(1, i_gene, 1) = -2.5_real64
+            residuals(2, i_gene, 1) = -1.5_real64
+            residuals(3, i_gene, 1) = -0.5_real64
+            residuals(1, i_gene, 2) = 0.5_real64
+            residuals(2, i_gene, 2) = 1.5_real64
+            residuals(3, i_gene, 2) = 2.5_real64
+        end do
+
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        allocate (n_bins_per_point(max_n_points_candidate))
+        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+
+        call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
+                                               residuals, 3.0_real64, 5_int32, METHOD_JOIN_MIN, &
+                                               max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
+                                               n_bins_per_point, best_candidate_pair_confidence_interval, &
+                                               plateau_established, &
+                                               n_admissible_evaluated, &
+                                               trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_delta_median, trace_delta_max, &
+                                               trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
+                                               trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
+                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
+                                               min_residuals_per_bin=1_int32, min_neighbor_overlap=0.0_real64, &
+                                               m_min=1_int32, random_seed=1_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_different_neighborhoods_different_m_j: ierr should be OK")
+        call assert_equal_int(n_admissible_evaluated, 1_int32, &
+                              "test_param_search_different_neighborhoods_different_m_j: "// &
+                              "the sole (collapsed-grid) candidate is admissible")
+        call assert_equal_int(trace_n_points(1), 300_int32, &
+                              "test_param_search_different_neighborhoods_different_m_j: trace_n_points(1)")
+        call assert_true(logical(minval(trace_selected_n_bins(1:trace_n_points(1), 1)) /= &
+                                 maxval(trace_selected_n_bins(1:trace_n_points(1), 1)), kind=c_bool), &
+                         "test_param_search_different_neighborhoods_different_m_j: "// &
+                         "trace_selected_n_bins(1:trace_n_points(1), 1) is NOT constant across its rows")
+        call assert_equal_int(minval(trace_selected_n_bins(1:trace_n_points(1), 1)), 1_int32, &
+                              "test_param_search_different_neighborhoods_different_m_j: "// &
+                              "the clustered points' own M_j (hand-traced above)")
+        call assert_equal_int(maxval(trace_selected_n_bins(1:trace_n_points(1), 1)), 6_int32, &
+                              "test_param_search_different_neighborhoods_different_m_j: "// &
+                              "the spread points' own M_j (hand-traced above)")
+    end subroutine test_param_search_different_neighborhoods_different_m_j
+
+    !> Issue #187's final-selection wiring: the routine's returned `n_bins_per_point` must equal the
+    !| `trace_selected_n_bins` COLUMN of whichever candidate was ACTUALLY selected -- not the column
+    !| of the first admissible candidate, and not a stale snapshot left over from an earlier
+    !| candidate. `test_param_search_finds_plateau_mid_grid` and the no-plateau fallback tests above
+    !| already confirm the SELECTED `(n_points, n_neighbors)` is correct; this test additionally
+    !| confirms the per-point BIN COUNTS returned alongside it are correct too, in a fixture where the
+    !| search genuinely evaluates more than one admissible candidate before stopping (so the snapshot
+    !| this checks against is not trivially the only one ever written).
+    !|
+    !| Same LCG-residual fixture as `test_param_search_no_plateau_uses_smallest_uncertainty`
+    !| (`max_n_genes_all_studies=20000`, deterministic pseudo-random residuals, `random_seed=1`), but
+    !| with `min_residuals_per_bin=50` instead of that test's `0` -- `0` makes every point's occupancy
+    !| search trivially run all the way to `m_max` (every `min_occ>=0` unconditionally), which would
+    !| make `trace_selected_n_bins` constant everywhere and this test unable to distinguish "returned
+    !| the right column" from "returned any column" (they would all read the same value). `50` is
+    !| large enough, relative to this fixture's per-candidate pooled residual counts, to make the
+    !| occupancy search actually bind: bin counts vary BOTH across candidates (different `n_neighbors`
+    !| change `N_j`) and WITHIN a candidate's own column (real per-point dispersion differences in the
+    !| pseudo-random residuals) -- script-verified: `n_admissible_evaluated=3` (the search stops
+    !| earlier than the 6-candidate no-plateau fixture above, at a genuine CI-overlap plateau this
+    !| time, `plateau_established=.true.`), selecting the THIRD admissible candidate `(453, 176)` --
+    !| not the first, so the running best-candidate bin-count snapshot
+    !| (`tmp_best_n_bins_per_point`/`trace_selected_n_bins` column bookkeeping) is genuinely
+    !| overwritten as the loop progresses, not written once and left alone. That column's own bin
+    !| counts range over `{4, 5}` (not constant), so a wiring bug that returned an adjacent column
+    !| (1 or 2, both entirely `4`) would be caught by the elementwise comparison below, not silently
+    !| masked by every column holding the same value.
+    subroutine test_param_search_final_n_bins_matches_selected_trace_column()
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 20000, max_n_reps_all_studies = 3
+        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
+        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+        integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
+        integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
+        integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
+        real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
+        logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
+        real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        logical(c_bool) :: plateau_established
+        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
+        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: i_gene, i_study, i_rep, k, t, selected_column
+
+        do i_study = 1, n_studies
+            do i_gene = 1, max_n_genes_all_studies
+                gene_means(i_gene, i_study) = real(i_gene, real64)
+                do i_rep = 1, max_n_reps_all_studies
+                    k = i_rep + max_n_reps_all_studies*(i_gene - 1) + &
+                        (i_study - 1)*max_n_reps_all_studies*max_n_genes_all_studies
+                    residuals(i_rep, i_gene, i_study) = 4.0_real64* &
+                        (mod(1103515245.0_real64*real(k, real64) + 12345.0_real64, 2147483648.0_real64) &
+                         /2147483648.0_real64 - 0.5_real64)
+                end do
+            end do
+        end do
+
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        allocate (n_bins_per_point(max_n_points_candidate))
+        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
+        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+
+        call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
+                                               residuals, 3.0_real64, 10_int32, METHOD_JOIN_MIN, &
+                                               max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
+                                               n_bins_per_point, best_candidate_pair_confidence_interval, &
+                                               plateau_established, &
+                                               n_admissible_evaluated, &
+                                               trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_delta_median, trace_delta_max, &
+                                               trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
+                                               trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
+                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
+                                               min_residuals_per_bin=50_int32, min_neighbor_overlap=0.0_real64, &
+                                               random_seed=1_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_final_n_bins_matches_selected_trace_column: ierr should be OK")
+        call assert_equal_int(n_admissible_evaluated, 3_int32, &
+                              "test_param_search_final_n_bins_matches_selected_trace_column: "// &
+                              "three candidates evaluated before the plateau -- not the first")
+        call assert_true(plateau_established, &
+                         "test_param_search_final_n_bins_matches_selected_trace_column: "// &
+                         "a genuine CI-overlap plateau is found under this stricter min_residuals_per_bin")
+        call assert_equal_int(n_points, 453_int32, &
+                              "test_param_search_final_n_bins_matches_selected_trace_column: "// &
+                              "selects the THIRD admissible candidate's n_points, not the first")
+        call assert_equal_int(n_neighbors, 176_int32, &
+                              "test_param_search_final_n_bins_matches_selected_trace_column: "// &
+                              "selects the third admissible candidate's n_neighbors")
+
+        ! Find the trace column matching the actually-selected (n_points, n_neighbors) pair, rather
+        ! than assuming it is column n_admissible_evaluated -- self-verifying regardless of which
+        ! column the routine actually stopped at.
+        selected_column = -1_int32
+        do t = 1, n_admissible_evaluated
+            if (trace_n_points(t) == n_points .and. trace_n_neighbors(t) == n_neighbors) then
+                selected_column = t
+                exit
+            end if
+        end do
+        call assert_equal_int(selected_column, 3_int32, &
+                              "test_param_search_final_n_bins_matches_selected_trace_column: "// &
+                              "the selected candidate is trace column 3 (script-verified)")
+        call assert_true(logical(minval(trace_selected_n_bins(1:n_points, selected_column)) /= &
+                                 maxval(trace_selected_n_bins(1:n_points, selected_column)), kind=c_bool), &
+                         "test_param_search_final_n_bins_matches_selected_trace_column: "// &
+                         "the selected column's own bin counts are not constant either (4 and 5)")
+        call assert_true(all(n_bins_per_point(1:n_points) == trace_selected_n_bins(1:n_points, selected_column)), &
+                         "test_param_search_final_n_bins_matches_selected_trace_column: "// &
+                         "returned n_bins_per_point equals the ACTUALLY-selected candidate's trace column, "// &
+                         "not a stale earlier snapshot")
+    end subroutine test_param_search_final_n_bins_matches_selected_trace_column
 
     !> Geometric search finds M=12 (strictly between the default m_min=3 and m_max=120) directly,
     !| without needing stage 2 at all. Residuals are every integer in [-60, 59] (120 values,

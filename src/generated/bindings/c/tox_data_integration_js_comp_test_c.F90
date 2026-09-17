@@ -2087,8 +2087,11 @@ contains
     !| Per the plan's work-array translation for this routine specifically: `max_n_bins_all_candidates`
     !| (data-dependent, not cheaply closed-form in 125) is replaced by the fixed
     !| [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] ceiling, so every
-    !| bin-dimensioned work array below is sized to MAX_N_BINS and sliced `(1:n_bins, ...)` per
+    !| bin-dimensioned work array below is sized to MAX_N_BINS and sliced `(1:max_n_bins, ...)` per
     !| candidate, rather than carrying a separate recommend-sized dimension argument for it.
+    !| `max_n_bins` is the widest per-point bin count Issue #187's occupancy search (Pass B below)
+    !| chose for the current candidate, `maxval(tmp_n_bins_per_point(1:n_points))` -- it replaces
+    !| the old single scalar `n_bins` that used to come from the global-pool Sturges/FD estimate.
     !| `residuals`/`gene_means` are passed to
     !| [[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]/[[f42_sort_impl(module):sort_real_heapsort_expl_size(interface)]]
     !| as their own multi-dimensional selves -- both callees declare their matching dummy with an
@@ -2109,9 +2112,11 @@ contains
             shared_residual_range,&
             n_bootstraps,&
             join_method,&
+            max_n_points_candidate,&
+            max_n_neighbors_candidate,&
             n_points,&
             n_neighbors,&
-            n_bins,&
+            n_bins_per_point,&
             best_candidate_pair_confidence_interval,&
             plateau_established,&
             n_admissible_evaluated,&
@@ -2125,6 +2130,14 @@ contains
             trace_delta,&
             trace_delta_median,&
             trace_delta_max,&
+            trace_selected_n_bins,&
+            trace_occupancy_failed,&
+            trace_n_pooled_residuals,&
+            trace_min_bin_occupancy,&
+            trace_mean_bin_occupancy,&
+            trace_max_bin_occupancy,&
+            trace_sturges_bins,&
+            trace_fd_bins,&
             min_residuals_per_bin,&
             min_neighbor_overlap,&
             succeeding_ci_overlap,&
@@ -2133,6 +2146,9 @@ contains
             delta_max_threshold,&
             delta_epsilon,&
             delta_min_consecutive_transitions,&
+            m_min,&
+            m_max,&
+            gamma_occupancy,&
             two_sided_bootstrapping_significance_level,&
             random_seed,&
             ierr&
@@ -2148,6 +2164,15 @@ contains
             !! The minimum valid value is `1_int32`.
         integer(c_int), intent(in), target :: max_n_reps_all_studies
             !! Maximum number of replicates across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(c_int), intent(in), target :: max_n_points_candidate
+            !! Exact upper bound on the grid's first (largest) `n_points` candidate. Issue #187's
+            !! per-point outputs below (`n_bins_per_point`, `trace_selected_n_bins`, and the other
+            !! jagged `trace_*` arrays) are sized by this argument, so unlike before Issue #187 it
+            !! is no longer purely an internal sizing detail the plain wrapper can compute and
+            !! hide -- the caller must know it up front to receive those arrays, hence JUST_INFO
+            !! rather than AUTO here now
+            !! It is recommended to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_impl(module):calc_js_comp_test_candidate_bounds]].
             !! The minimum valid value is `1_int32`.
         real(c_double), dimension(max_n_genes_all_studies, n_studies), intent(in), target :: gene_means
             !! Per-gene mean expression values for all studies
@@ -2170,12 +2195,24 @@ contains
             !! | Minimum overlap (all studies must pass) | [[tox_data_integration_js_comp_test_impl(module):METHOD_JOIN_MIN(variable)]]    |
             !! | Maximum overlap (any one study passes)  | [[tox_data_integration_js_comp_test_impl(module):METHOD_JOIN_MAX(variable)]]    |
             !! | Median overlap (a majority must pass)   | [[tox_data_integration_js_comp_test_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
+        integer(c_int), intent(in), target :: max_n_neighbors_candidate
+            !! Safe upper bound on the grid's largest `n_neighbors` candidate. Also JUST_INFO, not
+            !! because anything returned is sized by it (nothing is), but because it comes from the
+            !! same `calc_js_comp_test_candidate_bounds` call as `max_n_points_candidate` above --
+            !! now that that call can no longer run automatically inside this wrapper, splitting
+            !! this one back into an AUTO call would just be a second, redundant call to the same
+            !! routine for no benefit
+            !! It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by [[tox_data_integration_js_comp_test_impl(module):calc_js_comp_test_candidate_bounds]].
+            !! The minimum valid value is `1_int32`.
         integer(c_int), intent(out), target :: n_points
             !! The finally chosen candidate's `n_points`
         integer(c_int), intent(out), target :: n_neighbors
             !! The finally chosen candidate's `n_neighbors`
-        integer(c_int), intent(out), target :: n_bins
-            !! The finally chosen candidate's bin count
+        integer(c_int), dimension(max_n_points_candidate), intent(out), target :: n_bins_per_point
+            !! The finally chosen candidate's per-point histogram bin count, one per reference
+            !! point (Issue #187: every neighborhood may use a different bin count). Only the
+            !! leading `n_points` entries are meaningful, mirroring how `n_points`/`n_neighbors`
+            !! above are the finally chosen candidate's own values
         real(c_double), dimension(2, n_studies), intent(out), target :: best_candidate_pair_confidence_interval
             !! The bootstrapped JSD confidence interval for the finally chosen candidate pair;
             !! `-1.0_real64` throughout only when `plateau_established` is `.false.` and no
@@ -2245,6 +2282,65 @@ contains
             !! Per-admissible-candidate maximum of trace_delta across studies (Delta^max_t);
             !! `-1.0_real64` at the first admissible candidate, see trace_delta above
             !! The first `n_admissible_evaluated` elements will hold the results.
+        integer(c_int), dimension(max_n_points_candidate, 16), intent(out), target :: trace_selected_n_bins
+            !! Per-admissible-candidate, per-reference-point selected histogram bin count
+            !! (Issue #187's `M_j`), from determine_bin_count_occupancy_impl. Unlike every OTHER
+            !! trace_* array above, whose first extent is a fixed thing like `n_studies`, this
+            !! array's first extent is `max_n_points_candidate`, NOT `n_points`, because `n_points`
+            !! itself varies per candidate (that is why `trace_n_points(16)` exists as its own
+            !! array): this array is genuinely JAGGED per candidate column `t` -- only rows
+            !! `1:trace_n_points(t)` are meaningful for that column, rows beyond that are undefined
+            !! padding. The result-size directive below only trims the LAST extent (candidates, via
+            !! `n_admissible_evaluated`), not this row dimension, so a Python/R caller must
+            !! additionally slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        logical(c_bool), dimension(max_n_points_candidate, 16), intent(out), target :: trace_occupancy_failed
+            !! Per-admissible-candidate, per-reference-point `occupancy_failed` flag from
+            !! determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+            !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        integer(c_int), dimension(max_n_points_candidate, 16), intent(out), target :: trace_n_pooled_residuals
+            !! Per-admissible-candidate, per-reference-point pooled residual count (`N_j`) from
+            !! determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+            !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        integer(c_int), dimension(max_n_points_candidate, 16), intent(out), target :: trace_min_bin_occupancy
+            !! Per-admissible-candidate, per-reference-point minimum bin occupancy at
+            !! trace_selected_n_bins, from determine_bin_count_occupancy_impl. Jagged per candidate
+            !! column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
+            !! meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
+            !! themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(c_double), dimension(max_n_points_candidate, 16), intent(out), target :: trace_mean_bin_occupancy
+            !! Per-admissible-candidate, per-reference-point mean bin occupancy at
+            !! trace_selected_n_bins, from determine_bin_count_occupancy_impl. Jagged per candidate
+            !! column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
+            !! meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
+            !! themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        integer(c_int), dimension(max_n_points_candidate, 16), intent(out), target :: trace_max_bin_occupancy
+            !! Per-admissible-candidate, per-reference-point maximum bin occupancy at
+            !! trace_selected_n_bins, from determine_bin_count_occupancy_impl. Jagged per candidate
+            !! column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
+            !! meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
+            !! themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        integer(c_int), dimension(max_n_points_candidate, 16), intent(out), target :: trace_sturges_bins
+            !! Per-admissible-candidate, per-reference-point Sturges' rule bin-count diagnostic
+            !! from determine_bin_count_occupancy_impl (never part of the occupancy search's own
+            !! decision). Jagged per candidate column exactly as trace_selected_n_bins above --
+            !! only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R caller
+            !! must slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        integer(c_int), dimension(max_n_points_candidate, 16), intent(out), target :: trace_fd_bins
+            !! Per-admissible-candidate, per-reference-point Freedman-Diaconis rule bin-count
+            !! diagnostic from determine_bin_count_occupancy_impl (never part of the occupancy
+            !! search's own decision). Jagged per candidate column exactly as trace_selected_n_bins
+            !! above -- only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R
+            !! caller must slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
         integer(c_int), intent(in), target :: min_residuals_per_bin
             !! Minimum count each bin of the consensus pmf must reach to pass the second
             !! admissibility gate. Reuses Issue #187's occupancy-search default rather than an
@@ -2298,6 +2394,25 @@ contains
             !! plateau, forwarded to check_effect_size_plateau_condition_impl
             !! The minimum valid value is `1_int32`.
             !! The default value is `2_int32`.
+        integer(c_int), intent(in), target :: m_min
+            !! Smallest candidate bin count Pass B's occupancy search will ever test (M_min),
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_N_BINS`.
+            !! The default value is `3_int32`.
+        integer(c_int), intent(in), target :: m_max
+            !! Largest candidate bin count Pass B's occupancy search will ever test (M_max),
+            !! forwarded to determine_bin_count_occupancy_impl; if a caller passes `m_max < m_min`,
+            !! determine_bin_count_occupancy_impl clamps it up to `m_min` internally
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_N_BINS`.
+            !! The default value is `120_int32`.
+        real(c_double), intent(in), target :: gamma_occupancy
+            !! Geometric growth factor for Pass B's occupancy search's coarse search stage,
+            !! forwarded to determine_bin_count_occupancy_impl; must exceed 1 or the search never
+            !! advances
+            !! The minimum valid value is `above(1.0_real64)`.
+            !! The default value is `1.25_real64`.
         real(c_double), intent(in), target :: two_sided_bootstrapping_significance_level
             !! Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
             !! to bootstrap_histogram_impl itself
@@ -2319,9 +2434,10 @@ contains
         M_CHECK_NON_NULL(max_n_reps_all_studies)
         M_CHECK_NON_NULL(shared_residual_range)
         M_CHECK_NON_NULL(n_bootstraps)
+        M_CHECK_NON_NULL(max_n_points_candidate)
+        M_CHECK_NON_NULL(max_n_neighbors_candidate)
         M_CHECK_NON_NULL(n_points)
         M_CHECK_NON_NULL(n_neighbors)
-        M_CHECK_NON_NULL(n_bins)
         M_CHECK_NON_NULL(plateau_established)
         M_CHECK_NON_NULL(n_admissible_evaluated)
         M_CHECK_NON_NULL(min_residuals_per_bin)
@@ -2331,11 +2447,15 @@ contains
         M_CHECK_NON_NULL(delta_max_threshold)
         M_CHECK_NON_NULL(delta_epsilon)
         M_CHECK_NON_NULL(delta_min_consecutive_transitions)
+        M_CHECK_NON_NULL(m_min)
+        M_CHECK_NON_NULL(m_max)
+        M_CHECK_NON_NULL(gamma_occupancy)
         M_CHECK_NON_NULL(two_sided_bootstrapping_significance_level)
         M_CHECK_NON_NULL(random_seed)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(join_method, 11)
+        M_CHECK_ARRAY_NON_NULL(n_bins_per_point, max_n_points_candidate)
         M_CHECK_ARRAY_NON_NULL(best_candidate_pair_confidence_interval, 2 * n_studies)
         M_CHECK_ARRAY_NON_NULL(trace_n_points, 16)
         M_CHECK_ARRAY_NON_NULL(trace_n_neighbors, 16)
@@ -2347,6 +2467,14 @@ contains
         M_CHECK_ARRAY_NON_NULL(trace_delta, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta_median, 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta_max, 16)
+        M_CHECK_ARRAY_NON_NULL(trace_selected_n_bins, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_occupancy_failed, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_n_pooled_residuals, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_min_bin_occupancy, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_mean_bin_occupancy, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_max_bin_occupancy, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_sturges_bins, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_fd_bins, max_n_points_candidate * 16)
         M_CHECK_ARRAY_NON_NULL(plateau_mode, 19)
 
         block
@@ -2391,9 +2519,11 @@ contains
             shared_residual_range = shared_residual_range,&
             n_bootstraps = n_bootstraps,&
             join_method = join_method_mode_f,&
+            max_n_points_candidate = max_n_points_candidate,&
+            max_n_neighbors_candidate = max_n_neighbors_candidate,&
             n_points = n_points,&
             n_neighbors = n_neighbors,&
-            n_bins = n_bins,&
+            n_bins_per_point = n_bins_per_point,&
             best_candidate_pair_confidence_interval = best_candidate_pair_confidence_interval,&
             plateau_established = plateau_established,&
             n_admissible_evaluated = n_admissible_evaluated,&
@@ -2407,6 +2537,14 @@ contains
             trace_delta = trace_delta,&
             trace_delta_median = trace_delta_median,&
             trace_delta_max = trace_delta_max,&
+            trace_selected_n_bins = trace_selected_n_bins,&
+            trace_occupancy_failed = trace_occupancy_failed,&
+            trace_n_pooled_residuals = trace_n_pooled_residuals,&
+            trace_min_bin_occupancy = trace_min_bin_occupancy,&
+            trace_mean_bin_occupancy = trace_mean_bin_occupancy,&
+            trace_max_bin_occupancy = trace_max_bin_occupancy,&
+            trace_sturges_bins = trace_sturges_bins,&
+            trace_fd_bins = trace_fd_bins,&
             min_residuals_per_bin = min_residuals_per_bin,&
             min_neighbor_overlap = min_neighbor_overlap,&
             succeeding_ci_overlap = succeeding_ci_overlap,&
@@ -2415,6 +2553,9 @@ contains
             delta_max_threshold = delta_max_threshold,&
             delta_epsilon = delta_epsilon,&
             delta_min_consecutive_transitions = delta_min_consecutive_transitions,&
+            m_min = m_min,&
+            m_max = m_max,&
+            gamma_occupancy = gamma_occupancy,&
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
             random_seed = random_seed,&
             ierr = ierr&
@@ -2471,8 +2612,11 @@ contains
     !| Per the plan's work-array translation for this routine specifically: `max_n_bins_all_candidates`
     !| (data-dependent, not cheaply closed-form in 125) is replaced by the fixed
     !| [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] ceiling, so every
-    !| bin-dimensioned work array below is sized to MAX_N_BINS and sliced `(1:n_bins, ...)` per
+    !| bin-dimensioned work array below is sized to MAX_N_BINS and sliced `(1:max_n_bins, ...)` per
     !| candidate, rather than carrying a separate recommend-sized dimension argument for it.
+    !| `max_n_bins` is the widest per-point bin count Issue #187's occupancy search (Pass B below)
+    !| chose for the current candidate, `maxval(tmp_n_bins_per_point(1:n_points))` -- it replaces
+    !| the old single scalar `n_bins` that used to come from the global-pool Sturges/FD estimate.
     !| `residuals`/`gene_means` are passed to
     !| [[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]/[[f42_sort_impl(module):sort_real_heapsort_expl_size(interface)]]
     !| as their own multi-dimensional selves -- both callees declare their matching dummy with an
@@ -2498,7 +2642,7 @@ contains
             n_bootstrapping_top_k_jsds,&
             n_points,&
             n_neighbors,&
-            n_bins,&
+            n_bins_per_point,&
             best_candidate_pair_confidence_interval,&
             plateau_established,&
             n_admissible_evaluated,&
@@ -2512,11 +2656,19 @@ contains
             trace_delta,&
             trace_delta_median,&
             trace_delta_max,&
+            trace_selected_n_bins,&
+            trace_occupancy_failed,&
+            trace_n_pooled_residuals,&
+            trace_min_bin_occupancy,&
+            trace_mean_bin_occupancy,&
+            trace_max_bin_occupancy,&
+            trace_sturges_bins,&
+            trace_fd_bins,&
             tmp_gene_means_perms,&
             tmp_gene_means_perm_all,&
             tmp_residuals_perm,&
             tmp_x_star,&
-            tmp_neighborhood_indices,&
+            tmp_neighborhood_indices_all_studies,&
             tmp_neighborhood_range,&
             tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major,&
@@ -2536,6 +2688,18 @@ contains
             tmp_prev_global_js_divergence,&
             tmp_delta_perm,&
             tmp_best_uncertainty_confidence_interval,&
+            tmp_pooled_residuals,&
+            tmp_pooled_residuals_perm,&
+            tmp_bin_counts_search,&
+            tmp_occupancy_failed,&
+            tmp_n_pooled_residuals,&
+            tmp_min_bin_occupancy,&
+            tmp_mean_bin_occupancy,&
+            tmp_max_bin_occupancy,&
+            tmp_sturges_bins,&
+            tmp_fd_bins,&
+            tmp_best_n_bins_per_point,&
+            tmp_best_uncertainty_n_bins_per_point,&
             min_residuals_per_bin,&
             min_neighbor_overlap,&
             succeeding_ci_overlap,&
@@ -2544,6 +2708,9 @@ contains
             delta_max_threshold,&
             delta_epsilon,&
             delta_min_consecutive_transitions,&
+            m_min,&
+            m_max,&
+            gamma_occupancy,&
             two_sided_bootstrapping_significance_level,&
             random_seed,&
             ierr&
@@ -2561,12 +2728,22 @@ contains
             !! Maximum number of replicates across all studies
             !! The minimum valid value is `1_int32`.
         integer(c_int), intent(in), target :: max_n_points_candidate
-            !! Exact upper bound on the grid's first (largest) `n_points` candidate
-            !! It is *VERY IMPORTANT* to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_impl(module):calc_js_comp_test_candidate_bounds]].
+            !! Exact upper bound on the grid's first (largest) `n_points` candidate. Issue #187's
+            !! per-point outputs below (`n_bins_per_point`, `trace_selected_n_bins`, and the other
+            !! jagged `trace_*` arrays) are sized by this argument, so unlike before Issue #187 it
+            !! is no longer purely an internal sizing detail the plain wrapper can compute and
+            !! hide -- the caller must know it up front to receive those arrays, hence JUST_INFO
+            !! rather than AUTO here now
+            !! It is recommended to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_impl(module):calc_js_comp_test_candidate_bounds]].
             !! The minimum valid value is `1_int32`.
         integer(c_int), intent(in), target :: max_n_neighbors_candidate
-            !! Safe upper bound on the grid's largest `n_neighbors` candidate
-            !! It is *VERY IMPORTANT* to compute this argument from the `max_n_neighbors_candidate` output produced by [[tox_data_integration_js_comp_test_impl(module):calc_js_comp_test_candidate_bounds]].
+            !! Safe upper bound on the grid's largest `n_neighbors` candidate. Also JUST_INFO, not
+            !! because anything returned is sized by it (nothing is), but because it comes from the
+            !! same `calc_js_comp_test_candidate_bounds` call as `max_n_points_candidate` above --
+            !! now that that call can no longer run automatically inside this wrapper, splitting
+            !! this one back into an AUTO call would just be a second, redundant call to the same
+            !! routine for no benefit
+            !! It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by [[tox_data_integration_js_comp_test_impl(module):calc_js_comp_test_candidate_bounds]].
             !! The minimum valid value is `1_int32`.
         integer(c_int), intent(in), target :: n_bootstrapping_top_k_jsds
             !! Number of elements kept at each end of the bootstrap distribution (top-k/bottom-k
@@ -2598,8 +2775,11 @@ contains
             !! The finally chosen candidate's `n_points`
         integer(c_int), intent(out), target :: n_neighbors
             !! The finally chosen candidate's `n_neighbors`
-        integer(c_int), intent(out), target :: n_bins
-            !! The finally chosen candidate's bin count
+        integer(c_int), dimension(max_n_points_candidate), intent(out), target :: n_bins_per_point
+            !! The finally chosen candidate's per-point histogram bin count, one per reference
+            !! point (Issue #187: every neighborhood may use a different bin count). Only the
+            !! leading `n_points` entries are meaningful, mirroring how `n_points`/`n_neighbors`
+            !! above are the finally chosen candidate's own values
         real(c_double), dimension(2, n_studies), intent(out), target :: best_candidate_pair_confidence_interval
             !! The bootstrapped JSD confidence interval for the finally chosen candidate pair;
             !! `-1.0_real64` throughout only when `plateau_established` is `.false.` and no
@@ -2669,6 +2849,65 @@ contains
             !! Per-admissible-candidate maximum of trace_delta across studies (Delta^max_t);
             !! `-1.0_real64` at the first admissible candidate, see trace_delta above
             !! The first `n_admissible_evaluated` elements will hold the results.
+        integer(c_int), dimension(max_n_points_candidate, 16), intent(out), target :: trace_selected_n_bins
+            !! Per-admissible-candidate, per-reference-point selected histogram bin count
+            !! (Issue #187's `M_j`), from determine_bin_count_occupancy_impl. Unlike every OTHER
+            !! trace_* array above, whose first extent is a fixed thing like `n_studies`, this
+            !! array's first extent is `max_n_points_candidate`, NOT `n_points`, because `n_points`
+            !! itself varies per candidate (that is why `trace_n_points(16)` exists as its own
+            !! array): this array is genuinely JAGGED per candidate column `t` -- only rows
+            !! `1:trace_n_points(t)` are meaningful for that column, rows beyond that are undefined
+            !! padding. The result-size directive below only trims the LAST extent (candidates, via
+            !! `n_admissible_evaluated`), not this row dimension, so a Python/R caller must
+            !! additionally slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        logical(c_bool), dimension(max_n_points_candidate, 16), intent(out), target :: trace_occupancy_failed
+            !! Per-admissible-candidate, per-reference-point `occupancy_failed` flag from
+            !! determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+            !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        integer(c_int), dimension(max_n_points_candidate, 16), intent(out), target :: trace_n_pooled_residuals
+            !! Per-admissible-candidate, per-reference-point pooled residual count (`N_j`) from
+            !! determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+            !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        integer(c_int), dimension(max_n_points_candidate, 16), intent(out), target :: trace_min_bin_occupancy
+            !! Per-admissible-candidate, per-reference-point minimum bin occupancy at
+            !! trace_selected_n_bins, from determine_bin_count_occupancy_impl. Jagged per candidate
+            !! column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
+            !! meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
+            !! themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(c_double), dimension(max_n_points_candidate, 16), intent(out), target :: trace_mean_bin_occupancy
+            !! Per-admissible-candidate, per-reference-point mean bin occupancy at
+            !! trace_selected_n_bins, from determine_bin_count_occupancy_impl. Jagged per candidate
+            !! column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
+            !! meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
+            !! themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        integer(c_int), dimension(max_n_points_candidate, 16), intent(out), target :: trace_max_bin_occupancy
+            !! Per-admissible-candidate, per-reference-point maximum bin occupancy at
+            !! trace_selected_n_bins, from determine_bin_count_occupancy_impl. Jagged per candidate
+            !! column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
+            !! meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
+            !! themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        integer(c_int), dimension(max_n_points_candidate, 16), intent(out), target :: trace_sturges_bins
+            !! Per-admissible-candidate, per-reference-point Sturges' rule bin-count diagnostic
+            !! from determine_bin_count_occupancy_impl (never part of the occupancy search's own
+            !! decision). Jagged per candidate column exactly as trace_selected_n_bins above --
+            !! only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R caller
+            !! must slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        integer(c_int), dimension(max_n_points_candidate, 16), intent(out), target :: trace_fd_bins
+            !! Per-admissible-candidate, per-reference-point Freedman-Diaconis rule bin-count
+            !! diagnostic from determine_bin_count_occupancy_impl (never part of the occupancy
+            !! search's own decision). Jagged per candidate column exactly as trace_selected_n_bins
+            !! above -- only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R
+            !! caller must slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
         integer(c_int), dimension(max_n_genes_all_studies, n_studies), intent(out), target :: tmp_gene_means_perms
             !! Working array: each study's own sorting permutation for `gene_means`
         integer(c_int), dimension(max_n_genes_all_studies*n_studies), intent(out), target :: tmp_gene_means_perm_all
@@ -2678,9 +2917,11 @@ contains
         real(c_double), dimension(max_n_points_candidate), intent(out), target :: tmp_x_star
             !! Working array: reference points for the candidate whose `n_points` is current,
             !! recomputed only when `n_points` changes between candidates
-        integer(c_int), dimension(max_n_neighbors_candidate, max_n_points_candidate), intent(out), target :: tmp_neighborhood_indices
-            !! Working array: one study's neighbor gene indices for the current candidate, reused
-            !! per study
+        integer(c_int), dimension(max_n_neighbors_candidate, max_n_points_candidate, n_studies), intent(out), target :: tmp_neighborhood_indices_all_studies
+            !! Working array: every study's neighbor gene indices for the current candidate,
+            !! retained simultaneously (unlike the single-study-reused buffer this replaces) so
+            !! Pass B below can pool residuals across studies for one reference point at a time,
+            !! and Pass C can re-gather each study's own residuals from the already-known indices
         integer(c_int), dimension(2, max_n_points_candidate), intent(out), target :: tmp_neighborhood_range
             !! Working array: one study's `[min_idx, max_idx]` neighborhood spans for the current
             !! candidate, reused per study
@@ -2698,10 +2939,10 @@ contains
             !! Working array: one study's point-major pmf for the current candidate, reused per
             !! study. `256` = MAX_N_BINS, see tmp_counts_point_major above
         integer(c_int), dimension(max_n_points_candidate), intent(out), target :: tmp_n_bins_per_point
-            !! Working array: the current candidate's `n_bins` broadcast to every reference point,
-            !! since build_residual_histograms_impl now takes a per-point bin count; every point
-            !! uses the same `n_bins` here, so this is a pure mechanical translation with no
-            !! behavior change
+            !! Working array: this candidate's per-point histogram bin count, decided by Pass B's
+            !! occupancy search
+            !! ([[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]])
+            !! for each reference point independently
         real(c_double), dimension(256, max_n_points_candidate, n_studies), intent(out), target :: tmp_pmfs
             !! Working array: every study's bin-major pmf for the current candidate. `256` =
             !! MAX_N_BINS, see tmp_counts_point_major above
@@ -2742,6 +2983,44 @@ contains
             !! Working array: the confidence interval of the admissible candidate with the smallest
             !! bootstrapped uncertainty seen so far, used only internally by the no-plateau fallback
             !! (see plateau_established)
+        real(c_double), dimension(max_n_reps_all_studies*max_n_neighbors_candidate*n_studies), intent(out), target :: tmp_pooled_residuals
+            !! Working array: one reference point's pooled residuals across every neighbor and
+            !! every study (Pass B), reused per point -- one small buffer, not one per point, since
+            !! Pass B is a deliberate sequential loop (see the module-internal doc comment on the
+            !! implementation body)
+        integer(c_int), dimension(max_n_reps_all_studies*max_n_neighbors_candidate*n_studies), intent(out), target :: tmp_pooled_residuals_perm
+            !! Working array: sorting permutation for tmp_pooled_residuals, reused per point
+        integer(c_int), dimension(256), intent(out), target :: tmp_bin_counts_search
+            !! Working array forwarded to determine_bin_count_occupancy_impl's own per-bin-count
+            !! search scratch, reused per point. `256` = MAX_N_BINS, matching
+            !! determine_bin_count_occupancy_impl's own tmp_bin_counts dummy -- written as a
+            !! literal because a generated wrapper's dummy dimension cannot reference a module
+            !! parameter
+        logical(c_bool), dimension(max_n_points_candidate), intent(out), target :: tmp_occupancy_failed
+            !! Working array: this candidate's per-point occupancy_failed flag from Pass B
+            !! (determine_bin_count_occupancy_impl)
+        integer(c_int), dimension(max_n_points_candidate), intent(out), target :: tmp_n_pooled_residuals
+            !! Working array: this candidate's per-point pooled residual count (N_j) from Pass B
+        integer(c_int), dimension(max_n_points_candidate), intent(out), target :: tmp_min_bin_occupancy
+            !! Working array: this candidate's per-point minimum bin occupancy from Pass B
+        real(c_double), dimension(max_n_points_candidate), intent(out), target :: tmp_mean_bin_occupancy
+            !! Working array: this candidate's per-point mean bin occupancy from Pass B
+        integer(c_int), dimension(max_n_points_candidate), intent(out), target :: tmp_max_bin_occupancy
+            !! Working array: this candidate's per-point maximum bin occupancy from Pass B
+        integer(c_int), dimension(max_n_points_candidate), intent(out), target :: tmp_sturges_bins
+            !! Working array: this candidate's per-point Sturges' rule diagnostic from Pass B
+        integer(c_int), dimension(max_n_points_candidate), intent(out), target :: tmp_fd_bins
+            !! Working array: this candidate's per-point Freedman-Diaconis rule diagnostic from Pass B
+        integer(c_int), dimension(max_n_points_candidate), intent(out), target :: tmp_best_n_bins_per_point
+            !! Working array: a snapshot of tmp_n_bins_per_point for whichever candidate is
+            !! currently best_candidate_index, updated in lockstep with
+            !! check_plateau_condition_impl's own best-candidate bookkeeping (and with the
+            !! effect-size override below) -- never read from tmp_n_bins_per_point at loop exit,
+            !! which would be stale once the loop has moved on to a later, non-best candidate
+        integer(c_int), dimension(max_n_points_candidate), intent(out), target :: tmp_best_uncertainty_n_bins_per_point
+            !! Working array: a snapshot of tmp_n_bins_per_point for whichever admissible candidate
+            !! currently has the smallest bootstrapped uncertainty, mirroring how
+            !! tmp_best_uncertainty_confidence_interval already works
         integer(c_int), intent(in), target :: min_residuals_per_bin
             !! Minimum count each bin of the consensus pmf must reach to pass the second
             !! admissibility gate. Reuses Issue #187's occupancy-search default rather than an
@@ -2795,6 +3074,25 @@ contains
             !! plateau, forwarded to check_effect_size_plateau_condition_impl
             !! The minimum valid value is `1_int32`.
             !! The default value is `2_int32`.
+        integer(c_int), intent(in), target :: m_min
+            !! Smallest candidate bin count Pass B's occupancy search will ever test (M_min),
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_N_BINS`.
+            !! The default value is `3_int32`.
+        integer(c_int), intent(in), target :: m_max
+            !! Largest candidate bin count Pass B's occupancy search will ever test (M_max),
+            !! forwarded to determine_bin_count_occupancy_impl; if a caller passes `m_max < m_min`,
+            !! determine_bin_count_occupancy_impl clamps it up to `m_min` internally
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_N_BINS`.
+            !! The default value is `120_int32`.
+        real(c_double), intent(in), target :: gamma_occupancy
+            !! Geometric growth factor for Pass B's occupancy search's coarse search stage,
+            !! forwarded to determine_bin_count_occupancy_impl; must exceed 1 or the search never
+            !! advances
+            !! The minimum valid value is `above(1.0_real64)`.
+            !! The default value is `1.25_real64`.
         real(c_double), intent(in), target :: two_sided_bootstrapping_significance_level
             !! Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
             !! to bootstrap_histogram_impl itself
@@ -2821,7 +3119,6 @@ contains
         M_CHECK_NON_NULL(n_bootstrapping_top_k_jsds)
         M_CHECK_NON_NULL(n_points)
         M_CHECK_NON_NULL(n_neighbors)
-        M_CHECK_NON_NULL(n_bins)
         M_CHECK_NON_NULL(plateau_established)
         M_CHECK_NON_NULL(n_admissible_evaluated)
         M_CHECK_NON_NULL(min_residuals_per_bin)
@@ -2831,11 +3128,15 @@ contains
         M_CHECK_NON_NULL(delta_max_threshold)
         M_CHECK_NON_NULL(delta_epsilon)
         M_CHECK_NON_NULL(delta_min_consecutive_transitions)
+        M_CHECK_NON_NULL(m_min)
+        M_CHECK_NON_NULL(m_max)
+        M_CHECK_NON_NULL(gamma_occupancy)
         M_CHECK_NON_NULL(two_sided_bootstrapping_significance_level)
         M_CHECK_NON_NULL(random_seed)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(join_method, 11)
+        M_CHECK_ARRAY_NON_NULL(n_bins_per_point, max_n_points_candidate)
         M_CHECK_ARRAY_NON_NULL(best_candidate_pair_confidence_interval, 2 * n_studies)
         M_CHECK_ARRAY_NON_NULL(trace_n_points, 16)
         M_CHECK_ARRAY_NON_NULL(trace_n_neighbors, 16)
@@ -2847,11 +3148,19 @@ contains
         M_CHECK_ARRAY_NON_NULL(trace_delta, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta_median, 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta_max, 16)
+        M_CHECK_ARRAY_NON_NULL(trace_selected_n_bins, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_occupancy_failed, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_n_pooled_residuals, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_min_bin_occupancy, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_mean_bin_occupancy, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_max_bin_occupancy, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_sturges_bins, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_fd_bins, max_n_points_candidate * 16)
         M_CHECK_ARRAY_NON_NULL(tmp_gene_means_perms, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_gene_means_perm_all, (max_n_genes_all_studies*n_studies))
         M_CHECK_ARRAY_NON_NULL(tmp_residuals_perm, (max_n_reps_all_studies*max_n_genes_all_studies*n_studies))
         M_CHECK_ARRAY_NON_NULL(tmp_x_star, max_n_points_candidate)
-        M_CHECK_ARRAY_NON_NULL(tmp_neighborhood_indices, max_n_neighbors_candidate * max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(tmp_neighborhood_indices_all_studies, max_n_neighbors_candidate * max_n_points_candidate * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_neighborhood_range, 2 * max_n_points_candidate)
         M_CHECK_ARRAY_NON_NULL(tmp_neighborhood_residuals_gathered, max_n_reps_all_studies * max_n_neighbors_candidate * max_n_points_candidate)
         M_CHECK_ARRAY_NON_NULL(tmp_counts_point_major, max_n_points_candidate * 256)
@@ -2871,6 +3180,18 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_prev_global_js_divergence, n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_delta_perm, n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_best_uncertainty_confidence_interval, 2 * n_studies)
+        M_CHECK_ARRAY_NON_NULL(tmp_pooled_residuals, (max_n_reps_all_studies*max_n_neighbors_candidate*n_studies))
+        M_CHECK_ARRAY_NON_NULL(tmp_pooled_residuals_perm, (max_n_reps_all_studies*max_n_neighbors_candidate*n_studies))
+        M_CHECK_ARRAY_NON_NULL(tmp_bin_counts_search, 256)
+        M_CHECK_ARRAY_NON_NULL(tmp_occupancy_failed, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(tmp_n_pooled_residuals, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(tmp_min_bin_occupancy, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(tmp_mean_bin_occupancy, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(tmp_max_bin_occupancy, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(tmp_sturges_bins, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(tmp_fd_bins, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(tmp_best_n_bins_per_point, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(tmp_best_uncertainty_n_bins_per_point, max_n_points_candidate)
         M_CHECK_ARRAY_NON_NULL(plateau_mode, 19)
 
         block
@@ -2920,7 +3241,7 @@ contains
             n_bootstrapping_top_k_jsds = n_bootstrapping_top_k_jsds,&
             n_points = n_points,&
             n_neighbors = n_neighbors,&
-            n_bins = n_bins,&
+            n_bins_per_point = n_bins_per_point,&
             best_candidate_pair_confidence_interval = best_candidate_pair_confidence_interval,&
             plateau_established = plateau_established,&
             n_admissible_evaluated = n_admissible_evaluated,&
@@ -2934,11 +3255,19 @@ contains
             trace_delta = trace_delta,&
             trace_delta_median = trace_delta_median,&
             trace_delta_max = trace_delta_max,&
+            trace_selected_n_bins = trace_selected_n_bins,&
+            trace_occupancy_failed = trace_occupancy_failed,&
+            trace_n_pooled_residuals = trace_n_pooled_residuals,&
+            trace_min_bin_occupancy = trace_min_bin_occupancy,&
+            trace_mean_bin_occupancy = trace_mean_bin_occupancy,&
+            trace_max_bin_occupancy = trace_max_bin_occupancy,&
+            trace_sturges_bins = trace_sturges_bins,&
+            trace_fd_bins = trace_fd_bins,&
             tmp_gene_means_perms = tmp_gene_means_perms,&
             tmp_gene_means_perm_all = tmp_gene_means_perm_all,&
             tmp_residuals_perm = tmp_residuals_perm,&
             tmp_x_star = tmp_x_star,&
-            tmp_neighborhood_indices = tmp_neighborhood_indices,&
+            tmp_neighborhood_indices_all_studies = tmp_neighborhood_indices_all_studies,&
             tmp_neighborhood_range = tmp_neighborhood_range,&
             tmp_neighborhood_residuals_gathered = tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major = tmp_counts_point_major,&
@@ -2958,6 +3287,18 @@ contains
             tmp_prev_global_js_divergence = tmp_prev_global_js_divergence,&
             tmp_delta_perm = tmp_delta_perm,&
             tmp_best_uncertainty_confidence_interval = tmp_best_uncertainty_confidence_interval,&
+            tmp_pooled_residuals = tmp_pooled_residuals,&
+            tmp_pooled_residuals_perm = tmp_pooled_residuals_perm,&
+            tmp_bin_counts_search = tmp_bin_counts_search,&
+            tmp_occupancy_failed = tmp_occupancy_failed,&
+            tmp_n_pooled_residuals = tmp_n_pooled_residuals,&
+            tmp_min_bin_occupancy = tmp_min_bin_occupancy,&
+            tmp_mean_bin_occupancy = tmp_mean_bin_occupancy,&
+            tmp_max_bin_occupancy = tmp_max_bin_occupancy,&
+            tmp_sturges_bins = tmp_sturges_bins,&
+            tmp_fd_bins = tmp_fd_bins,&
+            tmp_best_n_bins_per_point = tmp_best_n_bins_per_point,&
+            tmp_best_uncertainty_n_bins_per_point = tmp_best_uncertainty_n_bins_per_point,&
             min_residuals_per_bin = min_residuals_per_bin,&
             min_neighbor_overlap = min_neighbor_overlap,&
             succeeding_ci_overlap = succeeding_ci_overlap,&
@@ -2966,6 +3307,9 @@ contains
             delta_max_threshold = delta_max_threshold,&
             delta_epsilon = delta_epsilon,&
             delta_min_consecutive_transitions = delta_min_consecutive_transitions,&
+            m_min = m_min,&
+            m_max = m_max,&
+            gamma_occupancy = gamma_occupancy,&
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
             random_seed = random_seed,&
             ierr = ierr&

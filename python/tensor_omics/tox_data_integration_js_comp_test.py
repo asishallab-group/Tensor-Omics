@@ -338,6 +338,8 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_bool),
     ctypes.POINTER(ctypes.c_int),
@@ -351,6 +353,14 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
@@ -359,15 +369,18 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "two_sided_bootstrapping_significance_level", "random_seed", "ierr",)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "two_sided_bootstrapping_significance_level", "random_seed", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def estimate_bin_count(
         residuals,
@@ -2274,6 +2287,8 @@ def run_js_comp_test_parameter_search(
         shared_residual_range,
         n_bootstraps,
         join_method,
+        max_n_points_candidate,
+        max_n_neighbors_candidate,
         min_residuals_per_bin=10,
         min_neighbor_overlap=0.1,
         succeeding_ci_overlap=0.9,
@@ -2282,6 +2297,9 @@ def run_js_comp_test_parameter_search(
         delta_max_threshold=0.1,
         delta_epsilon=1e-10,
         delta_min_consecutive_transitions=2,
+        m_min=3,
+        m_max=120,
+        gamma_occupancy=1.25,
         two_sided_bootstrapping_significance_level=2.5,
         random_seed=42,
 ):
@@ -2336,8 +2354,11 @@ def run_js_comp_test_parameter_search(
     Per the plan's work-array translation for this routine specifically: `max_n_bins_all_candidates`
     (data-dependent, not cheaply closed-form in 125) is replaced by the fixed
     ``MAX_N_BINS`` ceiling, so every
-    bin-dimensioned work array below is sized to MAX_N_BINS and sliced `(1:n_bins, ...)` per
+    bin-dimensioned work array below is sized to MAX_N_BINS and sliced `(1:max_n_bins, ...)` per
     candidate, rather than carrying a separate recommend-sized dimension argument for it.
+    `max_n_bins` is the widest per-point bin count Issue #187's occupancy search (Pass B below)
+    chose for the current candidate, `maxval(tmp_n_bins_per_point(1:n_points))` -- it replaces
+    the old single scalar `n_bins` that used to come from the global-pool Sturges/FD estimate.
     `residuals`/`gene_means` are passed to
     :func:`tensor_omics.generate_js_comp_test_candidates`/``sort_real_heapsort_expl_size``
     as their own multi-dimensional selves -- both callees declare their matching dummy with an
@@ -2368,6 +2389,24 @@ def run_js_comp_test_parameter_search(
         The way to evaluate all studies' confidence-interval overlaps for the plateau
         condition, forwarded to check_plateau_condition_impl
 
+    max_n_points_candidate : int
+        Exact upper bound on the grid's first (largest) `n_points` candidate. Issue #187's
+        per-point outputs below (`n_bins_per_point`, `trace_selected_n_bins`, and the other
+        jagged `trace_*` arrays) are sized by this argument, so unlike before Issue #187 it
+        is no longer purely an internal sizing detail the plain wrapper can compute and
+        hide -- the caller must know it up front to receive those arrays, hence JUST_INFO
+        rather than AUTO here now
+        It is recommended to compute this argument from the `max_n_points_candidate` output produced by :func:`tensor_omics.calc_js_comp_test_candidate_bounds`.
+        The minimum valid value is `1`.
+    max_n_neighbors_candidate : int
+        Safe upper bound on the grid's largest `n_neighbors` candidate. Also JUST_INFO, not
+        because anything returned is sized by it (nothing is), but because it comes from the
+        same `calc_js_comp_test_candidate_bounds` call as `max_n_points_candidate` above --
+        now that that call can no longer run automatically inside this wrapper, splitting
+        this one back into an AUTO call would just be a second, redundant call to the same
+        routine for no benefit
+        It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by :func:`tensor_omics.calc_js_comp_test_candidate_bounds`.
+        The minimum valid value is `1`.
     min_residuals_per_bin : int, optional, default 10
         Minimum count each bin of the consensus pmf must reach to pass the second
         admissibility gate. Reuses Issue #187's occupancy-search default rather than an
@@ -2416,6 +2455,25 @@ def run_js_comp_test_parameter_search(
         plateau, forwarded to check_effect_size_plateau_condition_impl
         The minimum valid value is `1`.
         The default value is `2`.
+    m_min : int, optional, default 3
+        Smallest candidate bin count Pass B's occupancy search will ever test (M_min),
+        forwarded to determine_bin_count_occupancy_impl
+        The minimum valid value is `1`.
+        The maximum valid value is `MAX_N_BINS`.
+        The default value is `3`.
+    m_max : int, optional, default 120
+        Largest candidate bin count Pass B's occupancy search will ever test (M_max),
+        forwarded to determine_bin_count_occupancy_impl; if a caller passes `m_max < m_min`,
+        determine_bin_count_occupancy_impl clamps it up to `m_min` internally
+        The minimum valid value is `1`.
+        The maximum valid value is `MAX_N_BINS`.
+        The default value is `120`.
+    gamma_occupancy : float, optional, default 1.25
+        Geometric growth factor for Pass B's occupancy search's coarse search stage,
+        forwarded to determine_bin_count_occupancy_impl; must exceed 1 or the search never
+        advances
+        The minimum valid value is `above(1.0)`.
+        The default value is `1.25`.
     two_sided_bootstrapping_significance_level : float, optional, default 2.5
         Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
         to bootstrap_histogram_impl itself
@@ -2435,8 +2493,12 @@ def run_js_comp_test_parameter_search(
             The finally chosen candidate's `n_points`
         n_neighbors : int
             The finally chosen candidate's `n_neighbors`
-        n_bins : int
-            The finally chosen candidate's bin count
+        n_bins_per_point : np.ndarray[np.int32] of shape (max_n_points_candidate,), read-only
+            The finally chosen candidate's per-point histogram bin count, one per reference
+            point (Issue #187: every neighborhood may use a different bin count). Only the
+            leading `n_points` entries are meaningful, mirroring how `n_points`/`n_neighbors`
+            above are the finally chosen candidate's own values
+            A result is a value; call `.copy()` to obtain a modifiable array.
         best_candidate_pair_confidence_interval : np.ndarray[np.float64] of shape (2, n_studies,), column-major (order='F'), read-only
             The bootstrapped JSD confidence interval for the finally chosen candidate pair;
             `-1.0` throughout only when `plateau_established` is `False` and no
@@ -2510,6 +2572,73 @@ def run_js_comp_test_parameter_search(
             `-1.0` at the first admissible candidate, see trace_delta above
             The first `n_admissible_evaluated` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_selected_n_bins : np.ndarray[np.int32] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point selected histogram bin count
+            (Issue #187's `M_j`), from determine_bin_count_occupancy_impl. Unlike every OTHER
+            trace_* array above, whose first extent is a fixed thing like `n_studies`, this
+            array's first extent is `max_n_points_candidate`, NOT `n_points`, because `n_points`
+            itself varies per candidate (that is why `trace_n_points(16)` exists as its own
+            array): this array is genuinely JAGGED per candidate column `t` -- only rows
+            `1:trace_n_points(t)` are meaningful for that column, rows beyond that are undefined
+            padding. The result-size directive below only trims the LAST extent (candidates, via
+            `n_admissible_evaluated`), not this row dimension, so a Python/R caller must
+            additionally slice `[:trace_n_points[t], t]` themselves
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_occupancy_failed : np.ndarray[np.bool_] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point `occupancy_failed` flag from
+            determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+            column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_n_pooled_residuals : np.ndarray[np.int32] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point pooled residual count (`N_j`) from
+            determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+            column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_min_bin_occupancy : np.ndarray[np.int32] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point minimum bin occupancy at
+            trace_selected_n_bins, from determine_bin_count_occupancy_impl. Jagged per candidate
+            column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
+            meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
+            themselves
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_mean_bin_occupancy : np.ndarray[np.float64] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point mean bin occupancy at
+            trace_selected_n_bins, from determine_bin_count_occupancy_impl. Jagged per candidate
+            column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
+            meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
+            themselves
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_max_bin_occupancy : np.ndarray[np.int32] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point maximum bin occupancy at
+            trace_selected_n_bins, from determine_bin_count_occupancy_impl. Jagged per candidate
+            column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
+            meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
+            themselves
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_sturges_bins : np.ndarray[np.int32] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point Sturges' rule bin-count diagnostic
+            from determine_bin_count_occupancy_impl (never part of the occupancy search's own
+            decision). Jagged per candidate column exactly as trace_selected_n_bins above --
+            only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R caller
+            must slice `[:trace_n_points[t], t]` themselves
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_fd_bins : np.ndarray[np.int32] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point Freedman-Diaconis rule bin-count
+            diagnostic from determine_bin_count_occupancy_impl (never part of the occupancy
+            search's own decision). Jagged per candidate column exactly as trace_selected_n_bins
+            above -- only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R
+            caller must slice `[:trace_n_points[t], t]` themselves
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -2555,7 +2684,7 @@ def run_js_comp_test_parameter_search(
     # outputs and work arrays, which the caller never sees
     n_points = ctypes.c_int(0)
     n_neighbors = ctypes.c_int(0)
-    n_bins = ctypes.c_int(0)
+    n_bins_per_point = np.empty((max_n_points_candidate,), dtype=np.int32, order='C')
     best_candidate_pair_confidence_interval = np.empty((2, n_studies,), dtype=np.float64, order='F')
     plateau_established = ctypes.c_bool(0)
     n_admissible_evaluated = ctypes.c_int(0)
@@ -2569,6 +2698,14 @@ def run_js_comp_test_parameter_search(
     trace_delta = np.empty((n_studies, 16,), dtype=np.float64, order='F')
     trace_delta_median = np.empty((16,), dtype=np.float64, order='C')
     trace_delta_max = np.empty((16,), dtype=np.float64, order='C')
+    trace_selected_n_bins = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
+    trace_occupancy_failed = np.empty((max_n_points_candidate, 16,), dtype=np.bool_, order='F')
+    trace_n_pooled_residuals = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
+    trace_min_bin_occupancy = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
+    trace_mean_bin_occupancy = np.empty((max_n_points_candidate, 16,), dtype=np.float64, order='F')
+    trace_max_bin_occupancy = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
+    trace_sturges_bins = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
+    trace_fd_bins = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
     ierr = ctypes.c_int(0)
 
     _lib.run_js_comp_test_parameter_search_c(
@@ -2580,9 +2717,11 @@ def run_js_comp_test_parameter_search(
         ctypes.byref(ctypes.c_double(shared_residual_range)),
         ctypes.byref(ctypes.c_int(n_bootstraps)),
         join_method,
+        ctypes.byref(ctypes.c_int(max_n_points_candidate)),
+        ctypes.byref(ctypes.c_int(max_n_neighbors_candidate)),
         ctypes.byref(n_points),
         ctypes.byref(n_neighbors),
-        ctypes.byref(n_bins),
+        n_bins_per_point,
         best_candidate_pair_confidence_interval,
         ctypes.byref(plateau_established),
         ctypes.byref(n_admissible_evaluated),
@@ -2596,6 +2735,14 @@ def run_js_comp_test_parameter_search(
         trace_delta,
         trace_delta_median,
         trace_delta_max,
+        trace_selected_n_bins,
+        trace_occupancy_failed,
+        trace_n_pooled_residuals,
+        trace_min_bin_occupancy,
+        trace_mean_bin_occupancy,
+        trace_max_bin_occupancy,
+        trace_sturges_bins,
+        trace_fd_bins,
         ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
         ctypes.byref(ctypes.c_double(min_neighbor_overlap)),
         ctypes.byref(ctypes.c_double(succeeding_ci_overlap)),
@@ -2604,6 +2751,9 @@ def run_js_comp_test_parameter_search(
         ctypes.byref(ctypes.c_double(delta_max_threshold)),
         ctypes.byref(ctypes.c_double(delta_epsilon)),
         ctypes.byref(ctypes.c_int(delta_min_consecutive_transitions)),
+        ctypes.byref(ctypes.c_int(m_min)),
+        ctypes.byref(ctypes.c_int(m_max)),
+        ctypes.byref(ctypes.c_double(gamma_occupancy)),
         ctypes.byref(ctypes.c_double(two_sided_bootstrapping_significance_level)),
         ctypes.byref(ctypes.c_int(random_seed)),
         ctypes.byref(ierr),
@@ -2612,6 +2762,7 @@ def run_js_comp_test_parameter_search(
     check_err_code(ierr.value, _RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS, _RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
+    n_bins_per_point.flags.writeable = False
     best_candidate_pair_confidence_interval.flags.writeable = False
     trace_n_points.flags.writeable = False
     trace_n_neighbors.flags.writeable = False
@@ -2623,11 +2774,19 @@ def run_js_comp_test_parameter_search(
     trace_delta.flags.writeable = False
     trace_delta_median.flags.writeable = False
     trace_delta_max.flags.writeable = False
+    trace_selected_n_bins.flags.writeable = False
+    trace_occupancy_failed.flags.writeable = False
+    trace_n_pooled_residuals.flags.writeable = False
+    trace_min_bin_occupancy.flags.writeable = False
+    trace_mean_bin_occupancy.flags.writeable = False
+    trace_max_bin_occupancy.flags.writeable = False
+    trace_sturges_bins.flags.writeable = False
+    trace_fd_bins.flags.writeable = False
 
     return {
         "n_points": n_points.value,
         "n_neighbors": n_neighbors.value,
-        "n_bins": n_bins.value,
+        "n_bins_per_point": n_bins_per_point,
         "best_candidate_pair_confidence_interval": best_candidate_pair_confidence_interval,
         "plateau_established": plateau_established.value,
         "trace_n_points": trace_n_points[..., :n_admissible_evaluated.value],
@@ -2640,4 +2799,12 @@ def run_js_comp_test_parameter_search(
         "trace_delta": trace_delta[..., :n_admissible_evaluated.value],
         "trace_delta_median": trace_delta_median[..., :n_admissible_evaluated.value],
         "trace_delta_max": trace_delta_max[..., :n_admissible_evaluated.value],
+        "trace_selected_n_bins": trace_selected_n_bins[..., :n_admissible_evaluated.value],
+        "trace_occupancy_failed": trace_occupancy_failed[..., :n_admissible_evaluated.value],
+        "trace_n_pooled_residuals": trace_n_pooled_residuals[..., :n_admissible_evaluated.value],
+        "trace_min_bin_occupancy": trace_min_bin_occupancy[..., :n_admissible_evaluated.value],
+        "trace_mean_bin_occupancy": trace_mean_bin_occupancy[..., :n_admissible_evaluated.value],
+        "trace_max_bin_occupancy": trace_max_bin_occupancy[..., :n_admissible_evaluated.value],
+        "trace_sturges_bins": trace_sturges_bins[..., :n_admissible_evaluated.value],
+        "trace_fd_bins": trace_fd_bins[..., :n_admissible_evaluated.value],
     }

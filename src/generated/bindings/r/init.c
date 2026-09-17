@@ -87,7 +87,7 @@ SEXP create_mean_pmf_call(SEXP, SEXP, SEXP);
 SEXP create_mean_pmf_only_call(SEXP);
 SEXP bootstrap_histogram_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP run_js_comp_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP run_js_comp_test_parameter_search_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_parameter_search_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_js_comp_test_candidate_bounds_call(SEXP);
 SEXP calc_js_comp_test_n_top_k_jsds_call(SEXP, SEXP);
 SEXP determine_shared_residual_range_call(SEXP, SEXP);
@@ -219,7 +219,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"create_mean_pmf_only_call", (DL_FUNC) &create_mean_pmf_only_call, 1},
     {"bootstrap_histogram_call", (DL_FUNC) &bootstrap_histogram_call, 7},
     {"run_js_comp_test_call", (DL_FUNC) &run_js_comp_test_call, 9},
-    {"run_js_comp_test_parameter_search_call", (DL_FUNC) &run_js_comp_test_parameter_search_call, 15},
+    {"run_js_comp_test_parameter_search_call", (DL_FUNC) &run_js_comp_test_parameter_search_call, 20},
     {"calc_js_comp_test_candidate_bounds_call", (DL_FUNC) &calc_js_comp_test_candidate_bounds_call, 1},
     {"calc_js_comp_test_n_top_k_jsds_call", (DL_FUNC) &calc_js_comp_test_n_top_k_jsds_call, 2},
     {"determine_shared_residual_range_call", (DL_FUNC) &determine_shared_residual_range_call, 2},

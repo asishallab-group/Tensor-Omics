@@ -519,8 +519,12 @@ def test_run_js_comp_test_parameter_search():
     # (test_param_search_no_plateau_falls_back_to_finest). Both n_points=300 and n_neighbors=26
     # are derived purely from the GAMMA-decay constants and max_n_genes_all_studies=2000.
     # ============================================================
+    bounds = calc_js_comp_test_candidate_bounds(max_n_genes_all_studies)
     result = run_js_comp_test_parameter_search(gene_means, residuals, shared_residual_range=1.0, n_bootstraps=10,
-                                                join_method='join_min', min_residuals_per_bin=1000000,
+                                                join_method='join_min',
+                                                max_n_points_candidate=bounds["max_n_points_candidate"],
+                                                max_n_neighbors_candidate=bounds["max_n_neighbors_candidate"],
+                                                min_residuals_per_bin=1000000,
                                                 random_seed=1)
 
     assert result["n_points"] == 300, f"expected n_points=300, got {result['n_points']}"
@@ -545,8 +549,11 @@ def test_run_js_comp_test_parameter_search():
         gene_means_2[:, i_study] = np.arange(1, max_n_genes_2 + 1, dtype=np.float64)
         residuals_2[:, :, i_study] = np.array([-0.5, 0.0, 0.5]).reshape(3, 1)
 
+    bounds_2 = calc_js_comp_test_candidate_bounds(max_n_genes_2)
     result2 = run_js_comp_test_parameter_search(gene_means_2, residuals_2, shared_residual_range=1.0,
                                                  n_bootstraps=5, join_method='join_min',
+                                                 max_n_points_candidate=bounds_2["max_n_points_candidate"],
+                                                 max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
                                                  min_residuals_per_bin=0, min_neighbor_overlap=0.0,
                                                  random_seed=1)
 
@@ -566,6 +573,8 @@ def test_run_js_comp_test_parameter_search():
     # ============================================================
     result3 = run_js_comp_test_parameter_search(gene_means_2, residuals_2, shared_residual_range=1.0,
                                                  n_bootstraps=5, join_method='join_min',
+                                                 max_n_points_candidate=bounds_2["max_n_points_candidate"],
+                                                 max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
                                                  min_residuals_per_bin=0, min_neighbor_overlap=0.0,
                                                  plateau_mode='plateau_effect_size', delta_median_threshold=0.05,
                                                  delta_max_threshold=0.10, delta_epsilon=1e-10,
@@ -588,6 +597,37 @@ def test_run_js_comp_test_parameter_search():
     assert result3["trace_delta"].dtype == np.float64
     # The first (and here, only) admissible candidate has no predecessor to diff against.
     np.testing.assert_array_almost_equal(result3["trace_delta"][:, 0], [-1.0, -1.0], decimal=12)
+
+    # ============================================================
+    # Test 4 -- callability/shape coverage for the Issue #187 per-point outputs added by this
+    # signature change: n_bins_per_point (replacing the old scalar n_bins) and the 8 new
+    # trace_* diagnostics from determine_bin_count_occupancy. Numerical correctness of the
+    # occupancy search itself is Fortran-only (mod_test_data_integration_js_comp_test.F90's
+    # test_param_search_occupancy_failure_rejects_candidate/
+    # test_param_search_different_neighborhoods_different_m_j/
+    # test_param_search_final_n_bins_matches_selected_trace_column).
+    # ============================================================
+    for key in ("n_bins_per_point", "trace_selected_n_bins", "trace_occupancy_failed",
+                "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy",
+                "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins"):
+        assert key in result2, f"missing expected output key '{key}'"
+    assert result2["n_bins_per_point"].dtype == np.int32
+    assert result2["n_bins_per_point"].shape == (bounds_2["max_n_points_candidate"],)
+    assert result2["trace_selected_n_bins"].dtype == np.int32
+    assert result2["trace_selected_n_bins"].shape[0] == bounds_2["max_n_points_candidate"]
+    assert result2["trace_occupancy_failed"].dtype == np.bool_
+    assert result2["trace_occupancy_failed"].shape == result2["trace_selected_n_bins"].shape
+    assert result2["trace_mean_bin_occupancy"].dtype == np.float64
+    for key in ("trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_max_bin_occupancy",
+                "trace_sturges_bins", "trace_fd_bins"):
+        assert result2[key].shape == result2["trace_selected_n_bins"].shape, \
+            f"{key} shape mismatch: {result2[key].shape}"
+    # n_points=300 leading entries of n_bins_per_point must match the sole admissible candidate's
+    # own trace_selected_n_bins column (test_param_search_final_n_bins_matches_selected_trace_column
+    # is the Fortran suite's rigorous version of this same wiring check).
+    n_points_2 = result2["n_points"]
+    np.testing.assert_array_equal(result2["n_bins_per_point"][:n_points_2],
+                                   result2["trace_selected_n_bins"][:n_points_2, 0])
 
 
 def main():
