@@ -75,6 +75,8 @@ from .tox_data_archive import (
 from .tox_data_integration_js_comp_test import (
     estimate_bin_count,
     estimate_bin_count_expert,
+    determine_bin_count_occupancy,
+    determine_bin_count_occupancy_expert,
     generate_js_comp_test_candidates,
     generate_js_comp_test_candidates_expert,
     check_neighborhood_overlaps,
@@ -278,6 +280,8 @@ __all__ = [
     "detect_outliers",
     "detect_subfunctionalization",
     "determine_all_studies_shared_residual_range",
+    "determine_bin_count_occupancy",
+    "determine_bin_count_occupancy_expert",
     "determine_shared_residual_range",
     "determine_shared_residual_range_expert",
     "determine_study_shared_residual_range",

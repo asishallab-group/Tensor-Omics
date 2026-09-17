@@ -75,6 +75,8 @@ SEXP get_tox_data_dims_call(SEXP);
 SEXP read_tox_data_into_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP estimate_bin_count_call(SEXP, SEXP, SEXP, SEXP);
 SEXP estimate_bin_count_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP determine_bin_count_occupancy_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP determine_bin_count_occupancy_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP generate_js_comp_test_candidates_call(SEXP, SEXP, SEXP, SEXP);
 SEXP generate_js_comp_test_candidates_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP check_neighborhood_overlaps_call(SEXP, SEXP);
@@ -205,6 +207,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"read_tox_data_into_call", (DL_FUNC) &read_tox_data_into_call, 12},
     {"estimate_bin_count_call", (DL_FUNC) &estimate_bin_count_call, 4},
     {"estimate_bin_count_expert_call", (DL_FUNC) &estimate_bin_count_expert_call, 5},
+    {"determine_bin_count_occupancy_call", (DL_FUNC) &determine_bin_count_occupancy_call, 8},
+    {"determine_bin_count_occupancy_expert_call", (DL_FUNC) &determine_bin_count_occupancy_expert_call, 9},
     {"generate_js_comp_test_candidates_call", (DL_FUNC) &generate_js_comp_test_candidates_call, 4},
     {"generate_js_comp_test_candidates_expert_call", (DL_FUNC) &generate_js_comp_test_candidates_expert_call, 5},
     {"check_neighborhood_overlaps_call", (DL_FUNC) &check_neighborhood_overlaps_call, 2},

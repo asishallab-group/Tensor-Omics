@@ -16,6 +16,8 @@ from test_helpers import run_all_tests, assert_error
 from tensor_omics import (
     estimate_bin_count,
     estimate_bin_count_expert,
+    determine_bin_count_occupancy,
+    determine_bin_count_occupancy_expert,
     generate_js_comp_test_candidates,
     generate_js_comp_test_candidates_expert,
     check_neighborhood_overlaps,
@@ -86,6 +88,44 @@ def test_estimate_bin_count():
     assert result_clamped["n_bins"] == 256, f"Test 3 failed: expected n_bins=256, got {result_clamped['n_bins']}"
     assert result_clamped["n_bins"] == max(result_clamped["sturges_bins"], result_clamped["fd_bins"]), \
         "Test 3 failed: n_bins must equal max(sturges_bins, fd_bins)"
+
+
+def test_determine_bin_count_occupancy():
+    # Call-ability and return type/shape only, per this project's testing philosophy
+    # (Fortran_Coding_Guides.pdf Sec 17.1) -- numerical branch coverage of Issue #187's
+    # geometric-search-then-refinement algorithm is the Fortran suite's job
+    # (mod_test_data_integration_js_comp_test.F90's own 9 enumerated
+    # test_determine_bin_count_occupancy_* tests).
+    residuals = np.arange(-60, 60, dtype=np.float64)  # 120 values, matches a Fortran fixture
+
+    result = determine_bin_count_occupancy(residuals, max_n_reps_all_studies=1, n_neighbors=1,
+                                            shared_residual_range=60.0)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    for key in ("selected_n_bins", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy",
+                "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins"):
+        assert key in result, f"missing expected output key '{key}'"
+    assert isinstance(result["occupancy_failed"], (bool, np.bool_)), \
+        f"expected occupancy_failed to be a bool, got {type(result['occupancy_failed'])}"
+    assert result["n_pooled_residuals"] == 120, \
+        f"expected n_pooled_residuals=120, got {result['n_pooled_residuals']}"
+    assert result["selected_n_bins"] == 12, f"expected selected_n_bins=12, got {result['selected_n_bins']}"
+    assert not result["occupancy_failed"]
+
+    # The expert entry point, given the same sorting permutation, must agree.
+    residuals_perm = (np.argsort(residuals, kind="mergesort") + 1).astype(np.int32)
+    result_expert = determine_bin_count_occupancy_expert(residuals, residuals_perm, max_n_reps_all_studies=1,
+                                                           n_neighbors=1, shared_residual_range=60.0)
+    assert result_expert["selected_n_bins"] == result["selected_n_bins"], \
+        "expert entry point should agree with the plain one given the same sorted permutation"
+
+    # All-NaN pool: occupancy_failed must be True, and every occupancy diagnostic must be 0.
+    residuals_nan = np.full(4, np.nan, dtype=np.float64)
+    result_nan = determine_bin_count_occupancy(residuals_nan, max_n_reps_all_studies=1, n_neighbors=1,
+                                                 shared_residual_range=9.0)
+    assert result_nan["occupancy_failed"]
+    assert result_nan["n_pooled_residuals"] == 0
+    assert result_nan["min_bin_occupancy"] == 0
+    assert result_nan["max_bin_occupancy"] == 0
 
 
 def test_generate_js_comp_test_candidates():

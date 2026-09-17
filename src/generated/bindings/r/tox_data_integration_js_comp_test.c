@@ -8,6 +8,8 @@
 // the Fortran C-ABI symbols this module calls
 void estimate_bin_count_c(const double*, const int*, const int*, const int*, const double*, int*, int*, int*, int*);
 void estimate_bin_count_expert_c(const double*, const int*, const int*, const int*, const int*, const double*, int*, int*, int*, int*);
+void determine_bin_count_occupancy_c(const double*, const int*, const int*, const int*, const double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, const int*, const int*, const int*, const double*, int*);
+void determine_bin_count_occupancy_expert_c(const double*, const int*, const int*, const int*, const int*, const double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, int*, const int*, const int*, const int*, const double*, int*);
 void generate_js_comp_test_candidates_c(const int*, const double*, const int*, const int*, const double*, int*, int*, int*, int*);
 void generate_js_comp_test_candidates_expert_c(const int*, const double*, const int*, const int*, const int*, const double*, int*, int*, int*, int*);
 void check_neighborhood_overlaps_c(const int*, const int*, const double*, unsigned char*, int*);
@@ -102,6 +104,151 @@ SEXP estimate_bin_count_expert_call(SEXP residuals, SEXP residuals_perm, SEXP ma
     SET_STRING_ELT(_nms, 1, Rf_mkChar("sturges_bins"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("fd_bins"));
     SET_STRING_ELT(_nms, 3, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP determine_bin_count_occupancy_call(SEXP pooled_residuals, SEXP max_n_reps_all_studies, SEXP n_neighbors, SEXP shared_residual_range, SEXP m_min, SEXP m_max, SEXP min_residuals_per_bin, SEXP gamma_occupancy) {
+    int nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_residuals = (int) Rf_length(pooled_residuals);
+
+    // scalar inputs, pulled from their length-1 vectors
+    int max_n_reps_all_studies_v = Rf_asInteger(max_n_reps_all_studies);
+    int n_neighbors_v = Rf_asInteger(n_neighbors);
+    double shared_residual_range_v = Rf_asReal(shared_residual_range);
+    int m_min_v = Rf_asInteger(m_min);
+    int m_max_v = Rf_asInteger(m_max);
+    int min_residuals_per_bin_v = Rf_asInteger(min_residuals_per_bin);
+    double gamma_occupancy_v = Rf_asReal(gamma_occupancy);
+
+    // outputs and work space
+    int selected_n_bins = 0;
+    unsigned char occupancy_failed = 0;
+    int n_pooled_residuals = 0;
+    int min_bin_occupancy = 0;
+    double mean_bin_occupancy = 0;
+    int max_bin_occupancy = 0;
+    int sturges_bins = 0;
+    int fd_bins = 0;
+    int ierr = 0;
+
+    determine_bin_count_occupancy_c(
+        REAL(pooled_residuals),
+        &n_residuals,
+        &max_n_reps_all_studies_v,
+        &n_neighbors_v,
+        &shared_residual_range_v,
+        &selected_n_bins,
+        &occupancy_failed,
+        &n_pooled_residuals,
+        &min_bin_occupancy,
+        &mean_bin_occupancy,
+        &max_bin_occupancy,
+        &sturges_bins,
+        &fd_bins,
+        &m_min_v,
+        &m_max_v,
+        &min_residuals_per_bin_v,
+        &gamma_occupancy_v,
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 9)); nprot++;
+    SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(selected_n_bins));
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarLogical(occupancy_failed != 0));
+    SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(n_pooled_residuals));
+    SET_VECTOR_ELT(_out, 3, Rf_ScalarInteger(min_bin_occupancy));
+    SET_VECTOR_ELT(_out, 4, Rf_ScalarReal(mean_bin_occupancy));
+    SET_VECTOR_ELT(_out, 5, Rf_ScalarInteger(max_bin_occupancy));
+    SET_VECTOR_ELT(_out, 6, Rf_ScalarInteger(sturges_bins));
+    SET_VECTOR_ELT(_out, 7, Rf_ScalarInteger(fd_bins));
+    SET_VECTOR_ELT(_out, 8, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 9)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("selected_n_bins"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("occupancy_failed"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("n_pooled_residuals"));
+    SET_STRING_ELT(_nms, 3, Rf_mkChar("min_bin_occupancy"));
+    SET_STRING_ELT(_nms, 4, Rf_mkChar("mean_bin_occupancy"));
+    SET_STRING_ELT(_nms, 5, Rf_mkChar("max_bin_occupancy"));
+    SET_STRING_ELT(_nms, 6, Rf_mkChar("sturges_bins"));
+    SET_STRING_ELT(_nms, 7, Rf_mkChar("fd_bins"));
+    SET_STRING_ELT(_nms, 8, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP determine_bin_count_occupancy_expert_call(SEXP pooled_residuals, SEXP pooled_residuals_perm, SEXP max_n_reps_all_studies, SEXP n_neighbors, SEXP shared_residual_range, SEXP m_min, SEXP m_max, SEXP min_residuals_per_bin, SEXP gamma_occupancy) {
+    int nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_residuals = (int) Rf_length(pooled_residuals);
+
+    // scalar inputs, pulled from their length-1 vectors
+    int max_n_reps_all_studies_v = Rf_asInteger(max_n_reps_all_studies);
+    int n_neighbors_v = Rf_asInteger(n_neighbors);
+    double shared_residual_range_v = Rf_asReal(shared_residual_range);
+    int m_min_v = Rf_asInteger(m_min);
+    int m_max_v = Rf_asInteger(m_max);
+    int min_residuals_per_bin_v = Rf_asInteger(min_residuals_per_bin);
+    double gamma_occupancy_v = Rf_asReal(gamma_occupancy);
+
+    // outputs and work space
+    int selected_n_bins = 0;
+    unsigned char occupancy_failed = 0;
+    int n_pooled_residuals = 0;
+    int min_bin_occupancy = 0;
+    double mean_bin_occupancy = 0;
+    int max_bin_occupancy = 0;
+    int sturges_bins = 0;
+    int fd_bins = 0;
+    int* tmp_bin_counts = (int*) R_alloc(256, sizeof(int));
+    int ierr = 0;
+
+    determine_bin_count_occupancy_expert_c(
+        REAL(pooled_residuals),
+        INTEGER(pooled_residuals_perm),
+        &n_residuals,
+        &max_n_reps_all_studies_v,
+        &n_neighbors_v,
+        &shared_residual_range_v,
+        &selected_n_bins,
+        &occupancy_failed,
+        &n_pooled_residuals,
+        &min_bin_occupancy,
+        &mean_bin_occupancy,
+        &max_bin_occupancy,
+        &sturges_bins,
+        &fd_bins,
+        tmp_bin_counts,
+        &m_min_v,
+        &m_max_v,
+        &min_residuals_per_bin_v,
+        &gamma_occupancy_v,
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 9)); nprot++;
+    SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(selected_n_bins));
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarLogical(occupancy_failed != 0));
+    SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(n_pooled_residuals));
+    SET_VECTOR_ELT(_out, 3, Rf_ScalarInteger(min_bin_occupancy));
+    SET_VECTOR_ELT(_out, 4, Rf_ScalarReal(mean_bin_occupancy));
+    SET_VECTOR_ELT(_out, 5, Rf_ScalarInteger(max_bin_occupancy));
+    SET_VECTOR_ELT(_out, 6, Rf_ScalarInteger(sturges_bins));
+    SET_VECTOR_ELT(_out, 7, Rf_ScalarInteger(fd_bins));
+    SET_VECTOR_ELT(_out, 8, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 9)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("selected_n_bins"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("occupancy_failed"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("n_pooled_residuals"));
+    SET_STRING_ELT(_nms, 3, Rf_mkChar("min_bin_occupancy"));
+    SET_STRING_ELT(_nms, 4, Rf_mkChar("mean_bin_occupancy"));
+    SET_STRING_ELT(_nms, 5, Rf_mkChar("max_bin_occupancy"));
+    SET_STRING_ELT(_nms, 6, Rf_mkChar("sturges_bins"));
+    SET_STRING_ELT(_nms, 7, Rf_mkChar("fd_bins"));
+    SET_STRING_ELT(_nms, 8, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;

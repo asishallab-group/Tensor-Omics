@@ -24,11 +24,12 @@
 !| Generated from [[tox_data_integration_js_comp_test_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_js_comp_test
     use f42_safeguard
-    use tox_data_integration_js_comp_test_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, MODE_PLATEAU_BOTH
-    use tox_data_integration_js_comp_test_impl, only: MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, bootstrap_histogram_impl, calc_js_comp_test_candidate_bounds
-    use tox_data_integration_js_comp_test_impl, only: calc_js_comp_test_n_top_k_jsds, check_effect_size_plateau_condition_impl, check_mean_pmf_min_counts_impl, check_neighborhood_overlaps_impl
-    use tox_data_integration_js_comp_test_impl, only: check_plateau_condition_impl, create_mean_pmf_impl, create_mean_pmf_only_impl, estimate_bin_count_impl
-    use tox_data_integration_js_comp_test_impl, only: generate_js_comp_test_candidates_impl, run_js_comp_test_impl, run_js_comp_test_parameter_search_impl
+    use tox_data_integration_js_comp_test_impl, only: MAX_N_BINS, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN
+    use tox_data_integration_js_comp_test_impl, only: MODE_PLATEAU_BOTH, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, bootstrap_histogram_impl
+    use tox_data_integration_js_comp_test_impl, only: calc_js_comp_test_candidate_bounds, calc_js_comp_test_n_top_k_jsds, check_effect_size_plateau_condition_impl, check_mean_pmf_min_counts_impl
+    use tox_data_integration_js_comp_test_impl, only: check_neighborhood_overlaps_impl, check_plateau_condition_impl, create_mean_pmf_impl, create_mean_pmf_only_impl
+    use tox_data_integration_js_comp_test_impl, only: determine_bin_count_occupancy_impl, estimate_bin_count_impl, generate_js_comp_test_candidates_impl, run_js_comp_test_impl
+    use tox_data_integration_js_comp_test_impl, only: run_js_comp_test_parameter_search_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_math_impl, only: above
@@ -41,6 +42,8 @@ module tox_data_integration_js_comp_test
 
     public :: estimate_bin_count
     public :: estimate_bin_count_expert
+    public :: determine_bin_count_occupancy
+    public :: determine_bin_count_occupancy_expert
     public :: generate_js_comp_test_candidates
     public :: generate_js_comp_test_candidates_expert
     public :: check_neighborhood_overlaps
@@ -207,6 +210,336 @@ contains
             fd_bins = fd_bins&
         )
     end subroutine estimate_bin_count_expert
+
+    !> summary: Validates its inputs, prepares what [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_js_comp_test(module):determine_bin_count_occupancy_expert]] to prepare it yourself.
+    !| Implements Issue #187's two-stage geometric-search-then-local-refinement algorithm for one
+    !| neighborhood's pooled residuals (`pooled_residuals`, across all its neighbors and all
+    !| studies): find the largest bin count `M` in `[m_min, m_max]` whose equal-width histogram
+    !| over `[-shared_residual_range, shared_residual_range]` has every bin at or above
+    !| `min_residuals_per_bin` (the occupancy criterion), rather than the generic
+    !| Sturges/Freedman-Diaconis rule
+    !| [[tox_data_integration_js_comp_test_impl(module):estimate_bin_count_impl(interface)]] alone
+    !| applies, which is why that routine is still called here too -- purely for the
+    !| `sturges_bins`/`fd_bins` diagnostic outputs, never for the decision itself.
+    !|
+    !| Stage 1 grows a candidate `trial_m` geometrically from `m_min` (`next_m =
+    !| ceiling(gamma_occupancy*trial_m)`, guaranteed to advance by at least 1 via
+    !| `max(trial_m + 1, next_m)`, clamped to `m_max`) until occupancy first fails, recording the
+    !| largest admissible `m_valid` and the first inadmissible `m_invalid`; reaching `m_max` while
+    !| still admissible returns it immediately, skipping stage 2 entirely. Stage 2 then tests every
+    !| integer strictly between `m_valid` and `m_invalid` -- not a binary search, since equal-width
+    !| bin boundaries are recomputed for every candidate `M` and occupancy is therefore not
+    !| guaranteed monotonic in `M` (Issue #187 is explicit about this) -- and keeps the largest one
+    !| that still passes. Both stages reuse the occupancy diagnostics (`min`/`max_bin_occupancy`)
+    !| computed for whichever `M` ends up selected, rather than recomputing them a second time
+    !| afterward; `mean_bin_occupancy` needs no such bookkeeping, since every non-NaN pooled
+    !| residual lands in exactly one bin at any `M`, so it is always exactly
+    !| `n_pooled_residuals / selected_n_bins`.
+    !|
+    !| Per the issue's own FAILURE policy, `occupancy_failed = .true.` (even `m_min` bins could not
+    !| satisfy the occupancy criterion, or every pooled residual is NaN) means the neighborhood
+    !| should be rejected by the caller rather than built from `selected_n_bins` -- which is still
+    !| set to `m_min` in that case, purely so a caller ignoring `occupancy_failed` has *a* value to
+    !| build with, never as an indication the search actually found `m_min` admissible.
+    !|
+    !| The outer geometric search is a genuine sequential `do`/`exit` state machine, not `do
+    !| concurrent`: `m_valid`/`m_invalid` accumulate across iterations and each iteration's
+    !| continuation depends on the previous one's outcome, exactly the "loops with data-dependent
+    !| control flow across iterations" case Fortran_Coding_Guides.pdf Sec 10 carves out as the
+    !| deliberate exception to `do concurrent`.
+    pure subroutine determine_bin_count_occupancy(&
+            pooled_residuals,&
+            n_residuals,&
+            max_n_reps_all_studies,&
+            n_neighbors,&
+            shared_residual_range,&
+            selected_n_bins,&
+            occupancy_failed,&
+            n_pooled_residuals,&
+            min_bin_occupancy,&
+            mean_bin_occupancy,&
+            max_bin_occupancy,&
+            sturges_bins,&
+            fd_bins,&
+            m_min,&
+            m_max,&
+            min_residuals_per_bin,&
+            gamma_occupancy,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_residuals
+            !! Number of pooled residuals
+        real(real64), dimension(n_residuals), intent(in) :: pooled_residuals
+            !! Pooled signed residuals for one neighborhood, across all its neighbors and all studies
+            !! NaN is permitted for this value.
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_neighbors
+            !! Neighborhood size of the candidate under test
+            !! The minimum valid value is `1_int32`.
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+            !! The minimum valid value is `0.0_real64`.
+        integer(int32), intent(out) :: selected_n_bins
+            !! The chosen M_j: the largest bin count in [m_min, m_max] whose pooled histogram has
+            !! every bin at or above min_residuals_per_bin; m_min when occupancy_failed
+        logical(c_bool), intent(out) :: occupancy_failed
+            !! `.true.` iff even m_min bins could not satisfy the occupancy criterion (including
+            !! the case where every pooled residual is NaN) -- per Issue #187's FAILURE policy, the
+            !! caller should reject this neighborhood rather than build a histogram from
+            !! selected_n_bins
+        integer(int32), intent(out) :: n_pooled_residuals
+            !! Count of non-NaN pooled residuals (N_j)
+        integer(int32), intent(out) :: min_bin_occupancy
+            !! Minimum bin count at selected_n_bins; 0 when occupancy_failed
+        real(real64), intent(out) :: mean_bin_occupancy
+            !! Mean bin count at selected_n_bins (== n_pooled_residuals / selected_n_bins); 0 when
+            !! occupancy_failed
+        integer(int32), intent(out) :: max_bin_occupancy
+            !! Maximum bin count at selected_n_bins; 0 when occupancy_failed
+        integer(int32), intent(out) :: sturges_bins
+            !! Sturges' rule estimate for this neighborhood's own pooled residuals, from
+            !! estimate_bin_count_impl -- a diagnostic only, never part of the search's own decision
+        integer(int32), intent(out) :: fd_bins
+            !! Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
+            !! estimate_bin_count_impl -- a diagnostic only, never part of the search's own decision
+        integer(int32), intent(in), optional :: m_min
+            !! Smallest candidate bin count the search will ever test (M_min)
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_N_BINS`.
+            !! The default value is `3_int32`.
+        integer(int32), intent(in), optional :: m_max
+            !! Largest candidate bin count the search will ever test (M_max); if a caller passes
+            !! `m_max < m_min`, the implementation clamps it up to `m_min` internally rather than
+            !! relying on an unconfirmed generator capability to bound one optional argument by
+            !! another
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_N_BINS`.
+            !! The default value is `120_int32`.
+        integer(int32), intent(in), optional :: min_residuals_per_bin
+            !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
+            !! be admissible (n_min)
+            !! The minimum valid value is `1_int32`.
+            !! The default value is `10_int32`.
+        real(real64), intent(in), optional :: gamma_occupancy
+            !! Geometric growth factor for the coarse search stage; must exceed 1 or the search
+            !! never advances
+            !! The minimum valid value is `above(1.0_real64)`.
+            !! The default value is `1.25_real64`.
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+        integer(int32), dimension(:), allocatable :: pooled_residuals_perm
+        integer(int32), dimension(:), allocatable :: tmp_bin_counts
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_residuals, ierr, arg_pos=2_int32)
+        call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
+        call validate_in_range_int(n_neighbors, ierr, arg_pos=4_int32, min=1_int32)
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=5_int32, min=0.0_real64)
+        call validate_in_range_int(m_min, ierr, arg_pos=14_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=15_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=16_int32, min=1_int32)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=17_int32, min=above(1.0_real64))
+        call validate_all_in_range_real(pooled_residuals, n_residuals, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
+        if (is_err(ierr)) return
+#endif
+
+        M_ALLOCATE(pooled_residuals_perm(n_residuals))
+        M_ALLOCATE(tmp_bin_counts(256))
+        call init_perm(pooled_residuals_perm)
+        call sort_array_heapsort(pooled_residuals, pooled_residuals_perm)
+
+        call determine_bin_count_occupancy_impl(&
+            pooled_residuals = pooled_residuals,&
+            pooled_residuals_perm = pooled_residuals_perm,&
+            n_residuals = n_residuals,&
+            max_n_reps_all_studies = max_n_reps_all_studies,&
+            n_neighbors = n_neighbors,&
+            shared_residual_range = shared_residual_range,&
+            selected_n_bins = selected_n_bins,&
+            occupancy_failed = occupancy_failed,&
+            n_pooled_residuals = n_pooled_residuals,&
+            min_bin_occupancy = min_bin_occupancy,&
+            mean_bin_occupancy = mean_bin_occupancy,&
+            max_bin_occupancy = max_bin_occupancy,&
+            sturges_bins = sturges_bins,&
+            fd_bins = fd_bins,&
+            tmp_bin_counts = tmp_bin_counts,&
+            m_min = m_min,&
+            m_max = m_max,&
+            min_residuals_per_bin = min_residuals_per_bin,&
+            gamma_occupancy = gamma_occupancy&
+        )
+    end subroutine determine_bin_count_occupancy
+
+    !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_data_integration_js_comp_test(module):determine_bin_count_occupancy]] does both.
+    !| Implements Issue #187's two-stage geometric-search-then-local-refinement algorithm for one
+    !| neighborhood's pooled residuals (`pooled_residuals`, across all its neighbors and all
+    !| studies): find the largest bin count `M` in `[m_min, m_max]` whose equal-width histogram
+    !| over `[-shared_residual_range, shared_residual_range]` has every bin at or above
+    !| `min_residuals_per_bin` (the occupancy criterion), rather than the generic
+    !| Sturges/Freedman-Diaconis rule
+    !| [[tox_data_integration_js_comp_test_impl(module):estimate_bin_count_impl(interface)]] alone
+    !| applies, which is why that routine is still called here too -- purely for the
+    !| `sturges_bins`/`fd_bins` diagnostic outputs, never for the decision itself.
+    !|
+    !| Stage 1 grows a candidate `trial_m` geometrically from `m_min` (`next_m =
+    !| ceiling(gamma_occupancy*trial_m)`, guaranteed to advance by at least 1 via
+    !| `max(trial_m + 1, next_m)`, clamped to `m_max`) until occupancy first fails, recording the
+    !| largest admissible `m_valid` and the first inadmissible `m_invalid`; reaching `m_max` while
+    !| still admissible returns it immediately, skipping stage 2 entirely. Stage 2 then tests every
+    !| integer strictly between `m_valid` and `m_invalid` -- not a binary search, since equal-width
+    !| bin boundaries are recomputed for every candidate `M` and occupancy is therefore not
+    !| guaranteed monotonic in `M` (Issue #187 is explicit about this) -- and keeps the largest one
+    !| that still passes. Both stages reuse the occupancy diagnostics (`min`/`max_bin_occupancy`)
+    !| computed for whichever `M` ends up selected, rather than recomputing them a second time
+    !| afterward; `mean_bin_occupancy` needs no such bookkeeping, since every non-NaN pooled
+    !| residual lands in exactly one bin at any `M`, so it is always exactly
+    !| `n_pooled_residuals / selected_n_bins`.
+    !|
+    !| Per the issue's own FAILURE policy, `occupancy_failed = .true.` (even `m_min` bins could not
+    !| satisfy the occupancy criterion, or every pooled residual is NaN) means the neighborhood
+    !| should be rejected by the caller rather than built from `selected_n_bins` -- which is still
+    !| set to `m_min` in that case, purely so a caller ignoring `occupancy_failed` has *a* value to
+    !| build with, never as an indication the search actually found `m_min` admissible.
+    !|
+    !| The outer geometric search is a genuine sequential `do`/`exit` state machine, not `do
+    !| concurrent`: `m_valid`/`m_invalid` accumulate across iterations and each iteration's
+    !| continuation depends on the previous one's outcome, exactly the "loops with data-dependent
+    !| control flow across iterations" case Fortran_Coding_Guides.pdf Sec 10 carves out as the
+    !| deliberate exception to `do concurrent`.
+    pure subroutine determine_bin_count_occupancy_expert(&
+            pooled_residuals,&
+            pooled_residuals_perm,&
+            n_residuals,&
+            max_n_reps_all_studies,&
+            n_neighbors,&
+            shared_residual_range,&
+            selected_n_bins,&
+            occupancy_failed,&
+            n_pooled_residuals,&
+            min_bin_occupancy,&
+            mean_bin_occupancy,&
+            max_bin_occupancy,&
+            sturges_bins,&
+            fd_bins,&
+            tmp_bin_counts,&
+            m_min,&
+            m_max,&
+            min_residuals_per_bin,&
+            gamma_occupancy,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_residuals
+            !! Number of pooled residuals
+        real(real64), dimension(n_residuals), intent(in) :: pooled_residuals
+            !! Pooled signed residuals for one neighborhood, across all its neighbors and all studies
+            !! NaN is permitted for this value.
+        integer(int32), dimension(n_residuals), intent(in) :: pooled_residuals_perm
+            !! Sorting permutation for `pooled_residuals`, ascending, NaN last
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_residuals`.
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_neighbors
+            !! Neighborhood size of the candidate under test
+            !! The minimum valid value is `1_int32`.
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+            !! The minimum valid value is `0.0_real64`.
+        integer(int32), intent(out) :: selected_n_bins
+            !! The chosen M_j: the largest bin count in [m_min, m_max] whose pooled histogram has
+            !! every bin at or above min_residuals_per_bin; m_min when occupancy_failed
+        logical(c_bool), intent(out) :: occupancy_failed
+            !! `.true.` iff even m_min bins could not satisfy the occupancy criterion (including
+            !! the case where every pooled residual is NaN) -- per Issue #187's FAILURE policy, the
+            !! caller should reject this neighborhood rather than build a histogram from
+            !! selected_n_bins
+        integer(int32), intent(out) :: n_pooled_residuals
+            !! Count of non-NaN pooled residuals (N_j)
+        integer(int32), intent(out) :: min_bin_occupancy
+            !! Minimum bin count at selected_n_bins; 0 when occupancy_failed
+        real(real64), intent(out) :: mean_bin_occupancy
+            !! Mean bin count at selected_n_bins (== n_pooled_residuals / selected_n_bins); 0 when
+            !! occupancy_failed
+        integer(int32), intent(out) :: max_bin_occupancy
+            !! Maximum bin count at selected_n_bins; 0 when occupancy_failed
+        integer(int32), intent(out) :: sturges_bins
+            !! Sturges' rule estimate for this neighborhood's own pooled residuals, from
+            !! estimate_bin_count_impl -- a diagnostic only, never part of the search's own decision
+        integer(int32), intent(out) :: fd_bins
+            !! Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
+            !! estimate_bin_count_impl -- a diagnostic only, never part of the search's own decision
+        integer(int32), dimension(256), intent(out) :: tmp_bin_counts
+            !! Working array: per-bin counts of whichever candidate bin count is currently being
+            !! tested, reused throughout the search (256 = MAX_N_BINS, written as a literal since a
+            !! generated wrapper's dummy dimension cannot reference a module parameter)
+        integer(int32), intent(in), optional :: m_min
+            !! Smallest candidate bin count the search will ever test (M_min)
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_N_BINS`.
+            !! The default value is `3_int32`.
+        integer(int32), intent(in), optional :: m_max
+            !! Largest candidate bin count the search will ever test (M_max); if a caller passes
+            !! `m_max < m_min`, the implementation clamps it up to `m_min` internally rather than
+            !! relying on an unconfirmed generator capability to bound one optional argument by
+            !! another
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_N_BINS`.
+            !! The default value is `120_int32`.
+        integer(int32), intent(in), optional :: min_residuals_per_bin
+            !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
+            !! be admissible (n_min)
+            !! The minimum valid value is `1_int32`.
+            !! The default value is `10_int32`.
+        real(real64), intent(in), optional :: gamma_occupancy
+            !! Geometric growth factor for the coarse search stage; must exceed 1 or the search
+            !! never advances
+            !! The minimum valid value is `above(1.0_real64)`.
+            !! The default value is `1.25_real64`.
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_residuals, ierr, arg_pos=3_int32)
+        call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=4_int32, min=1_int32)
+        call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
+        call validate_in_range_int(m_min, ierr, arg_pos=16_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=17_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=18_int32, min=1_int32)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=19_int32, min=above(1.0_real64))
+        call validate_all_in_range_real(pooled_residuals, n_residuals, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_int(pooled_residuals_perm, n_residuals, ierr, arg_pos=2_int32, min=1_int32, max=n_residuals)
+        if (is_err(ierr)) return
+#endif
+
+        call determine_bin_count_occupancy_impl(&
+            pooled_residuals = pooled_residuals,&
+            pooled_residuals_perm = pooled_residuals_perm,&
+            n_residuals = n_residuals,&
+            max_n_reps_all_studies = max_n_reps_all_studies,&
+            n_neighbors = n_neighbors,&
+            shared_residual_range = shared_residual_range,&
+            selected_n_bins = selected_n_bins,&
+            occupancy_failed = occupancy_failed,&
+            n_pooled_residuals = n_pooled_residuals,&
+            min_bin_occupancy = min_bin_occupancy,&
+            mean_bin_occupancy = mean_bin_occupancy,&
+            max_bin_occupancy = max_bin_occupancy,&
+            sturges_bins = sturges_bins,&
+            fd_bins = fd_bins,&
+            tmp_bin_counts = tmp_bin_counts,&
+            m_min = m_min,&
+            m_max = m_max,&
+            min_residuals_per_bin = min_residuals_per_bin,&
+            gamma_occupancy = gamma_occupancy&
+        )
+    end subroutine determine_bin_count_occupancy_expert
 
     !> summary: Validates its inputs, prepares what [[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_js_comp_test(module):generate_js_comp_test_candidates_expert]] to prepare it yourself.
     !| Ported from the grid-building half of 125-stabilize-jscomp's

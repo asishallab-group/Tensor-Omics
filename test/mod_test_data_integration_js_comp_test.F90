@@ -11,7 +11,8 @@ module mod_test_data_integration_js_comp_test
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use tox_data_integration
-    use tox_data_integration_js_comp_test, only: estimate_bin_count, generate_js_comp_test_candidates, &
+    use tox_data_integration_js_comp_test, only: estimate_bin_count, determine_bin_count_occupancy, &
+                                                  generate_js_comp_test_candidates, &
                                                   generate_js_comp_test_candidates_expert, check_neighborhood_overlaps, &
                                                   check_mean_pmf_min_counts, check_plateau_condition, &
                                                   check_effect_size_plateau_condition, create_mean_pmf, &
@@ -33,7 +34,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(56))
+        allocate (all_tests(65))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -154,6 +155,25 @@ contains
                                   test_estimate_bin_count_sturges_wins_when_greater_than_fd)
         all_tests(56) = test_case("test_estimate_bin_count_near_zero_iqr_guard_falls_back_to_sturges", &
                                   test_estimate_bin_count_near_zero_iqr_falls_back_to_sturges)
+
+        all_tests(57) = test_case("test_determine_bin_count_occupancy_finds_valid_below_m_max", &
+                                  test_occupancy_finds_valid_below_m_max)
+        all_tests(58) = test_case("test_determine_bin_count_occupancy_reaches_m_max_validly", &
+                                  test_occupancy_reaches_m_max_validly)
+        all_tests(59) = test_case("test_determine_bin_count_occupancy_m_min_itself_invalid_failure", &
+                                  test_occupancy_m_min_itself_invalid_failure)
+        all_tests(60) = test_case("test_determine_bin_count_occupancy_refinement_picks_above_m_valid", &
+                                  test_occupancy_refinement_picks_above_m_valid)
+        all_tests(61) = test_case("test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid", &
+                                  test_occupancy_refinement_finds_nothing_above_m_valid)
+        all_tests(62) = test_case("test_determine_bin_count_occupancy_all_residuals_nan", &
+                                  test_occupancy_all_residuals_nan)
+        all_tests(63) = test_case("test_determine_bin_count_occupancy_geometric_step_guarantees_progress", &
+                                  test_occupancy_geometric_step_guarantees_progress)
+        all_tests(64) = test_case("test_determine_bin_count_occupancy_diagnostics_hand_computed", &
+                                  test_occupancy_diagnostics_hand_computed)
+        all_tests(65) = test_case("test_determine_bin_count_occupancy_defaults_match_issue_suggestions", &
+                                  test_occupancy_defaults_match_issue_suggestions)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -2257,5 +2277,486 @@ contains
                                      "test_param_search_no_plateau_both_falls_back: "// &
                                      "study 2 CI reset to -1.0")
     end subroutine test_param_search_no_plateau_both_falls_back
+
+    !> Geometric search finds M=12 (strictly between the default m_min=3 and m_max=120) directly,
+    !| without needing stage 2 at all. Residuals are every integer in [-60, 59] (120 values,
+    !| shared_residual_range=60.0), so at candidate M the pooled histogram is (almost) perfectly
+    !| uniform: bin_width = 120/M, and since every residual is a distinct integer with unit
+    !| spacing, the bin occupancy at M is exactly floor(120/M) or ceil(120/M). Tracing the default
+    !| geometric ladder (m_min=3, gamma_occupancy=1.25: 3 -> 4 -> 5 -> 7 -> 9 -> 12 -> 15 -> ...)
+    !| against min_residuals_per_bin=10:
+    !|   M          3   4   5    7    9   12   15
+    !|   min_occ   40  30  24  17   13   10    8
+    !| M=12 is the last admissible rung (min_occ=10, exactly at the threshold); M=15 fails
+    !| (min_occ=8). Stage 2 then refines 13 and 14 (both also fail: min_occ 9 and 8), so best_m
+    !| stays 12 -- this fixture is reused, with the SAME hand-computed table, by
+    !| test_occupancy_diagnostics_hand_computed below.
+    subroutine test_occupancy_finds_valid_below_m_max()
+        integer(int32), parameter :: n_residuals = 120
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr, i
+        real(real64) :: mean_bin_occupancy
+        logical(c_bool) :: occupancy_failed
+
+        do i = 1, n_residuals
+            residuals(i) = real(i - 61, real64) ! -60, -59, ..., 59
+        end do
+
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, 60.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_determine_bin_count_occupancy_finds_valid_below_m_max: ierr should be OK")
+        call assert_false(occupancy_failed, &
+                          "test_determine_bin_count_occupancy_finds_valid_below_m_max: occupancy should not fail")
+        call assert_equal_int(selected_n_bins, 12_int32, &
+                              "test_determine_bin_count_occupancy_finds_valid_below_m_max: "// &
+                              "should select M=12, strictly between m_min=3 and m_max=120")
+        call assert_equal_int(n_pooled_residuals, 120_int32, &
+                              "test_determine_bin_count_occupancy_finds_valid_below_m_max: n_pooled_residuals should be 120")
+        call assert_equal_int(min_bin_occupancy, 10_int32, &
+                              "test_determine_bin_count_occupancy_finds_valid_below_m_max: min_bin_occupancy at M=12")
+        call assert_equal_int(max_bin_occupancy, 10_int32, &
+                              "test_determine_bin_count_occupancy_finds_valid_below_m_max: max_bin_occupancy at M=12")
+        call assert_equal_real(mean_bin_occupancy, 10.0_real64, TOL, &
+                               "test_determine_bin_count_occupancy_finds_valid_below_m_max: mean_bin_occupancy == 120/12")
+    end subroutine test_occupancy_finds_valid_below_m_max
+
+    !> Residuals are every integer in [-1200, 1199] (2400 values, shared_residual_range=1200.0):
+    !| dense enough that floor(2400/M) >= 20 for every M up to and including the default m_max=120
+    !| (the worst case, at M=120, is exactly floor(2400/120)=20 >= 10), so occupancy holds all the
+    !| way through the default geometric ladder's last rung (..., 94, 118, then clamped to 120).
+    !| `selected_n_bins == m_max` is reachable ONLY via the early-return branch: stage 2 only ever
+    !| tests strictly less than m_invalid, and m_invalid can be at most m_max, so a value of
+    !| exactly m_max could never come out of stage 2's refinement loop even if it ran -- this
+    !| assertion is therefore only satisfiable by the early-return `if (trial_m == actual_m_max)`
+    !| branch actually firing.
+    subroutine test_occupancy_reaches_m_max_validly()
+        integer(int32), parameter :: n_residuals = 2400
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr, i
+        real(real64) :: mean_bin_occupancy
+        logical(c_bool) :: occupancy_failed
+
+        do i = 1, n_residuals
+            residuals(i) = real(i - 1201, real64) ! -1200, -1199, ..., 1199
+        end do
+
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, 1200.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_determine_bin_count_occupancy_reaches_m_max_validly: ierr should be OK")
+        call assert_false(occupancy_failed, &
+                          "test_determine_bin_count_occupancy_reaches_m_max_validly: occupancy should not fail")
+        call assert_equal_int(selected_n_bins, 120_int32, &
+                              "test_determine_bin_count_occupancy_reaches_m_max_validly: "// &
+                              "should reach m_max=120, only possible via the early-return branch")
+        call assert_equal_int(n_pooled_residuals, 2400_int32, &
+                              "test_determine_bin_count_occupancy_reaches_m_max_validly: n_pooled_residuals should be 2400")
+        call assert_equal_int(min_bin_occupancy, 20_int32, &
+                              "test_determine_bin_count_occupancy_reaches_m_max_validly: min_bin_occupancy at M=120")
+        call assert_equal_int(max_bin_occupancy, 20_int32, &
+                              "test_determine_bin_count_occupancy_reaches_m_max_validly: max_bin_occupancy at M=120")
+        call assert_equal_real(mean_bin_occupancy, 20.0_real64, TOL, &
+                               "test_determine_bin_count_occupancy_reaches_m_max_validly: mean_bin_occupancy == 2400/120")
+    end subroutine test_occupancy_reaches_m_max_validly
+
+    !> Only 5 pooled residuals total, so with the default min_residuals_per_bin=10 no bin at any
+    !| M can ever reach 10 (there are not even 10 residuals to spread across bins) -- occupancy
+    !| fails already at the default m_min=3 itself, the FAILURE case from Issue #187's own
+    !| pseudocode ("even the minimum resolution is unsupported").
+    subroutine test_occupancy_m_min_itself_invalid_failure()
+        integer(int32), parameter :: n_residuals = 5
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr
+        real(real64) :: mean_bin_occupancy
+        logical(c_bool) :: occupancy_failed
+
+        residuals = [-9.0_real64, -5.0_real64, 0.0_real64, 5.0_real64, 9.0_real64]
+
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, 10.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_determine_bin_count_occupancy_m_min_itself_invalid_failure: ierr should be OK")
+        call assert_true(occupancy_failed, &
+                         "test_determine_bin_count_occupancy_m_min_itself_invalid_failure: "// &
+                         "5 residuals can never fill any bin to 10")
+        call assert_equal_int(selected_n_bins, 3_int32, &
+                              "test_determine_bin_count_occupancy_m_min_itself_invalid_failure: "// &
+                              "selected_n_bins should still be set to m_min=3 on FAILURE")
+        call assert_equal_int(n_pooled_residuals, 5_int32, &
+                              "test_determine_bin_count_occupancy_m_min_itself_invalid_failure: n_pooled_residuals should be 5")
+        call assert_equal_int(min_bin_occupancy, 0_int32, &
+                              "test_determine_bin_count_occupancy_m_min_itself_invalid_failure: "// &
+                              "min_bin_occupancy should be 0 on FAILURE")
+        call assert_equal_int(max_bin_occupancy, 0_int32, &
+                              "test_determine_bin_count_occupancy_m_min_itself_invalid_failure: "// &
+                              "max_bin_occupancy should be 0 on FAILURE")
+        call assert_equal_real(mean_bin_occupancy, 0.0_real64, TOL, &
+                               "test_determine_bin_count_occupancy_m_min_itself_invalid_failure: "// &
+                               "mean_bin_occupancy should be 0 on FAILURE")
+    end subroutine test_occupancy_m_min_itself_invalid_failure
+
+    !> Issue #187's own worked example (m_valid=19, m_invalid=24 from the default geometric ladder
+    !| 3 -> 4 -> 5 -> 7 -> 9 -> 12 -> 15 -> 19 -> 24), engineered so refinement over {20,21,22,23}
+    !| is genuinely non-monotonic. Residuals are every integer in [-130, 129] EXCEPT the 17
+    !| integers [51, 67) (243 residuals total: 260 - 17), with min_residuals_per_bin=1 (an explicit
+    !| override -- only m_min/gamma_occupancy need to stay default to reproduce the issue's own
+    !| ladder; the occupancy threshold itself is free to choose, and 1 keeps the by-hand table
+    !| small: "occupancy admissible" now just means "no bin is completely empty", and the deleted
+    !| integers create exactly one gap capable of emptying a bin only for some, not all, of the
+    !| narrow candidates near the transition). Direct enumeration of every bin at every M in
+    !| {19,...,24} gives:
+    !|   M         19   20   21   22   23   24
+    !|   min_occ    3    0    1    3    0    0
+    !| M=20 and M=23 FAIL (some bin is empty) while M=21 and M=22 -- both LARGER than 20 -- PASS:
+    !| exactly the non-monotonicity Issue #187 warns a binary search cannot assume away (a binary
+    !| search that saw M=20 fail would, under a monotonicity assumption, never even try M=22).
+    !| Exhaustive refinement therefore correctly finds best_m=22 (the larger of the two survivors
+    !| {21,22}), strictly greater than m_valid=19. At M=22 the bin counts range from 3 (min) to 12
+    !| (max), summing to 243 as required.
+    subroutine test_occupancy_refinement_picks_above_m_valid()
+        integer(int32), parameter :: n_residuals = 243
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr, i, idx
+        real(real64) :: mean_bin_occupancy
+        logical(c_bool) :: occupancy_failed
+
+        idx = 0
+        do i = -130, 129
+            if (i < 51 .or. i >= 67) then
+                idx = idx + 1
+                residuals(idx) = real(i, real64)
+            end if
+        end do
+
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, 130.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, min_residuals_per_bin=1_int32, &
+                                           ierr=ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: ierr should be OK")
+        call assert_false(occupancy_failed, &
+                          "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: occupancy should not fail")
+        call assert_equal_int(n_pooled_residuals, 243_int32, &
+                              "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: n_pooled_residuals")
+        call assert_equal_int(selected_n_bins, 22_int32, &
+                              "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: "// &
+                              "best_m should be 22 (M=20 fails, M=21/22 pass, M=23 fails again)")
+        call assert_equal_int(min_bin_occupancy, 3_int32, &
+                              "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: min_bin_occupancy at M=22")
+        call assert_equal_int(max_bin_occupancy, 12_int32, &
+                              "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: max_bin_occupancy at M=22")
+        call assert_equal_real(mean_bin_occupancy, 243.0_real64/22.0_real64, TOL, &
+                               "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: mean_bin_occupancy")
+    end subroutine test_occupancy_refinement_picks_above_m_valid
+
+    !> Residuals are every integer in [-48, 47] (96 values, shared_residual_range=48.0). Tracing
+    !| the default geometric ladder against the default min_residuals_per_bin=10:
+    !|   M          3   4    5    7    9   12
+    !|   min_occ   32  24   19   13   10    8
+    !| M=9 is the last admissible rung (m_valid=9); M=12 fails (min_occ=8, m_invalid=12). Stage 2
+    !| then exhaustively tests 10 and 11 (min_occ 9 and 8 respectively, both < 10), so neither
+    !| beats m_valid -- best_m stays 9, demonstrating stage 2 running and finding nothing better.
+    subroutine test_occupancy_refinement_finds_nothing_above_m_valid()
+        integer(int32), parameter :: n_residuals = 96
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr, i
+        real(real64) :: mean_bin_occupancy
+        logical(c_bool) :: occupancy_failed
+
+        do i = 1, n_residuals
+            residuals(i) = real(i - 49, real64) ! -48, -47, ..., 47
+        end do
+
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, 48.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid: ierr should be OK")
+        call assert_false(occupancy_failed, &
+                          "test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid: "// &
+                          "occupancy should not fail")
+        call assert_equal_int(selected_n_bins, 9_int32, &
+                              "test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid: "// &
+                              "best_m should stay at m_valid=9 -- neither M=10 nor M=11 beats it")
+        call assert_equal_int(n_pooled_residuals, 96_int32, &
+                              "test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid: "// &
+                              "n_pooled_residuals should be 96")
+        call assert_equal_int(min_bin_occupancy, 10_int32, &
+                              "test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid: "// &
+                              "min_bin_occupancy at M=9")
+        call assert_equal_int(max_bin_occupancy, 11_int32, &
+                              "test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid: "// &
+                              "max_bin_occupancy at M=9")
+        call assert_equal_real(mean_bin_occupancy, 96.0_real64/9.0_real64, TOL, &
+                               "test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid: "// &
+                               "mean_bin_occupancy == 96/9")
+    end subroutine test_occupancy_refinement_finds_nothing_above_m_valid
+
+    !> Every pooled residual is NaN: n_pooled_residuals must come out 0, matching
+    !| estimate_bin_count_impl's own all-NaN branch (sturges_bins=fd_bins=1), and occupancy must
+    !| be reported as FAILURE with all three occupancy diagnostics zeroed, per the early-return
+    !| branch that never gets as far as testing any candidate M.
+    subroutine test_occupancy_all_residuals_nan()
+        integer(int32), parameter :: n_residuals = 4
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr
+        real(real64) :: mean_bin_occupancy, nan_val
+        logical(c_bool) :: occupancy_failed
+
+        nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
+        residuals = nan_val
+
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, 9.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_determine_bin_count_occupancy_all_residuals_nan: ierr should be OK")
+        call assert_true(occupancy_failed, &
+                         "test_determine_bin_count_occupancy_all_residuals_nan: all-NaN pool must FAIL")
+        call assert_equal_int(selected_n_bins, 3_int32, &
+                              "test_determine_bin_count_occupancy_all_residuals_nan: selected_n_bins should be m_min=3")
+        call assert_equal_int(n_pooled_residuals, 0_int32, &
+                              "test_determine_bin_count_occupancy_all_residuals_nan: n_pooled_residuals should be 0")
+        call assert_equal_int(min_bin_occupancy, 0_int32, &
+                              "test_determine_bin_count_occupancy_all_residuals_nan: min_bin_occupancy should be 0")
+        call assert_equal_int(max_bin_occupancy, 0_int32, &
+                              "test_determine_bin_count_occupancy_all_residuals_nan: max_bin_occupancy should be 0")
+        call assert_equal_real(mean_bin_occupancy, 0.0_real64, TOL, &
+                               "test_determine_bin_count_occupancy_all_residuals_nan: mean_bin_occupancy should be 0")
+        call assert_equal_int(sturges_bins, 1_int32, &
+                              "test_determine_bin_count_occupancy_all_residuals_nan: sturges_bins should fall back to 1")
+        call assert_equal_int(fd_bins, 1_int32, &
+                              "test_determine_bin_count_occupancy_all_residuals_nan: fd_bins should fall back to 1")
+    end subroutine test_occupancy_all_residuals_nan
+
+    !> gamma_occupancy=1.01 (close to 1) forces roughly 117 tiny geometric steps from m_min=3 up to
+    !| m_max=120 instead of the default gamma=1.25's ~16 -- reusing
+    !| test_occupancy_reaches_m_max_validly's own dense fixture (every integer
+    !| in [-1200, 1199], shared_residual_range=1200.0, comfortably occupied at every M up to 120)
+    !| so the ONLY thing that changes is how many times `next_m = max(trial_m + 1, next_m)`'s
+    !| progress guarantee actually fires. Mathematically, for any gamma_occupancy > 1.0 (enforced
+    !| by DM_MIN(above(1.0_real64))) and integer trial_m >= 1, `ceiling(gamma_occupancy*trial_m)`
+    !| is already guaranteed > trial_m in exact arithmetic, so this specific gamma value cannot
+    !| itself demonstrate the guard changing the answer -- but it exercises the exact same
+    !| `next_m = max(trial_m + 1, next_m)` line roughly 117 consecutive times (for most trial_m in
+    !| this run, ceiling(1.01*trial_m) equals exactly trial_m+1, so the guard IS the value that
+    !| gets used at almost every step), which is precisely the kind of sustained exercise that
+    !| would surface a regression (e.g. a future rewrite that replaced `ceiling` with `int`
+    !| truncation would silently stall at trial_m=99, since int(1.01*99)=int(99.99)=99): a
+    !| non-terminating or wrong-answer result here is the visible symptom such a regression would
+    !| produce, even though this specific test cannot itself force the mathematically-impossible
+    !| "rounds back down" case for a validated gamma_occupancy > 1.
+    subroutine test_occupancy_geometric_step_guarantees_progress()
+        integer(int32), parameter :: n_residuals = 2400
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr, i
+        real(real64) :: mean_bin_occupancy
+        logical(c_bool) :: occupancy_failed
+
+        do i = 1, n_residuals
+            residuals(i) = real(i - 1201, real64) ! -1200, -1199, ..., 1199
+        end do
+
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, 1200.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, gamma_occupancy=1.01_real64, ierr=ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_determine_bin_count_occupancy_geometric_step_guarantees_progress: ierr should be OK")
+        call assert_false(occupancy_failed, &
+                          "test_determine_bin_count_occupancy_geometric_step_guarantees_progress: "// &
+                          "occupancy should not fail")
+        call assert_equal_int(selected_n_bins, 120_int32, &
+                              "test_determine_bin_count_occupancy_geometric_step_guarantees_progress: "// &
+                              "the search must still terminate and reach m_max=120, not stall below it")
+        call assert_equal_int(min_bin_occupancy, 20_int32, &
+                              "test_determine_bin_count_occupancy_geometric_step_guarantees_progress: min_bin_occupancy")
+        call assert_equal_int(max_bin_occupancy, 20_int32, &
+                              "test_determine_bin_count_occupancy_geometric_step_guarantees_progress: max_bin_occupancy")
+    end subroutine test_occupancy_geometric_step_guarantees_progress
+
+    !> Reuses test_occupancy_finds_valid_below_m_max's exact residual fixture
+    !| (every integer in [-60, 59], shared_residual_range=60.0), but with max_n_reps_all_studies=8,
+    !| n_neighbors=1 so estimate_bin_count_impl's own diagnostics are non-trivial (n_reps_neighborhood=8).
+    !| Sorted ascending, the 120 residuals are `value(i) = i - 61` for rank `i = 1..120`. With
+    !| `calc_percentile_rank(q, n) = q*(n-1)+1`:
+    !|   rank(0.25, 120) = 0.25*119 + 1 = 30.75 -> interpolate value(30)=-31, value(31)=-30 at
+    !|     fraction 0.75 -> quartile_25 = -31 + 0.75*1 = -30.25
+    !|   rank(0.75, 120) = 0.75*119 + 1 = 90.25 -> interpolate value(90)=29, value(91)=30 at
+    !|     fraction 0.25 -> quartile_75 = 29 + 0.25*1 = 29.25
+    !| IQR = 29.25 - (-30.25) = 59.5. half_bin_width = 59.5 / 8**(1/3) = 59.5/2.0 = 29.75.
+    !| fd_raw = nint(60.0/29.75) = nint(2.0168...) = 2 -> fd_bins = 2.
+    !| sturges_raw = 1 + nint(log(8)/LOG_2) = 1 + nint(3.0) = 4 -> sturges_bins = 4.
+    !| These four diagnostics (sturges_bins, fd_bins, n_pooled_residuals, and the occupancy
+    !| triple at whatever M the search itself selects) are independently derived here: the
+    !| search's own selected_n_bins is asserted too (M=12, matching the sibling test above), but
+    !| every diagnostic assertion below stands on its own arithmetic, not on that search result.
+    subroutine test_occupancy_diagnostics_hand_computed()
+        integer(int32), parameter :: n_residuals = 120
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr, i
+        real(real64) :: mean_bin_occupancy
+        logical(c_bool) :: occupancy_failed
+
+        do i = 1, n_residuals
+            residuals(i) = real(i - 61, real64) ! -60, -59, ..., 59
+        end do
+
+        call determine_bin_count_occupancy(residuals, n_residuals, 8_int32, 1_int32, 60.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_determine_bin_count_occupancy_diagnostics_hand_computed: ierr should be OK")
+        call assert_equal_int(n_pooled_residuals, 120_int32, &
+                              "test_determine_bin_count_occupancy_diagnostics_hand_computed: n_pooled_residuals")
+        call assert_equal_int(sturges_bins, 4_int32, &
+                              "test_determine_bin_count_occupancy_diagnostics_hand_computed: sturges_bins")
+        call assert_equal_int(fd_bins, 2_int32, &
+                              "test_determine_bin_count_occupancy_diagnostics_hand_computed: fd_bins")
+        call assert_false(occupancy_failed, &
+                          "test_determine_bin_count_occupancy_diagnostics_hand_computed: occupancy should not fail")
+        call assert_equal_int(selected_n_bins, 12_int32, &
+                              "test_determine_bin_count_occupancy_diagnostics_hand_computed: search should still pick M=12")
+        call assert_equal_int(min_bin_occupancy, 10_int32, &
+                              "test_determine_bin_count_occupancy_diagnostics_hand_computed: min_bin_occupancy at M=12")
+        call assert_equal_int(max_bin_occupancy, 10_int32, &
+                              "test_determine_bin_count_occupancy_diagnostics_hand_computed: max_bin_occupancy at M=12")
+        call assert_equal_real(mean_bin_occupancy, 10.0_real64, TOL, &
+                               "test_determine_bin_count_occupancy_diagnostics_hand_computed: mean_bin_occupancy == 120/12")
+    end subroutine test_occupancy_diagnostics_hand_computed
+
+    !> Four sub-cases, each isolating exactly one optional argument's resolved default by
+    !| comparing a call with it absent against a call overriding only that one argument (every
+    !| other optional either absent in both calls, or pinned to the SAME override in both, so the
+    !| observed difference can only be attributed to the one argument actually being varied):
+    !|
+    !| (A) min_residuals_per_bin default=10: 20 residuals (every integer in [-10,9],
+    !|     shared_residual_range=10.0) give min_occ=6 at the default m_min=3 (bins [7,7,6]) --
+    !|     6 < 10 (default) FAILS, but 6 >= 5 (explicit override) PASSES.
+    !| (B) m_min default=3: 5 residuals clustered in the extreme upper end of the range (8.0, 8.5,
+    !|     9.0, 9.5, 9.8; shared_residual_range=10.0) put all 5 residuals in the single bin at
+    !|     M=1, but leave the lower bin(s) of M=2 and M=3 completely empty. With
+    !|     min_residuals_per_bin=1 explicit (so "admissible" just means "no empty bin"): starting
+    !|     the default m_min=3 hits an immediately-empty bin (FAILURE), but starting from an
+    !|     explicit m_min=1 succeeds at M=1 (all 5 in one bin) and then correctly fails to grow
+    !|     past it (M=2 has an empty bin), landing on selected_n_bins=1.
+    !| (C) gamma_occupancy default=1.25: reuses
+    !|     test_occupancy_refinement_picks_above_m_valid's own 243-residual
+    !|     gap fixture (min_residuals_per_bin=1 explicit in both calls, to isolate gamma alone).
+    !|     The default ladder (3,4,5,7,9,12,15,19,24) gives selected_n_bins=22 (verified there);
+    !|     an explicit gamma_occupancy=3.0 instead walks 3,9,27 (m_valid=9, m_invalid=27) and its
+    !|     much wider refinement window finds selected_n_bins=26 -- a materially different answer,
+    !|     confirming the default is genuinely 1.25, not 3.0 (occupancy is not monotonic enough
+    !|     here for the two ladders to converge on the same answer).
+    !| (D) m_max default=120: reuses
+    !|     test_occupancy_reaches_m_max_validly's own 2400-residual dense
+    !|     fixture, comfortably occupied (>= 10 per bin) at every M up to 120. Absent, the search
+    !|     reaches the default m_max=120 (early return); with an explicit m_max=50 (still
+    !|     comfortably occupied: floor(2400/50)=48 >= 10), the ladder instead clamps to and returns
+    !|     50.
+    subroutine test_occupancy_defaults_match_issue_suggestions()
+        real(real64) :: residuals_a(20), residuals_b(5), residuals_c(243), residuals_d(2400)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr, i, idx
+        real(real64) :: mean_bin_occupancy
+        logical(c_bool) :: occupancy_failed
+
+        ! (A) min_residuals_per_bin default=10
+        do i = 1, 20
+            residuals_a(i) = real(i - 11, real64) ! -10, -9, ..., 9
+        end do
+        call determine_bin_count_occupancy(residuals_a, 20_int32, 1_int32, 1_int32, 10.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr)
+        call assert_true(occupancy_failed, &
+                         "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
+                         "(A) default min_residuals_per_bin=10 should FAIL this fixture (min_occ=6 < 10)")
+        call determine_bin_count_occupancy(residuals_a, 20_int32, 1_int32, 1_int32, 10.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, min_residuals_per_bin=5_int32, &
+                                           ierr=ierr)
+        call assert_false(occupancy_failed, &
+                          "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
+                          "(A) explicit min_residuals_per_bin=5 should PASS the same fixture (min_occ=6 >= 5)")
+
+        ! (B) m_min default=3
+        residuals_b = [8.0_real64, 8.5_real64, 9.0_real64, 9.5_real64, 9.8_real64]
+        call determine_bin_count_occupancy(residuals_b, 5_int32, 1_int32, 1_int32, 10.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, min_residuals_per_bin=1_int32, &
+                                           ierr=ierr)
+        call assert_true(occupancy_failed, &
+                         "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
+                         "(B) default m_min=3 should FAIL (M=3 already has an empty bin)")
+        call determine_bin_count_occupancy(residuals_b, 5_int32, 1_int32, 1_int32, 10.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, min_residuals_per_bin=1_int32, &
+                                           m_min=1_int32, ierr=ierr)
+        call assert_false(occupancy_failed, &
+                          "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
+                          "(B) explicit m_min=1 should PASS at M=1")
+        call assert_equal_int(selected_n_bins, 1_int32, &
+                              "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
+                              "(B) selected_n_bins should be 1 with m_min=1")
+
+        ! (C) gamma_occupancy default=1.25
+        idx = 0
+        do i = -130, 129
+            if (i < 51 .or. i >= 67) then
+                idx = idx + 1
+                residuals_c(idx) = real(i, real64)
+            end if
+        end do
+        call determine_bin_count_occupancy(residuals_c, 243_int32, 1_int32, 1_int32, 130.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, min_residuals_per_bin=1_int32, &
+                                           ierr=ierr)
+        call assert_equal_int(selected_n_bins, 22_int32, &
+                              "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
+                              "(C) default gamma_occupancy=1.25 should select M=22")
+        call determine_bin_count_occupancy(residuals_c, 243_int32, 1_int32, 1_int32, 130.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, min_residuals_per_bin=1_int32, &
+                                           gamma_occupancy=3.0_real64, ierr=ierr)
+        call assert_equal_int(selected_n_bins, 26_int32, &
+                              "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
+                              "(C) explicit gamma_occupancy=3.0 should instead select M=26")
+
+        ! (D) m_max default=120
+        do i = 1, 2400
+            residuals_d(i) = real(i - 1201, real64) ! -1200, -1199, ..., 1199
+        end do
+        call determine_bin_count_occupancy(residuals_d, 2400_int32, 1_int32, 1_int32, 1200.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr)
+        call assert_equal_int(selected_n_bins, 120_int32, &
+                              "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
+                              "(D) default m_max=120 should be reached")
+        call determine_bin_count_occupancy(residuals_d, 2400_int32, 1_int32, 1_int32, 1200.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, m_max=50_int32, ierr=ierr)
+        call assert_equal_int(selected_n_bins, 50_int32, &
+                              "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
+                              "(D) explicit m_max=50 should instead be reached")
+    end subroutine test_occupancy_defaults_match_issue_suggestions
 
 end module mod_test_data_integration_js_comp_test

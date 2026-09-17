@@ -58,6 +58,42 @@ test_estimate_bin_count <- function() {
                     "Test 3 failed: n_bins must equal max(sturges_bins, fd_bins)")
 }
 
+test_determine_bin_count_occupancy <- function() {
+  # Call-ability and return type/shape only, per this project's testing philosophy
+  # (Fortran_Coding_Guides.pdf Sec 17.1) -- numerical branch coverage of Issue #187's
+  # geometric-search-then-refinement algorithm is the Fortran suite's job
+  # (mod_test_data_integration_js_comp_test.F90's own 9 enumerated
+  # test_determine_bin_count_occupancy_* tests).
+  residuals <- seq(-60, 59, by = 1) # 120 values, matches a Fortran fixture
+
+  out <- determine_bin_count_occupancy(residuals, max_n_reps_all_studies = 1, n_neighbors = 1,
+                                        shared_residual_range = 60.0)
+  for (key in c("selected_n_bins", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy",
+                "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins")) {
+    assert_true(key %in% names(out), paste0("missing expected output key '", key, "'"))
+  }
+  assert_true(is.logical(out$occupancy_failed), "occupancy_failed should be logical")
+  assert_equal_int(as.integer(out$n_pooled_residuals), 120L, "expected n_pooled_residuals=120")
+  assert_equal_int(as.integer(out$selected_n_bins), 12L, "expected selected_n_bins=12")
+  assert_true(!out$occupancy_failed, "occupancy should not fail on this dense fixture")
+
+  # The expert entry point, given the same sorting permutation, must agree.
+  residuals_perm <- order(residuals)
+  out_expert <- determine_bin_count_occupancy_expert(residuals, residuals_perm, max_n_reps_all_studies = 1,
+                                                       n_neighbors = 1, shared_residual_range = 60.0)
+  assert_equal_int(as.integer(out_expert$selected_n_bins), as.integer(out$selected_n_bins),
+                    "expert entry point should agree with the plain one given the same sorted permutation")
+
+  # All-NaN pool: occupancy_failed must be TRUE, and every occupancy diagnostic must be 0.
+  residuals_nan <- rep(NaN, 4)
+  out_nan <- determine_bin_count_occupancy(residuals_nan, max_n_reps_all_studies = 1, n_neighbors = 1,
+                                            shared_residual_range = 9.0)
+  assert_true(out_nan$occupancy_failed, "all-NaN pool must FAIL")
+  assert_equal_int(as.integer(out_nan$n_pooled_residuals), 0L, "expected n_pooled_residuals=0")
+  assert_equal_int(as.integer(out_nan$min_bin_occupancy), 0L, "expected min_bin_occupancy=0")
+  assert_equal_int(as.integer(out_nan$max_bin_occupancy), 0L, "expected max_bin_occupancy=0")
+}
+
 test_generate_js_comp_test_candidates <- function() {
   residuals <- c(1, 2, 3, 4, 5)
 
