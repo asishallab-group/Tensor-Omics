@@ -13,7 +13,7 @@ void determine_bin_count_occupancy_expert_c(const double*, const int*, const int
 void generate_js_comp_test_candidates_c(const int*, const double*, const int*, const int*, const double*, int*, int*, int*, int*);
 void generate_js_comp_test_candidates_expert_c(const int*, const double*, const int*, const int*, const int*, const double*, int*, int*, int*, int*);
 void check_neighborhood_overlaps_c(const int*, const int*, const double*, unsigned char*, int*);
-void check_mean_pmf_min_counts_c(const int*, const int*, const int*, const int*, unsigned char*, int*);
+void check_mean_pmf_min_counts_c(const int*, const int*, const int*, const int*, const int*, unsigned char*, int*);
 void check_plateau_condition_c(const double*, double*, const int*, int*, int*, const int*, const char*, const double*, unsigned char*, int*);
 void check_effect_size_plateau_condition_c(const double*, const double*, const int*, const unsigned char*, const double*, const double*, const double*, const int*, int*, double*, double*, double*, unsigned char*, int*);
 void create_mean_pmf_c(const double*, const int*, const int*, const int*, const int*, const int*, double*, int*, int*, int*);
@@ -374,7 +374,7 @@ SEXP check_neighborhood_overlaps_call(SEXP neighborhood_range, SEXP min_neighbor
     return _out;
 }
 
-SEXP check_mean_pmf_min_counts_call(SEXP mean_pmf_counts, SEXP min_count) {
+SEXP check_mean_pmf_min_counts_call(SEXP mean_pmf_counts, SEXP n_bins_per_point, SEXP min_count) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_bins = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[0];
@@ -390,6 +390,7 @@ SEXP check_mean_pmf_min_counts_call(SEXP mean_pmf_counts, SEXP min_count) {
     check_mean_pmf_min_counts_c(
         INTEGER(mean_pmf_counts),
         &n_bins,
+        INTEGER(n_bins_per_point),
         &n_points,
         &min_count_v,
         &all_bins_have_min_count,
@@ -733,7 +734,7 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP n_bins, SEXP shared_residual_r
     return _out;
 }
 
-SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEXP shared_residual_range, SEXP n_bootstraps, SEXP join_method, SEXP min_count_per_mean_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed) {
+SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEXP shared_residual_range, SEXP n_bootstraps, SEXP join_method, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(gene_means, R_DimSymbol))[1];
@@ -743,7 +744,7 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
     // scalar inputs, pulled from their length-1 vectors
     double shared_residual_range_v = Rf_asReal(shared_residual_range);
     int n_bootstraps_v = Rf_asInteger(n_bootstraps);
-    int min_count_per_mean_bin_v = Rf_asInteger(min_count_per_mean_bin);
+    int min_residuals_per_bin_v = Rf_asInteger(min_residuals_per_bin);
     double min_neighbor_overlap_v = Rf_asReal(min_neighbor_overlap);
     double succeeding_ci_overlap_v = Rf_asReal(succeeding_ci_overlap);
     double delta_median_threshold_v = Rf_asReal(delta_median_threshold);
@@ -808,7 +809,7 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
         REAL(trace_delta),
         REAL(trace_delta_median),
         REAL(trace_delta_max),
-        &min_count_per_mean_bin_v,
+        &min_residuals_per_bin_v,
         &min_neighbor_overlap_v,
         &succeeding_ci_overlap_v,
         plateau_mode_c,

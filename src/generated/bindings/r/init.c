@@ -80,7 +80,7 @@ SEXP determine_bin_count_occupancy_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEX
 SEXP generate_js_comp_test_candidates_call(SEXP, SEXP, SEXP, SEXP);
 SEXP generate_js_comp_test_candidates_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP check_neighborhood_overlaps_call(SEXP, SEXP);
-SEXP check_mean_pmf_min_counts_call(SEXP, SEXP);
+SEXP check_mean_pmf_min_counts_call(SEXP, SEXP, SEXP);
 SEXP check_plateau_condition_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP check_effect_size_plateau_condition_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP create_mean_pmf_call(SEXP, SEXP, SEXP);
@@ -212,7 +212,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"generate_js_comp_test_candidates_call", (DL_FUNC) &generate_js_comp_test_candidates_call, 4},
     {"generate_js_comp_test_candidates_expert_call", (DL_FUNC) &generate_js_comp_test_candidates_expert_call, 5},
     {"check_neighborhood_overlaps_call", (DL_FUNC) &check_neighborhood_overlaps_call, 2},
-    {"check_mean_pmf_min_counts_call", (DL_FUNC) &check_mean_pmf_min_counts_call, 2},
+    {"check_mean_pmf_min_counts_call", (DL_FUNC) &check_mean_pmf_min_counts_call, 3},
     {"check_plateau_condition_call", (DL_FUNC) &check_plateau_condition_call, 7},
     {"check_effect_size_plateau_condition_call", (DL_FUNC) &check_effect_size_plateau_condition_call, 8},
     {"create_mean_pmf_call", (DL_FUNC) &create_mean_pmf_call, 3},

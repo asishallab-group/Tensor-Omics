@@ -171,18 +171,19 @@ test_check_neighborhood_overlaps <- function() {
 
 test_check_mean_pmf_min_counts <- function() {
   # Test 1 -- all pass (test_mean_pmf_min_counts_all_pass)
+  # n_bins_per_point uniformly equals n_bins (call-ability/shape only, per this file's convention)
   mean_pmf_counts <- matrix(c(10, 10, 10, 10), nrow = 2)
-  assert_true(check_mean_pmf_min_counts(mean_pmf_counts, min_count = 5L),
+  assert_true(check_mean_pmf_min_counts(mean_pmf_counts, n_bins_per_point = c(2L, 2L), min_count = 5L),
               "Test 1 failed: all bins above minimum should pass")
 
   # Test 2 -- exactly at threshold passes (test_mean_pmf_min_counts_exactly_at_threshold_passes)
   mean_pmf_counts_2 <- matrix(c(3, 3, 3, 3), nrow = 2)
-  assert_true(check_mean_pmf_min_counts(mean_pmf_counts_2, min_count = 3L),
+  assert_true(check_mean_pmf_min_counts(mean_pmf_counts_2, n_bins_per_point = c(2L, 2L), min_count = 3L),
               "Test 2 failed: count exactly at minimum must pass")
 
   # Test 3 -- one bin below threshold fails (test_mean_pmf_min_counts_below_threshold_fails)
   mean_pmf_counts_3 <- matrix(c(3, 3, 3, 2), nrow = 2)
-  assert_false(check_mean_pmf_min_counts(mean_pmf_counts_3, min_count = 3L),
+  assert_false(check_mean_pmf_min_counts(mean_pmf_counts_3, n_bins_per_point = c(2L, 2L), min_count = 3L),
                "Test 3 failed: one bin below minimum must fail the whole gate")
 }
 
@@ -463,13 +464,13 @@ test_run_js_comp_test_parameter_search <- function() {
   }
 
   # ============================================================
-  # Test 1 -- no candidate ever plateaus (min_count_per_mean_bin impossibly high): falls back to
+  # Test 1 -- no candidate ever plateaus (min_residuals_per_bin impossibly high): falls back to
   # the FIRST (finest-resolution) candidate, (n_points, n_neighbors)=(300, 26), and resets
   # best_candidate_pair_confidence_interval to -1.0 throughout
   # (test_param_search_no_plateau_falls_back_to_finest).
   # ============================================================
   result <- run_js_comp_test_parameter_search(gene_means, residuals, shared_residual_range = 1.0, n_bootstraps = 10L,
-                                               join_method = "join_min", min_count_per_mean_bin = 1000000L,
+                                               join_method = "join_min", min_residuals_per_bin = 1000000L,
                                                random_seed = 1L)
 
   assert_equal_int(as.integer(result$n_points), 300L, "expected n_points=300")
@@ -496,7 +497,7 @@ test_run_js_comp_test_parameter_search <- function() {
 
   result2 <- run_js_comp_test_parameter_search(gene_means_2, residuals_2, shared_residual_range = 1.0,
                                                 n_bootstraps = 5L, join_method = "join_min",
-                                                min_count_per_mean_bin = 0L, min_neighbor_overlap = 0.0,
+                                                min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
                                                 random_seed = 1L)
 
   assert_equal_int(as.integer(result2$n_points), 300L, "expected n_points=300")
@@ -514,7 +515,7 @@ test_run_js_comp_test_parameter_search <- function() {
   # ============================================================
   result3 <- run_js_comp_test_parameter_search(gene_means_2, residuals_2, shared_residual_range = 1.0,
                                                 n_bootstraps = 5L, join_method = "join_min",
-                                                min_count_per_mean_bin = 0L, min_neighbor_overlap = 0.0,
+                                                min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
                                                 plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05,
                                                 delta_max_threshold = 0.10, delta_epsilon = 1e-10,
                                                 delta_min_consecutive_transitions = 2L, random_seed = 1L)

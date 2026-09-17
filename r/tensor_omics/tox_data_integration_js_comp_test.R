@@ -495,22 +495,35 @@ check_neighborhood_overlaps <- function(neighborhood_range, min_neighbor_overlap
 #' has already passed. Named `check_*` rather than 125's `test_*` for the same reason as its
 #' sibling above: a `test_`-prefixed R export collides with the R test harness's own
 #' test-discovery convention.
+#' Issue #187: `n_bins_per_point` scopes the reduction to each point's own valid bin range, so
+#' a point whose own bin count is narrower than `n_bins` (this array's second extent, i.e. the
+#' widest bin count any point uses) has its legitimate zero-padded columns skipped rather than
+#' mistaken for an occupancy failure.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::check_mean_pmf_min_counts}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param mean_pmf_counts a integer matrix. Absolute counts of a residual per bin for the mean pmf
 #'   The minimum valid value is `0`.
+#' @param n_bins_per_point a integer vector. This point's own bin count -- only `mean_pmf_counts(1:n_bins_per_point(i_point), i_point)`
+#'   is inspected; columns beyond it are legitimate zero-padding, not failures
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_bins`.
 #' @param min_count a integer scalar. Minimum count each bin of the mean pmf must reach
 #'   The minimum valid value is `0`.
-#' @return a logical scalar. `TRUE` if every bin, at every reference point, reaches at least `min_count`
+#' @return a logical scalar. `TRUE` if every bin within each reference point's own `n_bins_per_point`, at every
+#'   reference point, reaches at least `min_count`
 #' @export
-check_mean_pmf_min_counts <- function(mean_pmf_counts, min_count) {
+check_mean_pmf_min_counts <- function(mean_pmf_counts, n_bins_per_point, min_count) {
     mean_pmf_counts <- .tox_as_integer_matrix(mean_pmf_counts, "mean_pmf_counts")
+    n_bins_per_point <- .tox_as_integer_vector(n_bins_per_point, "n_bins_per_point")
     min_count <- .tox_as_integer_scalar(min_count, "min_count")
-    .result <- .Call("check_mean_pmf_min_counts_call", mean_pmf_counts, min_count)
-    .arguments <- c("mean_pmf_counts", "n_bins", "n_points", "min_count", "all_bins_have_min_count", "ierr")
-    .sources <- c(NA_character_, "mean_pmf_counts", "mean_pmf_counts", NA_character_, NA_character_, NA_character_)
+    if (length(n_bins_per_point) != dim(mean_pmf_counts)[2])
+        .tox_shape_error("n_bins_per_point", length(n_bins_per_point), "mean_pmf_counts", dim(mean_pmf_counts)[2])
+
+    .result <- .Call("check_mean_pmf_min_counts_call", mean_pmf_counts, n_bins_per_point, min_count)
+    .arguments <- c("mean_pmf_counts", "n_bins", "n_bins_per_point", "n_points", "min_count", "all_bins_have_min_count", "ierr")
+    .sources <- c(NA_character_, "mean_pmf_counts", NA_character_, "mean_pmf_counts", NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$all_bins_have_min_count
@@ -1045,10 +1058,15 @@ run_js_comp_test <- function(n_neighbors, n_bins, shared_residual_range, gene_me
 #'   The minimum valid value is `1`.
 #' @param join_method a string, one of "join_min", "join_max", "join_median". The way to evaluate all studies' confidence-interval overlaps for the plateau
 #'   condition, forwarded to check_plateau_condition_impl
-#' @param min_count_per_mean_bin a integer scalar. Minimum count each bin of the consensus pmf must reach to pass the second
-#'   admissibility gate
+#' @param min_residuals_per_bin a integer scalar. Minimum count each bin of the consensus pmf must reach to pass the second
+#'   admissibility gate. Reuses Issue #187's occupancy-search default rather than an
+#'   independently-tunable threshold of its own: once
+#'   \code{\link{determine_bin_count_occupancy}}
+#'   wires real per-neighborhood bin counts in, a separate laxer threshold here would
+#'   silently let a candidate the occupancy search already marked `occupancy_failed`
+#'   pass this gate anyway, defeating the FAILURE-detection mechanism
 #'   The minimum valid value is `0`.
-#'   The default value is `5`.
+#'   The default value is `10`.
 #' @param min_neighbor_overlap a numeric scalar. Minimum fractional overlap two consecutive neighborhoods must have to pass the first
 #'   admissibility gate
 #'   The minimum valid value is `0.0`.
@@ -1142,13 +1160,13 @@ run_js_comp_test <- function(n_neighbors, n_bins, shared_residual_range, gene_me
 #'     `-1.0` at the first admissible candidate, see trace_delta above
 #'     The first `n_admissible_evaluated` elements will hold the results.}
 #' @export
-run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_residual_range, n_bootstraps, join_method, min_count_per_mean_bin = 5L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_ci_overlap", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L) {
+run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_residual_range, n_bootstraps, join_method, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_ci_overlap", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L) {
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
     shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
     n_bootstraps <- .tox_as_integer_scalar(n_bootstraps, "n_bootstraps")
     join_method <- .tox_as_mode(join_method, "join_method", c("join_min", "join_max", "join_median"))
-    min_count_per_mean_bin <- .tox_as_integer_scalar(min_count_per_mean_bin, "min_count_per_mean_bin")
+    min_residuals_per_bin <- .tox_as_integer_scalar(min_residuals_per_bin, "min_residuals_per_bin")
     min_neighbor_overlap <- .tox_as_double_scalar(min_neighbor_overlap, "min_neighbor_overlap")
     succeeding_ci_overlap <- .tox_as_double_scalar(succeeding_ci_overlap, "succeeding_ci_overlap")
     plateau_mode <- .tox_as_mode(plateau_mode, "plateau_mode", c("plateau_ci_overlap", "plateau_effect_size", "plateau_both"))
@@ -1163,8 +1181,8 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_resi
     if (dim(residuals)[2] != dim(gene_means)[1])
         .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
 
-    .result <- .Call("run_js_comp_test_parameter_search_call", gene_means, residuals, shared_residual_range, n_bootstraps, join_method, min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, two_sided_bootstrapping_significance_level, random_seed)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "min_count_per_mean_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "two_sided_bootstrapping_significance_level", "random_seed", "ierr")
+    .result <- .Call("run_js_comp_test_parameter_search_call", gene_means, residuals, shared_residual_range, n_bootstraps, join_method, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, two_sided_bootstrapping_significance_level, random_seed)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "two_sided_bootstrapping_significance_level", "random_seed", "ierr")
     .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 

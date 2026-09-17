@@ -182,6 +182,7 @@ _lib.check_mean_pmf_min_counts_c.restype = None
 _lib.check_mean_pmf_min_counts_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_bool),
@@ -189,9 +190,9 @@ _lib.check_mean_pmf_min_counts_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CHECK_MEAN_PMF_MIN_COUNTS_ARGUMENTS = ("mean_pmf_counts", "n_bins", "n_points", "min_count", "all_bins_have_min_count", "ierr",)
+_CHECK_MEAN_PMF_MIN_COUNTS_ARGUMENTS = ("mean_pmf_counts", "n_bins", "n_bins_per_point", "n_points", "min_count", "all_bins_have_min_count", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_CHECK_MEAN_PMF_MIN_COUNTS_ARGUMENT_SOURCES = (None, "mean_pmf_counts", "mean_pmf_counts", None, None, None,)
+_CHECK_MEAN_PMF_MIN_COUNTS_ARGUMENT_SOURCES = (None, "mean_pmf_counts", None, "mean_pmf_counts", None, None, None,)
 
 _lib.check_plateau_condition_c.restype = None
 _lib.check_plateau_condition_c.argtypes = (
@@ -364,7 +365,7 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "min_count_per_mean_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "two_sided_bootstrapping_significance_level", "random_seed", "ierr",)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "two_sided_bootstrapping_significance_level", "random_seed", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
@@ -1264,6 +1265,7 @@ def check_neighborhood_overlaps(
 
 def check_mean_pmf_min_counts(
         mean_pmf_counts,
+        n_bins_per_point,
         min_count,
 ):
     r"""Test whether every bin of a mean pmf reaches a minimum absolute count
@@ -1275,12 +1277,21 @@ def check_mean_pmf_min_counts(
     has already passed. Named `check_*` rather than 125's `test_*` for the same reason as its
     sibling above: a `test_`-prefixed R export collides with the R test harness's own
     test-discovery convention.
+    Issue #187: `n_bins_per_point` scopes the reduction to each point's own valid bin range, so
+    a point whose own bin count is narrower than `n_bins` (this array's second extent, i.e. the
+    widest bin count any point uses) has its legitimate zero-padded columns skipped rather than
+    mistaken for an occupancy failure.
 
     Parameters
     ----------
     mean_pmf_counts : np.ndarray[np.int32] of shape (n_bins, n_points,), column-major (order='F')
         Absolute counts of a residual per bin for the mean pmf
         The minimum valid value is `0`.
+    n_bins_per_point : np.ndarray[np.int32] of shape (n_points,)
+        This point's own bin count -- only `mean_pmf_counts(1:n_bins_per_point(i_point), i_point)`
+        is inspected; columns beyond it are legitimate zero-padding, not failures
+        The minimum valid value is `1`.
+        The maximum valid value is `n_bins`.
     min_count : int
         Minimum count each bin of the mean pmf must reach
         The minimum valid value is `0`.
@@ -1288,7 +1299,8 @@ def check_mean_pmf_min_counts(
     Returns
     -------
     all_bins_have_min_count : bool
-        `True` if every bin, at every reference point, reaches at least `min_count`
+        `True` if every bin within each reference point's own `n_bins_per_point`, at every
+        reference point, reaches at least `min_count`
 
     Raises
     ------
@@ -1307,10 +1319,22 @@ def check_mean_pmf_min_counts(
         raise TypeError(f"'mean_pmf_counts' must be an array of np.int32: {error}") from None
     if mean_pmf_counts.ndim != 2:
         raise ValueError(f"'mean_pmf_counts' must have 2 dimensions, but has {mean_pmf_counts.ndim}")
+    try:
+        n_bins_per_point = np.ascontiguousarray(n_bins_per_point, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'n_bins_per_point' must be an array of np.int32: {error}") from None
+    if n_bins_per_point.ndim != 1:
+        raise ValueError(f"'n_bins_per_point' must have 1 dimension, but has {n_bins_per_point.ndim}")
 
     # what the inputs already say, rather than asking for it again
     n_bins = mean_pmf_counts.shape[0]
     n_points = mean_pmf_counts.shape[1]
+
+    # Fortran cannot check that shared extents agree; this can
+    if n_bins_per_point.shape[0] != n_points:
+        raise ValueError(f"'n_bins_per_point' has {n_bins_per_point.shape[0]} along axis 0, but "
+            f"'mean_pmf_counts' implies n_points == {n_points}"
+        )
 
     # outputs and work arrays, which the caller never sees
     all_bins_have_min_count = ctypes.c_bool(0)
@@ -1319,6 +1343,7 @@ def check_mean_pmf_min_counts(
     _lib.check_mean_pmf_min_counts_c(
         mean_pmf_counts,
         ctypes.byref(ctypes.c_int(n_bins)),
+        n_bins_per_point,
         ctypes.byref(ctypes.c_int(n_points)),
         ctypes.byref(ctypes.c_int(min_count)),
         ctypes.byref(all_bins_have_min_count),
@@ -2249,7 +2274,7 @@ def run_js_comp_test_parameter_search(
         shared_residual_range,
         n_bootstraps,
         join_method,
-        min_count_per_mean_bin=5,
+        min_residuals_per_bin=10,
         min_neighbor_overlap=0.1,
         succeeding_ci_overlap=0.9,
         plateau_mode='plateau_ci_overlap',
@@ -2343,11 +2368,16 @@ def run_js_comp_test_parameter_search(
         The way to evaluate all studies' confidence-interval overlaps for the plateau
         condition, forwarded to check_plateau_condition_impl
 
-    min_count_per_mean_bin : int, optional, default 5
+    min_residuals_per_bin : int, optional, default 10
         Minimum count each bin of the consensus pmf must reach to pass the second
-        admissibility gate
+        admissibility gate. Reuses Issue #187's occupancy-search default rather than an
+        independently-tunable threshold of its own: once
+        :func:`tensor_omics.determine_bin_count_occupancy`
+        wires real per-neighborhood bin counts in, a separate laxer threshold here would
+        silently let a candidate the occupancy search already marked `occupancy_failed`
+        pass this gate anyway, defeating the FAILURE-detection mechanism
         The minimum valid value is `0`.
-        The default value is `5`.
+        The default value is `10`.
     min_neighbor_overlap : float, optional, default 0.1
         Minimum fractional overlap two consecutive neighborhoods must have to pass the first
         admissibility gate
@@ -2566,7 +2596,7 @@ def run_js_comp_test_parameter_search(
         trace_delta,
         trace_delta_median,
         trace_delta_max,
-        ctypes.byref(ctypes.c_int(min_count_per_mean_bin)),
+        ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
         ctypes.byref(ctypes.c_double(min_neighbor_overlap)),
         ctypes.byref(ctypes.c_double(succeeding_ci_overlap)),
         plateau_mode,

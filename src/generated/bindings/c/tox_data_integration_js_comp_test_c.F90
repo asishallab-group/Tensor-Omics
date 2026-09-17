@@ -759,9 +759,14 @@ contains
     !| has already passed. Named `check_*` rather than 125's `test_*` for the same reason as its
     !| sibling above: a `test_`-prefixed R export collides with the R test harness's own
     !| test-discovery convention.
+    !| Issue #187: `n_bins_per_point` scopes the reduction to each point's own valid bin range, so
+    !| a point whose own bin count is narrower than `n_bins` (this array's second extent, i.e. the
+    !| widest bin count any point uses) has its legitimate zero-padded columns skipped rather than
+    !| mistaken for an occupancy failure.
     subroutine check_mean_pmf_min_counts_c(&
             mean_pmf_counts,&
             n_bins,&
+            n_bins_per_point,&
             n_points,&
             min_count,&
             all_bins_have_min_count,&
@@ -770,17 +775,24 @@ contains
         use tox_data_integration_js_comp_test, only: check_mean_pmf_min_counts
 
         integer(c_int), intent(in), target :: n_bins
-            !! Number of histogram bins
+            !! Second extent of `mean_pmf_counts` -- the widest bin count any point uses (max_n_bins),
+            !! not necessarily every point's own bin count
         integer(c_int), intent(in), target :: n_points
             !! Number of reference points
         integer(c_int), dimension(n_bins, n_points), intent(in), target :: mean_pmf_counts
             !! Absolute counts of a residual per bin for the mean pmf
             !! The minimum valid value is `0_int32`.
+        integer(c_int), dimension(n_points), intent(in), target :: n_bins_per_point
+            !! This point's own bin count -- only `mean_pmf_counts(1:n_bins_per_point(i_point), i_point)`
+            !! is inspected; columns beyond it are legitimate zero-padding, not failures
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_bins`.
         integer(c_int), intent(in), target :: min_count
             !! Minimum count each bin of the mean pmf must reach
             !! The minimum valid value is `0_int32`.
         logical(c_bool), intent(out), target :: all_bins_have_min_count
-            !! `.true.` if every bin, at every reference point, reaches at least `min_count`
+            !! `.true.` if every bin within each reference point's own `n_bins_per_point`, at every
+            !! reference point, reaches at least `min_count`
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -791,10 +803,12 @@ contains
         M_CHECK_NON_NULL(min_count)
         M_CHECK_NON_NULL(all_bins_have_min_count)
         M_CHECK_ARRAY_NON_NULL(mean_pmf_counts, n_bins * n_points)
+        M_CHECK_ARRAY_NON_NULL(n_bins_per_point, n_points)
 
         call check_mean_pmf_min_counts(&
             mean_pmf_counts = mean_pmf_counts,&
             n_bins = n_bins,&
+            n_bins_per_point = n_bins_per_point,&
             n_points = n_points,&
             min_count = min_count,&
             all_bins_have_min_count = all_bins_have_min_count,&
@@ -2111,7 +2125,7 @@ contains
             trace_delta,&
             trace_delta_median,&
             trace_delta_max,&
-            min_count_per_mean_bin,&
+            min_residuals_per_bin,&
             min_neighbor_overlap,&
             succeeding_ci_overlap,&
             plateau_mode,&
@@ -2231,11 +2245,16 @@ contains
             !! Per-admissible-candidate maximum of trace_delta across studies (Delta^max_t);
             !! `-1.0_real64` at the first admissible candidate, see trace_delta above
             !! The first `n_admissible_evaluated` elements will hold the results.
-        integer(c_int), intent(in), target :: min_count_per_mean_bin
+        integer(c_int), intent(in), target :: min_residuals_per_bin
             !! Minimum count each bin of the consensus pmf must reach to pass the second
-            !! admissibility gate
+            !! admissibility gate. Reuses Issue #187's occupancy-search default rather than an
+            !! independently-tunable threshold of its own: once
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
+            !! wires real per-neighborhood bin counts in, a separate laxer threshold here would
+            !! silently let a candidate the occupancy search already marked `occupancy_failed`
+            !! pass this gate anyway, defeating the FAILURE-detection mechanism
             !! The minimum valid value is `0_int32`.
-            !! The default value is `5_int32`.
+            !! The default value is `10_int32`.
         real(c_double), intent(in), target :: min_neighbor_overlap
             !! Minimum fractional overlap two consecutive neighborhoods must have to pass the first
             !! admissibility gate
@@ -2305,7 +2324,7 @@ contains
         M_CHECK_NON_NULL(n_bins)
         M_CHECK_NON_NULL(plateau_established)
         M_CHECK_NON_NULL(n_admissible_evaluated)
-        M_CHECK_NON_NULL(min_count_per_mean_bin)
+        M_CHECK_NON_NULL(min_residuals_per_bin)
         M_CHECK_NON_NULL(min_neighbor_overlap)
         M_CHECK_NON_NULL(succeeding_ci_overlap)
         M_CHECK_NON_NULL(delta_median_threshold)
@@ -2388,7 +2407,7 @@ contains
             trace_delta = trace_delta,&
             trace_delta_median = trace_delta_median,&
             trace_delta_max = trace_delta_max,&
-            min_count_per_mean_bin = min_count_per_mean_bin,&
+            min_residuals_per_bin = min_residuals_per_bin,&
             min_neighbor_overlap = min_neighbor_overlap,&
             succeeding_ci_overlap = succeeding_ci_overlap,&
             plateau_mode = plateau_mode_mode_f,&
@@ -2517,7 +2536,7 @@ contains
             tmp_prev_global_js_divergence,&
             tmp_delta_perm,&
             tmp_best_uncertainty_confidence_interval,&
-            min_count_per_mean_bin,&
+            min_residuals_per_bin,&
             min_neighbor_overlap,&
             succeeding_ci_overlap,&
             plateau_mode,&
@@ -2723,11 +2742,16 @@ contains
             !! Working array: the confidence interval of the admissible candidate with the smallest
             !! bootstrapped uncertainty seen so far, used only internally by the no-plateau fallback
             !! (see plateau_established)
-        integer(c_int), intent(in), target :: min_count_per_mean_bin
+        integer(c_int), intent(in), target :: min_residuals_per_bin
             !! Minimum count each bin of the consensus pmf must reach to pass the second
-            !! admissibility gate
+            !! admissibility gate. Reuses Issue #187's occupancy-search default rather than an
+            !! independently-tunable threshold of its own: once
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
+            !! wires real per-neighborhood bin counts in, a separate laxer threshold here would
+            !! silently let a candidate the occupancy search already marked `occupancy_failed`
+            !! pass this gate anyway, defeating the FAILURE-detection mechanism
             !! The minimum valid value is `0_int32`.
-            !! The default value is `5_int32`.
+            !! The default value is `10_int32`.
         real(c_double), intent(in), target :: min_neighbor_overlap
             !! Minimum fractional overlap two consecutive neighborhoods must have to pass the first
             !! admissibility gate
@@ -2800,7 +2824,7 @@ contains
         M_CHECK_NON_NULL(n_bins)
         M_CHECK_NON_NULL(plateau_established)
         M_CHECK_NON_NULL(n_admissible_evaluated)
-        M_CHECK_NON_NULL(min_count_per_mean_bin)
+        M_CHECK_NON_NULL(min_residuals_per_bin)
         M_CHECK_NON_NULL(min_neighbor_overlap)
         M_CHECK_NON_NULL(succeeding_ci_overlap)
         M_CHECK_NON_NULL(delta_median_threshold)
@@ -2934,7 +2958,7 @@ contains
             tmp_prev_global_js_divergence = tmp_prev_global_js_divergence,&
             tmp_delta_perm = tmp_delta_perm,&
             tmp_best_uncertainty_confidence_interval = tmp_best_uncertainty_confidence_interval,&
-            min_count_per_mean_bin = min_count_per_mean_bin,&
+            min_residuals_per_bin = min_residuals_per_bin,&
             min_neighbor_overlap = min_neighbor_overlap,&
             succeeding_ci_overlap = succeeding_ci_overlap,&
             plateau_mode = plateau_mode_mode_f,&

@@ -206,9 +206,11 @@ def test_check_neighborhood_overlaps():
 def test_check_mean_pmf_min_counts():
     # ============================================================
     # Test 1 -- every bin comfortably above the minimum (test_mean_pmf_min_counts_all_pass)
+    # n_bins_per_point uniformly equals n_bins (call-ability/shape only, per this file's convention)
     # ============================================================
     mean_pmf_counts = np.array([[10, 10], [10, 10]], dtype=np.int32, order='F')
-    assert check_mean_pmf_min_counts(mean_pmf_counts, min_count=5), \
+    n_bins_per_point = np.array([2, 2], dtype=np.int32)
+    assert check_mean_pmf_min_counts(mean_pmf_counts, n_bins_per_point, min_count=5), \
         "Test 1 failed: all bins above minimum should pass"
 
     # ============================================================
@@ -216,7 +218,8 @@ def test_check_mean_pmf_min_counts():
     # (test_mean_pmf_min_counts_exactly_at_threshold_passes)
     # ============================================================
     mean_pmf_counts_2 = np.array([[3, 3], [3, 3]], dtype=np.int32, order='F')
-    assert check_mean_pmf_min_counts(mean_pmf_counts_2, min_count=3), \
+    n_bins_per_point_2 = np.array([2, 2], dtype=np.int32)
+    assert check_mean_pmf_min_counts(mean_pmf_counts_2, n_bins_per_point_2, min_count=3), \
         "Test 2 failed: count exactly at minimum must pass"
 
     # ============================================================
@@ -224,7 +227,8 @@ def test_check_mean_pmf_min_counts():
     # (test_mean_pmf_min_counts_below_threshold_fails)
     # ============================================================
     mean_pmf_counts_3 = np.array([[3, 3], [3, 2]], dtype=np.int32, order='F')
-    assert not check_mean_pmf_min_counts(mean_pmf_counts_3, min_count=3), \
+    n_bins_per_point_3 = np.array([2, 2], dtype=np.int32)
+    assert not check_mean_pmf_min_counts(mean_pmf_counts_3, n_bins_per_point_3, min_count=3), \
         "Test 3 failed: one bin below minimum must fail the whole gate"
 
 
@@ -509,14 +513,14 @@ def test_run_js_comp_test_parameter_search():
         residuals[:, :, i_study] = np.array([-0.5, 0.0, 0.5]).reshape(3, 1)
 
     # ============================================================
-    # Test 1 -- no candidate ever plateaus (min_count_per_mean_bin impossibly high), so the
+    # Test 1 -- no candidate ever plateaus (min_residuals_per_bin impossibly high), so the
     # search falls back to the FIRST (finest-resolution) candidate and resets
     # best_candidate_pair_confidence_interval to -1.0 throughout
     # (test_param_search_no_plateau_falls_back_to_finest). Both n_points=300 and n_neighbors=26
     # are derived purely from the GAMMA-decay constants and max_n_genes_all_studies=2000.
     # ============================================================
     result = run_js_comp_test_parameter_search(gene_means, residuals, shared_residual_range=1.0, n_bootstraps=10,
-                                                join_method='join_min', min_count_per_mean_bin=1000000,
+                                                join_method='join_min', min_residuals_per_bin=1000000,
                                                 random_seed=1)
 
     assert result["n_points"] == 300, f"expected n_points=300, got {result['n_points']}"
@@ -543,7 +547,7 @@ def test_run_js_comp_test_parameter_search():
 
     result2 = run_js_comp_test_parameter_search(gene_means_2, residuals_2, shared_residual_range=1.0,
                                                  n_bootstraps=5, join_method='join_min',
-                                                 min_count_per_mean_bin=0, min_neighbor_overlap=0.0,
+                                                 min_residuals_per_bin=0, min_neighbor_overlap=0.0,
                                                  random_seed=1)
 
     assert result2["n_points"] == 300, f"expected n_points=300, got {result2['n_points']}"
@@ -562,7 +566,7 @@ def test_run_js_comp_test_parameter_search():
     # ============================================================
     result3 = run_js_comp_test_parameter_search(gene_means_2, residuals_2, shared_residual_range=1.0,
                                                  n_bootstraps=5, join_method='join_min',
-                                                 min_count_per_mean_bin=0, min_neighbor_overlap=0.0,
+                                                 min_residuals_per_bin=0, min_neighbor_overlap=0.0,
                                                  plateau_mode='plateau_effect_size', delta_median_threshold=0.05,
                                                  delta_max_threshold=0.10, delta_epsilon=1e-10,
                                                  delta_min_consecutive_transitions=2, random_seed=1)

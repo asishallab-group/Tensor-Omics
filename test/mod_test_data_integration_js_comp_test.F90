@@ -34,7 +34,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(65))
+        allocate (all_tests(67))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -174,6 +174,11 @@ contains
                                   test_occupancy_diagnostics_hand_computed)
         all_tests(65) = test_case("test_determine_bin_count_occupancy_defaults_match_issue_suggestions", &
                                   test_occupancy_defaults_match_issue_suggestions)
+
+        all_tests(66) = test_case("test_mean_pmf_min_counts_per_point_bins_differ_all_pass", &
+                                  test_mean_pmf_min_counts_per_point_bins_differ_all_pass)
+        all_tests(67) = test_case("test_mean_pmf_min_counts_per_point_bins_differ_one_point_fails", &
+                                  test_mean_pmf_min_counts_per_point_bins_differ_one_point_fails)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -742,32 +747,38 @@ contains
                           "overlap below threshold must fail")
     end subroutine test_neighborhood_overlaps_below_threshold_fails
 
-    !> Every bin comfortably exceeds the minimum count.
+    !> Every bin comfortably exceeds the minimum count. `n_bins_per_point` is uniformly `n_bins`
+    !| here, so the per-point guard is a no-op and this exercises the same behavior the old
+    !| uniform-`n_bins` signature did.
     subroutine test_mean_pmf_min_counts_all_pass()
         integer(int32), parameter :: n_bins = 2, n_points = 2
         integer(int32) :: mean_pmf_counts(n_bins, n_points)
+        integer(int32) :: n_bins_per_point(n_points)
         logical(c_bool) :: all_pass
         integer(int32) :: ierr
 
         mean_pmf_counts = reshape([10, 10, 10, 10], [n_bins, n_points])
+        n_bins_per_point = n_bins
 
-        call check_mean_pmf_min_counts(mean_pmf_counts, n_bins, n_points, 5_int32, all_pass, ierr)
+        call check_mean_pmf_min_counts(mean_pmf_counts, n_bins, n_bins_per_point, n_points, 5_int32, all_pass, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_mean_pmf_min_counts_all_pass: ierr should be OK")
         call assert_true(all_pass, "test_mean_pmf_min_counts_all_pass: all bins above minimum should pass")
     end subroutine test_mean_pmf_min_counts_all_pass
 
     !> Every bin equals the minimum count exactly: the gate is `count >= min`, not a strict `>`,
-    !| so this must still pass.
+    !| so this must still pass. `n_bins_per_point` is uniformly `n_bins`.
     subroutine test_mean_pmf_min_counts_exactly_at_threshold_passes()
         integer(int32), parameter :: n_bins = 2, n_points = 2
         integer(int32) :: mean_pmf_counts(n_bins, n_points)
+        integer(int32) :: n_bins_per_point(n_points)
         logical(c_bool) :: all_pass
         integer(int32) :: ierr
 
         mean_pmf_counts = reshape([3, 3, 3, 3], [n_bins, n_points])
+        n_bins_per_point = n_bins
 
-        call check_mean_pmf_min_counts(mean_pmf_counts, n_bins, n_points, 3_int32, all_pass, ierr)
+        call check_mean_pmf_min_counts(mean_pmf_counts, n_bins, n_bins_per_point, n_points, 3_int32, all_pass, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_mean_pmf_min_counts_exactly_at_threshold_passes: ierr should be OK")
@@ -775,22 +786,80 @@ contains
                          "count exactly at minimum must pass")
     end subroutine test_mean_pmf_min_counts_exactly_at_threshold_passes
 
-    !> One bin (of four) is one below the minimum: the gate must fail.
+    !> One bin (of four) is one below the minimum: the gate must fail. `n_bins_per_point` is
+    !| uniformly `n_bins`.
     subroutine test_mean_pmf_min_counts_below_threshold_fails()
         integer(int32), parameter :: n_bins = 2, n_points = 2
         integer(int32) :: mean_pmf_counts(n_bins, n_points)
+        integer(int32) :: n_bins_per_point(n_points)
         logical(c_bool) :: all_pass
         integer(int32) :: ierr
 
         mean_pmf_counts = reshape([3, 3, 3, 2], [n_bins, n_points])
+        n_bins_per_point = n_bins
 
-        call check_mean_pmf_min_counts(mean_pmf_counts, n_bins, n_points, 3_int32, all_pass, ierr)
+        call check_mean_pmf_min_counts(mean_pmf_counts, n_bins, n_bins_per_point, n_points, 3_int32, all_pass, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_mean_pmf_min_counts_below_threshold_fails: ierr should be OK")
         call assert_false(all_pass, "test_mean_pmf_min_counts_below_threshold_fails: "// &
                           "one bin below minimum must fail the whole gate")
     end subroutine test_mean_pmf_min_counts_below_threshold_fails
+
+    !> Issue #187: two points with DIFFERENT `n_bins_per_point`, where each point's own
+    !| valid-range columns satisfy `min_count`, but the padded columns beyond each point's own
+    !| count are deliberately set BELOW `min_count`. If the `i_bin <= n_bins_per_point(i_point)`
+    !| guard were removed or broken, this exact fixture would fail on the padded columns -- so a
+    !| gate that still passes here proves the guard is load-bearing, not incidental.
+    !| Point 1 has 3 valid bins (all count=10) plus 1 padded column (count=0, deliberately below
+    !| min_count=5); point 2 has only 1 valid bin (count=10) plus 3 padded columns (count=0).
+    subroutine test_mean_pmf_min_counts_per_point_bins_differ_all_pass()
+        integer(int32), parameter :: n_bins = 4, n_points = 2
+        integer(int32) :: mean_pmf_counts(n_bins, n_points)
+        integer(int32) :: n_bins_per_point(n_points)
+        logical(c_bool) :: all_pass
+        integer(int32) :: ierr
+
+        n_bins_per_point = [3, 1]
+        ! Point 1: valid bins 1:3 = 10 (>= min_count), padded bin 4 = 0 (< min_count, must be skipped)
+        mean_pmf_counts(:, 1) = [10, 10, 10, 0]
+        ! Point 2: valid bin 1 = 10 (>= min_count), padded bins 2:4 = 0 (< min_count, must be skipped)
+        mean_pmf_counts(:, 2) = [10, 0, 0, 0]
+
+        call check_mean_pmf_min_counts(mean_pmf_counts, n_bins, n_bins_per_point, n_points, 5_int32, all_pass, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_mean_pmf_min_counts_per_point_bins_differ_all_pass: ierr should be OK")
+        call assert_true(all_pass, "test_mean_pmf_min_counts_per_point_bins_differ_all_pass: "// &
+                         "each point's own valid-range bins pass; padded columns below min_count "// &
+                         "must be ignored by the i_bin <= n_bins_per_point(i_point) guard")
+    end subroutine test_mean_pmf_min_counts_per_point_bins_differ_all_pass
+
+    !> Issue #187: same per-point-bins-differ setup as above, but point 2's own valid-range bin
+    !| genuinely fails to reach `min_count` this time. Confirms all-or-nothing is preserved across
+    !| points, just correctly scoped per point now -- a genuine failure inside a point's own valid
+    !| range still fails the whole gate, even though point 1 is fine.
+    subroutine test_mean_pmf_min_counts_per_point_bins_differ_one_point_fails()
+        integer(int32), parameter :: n_bins = 4, n_points = 2
+        integer(int32) :: mean_pmf_counts(n_bins, n_points)
+        integer(int32) :: n_bins_per_point(n_points)
+        logical(c_bool) :: all_pass
+        integer(int32) :: ierr
+
+        n_bins_per_point = [3, 1]
+        ! Point 1: valid bins 1:3 = 10 (>= min_count), padded bin 4 = 0 (must be skipped)
+        mean_pmf_counts(:, 1) = [10, 10, 10, 0]
+        ! Point 2: valid bin 1 = 2 (< min_count = 5, a genuine failure), padded bins 2:4 = 0
+        mean_pmf_counts(:, 2) = [2, 0, 0, 0]
+
+        call check_mean_pmf_min_counts(mean_pmf_counts, n_bins, n_bins_per_point, n_points, 5_int32, all_pass, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_mean_pmf_min_counts_per_point_bins_differ_one_point_fails: ierr should be OK")
+        call assert_false(all_pass, "test_mean_pmf_min_counts_per_point_bins_differ_one_point_fails: "// &
+                          "point 2's own valid-range bin genuinely below min_count must fail the "// &
+                          "whole gate, even though point 1's own valid range is fine")
+    end subroutine test_mean_pmf_min_counts_per_point_bins_differ_one_point_fails
 
     !> METHOD_JOIN_MIN succeeds only once every study's confidence-interval overlap exceeds the
     !| threshold. With 3 studies, 2-of-3 passing must fail, and 3-of-3 passing must succeed.
@@ -1690,7 +1759,7 @@ contains
     end subroutine test_run_js_comp_test_three_studies_outlier_has_small_p_value
 
     !> Forces `run_js_comp_test_parameter_search`'s second admissibility gate
-    !| (`min_count_per_mean_bin`) impossibly high, so no candidate in the grid can ever pass it and
+    !| (`min_residuals_per_bin`) impossibly high, so no candidate in the grid can ever pass it and
     !| `check_plateau_condition` is never even called: `plateau_found` stays `.false.` for the whole
     !| search. With `max_n_genes_all_studies=2000` the GAMMA-decay grid produces two candidates that
     !| both share `n_points=300` (`ceil(4*sqrt(2000))=179`, clamped up to `MIN_POINTS=300`, and a
@@ -1727,7 +1796,7 @@ contains
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, ierr=ierr, &
-                                               min_count_per_mean_bin=1000000_int32, random_seed=1_int32)
+                                               min_residuals_per_bin=1000000_int32, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_falls_back_to_finest: ierr should be OK")
@@ -1752,7 +1821,7 @@ contains
     !| the second `KX_FACTORS` entry does not add a distinct candidate, and a single GAMMA step
     !| already drops `n_points_high` below `n_points_low=300`): `(n_points, n_neighbors) = (300, 1)`. Both
     !| admissibility gates are relaxed to their most permissive settings
-    !| (`min_neighbor_overlap=0.0`, `min_count_per_mean_bin=0`) so the sole candidate exercises the
+    !| (`min_neighbor_overlap=0.0`, `min_residuals_per_bin=0`) so the sole candidate exercises the
     !| full pipeline -- both gates pass, `bootstrap_histogram` and `check_plateau_condition` really
     !| do run -- yet the search must still return that one candidate regardless of whatever
     !| `plateau_found` comes out as, because `n_candidates < 2` bypasses the plateau machinery
@@ -1786,7 +1855,7 @@ contains
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, ierr=ierr, &
-                                               min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
+                                               min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
@@ -1846,7 +1915,7 @@ contains
     !|
     !| Gate thresholds are relaxed to the same permissive settings
     !| `test_param_search_single_candidate_bypasses_plateau` uses to let the gates genuinely pass
-    !| (`min_count_per_mean_bin=0`, `min_neighbor_overlap=0.0`) -- not the impossible values
+    !| (`min_residuals_per_bin=0`, `min_neighbor_overlap=0.0`) -- not the impossible values
     !| `test_param_search_no_plateau_falls_back_to_finest` uses to deliberately force every
     !| candidate to fail a gate.
     subroutine test_param_search_finds_plateau_mid_grid()
@@ -1876,7 +1945,7 @@ contains
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, ierr=ierr, &
-                                               min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
+                                               min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
@@ -1989,7 +2058,7 @@ contains
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, ierr=ierr, &
-                                               min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
+                                               min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_EFFECT_SIZE, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
@@ -2047,7 +2116,7 @@ contains
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, ierr=ierr, &
-                                               min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
+                                               min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_BOTH, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
@@ -2124,7 +2193,7 @@ contains
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, ierr=ierr, &
-                                               min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
+                                               min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
@@ -2193,7 +2262,7 @@ contains
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, ierr=ierr, &
-                                               min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
+                                               min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_EFFECT_SIZE, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
@@ -2256,7 +2325,7 @@ contains
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, ierr=ierr, &
-                                               min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
+                                               min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_BOTH, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &

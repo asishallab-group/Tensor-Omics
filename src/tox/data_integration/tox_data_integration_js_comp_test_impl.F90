@@ -720,11 +720,22 @@ contains
     !| has already passed. Named `check_*` rather than 125's `test_*` for the same reason as its
     !| sibling above: a `test_`-prefixed R export collides with the R test harness's own
     !| test-discovery convention.
-    pure subroutine check_mean_pmf_min_counts_impl(mean_pmf_counts, n_bins, n_points, min_count, all_bins_have_min_count)
+    !| Issue #187: `n_bins_per_point` scopes the reduction to each point's own valid bin range, so
+    !| a point whose own bin count is narrower than `n_bins` (this array's second extent, i.e. the
+    !| widest bin count any point uses) has its legitimate zero-padded columns skipped rather than
+    !| mistaken for an occupancy failure.
+    pure subroutine check_mean_pmf_min_counts_impl(mean_pmf_counts, n_bins, n_bins_per_point, n_points, min_count, &
+                                                   all_bins_have_min_count)
         integer(int32), intent(in) :: n_bins
-            !! Number of histogram bins
+            !! Second extent of `mean_pmf_counts` -- the widest bin count any point uses (max_n_bins),
+            !! not necessarily every point's own bin count
         integer(int32), intent(in) :: n_points
             !! Number of reference points
+        integer(int32), intent(in) :: n_bins_per_point(n_points)
+            !! This point's own bin count -- only `mean_pmf_counts(1:n_bins_per_point(i_point), i_point)`
+            !! is inspected; columns beyond it are legitimate zero-padding, not failures
+            !! DM_MIN(1_int32)
+            !! DM_MAX(n_bins)
         integer(int32), intent(in) :: mean_pmf_counts(n_bins, n_points)
             !! Absolute counts of a residual per bin for the mean pmf
             !! DM_MIN(0_int32)
@@ -732,14 +743,18 @@ contains
             !! Minimum count each bin of the mean pmf must reach
             !! DM_MIN(0_int32)
         logical(c_bool), intent(out) :: all_bins_have_min_count
-            !! `.true.` if every bin, at every reference point, reaches at least `min_count`
+            !! `.true.` if every bin within each reference point's own `n_bins_per_point`, at every
+            !! reference point, reaches at least `min_count`
 
         integer(int32) :: i_point, i_bin
         logical(c_bool) :: all_pass
 
         all_pass = .true.
-        do concurrent(i_point=1:n_points, i_bin=1:n_bins) shared(mean_pmf_counts, min_count) reduce(.and.:all_pass)
-            all_pass = all_pass .and. (mean_pmf_counts(i_bin, i_point) >= min_count)
+        do concurrent(i_point=1:n_points, i_bin=1:n_bins) shared(mean_pmf_counts, min_count, n_bins_per_point) &
+                reduce(.and.:all_pass)
+            if (i_bin <= n_bins_per_point(i_point)) then
+                all_pass = all_pass .and. (mean_pmf_counts(i_bin, i_point) >= min_count)
+            end if
         end do
         all_bins_have_min_count = logical(all_pass, kind=c_bool)
     end subroutine check_mean_pmf_min_counts_impl
@@ -1687,7 +1702,7 @@ contains
                                                        tmp_global_js_divergence, tmp_confidence_interval, &
                                                        tmp_bootstrapping_top_k_jsds, tmp_prev_global_js_divergence, &
                                                        tmp_delta_perm, tmp_best_uncertainty_confidence_interval, &
-                                                       min_count_per_mean_bin, min_neighbor_overlap, &
+                                                       min_residuals_per_bin, min_neighbor_overlap, &
                                                        succeeding_ci_overlap, plateau_mode, delta_median_threshold, &
                                                        delta_max_threshold, delta_epsilon, &
                                                        delta_min_consecutive_transitions, &
@@ -1884,11 +1899,16 @@ contains
             !! Working array: the confidence interval of the admissible candidate with the smallest
             !! bootstrapped uncertainty seen so far, used only internally by the no-plateau fallback
             !! (see plateau_established)
-        integer(int32), intent(in), optional :: min_count_per_mean_bin
+        integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum count each bin of the consensus pmf must reach to pass the second
-            !! admissibility gate
+            !! admissibility gate. Reuses Issue #187's occupancy-search default rather than an
+            !! independently-tunable threshold of its own: once
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
+            !! wires real per-neighborhood bin counts in, a separate laxer threshold here would
+            !! silently let a candidate the occupancy search already marked `occupancy_failed`
+            !! pass this gate anyway, defeating the FAILURE-detection mechanism
             !! DM_MIN(0_int32)
-            !! DM_DEFAULT(5_int32)
+            !! DM_DEFAULT(CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
         real(real64), intent(in), optional :: min_neighbor_overlap
             !! Minimum fractional overlap two consecutive neighborhoods must have to pass the first
             !! admissibility gate
@@ -1947,7 +1967,7 @@ contains
         integer(int32) :: candidates_n_points_n_neighbors(2, MAX_CANDIDATE_PAIRS), n_bins_candidates(MAX_CANDIDATE_PAIRS)
         integer(int32) :: i_candidate, i_study, i_point, i_neighbor, gene_idx, n_pool
         integer(int32) :: prev_n_points, best_candidate_index, best_exceeded_ci_overlap_count, n_candidates
-        integer(int32) :: n_residuals, pool_size, bootstrap_ierr, actual_min_count_per_mean_bin
+        integer(int32) :: n_residuals, pool_size, bootstrap_ierr, actual_min_residuals_per_bin
         integer(int32) :: actual_plateau_mode, actual_delta_min_consecutive_transitions, n_consecutive_effect_size_ok
         integer(int32) :: best_uncertainty_candidate_index
         real(real64) :: actual_min_neighbor_overlap, actual_succeeding_ci_overlap
@@ -1957,7 +1977,7 @@ contains
         logical(c_bool) :: ci_plateau_found, effect_size_plateau_found, has_previous_admissible
 
         call set_ok(ierr)
-        M_DEFAULT_VAL(min_count_per_mean_bin, actual_min_count_per_mean_bin, 5_int32)
+        M_DEFAULT_VAL(min_residuals_per_bin, actual_min_residuals_per_bin, CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
         M_DEFAULT_VAL(min_neighbor_overlap, actual_min_neighbor_overlap, 0.1_real64)
         M_DEFAULT_VAL(succeeding_ci_overlap, actual_succeeding_ci_overlap, 0.9_real64)
         M_DEFAULT_VAL(plateau_mode, actual_plateau_mode, CM_MODE_PLATEAU_CI_OVERLAP)
@@ -2048,8 +2068,9 @@ contains
                                       n_bins, n_points, n_studies, tmp_included_n_reps(1:n_points, 1:n_studies), &
                                       tmp_mean_pmf(1:n_bins, 1:n_points), tmp_mean_pmf_included_n_reps(1:n_points), &
                                       tmp_mean_pmf_counts(1:n_bins, 1:n_points))
-            call check_mean_pmf_min_counts_impl(tmp_mean_pmf_counts(1:n_bins, 1:n_points), n_bins, n_points, &
-                                                actual_min_count_per_mean_bin, all_bins_have_min_count)
+            call check_mean_pmf_min_counts_impl(tmp_mean_pmf_counts(1:n_bins, 1:n_points), n_bins, &
+                                                tmp_n_bins_per_point(1:n_points), n_points, &
+                                                actual_min_residuals_per_bin, all_bins_have_min_count)
             if (.not. all_bins_have_min_count) cycle
 
             ! Observed JSD per study, seeding the confidence interval bootstrap_histogram_impl bootstraps in place.
