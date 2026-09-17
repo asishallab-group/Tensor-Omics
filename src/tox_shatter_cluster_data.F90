@@ -192,7 +192,7 @@ contains
 
     !> Allocating Wrapper for calculating label density distributions.
     subroutine calculate_labels_as_density_alloc(vectors, n_dimensions, n_vectors, r, &
-                                                 dimension_order, kd_indices, label_densities, ierr)
+                                                 dimension_order, kd_indices, label_densities, n_tiles, ierr)
 
         integer(int32), intent(in) :: n_dimensions
         !! Number of dimensions
@@ -208,10 +208,13 @@ contains
         !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
         real(real64), intent(out) :: label_densities(n_vectors)
         !! Output density tracker matching individual vector slots
+        integer(int32), intent(in), optional :: n_tiles
+        !! Number of concurrent vector tiles, at least 1 (defaults to CM_DEFAULT_TILE_COUNT).
         integer(int32), intent(out) :: ierr
         !! Error code
 
         integer(int32), allocatable :: tmp_stack(:, :, :)
+        integer(int32) :: actual_n_tiles
 
         call set_ok(ierr)
 
@@ -224,19 +227,22 @@ contains
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, min=1_int32, max=n_dimensions)
         call validate_all_in_range_int(kd_indices, n_vectors, ierr, min=1_int32, max=n_vectors)
         call validate_in_range_real(r, ierr, min=0.0_real64)
+        call validate_in_range_int(n_tiles, ierr, min=1_int32, arg_pos=8_int32)
         if (is_err(ierr)) return
 
-        M_ALLOCATE(tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, n_vectors))
+        M_DEFAULT_VAL(n_tiles, actual_n_tiles, CM_DEFAULT_TILE_COUNT)
+        actual_n_tiles = min(actual_n_tiles, n_vectors)
+        M_ALLOCATE(tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, actual_n_tiles))
 
         call calculate_labels_as_density(vectors, n_dimensions, n_vectors, r, &
-                                         dimension_order, kd_indices, tmp_stack, &
+                                         dimension_order, kd_indices, actual_n_tiles, tmp_stack, &
                                          label_densities, ierr)
 
     end subroutine calculate_labels_as_density_alloc
 
     !> Validated Entry Point for calculating label density distributions.
     subroutine calculate_labels_as_density(vectors, n_dimensions, n_vectors, r, &
-                                           dimension_order, kd_indices, tmp_stack, &
+                                           dimension_order, kd_indices, n_tiles, tmp_stack, &
                                            label_densities, ierr)
 
         integer(int32), intent(in) :: n_dimensions
@@ -251,8 +257,10 @@ contains
         !! Dimension split order array tracking the tree structure
         integer(int32), intent(in) :: kd_indices(n_vectors)
         !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
-        integer(int32), intent(inout) :: tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, n_vectors)
-        !! Preallocated workspace stack for tree traversal
+        integer(int32), intent(in) :: n_tiles
+        !! Number of concurrent vector tiles, at least 1. Excess tiles remain idle.
+        integer(int32), intent(inout) :: tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, n_tiles)
+        !! Preallocated traversal stack per tile, reused serially across its vectors
         real(real64), intent(out) :: label_densities(n_vectors)
         !! Output density tracker matching individual vector slots
         integer(int32), intent(out) :: ierr
@@ -269,17 +277,18 @@ contains
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, min=1_int32, max=n_dimensions)
         call validate_all_in_range_int(kd_indices, n_vectors, ierr, min=1_int32, max=n_vectors)
         call validate_in_range_real(r, ierr, min=0.0_real64)
+        call validate_in_range_int(n_tiles, ierr, min=1_int32, arg_pos=7_int32)
         if (is_err(ierr)) return
 
         call calculate_labels_as_density_helper(vectors, n_dimensions, n_vectors, r, &
-                                                dimension_order, kd_indices, tmp_stack, &
+                                                dimension_order, kd_indices, n_tiles, tmp_stack, &
                                                 label_densities, ierr)
 
     end subroutine calculate_labels_as_density
 
     !> Core Implementation for calculating label density coordinates.
     pure subroutine calculate_labels_as_density_helper(vectors, n_dimensions, n_vectors, r, &
-                                                       dimension_order, kd_indices, tmp_stack, &
+                                                       dimension_order, kd_indices, n_tiles, tmp_stack, &
                                                        label_densities, ierr)
 
         integer(int32), intent(in) :: n_dimensions
@@ -294,27 +303,40 @@ contains
         !! Sequence array tracking tree split axes by variance
         integer(int32), intent(in) :: kd_indices(n_vectors)
         !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
-        integer(int32), intent(inout) :: tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, n_vectors)
-        !! Preallocated workspace stack for tree traversal
+        integer(int32), intent(in) :: n_tiles
+        !! Number of concurrent vector tiles, at least 1. Excess tiles remain idle.
+        integer(int32), intent(inout) :: tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, n_tiles)
+        !! Preallocated traversal stack per tile, reused serially across its vectors
         real(real64), intent(out) :: label_densities(n_vectors)
         !! Output array storing generated density scalars
         integer(int32), intent(out) :: ierr
         !! Error code
 
-        integer(int32) :: i_vec, neighbor_count
+        integer(int32) :: i_tile, i_vec, neighbor_count, vector_start, vector_end, tile_base, tile_rem
 
         call set_ok(ierr)
 
-        do concurrent(i_vec=1:n_vectors) &
-            shared(vectors, n_dimensions, n_vectors, r, dimension_order, kd_indices, tmp_stack, label_densities) &
-            local(neighbor_count)
+        ! Balanced contiguous tiles avoid multiplying n_vectors by a tile index.
+        tile_base = n_vectors/n_tiles
+        tile_rem = mod(n_vectors, n_tiles)
 
-            ! Query point count directly into thread-local scalar
-            call vicinity_vectors_count_helper(vectors(:, i_vec), vectors, n_dimensions, n_vectors, r, &
-                                               dimension_order, kd_indices, tmp_stack(:, :, i_vec), &
-                                               neighbor_count)
+        do concurrent(i_tile=1:n_tiles) &
+            shared(vectors, n_dimensions, n_vectors, r, dimension_order, kd_indices, &
+                   tmp_stack, label_densities, tile_base, tile_rem) &
+            local(i_vec, neighbor_count, vector_start, vector_end)
 
-            label_densities(i_vec) = real(neighbor_count, real64)
+            ! Avoid forming n_vectors + 1 for empty tiles at the int32 limit.
+            if (tile_base == 0_int32 .and. i_tile > tile_rem) cycle
+            vector_start = (i_tile - 1_int32)*tile_base + min(i_tile - 1_int32, tile_rem) + 1_int32
+            vector_end = vector_start - 1_int32 + tile_base
+            if (i_tile <= tile_rem) vector_end = vector_end + 1_int32
+
+            do i_vec = vector_start, vector_end
+                call vicinity_vectors_count_helper(vectors(:, i_vec), vectors, n_dimensions, n_vectors, r, &
+                                                   dimension_order, kd_indices, tmp_stack(:, :, i_tile), &
+                                                   neighbor_count)
+                label_densities(i_vec) = real(neighbor_count, real64)
+            end do
         end do
 
     end subroutine calculate_labels_as_density_helper
@@ -809,23 +831,114 @@ contains
         integer(int32), intent(inout) :: tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH)
         !! Preallocated workspace stack for a single tree traversal
         logical(c_bool), intent(inout) :: tmp_vicinity_mask(n_vectors)
-        !! Preallocated workspace mask holding one member's neighborhood query result
+        !! Workspace for one neighborhood query, then the complete trial membership
         logical(c_bool), intent(inout) :: tmp_surface_mask(n_vectors)
-        !! Preallocated workspace mask accumulating the union of all member neighborhoods
+        !! Geometric union of accepted member neighborhoods before this growth step
         integer(int32), intent(inout) :: tmp_perm(n_vectors)
         !! Preallocated workspace array for sorting and percentiles
         real(real64), intent(inout) :: tmp_abs_diff(n_vectors)
         !! Preallocated workspace array holding the active member densities
 
-        integer(int32) :: i_vec, j, k, n_active
+        integer(int32) :: i_vec
+
+        call propose_ensemble_growth_helper(vectors, n_dimensions, n_vectors, ensemble_mask, &
+                                            r, dimension_order, kd_indices, density_labels, &
+                                            alpha_mad, mad_ambient, tmp_stack, tmp_vicinity_mask, &
+                                            tmp_surface_mask, tmp_perm, tmp_abs_diff)
+
+        ! The standalone growth API commits its single step unconditionally.
+        do concurrent(i_vec=1:n_vectors) shared(ensemble_mask, tmp_vicinity_mask)
+            if (tmp_vicinity_mask(i_vec) .and. .not. ensemble_mask(i_vec)) ensemble_mask(i_vec) = .true.
+        end do
+
+    end subroutine grow_ensemble_helper
+
+    !> Discovers a standalone ensemble surface and builds trial membership in vicinity scratch.
+    pure subroutine propose_ensemble_growth_helper(vectors, n_dimensions, n_vectors, ensemble_mask, &
+                                                   r, dimension_order, kd_indices, density_labels, &
+                                                   alpha_mad, mad_ambient, tmp_stack, tmp_vicinity_mask, &
+                                                   tmp_surface_mask, tmp_perm, tmp_abs_diff)
+
+        integer(int32), intent(in) :: n_dimensions
+        !! Number of dimensions
+        integer(int32), intent(in) :: n_vectors
+        !! Number of vectors
+        real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
+        !! Input data matrix (n_dimensions x n_vectors)
+        logical(c_bool), intent(in) :: ensemble_mask(n_vectors)
+        !! Accepted ensemble membership, unchanged while constructing the trial
+        real(real64), intent(in) :: r
+        !! Search radius threshold for surface growth
+        integer(int32), intent(in) :: dimension_order(n_dimensions)
+        !! Sequence array tracking split dimensions
+        integer(int32), intent(in) :: kd_indices(n_vectors)
+        !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
+        real(real64), intent(in) :: density_labels(n_vectors)
+        !! Density labels for all vectors [[tox_shatter_cluster_data(module):calculate_labels_as_density_alloc(subroutine)]].
+        real(real64), intent(in) :: alpha_mad
+        !! Multiplier factor for MAD density compatibility threshold
+        real(real64), intent(in) :: mad_ambient
+        !! Ambient MAD precalculated via [[tox_shatter_cluster_data(module):compute_ambient_density_stats_helper(subroutine)]].
+        integer(int32), intent(inout) :: tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH)
+        !! Preallocated workspace stack for a single tree traversal
+        logical(c_bool), intent(inout) :: tmp_vicinity_mask(n_vectors)
+        !! Workspace for one neighborhood query, then the complete trial membership
+        logical(c_bool), intent(inout) :: tmp_surface_mask(n_vectors)
+        !! Geometric union of accepted member neighborhoods, independent of density compatibility
+        integer(int32), intent(inout) :: tmp_perm(n_vectors)
+        !! Preallocated workspace array for sorting and percentiles
+        real(real64), intent(inout) :: tmp_abs_diff(n_vectors)
+        !! Preallocated workspace array holding the active member densities
+
+        integer(int32) :: i_vec
+
+        tmp_surface_mask = .false.
+        do i_vec = 1, n_vectors
+            if (ensemble_mask(i_vec)) then
+                call vicinity_vectors_helper(vectors(:, i_vec), vectors, n_dimensions, n_vectors, r, &
+                                             dimension_order, kd_indices, tmp_stack, &
+                                             tmp_vicinity_mask)
+
+                tmp_surface_mask = tmp_surface_mask .or. tmp_vicinity_mask
+            end if
+        end do
+
+        call build_ensemble_trial_helper(ensemble_mask, n_vectors, density_labels, alpha_mad, &
+                                         mad_ambient, tmp_surface_mask, tmp_perm, tmp_abs_diff, tmp_vicinity_mask)
+
+    end subroutine propose_ensemble_growth_helper
+
+    !> Reevaluate density compatibility on a geometric surface using the current accepted median.
+    pure subroutine build_ensemble_trial_helper(ensemble_mask, n_vectors, density_labels, alpha_mad, &
+                                                mad_ambient, surface_mask, tmp_perm, tmp_abs_diff, trial_mask)
+        integer(int32), intent(in) :: n_vectors
+        !! Number of vectors
+        logical(c_bool), intent(in) :: ensemble_mask(n_vectors)
+        !! Accepted membership, always retained in the trial
+        real(real64), intent(in) :: density_labels(n_vectors)
+        !! Density labels for all vectors
+        real(real64), intent(in) :: alpha_mad
+        !! Multiplier for the ambient MAD density tolerance
+        real(real64), intent(in) :: mad_ambient
+        !! Precomputed ambient median absolute deviation
+        logical(c_bool), intent(in) :: surface_mask(n_vectors)
+        !! Spatial neighborhood union; never filtered by density compatibility
+        integer(int32), intent(inout) :: tmp_perm(n_vectors)
+        !! Sorting workspace; any frontier indices must be consumed before this call
+        real(real64), intent(inout) :: tmp_abs_diff(n_vectors)
+        !! Workspace for accepted member densities
+        logical(c_bool), intent(out) :: trial_mask(n_vectors)
+        !! Complete trial membership: accepted members and density-compatible spatial neighbors
+
+        integer(int32) :: i_vec, k, n_active
         real(real64) :: ensemble_center_density, max_allowed_dev
 
-        ! Max absolute deviation allowed from ensemble central density
         max_allowed_dev = alpha_mad*mad_ambient
-
-        ! 1. Calculate current ensemble central density (median of active members)
         n_active = count(ensemble_mask)
-        if (n_active == 0_int32) return
+        if (n_active == 0_int32) then
+            trial_mask = .false.
+            return
+        end if
 
         k = 0
         do i_vec = 1, n_vectors
@@ -839,33 +952,14 @@ contains
         call calc_percentile_helper(tmp_abs_diff(1:k), tmp_perm(1:k), 0.5_real64, &
                                     ensemble_center_density)
 
-        ! 2. Serial neighborhood discovery accumulating the union of all member vicinities.
-        ! Parallelism is recovered one level up, where independent seed tiles run concurrently.
-        tmp_surface_mask = .false.
-
-        do i_vec = 1, n_vectors
-            if (ensemble_mask(i_vec)) then
-                call vicinity_vectors_helper(vectors(:, i_vec), vectors, n_dimensions, n_vectors, r, &
-                                             dimension_order, kd_indices, tmp_stack, &
-                                             tmp_vicinity_mask)
-
-                tmp_surface_mask = tmp_surface_mask .or. tmp_vicinity_mask
-            end if
+        do concurrent(i_vec=1:n_vectors) &
+            shared(ensemble_mask, surface_mask, trial_mask, density_labels, ensemble_center_density, max_allowed_dev)
+            trial_mask(i_vec) = ensemble_mask(i_vec) .or. &
+                                (surface_mask(i_vec) .and. &
+                                 abs(density_labels(i_vec) - ensemble_center_density) <= max_allowed_dev)
         end do
 
-        ! 3. Surface-growth update: Add non-members touching active surface if density-compatible
-        do concurrent(j=1:n_vectors) &
-            shared(ensemble_mask, tmp_surface_mask, density_labels, ensemble_center_density, max_allowed_dev)
-
-            ! Check proximity and density compatibility |rho_j - rho_ensemble| <= alpha_mad * MAD_ambient
-            if ((.not. ensemble_mask(j)) .and. tmp_surface_mask(j)) then
-                if (abs(density_labels(j) - ensemble_center_density) <= max_allowed_dev) then
-                    ensemble_mask(j) = .true.
-                end if
-            end if
-        end do
-
-    end subroutine grow_ensemble_helper
+    end subroutine build_ensemble_trial_helper
 
     !> Allocating Wrapper for calculating and storing ensemble observable trajectories.
     subroutine compute_ensemble_observable_alloc(ensemble_mask, density_labels, n_vectors, &
@@ -1215,7 +1309,6 @@ contains
         real(real64), allocatable :: tmp_abs_diff(:, :)
         real(real64), allocatable :: tmp_observables(:, :, :)
         logical(c_bool), allocatable :: tmp_current_mask(:, :)
-        logical(c_bool), allocatable :: tmp_backup_mask(:, :)
         real(real64), allocatable :: tmp_mean_vec(:), tmp_distances(:)
         integer(int32), allocatable :: tmp_stop_reasons(:)
         real(real64) :: tmp_mad_ambient
@@ -1291,7 +1384,6 @@ contains
         M_ALLOCATE(tmp_abs_diff(n_vectors, actual_n_tiles))
         M_ALLOCATE(tmp_observables(CM_OBSERVABLE_COUNT, required_cols, actual_n_tiles))
         M_ALLOCATE(tmp_current_mask(n_vectors, actual_n_tiles))
-        M_ALLOCATE(tmp_backup_mask(n_vectors, actual_n_tiles))
         M_ALLOCATE(tmp_stop_reasons(n_seeds))
 
         call obtain_ensembles(vectors, n_dimensions, n_vectors, dimension_order, &
@@ -1299,7 +1391,7 @@ contains
                               actual_r, actual_alpha_mad, actual_alpha_accept, &
                               actual_t_obs, actual_n_tiles, tmp_stack, tmp_vicinity_mask, &
                               tmp_surface_mask, tmp_perm, tmp_abs_diff, tmp_observables, &
-                              tmp_current_mask, tmp_backup_mask, &
+                              tmp_current_mask, &
                               ensemble_matrix, tmp_stop_reasons, tmp_mad_ambient, &
                               n_ensembles, ierr)
 
@@ -1316,7 +1408,7 @@ contains
                                 r, alpha_mad, alpha_accept, t_observables, n_tiles, &
                                 tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, &
                                 tmp_abs_diff, tmp_observables, tmp_current_mask, &
-                                tmp_backup_mask, ensemble_matrix, stop_reasons, mad_ambient, n_ensembles, ierr)
+                                ensemble_matrix, stop_reasons, mad_ambient, n_ensembles, ierr)
 
         integer(int32), intent(in) :: n_dimensions
         !! Number of dimensions
@@ -1349,17 +1441,15 @@ contains
         logical(c_bool), intent(inout) :: tmp_vicinity_mask(n_vectors, n_tiles)
         !! Workspace mask holding one member's neighborhood query result per tile
         logical(c_bool), intent(inout) :: tmp_surface_mask(n_vectors, n_tiles)
-        !! Workspace mask accumulating the union of all member neighborhoods per tile
+        !! Cached spatial neighborhood union per tile, reset for each seed
         integer(int32), intent(inout) :: tmp_perm(n_vectors, n_tiles)
-        !! Workspace array for sorting per tile
+        !! Sorting workspace, reused for newly accepted member indices between growth rounds per tile
         real(real64), intent(inout) :: tmp_abs_diff(n_vectors, n_tiles)
         !! Workspace array for deviation calculations per tile
         real(real64), intent(inout) :: tmp_observables(:, :, :)
         !! Workspace matrix for storing observable history per tile
         logical(c_bool), intent(inout) :: tmp_current_mask(n_vectors, n_tiles)
-        !! Workspace array tracking active seed ensemble state per tile
-        logical(c_bool), intent(inout) :: tmp_backup_mask(n_vectors, n_tiles)
-        !! Workspace array backing up prior state per tile
+        !! Workspace holding accepted seed ensemble membership per tile
         logical(c_bool), intent(out) :: ensemble_matrix(n_vectors, n_seeds)
         !! Output matrix storing raw grown ensemble masks
         integer(int32), intent(out) :: stop_reasons(n_seeds)
@@ -1424,7 +1514,7 @@ contains
                                      r, alpha_mad, alpha_accept, t_observables, n_tiles, &
                                      tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, &
                                      tmp_abs_diff, tmp_observables, tmp_current_mask, &
-                                     tmp_backup_mask, ensemble_matrix, stop_reasons, mad_ambient, n_ensembles)
+                                     ensemble_matrix, stop_reasons, mad_ambient, n_ensembles)
 
     end subroutine obtain_ensembles
 
@@ -1434,7 +1524,7 @@ contains
                                             r, alpha_mad, alpha_accept, t_observables, n_tiles, &
                                             tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, &
                                             tmp_abs_diff, tmp_observables, tmp_current_mask, &
-                                            tmp_backup_mask, ensemble_matrix, stop_reasons, &
+                                            ensemble_matrix, stop_reasons, &
                                             mad_ambient, n_ensembles)
 
         integer(int32), intent(in) :: n_dimensions
@@ -1468,17 +1558,15 @@ contains
         logical(c_bool), intent(inout) :: tmp_vicinity_mask(n_vectors, n_tiles)
         !! Workspace mask holding one member's neighborhood query result per tile
         logical(c_bool), intent(inout) :: tmp_surface_mask(n_vectors, n_tiles)
-        !! Workspace mask accumulating the union of all member neighborhoods per tile
+        !! Cached spatial neighborhood union per tile, reset for each seed
         integer(int32), intent(inout) :: tmp_perm(n_vectors, n_tiles)
-        !! Workspace array for sorting per tile
+        !! Sorting workspace, reused for newly accepted member indices between growth rounds per tile
         real(real64), intent(inout) :: tmp_abs_diff(n_vectors, n_tiles)
         !! Workspace array for deviation calculations per tile
         real(real64), intent(inout) :: tmp_observables(:, :, :)
         !! Workspace matrix for storing observable history per tile
         logical(c_bool), intent(inout) :: tmp_current_mask(n_vectors, n_tiles)
-        !! Workspace array tracking active seed ensemble state per tile
-        logical(c_bool), intent(inout) :: tmp_backup_mask(n_vectors, n_tiles)
-        !! Workspace array backing up prior state per tile
+        !! Workspace holding accepted seed ensemble membership per tile
         logical(c_bool), intent(out) :: ensemble_matrix(n_vectors, n_seeds)
         !! Output matrix storing unmerged grown ensemble masks
         integer(int32), intent(out) :: stop_reasons(n_seeds)
@@ -1510,7 +1598,7 @@ contains
                    density_labels, seed_indices, n_seeds, r, alpha_mad, mad_ambient, alpha_accept, &
                    t_observables, tile_base, tile_rem, tmp_stack, tmp_vicinity_mask, &
                    tmp_surface_mask, tmp_perm, tmp_abs_diff, tmp_observables, &
-                   tmp_current_mask, tmp_backup_mask, ensemble_matrix, stop_reasons) &
+                   tmp_current_mask, ensemble_matrix, stop_reasons) &
             local(i_seed, seed_start, seed_end)
 
             if (i_tile <= tile_rem) then
@@ -1530,7 +1618,7 @@ contains
                                              tmp_stack(:, :, i_tile), tmp_vicinity_mask(:, i_tile), &
                                              tmp_surface_mask(:, i_tile), tmp_perm(:, i_tile), &
                                              tmp_abs_diff(:, i_tile), tmp_observables(:, :, i_tile), &
-                                             tmp_current_mask(:, i_tile), tmp_backup_mask(:, i_tile), &
+                                             tmp_current_mask(:, i_tile), &
                                              ensemble_matrix(:, i_seed), stop_reasons(i_seed))
 
             end do
@@ -1547,7 +1635,7 @@ contains
                                             r, alpha_mad, mad_ambient, alpha_accept, t_observables, &
                                             tmp_stack, tmp_vicinity_mask, tmp_surface_mask, &
                                             tmp_perm, tmp_abs_diff, tmp_observables, &
-                                            current_mask, backup_mask, out_mask, stop_reason)
+                                            current_mask, out_mask, stop_reason)
 
         integer(int32), intent(in) :: n_dimensions
         !! Number of dimensions
@@ -1578,28 +1666,29 @@ contains
         logical(c_bool), intent(inout) :: tmp_vicinity_mask(n_vectors)
         !! Workspace mask holding one member's neighborhood query result
         logical(c_bool), intent(inout) :: tmp_surface_mask(n_vectors)
-        !! Workspace mask accumulating the union of all member neighborhoods
+        !! Cached geometric union for this seed; reset once and never density-filtered
         integer(int32), intent(inout) :: tmp_perm(n_vectors)
-        !! Workspace array for sorting
+        !! Newly accepted indices between rounds; reused for median sorting after their queries
         real(real64), intent(inout) :: tmp_abs_diff(n_vectors)
         !! Workspace array holding the active member densities
         real(real64), intent(inout) :: tmp_observables(:, :)
         !! Workspace matrix for storing observable history
         logical(c_bool), intent(inout) :: current_mask(n_vectors)
-        !! Workspace array tracking active seed ensemble state
-        logical(c_bool), intent(inout) :: backup_mask(n_vectors)
-        !! Workspace array backing up prior iteration state
+        !! Accepted ensemble membership; modified only after a trial passes acceptance
         logical(c_bool), intent(out) :: out_mask(n_vectors)
-        !! Output boolean mask for grown single-seed ensemble
+        !! Final accepted membership; reused as trial membership until growth terminates
         integer(int32), intent(out) :: stop_reason
         !! Reason growth terminated, one of the `STC_STOP_*` constants
 
-        integer(int32) :: iter, prev_count, curr_count, candidate_count
+        integer(int32) :: iter, prev_count, curr_count, candidate_count, i_vec, i_frontier, frontier_idx, n_frontier
         logical(c_bool) :: is_growing, is_accepted
 
         current_mask = .false.
         current_mask(seed_idx) = .true.
         tmp_observables = 0.0_real64
+        tmp_surface_mask = .false.
+        n_frontier = 1_int32
+        tmp_perm(1) = seed_idx
 
         iter = 1_int32
         call compute_ensemble_observable_helper(current_mask, density_labels, &
@@ -1609,16 +1698,21 @@ contains
 
         is_growing = .true.
         do while (is_growing)
-            backup_mask = current_mask
             prev_count = count(current_mask)
 
-            call grow_ensemble_helper(vectors, n_dimensions, n_vectors, current_mask, &
-                                      r, dimension_order, kd_indices, density_labels, &
-                                      alpha_mad, mad_ambient, tmp_stack, &
-                                      tmp_vicinity_mask, tmp_surface_mask, &
-                                      tmp_perm, tmp_abs_diff)
+            ! Each accepted vector is queried once. Consume the frontier before median sorting
+            ! reuses tmp_perm; candidates from this round are queried only after acceptance.
+            do i_frontier = 1, n_frontier
+                frontier_idx = tmp_perm(i_frontier)
+                call vicinity_vectors_helper(vectors(:, frontier_idx), vectors, n_dimensions, n_vectors, r, &
+                                             dimension_order, kd_indices, tmp_stack, tmp_vicinity_mask)
+                tmp_surface_mask = tmp_surface_mask .or. tmp_vicinity_mask
+            end do
 
-            curr_count = count(current_mask)
+            call build_ensemble_trial_helper(current_mask, n_vectors, density_labels, alpha_mad, &
+                                             mad_ambient, tmp_surface_mask, tmp_perm, tmp_abs_diff, out_mask)
+
+            curr_count = count(out_mask)
             candidate_count = curr_count - prev_count
 
             if (candidate_count == 0_int32) then
@@ -1634,7 +1728,7 @@ contains
 
             iter = iter + 1_int32
 
-            call compute_ensemble_observable_helper(current_mask, density_labels, &
+            call compute_ensemble_observable_helper(out_mask, density_labels, &
                                                     n_vectors, candidate_count, iter, &
                                                     tmp_observables, &
                                                     t_observables)
@@ -1643,8 +1737,6 @@ contains
                                         alpha_accept, is_accepted)
 
             if (.not. is_accepted) then
-                current_mask = backup_mask
-
                 ! iter counts the growth rounds that found candidates, so iter == 2 means this
                 ! was the first such round and no batch was ever accepted
                 if (iter == 2_int32) then
@@ -1654,6 +1746,16 @@ contains
                 end if
 
                 is_growing = .false.
+            else
+                ! Commit and collect only new members for next round's spatial queries.
+                n_frontier = 0_int32
+                do i_vec = 1, n_vectors
+                    if (out_mask(i_vec) .and. .not. current_mask(i_vec)) then
+                        current_mask(i_vec) = .true.
+                        n_frontier = n_frontier + 1_int32
+                        tmp_perm(n_frontier) = i_vec
+                    end if
+                end do
             end if
         end do
 
