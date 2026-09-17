@@ -17,7 +17,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(20))
+        allocate (all_tests(22))
         all_tests(1) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
         all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(3) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
@@ -44,6 +44,11 @@ contains
 
         all_tests(20) = test_case("test_fjct", test_fjct)
         ! all_tests(20) = test_case("test_fjct_compute_contribution_scores", test_fjct_compute_contribution_scores)
+
+        all_tests(21) = test_case("test_build_residual_histograms_variable_bins_per_point", &
+                                  test_build_residual_histograms_variable_bins_per_point)
+        all_tests(22) = test_case("test_build_residual_histograms_zero_padding_safe_for_jsd", &
+                                  test_build_residual_histograms_zero_padding_safe_for_jsd)
     end function get_all_tests_data_integration
 
     !> Test the fjct_compute_jsd function.
@@ -270,6 +275,7 @@ contains
     subroutine test_build_residual_histograms
         integer(int32), parameter :: n_reps = 3, n_neighbors = 2, n_points = 3
         integer(int32), parameter :: n_bins = 4
+        integer(int32), dimension(n_points) :: n_bins_per_point
         real(real64), dimension(n_reps, n_neighbors, n_points) :: E
         real(real64), dimension(n_points, n_bins) :: pmf, expected_pmf
         integer(int32), dimension(n_points, n_bins) :: counts, expected_counts
@@ -285,6 +291,7 @@ contains
         ! Bins: [-2,-1), [-1,0), [0,1), [1,2]
         !
         R = 2.0_real64
+        n_bins_per_point = n_bins
 
         E(:, 1, 1) = [-2.0, -0.5, 0.2]
         E(:, 2, 1) = [1.7, 0.9, -1.2]
@@ -292,7 +299,7 @@ contains
         E(:, 1, 3) = [2.5, -3.0, 1.2] ! (clamping applies -> [2,-2,1.2])
         E(:, 2, 3) = [0.4, -0.1, 0.0]
 
-        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, &
+        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, n_bins_per_point, &
                                        counts, pmf, included, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_build_residual_histograms: Test 1: ierr should be OK")
@@ -342,7 +349,7 @@ contains
         E(2, 1, 2) = ieee_value(1.0_real64, ieee_quiet_nan)
         E(3, 2, 3) = ieee_value(1.0_real64, ieee_quiet_nan)
 
-        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, &
+        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, n_bins_per_point, &
                                        counts, pmf, included, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_build_residual_histograms: Test 2: ierr should be OK")
@@ -371,7 +378,7 @@ contains
         ! ============================================================
         E = ieee_value(1.0_real64, ieee_quiet_nan)
 
-        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, &
+        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, n_bins_per_point, &
                                        counts, pmf, included, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_build_residual_histograms: Test 3: ierr should be OK")
@@ -395,7 +402,7 @@ contains
                      -2.0, -1.0, 0.0, 1.0, 2.0, 0.0, &
                      -2.0, -1.0, 0.0, 1.0, 2.0, 0.0], shape(E))
 
-        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, &
+        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, n_bins_per_point, &
                                        counts, pmf, included, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_build_residual_histograms: Test 4: ierr should be OK")
@@ -427,6 +434,154 @@ contains
         call assert_equal_int(included(3), 6, "test_build_residual_histograms: Test 3: included row 3")
 
     end subroutine test_build_residual_histograms
+
+    !> Two reference points with genuinely different `n_bins_per_point` in the same call: each
+    !| point's own residuals must bin under its OWN bin width (not another point's, and not the
+    !| padded array's full `max_n_bins` width), and columns beyond a point's own bin count must
+    !| be exactly zero.
+    subroutine test_build_residual_histograms_variable_bins_per_point
+        integer(int32), parameter :: n_reps = 2, n_neighbors = 1, n_points = 2, max_n_bins = 4
+        integer(int32), dimension(n_points), parameter :: n_bins_per_point = [2, 3]
+        real(real64), dimension(n_reps, n_neighbors, n_points) :: E
+        real(real64), dimension(n_points, max_n_bins) :: pmf, expected_pmf
+        integer(int32), dimension(n_points, max_n_bins) :: counts, expected_counts
+        integer(int32), dimension(n_points) :: included
+        real(real64) :: R
+        integer(int32) :: ierr
+
+        ! Point 1: n_bins_per_point(1) = 2 -> bin_width = 2*R/2 = 2.0, bins [-2,0),[0,2]
+        ! Point 2: n_bins_per_point(2) = 3 -> bin_width = 2*R/3 = 1.3333..., bins
+        !          [-2,-0.6667),[-0.6667,0.6667),[0.6667,2]
+        R = 2.0_real64
+
+        E(:, 1, 1) = [-0.3_real64, 1.9_real64]
+        E(:, 1, 2) = [0.9_real64, -1.9_real64]
+
+        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, max_n_bins, n_bins_per_point, &
+                                       counts, pmf, included, ierr=ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_build_residual_histograms_variable_bins_per_point: ierr should be OK")
+
+        ! Point 1 (own bin_width = 2.0): -0.3 -> (( -0.3+2)/2 = 0.85 -> floor 0) -> bin 1;
+        ! 1.9 -> ((1.9+2)/2 = 1.95 -> floor 1) -> bin 2. Columns 3-4, beyond its own 2 bins, are
+        ! zero-padded.
+        ! Point 2 (own bin_width = 4/3): -1.9 -> ((-1.9+2)/(4/3) = 0.075 -> floor 0) -> bin 1;
+        ! 0.9 -> ((0.9+2)/(4/3) = 2.175 -> floor 2) -> bin 3. Column 4, beyond its own 3 bins, is
+        ! zero-padded.
+        ! Cross-check (why these particular values were chosen): had point 1 wrongly used point
+        ! 2's bin_width (4/3), -0.3 would land in bin 2, not 1; had point 2 wrongly used point 1's
+        ! bin_width (2.0), 0.9 would land in bin 2, not 3. Either bug would fail the exact
+        ! expectations below.
+        expected_counts = 0_int32
+        expected_counts(1, 1) = 1
+        expected_counts(1, 2) = 1
+        expected_counts(2, 1) = 1
+        expected_counts(2, 3) = 1
+
+        expected_pmf = 0.0_real64
+        expected_pmf(1, 1) = 0.5_real64
+        expected_pmf(1, 2) = 0.5_real64
+        expected_pmf(2, 1) = 0.5_real64
+        expected_pmf(2, 3) = 0.5_real64
+
+        call assert_equal_array_int(counts, expected_counts, size(counts, kind=int32), &
+                                    "test_build_residual_histograms_variable_bins_per_point: counts don't match")
+        call assert_equal_array_real(pmf, expected_pmf, size(pmf, kind=int32), TOL, &
+                                     "test_build_residual_histograms_variable_bins_per_point: pmf don't match")
+        call assert_equal_int(included(1), 2, "test_build_residual_histograms_variable_bins_per_point: included row 1")
+        call assert_equal_int(included(2), 2, "test_build_residual_histograms_variable_bins_per_point: included row 2")
+
+        ! Explicit zero-padding checks: point 1 owns only 2 bins, point 2 owns 3 -- their
+        ! remaining columns up to max_n_bins must be exactly zero.
+        call assert_equal_int(counts(1, 3), 0_int32, &
+                              "test_build_residual_histograms_variable_bins_per_point: point 1 col 3 must be zero-padded")
+        call assert_equal_int(counts(1, 4), 0_int32, &
+                              "test_build_residual_histograms_variable_bins_per_point: point 1 col 4 must be zero-padded")
+        call assert_equal_int(counts(2, 4), 0_int32, &
+                              "test_build_residual_histograms_variable_bins_per_point: point 2 col 4 must be zero-padded")
+    end subroutine test_build_residual_histograms_variable_bins_per_point
+
+    !> Builds two "studies" via two separate `build_residual_histograms` calls that pad the SAME
+    !| point's own bin count out to a wider `max_n_bins`, feeds both studies' unmodified
+    !| point-major pmfs into `compute_divergence_per_reference_point`, and checks the resulting
+    !| JSD against a reference computed with `max_n_bins` collapsed down to exactly that point's
+    !| own bin count (no padding at all). This proves Issue #187's "Key design insight" claim end
+    !| to end, rather than merely asserting it: zero-padding makes `calc_pmf_impl` and
+    !| `compute_divergence_per_reference_point_impl` agnostic to how far `max_n_bins` overshoots a
+    !| point's own bin count.
+    subroutine test_build_residual_histograms_zero_padding_safe_for_jsd
+        integer(int32), parameter :: n_reps_S1 = 3, n_reps_S2 = 3, n_neighbors = 1, n_points = 1
+        integer(int32), parameter :: own_n_bins = 3, padded_max_n_bins = 6
+        integer(int32), dimension(n_points), parameter :: n_bins_per_point = [own_n_bins]
+        real(real64), dimension(n_reps_S1, n_neighbors, n_points) :: E_S1
+        real(real64), dimension(n_reps_S2, n_neighbors, n_points) :: E_S2
+        real(real64), dimension(n_points, padded_max_n_bins) :: pmf_S1_padded, pmf_S2_padded
+        integer(int32), dimension(n_points, padded_max_n_bins) :: counts_S1_padded, counts_S2_padded
+        real(real64), dimension(n_points, own_n_bins) :: pmf_S1_ref, pmf_S2_ref
+        integer(int32), dimension(n_points, own_n_bins) :: counts_S1_ref, counts_S2_ref
+        integer(int32), dimension(n_points) :: included_S1, included_S2
+        real(real64), dimension(n_points) :: js_divergences_padded, js_divergences_ref
+        real(real64) :: R
+        integer(int32) :: ierr
+
+        R = 2.0_real64
+        E_S1(:, 1, 1) = [-2.0_real64, 0.0_real64, 1.9_real64]
+        E_S2(:, 1, 1) = [-0.5_real64, -0.5_real64, 1.99_real64]
+
+        ! Padded: max_n_bins = 6, but this point's own bin count stays 3 -- columns 4-6
+        ! zero-padded.
+        call build_residual_histograms(E_S1, n_reps_S1, n_neighbors, n_points, R, padded_max_n_bins, n_bins_per_point, &
+                                       counts_S1_padded, pmf_S1_padded, included_S1, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_build_residual_histograms_zero_padding_safe_for_jsd: S1 padded ierr should be OK")
+        call build_residual_histograms(E_S2, n_reps_S2, n_neighbors, n_points, R, padded_max_n_bins, n_bins_per_point, &
+                                       counts_S2_padded, pmf_S2_padded, included_S2, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_build_residual_histograms_zero_padding_safe_for_jsd: S2 padded ierr should be OK")
+
+        ! Feed the padded, UNMODIFIED (n_points, padded_max_n_bins) pmfs straight into
+        ! compute_divergence_per_reference_point -- no truncation/collapsing here.
+        call compute_divergence_per_reference_point(pmf_S1_padded, pmf_S2_padded, n_points, padded_max_n_bins, &
+                                                     js_divergences_padded, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_build_residual_histograms_zero_padding_safe_for_jsd: padded JSD ierr should be OK")
+
+        ! Reference: max_n_bins collapsed down to exactly this point's own bin count -- no
+        ! padding at all.
+        call build_residual_histograms(E_S1, n_reps_S1, n_neighbors, n_points, R, own_n_bins, n_bins_per_point, &
+                                       counts_S1_ref, pmf_S1_ref, included_S1, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_build_residual_histograms_zero_padding_safe_for_jsd: S1 ref ierr should be OK")
+        call build_residual_histograms(E_S2, n_reps_S2, n_neighbors, n_points, R, own_n_bins, n_bins_per_point, &
+                                       counts_S2_ref, pmf_S2_ref, included_S2, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_build_residual_histograms_zero_padding_safe_for_jsd: S2 ref ierr should be OK")
+
+        call compute_divergence_per_reference_point(pmf_S1_ref, pmf_S2_ref, n_points, own_n_bins, &
+                                                     js_divergences_ref, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_build_residual_histograms_zero_padding_safe_for_jsd: ref JSD ierr should be OK")
+
+        ! The unpadded columns (1..own_n_bins) of the padded run must exactly match the unpadded
+        ! reference run -- max_n_bins never enters bin_width's computation, only
+        ! n_bins_per_point does.
+        call assert_equal_array_int(counts_S1_padded(:, 1:own_n_bins), counts_S1_ref, size(counts_S1_ref, kind=int32), &
+                                    "test_build_residual_histograms_zero_padding_safe_for_jsd: S1 counts columns 1..own_n_bins must match the unpadded reference")
+        call assert_equal_array_int(counts_S2_padded(:, 1:own_n_bins), counts_S2_ref, size(counts_S2_ref, kind=int32), &
+                                    "test_build_residual_histograms_zero_padding_safe_for_jsd: S2 counts columns 1..own_n_bins must match the unpadded reference")
+
+        ! And the padded columns must be exactly zero.
+        call assert_equal_int(sum(counts_S1_padded(:, own_n_bins + 1:padded_max_n_bins)), 0_int32, &
+                              "test_build_residual_histograms_zero_padding_safe_for_jsd: S1 padded columns must be zero")
+        call assert_equal_int(sum(counts_S2_padded(:, own_n_bins + 1:padded_max_n_bins)), 0_int32, &
+                              "test_build_residual_histograms_zero_padding_safe_for_jsd: S2 padded columns must be zero")
+
+        ! The actual end-to-end claim: the JSD computed from the padded arrays, unmodified, is
+        ! numerically identical to the JSD computed from the collapsed, unpadded reference.
+        call assert_equal_real(js_divergences_padded(1), js_divergences_ref(1), TOL, &
+                               "test_build_residual_histograms_zero_padding_safe_for_jsd: padded JSD must equal unpadded reference JSD")
+    end subroutine test_build_residual_histograms_zero_padding_safe_for_jsd
 
     !> Test the compute_divergence_per_reference_point function with simple synthetic examples.
     subroutine test_compute_divergence_per_reference_point

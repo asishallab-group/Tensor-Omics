@@ -112,6 +112,7 @@ contains
         real(real64), dimension(:, :), allocatable :: tmp_pmf_S1
         real(real64), dimension(:, :), allocatable :: tmp_pmf_S2
         integer(int32), dimension(:, :), allocatable :: tmp_counts
+        integer(int32), dimension(:), allocatable :: tmp_n_bins_per_point
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -137,6 +138,7 @@ contains
         M_ALLOCATE(tmp_pmf_S1(n_points, n_bins))
         M_ALLOCATE(tmp_pmf_S2(n_points, n_bins))
         M_ALLOCATE(tmp_counts(n_points, n_bins))
+        M_ALLOCATE(tmp_n_bins_per_point(n_points))
 
         call fjct_compute_jsd_impl(&
             family_idx = family_idx,&
@@ -164,7 +166,8 @@ contains
             tmp_neighbor_mask_S2 = tmp_neighbor_mask_S2,&
             tmp_pmf_S1 = tmp_pmf_S1,&
             tmp_pmf_S2 = tmp_pmf_S2,&
-            tmp_counts = tmp_counts&
+            tmp_counts = tmp_counts,&
+            tmp_n_bins_per_point = tmp_n_bins_per_point&
         )
     end subroutine fjct_compute_jsd
 
@@ -198,6 +201,7 @@ contains
             tmp_pmf_S1,&
             tmp_pmf_S2,&
             tmp_counts,&
+            tmp_n_bins_per_point,&
             ierr&
         )
         integer(int32), intent(in) :: n_genes_S1
@@ -262,6 +266,9 @@ contains
             !! Work array for study 2's normalized histogram counts
         integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts
             !! Work array for the histogram counts
+        integer(int32), dimension(n_points), intent(out) :: tmp_n_bins_per_point
+            !! Work array forwarded to
+            !! [[tox_data_integration_per_family_impl(module):fjct_compute_masked_jsd_impl(interface)]]
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -311,7 +318,8 @@ contains
             tmp_neighbor_mask_S2 = tmp_neighbor_mask_S2,&
             tmp_pmf_S1 = tmp_pmf_S1,&
             tmp_pmf_S2 = tmp_pmf_S2,&
-            tmp_counts = tmp_counts&
+            tmp_counts = tmp_counts,&
+            tmp_n_bins_per_point = tmp_n_bins_per_point&
         )
     end subroutine fjct_compute_jsd_expert
 
@@ -383,6 +391,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
         integer(int32), dimension(:, :), allocatable :: tmp_counts
+        integer(int32), dimension(:), allocatable :: tmp_n_bins_per_point
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -398,6 +407,7 @@ contains
 #endif
 
         M_ALLOCATE(tmp_counts(n_points, n_bins))
+        M_ALLOCATE(tmp_n_bins_per_point(n_points))
 
         call fjct_compute_masked_jsd_impl(&
             neighborhood_residuals_S1 = neighborhood_residuals_S1,&
@@ -418,7 +428,8 @@ contains
             weights = weights,&
             pmf_S1 = pmf_S1,&
             pmf_S2 = pmf_S2,&
-            tmp_counts = tmp_counts&
+            tmp_counts = tmp_counts,&
+            tmp_n_bins_per_point = tmp_n_bins_per_point&
         )
     end subroutine fjct_compute_masked_jsd
 
@@ -447,6 +458,7 @@ contains
             pmf_S1,&
             pmf_S2,&
             tmp_counts,&
+            tmp_n_bins_per_point,&
             ierr&
         )
         integer(int32), intent(in) :: n_reps_S1
@@ -490,6 +502,10 @@ contains
             !! Normalized histogram counts for study 2
         integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts
             !! Work array for the histogram counts
+        integer(int32), dimension(n_points), intent(out) :: tmp_n_bins_per_point
+            !! Work array forwarded to
+            !! [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_helper(interface)]],
+            !! which fills it with `n_bins` broadcast to every reference point
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -525,7 +541,8 @@ contains
             weights = weights,&
             pmf_S1 = pmf_S1,&
             pmf_S2 = pmf_S2,&
-            tmp_counts = tmp_counts&
+            tmp_counts = tmp_counts,&
+            tmp_n_bins_per_point = tmp_n_bins_per_point&
         )
     end subroutine fjct_compute_masked_jsd_expert
 

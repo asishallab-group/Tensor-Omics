@@ -94,7 +94,7 @@ SEXP determine_shared_residual_range_call(SEXP, SEXP);
 SEXP determine_shared_residual_range_expert_call(SEXP, SEXP, SEXP);
 SEXP determine_study_shared_residual_range_call(SEXP, SEXP, SEXP);
 SEXP determine_all_studies_shared_residual_range_call(SEXP, SEXP);
-SEXP build_residual_histograms_call(SEXP, SEXP, SEXP, SEXP);
+SEXP build_residual_histograms_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_pmf_call(SEXP, SEXP);
 SEXP compute_divergence_per_reference_point_call(SEXP, SEXP);
 SEXP compute_weighted_global_divergence_call(SEXP, SEXP, SEXP);
@@ -226,7 +226,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"determine_shared_residual_range_expert_call", (DL_FUNC) &determine_shared_residual_range_expert_call, 3},
     {"determine_study_shared_residual_range_call", (DL_FUNC) &determine_study_shared_residual_range_call, 3},
     {"determine_all_studies_shared_residual_range_call", (DL_FUNC) &determine_all_studies_shared_residual_range_call, 2},
-    {"build_residual_histograms_call", (DL_FUNC) &build_residual_histograms_call, 4},
+    {"build_residual_histograms_call", (DL_FUNC) &build_residual_histograms_call, 5},
     {"calc_pmf_call", (DL_FUNC) &calc_pmf_call, 2},
     {"compute_divergence_per_reference_point_call", (DL_FUNC) &compute_divergence_per_reference_point_call, 2},
     {"compute_weighted_global_divergence_call", (DL_FUNC) &compute_weighted_global_divergence_call, 3},

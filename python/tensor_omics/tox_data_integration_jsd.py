@@ -92,6 +92,7 @@ _lib.build_residual_histograms_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
@@ -100,9 +101,9 @@ _lib.build_residual_histograms_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_BUILD_RESIDUAL_HISTOGRAMS_ARGUMENTS = ("neighborhood_residuals", "n_reps", "n_neighbors", "n_points", "shared_residual_range", "n_bins", "counts", "pmf", "included_n_reps", "neighbor_mask", "ierr",)
+_BUILD_RESIDUAL_HISTOGRAMS_ARGUMENTS = ("neighborhood_residuals", "n_reps", "n_neighbors", "n_points", "shared_residual_range", "max_n_bins", "n_bins_per_point", "counts", "pmf", "included_n_reps", "neighbor_mask", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_BUILD_RESIDUAL_HISTOGRAMS_ARGUMENT_SOURCES = (None, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", None, "counts", None, None, None, None, None,)
+_BUILD_RESIDUAL_HISTOGRAMS_ARGUMENT_SOURCES = (None, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", None, "counts", None, None, None, None, None, None,)
 
 _lib.calc_pmf_c.restype = None
 _lib.calc_pmf_c.argtypes = (
@@ -459,7 +460,8 @@ def determine_all_studies_shared_residual_range(
 def build_residual_histograms(
         neighborhood_residuals,
         shared_residual_range,
-        n_bins,
+        max_n_bins,
+        n_bins_per_point,
         neighbor_mask=None,
 ):
     r"""Summarize the neighborhood residuals in absolute histogram counts and probability mass functions
@@ -474,8 +476,15 @@ def build_residual_histograms(
     shared_residual_range : float
         Computed residual range (R)
         The minimum valid value is `0.0`.
-    n_bins : int
-        Number of equally sized histogram bins in range [-R,R]
+    max_n_bins : int
+        Widest histogram bin count used by any reference point in this call -- the array
+        extent `counts`/`pmf` are declared with. A reference point whose own
+        `n_bins_per_point` is smaller has its remaining columns zero-padded.
+    n_bins_per_point : np.ndarray[np.int32] of shape (n_points,)
+        Number of equally sized histogram bins in range [-R,R] to use for this reference
+        point
+        The minimum valid value is `1`.
+        The maximum valid value is `max_n_bins`.
     neighbor_mask : np.ndarray[np.bool_] of shape (n_neighbors, n_points,), column-major (order='F'), optional
         Optional mask to exclude specific neighbors (e.g. for family-wise analysis)
 
@@ -484,11 +493,13 @@ def build_residual_histograms(
     dict
         with keys:
 
-        counts : np.ndarray[np.int32] of shape (n_points, n_bins,), column-major (order='F'), read-only
-            Absolute counts of a residual per bin
+        counts : np.ndarray[np.int32] of shape (n_points, max_n_bins,), column-major (order='F'), read-only
+            Absolute counts of a residual per bin, per reference point. Zero-padded beyond
+            `n_bins_per_point(i_point)` for each reference point `i_point`
             A result is a value; call `.copy()` to obtain a modifiable array.
-        pmf : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F'), read-only
-            `counts` normalized to `0 <= counts(:, i) <= 1` and `sum(counts(:, i)) == 1`
+        pmf : np.ndarray[np.float64] of shape (n_points, max_n_bins,), column-major (order='F'), read-only
+            `counts` normalized to `0 <= counts(:, i) <= 1` and `sum(counts(:, i)) == 1`.
+            Zero-padded beyond `n_bins_per_point(i_point)` for each reference point `i_point`
             A result is a value; call `.copy()` to obtain a modifiable array.
         included_n_reps : np.ndarray[np.int32] of shape (n_points,), read-only
             Stores the count of non-NaN replicates (included ones)
@@ -511,6 +522,12 @@ def build_residual_histograms(
         raise TypeError(f"'neighborhood_residuals' must be an array of np.float64: {error}") from None
     if neighborhood_residuals.ndim != 3:
         raise ValueError(f"'neighborhood_residuals' must have 3 dimensions, but has {neighborhood_residuals.ndim}")
+    try:
+        n_bins_per_point = np.ascontiguousarray(n_bins_per_point, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'n_bins_per_point' must be an array of np.int32: {error}") from None
+    if n_bins_per_point.ndim != 1:
+        raise ValueError(f"'n_bins_per_point' must have 1 dimension, but has {n_bins_per_point.ndim}")
     if neighbor_mask is not None:
         try:
             neighbor_mask = np.asfortranarray(neighbor_mask, dtype=np.bool_)
@@ -524,9 +541,15 @@ def build_residual_histograms(
     n_neighbors = neighborhood_residuals.shape[1]
     n_points = neighborhood_residuals.shape[2]
 
+    # Fortran cannot check that shared extents agree; this can
+    if n_bins_per_point.shape[0] != n_points:
+        raise ValueError(f"'n_bins_per_point' has {n_bins_per_point.shape[0]} along axis 0, but "
+            f"'neighborhood_residuals' implies n_points == {n_points}"
+        )
+
     # outputs and work arrays, which the caller never sees
-    counts = np.empty((n_points, n_bins,), dtype=np.int32, order='F')
-    pmf = np.empty((n_points, n_bins,), dtype=np.float64, order='F')
+    counts = np.empty((n_points, max_n_bins,), dtype=np.int32, order='F')
+    pmf = np.empty((n_points, max_n_bins,), dtype=np.float64, order='F')
     included_n_reps = np.empty((n_points,), dtype=np.int32, order='C')
     ierr = ctypes.c_int(0)
 
@@ -536,7 +559,8 @@ def build_residual_histograms(
         ctypes.byref(ctypes.c_int(n_neighbors)),
         ctypes.byref(ctypes.c_int(n_points)),
         ctypes.byref(ctypes.c_double(shared_residual_range)),
-        ctypes.byref(ctypes.c_int(n_bins)),
+        ctypes.byref(ctypes.c_int(max_n_bins)),
+        n_bins_per_point,
         counts,
         pmf,
         included_n_reps,

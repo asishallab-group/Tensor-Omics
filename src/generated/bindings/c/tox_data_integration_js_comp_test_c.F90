@@ -1174,7 +1174,12 @@ contains
         use tox_data_integration_js_comp_test, only: create_mean_pmf
 
         integer(c_int), intent(in), target :: n_bins
-            !! Number of equally sized histogram bins
+            !! The array's first extent for `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts` -- the
+            !! widest histogram bin count of any reference point (`max_n_bins`, for pmfs/counts
+            !! built by `build_residual_histograms_impl` from its own per-point
+            !! `n_bins_per_point`). Every study must share the same per-point bin count for this
+            !! to be safe: their zero-padded columns beyond that count then coincide across all
+            !! `n_studies`, so the averaged/summed `mean_pmf`/`mean_pmf_counts` are zero there too
         integer(c_int), intent(in), target :: n_points
             !! Number of reference points
         integer(c_int), intent(in), target :: n_studies
@@ -1247,7 +1252,12 @@ contains
         use tox_data_integration_js_comp_test, only: create_mean_pmf_only
 
         integer(c_int), intent(in), target :: n_bins
-            !! Number of equally sized histogram bins
+            !! The array's first extent for `pmfs`/`mean_pmf` -- the widest histogram bin count of
+            !! any reference point (`max_n_bins`, for pmfs built by
+            !! `build_residual_histograms_impl` from its own per-point `n_bins_per_point`). Every
+            !! study must share the same per-point bin count for this to be safe: their
+            !! zero-padded columns beyond that count then coincide across all `n_studies`, so the
+            !! averaged `mean_pmf` is zero there too
         integer(c_int), intent(in), target :: n_points
             !! Number of reference points
         integer(c_int), intent(in), target :: n_studies
@@ -1829,6 +1839,7 @@ contains
             tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major,&
             tmp_pmf_point_major,&
+            tmp_n_bins_per_point,&
             tmp_permutation_mean_pmf_counts,&
             tmp_permutation_counts,&
             tmp_permutation_pmfs,&
@@ -1907,6 +1918,10 @@ contains
         real(c_double), dimension(n_points, n_bins), intent(out), target :: tmp_pmf_point_major
             !! Working array: one study's point-major pmf, reused both for
             !! build_residual_histograms_impl's output and for calc_pmf_impl's re-derived pmf
+        integer(c_int), dimension(n_points), intent(out), target :: tmp_n_bins_per_point
+            !! Working array: `n_bins` broadcast to every reference point, since
+            !! build_residual_histograms_impl now takes a per-point bin count; every point uses the
+            !! same `n_bins` here, so this is a pure mechanical translation with no behavior change
         integer(c_int), dimension(n_bins, n_points), intent(out), target :: tmp_permutation_mean_pmf_counts
             !! Working array forwarded to gjct_permutation_test_impl's own resampling pool
         integer(c_int), dimension(n_bins, n_points), intent(out), target :: tmp_permutation_counts
@@ -1960,6 +1975,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_neighborhood_residuals_gathered, max_n_reps_all_studies * n_neighbors * n_points)
         M_CHECK_ARRAY_NON_NULL(tmp_counts_point_major, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(tmp_pmf_point_major, n_points * n_bins)
+        M_CHECK_ARRAY_NON_NULL(tmp_n_bins_per_point, n_points)
         M_CHECK_ARRAY_NON_NULL(tmp_permutation_mean_pmf_counts, n_bins * n_points)
         M_CHECK_ARRAY_NON_NULL(tmp_permutation_counts, n_bins * n_points)
         M_CHECK_ARRAY_NON_NULL(tmp_permutation_pmfs, n_bins * n_points * n_studies)
@@ -1994,6 +2010,7 @@ contains
             tmp_neighborhood_residuals_gathered = tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major = tmp_counts_point_major,&
             tmp_pmf_point_major = tmp_pmf_point_major,&
+            tmp_n_bins_per_point = tmp_n_bins_per_point,&
             tmp_permutation_mean_pmf_counts = tmp_permutation_mean_pmf_counts,&
             tmp_permutation_counts = tmp_permutation_counts,&
             tmp_permutation_pmfs = tmp_permutation_pmfs,&
@@ -2485,6 +2502,7 @@ contains
             tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major,&
             tmp_pmf_point_major,&
+            tmp_n_bins_per_point,&
             tmp_pmfs,&
             tmp_counts,&
             tmp_included_n_reps,&
@@ -2660,6 +2678,11 @@ contains
         real(c_double), dimension(max_n_points_candidate, 256), intent(out), target :: tmp_pmf_point_major
             !! Working array: one study's point-major pmf for the current candidate, reused per
             !! study. `256` = MAX_N_BINS, see tmp_counts_point_major above
+        integer(c_int), dimension(max_n_points_candidate), intent(out), target :: tmp_n_bins_per_point
+            !! Working array: the current candidate's `n_bins` broadcast to every reference point,
+            !! since build_residual_histograms_impl now takes a per-point bin count; every point
+            !! uses the same `n_bins` here, so this is a pure mechanical translation with no
+            !! behavior change
         real(c_double), dimension(256, max_n_points_candidate, n_studies), intent(out), target :: tmp_pmfs
             !! Working array: every study's bin-major pmf for the current candidate. `256` =
             !! MAX_N_BINS, see tmp_counts_point_major above
@@ -2809,6 +2832,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_neighborhood_residuals_gathered, max_n_reps_all_studies * max_n_neighbors_candidate * max_n_points_candidate)
         M_CHECK_ARRAY_NON_NULL(tmp_counts_point_major, max_n_points_candidate * 256)
         M_CHECK_ARRAY_NON_NULL(tmp_pmf_point_major, max_n_points_candidate * 256)
+        M_CHECK_ARRAY_NON_NULL(tmp_n_bins_per_point, max_n_points_candidate)
         M_CHECK_ARRAY_NON_NULL(tmp_pmfs, 256 * max_n_points_candidate * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_counts, 256 * max_n_points_candidate * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_included_n_reps, max_n_points_candidate * n_studies)
@@ -2895,6 +2919,7 @@ contains
             tmp_neighborhood_residuals_gathered = tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major = tmp_counts_point_major,&
             tmp_pmf_point_major = tmp_pmf_point_major,&
+            tmp_n_bins_per_point = tmp_n_bins_per_point,&
             tmp_pmfs = tmp_pmfs,&
             tmp_counts = tmp_counts,&
             tmp_included_n_reps = tmp_included_n_reps,&

@@ -981,7 +981,12 @@ contains
     pure subroutine create_mean_pmf_impl(pmfs, counts, n_bins, n_points, n_studies, included_n_reps, mean_pmf, &
                                          mean_pmf_included_n_reps, mean_pmf_counts)
         integer(int32), intent(in) :: n_bins
-            !! Number of equally sized histogram bins
+            !! The array's first extent for `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts` -- the
+            !! widest histogram bin count of any reference point (`max_n_bins`, for pmfs/counts
+            !! built by `build_residual_histograms_impl` from its own per-point
+            !! `n_bins_per_point`). Every study must share the same per-point bin count for this
+            !! to be safe: their zero-padded columns beyond that count then coincide across all
+            !! `n_studies`, so the averaged/summed `mean_pmf`/`mean_pmf_counts` are zero there too
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_studies
@@ -1039,7 +1044,12 @@ contains
     !| the fix.
     pure subroutine create_mean_pmf_only_impl(pmfs, n_bins, n_points, n_studies, mean_pmf)
         integer(int32), intent(in) :: n_bins
-            !! Number of equally sized histogram bins
+            !! The array's first extent for `pmfs`/`mean_pmf` -- the widest histogram bin count of
+            !! any reference point (`max_n_bins`, for pmfs built by
+            !! `build_residual_histograms_impl` from its own per-point `n_bins_per_point`). Every
+            !! study must share the same per-point bin count for this to be safe: their
+            !! zero-padded columns beyond that count then coincide across all `n_studies`, so the
+            !! averaged `mean_pmf` is zero there too
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_studies
@@ -1436,7 +1446,8 @@ contains
                                      neighborhood_indices, neighborhood_range, pmfs, counts, included_n_reps, mean_pmf, &
                                      mean_pmf_counts, mean_pmf_included_n_reps, js_divergences, weights, &
                                      global_js_divergence, p_values, tmp_neighborhood_residuals_gathered, &
-                                     tmp_counts_point_major, tmp_pmf_point_major, tmp_permutation_mean_pmf_counts, &
+                                     tmp_counts_point_major, tmp_pmf_point_major, tmp_n_bins_per_point, &
+                                     tmp_permutation_mean_pmf_counts, &
                                      tmp_permutation_counts, tmp_permutation_pmfs, tmp_permutation_js_divergences, &
                                      tmp_permutation_weights, tmp_permutation_global_js_divergence, n_permutations, &
                                      random_seed, ierr)
@@ -1507,6 +1518,10 @@ contains
         real(real64), dimension(n_points, n_bins), intent(out) :: tmp_pmf_point_major
             !! Working array: one study's point-major pmf, reused both for
             !! build_residual_histograms_impl's output and for calc_pmf_impl's re-derived pmf
+        integer(int32), dimension(n_points), intent(out) :: tmp_n_bins_per_point
+            !! Working array: `n_bins` broadcast to every reference point, since
+            !! build_residual_histograms_impl now takes a per-point bin count; every point uses the
+            !! same `n_bins` here, so this is a pure mechanical translation with no behavior change
         integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_permutation_mean_pmf_counts
             !! Working array forwarded to gjct_permutation_test_impl's own resampling pool
         integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_permutation_counts
@@ -1546,9 +1561,10 @@ contains
                 tmp_neighborhood_residuals_gathered(:, i_neighbor, i_point) = residuals(:, gene_idx, i_study)
             end do
 
+            tmp_n_bins_per_point(1:n_points) = n_bins
             call build_residual_histograms_impl(tmp_neighborhood_residuals_gathered, max_n_reps_all_studies, n_neighbors, &
-                                                n_points, shared_residual_range, n_bins, tmp_counts_point_major, &
-                                                tmp_pmf_point_major, included_n_reps(:, i_study))
+                                                n_points, shared_residual_range, n_bins, tmp_n_bins_per_point, &
+                                                tmp_counts_point_major, tmp_pmf_point_major, included_n_reps(:, i_study))
             counts(:, :, i_study) = transpose(tmp_counts_point_major)
             pmfs(:, :, i_study) = transpose(tmp_pmf_point_major)
         end do
@@ -1664,7 +1680,8 @@ contains
                                                        trace_delta_max, tmp_gene_means_perms, tmp_gene_means_perm_all, &
                                                        tmp_residuals_perm, tmp_x_star, tmp_neighborhood_indices, &
                                                        tmp_neighborhood_range, tmp_neighborhood_residuals_gathered, &
-                                                       tmp_counts_point_major, tmp_pmf_point_major, tmp_pmfs, tmp_counts, &
+                                                       tmp_counts_point_major, tmp_pmf_point_major, tmp_n_bins_per_point, &
+                                                       tmp_pmfs, tmp_counts, &
                                                        tmp_included_n_reps, tmp_mean_pmf, tmp_mean_pmf_counts, &
                                                        tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, &
                                                        tmp_global_js_divergence, tmp_confidence_interval, &
@@ -1822,6 +1839,11 @@ contains
         real(real64), dimension(max_n_points_candidate, 256), intent(out) :: tmp_pmf_point_major
             !! Working array: one study's point-major pmf for the current candidate, reused per
             !! study. `256` = MAX_N_BINS, see tmp_counts_point_major above
+        integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_n_bins_per_point
+            !! Working array: the current candidate's `n_bins` broadcast to every reference point,
+            !! since build_residual_histograms_impl now takes a per-point bin count; every point
+            !! uses the same `n_bins` here, so this is a pure mechanical translation with no
+            !! behavior change
         real(real64), dimension(256, max_n_points_candidate, n_studies), intent(out) :: tmp_pmfs
             !! Working array: every study's bin-major pmf for the current candidate. `256` =
             !! MAX_N_BINS, see tmp_counts_point_major above
@@ -2009,9 +2031,11 @@ contains
                     tmp_neighborhood_residuals_gathered(:, i_neighbor, i_point) = residuals(:, gene_idx, i_study)
                 end do
 
+                tmp_n_bins_per_point(1:n_points) = n_bins
                 call build_residual_histograms_impl(tmp_neighborhood_residuals_gathered(:, 1:n_neighbors, 1:n_points), &
                                                     max_n_reps_all_studies, n_neighbors, n_points, shared_residual_range, &
-                                                    n_bins, tmp_counts_point_major(1:n_points, 1:n_bins), &
+                                                    n_bins, tmp_n_bins_per_point(1:n_points), &
+                                                    tmp_counts_point_major(1:n_points, 1:n_bins), &
                                                     tmp_pmf_point_major(1:n_points, 1:n_bins), &
                                                     tmp_included_n_reps(1:n_points, i_study))
                 tmp_counts(1:n_bins, 1:n_points, i_study) = transpose(tmp_counts_point_major(1:n_points, 1:n_bins))

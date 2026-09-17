@@ -186,6 +186,7 @@ contains
             tmp_pmf_S1,&
             tmp_pmf_S2,&
             tmp_counts,&
+            tmp_n_bins_per_point,&
             ierr&
         ) bind(C, name="fjct_compute_jsd_expert_c")
         use tox_data_integration_per_family, only: fjct_compute_jsd_expert
@@ -252,6 +253,9 @@ contains
             !! Work array for study 2's normalized histogram counts
         integer(c_int), dimension(n_points, n_bins), intent(out), target :: tmp_counts
             !! Work array for the histogram counts
+        integer(c_int), dimension(n_points), intent(out), target :: tmp_n_bins_per_point
+            !! Work array forwarded to
+            !! [[tox_data_integration_per_family_impl(module):fjct_compute_masked_jsd_impl(interface)]]
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -283,6 +287,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_pmf_S1, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(tmp_pmf_S2, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(tmp_counts, n_points * n_bins)
+        M_CHECK_ARRAY_NON_NULL(tmp_n_bins_per_point, n_points)
 
         call fjct_compute_jsd_expert(&
             family_idx = family_idx,&
@@ -311,6 +316,7 @@ contains
             tmp_pmf_S1 = tmp_pmf_S1,&
             tmp_pmf_S2 = tmp_pmf_S2,&
             tmp_counts = tmp_counts,&
+            tmp_n_bins_per_point = tmp_n_bins_per_point,&
             ierr = ierr&
         )
     end subroutine fjct_compute_jsd_expert_c
@@ -454,6 +460,7 @@ contains
             pmf_S1,&
             pmf_S2,&
             tmp_counts,&
+            tmp_n_bins_per_point,&
             ierr&
         ) bind(C, name="fjct_compute_masked_jsd_expert_c")
         use tox_data_integration_per_family, only: fjct_compute_masked_jsd_expert
@@ -499,6 +506,10 @@ contains
             !! Normalized histogram counts for study 2
         integer(c_int), dimension(n_points, n_bins), intent(out), target :: tmp_counts
             !! Work array for the histogram counts
+        integer(c_int), dimension(n_points), intent(out), target :: tmp_n_bins_per_point
+            !! Work array forwarded to
+            !! [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_helper(interface)]],
+            !! which fills it with `n_bins` broadcast to every reference point
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -523,6 +534,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(pmf_S1, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(pmf_S2, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(tmp_counts, n_points * n_bins)
+        M_CHECK_ARRAY_NON_NULL(tmp_n_bins_per_point, n_points)
 
         call fjct_compute_masked_jsd_expert(&
             neighborhood_residuals_S1 = neighborhood_residuals_S1,&
@@ -544,6 +556,7 @@ contains
             pmf_S1 = pmf_S1,&
             pmf_S2 = pmf_S2,&
             tmp_counts = tmp_counts,&
+            tmp_n_bins_per_point = tmp_n_bins_per_point,&
             ierr = ierr&
         )
     end subroutine fjct_compute_masked_jsd_expert_c

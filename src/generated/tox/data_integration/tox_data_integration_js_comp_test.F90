@@ -1133,7 +1133,12 @@ contains
             ierr&
         )
         integer(int32), intent(in) :: n_bins
-            !! Number of equally sized histogram bins
+            !! The array's first extent for `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts` -- the
+            !! widest histogram bin count of any reference point (`max_n_bins`, for pmfs/counts
+            !! built by `build_residual_histograms_impl` from its own per-point
+            !! `n_bins_per_point`). Every study must share the same per-point bin count for this
+            !! to be safe: their zero-padded columns beyond that count then coincide across all
+            !! `n_studies`, so the averaged/summed `mean_pmf`/`mean_pmf_counts` are zero there too
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_studies
@@ -1202,7 +1207,12 @@ contains
             ierr&
         )
         integer(int32), intent(in) :: n_bins
-            !! Number of equally sized histogram bins
+            !! The array's first extent for `pmfs`/`mean_pmf` -- the widest histogram bin count of
+            !! any reference point (`max_n_bins`, for pmfs built by
+            !! `build_residual_histograms_impl` from its own per-point `n_bins_per_point`). Every
+            !! study must share the same per-point bin count for this to be safe: their
+            !! zero-padded columns beyond that count then coincide across all `n_studies`, so the
+            !! averaged `mean_pmf` is zero there too
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_studies
@@ -1681,6 +1691,7 @@ contains
         real(real64), dimension(:, :, :), allocatable :: tmp_neighborhood_residuals_gathered
         integer(int32), dimension(:, :), allocatable :: tmp_counts_point_major
         real(real64), dimension(:, :), allocatable :: tmp_pmf_point_major
+        integer(int32), dimension(:), allocatable :: tmp_n_bins_per_point
         integer(int32), dimension(:, :), allocatable :: tmp_permutation_mean_pmf_counts
         integer(int32), dimension(:, :), allocatable :: tmp_permutation_counts
         real(real64), dimension(:, :, :), allocatable :: tmp_permutation_pmfs
@@ -1708,6 +1719,7 @@ contains
         M_ALLOCATE(tmp_neighborhood_residuals_gathered(max_n_reps_all_studies, n_neighbors, n_points))
         M_ALLOCATE(tmp_counts_point_major(n_points, n_bins))
         M_ALLOCATE(tmp_pmf_point_major(n_points, n_bins))
+        M_ALLOCATE(tmp_n_bins_per_point(n_points))
         M_ALLOCATE(tmp_permutation_mean_pmf_counts(n_bins, n_points))
         M_ALLOCATE(tmp_permutation_counts(n_bins, n_points))
         M_ALLOCATE(tmp_permutation_pmfs(n_bins, n_points, n_studies))
@@ -1742,6 +1754,7 @@ contains
             tmp_neighborhood_residuals_gathered = tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major = tmp_counts_point_major,&
             tmp_pmf_point_major = tmp_pmf_point_major,&
+            tmp_n_bins_per_point = tmp_n_bins_per_point,&
             tmp_permutation_mean_pmf_counts = tmp_permutation_mean_pmf_counts,&
             tmp_permutation_counts = tmp_permutation_counts,&
             tmp_permutation_pmfs = tmp_permutation_pmfs,&
@@ -1822,6 +1835,7 @@ contains
             tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major,&
             tmp_pmf_point_major,&
+            tmp_n_bins_per_point,&
             tmp_permutation_mean_pmf_counts,&
             tmp_permutation_counts,&
             tmp_permutation_pmfs,&
@@ -1898,6 +1912,10 @@ contains
         real(real64), dimension(n_points, n_bins), intent(out) :: tmp_pmf_point_major
             !! Working array: one study's point-major pmf, reused both for
             !! build_residual_histograms_impl's output and for calc_pmf_impl's re-derived pmf
+        integer(int32), dimension(n_points), intent(out) :: tmp_n_bins_per_point
+            !! Working array: `n_bins` broadcast to every reference point, since
+            !! build_residual_histograms_impl now takes a per-point bin count; every point uses the
+            !! same `n_bins` here, so this is a pure mechanical translation with no behavior change
         integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_permutation_mean_pmf_counts
             !! Working array forwarded to gjct_permutation_test_impl's own resampling pool
         integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_permutation_counts
@@ -1930,7 +1948,7 @@ contains
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
         call validate_in_range_int(n_bins, ierr, arg_pos=6_int32, min=1_int32)
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=7_int32, min=0.0_real64)
-        call validate_in_range_int(n_permutations, ierr, arg_pos=33_int32, min=0_int32)
+        call validate_in_range_int(n_permutations, ierr, arg_pos=34_int32, min=0_int32)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(gene_means_perms, max_n_genes_all_studies * n_studies, ierr, arg_pos=9_int32, min=1_int32, max=max_n_genes_all_studies)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=10_int32, allow_nan=.true._c_bool)
@@ -1965,6 +1983,7 @@ contains
             tmp_neighborhood_residuals_gathered = tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major = tmp_counts_point_major,&
             tmp_pmf_point_major = tmp_pmf_point_major,&
+            tmp_n_bins_per_point = tmp_n_bins_per_point,&
             tmp_permutation_mean_pmf_counts = tmp_permutation_mean_pmf_counts,&
             tmp_permutation_counts = tmp_permutation_counts,&
             tmp_permutation_pmfs = tmp_permutation_pmfs,&
@@ -2254,6 +2273,7 @@ contains
         real(real64), dimension(:, :, :), allocatable :: tmp_neighborhood_residuals_gathered
         integer(int32), dimension(:, :), allocatable :: tmp_counts_point_major
         real(real64), dimension(:, :), allocatable :: tmp_pmf_point_major
+        integer(int32), dimension(:), allocatable :: tmp_n_bins_per_point
         real(real64), dimension(:, :, :), allocatable :: tmp_pmfs
         integer(int32), dimension(:, :, :), allocatable :: tmp_counts
         integer(int32), dimension(:, :), allocatable :: tmp_included_n_reps
@@ -2310,6 +2330,7 @@ contains
         M_ALLOCATE(tmp_neighborhood_residuals_gathered(max_n_reps_all_studies, max_n_neighbors_candidate, max_n_points_candidate))
         M_ALLOCATE(tmp_counts_point_major(max_n_points_candidate, 256))
         M_ALLOCATE(tmp_pmf_point_major(max_n_points_candidate, 256))
+        M_ALLOCATE(tmp_n_bins_per_point(max_n_points_candidate))
         M_ALLOCATE(tmp_pmfs(256, max_n_points_candidate, n_studies))
         M_ALLOCATE(tmp_counts(256, max_n_points_candidate, n_studies))
         M_ALLOCATE(tmp_included_n_reps(max_n_points_candidate, n_studies))
@@ -2362,6 +2383,7 @@ contains
             tmp_neighborhood_residuals_gathered = tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major = tmp_counts_point_major,&
             tmp_pmf_point_major = tmp_pmf_point_major,&
+            tmp_n_bins_per_point = tmp_n_bins_per_point,&
             tmp_pmfs = tmp_pmfs,&
             tmp_counts = tmp_counts,&
             tmp_included_n_reps = tmp_included_n_reps,&
@@ -2491,6 +2513,7 @@ contains
             tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major,&
             tmp_pmf_point_major,&
+            tmp_n_bins_per_point,&
             tmp_pmfs,&
             tmp_counts,&
             tmp_included_n_reps,&
@@ -2663,6 +2686,11 @@ contains
         real(real64), dimension(max_n_points_candidate, 256), intent(out) :: tmp_pmf_point_major
             !! Working array: one study's point-major pmf for the current candidate, reused per
             !! study. `256` = MAX_N_BINS, see tmp_counts_point_major above
+        integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_n_bins_per_point
+            !! Working array: the current candidate's `n_bins` broadcast to every reference point,
+            !! since build_residual_histograms_impl now takes a per-point bin count; every point
+            !! uses the same `n_bins` here, so this is a pure mechanical translation with no
+            !! behavior change
         real(real64), dimension(256, max_n_points_candidate, n_studies), intent(out) :: tmp_pmfs
             !! Working array: every study's bin-major pmf for the current candidate. `256` =
             !! MAX_N_BINS, see tmp_counts_point_major above
@@ -2773,18 +2801,18 @@ contains
         call validate_in_range_int(max_n_points_candidate, ierr, arg_pos=9_int32, min=1_int32)
         call validate_in_range_int(max_n_neighbors_candidate, ierr, arg_pos=10_int32, min=1_int32)
         call validate_in_range_int(n_bootstrapping_top_k_jsds, ierr, arg_pos=11_int32, min=1_int32)
-        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=51_int32, min=0_int32)
-        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=52_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=53_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=55_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=56_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_epsilon, ierr, arg_pos=57_int32, min=above(0.0_real64))
-        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=58_int32, min=1_int32)
-        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=59_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=52_int32, min=0_int32)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=53_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=54_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=56_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=57_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_epsilon, ierr, arg_pos=58_int32, min=above(0.0_real64))
+        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=59_int32, min=1_int32)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=60_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
-        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=54_int32); end if
+        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=55_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -2825,6 +2853,7 @@ contains
             tmp_neighborhood_residuals_gathered = tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major = tmp_counts_point_major,&
             tmp_pmf_point_major = tmp_pmf_point_major,&
+            tmp_n_bins_per_point = tmp_n_bins_per_point,&
             tmp_pmfs = tmp_pmfs,&
             tmp_counts = tmp_counts,&
             tmp_included_n_reps = tmp_included_n_reps,&

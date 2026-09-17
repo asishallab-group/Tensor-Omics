@@ -10,7 +10,7 @@ void determine_shared_residual_range_c(const double*, const int*, double*, const
 void determine_shared_residual_range_expert_c(const double*, const int*, const int*, double*, const double*, int*);
 void determine_study_shared_residual_range_c(const double*, const double*, const int*, const int*, const int*, const int*, double*, const double*, int*);
 void determine_all_studies_shared_residual_range_c(const double*, const int*, const int*, const int*, const int*, double*, const double*, int*);
-void build_residual_histograms_c(const double*, const int*, const int*, const int*, const double*, const int*, int*, double*, int*, const unsigned char*, int*);
+void build_residual_histograms_c(const double*, const int*, const int*, const int*, const double*, const int*, const int*, int*, double*, int*, const unsigned char*, int*);
 void calc_pmf_c(const int*, const int*, const int*, const int*, double*, int*);
 void compute_divergence_per_reference_point_c(const double*, const double*, const int*, const int*, double*, int*);
 void compute_weighted_global_divergence_c(const double*, const int*, const int*, const int*, double*, double*, int*);
@@ -153,7 +153,7 @@ SEXP determine_all_studies_shared_residual_range_call(SEXP neighborhood_residual
     return _out;
 }
 
-SEXP build_residual_histograms_call(SEXP neighborhood_residuals, SEXP shared_residual_range, SEXP n_bins, SEXP neighbor_mask) {
+SEXP build_residual_histograms_call(SEXP neighborhood_residuals, SEXP shared_residual_range, SEXP max_n_bins, SEXP n_bins_per_point, SEXP neighbor_mask) {
     int nprot = 0;
     // optionals: a null pointer and size 0 when the caller omits them
     int neighbor_mask_size = 0;
@@ -173,16 +173,16 @@ SEXP build_residual_histograms_call(SEXP neighborhood_residuals, SEXP shared_res
 
     // scalar inputs, pulled from their length-1 vectors
     double shared_residual_range_v = Rf_asReal(shared_residual_range);
-    int n_bins_v = Rf_asInteger(n_bins);
+    int max_n_bins_v = Rf_asInteger(max_n_bins);
 
     // convert what Fortran cannot take from R directly
     unsigned char* neighbor_mask_c = tox_bool_in(neighbor_mask);
 
     // outputs and work space
-    SEXP counts = PROTECT(Rf_allocVector(INTSXP, n_points * n_bins_v)); nprot++;
-    { SEXP counts_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(counts_dim)[0] = n_points; INTEGER(counts_dim)[1] = n_bins_v; Rf_setAttrib(counts, R_DimSymbol, counts_dim); UNPROTECT(1); }
-    SEXP pmf = PROTECT(Rf_allocVector(REALSXP, n_points * n_bins_v)); nprot++;
-    { SEXP pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(pmf_dim)[0] = n_points; INTEGER(pmf_dim)[1] = n_bins_v; Rf_setAttrib(pmf, R_DimSymbol, pmf_dim); UNPROTECT(1); }
+    SEXP counts = PROTECT(Rf_allocVector(INTSXP, n_points * max_n_bins_v)); nprot++;
+    { SEXP counts_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(counts_dim)[0] = n_points; INTEGER(counts_dim)[1] = max_n_bins_v; Rf_setAttrib(counts, R_DimSymbol, counts_dim); UNPROTECT(1); }
+    SEXP pmf = PROTECT(Rf_allocVector(REALSXP, n_points * max_n_bins_v)); nprot++;
+    { SEXP pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(pmf_dim)[0] = n_points; INTEGER(pmf_dim)[1] = max_n_bins_v; Rf_setAttrib(pmf, R_DimSymbol, pmf_dim); UNPROTECT(1); }
     SEXP included_n_reps = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
     int ierr = 0;
 
@@ -192,7 +192,8 @@ SEXP build_residual_histograms_call(SEXP neighborhood_residuals, SEXP shared_res
         &n_neighbors,
         &n_points,
         &shared_residual_range_v,
-        &n_bins_v,
+        &max_n_bins_v,
+        INTEGER(n_bins_per_point),
         INTEGER(counts),
         REAL(pmf),
         INTEGER(included_n_reps),

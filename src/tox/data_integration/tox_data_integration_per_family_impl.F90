@@ -24,7 +24,7 @@ contains
     pure subroutine fjct_compute_jsd_impl(family_idx, gene_to_family_S1, gene_to_family_S2, n_genes_S1, n_genes_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, &
                                             neighborhood_genes_S1, neighborhood_genes_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, &
                                             included_n_reps_S1, included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, &
-                                            tmp_neighbor_mask_S1, tmp_neighbor_mask_S2, tmp_pmf_S1, tmp_pmf_S2, tmp_counts &
+                                            tmp_neighbor_mask_S1, tmp_neighbor_mask_S2, tmp_pmf_S1, tmp_pmf_S2, tmp_counts, tmp_n_bins_per_point &
                                             )
         integer(int32), intent(in) :: n_genes_S1
             !! Number of genes in study 1
@@ -88,6 +88,9 @@ contains
             !! Work array for study 2's normalized histogram counts
         integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts
             !! Work array for the histogram counts
+        integer(int32), dimension(n_points), intent(out) :: tmp_n_bins_per_point
+            !! Work array forwarded to
+            !! [[tox_data_integration_per_family_impl(module):fjct_compute_masked_jsd_impl(interface)]]
 
         integer(int32) :: i_point, i_neighbor
 
@@ -99,7 +102,7 @@ contains
             end do
         end do
 
-        call fjct_compute_masked_jsd_impl(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, tmp_neighbor_mask_S1, tmp_neighbor_mask_S2, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, tmp_pmf_S1, tmp_pmf_S2, tmp_counts)
+        call fjct_compute_masked_jsd_impl(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, tmp_neighbor_mask_S1, tmp_neighbor_mask_S2, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, tmp_pmf_S1, tmp_pmf_S2, tmp_counts, tmp_n_bins_per_point)
     end subroutine fjct_compute_jsd_impl
 
     !> summary: Compute the compatibility score between two studies for a single masked sub-neighborhood
@@ -108,7 +111,7 @@ contains
     !| residual samples to the neighbors selected by `neighbor_mask_S1`/`neighbor_mask_S2`. Typically
     !| those are all neighbors belonging to one gene family, which is what `fjct_compute_jsd` builds
     !| the masks for from a family index.
-    pure subroutine fjct_compute_masked_jsd_impl(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, neighbor_mask_S1, neighbor_mask_S2, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts)
+    pure subroutine fjct_compute_masked_jsd_impl(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, neighbor_mask_S1, neighbor_mask_S2, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, tmp_n_bins_per_point)
         integer(int32), intent(in) :: n_reps_S1
             !! Number of replicates in study 1
         integer(int32), intent(in) :: n_reps_S2
@@ -150,8 +153,12 @@ contains
             !! Normalized histogram counts for study 2
         integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts
             !! Work array for the histogram counts
+        integer(int32), dimension(n_points), intent(out) :: tmp_n_bins_per_point
+            !! Work array forwarded to
+            !! [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_helper(interface)]],
+            !! which fills it with `n_bins` broadcast to every reference point
 
-        call jct_compute_jsd_pipeline_helper(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, neighbor_mask_S1, neighbor_mask_S2)
+        call jct_compute_jsd_pipeline_helper(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, tmp_n_bins_per_point, neighbor_mask_S1, neighbor_mask_S2)
         total_included_n_reps = sum(included_n_reps_S1) + sum(included_n_reps_S2)
     end subroutine fjct_compute_masked_jsd_impl
 

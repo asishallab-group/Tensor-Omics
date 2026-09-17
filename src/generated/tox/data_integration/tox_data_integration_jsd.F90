@@ -407,7 +407,8 @@ contains
             n_neighbors,&
             n_points,&
             shared_residual_range,&
-            n_bins,&
+            max_n_bins,&
+            n_bins_per_point,&
             counts,&
             pmf,&
             included_n_reps,&
@@ -420,18 +421,27 @@ contains
             !! Number of reference points (k)
         integer(int32), intent(in) :: n_points
             !! Number of reference points in the study
-        integer(int32), intent(in) :: n_bins
-            !! Number of equally sized histogram bins in range [-R,R]
+        integer(int32), intent(in) :: max_n_bins
+            !! Widest histogram bin count used by any reference point in this call -- the array
+            !! extent `counts`/`pmf` are declared with. A reference point whose own
+            !! `n_bins_per_point` is smaller has its remaining columns zero-padded.
         real(real64), dimension(n_reps, n_neighbors, n_points), intent(in) :: neighborhood_residuals
             !! Computed neighborhood residuals for a study, NaN is explicitly allowed for missing values
             !! NaN is permitted for this value.
         real(real64), intent(in) :: shared_residual_range
             !! Computed residual range (R)
             !! The minimum valid value is `0.0_real64`.
-        integer(int32), dimension(n_points, n_bins), intent(out) :: counts
-            !! Absolute counts of a residual per bin
-        real(real64), dimension(n_points, n_bins), intent(out) :: pmf
-            !! `counts` normalized to `0 <= counts(:, i) <= 1` and `sum(counts(:, i)) == 1`
+        integer(int32), dimension(n_points), intent(in) :: n_bins_per_point
+            !! Number of equally sized histogram bins in range [-R,R] to use for this reference
+            !! point
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `max_n_bins`.
+        integer(int32), dimension(n_points, max_n_bins), intent(out) :: counts
+            !! Absolute counts of a residual per bin, per reference point. Zero-padded beyond
+            !! `n_bins_per_point(i_point)` for each reference point `i_point`
+        real(real64), dimension(n_points, max_n_bins), intent(out) :: pmf
+            !! `counts` normalized to `0 <= counts(:, i) <= 1` and `sum(counts(:, i)) == 1`.
+            !! Zero-padded beyond `n_bins_per_point(i_point)` for each reference point `i_point`
         integer(int32), dimension(n_points), intent(out) :: included_n_reps
             !! Stores the count of non-NaN replicates (included ones)
         logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask
@@ -445,8 +455,9 @@ contains
         call validate_dimension_size(n_neighbors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=4_int32)
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=5_int32, min=0.0_real64)
-        call validate_dimension_size(n_bins, ierr, arg_pos=6_int32)
+        call validate_dimension_size(max_n_bins, ierr, arg_pos=6_int32)
         call validate_all_in_range_real(neighborhood_residuals, n_reps * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_int(n_bins_per_point, n_points, ierr, arg_pos=7_int32, min=1_int32, max=max_n_bins)
         if (is_err(ierr)) return
 #endif
 
@@ -456,7 +467,8 @@ contains
             n_neighbors = n_neighbors,&
             n_points = n_points,&
             shared_residual_range = shared_residual_range,&
-            n_bins = n_bins,&
+            max_n_bins = max_n_bins,&
+            n_bins_per_point = n_bins_per_point,&
             counts = counts,&
             pmf = pmf,&
             included_n_reps = included_n_reps,&
@@ -479,7 +491,11 @@ contains
         integer(int32), intent(in) :: n_points
             !! Number of reference points in the study
         integer(int32), intent(in) :: n_bins
-            !! Number of equally sized histogram bins in range [-R,R]
+            !! The array's second extent for `counts`/`pmf` -- the widest histogram bin count of
+            !! any reference point (`max_n_bins`, for a `counts` built by
+            !! `build_residual_histograms_impl` from its own per-point `n_bins_per_point`).
+            !! Columns beyond a given point's own bin count are zero-padded by that caller and are
+            !! read/written here as ordinary zero entries
         integer(int32), dimension(n_points, n_bins), intent(in) :: counts
             !! Absolute counts of a residual per bin
             !! The minimum valid value is `0_int32`.
@@ -524,7 +540,12 @@ contains
         integer(int32), intent(in) :: n_points
             !! Number of reference points (k)
         integer(int32), intent(in) :: n_bins
-            !! Number of equally sized histogram bins in range [-R,R]
+            !! The array's second extent for `pmf_S1`/`pmf_S2` -- the widest histogram bin count of
+            !! any reference point (`max_n_bins`, for pmfs built by
+            !! `build_residual_histograms_impl` from its own per-point `n_bins_per_point`). Both
+            !! operands must have been built from the same per-point bin count for this to be
+            !! safe: their zero-padded columns beyond that count then coincide, `S_mean` is zero
+            !! there, and neither term contributes
         real(real64), dimension(n_points, n_bins), intent(in) :: pmf_S1
             !! Computed normalized histogram counts for study 1
             !! The minimum valid value is `0.0_real64`.
