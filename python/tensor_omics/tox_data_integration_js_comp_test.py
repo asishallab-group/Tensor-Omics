@@ -43,12 +43,14 @@ _lib.estimate_bin_count_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_ESTIMATE_BIN_COUNT_ARGUMENTS = ("residuals", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "shared_residual_range", "n_bins", "ierr",)
+_ESTIMATE_BIN_COUNT_ARGUMENTS = ("residuals", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "shared_residual_range", "n_bins", "sturges_bins", "fd_bins", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_ESTIMATE_BIN_COUNT_ARGUMENT_SOURCES = (None, "residuals", None, None, None, None, None,)
+_ESTIMATE_BIN_COUNT_ARGUMENT_SOURCES = (None, "residuals", None, None, None, None, None, None, None,)
 
 _lib.estimate_bin_count_expert_c.restype = None
 _lib.estimate_bin_count_expert_c.argtypes = (
@@ -60,12 +62,14 @@ _lib.estimate_bin_count_expert_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_ESTIMATE_BIN_COUNT_EXPERT_ARGUMENTS = ("residuals", "residuals_perm", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "shared_residual_range", "n_bins", "ierr",)
+_ESTIMATE_BIN_COUNT_EXPERT_ARGUMENTS = ("residuals", "residuals_perm", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "shared_residual_range", "n_bins", "sturges_bins", "fd_bins", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_ESTIMATE_BIN_COUNT_EXPERT_ARGUMENT_SOURCES = (None, None, "residuals", None, None, None, None, None,)
+_ESTIMATE_BIN_COUNT_EXPERT_ARGUMENT_SOURCES = (None, None, "residuals", None, None, None, None, None, None, None,)
 
 _lib.generate_js_comp_test_candidates_c.restype = None
 _lib.generate_js_comp_test_candidates_c.argtypes = (
@@ -316,12 +320,15 @@ def estimate_bin_count(
 ):
     r"""Estimate the histogram bin count for one (n_points, n_neighbors) candidate
 
-    Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Takes the maximum of
-    Sturges' rule and the Freedman-Diaconis rule (without doubling the bin width, since
-    `shared_residual_range` is already the one-sided half of the full `[-R, R]` histogram
-    range, so dividing the full range by the undoubled Freedman-Diaconis width already gives
-    the doubled rule's bin count), clamped to at most
-    ``MAX_N_BINS`` bins.
+    Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Computes Sturges' rule and
+    the Freedman-Diaconis rule (without doubling the bin width, since `shared_residual_range`
+    is already the one-sided half of the full `[-R, R]` histogram range, so dividing the full
+    range by the undoubled Freedman-Diaconis width already gives the doubled rule's bin count)
+    independently, each clamped on its own to at most
+    ``MAX_N_BINS`` bins and returned as
+    `sturges_bins`/`fd_bins` for diagnostics, with their maximum returned as `n_bins`. When the
+    interquartile range is too close to zero to safely divide by, the Freedman-Diaconis term is
+    skipped and `fd_bins` falls back to the (clamped) Sturges estimate instead of blowing up.
 
     Parameters
     ----------
@@ -340,8 +347,17 @@ def estimate_bin_count(
 
     Returns
     -------
-    n_bins : int
-        Estimated number of histogram bins, at least 1 and at most MAX_N_BINS
+    dict
+        with keys:
+
+        n_bins : int
+            Estimated number of histogram bins, at least 1 and at most MAX_N_BINS: max(sturges_bins, fd_bins)
+        sturges_bins : int
+            Sturges' rule estimate alone, at least 1 and at most MAX_N_BINS
+        fd_bins : int
+            Freedman-Diaconis rule estimate alone, at least 1 and at most MAX_N_BINS; falls back
+            to the (clamped) sturges_bins when the interquartile range is too close to zero to
+            divide by (see the is_close guard below)
 
     Raises
     ------
@@ -369,6 +385,8 @@ def estimate_bin_count(
 
     # outputs and work arrays, which the caller never sees
     n_bins = ctypes.c_int(0)
+    sturges_bins = ctypes.c_int(0)
+    fd_bins = ctypes.c_int(0)
     ierr = ctypes.c_int(0)
 
     _lib.estimate_bin_count_c(
@@ -378,12 +396,18 @@ def estimate_bin_count(
         ctypes.byref(ctypes.c_int(n_neighbors)),
         ctypes.byref(ctypes.c_double(shared_residual_range)),
         ctypes.byref(n_bins),
+        ctypes.byref(sturges_bins),
+        ctypes.byref(fd_bins),
         ctypes.byref(ierr),
     )
 
     check_err_code(ierr.value, _ESTIMATE_BIN_COUNT_ARGUMENTS, _ESTIMATE_BIN_COUNT_ARGUMENT_SOURCES)
 
-    return n_bins.value
+    return {
+        "n_bins": n_bins.value,
+        "sturges_bins": sturges_bins.value,
+        "fd_bins": fd_bins.value,
+    }
 
 def estimate_bin_count_expert(
         residuals,
@@ -394,12 +418,15 @@ def estimate_bin_count_expert(
 ):
     r"""Estimate the histogram bin count for one (n_points, n_neighbors) candidate
 
-    Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Takes the maximum of
-    Sturges' rule and the Freedman-Diaconis rule (without doubling the bin width, since
-    `shared_residual_range` is already the one-sided half of the full `[-R, R]` histogram
-    range, so dividing the full range by the undoubled Freedman-Diaconis width already gives
-    the doubled rule's bin count), clamped to at most
-    ``MAX_N_BINS`` bins.
+    Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Computes Sturges' rule and
+    the Freedman-Diaconis rule (without doubling the bin width, since `shared_residual_range`
+    is already the one-sided half of the full `[-R, R]` histogram range, so dividing the full
+    range by the undoubled Freedman-Diaconis width already gives the doubled rule's bin count)
+    independently, each clamped on its own to at most
+    ``MAX_N_BINS`` bins and returned as
+    `sturges_bins`/`fd_bins` for diagnostics, with their maximum returned as `n_bins`. When the
+    interquartile range is too close to zero to safely divide by, the Freedman-Diaconis term is
+    skipped and `fd_bins` falls back to the (clamped) Sturges estimate instead of blowing up.
 
     Parameters
     ----------
@@ -422,8 +449,17 @@ def estimate_bin_count_expert(
 
     Returns
     -------
-    n_bins : int
-        Estimated number of histogram bins, at least 1 and at most MAX_N_BINS
+    dict
+        with keys:
+
+        n_bins : int
+            Estimated number of histogram bins, at least 1 and at most MAX_N_BINS: max(sturges_bins, fd_bins)
+        sturges_bins : int
+            Sturges' rule estimate alone, at least 1 and at most MAX_N_BINS
+        fd_bins : int
+            Freedman-Diaconis rule estimate alone, at least 1 and at most MAX_N_BINS; falls back
+            to the (clamped) sturges_bins when the interquartile range is too close to zero to
+            divide by (see the is_close guard below)
 
     Raises
     ------
@@ -463,6 +499,8 @@ def estimate_bin_count_expert(
 
     # outputs and work arrays, which the caller never sees
     n_bins = ctypes.c_int(0)
+    sturges_bins = ctypes.c_int(0)
+    fd_bins = ctypes.c_int(0)
     ierr = ctypes.c_int(0)
 
     _lib.estimate_bin_count_expert_c(
@@ -473,12 +511,18 @@ def estimate_bin_count_expert(
         ctypes.byref(ctypes.c_int(n_neighbors)),
         ctypes.byref(ctypes.c_double(shared_residual_range)),
         ctypes.byref(n_bins),
+        ctypes.byref(sturges_bins),
+        ctypes.byref(fd_bins),
         ctypes.byref(ierr),
     )
 
     check_err_code(ierr.value, _ESTIMATE_BIN_COUNT_EXPERT_ARGUMENTS, _ESTIMATE_BIN_COUNT_EXPERT_ARGUMENT_SOURCES)
 
-    return n_bins.value
+    return {
+        "n_bins": n_bins.value,
+        "sturges_bins": sturges_bins.value,
+        "fd_bins": fd_bins.value,
+    }
 
 def generate_js_comp_test_candidates(
         max_n_genes_all_studies,

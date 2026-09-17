@@ -6,8 +6,8 @@
 // tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
-void estimate_bin_count_c(const double*, const int*, const int*, const int*, const double*, int*, int*);
-void estimate_bin_count_expert_c(const double*, const int*, const int*, const int*, const int*, const double*, int*, int*);
+void estimate_bin_count_c(const double*, const int*, const int*, const int*, const double*, int*, int*, int*, int*);
+void estimate_bin_count_expert_c(const double*, const int*, const int*, const int*, const int*, const double*, int*, int*, int*, int*);
 void generate_js_comp_test_candidates_c(const int*, const double*, const int*, const int*, const double*, int*, int*, int*, int*);
 void generate_js_comp_test_candidates_expert_c(const int*, const double*, const int*, const int*, const int*, const double*, int*, int*, int*, int*);
 void check_neighborhood_overlaps_c(const int*, const int*, const double*, unsigned char*, int*);
@@ -32,6 +32,8 @@ SEXP estimate_bin_count_call(SEXP residuals, SEXP max_n_reps_all_studies, SEXP n
 
     // outputs and work space
     int n_bins = 0;
+    int sturges_bins = 0;
+    int fd_bins = 0;
     int ierr = 0;
 
     estimate_bin_count_c(
@@ -41,15 +43,21 @@ SEXP estimate_bin_count_call(SEXP residuals, SEXP max_n_reps_all_studies, SEXP n
         &n_neighbors_v,
         &shared_residual_range_v,
         &n_bins,
+        &sturges_bins,
+        &fd_bins,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); nprot++;
     SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(n_bins));
-    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(sturges_bins));
+    SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(fd_bins));
+    SET_VECTOR_ELT(_out, 3, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("n_bins"));
-    SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("sturges_bins"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("fd_bins"));
+    SET_STRING_ELT(_nms, 3, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;
@@ -67,6 +75,8 @@ SEXP estimate_bin_count_expert_call(SEXP residuals, SEXP residuals_perm, SEXP ma
 
     // outputs and work space
     int n_bins = 0;
+    int sturges_bins = 0;
+    int fd_bins = 0;
     int ierr = 0;
 
     estimate_bin_count_expert_c(
@@ -77,15 +87,21 @@ SEXP estimate_bin_count_expert_call(SEXP residuals, SEXP residuals_perm, SEXP ma
         &n_neighbors_v,
         &shared_residual_range_v,
         &n_bins,
+        &sturges_bins,
+        &fd_bins,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); nprot++;
     SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(n_bins));
-    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(sturges_bins));
+    SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(fd_bins));
+    SET_VECTOR_ELT(_out, 3, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("n_bins"));
-    SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("sturges_bins"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("fd_bins"));
+    SET_STRING_ELT(_nms, 3, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;

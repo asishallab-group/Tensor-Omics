@@ -35,6 +35,13 @@ TOL = 1e-12
 
 
 def test_estimate_bin_count():
+    # NOTE: estimate_bin_count/estimate_bin_count_expert now return a dict with keys n_bins,
+    # sturges_bins and fd_bins (Issue #187 checkpoint 1). Per this project's testing philosophy
+    # (Fortran_Coding_Guides.pdf Sec 17.1), this suite only checks call-ability, return
+    # type/shape, and the n_bins == max(sturges_bins, fd_bins) structural invariant --
+    # individual numerical correctness of sturges_bins/fd_bins is the Fortran suite's job
+    # (mod_test_data_integration_js_comp_test.F90).
+
     # ============================================================
     # Test 1 -- basic hand-computed (test_estimate_bin_count_basic_hand_computed):
     # residuals already ascending, no ties needed. Sturges gives 1 + nint(log(1)/LOG_2) = 1.
@@ -44,30 +51,41 @@ def test_estimate_bin_count():
     # ============================================================
     residuals = np.array([-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0], dtype=np.float64)
 
-    n_bins = estimate_bin_count(residuals, max_n_reps_all_studies=1, n_neighbors=1, shared_residual_range=9.0)
-    assert n_bins == 2, f"Test 1 failed: expected n_bins=2, got {n_bins}"
+    result = estimate_bin_count(residuals, max_n_reps_all_studies=1, n_neighbors=1, shared_residual_range=9.0)
+    assert isinstance(result, dict), f"Test 1 failed: expected a dict, got {type(result)}"
+    for key in ("n_bins", "sturges_bins", "fd_bins"):
+        assert key in result, f"Test 1 failed: missing expected output key '{key}'"
+    assert result["n_bins"] == 2, f"Test 1 failed: expected n_bins=2, got {result['n_bins']}"
+    assert result["n_bins"] == max(result["sturges_bins"], result["fd_bins"]), \
+        "Test 1 failed: n_bins must equal max(sturges_bins, fd_bins)"
 
     # The expert entry point, given the same sorting permutation, must agree.
     residuals_perm = (np.argsort(residuals, kind="mergesort") + 1).astype(np.int32)
-    n_bins_expert = estimate_bin_count_expert(residuals, residuals_perm, max_n_reps_all_studies=1, n_neighbors=1,
+    result_expert = estimate_bin_count_expert(residuals, residuals_perm, max_n_reps_all_studies=1, n_neighbors=1,
                                                shared_residual_range=9.0)
-    assert n_bins_expert == 2, f"Test 1 (expert) failed: expected n_bins=2, got {n_bins_expert}"
+    assert result_expert["n_bins"] == 2, f"Test 1 (expert) failed: expected n_bins=2, got {result_expert['n_bins']}"
+    assert result_expert["n_bins"] == max(result_expert["sturges_bins"], result_expert["fd_bins"]), \
+        "Test 1 (expert) failed: n_bins must equal max(sturges_bins, fd_bins)"
 
     # ============================================================
     # Test 2 -- all-NaN pool falls back to a single bin (test_estimate_bin_count_all_nan_gives_one_bin)
     # ============================================================
     residuals_nan = np.full(4, np.nan, dtype=np.float64)
-    n_bins_nan = estimate_bin_count(residuals_nan, max_n_reps_all_studies=1, n_neighbors=1, shared_residual_range=9.0)
-    assert n_bins_nan == 1, f"Test 2 failed: expected n_bins=1, got {n_bins_nan}"
+    result_nan = estimate_bin_count(residuals_nan, max_n_reps_all_studies=1, n_neighbors=1, shared_residual_range=9.0)
+    assert result_nan["n_bins"] == 1, f"Test 2 failed: expected n_bins=1, got {result_nan['n_bins']}"
+    assert result_nan["sturges_bins"] == 1, f"Test 2 failed: expected sturges_bins=1, got {result_nan['sturges_bins']}"
+    assert result_nan["fd_bins"] == 1, f"Test 2 failed: expected fd_bins=1, got {result_nan['fd_bins']}"
 
     # ============================================================
     # Test 3 -- clamped to MAX_N_BINS=256 (test_estimate_bin_count_clamped_to_max_n_bins):
     # same residuals, but shared_residual_range=5000.0 -> raw estimate nint(5000.0/4.5)=1111,
     # far above MAX_N_BINS.
     # ============================================================
-    n_bins_clamped = estimate_bin_count(residuals, max_n_reps_all_studies=1, n_neighbors=1,
+    result_clamped = estimate_bin_count(residuals, max_n_reps_all_studies=1, n_neighbors=1,
                                          shared_residual_range=5000.0)
-    assert n_bins_clamped == 256, f"Test 3 failed: expected n_bins=256, got {n_bins_clamped}"
+    assert result_clamped["n_bins"] == 256, f"Test 3 failed: expected n_bins=256, got {result_clamped['n_bins']}"
+    assert result_clamped["n_bins"] == max(result_clamped["sturges_bins"], result_clamped["fd_bins"]), \
+        "Test 3 failed: n_bins must equal max(sturges_bins, fd_bins)"
 
 
 def test_generate_js_comp_test_candidates():

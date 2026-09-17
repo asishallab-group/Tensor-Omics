@@ -33,7 +33,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(54))
+        allocate (all_tests(56))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -149,6 +149,11 @@ contains
                                   test_param_search_no_plateau_effect_size_falls_back)
         all_tests(54) = test_case("test_param_search_no_plateau_both_falls_back", &
                                   test_param_search_no_plateau_both_falls_back)
+
+        all_tests(55) = test_case("test_estimate_bin_count_sturges_wins_when_greater_than_fd", &
+                                  test_estimate_bin_count_sturges_wins_when_greater_than_fd)
+        all_tests(56) = test_case("test_estimate_bin_count_near_zero_iqr_guard_falls_back_to_sturges", &
+                                  test_estimate_bin_count_near_zero_iqr_falls_back_to_sturges)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -448,57 +453,127 @@ contains
 
     !> Hand-computed: `residuals = [-4,-3,-2,-1,0,1,2,3,4,5]` (already ascending, no ties needed),
     !| `max_n_reps_all_studies=1, n_neighbors=1` so `n_reps_neighborhood=1`. Sturges gives
-    !| `1 + nint(log(1)/LOG_2) = 1`. The 25th/75th percentiles (rank `0.25*9+1=3.25` and
-    !| `0.75*9+1=7.75`) interpolate to `-1.75` and `2.75`, so the Freedman-Diaconis half-width is
-    !| `(2.75 - (-1.75)) / 1^(1/3) = 4.5`; with `shared_residual_range=9.0`,
-    !| `nint(9.0/4.5) = 2`, which beats Sturges, so `n_bins` should be `2`.
+    !| `1 + nint(log(1)/LOG_2) = 1`, clamped to `sturges_bins=1`. The 25th/75th percentiles (rank
+    !| `0.25*9+1=3.25` and `0.75*9+1=7.75`) interpolate to `-1.75` and `2.75`, so the
+    !| Freedman-Diaconis half-width is `(2.75 - (-1.75)) / 1^(1/3) = 4.5`; with
+    !| `shared_residual_range=9.0`, `nint(9.0/4.5) = 2`, clamped to `fd_bins=2`. `fd_bins` beats
+    !| `sturges_bins`, so `n_bins` should be `2`.
     subroutine test_estimate_bin_count_basic_hand_computed()
         integer(int32), parameter :: n_residuals = 10
         real(real64) :: residuals(n_residuals)
-        integer(int32) :: n_bins, ierr
+        integer(int32) :: n_bins, sturges_bins, fd_bins, ierr
 
         residuals = [-4.0_real64, -3.0_real64, -2.0_real64, -1.0_real64, 0.0_real64, &
                     1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64]
 
-        call estimate_bin_count(residuals, n_residuals, 1_int32, 1_int32, 9.0_real64, n_bins, ierr)
+        call estimate_bin_count(residuals, n_residuals, 1_int32, 1_int32, 9.0_real64, n_bins, sturges_bins, fd_bins, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_estimate_bin_count_basic_hand_computed: ierr should be OK")
+        call assert_equal_int(sturges_bins, 1_int32, "test_estimate_bin_count_basic_hand_computed: sturges_bins should be 1")
+        call assert_equal_int(fd_bins, 2_int32, "test_estimate_bin_count_basic_hand_computed: fd_bins should be 2")
         call assert_equal_int(n_bins, 2_int32, "test_estimate_bin_count_basic_hand_computed: n_bins should be 2")
     end subroutine test_estimate_bin_count_basic_hand_computed
 
     !> When every residual is NaN, the pool is empty and the routine must fall back to a single
-    !| bin rather than computing percentiles of nothing.
+    !| bin -- for all three outputs, since no Sturges/Freedman-Diaconis computation happens at
+    !| all on this early-return path -- rather than computing percentiles of nothing.
     subroutine test_estimate_bin_count_all_nan_gives_one_bin()
         integer(int32), parameter :: n_residuals = 4
         real(real64) :: residuals(n_residuals)
-        integer(int32) :: n_bins, ierr
+        integer(int32) :: n_bins, sturges_bins, fd_bins, ierr
         real(real64) :: nan_val
 
         nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
         residuals = nan_val
 
-        call estimate_bin_count(residuals, n_residuals, 1_int32, 1_int32, 9.0_real64, n_bins, ierr)
+        call estimate_bin_count(residuals, n_residuals, 1_int32, 1_int32, 9.0_real64, n_bins, sturges_bins, fd_bins, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_estimate_bin_count_all_nan_gives_one_bin: ierr should be OK")
+        call assert_equal_int(sturges_bins, 1_int32, &
+                              "test_estimate_bin_count_all_nan_gives_one_bin: sturges_bins should be 1")
+        call assert_equal_int(fd_bins, 1_int32, "test_estimate_bin_count_all_nan_gives_one_bin: fd_bins should be 1")
         call assert_equal_int(n_bins, 1_int32, "test_estimate_bin_count_all_nan_gives_one_bin: n_bins should be 1")
     end subroutine test_estimate_bin_count_all_nan_gives_one_bin
 
-    !> Reusing the basic fixture's residuals but with `shared_residual_range=5000.0`, the
-    !| Freedman-Diaconis half-width is unchanged (`4.5`), so the raw estimate is
-    !| `nint(5000.0/4.5) = 1111`, far above MAX_N_BINS; the output must clamp to 256.
+    !> Reusing the basic fixture's residuals but with `shared_residual_range=5000.0`, `sturges_bins`
+    !| is unchanged at `1`. The Freedman-Diaconis half-width is unchanged (`4.5`), so the raw
+    !| estimate is `nint(5000.0/4.5) = 1111`, far above MAX_N_BINS; `fd_bins` (and therefore
+    !| `n_bins`, since it beats `sturges_bins`) must clamp to 256.
     subroutine test_estimate_bin_count_clamped_to_max_n_bins()
         integer(int32), parameter :: n_residuals = 10
         real(real64) :: residuals(n_residuals)
-        integer(int32) :: n_bins, ierr
+        integer(int32) :: n_bins, sturges_bins, fd_bins, ierr
 
         residuals = [-4.0_real64, -3.0_real64, -2.0_real64, -1.0_real64, 0.0_real64, &
                     1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64]
 
-        call estimate_bin_count(residuals, n_residuals, 1_int32, 1_int32, 5000.0_real64, n_bins, ierr)
+        call estimate_bin_count(residuals, n_residuals, 1_int32, 1_int32, 5000.0_real64, n_bins, sturges_bins, fd_bins, &
+                                ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_estimate_bin_count_clamped_to_max_n_bins: ierr should be OK")
+        call assert_equal_int(sturges_bins, 1_int32, &
+                              "test_estimate_bin_count_clamped_to_max_n_bins: sturges_bins should be 1")
+        call assert_equal_int(fd_bins, 256_int32, "test_estimate_bin_count_clamped_to_max_n_bins: fd_bins should clamp to 256")
         call assert_equal_int(n_bins, 256_int32, "test_estimate_bin_count_clamped_to_max_n_bins: n_bins should clamp to 256")
     end subroutine test_estimate_bin_count_clamped_to_max_n_bins
+
+    !> Covers the branch where Sturges' estimate exceeds Freedman-Diaconis, so the combined
+    !| `n_bins` equals `sturges_bins`, not `fd_bins` -- no existing test covered this before.
+    !| Reuses the basic fixture's residuals (so Q25=-1.75, Q75=2.75, IQR=4.5 as in
+    !| `test_estimate_bin_count_basic_hand_computed`), but with `max_n_reps_all_studies=8,
+    !| n_neighbors=1` so `n_reps_neighborhood=8`. Sturges gives
+    !| `1 + nint(log(8)/LOG_2) = 1 + nint(3.0) = 4`, clamped to `sturges_bins=4`. The
+    !| Freedman-Diaconis half-width is `4.5 / 8^(1/3) = 4.5/2.0 = 2.25`; with
+    !| `shared_residual_range=2.25`, `nint(2.25/2.25) = 1`, clamped to `fd_bins=1`. `sturges_bins`
+    !| (4) beats `fd_bins` (1), so `n_bins` should be `4`.
+    subroutine test_estimate_bin_count_sturges_wins_when_greater_than_fd()
+        integer(int32), parameter :: n_residuals = 10
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: n_bins, sturges_bins, fd_bins, ierr
+
+        residuals = [-4.0_real64, -3.0_real64, -2.0_real64, -1.0_real64, 0.0_real64, &
+                    1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64]
+
+        call estimate_bin_count(residuals, n_residuals, 8_int32, 1_int32, 2.25_real64, n_bins, sturges_bins, fd_bins, &
+                                ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_estimate_bin_count_sturges_wins_when_greater_than_fd: ierr should be OK")
+        call assert_equal_int(sturges_bins, 4_int32, &
+                              "test_estimate_bin_count_sturges_wins_when_greater_than_fd: sturges_bins should be 4")
+        call assert_equal_int(fd_bins, 1_int32, &
+                              "test_estimate_bin_count_sturges_wins_when_greater_than_fd: fd_bins should be 1")
+        call assert_equal_int(n_bins, 4_int32, &
+                              "test_estimate_bin_count_sturges_wins_when_greater_than_fd: n_bins should be sturges_bins=4")
+    end subroutine test_estimate_bin_count_sturges_wins_when_greater_than_fd
+
+    !> Covers the near-zero-IQR guard: four identical residuals give `quartile_75 - quartile_25
+    !| = 0` exactly, so `half_bin_width = 0.0` and `is_close(half_bin_width, 0.0_real64)` fires,
+    !| skipping the Freedman-Diaconis division entirely (avoiding a divide-by-near-zero blowup).
+    !| `max_n_reps_all_studies=8, n_neighbors=1` gives `n_reps_neighborhood=8`, so Sturges gives
+    !| `1 + nint(log(8)/LOG_2) = 4`, clamped to `sturges_bins=4`. Since the guard fires, `fd_bins`
+    !| falls back to the (clamped) Sturges estimate instead of a division blow-up, so `fd_bins`
+    !| should also be `4`, and `n_bins = max(4, 4) = 4`. `shared_residual_range` is irrelevant
+    !| here since the Freedman-Diaconis term is never reached.
+    subroutine test_estimate_bin_count_near_zero_iqr_falls_back_to_sturges()
+        integer(int32), parameter :: n_residuals = 4
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: n_bins, sturges_bins, fd_bins, ierr
+
+        residuals = [3.0_real64, 3.0_real64, 3.0_real64, 3.0_real64]
+
+        call estimate_bin_count(residuals, n_residuals, 8_int32, 1_int32, 9.0_real64, n_bins, sturges_bins, fd_bins, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_estimate_bin_count_near_zero_iqr_guard_falls_back_to_sturges: ierr should be OK")
+        call assert_equal_int(sturges_bins, 4_int32, &
+                              "test_estimate_bin_count_near_zero_iqr_guard_falls_back_to_sturges: sturges_bins should be 4")
+        call assert_equal_int(fd_bins, 4_int32, &
+                              "test_estimate_bin_count_near_zero_iqr_guard_falls_back_to_sturges: "// &
+                              "fd_bins should fall back to sturges_bins=4")
+        call assert_equal_int(n_bins, 4_int32, &
+                              "test_estimate_bin_count_near_zero_iqr_guard_falls_back_to_sturges: n_bins should be 4")
+    end subroutine test_estimate_bin_count_near_zero_iqr_falls_back_to_sturges
 
     !> The documented small-N candidate-grid collapse, bracketed at its exact threshold: with
     !| `max_n_genes_all_studies=8742`, `n_points_high = clamp(ceil(4*sqrt(8742)), 300, 1500) = 374`

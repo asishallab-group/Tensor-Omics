@@ -8,6 +8,13 @@ source("r/test_helpers.R")
 TOL <- 1e-12
 
 test_estimate_bin_count <- function() {
+  # NOTE: estimate_bin_count/estimate_bin_count_expert now return a named list with n_bins,
+  # sturges_bins and fd_bins (Issue #187 checkpoint 1). Per this project's testing philosophy
+  # (Fortran_Coding_Guides.pdf Sec 17.1), the R suite only checks call-ability, return
+  # shape/type, and the n_bins == max(sturges_bins, fd_bins) structural invariant -- individual
+  # numerical correctness of sturges_bins/fd_bins is the Fortran suite's job
+  # (mod_test_data_integration_js_comp_test.F90).
+
   # ============================================================
   # Test 1 -- basic hand-computed (test_estimate_bin_count_basic_hand_computed):
   # Sturges gives 1 + nint(log(1)/LOG_2) = 1. 25th/75th percentiles (rank 3.25 and 7.75)
@@ -16,29 +23,39 @@ test_estimate_bin_count <- function() {
   # ============================================================
   residuals <- c(-4, -3, -2, -1, 0, 1, 2, 3, 4, 5)
 
-  n_bins <- estimate_bin_count(residuals, max_n_reps_all_studies = 1, n_neighbors = 1,
-                                shared_residual_range = 9.0)
-  assert_equal_int(n_bins, 2L, "Test 1 failed: expected n_bins=2")
+  out <- estimate_bin_count(residuals, max_n_reps_all_studies = 1, n_neighbors = 1,
+                             shared_residual_range = 9.0)
+  assert_equal_int(out$n_bins, 2L, "Test 1 failed: expected n_bins=2")
+  assert_true(is.numeric(out$sturges_bins) && is.numeric(out$fd_bins),
+              "Test 1 failed: sturges_bins/fd_bins must be numeric")
+  assert_equal_int(out$n_bins, max(as.integer(out$sturges_bins), as.integer(out$fd_bins)),
+                    "Test 1 failed: n_bins must equal max(sturges_bins, fd_bins)")
 
   residuals_perm <- order(residuals)
-  n_bins_expert <- estimate_bin_count_expert(residuals, residuals_perm, max_n_reps_all_studies = 1,
-                                              n_neighbors = 1, shared_residual_range = 9.0)
-  assert_equal_int(n_bins_expert, 2L, "Test 1 (expert) failed: expected n_bins=2")
+  out_expert <- estimate_bin_count_expert(residuals, residuals_perm, max_n_reps_all_studies = 1,
+                                           n_neighbors = 1, shared_residual_range = 9.0)
+  assert_equal_int(out_expert$n_bins, 2L, "Test 1 (expert) failed: expected n_bins=2")
+  assert_equal_int(out_expert$n_bins, max(as.integer(out_expert$sturges_bins), as.integer(out_expert$fd_bins)),
+                    "Test 1 (expert) failed: n_bins must equal max(sturges_bins, fd_bins)")
 
   # ============================================================
   # Test 2 -- all-NaN pool falls back to a single bin (test_estimate_bin_count_all_nan_gives_one_bin)
   # ============================================================
   residuals_nan <- rep(NaN, 4)
-  n_bins_nan <- estimate_bin_count(residuals_nan, max_n_reps_all_studies = 1, n_neighbors = 1,
-                                    shared_residual_range = 9.0)
-  assert_equal_int(n_bins_nan, 1L, "Test 2 failed: expected n_bins=1")
+  out_nan <- estimate_bin_count(residuals_nan, max_n_reps_all_studies = 1, n_neighbors = 1,
+                                 shared_residual_range = 9.0)
+  assert_equal_int(out_nan$n_bins, 1L, "Test 2 failed: expected n_bins=1")
+  assert_equal_int(as.integer(out_nan$sturges_bins), 1L, "Test 2 failed: expected sturges_bins=1")
+  assert_equal_int(as.integer(out_nan$fd_bins), 1L, "Test 2 failed: expected fd_bins=1")
 
   # ============================================================
   # Test 3 -- clamped to MAX_N_BINS=256 (test_estimate_bin_count_clamped_to_max_n_bins)
   # ============================================================
-  n_bins_clamped <- estimate_bin_count(residuals, max_n_reps_all_studies = 1, n_neighbors = 1,
-                                        shared_residual_range = 5000.0)
-  assert_equal_int(n_bins_clamped, 256L, "Test 3 failed: expected n_bins=256")
+  out_clamped <- estimate_bin_count(residuals, max_n_reps_all_studies = 1, n_neighbors = 1,
+                                     shared_residual_range = 5000.0)
+  assert_equal_int(out_clamped$n_bins, 256L, "Test 3 failed: expected n_bins=256")
+  assert_equal_int(out_clamped$n_bins, max(as.integer(out_clamped$sturges_bins), as.integer(out_clamped$fd_bins)),
+                    "Test 3 failed: n_bins must equal max(sturges_bins, fd_bins)")
 }
 
 test_generate_js_comp_test_candidates <- function() {

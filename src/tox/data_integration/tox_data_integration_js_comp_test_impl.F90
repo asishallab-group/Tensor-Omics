@@ -152,14 +152,17 @@ contains
 
     !> summary: Estimate the histogram bin count for one (n_points, n_neighbors) candidate
     !| AUTHOR_LASZLO_LANG
-    !| Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Takes the maximum of
-    !| Sturges' rule and the Freedman-Diaconis rule (without doubling the bin width, since
-    !| `shared_residual_range` is already the one-sided half of the full `[-R, R]` histogram
-    !| range, so dividing the full range by the undoubled Freedman-Diaconis width already gives
-    !| the doubled rule's bin count), clamped to at most
-    !| [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] bins.
+    !| Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Computes Sturges' rule and
+    !| the Freedman-Diaconis rule (without doubling the bin width, since `shared_residual_range`
+    !| is already the one-sided half of the full `[-R, R]` histogram range, so dividing the full
+    !| range by the undoubled Freedman-Diaconis width already gives the doubled rule's bin count)
+    !| independently, each clamped on its own to at most
+    !| [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] bins and returned as
+    !| `sturges_bins`/`fd_bins` for diagnostics, with their maximum returned as `n_bins`. When the
+    !| interquartile range is too close to zero to safely divide by, the Freedman-Diaconis term is
+    !| skipped and `fd_bins` falls back to the (clamped) Sturges estimate instead of blowing up.
     pure subroutine estimate_bin_count_impl(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, &
-                                            shared_residual_range, n_bins)
+                                            shared_residual_range, n_bins, sturges_bins, fd_bins)
         integer(int32), intent(in) :: n_residuals
             !! Number of pooled residuals
         real(real64), intent(in) :: residuals(n_residuals)
@@ -179,9 +182,15 @@ contains
             !! Computed residual range (R)
             !! DM_MIN(0.0_real64)
         integer(int32), intent(out) :: n_bins
-            !! Estimated number of histogram bins, at least 1 and at most MAX_N_BINS
+            !! Estimated number of histogram bins, at least 1 and at most MAX_N_BINS: max(sturges_bins, fd_bins)
+        integer(int32), intent(out) :: sturges_bins
+            !! Sturges' rule estimate alone, at least 1 and at most MAX_N_BINS
+        integer(int32), intent(out) :: fd_bins
+            !! Freedman-Diaconis rule estimate alone, at least 1 and at most MAX_N_BINS; falls back
+            !! to the (clamped) sturges_bins when the interquartile range is too close to zero to
+            !! divide by (see the is_close guard below)
 
-        integer(int32) :: i_pool, n_pool
+        integer(int32) :: i_pool, n_pool, sturges_raw, fd_raw
         real(real64) :: half_bin_width, quartile_25, quartile_75, n_reps_neighborhood
 
         ! NaN sorts last under the ascending permutation -- find the last non-NaN position by
@@ -198,13 +207,16 @@ contains
 
         if (n_pool == 0) then
             n_bins = 1_int32
+            sturges_bins = 1_int32
+            fd_bins = 1_int32
             return
         end if
 
         n_reps_neighborhood = real(max_n_reps_all_studies*n_neighbors, kind=real64)
 
         ! Sturges
-        n_bins = 1_int32 + nint(log(n_reps_neighborhood)/LOG_2, kind=int32)
+        sturges_raw = 1_int32 + nint(log(n_reps_neighborhood)/LOG_2, kind=int32)
+        sturges_bins = max(1_int32, min(sturges_raw, MAX_N_BINS))
 
         ! Freedman-Diaconis
         call calc_percentile_impl(residuals, n_residuals, residuals_perm, 0.25_real64, quartile_25, n_considered=n_pool)
@@ -212,10 +224,13 @@ contains
 
         half_bin_width = (quartile_75 - quartile_25)/(n_reps_neighborhood**(1.0_real64/3.0_real64))
         if (.not. is_close(half_bin_width, 0.0_real64)) then
-            n_bins = max(n_bins, nint(shared_residual_range/half_bin_width, kind=int32))
+            fd_raw = nint(shared_residual_range/half_bin_width, kind=int32)
+        else
+            fd_raw = sturges_raw
         end if
+        fd_bins = max(1_int32, min(fd_raw, MAX_N_BINS))
 
-        n_bins = max(1_int32, min(n_bins, MAX_N_BINS))
+        n_bins = max(sturges_bins, fd_bins)
     end subroutine estimate_bin_count_impl
 
     !> summary: Generate the GAMMA-decay (n_points, n_neighbors) candidate grid
@@ -265,6 +280,10 @@ contains
         real(real64) :: n_points_high, n_points_low
         integer(int32) :: i_point_candidate, point_candidate, prev_point_candidate
         integer(int32) :: i_neighbor_candidate, neighbor_candidate, prev_neighbor_candidate
+        ! Checkpoint 1 of Issue #187 only adds estimate_bin_count_impl's two new diagnostic
+        ! outputs; this call site itself is removed in a later checkpoint, so these are genuinely
+        ! unused here rather than wired anywhere yet.
+        integer(int32) :: sturges_bins_unused, fd_bins_unused
 
         n_points_high = real(clamp(ceiling(4.0_real64*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), &
                                    min_val=MIN_POINTS, max_val=MAX_POINTS), kind=real64)
@@ -296,7 +315,7 @@ contains
 
                         call estimate_bin_count_impl(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, &
                                                      neighbor_candidate, shared_residual_range, &
-                                                     n_bins_candidates(n_candidates))
+                                                     n_bins_candidates(n_candidates), sturges_bins_unused, fd_bins_unused)
                     end if
                 end do
             end if

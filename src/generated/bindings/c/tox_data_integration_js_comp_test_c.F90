@@ -51,12 +51,15 @@ module tox_data_integration_js_comp_test_c
 contains
 
     !> summary: C-wrapper for [[tox_data_integration_js_comp_test(module):estimate_bin_count(subroutine)]]
-    !| Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Takes the maximum of
-    !| Sturges' rule and the Freedman-Diaconis rule (without doubling the bin width, since
-    !| `shared_residual_range` is already the one-sided half of the full `[-R, R]` histogram
-    !| range, so dividing the full range by the undoubled Freedman-Diaconis width already gives
-    !| the doubled rule's bin count), clamped to at most
-    !| [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] bins.
+    !| Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Computes Sturges' rule and
+    !| the Freedman-Diaconis rule (without doubling the bin width, since `shared_residual_range`
+    !| is already the one-sided half of the full `[-R, R]` histogram range, so dividing the full
+    !| range by the undoubled Freedman-Diaconis width already gives the doubled rule's bin count)
+    !| independently, each clamped on its own to at most
+    !| [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] bins and returned as
+    !| `sturges_bins`/`fd_bins` for diagnostics, with their maximum returned as `n_bins`. When the
+    !| interquartile range is too close to zero to safely divide by, the Freedman-Diaconis term is
+    !| skipped and `fd_bins` falls back to the (clamped) Sturges estimate instead of blowing up.
     subroutine estimate_bin_count_c(&
             residuals,&
             n_residuals,&
@@ -64,6 +67,8 @@ contains
             n_neighbors,&
             shared_residual_range,&
             n_bins,&
+            sturges_bins,&
+            fd_bins,&
             ierr&
         ) bind(C, name="estimate_bin_count_c")
         use tox_data_integration_js_comp_test, only: estimate_bin_count
@@ -83,7 +88,13 @@ contains
             !! Computed residual range (R)
             !! The minimum valid value is `0.0_real64`.
         integer(c_int), intent(out), target :: n_bins
-            !! Estimated number of histogram bins, at least 1 and at most MAX_N_BINS
+            !! Estimated number of histogram bins, at least 1 and at most MAX_N_BINS: max(sturges_bins, fd_bins)
+        integer(c_int), intent(out), target :: sturges_bins
+            !! Sturges' rule estimate alone, at least 1 and at most MAX_N_BINS
+        integer(c_int), intent(out), target :: fd_bins
+            !! Freedman-Diaconis rule estimate alone, at least 1 and at most MAX_N_BINS; falls back
+            !! to the (clamped) sturges_bins when the interquartile range is too close to zero to
+            !! divide by (see the is_close guard below)
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -94,6 +105,8 @@ contains
         M_CHECK_NON_NULL(n_neighbors)
         M_CHECK_NON_NULL(shared_residual_range)
         M_CHECK_NON_NULL(n_bins)
+        M_CHECK_NON_NULL(sturges_bins)
+        M_CHECK_NON_NULL(fd_bins)
         M_CHECK_ARRAY_NON_NULL(residuals, n_residuals)
 
         call estimate_bin_count(&
@@ -103,17 +116,22 @@ contains
             n_neighbors = n_neighbors,&
             shared_residual_range = shared_residual_range,&
             n_bins = n_bins,&
+            sturges_bins = sturges_bins,&
+            fd_bins = fd_bins,&
             ierr = ierr&
         )
     end subroutine estimate_bin_count_c
 
     !> summary: C-wrapper for [[tox_data_integration_js_comp_test(module):estimate_bin_count_expert(subroutine)]]
-    !| Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Takes the maximum of
-    !| Sturges' rule and the Freedman-Diaconis rule (without doubling the bin width, since
-    !| `shared_residual_range` is already the one-sided half of the full `[-R, R]` histogram
-    !| range, so dividing the full range by the undoubled Freedman-Diaconis width already gives
-    !| the doubled rule's bin count), clamped to at most
-    !| [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] bins.
+    !| Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Computes Sturges' rule and
+    !| the Freedman-Diaconis rule (without doubling the bin width, since `shared_residual_range`
+    !| is already the one-sided half of the full `[-R, R]` histogram range, so dividing the full
+    !| range by the undoubled Freedman-Diaconis width already gives the doubled rule's bin count)
+    !| independently, each clamped on its own to at most
+    !| [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] bins and returned as
+    !| `sturges_bins`/`fd_bins` for diagnostics, with their maximum returned as `n_bins`. When the
+    !| interquartile range is too close to zero to safely divide by, the Freedman-Diaconis term is
+    !| skipped and `fd_bins` falls back to the (clamped) Sturges estimate instead of blowing up.
     subroutine estimate_bin_count_expert_c(&
             residuals,&
             residuals_perm,&
@@ -122,6 +140,8 @@ contains
             n_neighbors,&
             shared_residual_range,&
             n_bins,&
+            sturges_bins,&
+            fd_bins,&
             ierr&
         ) bind(C, name="estimate_bin_count_expert_c")
         use tox_data_integration_js_comp_test, only: estimate_bin_count_expert
@@ -145,7 +165,13 @@ contains
             !! Computed residual range (R)
             !! The minimum valid value is `0.0_real64`.
         integer(c_int), intent(out), target :: n_bins
-            !! Estimated number of histogram bins, at least 1 and at most MAX_N_BINS
+            !! Estimated number of histogram bins, at least 1 and at most MAX_N_BINS: max(sturges_bins, fd_bins)
+        integer(c_int), intent(out), target :: sturges_bins
+            !! Sturges' rule estimate alone, at least 1 and at most MAX_N_BINS
+        integer(c_int), intent(out), target :: fd_bins
+            !! Freedman-Diaconis rule estimate alone, at least 1 and at most MAX_N_BINS; falls back
+            !! to the (clamped) sturges_bins when the interquartile range is too close to zero to
+            !! divide by (see the is_close guard below)
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -156,6 +182,8 @@ contains
         M_CHECK_NON_NULL(n_neighbors)
         M_CHECK_NON_NULL(shared_residual_range)
         M_CHECK_NON_NULL(n_bins)
+        M_CHECK_NON_NULL(sturges_bins)
+        M_CHECK_NON_NULL(fd_bins)
         M_CHECK_ARRAY_NON_NULL(residuals, n_residuals)
         M_CHECK_ARRAY_NON_NULL(residuals_perm, n_residuals)
 
@@ -167,6 +195,8 @@ contains
             n_neighbors = n_neighbors,&
             shared_residual_range = shared_residual_range,&
             n_bins = n_bins,&
+            sturges_bins = sturges_bins,&
+            fd_bins = fd_bins,&
             ierr = ierr&
         )
     end subroutine estimate_bin_count_expert_c
