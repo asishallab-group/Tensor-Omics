@@ -33,7 +33,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(52))
+        allocate (all_tests(54))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -145,6 +145,10 @@ contains
                                   test_param_search_both_mode_uses_earlier_trigger)
         all_tests(52) = test_case("test_param_search_no_plateau_uses_smallest_uncertainty", &
                                   test_param_search_no_plateau_uses_smallest_uncertainty)
+        all_tests(53) = test_case("test_param_search_no_plateau_effect_size_falls_back", &
+                                  test_param_search_no_plateau_effect_size_falls_back)
+        all_tests(54) = test_case("test_param_search_no_plateau_both_falls_back", &
+                                  test_param_search_no_plateau_both_falls_back)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -2052,5 +2056,131 @@ contains
                                      [5.212150674e-05_real64, 1.150810589e-03_real64], 2_int32, TOL, &
                                      "test_param_search_no_plateau_uses_smallest_uncertainty: study 2 CI")
     end subroutine test_param_search_no_plateau_uses_smallest_uncertainty
+
+    !> Same LCG-residual fixture as `test_param_search_no_plateau_uses_smallest_uncertainty`
+    !| (guaranteed no CI-overlap plateau across all 6 candidates), but with
+    !| `plateau_mode=MODE_PLATEAU_EFFECT_SIZE` -- verifying the smallest-bootstrap-uncertainty
+    !| fallback is genuinely gated to `MODE_PLATEAU_CI_OVERLAP` (per the Issue #178 fallback plan's
+    !| explicit scope decision), not applied under this mode. If effect size also never plateaus on
+    !| this fixture, the routine must fall back to the OLD behavior: candidate 1 (finest,
+    !| `(566, 141)`), CI reset to `-1.0`, `plateau_established = .false.` -- not candidate 5's
+    !| smallest-uncertainty result.
+    subroutine test_param_search_no_plateau_effect_size_falls_back()
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 20000, max_n_reps_all_studies = 3
+        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
+        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+        integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
+        real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        logical(c_bool) :: plateau_established
+        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
+        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: i_gene, i_study, i_rep, k
+
+        do i_study = 1, n_studies
+            do i_gene = 1, max_n_genes_all_studies
+                gene_means(i_gene, i_study) = real(i_gene, real64)
+                do i_rep = 1, max_n_reps_all_studies
+                    k = i_rep + max_n_reps_all_studies*(i_gene - 1) + &
+                        (i_study - 1)*max_n_reps_all_studies*max_n_genes_all_studies
+                    residuals(i_rep, i_gene, i_study) = 4.0_real64* &
+                        (mod(1103515245.0_real64*real(k, real64) + 12345.0_real64, 2147483648.0_real64) &
+                         /2147483648.0_real64 - 0.5_real64)
+                end do
+            end do
+        end do
+
+        call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
+                                               residuals, 3.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
+                                               n_bins, best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_admissible_evaluated, &
+                                               trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
+                                               plateau_mode=MODE_PLATEAU_EFFECT_SIZE, random_seed=1_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_no_plateau_effect_size_falls_back: ierr should be OK")
+        call assert_false(plateau_established, &
+                          "test_param_search_no_plateau_effect_size_falls_back: "// &
+                          "no candidate ever plateaus under effect-size mode on this fixture")
+        call assert_equal_int(n_points, 566_int32, &
+                              "test_param_search_no_plateau_effect_size_falls_back: "// &
+                              "falls back to the finest-resolution n_points, NOT candidate 5's smallest-uncertainty n_points")
+        call assert_equal_int(n_neighbors, 141_int32, &
+                              "test_param_search_no_plateau_effect_size_falls_back: "// &
+                              "falls back to the finest-resolution n_neighbors")
+        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), [-1.0_real64, -1.0_real64], 2_int32, TOL, &
+                                     "test_param_search_no_plateau_effect_size_falls_back: "// &
+                                     "study 1 CI reset to -1.0, NOT a real bootstrapped CI")
+        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 2), [-1.0_real64, -1.0_real64], 2_int32, TOL, &
+                                     "test_param_search_no_plateau_effect_size_falls_back: "// &
+                                     "study 2 CI reset to -1.0")
+    end subroutine test_param_search_no_plateau_effect_size_falls_back
+
+    !> Same fixture again, `plateau_mode=MODE_PLATEAU_BOTH`. Since CI overlap never plateaus here
+    !| (confirmed by `test_param_search_no_plateau_uses_smallest_uncertainty`) and effect size never
+    !| plateaus here either (confirmed by
+    !| `test_param_search_no_plateau_effect_size_falls_back`), BOTH mode's
+    !| `ci_plateau_found .or. effect_size_plateau_found` is false for every candidate too -- so this
+    !| must land on the exact same old-fallback branch (candidate 1, CI reset to -1.0), not the new
+    !| smallest-uncertainty selection, confirming the gate checks `plateau_mode ==
+    !| MODE_PLATEAU_CI_OVERLAP` specifically rather than merely `/= MODE_PLATEAU_EFFECT_SIZE`.
+    subroutine test_param_search_no_plateau_both_falls_back()
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 20000, max_n_reps_all_studies = 3
+        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
+        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+        integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
+        real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        logical(c_bool) :: plateau_established
+        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
+        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: i_gene, i_study, i_rep, k
+
+        do i_study = 1, n_studies
+            do i_gene = 1, max_n_genes_all_studies
+                gene_means(i_gene, i_study) = real(i_gene, real64)
+                do i_rep = 1, max_n_reps_all_studies
+                    k = i_rep + max_n_reps_all_studies*(i_gene - 1) + &
+                        (i_study - 1)*max_n_reps_all_studies*max_n_genes_all_studies
+                    residuals(i_rep, i_gene, i_study) = 4.0_real64* &
+                        (mod(1103515245.0_real64*real(k, real64) + 12345.0_real64, 2147483648.0_real64) &
+                         /2147483648.0_real64 - 0.5_real64)
+                end do
+            end do
+        end do
+
+        call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
+                                               residuals, 3.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
+                                               n_bins, best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_admissible_evaluated, &
+                                               trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
+                                               plateau_mode=MODE_PLATEAU_BOTH, random_seed=1_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_no_plateau_both_falls_back: ierr should be OK")
+        call assert_false(plateau_established, &
+                          "test_param_search_no_plateau_both_falls_back: "// &
+                          "neither criterion ever plateaus under this fixture")
+        call assert_equal_int(n_points, 566_int32, &
+                              "test_param_search_no_plateau_both_falls_back: "// &
+                              "falls back to the finest-resolution n_points, NOT candidate 5's smallest-uncertainty n_points")
+        call assert_equal_int(n_neighbors, 141_int32, &
+                              "test_param_search_no_plateau_both_falls_back: "// &
+                              "falls back to the finest-resolution n_neighbors")
+        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), [-1.0_real64, -1.0_real64], 2_int32, TOL, &
+                                     "test_param_search_no_plateau_both_falls_back: "// &
+                                     "study 1 CI reset to -1.0, NOT a real bootstrapped CI")
+        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 2), [-1.0_real64, -1.0_real64], 2_int32, TOL, &
+                                     "test_param_search_no_plateau_both_falls_back: "// &
+                                     "study 2 CI reset to -1.0")
+    end subroutine test_param_search_no_plateau_both_falls_back
 
 end module mod_test_data_integration_js_comp_test
