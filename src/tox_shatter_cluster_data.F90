@@ -13,16 +13,19 @@
 !! For shatter clustering operations within Tensor Omics.
 module tox_shatter_cluster_data
 
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, set_err, set_err_once, is_err, validate_dimension_size, &
                           validate_in_range_real, validate_all_in_range_int, validate_in_range_int, &
                           ERR_ALLOC_FAIL, ERR_DIM_MISMATCH, ERR_INVALID_INPUT, validate_all_in_range_real
     use tox_gene_centroids, only: mean_vector
-    use tox_euclidean_distance, only: euclidean_distance_helper
-    use f42_utils, only: sort_real_heapsort, calc_percentile, calc_percentile_helper
-    use f42_kd_tree, only: vicinity_vectors_helper, vicinity_vectors_count_helper, &
-                           KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH
+    use tox_euclidean_distance_impl, only: euclidean_distance_impl
+    use f42_sort_impl, only: sort_array_heapsort
+    use f42_stats, only: calc_percentile_expert
+    use f42_stats_impl, only: calc_percentile_impl
+    use f42_kd_tree_impl, only: vicinity_vectors_helper, vicinity_vectors_count_helper, &
+                                KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH
     implicit none
     private
 
@@ -178,15 +181,16 @@ contains
 
         ! Calculating each vector distance to mean vector
         do concurrent(i_vec=1:n_vectors) shared(vectors, tmp_mean_vec, n_dimensions, tmp_distances)
-            call euclidean_distance_helper(tmp_mean_vec, vectors(:, i_vec), &
-                                           n_dimensions, tmp_distances(i_vec))
+            call euclidean_distance_impl(tmp_mean_vec, vectors(:, i_vec), &
+                                         n_dimensions, tmp_distances(i_vec))
         end do
 
         !Sorting perm according to distance
-        call sort_real_heapsort(tmp_distances, tmp_perm)
+        call sort_array_heapsort(tmp_distances, tmp_perm)
 
         ! Extract the adaptive search radius corresponding to the specified distance percentile.
-        call calc_percentile(tmp_distances, tmp_perm, actual_quant, radius, ierr)
+        call calc_percentile_expert(tmp_distances, n_vectors, tmp_perm, &
+                                    actual_quant, radius, ierr=ierr)
 
     end subroutine calculate_density_radius_helper
 
@@ -346,12 +350,12 @@ contains
                                              dimension_order, kd_indices, k_seeding, &
                                              sorted_perm, n_seeds, seed_mask, ierr)
 
-        real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
-        !! Input data matrix (n_dimensions x n_vectors)
         integer(int32), intent(in) :: n_dimensions
         !! Number of dimensions
         integer(int32), intent(in) :: n_vectors
         !! Number of vectors
+        real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
+        !! Input data matrix (n_dimensions x n_vectors)
         real(real64), intent(in) :: density_labels(n_vectors)
         !! Precalculated density labels for all ambient vectors
         integer(int32), intent(in) :: dimension_order(n_dimensions)
@@ -415,12 +419,12 @@ contains
                                        tmp_visited_mask, tmp_newly_covered_mask, &
                                        sorted_perm, n_seeds, seed_mask, ierr)
 
-        real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
-        !! Input data matrix (n_dimensions x n_vectors)
         integer(int32), intent(in) :: n_dimensions
         !! Number of dimensions
         integer(int32), intent(in) :: n_vectors
         !! Number of vectors
+        real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
+        !! Input data matrix (n_dimensions x n_vectors)
         real(real64), intent(in) :: density_labels(n_vectors)
         !! Precalculated density labels for all ambient vectors
         integer(int32), intent(in) :: dimension_order(n_dimensions)
@@ -482,12 +486,12 @@ contains
                                                    tmp_visited_mask, tmp_newly_covered_mask, &
                                                    sorted_perm, n_seeds, seed_mask)
 
-        real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
-        !! Input data matrix (n_dimensions x n_vectors)
         integer(int32), intent(in) :: n_dimensions
         !! Number of dimensions
         integer(int32), intent(in) :: n_vectors
         !! Number of vectors
+        real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
+        !! Input data matrix (n_dimensions x n_vectors)
         real(real64), intent(in) :: density_labels(n_vectors)
         !! Precalculated density labels for all ambient vectors
         integer(int32), intent(in) :: dimension_order(n_dimensions)
@@ -520,7 +524,7 @@ contains
             tmp_perm(i_vec) = i_vec
         end do
 
-        call sort_real_heapsort(density_labels, tmp_perm)
+        call sort_array_heapsort(density_labels, tmp_perm)
 
         ! Heapsort provides ascending density order. Reverse the permutation.
         do concurrent(i_vec=1:n_vectors) shared(sorted_perm, tmp_perm, n_vectors)
@@ -545,15 +549,15 @@ contains
             do concurrent(i_vec=1:n_vectors) &
                 shared(vectors, n_dimensions, candidate_idx, tmp_distances)
 
-                call euclidean_distance_helper(vectors(:, candidate_idx), vectors(:, i_vec), &
-                                               n_dimensions, tmp_distances(i_vec))
+                call euclidean_distance_impl(vectors(:, candidate_idx), vectors(:, i_vec), &
+                                             n_dimensions, tmp_distances(i_vec))
             end do
 
             do concurrent(i_vec=1:n_vectors) shared(tmp_perm)
                 tmp_perm(i_vec) = i_vec
             end do
 
-            call sort_real_heapsort(tmp_distances, tmp_perm)
+            call sort_array_heapsort(tmp_distances, tmp_perm)
 
             ! Exclude the seed itself from its k_seeding nearest neighbors.
             self_pos = 0_int32
@@ -618,8 +622,9 @@ contains
         do concurrent(i_vec=1:n_vectors) shared(tmp_perm)
             tmp_perm(i_vec) = i_vec
         end do
-        call sort_real_heapsort(density_labels, tmp_perm)
-        call calc_percentile_helper(density_labels, tmp_perm, 0.5_real64, median_ambient)
+        call sort_array_heapsort(density_labels, tmp_perm)
+        call calc_percentile_impl(density_labels, n_vectors, tmp_perm, &
+                                  0.5_real64, median_ambient)
 
         ! 2. Compute absolute deviation from ambient median for all vectors
         do concurrent(i_vec=1:n_vectors) shared(tmp_abs_diff, tmp_perm, density_labels, median_ambient)
@@ -628,8 +633,9 @@ contains
         end do
 
         ! 3. Compute MAD_ambient = median_{i=1..N}(|rho_i - median_ambient|)
-        call sort_real_heapsort(tmp_abs_diff, tmp_perm)
-        call calc_percentile_helper(tmp_abs_diff, tmp_perm, 0.5_real64, mad_ambient)
+        call sort_array_heapsort(tmp_abs_diff, tmp_perm)
+        call calc_percentile_impl(tmp_abs_diff, n_vectors, tmp_perm, &
+                                  0.5_real64, mad_ambient)
 
     end subroutine compute_ambient_density_stats_helper
 
@@ -948,9 +954,9 @@ contains
                 tmp_perm(k) = k
             end if
         end do
-        call sort_real_heapsort(tmp_abs_diff(1:k), tmp_perm(1:k))
-        call calc_percentile_helper(tmp_abs_diff(1:k), tmp_perm(1:k), 0.5_real64, &
-                                    ensemble_center_density)
+        call sort_array_heapsort(tmp_abs_diff(1:k), tmp_perm(1:k))
+        call calc_percentile_impl(tmp_abs_diff, n_vectors, tmp_perm, 0.5_real64, &
+                                  ensemble_center_density, n_considered=k)
 
         do concurrent(i_vec=1:n_vectors) &
             shared(ensemble_mask, surface_mask, trial_mask, density_labels, ensemble_center_density, max_allowed_dev)

@@ -8,6 +8,8 @@
 // the Fortran C-ABI symbols this module calls
 void build_kd_index_c(const double*, const int*, const int*, int*, const int*, int*);
 void build_spherical_kd_c(const double*, const int*, const int*, int*, const int*, int*);
+void vicinity_vectors_c(const double*, const double*, const int*, const int*, const double*, const int*, const int*, unsigned char*, int*);
+void vicinity_vectors_count_c(const double*, const double*, const int*, const int*, const double*, const int*, const int*, int*, int*);
 
 SEXP build_kd_index_call(SEXP points, SEXP dimension_order) {
     int nprot = 0;
@@ -63,6 +65,81 @@ SEXP build_spherical_kd_call(SEXP points, SEXP dimension_order) {
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
     SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("kd_indices"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP vicinity_vectors_call(SEXP query_point, SEXP points, SEXP r, SEXP dimension_order, SEXP kd_indices) {
+    int nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_dimensions = (int) Rf_length(query_point);
+    int n_points = INTEGER(Rf_getAttrib(points, R_DimSymbol))[1];
+
+    // scalar inputs, pulled from their length-1 vectors
+    double r_v = Rf_asReal(r);
+
+    // outputs and work space
+    unsigned char* vicinity_mask_c = tox_bool_alloc(n_points);
+    int ierr = 0;
+
+    vicinity_vectors_c(
+        REAL(query_point),
+        REAL(points),
+        &n_dimensions,
+        &n_points,
+        &r_v,
+        INTEGER(dimension_order),
+        INTEGER(kd_indices),
+        vicinity_mask_c,
+        &ierr
+    );
+
+    // convert the outputs back
+    SEXP vicinity_mask = PROTECT(tox_bool_out(vicinity_mask_c, n_points)); nprot++;
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SET_VECTOR_ELT(_out, 0, vicinity_mask);
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("vicinity_mask"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP vicinity_vectors_count_call(SEXP query_point, SEXP points, SEXP r, SEXP dimension_order, SEXP kd_indices) {
+    int nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_dimensions = (int) Rf_length(query_point);
+    int n_points = INTEGER(Rf_getAttrib(points, R_DimSymbol))[1];
+
+    // scalar inputs, pulled from their length-1 vectors
+    double r_v = Rf_asReal(r);
+
+    // outputs and work space
+    int n_neighbors = 0;
+    int ierr = 0;
+
+    vicinity_vectors_count_c(
+        REAL(query_point),
+        REAL(points),
+        &n_dimensions,
+        &n_points,
+        &r_v,
+        INTEGER(dimension_order),
+        INTEGER(kd_indices),
+        &n_neighbors,
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(n_neighbors));
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("n_neighbors"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);

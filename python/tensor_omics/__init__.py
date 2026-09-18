@@ -15,6 +15,8 @@ from .f42_binary_search_tree import (
 from .f42_kd_tree import (
     build_kd_index,
     build_spherical_kd,
+    vicinity_vectors,
+    vicinity_vectors_count,
 )
 from .f42_serde_arrays_deserialize_char import (
     deserialize_char_helper,
@@ -299,4 +301,6 @@ __all__ = [
     "validate_gene_to_family_mapping",
     "validate_shift_vectors",
     "validate_string_array_uniqueness",
+    "vicinity_vectors",
+    "vicinity_vectors_count",
 ]

@@ -1,7 +1,9 @@
 !> Unit test suite for kd_tree module.
 module mod_test_kd_tree
     use f42_kd_tree
-    use f42_kd_tree_impl, only: get_kd_point
+    use f42_kd_tree_impl, only: get_kd_point, vicinity_vectors_helper, &
+                                vicinity_vectors_count_helper, &
+                                KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH
     use f42_utils_impl
     use tox_errors
     use asserts
@@ -297,16 +299,16 @@ contains
         dimension_order = [1_int32, 2_int32]
         expected_mask = [.true., .true., .true., .false., .false., .false.]
 
-        call build_kd_index(points, n_dimensions, n_points, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_value_buffer, tmp_permutation, &
-                            tmp_recursion_stack, ierr)
+        call build_kd_index_expert(points, n_dimensions, n_points, kd_indices, dimension_order, &
+                                   tmp_workspace, tmp_value_buffer, tmp_permutation, &
+                                   tmp_recursion_stack, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_basic_2d: build K-D index")
         if (.not. is_ok(ierr)) return
 
-        call vicinity_vectors_alloc(query_point, points, n_dimensions, n_points, radius, &
-                                    dimension_order, kd_indices, vicinity_mask, ierr)
+        call vicinity_vectors(query_point, points, n_dimensions, n_points, radius, &
+                              dimension_order, kd_indices, vicinity_mask, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_basic_2d: vicinity_vectors_alloc")
@@ -315,8 +317,8 @@ contains
         call assert_true(logical(all(vicinity_mask .eqv. expected_mask)), &
                          "test_vicinity_vectors_basic_2d: expected mask")
 
-        call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, radius, &
-                                          dimension_order, kd_indices, neighbor_count, ierr)
+        call vicinity_vectors_count(query_point, points, n_dimensions, n_points, radius, &
+                                    dimension_order, kd_indices, neighbor_count, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_basic_2d: vicinity_vectors_count_alloc")
@@ -351,16 +353,16 @@ contains
         radius = 0.75_real64
         dimension_order = [2_int32, 1_int32]
 
-        call build_kd_index(points, n_dimensions, n_points, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_value_buffer, tmp_permutation, &
-                            tmp_recursion_stack, ierr)
+        call build_kd_index_expert(points, n_dimensions, n_points, kd_indices, dimension_order, &
+                                   tmp_workspace, tmp_value_buffer, tmp_permutation, &
+                                   tmp_recursion_stack, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_helper_matches_alloc: build K-D index")
         if (.not. is_ok(ierr)) return
 
-        call vicinity_vectors_alloc(query_point, points, n_dimensions, n_points, radius, &
-                                    dimension_order, kd_indices, alloc_mask, ierr)
+        call vicinity_vectors(query_point, points, n_dimensions, n_points, radius, &
+                              dimension_order, kd_indices, alloc_mask, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_helper_matches_alloc: mask alloc")
@@ -374,8 +376,8 @@ contains
         call assert_true(logical(all(helper_mask .eqv. alloc_mask)), &
                          "test_vicinity_vectors_helper_matches_alloc: masks agree")
 
-        call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, radius, &
-                                          dimension_order, kd_indices, alloc_count, ierr)
+        call vicinity_vectors_count(query_point, points, n_dimensions, n_points, radius, &
+                                    dimension_order, kd_indices, alloc_count, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_helper_matches_alloc: count alloc")
@@ -415,16 +417,16 @@ contains
         dimension_order = [1_int32, 2_int32]
         expected_mask = [.true., .true., .true., .false., .false.]
 
-        call build_kd_index(points, n_dimensions, n_points, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_value_buffer, tmp_permutation, &
-                            tmp_recursion_stack, ierr)
+        call build_kd_index_expert(points, n_dimensions, n_points, kd_indices, dimension_order, &
+                                   tmp_workspace, tmp_value_buffer, tmp_permutation, &
+                                   tmp_recursion_stack, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_zero_radius_duplicates: build K-D index")
         if (.not. is_ok(ierr)) return
 
-        call vicinity_vectors_alloc(query_point, points, n_dimensions, n_points, 0.0_real64, &
-                                    dimension_order, kd_indices, vicinity_mask, ierr)
+        call vicinity_vectors(query_point, points, n_dimensions, n_points, 0.0_real64, &
+                              dimension_order, kd_indices, vicinity_mask, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_zero_radius_duplicates: mask call")
@@ -433,8 +435,8 @@ contains
         call assert_true(logical(all(vicinity_mask .eqv. expected_mask)), &
                          "test_vicinity_vectors_zero_radius_duplicates: expected mask")
 
-        call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 0.0_real64, &
-                                          dimension_order, kd_indices, neighbor_count, ierr)
+        call vicinity_vectors_count(query_point, points, n_dimensions, n_points, 0.0_real64, &
+                                    dimension_order, kd_indices, neighbor_count, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_zero_radius_duplicates: count call")
@@ -466,16 +468,16 @@ contains
         dimension_order = [1_int32, 2_int32]
         expected_mask = [.true., .true., .true., .true., .false.]
 
-        call build_kd_index(points, n_dimensions, n_points, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_value_buffer, tmp_permutation, &
-                            tmp_recursion_stack, ierr)
+        call build_kd_index_expert(points, n_dimensions, n_points, kd_indices, dimension_order, &
+                                   tmp_workspace, tmp_value_buffer, tmp_permutation, &
+                                   tmp_recursion_stack, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_boundary_inclusive: build K-D index")
         if (.not. is_ok(ierr)) return
 
-        call vicinity_vectors_alloc(query_point, points, n_dimensions, n_points, 1.0_real64, &
-                                    dimension_order, kd_indices, vicinity_mask, ierr)
+        call vicinity_vectors(query_point, points, n_dimensions, n_points, 1.0_real64, &
+                              dimension_order, kd_indices, vicinity_mask, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_boundary_inclusive: mask call")
@@ -484,8 +486,8 @@ contains
         call assert_true(logical(all(vicinity_mask .eqv. expected_mask)), &
                          "test_vicinity_vectors_boundary_inclusive: expected mask")
 
-        call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 1.0_real64, &
-                                          dimension_order, kd_indices, neighbor_count, ierr)
+        call vicinity_vectors_count(query_point, points, n_dimensions, n_points, 1.0_real64, &
+                                    dimension_order, kd_indices, neighbor_count, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_boundary_inclusive: count call")
@@ -515,16 +517,16 @@ contains
         query_point = [100.0_real64, 100.0_real64]
         dimension_order = [1_int32, 2_int32]
 
-        call build_kd_index(points, n_dimensions, n_points, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_value_buffer, tmp_permutation, &
-                            tmp_recursion_stack, ierr)
+        call build_kd_index_expert(points, n_dimensions, n_points, kd_indices, dimension_order, &
+                                   tmp_workspace, tmp_value_buffer, tmp_permutation, &
+                                   tmp_recursion_stack, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_no_matches: build K-D index")
         if (.not. is_ok(ierr)) return
 
-        call vicinity_vectors_alloc(query_point, points, n_dimensions, n_points, 0.5_real64, &
-                                    dimension_order, kd_indices, vicinity_mask, ierr)
+        call vicinity_vectors(query_point, points, n_dimensions, n_points, 0.5_real64, &
+                              dimension_order, kd_indices, vicinity_mask, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_no_matches: mask call")
@@ -533,8 +535,8 @@ contains
         call assert_false(logical(any(vicinity_mask)), &
                           "test_vicinity_vectors_no_matches: mask is empty")
 
-        call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 0.5_real64, &
-                                          dimension_order, kd_indices, neighbor_count, ierr)
+        call vicinity_vectors_count(query_point, points, n_dimensions, n_points, 0.5_real64, &
+                                    dimension_order, kd_indices, neighbor_count, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_no_matches: count call")
@@ -565,16 +567,16 @@ contains
         query_point = [0.0_real64, 0.0_real64]
         dimension_order = [1_int32, 2_int32]
 
-        call build_kd_index(points, n_dimensions, n_points, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_value_buffer, tmp_permutation, &
-                            tmp_recursion_stack, ierr)
+        call build_kd_index_expert(points, n_dimensions, n_points, kd_indices, dimension_order, &
+                                   tmp_workspace, tmp_value_buffer, tmp_permutation, &
+                                   tmp_recursion_stack, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_all_matches: build K-D index")
         if (.not. is_ok(ierr)) return
 
-        call vicinity_vectors_alloc(query_point, points, n_dimensions, n_points, 10.0_real64, &
-                                    dimension_order, kd_indices, vicinity_mask, ierr)
+        call vicinity_vectors(query_point, points, n_dimensions, n_points, 10.0_real64, &
+                              dimension_order, kd_indices, vicinity_mask, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_all_matches: mask call")
@@ -583,8 +585,8 @@ contains
         call assert_true(logical(all(vicinity_mask)), &
                          "test_vicinity_vectors_all_matches: all points selected")
 
-        call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 10.0_real64, &
-                                          dimension_order, kd_indices, neighbor_count, ierr)
+        call vicinity_vectors_count(query_point, points, n_dimensions, n_points, 10.0_real64, &
+                                    dimension_order, kd_indices, neighbor_count, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_all_matches: count call")
@@ -609,9 +611,9 @@ contains
         points(:, 1) = [2.0_real64, -1.0_real64]
         dimension_order = [1_int32, 2_int32]
 
-        call build_kd_index(points, n_dimensions, n_points, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_value_buffer, tmp_permutation, &
-                            tmp_recursion_stack, ierr)
+        call build_kd_index_expert(points, n_dimensions, n_points, kd_indices, dimension_order, &
+                                   tmp_workspace, tmp_value_buffer, tmp_permutation, &
+                                   tmp_recursion_stack, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_single_point: build K-D index")
@@ -619,8 +621,8 @@ contains
 
         query_point = [2.0_real64, -1.0_real64]
 
-        call vicinity_vectors_alloc(query_point, points, n_dimensions, n_points, 0.0_real64, &
-                                    dimension_order, kd_indices, vicinity_mask, ierr)
+        call vicinity_vectors(query_point, points, n_dimensions, n_points, 0.0_real64, &
+                              dimension_order, kd_indices, vicinity_mask, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_single_point: exact mask call")
@@ -629,8 +631,8 @@ contains
         call assert_true(logical(vicinity_mask(1)), &
                          "test_vicinity_vectors_single_point: point selected")
 
-        call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 0.0_real64, &
-                                          dimension_order, kd_indices, neighbor_count, ierr)
+        call vicinity_vectors_count(query_point, points, n_dimensions, n_points, 0.0_real64, &
+                                    dimension_order, kd_indices, neighbor_count, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_single_point: exact count call")
@@ -641,8 +643,8 @@ contains
 
         query_point = [10.0_real64, 10.0_real64]
 
-        call vicinity_vectors_alloc(query_point, points, n_dimensions, n_points, 0.0_real64, &
-                                    dimension_order, kd_indices, vicinity_mask, ierr)
+        call vicinity_vectors(query_point, points, n_dimensions, n_points, 0.0_real64, &
+                              dimension_order, kd_indices, vicinity_mask, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_single_point: distant mask call")
@@ -651,8 +653,8 @@ contains
         call assert_false(logical(vicinity_mask(1)), &
                           "test_vicinity_vectors_single_point: distant point excluded")
 
-        call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 0.0_real64, &
-                                          dimension_order, kd_indices, neighbor_count, ierr)
+        call vicinity_vectors_count(query_point, points, n_dimensions, n_points, 0.0_real64, &
+                                    dimension_order, kd_indices, neighbor_count, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_single_point: distant count call")
@@ -690,16 +692,16 @@ contains
 
         expected_count = count(expected_mask, kind=int32)
 
-        call build_kd_index(points, n_dimensions, n_points, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_value_buffer, tmp_permutation, &
-                            tmp_recursion_stack, ierr)
+        call build_kd_index_expert(points, n_dimensions, n_points, kd_indices, dimension_order, &
+                                   tmp_workspace, tmp_value_buffer, tmp_permutation, &
+                                   tmp_recursion_stack, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_large_1d_bruteforce: build K-D index")
         if (.not. is_ok(ierr)) return
 
-        call vicinity_vectors_alloc(query_point, points, n_dimensions, n_points, radius, &
-                                    dimension_order, kd_indices, vicinity_mask, ierr)
+        call vicinity_vectors(query_point, points, n_dimensions, n_points, radius, &
+                              dimension_order, kd_indices, vicinity_mask, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_large_1d_bruteforce: mask call")
@@ -708,8 +710,8 @@ contains
         call assert_true(logical(all(vicinity_mask .eqv. expected_mask)), &
                          "test_vicinity_vectors_large_1d_bruteforce: brute-force mask")
 
-        call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, radius, &
-                                          dimension_order, kd_indices, neighbor_count, ierr)
+        call vicinity_vectors_count(query_point, points, n_dimensions, n_points, radius, &
+                                    dimension_order, kd_indices, neighbor_count, ierr)
 
         call assert_true(is_ok(ierr), &
                          "test_vicinity_vectors_large_1d_bruteforce: count call")
@@ -734,14 +736,14 @@ contains
         dimension_order = [1_int32]
         kd_indices = [1_int32, 2_int32, 3_int32]
 
-        call vicinity_vectors_alloc(query_point, points, n_dimensions, n_points, -1.0_real64, &
-                                    dimension_order, kd_indices, vicinity_mask, ierr)
+        call vicinity_vectors(query_point, points, n_dimensions, n_points, -1.0_real64, &
+                              dimension_order, kd_indices, vicinity_mask, ierr)
 
         call assert_false(is_ok(ierr), &
                           "test_vicinity_vectors_negative_radius: mask rejects radius")
 
-        call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, -1.0_real64, &
-                                          dimension_order, kd_indices, neighbor_count, ierr)
+        call vicinity_vectors_count(query_point, points, n_dimensions, n_points, -1.0_real64, &
+                                    dimension_order, kd_indices, neighbor_count, ierr)
 
         call assert_false(is_ok(ierr), &
                           "test_vicinity_vectors_negative_radius: count rejects radius")
@@ -765,14 +767,14 @@ contains
         dimension_order = [0_int32, 2_int32]
         kd_indices = [1_int32, 2_int32, 3_int32]
 
-        call vicinity_vectors_alloc(query_point, points, n_dimensions, n_points, 1.0_real64, &
-                                    dimension_order, kd_indices, vicinity_mask, ierr)
+        call vicinity_vectors(query_point, points, n_dimensions, n_points, 1.0_real64, &
+                              dimension_order, kd_indices, vicinity_mask, ierr)
 
         call assert_false(is_ok(ierr), &
                           "test_vicinity_vectors_dimension_order_low: mask rejects order")
 
-        call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 1.0_real64, &
-                                          dimension_order, kd_indices, neighbor_count, ierr)
+        call vicinity_vectors_count(query_point, points, n_dimensions, n_points, 1.0_real64, &
+                                    dimension_order, kd_indices, neighbor_count, ierr)
 
         call assert_false(is_ok(ierr), &
                           "test_vicinity_vectors_dimension_order_low: count rejects order")
@@ -796,14 +798,14 @@ contains
         dimension_order = [1_int32, 3_int32]
         kd_indices = [1_int32, 2_int32, 3_int32]
 
-        call vicinity_vectors_alloc(query_point, points, n_dimensions, n_points, 1.0_real64, &
-                                    dimension_order, kd_indices, vicinity_mask, ierr)
+        call vicinity_vectors(query_point, points, n_dimensions, n_points, 1.0_real64, &
+                              dimension_order, kd_indices, vicinity_mask, ierr)
 
         call assert_false(is_ok(ierr), &
                           "test_vicinity_vectors_dimension_order_high: mask rejects order")
 
-        call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 1.0_real64, &
-                                          dimension_order, kd_indices, neighbor_count, ierr)
+        call vicinity_vectors_count(query_point, points, n_dimensions, n_points, 1.0_real64, &
+                                    dimension_order, kd_indices, neighbor_count, ierr)
 
         call assert_false(is_ok(ierr), &
                           "test_vicinity_vectors_dimension_order_high: count rejects order")
@@ -824,14 +826,14 @@ contains
         dimension_order = [1_int32]
         kd_indices = [1_int32, 0_int32, 3_int32]
 
-        call vicinity_vectors_alloc(query_point, points, n_dimensions, n_points, 1.0_real64, &
-                                    dimension_order, kd_indices, vicinity_mask, ierr)
+        call vicinity_vectors(query_point, points, n_dimensions, n_points, 1.0_real64, &
+                              dimension_order, kd_indices, vicinity_mask, ierr)
 
         call assert_false(is_ok(ierr), &
                           "test_vicinity_vectors_kd_index_low: mask rejects K-D index")
 
-        call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 1.0_real64, &
-                                          dimension_order, kd_indices, neighbor_count, ierr)
+        call vicinity_vectors_count(query_point, points, n_dimensions, n_points, 1.0_real64, &
+                                    dimension_order, kd_indices, neighbor_count, ierr)
 
         call assert_false(is_ok(ierr), &
                           "test_vicinity_vectors_kd_index_low: count rejects K-D index")
@@ -852,14 +854,14 @@ contains
         dimension_order = [1_int32]
         kd_indices = [1_int32, 4_int32, 3_int32]
 
-        call vicinity_vectors_alloc(query_point, points, n_dimensions, n_points, 1.0_real64, &
-                                    dimension_order, kd_indices, vicinity_mask, ierr)
+        call vicinity_vectors(query_point, points, n_dimensions, n_points, 1.0_real64, &
+                              dimension_order, kd_indices, vicinity_mask, ierr)
 
         call assert_false(is_ok(ierr), &
                           "test_vicinity_vectors_kd_index_high: mask rejects K-D index")
 
-        call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 1.0_real64, &
-                                          dimension_order, kd_indices, neighbor_count, ierr)
+        call vicinity_vectors_count(query_point, points, n_dimensions, n_points, 1.0_real64, &
+                                    dimension_order, kd_indices, neighbor_count, ierr)
 
         call assert_false(is_ok(ierr), &
                           "test_vicinity_vectors_kd_index_high: count rejects K-D index")
@@ -878,14 +880,14 @@ contains
         query_point = [0.0_real64]
         dimension_order = [1_int32]
 
-        call vicinity_vectors_alloc(query_point, points, n_dimensions, n_points, 1.0_real64, &
-                                    dimension_order, kd_indices, vicinity_mask, ierr)
+        call vicinity_vectors(query_point, points, n_dimensions, n_points, 1.0_real64, &
+                              dimension_order, kd_indices, vicinity_mask, ierr)
 
         call assert_false(is_ok(ierr), &
                           "test_vicinity_vectors_zero_points: mask rejects zero points")
 
-        call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 1.0_real64, &
-                                          dimension_order, kd_indices, neighbor_count, ierr)
+        call vicinity_vectors_count(query_point, points, n_dimensions, n_points, 1.0_real64, &
+                                    dimension_order, kd_indices, neighbor_count, ierr)
 
         call assert_false(is_ok(ierr), &
                           "test_vicinity_vectors_zero_points: count rejects zero points")
@@ -903,14 +905,14 @@ contains
 
         kd_indices = [1_int32]
 
-        call vicinity_vectors_alloc(query_point, points, n_dimensions, n_points, 1.0_real64, &
-                                    dimension_order, kd_indices, vicinity_mask, ierr)
+        call vicinity_vectors(query_point, points, n_dimensions, n_points, 1.0_real64, &
+                              dimension_order, kd_indices, vicinity_mask, ierr)
 
         call assert_false(is_ok(ierr), &
                           "test_vicinity_vectors_zero_dimensions: mask rejects zero dimensions")
 
-        call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 1.0_real64, &
-                                          dimension_order, kd_indices, neighbor_count, ierr)
+        call vicinity_vectors_count(query_point, points, n_dimensions, n_points, 1.0_real64, &
+                                    dimension_order, kd_indices, neighbor_count, ierr)
 
         call assert_false(is_ok(ierr), &
                           "test_vicinity_vectors_zero_dimensions: count rejects zero dimensions")
