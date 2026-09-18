@@ -172,7 +172,7 @@ estimate_bin_count_expert <- function(residuals, residuals_perm, max_n_reps_all_
 #'   The default value is `120`.
 #' @param min_residuals_per_bin a integer scalar. Minimum number of pooled residuals every bin must reach for a candidate bin count to
 #'   be admissible (n_min)
-#'   The minimum valid value is `1`.
+#'   The minimum valid value is `0`.
 #'   The default value is `10`.
 #' @param gamma_occupancy a numeric scalar. Geometric growth factor for the coarse search stage; must exceed 1 or the search
 #'   never advances
@@ -289,7 +289,7 @@ determine_bin_count_occupancy <- function(pooled_residuals, max_n_reps_all_studi
 #'   The default value is `120`.
 #' @param min_residuals_per_bin a integer scalar. Minimum number of pooled residuals every bin must reach for a candidate bin count to
 #'   be admissible (n_min)
-#'   The minimum valid value is `1`.
+#'   The minimum valid value is `0`.
 #'   The default value is `10`.
 #' @param gamma_occupancy a numeric scalar. Geometric growth factor for the coarse search stage; must exceed 1 or the search
 #'   never advances
@@ -914,7 +914,7 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #' @param min_residuals_per_bin a integer scalar. Minimum number of pooled residuals every bin must reach for a candidate bin count to
 #'   be admissible in Pass B's occupancy search, forwarded to
 #'   determine_bin_count_occupancy_impl
-#'   The minimum valid value is `1`.
+#'   The minimum valid value is `0`.
 #'   The default value is `10`.
 #' @param m_min a integer scalar. Smallest candidate bin count Pass B's occupancy search will ever test (M_min),
 #'   forwarded to determine_bin_count_occupancy_impl

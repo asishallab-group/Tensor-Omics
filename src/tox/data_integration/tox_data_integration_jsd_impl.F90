@@ -235,7 +235,7 @@ contains
         ! inner (i_neighbor) loop must be a plain sequential `do`: different neighbors can hit the same
         ! (i_point, bin_idx) count simultaneously, so `counts(i_point, bin_idx) = counts(i_point, bin_idx) + 1`
         ! would be a data race under `do concurrent`.
-        do concurrent(i_point=1:n_points) local(included_reps, bin_width) shared(included_n_reps)
+        do concurrent(i_point=1:n_points) local(included_reps, bin_width, bin_idx, clamped_residual) shared(included_n_reps)
             ! Guard against a zero range (e.g. `determine_shared_residual_range_impl` returns 0.0 when all
             ! pooled residuals are NaN): fall back to a fixed bin width so every (clamped-to-zero) residual
             ! deterministically lands in a single bin instead of dividing by zero below. `bin_width` is now

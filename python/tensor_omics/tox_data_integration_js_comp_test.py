@@ -659,7 +659,7 @@ def determine_bin_count_occupancy(
     min_residuals_per_bin : int, optional, default 10
         Minimum number of pooled residuals every bin must reach for a candidate bin count to
         be admissible (n_min)
-        The minimum valid value is `1`.
+        The minimum valid value is `0`.
         The default value is `10`.
     gamma_occupancy : float, optional, default 1.25
         Geometric growth factor for the coarse search stage; must exceed 1 or the search
@@ -848,7 +848,7 @@ def determine_bin_count_occupancy_expert(
     min_residuals_per_bin : int, optional, default 10
         Minimum number of pooled residuals every bin must reach for a candidate bin count to
         be admissible (n_min)
-        The minimum valid value is `1`.
+        The minimum valid value is `0`.
         The default value is `10`.
     gamma_occupancy : float, optional, default 1.25
         Geometric growth factor for the coarse search stage; must exceed 1 or the search
@@ -1994,7 +1994,7 @@ def run_js_comp_test(
         Minimum number of pooled residuals every bin must reach for a candidate bin count to
         be admissible in Pass B's occupancy search, forwarded to
         determine_bin_count_occupancy_impl
-        The minimum valid value is `1`.
+        The minimum valid value is `0`.
         The default value is `10`.
     m_min : int, optional, default 3
         Smallest candidate bin count Pass B's occupancy search will ever test (M_min),

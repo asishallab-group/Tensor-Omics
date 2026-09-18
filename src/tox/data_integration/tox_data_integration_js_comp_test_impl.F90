@@ -350,7 +350,7 @@ contains
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
             !! be admissible (n_min)
-            !! DM_MIN(1_int32)
+            !! DM_MIN(0_int32)
             !! DM_DEFAULT(CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
         real(real64), intent(in), optional :: gamma_occupancy
             !! Geometric growth factor for the coarse search stage; must exceed 1 or the search
@@ -1659,7 +1659,7 @@ contains
             !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
             !! be admissible in Pass B's occupancy search, forwarded to
             !! determine_bin_count_occupancy_impl
-            !! DM_MIN(1_int32)
+            !! DM_MIN(0_int32)
             !! DM_DEFAULT(CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
         integer(int32), intent(in), optional :: m_min
             !! Smallest candidate bin count Pass B's occupancy search will ever test (M_min),

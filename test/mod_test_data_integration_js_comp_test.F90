@@ -34,7 +34,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(71))
+        allocate (all_tests(73))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -188,6 +188,10 @@ contains
                                   test_param_search_final_n_bins_matches_selected_trace_column)
         all_tests(71) = test_case("test_run_js_comp_test_occupancy_failed_point_still_contributes", &
                                   test_run_js_comp_test_occupancy_failed_point_still_contributes)
+        all_tests(72) = test_case("test_occupancy_min_residuals_per_bin_zero_accepted", &
+                                  test_occupancy_min_residuals_per_bin_zero_accepted)
+        all_tests(73) = test_case("test_run_js_comp_test_accepts_min_residuals_per_bin_zero", &
+                                  test_run_js_comp_test_accepts_min_residuals_per_bin_zero)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -1700,6 +1704,101 @@ contains
                                "test_run_js_comp_test_two_studies_hand_traceable: n_permutations=0 -> p_values stay 0.0")
     end subroutine test_run_js_comp_test_two_studies_hand_traceable
 
+    !> Compliance-review fix (Issue #187 cleanup): `min_residuals_per_bin`'s `DM_MIN` used to
+    !| disagree between this routine (`1`) and `run_js_comp_test_parameter_search` (`0`) even
+    !| though both forward the same argument into the same
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
+    !| occupancy search -- a caller passing `0` was rejected here while accepted (and relied upon)
+    !| by the sibling entry point's own tests. Fixed by loosening this routine's bound to `0` too.
+    !|
+    !| Identical fixture to `test_run_js_comp_test_two_studies_hand_traceable` above (same
+    !| `gene_means`/`residuals`/`x_star`, pooled residuals `[-1, 1, -3, 3]`), except
+    !| `min_residuals_per_bin=0_int32` (proving the loosened bound is genuinely accepted, not just
+    !| documentation) and an explicit `m_max=4_int32` to bound the occupancy search's early-return
+    !| branch deterministically -- with `min_residuals_per_bin=0`, occupancy is trivially satisfied
+    !| at every candidate `M` (`min_occ >= 0` always holds), so without a bounded `m_max` the search
+    !| would run all the way to the default `m_max=120` instead of reproducing the same `M=4`
+    !| histogram as the hand-traceable test above. Since the underlying data and bin count are
+    !| identical to that test, every downstream numeric result (`counts`, `mean_pmf`,
+    !| `global_js_divergence`) is identical too -- only `occupancy_failed`'s reason for being
+    !| `.false.` differs (trivially satisfied here vs. genuinely satisfied there).
+    subroutine test_run_js_comp_test_accepts_min_residuals_per_bin_zero()
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
+        integer(int32), parameter :: n_points = 1, n_neighbors = 1
+        real(real64), parameter :: LOG2_3 = 1.5849625007211562_real64 ! log2(3) = ln(3)/ln(2)
+        real(real64), parameter :: EXPECTED_JSD = 1.5_real64 - 0.75_real64*LOG2_3
+        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
+        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
+        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+        real(real64) :: x_star(n_points)
+        integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
+        integer(int32) :: neighborhood_range(2, n_points, n_studies)
+        integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
+        logical(c_bool) :: occupancy_failed(n_points)
+        integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
+        real(real64) :: mean_bin_occupancy(n_points)
+        integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
+        real(real64) :: pmfs(256, n_points, n_studies)
+        integer(int32) :: counts(256, n_points, n_studies)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: mean_pmf(256, n_points)
+        integer(int32) :: mean_pmf_counts(256, n_points)
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
+        real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
+        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
+        integer(int32) :: ierr
+        real(real64) :: nan_val
+
+        nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
+
+        gene_means(:, 1) = [1.0_real64, 5.0_real64]
+        gene_means(:, 2) = [1.0_real64, 5.0_real64]
+        gene_means_perms(:, 1) = [1, 2]
+        gene_means_perms(:, 2) = [1, 2]
+
+        residuals(:, 1, 1) = [-1.0_real64, 1.0_real64]
+        residuals(:, 2, 1) = nan_val
+        residuals(:, 1, 2) = [-3.0_real64, 3.0_real64]
+        residuals(:, 2, 2) = nan_val
+
+        x_star = [1.0_real64]
+
+        call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
+                              4.0_real64, gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              neighborhood_range, n_bins_per_point, max_n_bins_per_point, occupancy_failed, &
+                              n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
+                              sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
+                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
+                              ierr=ierr, n_permutations=0_int32, random_seed=1_int32, min_residuals_per_bin=0_int32, &
+                              m_max=4_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: "// &
+                              "min_residuals_per_bin=0 must be accepted, not rejected by DM_MIN")
+
+        call assert_equal_int(n_bins_per_point(1), 4_int32, &
+                              "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: "// &
+                              "occupancy search reaches m_max=4 (trivially satisfied throughout)")
+        call assert_equal_int(max_n_bins_per_point, 4_int32, &
+                              "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: max_n_bins_per_point is 4")
+        call assert_false(occupancy_failed(1), &
+                          "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: "// &
+                          "min_residuals_per_bin=0 trivially satisfies the occupancy criterion")
+
+        call assert_equal_array_int(counts(1:4, 1, 1), [0, 1, 1, 0], 4_int32, &
+                                    "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: study 1 counts")
+        call assert_equal_array_int(counts(1:4, 1, 2), [1, 0, 0, 1], 4_int32, &
+                                    "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: study 2 counts")
+
+        call assert_equal_array_real(mean_pmf(1:4, 1), [0.25_real64, 0.25_real64, 0.25_real64, 0.25_real64], 4_int32, TOL, &
+                                     "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: mean_pmf should be uniform")
+
+        call assert_equal_real(global_js_divergence(1), EXPECTED_JSD, 1d-9, &
+                               "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: study 1 global JSD, closed form")
+        call assert_equal_real(global_js_divergence(2), EXPECTED_JSD, 1d-9, &
+                               "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: study 2 global JSD, closed form")
+    end subroutine test_run_js_comp_test_accepts_min_residuals_per_bin_zero
+
     !> Three studies, same single-point/single-neighbor topology as the hand-traceable case above.
     !| Studies 1 and 2 are identical to each other (residuals `[-1,-1,1,1]`, pmf `[0, 0.5, 0.5, 0]`);
     !| study 3 is a deliberately constructed outlier whose every replicate lands in the SAME bin
@@ -3153,6 +3252,56 @@ contains
                                "test_determine_bin_count_occupancy_m_min_itself_invalid_failure: "// &
                                "mean_bin_occupancy should be 0 on FAILURE")
     end subroutine test_occupancy_m_min_itself_invalid_failure
+
+    !> Compliance-review fix (Issue #187 cleanup): `min_residuals_per_bin`'s `DM_MIN` used to
+    !| disagree between this routine (`1`) and `run_js_comp_test_parameter_search` (`0`), even
+    !| though both forward the same argument into the same occupancy search -- a caller passing
+    !| `0` here was rejected while the same value was accepted (and deliberately relied upon by
+    !| several of `run_js_comp_test_parameter_search`'s own tests, e.g.
+    !| `test_param_search_single_candidate_bypasses_plateau`) by the sibling entry point. Fixed by
+    !| loosening this routine's bound to `0` too, matching the already-correct sibling.
+    !|
+    !| Reuses `test_occupancy_m_min_itself_invalid_failure`'s exact 5-residual fixture
+    !| (`[-9,-5,0,5,9]`, `shared_residual_range=10.0`), which FAILS at the default
+    !| `min_residuals_per_bin=10` (no bin can ever reach 10 with only 5 residuals) -- but with
+    !| `min_residuals_per_bin=0_int32` passed explicitly, every candidate bin count is trivially
+    !| admissible (`min_occ >= 0` always holds), so the search never finds an inadmissible
+    !| candidate. `m_max=3_int32` (equal to the default `m_min`) bounds the search to its very
+    !| first candidate via the early-return branch: at `M=3` over `[-10,10]` (bin width 20/3), the
+    !| 5 residuals land `[-9,-5]->bin1, [0]->bin2, [5,9]->bin3`, i.e. counts `[2,1,2]`.
+    subroutine test_occupancy_min_residuals_per_bin_zero_accepted()
+        integer(int32), parameter :: n_residuals = 5
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr
+        real(real64) :: mean_bin_occupancy
+        logical(c_bool) :: occupancy_failed
+
+        residuals = [-9.0_real64, -5.0_real64, 0.0_real64, 5.0_real64, 9.0_real64]
+
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, 10.0_real64, selected_n_bins, &
+                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr, &
+                                           min_residuals_per_bin=0_int32, m_max=3_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_occupancy_min_residuals_per_bin_zero_accepted: "// &
+                              "min_residuals_per_bin=0 must be accepted, not rejected by DM_MIN")
+        call assert_false(occupancy_failed, &
+                          "test_occupancy_min_residuals_per_bin_zero_accepted: "// &
+                          "min_residuals_per_bin=0 trivially satisfies the occupancy criterion everywhere")
+        call assert_equal_int(selected_n_bins, 3_int32, &
+                              "test_occupancy_min_residuals_per_bin_zero_accepted: "// &
+                              "early return at m_max=3 (bounded to keep the search's first candidate deterministic)")
+        call assert_equal_int(n_pooled_residuals, 5_int32, &
+                              "test_occupancy_min_residuals_per_bin_zero_accepted: n_pooled_residuals should be 5")
+        call assert_equal_int(min_bin_occupancy, 1_int32, &
+                              "test_occupancy_min_residuals_per_bin_zero_accepted: min bin count at M=3 is 1 (bin 2)")
+        call assert_equal_int(max_bin_occupancy, 2_int32, &
+                              "test_occupancy_min_residuals_per_bin_zero_accepted: max bin count at M=3 is 2 (bins 1 and 3)")
+        call assert_equal_real(mean_bin_occupancy, 5.0_real64/3.0_real64, TOL, &
+                               "test_occupancy_min_residuals_per_bin_zero_accepted: mean_bin_occupancy == 5/3")
+    end subroutine test_occupancy_min_residuals_per_bin_zero_accepted
 
     !> Issue #187's own worked example (m_valid=19, m_invalid=24 from the default geometric ladder
     !| 3 -> 4 -> 5 -> 7 -> 9 -> 12 -> 15 -> 19 -> 24), engineered so refinement over {20,21,22,23}

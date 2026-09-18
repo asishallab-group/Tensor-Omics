@@ -319,7 +319,7 @@ contains
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
             !! be admissible (n_min)
-            !! The minimum valid value is `1_int32`.
+            !! The minimum valid value is `0_int32`.
             !! The default value is `10_int32`.
         real(real64), intent(in), optional :: gamma_occupancy
             !! Geometric growth factor for the coarse search stage; must exceed 1 or the search
@@ -339,7 +339,7 @@ contains
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=5_int32, min=0.0_real64)
         call validate_in_range_int(m_min, ierr, arg_pos=14_int32, min=1_int32, max=MAX_N_BINS)
         call validate_in_range_int(m_max, ierr, arg_pos=15_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=16_int32, min=1_int32)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=16_int32, min=0_int32)
         call validate_in_range_real(gamma_occupancy, ierr, arg_pos=17_int32, min=above(1.0_real64))
         call validate_all_in_range_real(pooled_residuals, n_residuals, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
@@ -492,7 +492,7 @@ contains
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
             !! be admissible (n_min)
-            !! The minimum valid value is `1_int32`.
+            !! The minimum valid value is `0_int32`.
             !! The default value is `10_int32`.
         real(real64), intent(in), optional :: gamma_occupancy
             !! Geometric growth factor for the coarse search stage; must exceed 1 or the search
@@ -510,7 +510,7 @@ contains
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
         call validate_in_range_int(m_min, ierr, arg_pos=16_int32, min=1_int32, max=MAX_N_BINS)
         call validate_in_range_int(m_max, ierr, arg_pos=17_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=18_int32, min=1_int32)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=18_int32, min=0_int32)
         call validate_in_range_real(gamma_occupancy, ierr, arg_pos=19_int32, min=above(1.0_real64))
         call validate_all_in_range_real(pooled_residuals, n_residuals, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(pooled_residuals_perm, n_residuals, ierr, arg_pos=2_int32, min=1_int32, max=n_residuals)
@@ -1711,7 +1711,7 @@ contains
             !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
             !! be admissible in Pass B's occupancy search, forwarded to
             !! determine_bin_count_occupancy_impl
-            !! The minimum valid value is `1_int32`.
+            !! The minimum valid value is `0_int32`.
             !! The default value is `10_int32`.
         integer(int32), intent(in), optional :: m_min
             !! Smallest candidate bin count Pass B's occupancy search will ever test (M_min),
@@ -1757,7 +1757,7 @@ contains
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
         call validate_in_range_int(n_permutations, ierr, arg_pos=32_int32, min=0_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=34_int32, min=1_int32)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=34_int32, min=0_int32)
         call validate_in_range_int(m_min, ierr, arg_pos=35_int32, min=1_int32, max=MAX_N_BINS)
         call validate_in_range_int(m_max, ierr, arg_pos=36_int32, min=1_int32, max=MAX_N_BINS)
         call validate_in_range_real(gamma_occupancy, ierr, arg_pos=37_int32, min=above(1.0_real64))
@@ -2136,7 +2136,7 @@ contains
             !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
             !! be admissible in Pass B's occupancy search, forwarded to
             !! determine_bin_count_occupancy_impl
-            !! The minimum valid value is `1_int32`.
+            !! The minimum valid value is `0_int32`.
             !! The default value is `10_int32`.
         integer(int32), intent(in), optional :: m_min
             !! Smallest candidate bin count Pass B's occupancy search will ever test (M_min),
@@ -2170,7 +2170,7 @@ contains
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
         call validate_in_range_int(n_permutations, ierr, arg_pos=44_int32, min=0_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=46_int32, min=1_int32)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=46_int32, min=0_int32)
         call validate_in_range_int(m_min, ierr, arg_pos=47_int32, min=1_int32, max=MAX_N_BINS)
         call validate_in_range_int(m_max, ierr, arg_pos=48_int32, min=1_int32, max=MAX_N_BINS)
         call validate_in_range_real(gamma_occupancy, ierr, arg_pos=49_int32, min=above(1.0_real64))

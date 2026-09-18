@@ -314,7 +314,7 @@ contains
         integer(c_int), intent(in), target :: min_residuals_per_bin
             !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
             !! be admissible (n_min)
-            !! The minimum valid value is `1_int32`.
+            !! The minimum valid value is `0_int32`.
             !! The default value is `10_int32`.
         real(c_double), intent(in), target :: gamma_occupancy
             !! Geometric growth factor for the coarse search stage; must exceed 1 or the search
@@ -487,7 +487,7 @@ contains
         integer(c_int), intent(in), target :: min_residuals_per_bin
             !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
             !! be admissible (n_min)
-            !! The minimum valid value is `1_int32`.
+            !! The minimum valid value is `0_int32`.
             !! The default value is `10_int32`.
         real(c_double), intent(in), target :: gamma_occupancy
             !! Geometric growth factor for the coarse search stage; must exceed 1 or the search
@@ -1738,7 +1738,7 @@ contains
             !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
             !! be admissible in Pass B's occupancy search, forwarded to
             !! determine_bin_count_occupancy_impl
-            !! The minimum valid value is `1_int32`.
+            !! The minimum valid value is `0_int32`.
             !! The default value is `10_int32`.
         integer(c_int), intent(in), target :: m_min
             !! Smallest candidate bin count Pass B's occupancy search will ever test (M_min),
@@ -2147,7 +2147,7 @@ contains
             !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
             !! be admissible in Pass B's occupancy search, forwarded to
             !! determine_bin_count_occupancy_impl
-            !! The minimum valid value is `1_int32`.
+            !! The minimum valid value is `0_int32`.
             !! The default value is `10_int32`.
         integer(c_int), intent(in), target :: m_min
             !! Smallest candidate bin count Pass B's occupancy search will ever test (M_min),
