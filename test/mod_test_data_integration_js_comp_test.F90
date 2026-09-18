@@ -116,8 +116,8 @@ contains
                                   test_gjct_permutation_test_conservation_of_counts)
         all_tests(38) = test_case("test_gjct_permutation_test_seeded_reproducibility", &
                                   test_gjct_permutation_test_seeded_reproducibility)
-        all_tests(39) = test_case("test_permutation_pvalue_can_be_exactly_zero_known_limitation", &
-                                  test_permutation_pvalue_can_be_exactly_zero_known_limitation)
+        all_tests(39) = test_case("test_permutation_pvalue_laplace_corrected_never_exactly_zero", &
+                                  test_permutation_pvalue_laplace_corrected_never_exactly_zero)
 
         all_tests(40) = test_case("test_run_js_comp_test_two_studies_hand_traceable", &
                                   test_run_js_comp_test_two_studies_hand_traceable)
@@ -1544,18 +1544,17 @@ contains
                                      "same random_seed twice must give identical p_values")
     end subroutine test_gjct_permutation_test_seeded_reproducibility
 
-    !> Documents the deferred limitation from the plan: `gjct_permutation_test_impl` ports
-    !| origin/125-stabilize-jscomp's p-value formula exactly, WITHOUT the `(1+count)/(n+1)` Laplace
-    !| correction, so `p` can come out exactly `0.0` whenever no permutation's resampled JSD
-    !| reaches the observed value. Contrived, deterministically (not merely probabilistically) so:
-    !| a single-bin histogram (`n_bins=1`) means every resample's pmf is `[1.0]`, for both the
-    !| study and the (unperturbed) consensus mean alike, so the Jensen-Shannon divergence between
-    !| them is exactly `0.0` on *every* permutation, regardless of which counts
-    !| `random_multiv_hypergeom` happens to draw. Observing a strictly positive
-    !| `global_jsd_observed` then guarantees no permutation's JSD can reach it, so
-    !| `p_values = anint(0)/n_permutations = 0.0` exactly -- not the `1/(n_permutations+1)` the
-    !| Laplace-corrected formula would give.
-    subroutine test_permutation_pvalue_can_be_exactly_zero_known_limitation()
+    !> Verifies the `(1+count)/(n+1)` Laplace add-one correction in `gjct_permutation_test_impl`:
+    !| even in the worst-case, deterministic scenario where `count` is guaranteed to be `0` across
+    !| every permutation, `p` must come out as `1/(n_permutations+1)`, never exactly `0.0`.
+    !| Contrived, deterministically (not merely probabilistically) so: a single-bin histogram
+    !| (`n_bins=1`) means every resample's pmf is `[1.0]`, for both the study and the (unperturbed)
+    !| consensus mean alike, so the Jensen-Shannon divergence between them is exactly `0.0` on
+    !| *every* permutation, regardless of which counts `random_multiv_hypergeom` happens to draw.
+    !| Observing a strictly positive `global_jsd_observed` then guarantees no permutation's JSD can
+    !| reach it, so `count=0` for all `n_permutations=10` permutations, and the corrected formula
+    !| gives `p_values = anint(0+1)/(10+1) = 1/11`.
+    subroutine test_permutation_pvalue_laplace_corrected_never_exactly_zero()
         integer(int32), parameter :: n_bins = 1, n_points = 1, n_studies = 1, n_permutations = 10
         integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
@@ -1573,11 +1572,11 @@ contains
                                    ierr=ierr, random_seed=7_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_permutation_pvalue_can_be_exactly_zero_known_limitation: ierr should be OK")
-        call assert_equal_real(p_values(1), 0.0_real64, TOL, &
-                               "test_permutation_pvalue_can_be_exactly_zero_known_limitation: "// &
-                               "known limitation: p must be exactly 0.0, not (1+0)/(n_permutations+1)")
-    end subroutine test_permutation_pvalue_can_be_exactly_zero_known_limitation
+                              "test_permutation_pvalue_laplace_corrected_never_exactly_zero: ierr should be OK")
+        call assert_equal_real(p_values(1), 1.0_real64/11.0_real64, TOL, &
+                               "test_permutation_pvalue_laplace_corrected_never_exactly_zero: "// &
+                               "Laplace correction: p must be (0+1)/(n_permutations+1) = 1/11, not 0.0")
+    end subroutine test_permutation_pvalue_laplace_corrected_never_exactly_zero
 
     !> End-to-end, fully closed-form 2-study case run through `run_js_comp_test` with
     !| `n_permutations=0`: GSL's `create_rng` still runs (so `ierr` is genuinely exercised), but the

@@ -38,11 +38,9 @@ contains
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]'s own
     !| precedent.
     !|
-    !| Known limitation: ported verbatim from 125-stabilize-jscomp's p-value formula, WITHOUT the
-    !| `(1+count)/(n+1)` Laplace add-one correction -- `p_values(i) = anint(count(i))/n_permutations`,
-    !| so a study whose observed JSD is never reached by any permutation gets `p = 0.0` exactly,
-    !| not the `1/(n_permutations+1)` a Laplace-corrected formula would give. Deliberately ported
-    !| as-is; see the project's JSD-Comp-Test follow-up issue for the fix.
+    !| The p-value applies the `(1+count)/(n+1)` Laplace add-one correction --
+    !| `p_values(i) = anint(count(i)+1)/(n_permutations+1)` -- so a study whose observed JSD is
+    !| never reached by any permutation gets `p = 1/(n_permutations+1)`, never `p = 0.0` exactly.
     subroutine gjct_permutation_test(&
             n_permutations,&
             n_bins,&
@@ -87,8 +85,9 @@ contains
         real(real64), dimension(n_studies), intent(in) :: global_jsd_observed
             !! Observed weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_studies), intent(out) :: p_values
-            !! Empirical p-value per study: the fraction of permutations whose resampled global
-            !! JSD reached or exceeded the observed value -- see the known-limitation note above
+            !! Empirical p-value per study: the Laplace-corrected fraction of permutations whose
+            !! resampled global JSD reached or exceeded the observed value -- see the correction
+            !! note above
         integer(int32), intent(in), optional :: random_seed
             !! Seed for the GSL random number generator
             !! The default value is `42_int32`.
@@ -163,11 +162,9 @@ contains
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]'s own
     !| precedent.
     !|
-    !| Known limitation: ported verbatim from 125-stabilize-jscomp's p-value formula, WITHOUT the
-    !| `(1+count)/(n+1)` Laplace add-one correction -- `p_values(i) = anint(count(i))/n_permutations`,
-    !| so a study whose observed JSD is never reached by any permutation gets `p = 0.0` exactly,
-    !| not the `1/(n_permutations+1)` a Laplace-corrected formula would give. Deliberately ported
-    !| as-is; see the project's JSD-Comp-Test follow-up issue for the fix.
+    !| The p-value applies the `(1+count)/(n+1)` Laplace add-one correction --
+    !| `p_values(i) = anint(count(i)+1)/(n_permutations+1)` -- so a study whose observed JSD is
+    !| never reached by any permutation gets `p = 1/(n_permutations+1)`, never `p = 0.0` exactly.
     subroutine gjct_permutation_test_expert(&
             n_permutations,&
             n_bins,&
@@ -220,8 +217,9 @@ contains
         real(real64), dimension(n_studies), intent(in) :: global_jsd_observed
             !! Observed weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_studies), intent(out) :: p_values
-            !! Empirical p-value per study: the fraction of permutations whose resampled global
-            !! JSD reached or exceeded the observed value -- see the known-limitation note above
+            !! Empirical p-value per study: the Laplace-corrected fraction of permutations whose
+            !! resampled global JSD reached or exceeded the observed value -- see the correction
+            !! note above
         integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_mean_pmf_counts
             !! Working array for proper resampling per permutation: the remaining pool to draw
             !! from, reset to `mean_pmf_counts` at the start of every permutation

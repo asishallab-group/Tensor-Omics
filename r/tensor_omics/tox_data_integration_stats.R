@@ -13,11 +13,9 @@
 #' \code{\link{bootstrap_histogram}}'s own
 #' precedent.
 #'
-#' Known limitation: ported verbatim from 125-stabilize-jscomp's p-value formula, WITHOUT the
-#' `(1+count)/(n+1)` Laplace add-one correction -- `p_values(i) = anint(count(i))/n_permutations`,
-#' so a study whose observed JSD is never reached by any permutation gets `p = 0.0` exactly,
-#' not the `1/(n_permutations+1)` a Laplace-corrected formula would give. Deliberately ported
-#' as-is; see the project's JSD-Comp-Test follow-up issue for the fix.
+#' The p-value applies the `(1+count)/(n+1)` Laplace add-one correction --
+#' `p_values(i) = anint(count(i)+1)/(n_permutations+1)` -- so a study whose observed JSD is
+#' never reached by any permutation gets `p = 1/(n_permutations+1)`, never `p = 0.0` exactly.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_stats::gjct_permutation_test}, whose argument names
 #' are the ones an error message reports.
@@ -38,8 +36,9 @@
 #' @param global_jsd_observed a numeric vector. Observed weighted global JSD of each study against the consensus pmf
 #' @param random_seed a integer scalar. Seed for the GSL random number generator
 #'   The default value is `42`.
-#' @return a numeric vector. Empirical p-value per study: the fraction of permutations whose resampled global
-#'   JSD reached or exceeded the observed value -- see the known-limitation note above
+#' @return a numeric vector. Empirical p-value per study: the Laplace-corrected fraction of permutations whose
+#'   resampled global JSD reached or exceeded the observed value -- see the correction
+#'   note above
 #' @export
 gjct_permutation_test <- function(n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, random_seed = 42L) {
     n_permutations <- .tox_as_integer_scalar(n_permutations, "n_permutations")

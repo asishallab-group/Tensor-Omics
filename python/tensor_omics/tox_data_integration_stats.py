@@ -68,11 +68,9 @@ def gjct_permutation_test(
     :func:`tensor_omics.bootstrap_histogram`'s own
     precedent.
 
-    Known limitation: ported verbatim from 125-stabilize-jscomp's p-value formula, WITHOUT the
-    `(1+count)/(n+1)` Laplace add-one correction -- `p_values(i) = anint(count(i))/n_permutations`,
-    so a study whose observed JSD is never reached by any permutation gets `p = 0.0` exactly,
-    not the `1/(n_permutations+1)` a Laplace-corrected formula would give. Deliberately ported
-    as-is; see the project's JSD-Comp-Test follow-up issue for the fix.
+    The p-value applies the `(1+count)/(n+1)` Laplace add-one correction --
+    `p_values(i) = anint(count(i)+1)/(n_permutations+1)` -- so a study whose observed JSD is
+    never reached by any permutation gets `p = 1/(n_permutations+1)`, never `p = 0.0` exactly.
 
     Parameters
     ----------
@@ -103,8 +101,9 @@ def gjct_permutation_test(
     Returns
     -------
     p_values : np.ndarray[np.float64] of shape (n_studies,), read-only
-        Empirical p-value per study: the fraction of permutations whose resampled global
-        JSD reached or exceeded the observed value -- see the known-limitation note above
+        Empirical p-value per study: the Laplace-corrected fraction of permutations whose
+        resampled global JSD reached or exceeded the observed value -- see the correction
+        note above
         A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
