@@ -8,22 +8,23 @@ import sys
 import os
 from math import pi as PI
 
-# Add parent directory to path to import tensoromics_functions
+# Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensoromics_functions import (
-    tox_compute_contributions,
-    tox_compute_all_contributions,
-    tox_compute_baselines_factor_dependent,
-    tox_perform_permutation_test,
-    tox_compute_p_values,
-    tox_compute_velocity_trajectory,
-    tox_compute_acceleration_from_velocity_trajectory,
-    tox_compute_velocity_trajectories,
-    tox_compute_acceleration_from_velocity,
-    tox_compute_velocity_acceleration_contributions,
-    tox_compute_velocity_acceleration_contributions_expert
+from tensor_omics import (
+    compute_contributions,
+    compute_all_contributions,
+    compute_baselines_factor_dependent,
+    perform_permutation_test,
+    compute_p_values,
+    compute_velocity_trajectory,
+    compute_acceleration_from_velocity_trajectory,
+    compute_velocity_trajectories,
+    compute_acceleration_from_velocity,
+    compute_velocity_acceleration_contributions,
+    compute_velocity_acceleration_contributions
 )
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_INVALID_INPUT, ERR_NAN_INF
 
 
 # Constants
@@ -31,23 +32,23 @@ TOL = 1e-12
 
 
 def _expected_velocity(trajectories: np.ndarray) -> np.ndarray:
+    """Successive differences along time, returned time-major and one step shorter.
+
+    Positions come in as (n_factors, n_samples, n_timepoints); velocity comes back as
+    (n_timepoints - 1, n_factors, n_samples).
+    """
     trajectories = np.asarray(trajectories, dtype=np.float64)
     if trajectories.ndim != 3:
         raise ValueError("trajectories must be 3D (n_factors, n_samples, n_timepoints)")
-    velocity = np.zeros_like(trajectories)
-    if trajectories.shape[2] > 1:
-        velocity[:, :, 1:] = trajectories[:, :, 1:] - trajectories[:, :, :-1]
-    return velocity
+    return np.moveaxis(np.diff(trajectories, axis=2), 2, 0)
 
 
 def _expected_acceleration(velocity: np.ndarray) -> np.ndarray:
+    """Successive differences of an already time-major velocity."""
     velocity = np.asarray(velocity, dtype=np.float64)
     if velocity.ndim != 3:
-        raise ValueError("velocity must be 3D (n_factors, n_samples, n_timepoints)")
-    acceleration = np.zeros_like(velocity)
-    if velocity.shape[2] > 2:
-        acceleration[:, :, 2:] = velocity[:, :, 2:] - velocity[:, :, 1:-1]
-    return acceleration
+        raise ValueError("velocity must be 3D (n_timepoints - 1, n_factors, n_samples)")
+    return np.diff(velocity, axis=0)
 
 
 def test_tox_compute_velocity_trajectories():
@@ -59,26 +60,29 @@ def test_tox_compute_velocity_trajectories():
         dtype=np.float64,
     )
 
-    velocity = tox_compute_velocity_trajectories(trajectories)
+    velocity = compute_velocity_trajectories(trajectories)
     expected = _expected_velocity(trajectories)
 
-    assert velocity.shape == trajectories.shape
+    # one timepoint shorter, and time-major
+    assert velocity.shape == (trajectories.shape[2] - 1,) + trajectories.shape[:2]
     assert np.allclose(velocity, expected, atol=TOL), f"Velocity mismatch! Max diff: {np.max(np.abs(velocity - expected))}"
 
 
 def test_tox_compute_acceleration_from_velocity():
     """Test acceleration computation wrapper."""
-    # velocity shape: (n_factors=1, n_samples=2, n_timepoints=4)
-    velocity = np.array(
-        [[[0.0, 1.0, 2.0, 3.0],
-          [0.0, -1.0, 0.0, 1.0]]],
+    # velocity as the routine produces it: (n_timepoints - 1 = 3, n_factors = 1, n_samples = 2)
+    n_timepoints = 4
+    velocity = np.asfortranarray(np.array(
+        [[[1.0, -1.0]],
+         [[2.0, 0.0]],
+         [[3.0, 1.0]]],
         dtype=np.float64,
-    )
+    ))
 
-    acceleration = tox_compute_acceleration_from_velocity(velocity)
+    acceleration = compute_acceleration_from_velocity(velocity, n_timepoints)
     expected = _expected_acceleration(velocity)
 
-    assert acceleration.shape == velocity.shape
+    assert acceleration.shape == (n_timepoints - 2,) + velocity.shape[1:]
     assert np.allclose(acceleration, expected, atol=TOL)
 
 
@@ -97,13 +101,13 @@ def test_tox_compute_velocity_acceleration_contributions():
         dtype=np.float64,
     )
     n_factors, n_samples, n_timepoints = trajectories.shape
-    mode = "raw"
+    mode = "baseline_raw"
 
-    result = tox_compute_velocity_acceleration_contributions(trajectories, mode)
+    result = compute_velocity_acceleration_contributions(trajectories, mode)
 
-    C_vel = result["C_velocity"]
+    C_vel = result["contrib_velocity"]
     series_vel = result["velocity_contribution_series"]
-    C_acc = result["C_acceleration"]
+    C_acc = result["contrib_acceleration"]
     series_acc = result["acceleration_contribution_series"]
 
     # Output shapes: (n_samples, n_factors, n_factors, ...)
@@ -115,11 +119,11 @@ def test_tox_compute_velocity_acceleration_contributions():
     expected_velocity = _expected_velocity(trajectories)
     expected_acceleration = _expected_acceleration(expected_velocity)
 
-    # Extract velocities: factor 0 and factor 1 for sample 0
-    factor_velocity = expected_velocity[0, 0, 1:]      # Factor 0, timepoints 2-4
-    dependent_velocity = expected_velocity[1, 0, 1:]   # Factor 1, timepoints 2-4
-    factor_acceleration = expected_acceleration[0, 0, 2:]   # Factor 0, timepoints 3-4
-    dependent_acceleration = expected_acceleration[1, 0, 2:]  # Factor 1, timepoints 3-4
+    # velocity/acceleration are time-major: (n_timepoints - 1, n_factors, n_samples)
+    factor_velocity = expected_velocity[:, 0, 0]           # Factor 0, timepoints 2-4
+    dependent_velocity = expected_velocity[:, 1, 0]        # Factor 1, timepoints 2-4
+    factor_acceleration = expected_acceleration[:, 0, 0]   # Factor 0, timepoints 3-4
+    dependent_acceleration = expected_acceleration[:, 1, 0]  # Factor 1, timepoints 3-4
 
     expected_series_vel = np.zeros(4)
     vel_contribs = factor_velocity * dependent_velocity
@@ -142,14 +146,14 @@ def test_tox_compute_velocity_acceleration_contributions():
         f"series_acc mismatch"
 
 
-def test_tox_compute_velocity_acceleration_contributions_expert():
+def test_tox_compute_velocity_acceleration_contributions_alt():
     trajectories = np.array([
         [[1.0, 2.0, 3.0, 4.0],
          [2.0, 4.0, 6.0, 8.0]]
     ], dtype=np.float64)
 
-    result_base = tox_compute_velocity_acceleration_contributions(trajectories, "raw")
-    result_expert = tox_compute_velocity_acceleration_contributions_expert(trajectories, "raw")
+    result_base = compute_velocity_acceleration_contributions(trajectories, "baseline_raw")
+    result_expert = compute_velocity_acceleration_contributions(trajectories, "baseline_raw")
 
     for key in result_base:
         assert key in result_expert, f"Missing key {key} in expert result"
@@ -164,25 +168,25 @@ def test_tox_compute_baselines_factor_dependent():
     dependent = np.array([5.0, 7.0, 6.0, 8.0], dtype=np.float64)
 
     # RAW mode => zero baselines
-    res_raw = tox_compute_baselines_factor_dependent(factor, dependent, mode="raw")
-    assert np.isclose(res_raw['baseline_factor'], 0.0, atol=TOL)
-    assert np.isclose(res_raw['baseline_dependent'], 0.0, atol=TOL)
+    res_raw = compute_baselines_factor_dependent(factor, dependent, baseline_mode="baseline_raw")
+    assert np.isclose(res_raw['factor_baseline'], 0.0, atol=TOL)
+    assert np.isclose(res_raw['dependent_baseline'], 0.0, atol=TOL)
 
     # MIN mode => min values
-    res_min = tox_compute_baselines_factor_dependent(factor, dependent, mode="min")
-    assert np.isclose(res_min['baseline_factor'], np.min(factor), atol=TOL)
-    assert np.isclose(res_min['baseline_dependent'], np.min(dependent), atol=TOL)
+    res_min = compute_baselines_factor_dependent(factor, dependent, baseline_mode="baseline_min")
+    assert np.isclose(res_min['factor_baseline'], np.min(factor), atol=TOL)
+    assert np.isclose(res_min['dependent_baseline'], np.min(dependent), atol=TOL)
 
     # MEAN mode => arithmetic mean
-    res_mean = tox_compute_baselines_factor_dependent(factor, dependent, mode="mean")
-    assert np.isclose(res_mean['baseline_factor'], np.mean(factor), atol=TOL)
-    assert np.isclose(res_mean['baseline_dependent'], np.mean(dependent), atol=TOL)
+    res_mean = compute_baselines_factor_dependent(factor, dependent, baseline_mode="baseline_mean")
+    assert np.isclose(res_mean['factor_baseline'], np.mean(factor), atol=TOL)
+    assert np.isclose(res_mean['dependent_baseline'], np.mean(dependent), atol=TOL)
 
     # Mismatched lengths should raise ValueError
-    assert_error(lambda: tox_compute_baselines_factor_dependent(factor, dependent[:-1], mode=1), "Expected ValueError for mismatched lengths")
+    assert_error(lambda: compute_baselines_factor_dependent(factor, dependent[:-1], baseline_mode="baseline_raw"), "Expected ValueError for mismatched lengths")
 
     # Invalid mode should bubble up as RuntimeError from Fortran layer
-    assert_error(lambda: tox_compute_baselines_factor_dependent(factor, dependent, mode="unknown_mode"), "Expected RuntimeError for invalid mode")
+    assert_error(lambda: compute_baselines_factor_dependent(factor, dependent, baseline_mode="baseline_unknown_mode"), "Expected RuntimeError for invalid mode", ERR_INVALID_INPUT)
 
 
 def test_compute_contributions():
@@ -191,7 +195,7 @@ def test_compute_contributions():
     # -------------------------------
     factor = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float64)
     dependent = np.array([2.0, 1.0, 0.0, -1.0], dtype=np.float64)
-    local, total = tox_compute_contributions(factor, dependent, mode="raw").values()
+    local, total = compute_contributions(factor, dependent, baseline_mode="baseline_raw").values()
 
     expected_local = factor * dependent
     expected_total = sum(expected_local)
@@ -203,7 +207,7 @@ def test_compute_contributions():
     # -------------------------------
     factor = np.array([3.0, 5.0, 2.0, 4.0], dtype=np.float64)
     dependent = np.array([1.0, 2.0, 0.0, -1.0], dtype=np.float64)
-    local, total = tox_compute_contributions(factor, dependent, mode="min").values()
+    local, total = compute_contributions(factor, dependent, baseline_mode="baseline_min").values()
 
     expected_local = (factor - factor.min()) * (dependent - dependent.min())
     expected_total = sum(expected_local)
@@ -215,7 +219,7 @@ def test_compute_contributions():
     # -------------------------------
     factor = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float64)
     dependent = np.array([4.0, 3.0, 2.0, 1.0], dtype=np.float64)
-    local, total = tox_compute_contributions(factor, dependent, mode="mean").values()
+    local, total = compute_contributions(factor, dependent, baseline_mode="baseline_mean").values()
 
     expected_local = (factor - factor.mean()) * (dependent - dependent.mean())
     expected_total = sum(expected_local)
@@ -236,7 +240,7 @@ def test_compute_all_contributions():
     factor_indices = np.array([1], dtype=np.int32, order="F")
     dependent_indices = np.array([2], dtype=np.int32, order="F")
 
-    local, total = tox_compute_all_contributions(trajectories, factor_indices, dependent_indices, mode="mean").values()
+    local, total = compute_all_contributions(trajectories, factor_indices, dependent_indices, baseline_mode="baseline_mean").values()
 
     # Baselines: mean(factor)=2.0, mean(dependent)=5.0
     expected_local = np.array([1.0, 0.0, 1.0], dtype=np.float64, order="F")
@@ -256,7 +260,7 @@ def test_compute_all_contributions():
     factor_indices = np.array([1], dtype=np.int32, order="F")
     dependent_indices = np.array([2], dtype=np.int32, order="F")
 
-    local, total = tox_compute_all_contributions(trajectories, factor_indices, dependent_indices, mode="min").values()
+    local, total = compute_all_contributions(trajectories, factor_indices, dependent_indices, baseline_mode="baseline_min").values()
 
     # Baselines: min(factor)=2.0, min(dependent)=1.0
     expected_local = np.array([0.0, 0.0, 8.0], dtype=np.float64, order="F")
@@ -288,17 +292,17 @@ def test_perform_permutation_test():
     factor_idx    = 1   # Fortran-style 1-based
     dependent_idx = 2
     sample_idx    = 1
-    mode          = "mean"   # MEAN baseline
+    mode          = "baseline_mean"   # MEAN baseline
 
     # -------------------------------
     # Call wrapper with fixed seed
     # -------------------------------
-    result = tox_perform_permutation_test(
+    result = perform_permutation_test(
         trajectories,
         factor_idx=factor_idx,
         dependent_idx=dependent_idx,
         sample_idx=sample_idx,
-        mode=mode,
+        baseline_mode=mode,
         n_permutations=n_permutations,
         random_seed=12345
     )
@@ -346,7 +350,7 @@ def test_compute_p_values():
     local_perm[:,2] = [3.0, 1.0, 3.0]; total_perm[2] = 7.0
     local_perm[:,3] = [0.0, 0.0, 0.0]; total_perm[3] = 0.0
 
-    result = tox_compute_p_values(local_obs, total_obs, local_perm, total_perm)
+    result = compute_p_values(local_obs, total_obs, local_perm, total_perm)
     local_p = result["local_p_values"]
     total_p = result["total_p_value"]
 
@@ -360,42 +364,43 @@ def test_compute_p_values():
     # Case 2: NaN in observed contributions
     # -------------------------------
     local_obs_nan = np.array([2.0, 0.0, np.nan], dtype=np.float64, order="F")
-    assert_error(lambda: tox_compute_p_values(local_obs_nan, total_obs, local_perm, total_perm), "Expected RuntimeError for NaN input")
+    assert_error(lambda: compute_p_values(local_obs_nan, total_obs, local_perm, total_perm), "Expected RuntimeError for NaN input", ERR_NAN_INF)
 
     # -------------------------------
     # Case 3: Inf in permutation contributions
     # -------------------------------
     local_perm_inf = local_perm.copy(order="F")
     local_perm_inf[2,3] = np.inf
-    assert_error(lambda: tox_compute_p_values(local_obs, total_obs, local_perm_inf, total_perm), "Expected RuntimeError for Infinity input")
+    assert_error(lambda: compute_p_values(local_obs, total_obs, local_perm_inf, total_perm), "Expected RuntimeError for Infinity input", ERR_NAN_INF)
 
 
 def test_tox_compute_velocity_trajectory():
     """Test single-trajectory velocity computation wrapper."""
     trajectory = np.array([1.0, 2.0, 4.0, 7.0], dtype=np.float64)
-    velocity = tox_compute_velocity_trajectory(trajectory)
+    velocity = compute_velocity_trajectory(trajectory)
 
-    expected = np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float64)
+    expected = np.array([1.0, 2.0, 3.0], dtype=np.float64)
 
-    assert velocity.shape == trajectory.shape
+    assert velocity.shape == (trajectory.shape[0] - 1,)
     assert np.allclose(velocity, expected, atol=TOL)
 
     # Dimensionality check
-    assert_error(lambda: tox_compute_velocity_trajectory(trajectory.reshape(1, -1)), "Expected ValueError for 2D input")
+    assert_error(lambda: compute_velocity_trajectory(trajectory.reshape(1, -1)), "Expected ValueError for 2D input")
 
 
 def test_tox_compute_acceleration_from_velocity_trajectory():
     """Test single-trajectory acceleration computation wrapper."""
-    velocity = np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float64)
-    acceleration = tox_compute_acceleration_from_velocity_trajectory(velocity)
+    n_timepoints = 4
+    velocity = np.array([1.0, 2.0, 3.0], dtype=np.float64)
+    acceleration = compute_acceleration_from_velocity_trajectory(velocity, n_timepoints)
 
-    expected = np.array([0.0, 0.0, 1.0, 1.0], dtype=np.float64)
+    expected = np.array([1.0, 1.0], dtype=np.float64)
 
-    assert acceleration.shape == velocity.shape
+    assert acceleration.shape == (n_timepoints - 2,)
     assert np.allclose(acceleration, expected, atol=TOL)
 
     # Dimensionality check
-    assert_error(lambda: tox_compute_acceleration_from_velocity_trajectory(velocity.reshape(1, -1)), "Expected ValueError for 2D input")
+    assert_error(lambda: compute_acceleration_from_velocity_trajectory(velocity.reshape(1, -1), n_timepoints), "Expected ValueError for 2D input")
 
 
 if __name__ == "__main__":

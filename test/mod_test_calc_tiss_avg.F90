@@ -40,7 +40,7 @@ contains
     group_c = [2, 2, 2]
     
     call calc_tiss_avg(n_gene, n_grps, group_c, input_matrix, output_matrix, ierr)
-    call assert_equal_int(ierr, ERR_OK, "calc_tiss_avg returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_tiss_avg returned error")
     
     ! Expected results (column-major):
     ! Tissue1: Gene1=mean(1,3)=2.0, Gene2=mean(7,9)=8.0
@@ -68,7 +68,7 @@ contains
     group_c = [2]  ! 2 replicates for single tissue
     
     call calc_tiss_avg(n_gene, n_grps, group_c, input_matrix, output_matrix, ierr)
-    call assert_equal_int(ierr, ERR_OK, "calc_tiss_avg returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_tiss_avg returned error")
     
     ! Expected: average of samples 1 and 2 (columns 1 and 2)
     ! Gene1: mean(1,4)=2.5, Gene2: mean(2,5)=3.5, Gene3: mean(3,6)=4.5
@@ -94,7 +94,7 @@ contains
     group_c = [2, 3, 2]
     
     call calc_tiss_avg(n_gene, n_grps, group_c, input_matrix, output_matrix, ierr)
-    call assert_equal_int(ierr, ERR_OK, "calc_tiss_avg returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_tiss_avg returned error")
     
     expected_matrix(:, 1) = [2d0, 7d0, 12d0]
     expected_matrix(:, 2) = [3d0, 8d0, 13d0]
@@ -115,7 +115,7 @@ contains
     group_c = [1, 1, 1]  ! Single replicate per tissue
     
     call calc_tiss_avg(n_gene, n_grps, group_c, input_matrix, output_matrix, ierr)
-    call assert_equal_int(ierr, ERR_OK, "calc_tiss_avg returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_tiss_avg returned error")
     
     ! With single replicates, output should equal input
     expected_matrix = input_matrix
@@ -137,7 +137,7 @@ contains
     group_c = [2, 2]
     
     call calc_tiss_avg(n_gene, n_grps, group_c, input_matrix, output_matrix, ierr)
-    call assert_equal_int(ierr, ERR_OK, "calc_tiss_avg returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_tiss_avg returned error")
     
     expected_matrix(:, 1) = [5.005d8, 5.005d14]
     expected_matrix(:, 2) = [1.000001d9, 1.000001d15]
@@ -159,7 +159,7 @@ contains
     group_c = [2, 2]
     
     call calc_tiss_avg(n_gene, n_grps, group_c, input_matrix, output_matrix, ierr)
-    call assert_equal_int(ierr, ERR_OK, "calc_tiss_avg returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_tiss_avg returned error")
     
     expected_matrix(:, 1) = [-2d0, -1d0]
     expected_matrix(:, 2) = [0d0, 0d0]
@@ -181,7 +181,7 @@ contains
     expected_matrix = 0d0
     
     call calc_tiss_avg(n_gene, n_grps, group_c, input_matrix, output_matrix, ierr)
-    call assert_equal_int(ierr, ERR_OK, "calc_tiss_avg returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_tiss_avg returned error")
     
     call assert_equal_array_real(output_matrix, expected_matrix, n_grps * n_gene, 1d-12, &
                             "test_calc_tiss_avg_zero_values: zero averaging incorrect")
@@ -194,7 +194,7 @@ contains
     real(real64), dimension(1) :: input_matrix, output_matrix
     n_gene = 0; n_grps = 0
     call calc_tiss_avg(n_gene, n_grps, group_c, input_matrix, output_matrix, ierr)
-    call assert_equal_int(ierr, ERR_EMPTY_INPUT, "calc_tiss_avg should return error for empty input")
+    call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "calc_tiss_avg should return error for empty input")
     ! No further assertion needed: just check no crash
   end subroutine test_calc_tiss_avg_empty_matrix
 

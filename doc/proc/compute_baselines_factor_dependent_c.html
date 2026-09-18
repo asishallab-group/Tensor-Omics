@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">45 statements</a>
+                 title=" 0.3% of total for procedures.">60 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_trajectory_contribution_analysis.F90"> Source File</a>
+              <a href="../src/tox_trajectory_contribution_analysis_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_trajectory_contribution_analysis.f90.html'>tox_trajectory_contribution_analysis.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_trajectory_contribution_analysis_c.f90.html'>tox_trajectory_contribution_analysis_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_trajectory_contribution_analysis_c.html'>tox_trajectory_contribution_analysis_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">compute_baselines_factor_dependent_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine compute_baselines_factor_dependent_c(factor, dependent, n_timepoints, baseline_mode, factor_baseline, dependent_baseline, ierr) bind(C, name="compute_baselines_factor_dependent_c")  
+    <h2>public  subroutine compute_baselines_factor_dependent_c(n_timepoints, factor, dependent, baseline_mode, factor_baseline, dependent_baseline, ierr) bind(C, name="compute_baselines_factor_dependent_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,10 +158,8 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_trajectory_contribution_analysis_impl.html'>tox_trajectory_contribution_analysis_impl</a></li>
               </ul>
             </li>
         </ul>
@@ -168,7 +167,6 @@
     </div>
 
 
-    <p>C-compatible wrapper for <a href="../proc/compute_baselines_factor_dependent.html">compute_baselines_factor_dependent</a></p>
 
 
     <h3>Arguments</h3>
@@ -184,37 +182,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-factor~5"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_timepoints), target
-            </td>
-            <td>::</td>
-            <td><strong>factor</strong></td>
-            <td>
-                <p>Factor time series, length n_timepoints</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-dependent~5"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_timepoints), target
-            </td>
-            <td>::</td>
-            <td><strong>dependent</strong></td>
-            <td>
-                <p>Dependent variable time series, length n_timepoints</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_timepoints~24"></span>
+              <span class="anchor" id="variable-n_timepoints~26"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -229,22 +197,73 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-baseline_mode~12"></span>
-              character(kind=c_char, len=1),
+              <span class="anchor" id="variable-factor~4"></span>
+              real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(*), target
+              dimension(n_timepoints), target
             </td>
             <td>::</td>
-            <td><strong>baseline_mode</strong></td>
+            <td><strong>factor</strong></td>
             <td>
-                <p>Baseline mode: "raw", "min", "mean"</p>
+                <p>Factor time series, length n_timepoints</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-factor_baseline~3"></span>
+              <span class="anchor" id="variable-dependent~4"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_timepoints), target
+            </td>
+            <td>::</td>
+            <td><strong>dependent</strong></td>
+            <td>
+                <p>Dependent variable time series, length n_timepoints</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-baseline_mode~14"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(13), target
+            </td>
+            <td>::</td>
+            <td><strong>baseline_mode</strong></td>
+            <td>
+                <table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Raw/zero baseline</td>
+<td><a href="../module/tox_trajectory_contribution_analysis_impl.html#variable-mode_baseline_raw">MODE_BASELINE_RAW</a></td>
+</tr>
+<tr>
+<td>arithmetic mean</td>
+<td><a href="../module/tox_trajectory_contribution_analysis_impl.html#variable-mode_baseline_mean">MODE_BASELINE_MEAN</a></td>
+</tr>
+<tr>
+<td>minimum value</td>
+<td><a href="../module/tox_trajectory_contribution_analysis_impl.html#variable-mode_baseline_min">MODE_BASELINE_MIN</a></td>
+</tr>
+</tbody>
+</table>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-factor_baseline~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -259,7 +278,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dependent_baseline~3"></span>
+              <span class="anchor" id="variable-dependent_baseline~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -274,7 +293,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~258"></span>
+              <span class="anchor" id="variable-ierr~188"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -321,7 +340,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

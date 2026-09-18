@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.5% of total for procedures.">70 statements</a>
+                 title=" 0.3% of total for procedures.">62 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_tissue_versatility.F90"> Source File</a>
+              <a href="../src/tox_tissue_versatility_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_tissue_versatility.f90.html'>tox_tissue_versatility.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_tissue_versatility_c.f90.html'>tox_tissue_versatility_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_tissue_versatility_c.html'>tox_tissue_versatility_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">compute_tissue_versatility_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine compute_tissue_versatility_c(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, n_selected_vectors, axes_selection, n_selected_axes, tissue_versatilities, tissue_angles_deg, ierr) bind(C, name="compute_tissue_versatility_c")  
+    <h2>public  subroutine compute_tissue_versatility_c(n_axes, n_vectors, expression_vectors, vectors_selection_mask, n_selected_vectors, axes_selection_mask, n_selected_axes, tissue_versatilities, tissue_angles_deg, ierr) bind(C, name="compute_tissue_versatility_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,10 +158,7 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='../module/tox_tissue_versatility.html'>tox_tissue_versatility</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -168,8 +166,10 @@
     </div>
 
 
-    <p>C wrapper for compute_tissue_versatility.
-Exposes compute_tissue_versatility to C via iso_c_binding types with explicit dimensions.</p>
+    <p>The metric is based on the angle between each gene expression vector and the space diagonal.
+Versatility is normalized to [0, 1], where 0 means uniform expression and 1 means expression in only one axis.</p>
+<p>The masks follow the <code>n_selected_</code> convention, so the generated wrapper validates that each
+selection count matches its mask; <code>n_selected_axes</code> (not an array extent) carries its own floor.</p>
 
 
     <h3>Arguments</h3>
@@ -185,7 +185,7 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~9"></span>
+              <span class="anchor" id="variable-n_axes~33"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -200,7 +200,7 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_vectors~4"></span>
+              <span class="anchor" id="variable-n_vectors~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -215,7 +215,7 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~13"></span>
+              <span class="anchor" id="variable-expression_vectors~30"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -225,22 +225,22 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
             <td>::</td>
             <td><strong>expression_vectors</strong></td>
             <td>
-                <p>2D array (n_axes, n_vectors), each column is a gene expression vector (column-major)</p>
+                <p>2D array (n_axes, n_vectors), each column is a gene expression vector</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-exp_vecs_selection_index~3"></span>
-              integer(kind=c_int),
+              <span class="anchor" id="variable-vectors_selection_mask~3"></span>
+              logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
               dimension(n_vectors), target
             </td>
             <td>::</td>
-            <td><strong>exp_vecs_selection_index</strong></td>
+            <td><strong>vectors_selection_mask</strong></td>
             <td>
-                <p>Integer array (n_vectors), 0/1 values. 0=not selected, 1=selected. Interpreted as logical internally.</p>
+                <p>Logical array (n_vectors), .TRUE. for vectors to process</p>
             </td>
         </tr>
         <tr>
@@ -255,27 +255,27 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
             <td>::</td>
             <td><strong>n_selected_vectors</strong></td>
             <td>
-                <p>Number of selected expression vectors (count of 1s in exp_vecs_selection_index)</p>
+                <p>Number of selected expression vectors (count of .TRUE. in vectors_selection_mask)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-axes_selection~3"></span>
-              integer(kind=c_int),
+              <span class="anchor" id="variable-axes_selection_mask~9"></span>
+              logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
               dimension(n_axes), target
             </td>
             <td>::</td>
-            <td><strong>axes_selection</strong></td>
+            <td><strong>axes_selection_mask</strong></td>
             <td>
-                <p>Integer array (n_axes), 0/1 values. 0=not selected, 1=selected. Interpreted as logical internally.</p>
+                <p>Logical array (n_axes), .TRUE. for axes to include in calculation</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_axes~3"></span>
+              <span class="anchor" id="variable-n_selected_axes~10"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -285,7 +285,8 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
             <td>::</td>
             <td><strong>n_selected_axes</strong></td>
             <td>
-                <p>Number of selected axes (count of 1s in axes_selection)</p>
+                <p>Number of selected axes (count of .TRUE. in axes_selection_mask)
+The minimum valid value is <code>1_int32</code>.</p>
             </td>
         </tr>
         <tr>
@@ -300,7 +301,7 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
             <td>::</td>
             <td><strong>tissue_versatilities</strong></td>
             <td>
-                <p>Output, real array, length = n_selected_vectors, stores the calculated tissue versatilities for selected vectors</p>
+                <p>Output, real array, length = n_selected_vectors, stores the calculated tissue versatilities</p>
             </td>
         </tr>
         <tr>
@@ -315,12 +316,12 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
             <td>::</td>
             <td><strong>tissue_angles_deg</strong></td>
             <td>
-                <p>Output, real array, length = n_selected_vectors, stores the calculated angles in degrees for selected vectors</p>
+                <p>Output, real array, length = n_selected_vectors, stores the calculated angles in degrees</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~163"></span>
+              <span class="anchor" id="variable-ierr~349"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -330,7 +331,7 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -367,7 +368,7 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

@@ -39,7 +39,7 @@ contains
 
     mat = reshape([2.0d0, 4.0d0, 6.0d0, 8.0d0], [2,2])
     call root_mean_sq_normalization(2, 2, mat, result, ierr)
-    call assert_equal_int(ierr, ERR_OK, "root_mean_sq_normalization returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
 
     do i_gene = 1, 2
       std_dev(i_gene) = sqrt((mat(1,i_gene)**2 + mat(2,i_gene)**2) / 2.0d0)
@@ -57,7 +57,7 @@ contains
 
     mat = reshape([5.0d0, 5.0d0, 5.0d0, 5.0d0], [2,2])
     call root_mean_sq_normalization(2, 2, mat, result, ierr)
-    call assert_equal_int(ierr, ERR_OK, "root_mean_sq_normalization returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
 
     expected = 1.0d0
 
@@ -73,7 +73,7 @@ contains
 
     mat = reshape([1e6, 2e6, 1e6, 2e6], [2,2])
     call root_mean_sq_normalization(2, 2, mat, result, ierr)
-    call assert_equal_int(ierr, ERR_OK, "root_mean_sq_normalization returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
 
     do i_gene = 1, 2
       std_dev(i_gene) = sqrt((mat(1, i_gene)**2 + mat(2, i_gene)**2) / 2.0d0)
@@ -96,7 +96,7 @@ contains
       mat(i_gene,i_gene) = 1.0d0
     end do
     call root_mean_sq_normalization(3, 3, mat, result, ierr)
-    call assert_equal_int(ierr, ERR_OK, "root_mean_sq_normalization returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
     do i_gene = 1, 3
       call assert_in_range_real(sum(result(:, i_gene)**2)/3.0d0, 1d0-1d-12, 1d0+1d-12, "identity: RMS not 1")
       do i_tissue = 1, 3
@@ -115,7 +115,7 @@ contains
     integer(int32) :: ierr
     mat = 0.0d0
     call root_mean_sq_normalization(2, 3, mat, result, ierr)
-    call assert_equal_int(ierr, ERR_OK, "root_mean_sq_normalization returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
     call assert_true(all(result == 0.0d0), "zero rows: not all zeros")
     call assert_no_nan_real(result, 6, "zero rows: NaN in result")
   end subroutine test_zero_rows
@@ -127,7 +127,7 @@ contains
     integer(int32) :: i_tissue, i_gene, ierr
     mat = reshape([-2.0d0, -4.0d0, -6.0d0, -8.0d0, -10.0d0, -12.0d0], [2,3])
     call root_mean_sq_normalization(3, 2, mat, result, ierr)
-    call assert_equal_int(ierr, ERR_OK, "root_mean_sq_normalization returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
     do i_gene = 1, 3
       std_dev(i_gene) = sqrt(sum(mat(:,i_gene)**2)/2.0d0)
       do i_tissue = 1, 2
@@ -151,7 +151,7 @@ contains
     deallocate(seed_array)
     call random_number(mat)
     call root_mean_sq_normalization(n_genes, n_tissues, mat, result, ierr)
-    call assert_equal_int(ierr, ERR_OK, "root_mean_sq_normalization returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
     do i_gene = 1, n_genes
       call assert_in_range_real(sqrt(sum(result(:, i_gene)**2)/n_tissues), 1d0-1d-10, 1d0+1d-10, "large random: RMS not 1")
     end do
@@ -166,7 +166,7 @@ contains
     mat(1,3) = 5.0d0
     mat(2,2) = -7.0d0
     call root_mean_sq_normalization(2, 4, mat, result, ierr)
-    call assert_equal_int(ierr, ERR_OK, "root_mean_sq_normalization returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
     do i = 1, 2
       expected(i,:) = mat(i,:) / sqrt(sum(mat(i,:)**2)/4.0d0)
     end do
@@ -180,7 +180,7 @@ contains
     integer(int32) :: i_tissue, i_gene, ierr
     mat = reshape([1e-10, 1e10, 1e-10, 1e10], [2,2])
     call root_mean_sq_normalization(2, 2, mat, result, ierr)
-    call assert_equal_int(ierr, ERR_OK, "root_mean_sq_normalization returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
     do i_gene = 1, 2
       std_dev(i_gene) = sqrt(sum(mat(:, i_gene)**2)/2.0d0)
       do i_tissue = 1, 2
@@ -197,7 +197,7 @@ contains
     integer(int32) :: ierr
     mat = reshape([1.0d0, 2.0d0, huge(1.0d0), 4.0d0], [2,2])
     call root_mean_sq_normalization(2, 2, mat, result, ierr)
-    call assert_equal_int(ierr, ERR_OK, "root_mean_sq_normalization returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
     call assert_true(all(ieee_is_finite(result)), "root_mean_sq_normalization: output contains NaN/Inf unexpectedly")
   end subroutine test_nan_inf_input
 
@@ -209,7 +209,7 @@ contains
     integer(int32) :: i_tissue, ierr
     mat1 = reshape([2.0d0, 4.0d0, 6.0d0, 8.0d0], [4, 1])
     call root_mean_sq_normalization(1, 4, mat1, result1, ierr)
-    call assert_equal_int(ierr, ERR_OK, "root_mean_sq_normalization returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
     std_dev = sqrt(sum(mat1(:, 1)**2)/4.0d0)
     do i_tissue = 1, 4
       expected1(i_tissue, 1) = mat1(i_tissue, 1)/std_dev
@@ -217,7 +217,7 @@ contains
     call assert_equal_array_real(result1, expected1, 4, 1d-12, "single row: normalization failed")
     mat2 = reshape([2.0d0, 4.0d0, 6.0d0, 8.0d0], [1, 4])
     call root_mean_sq_normalization(4, 1, mat2, result2, ierr)
-    call assert_equal_int(ierr, ERR_OK, "root_mean_sq_normalization returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
     call assert_true(all(abs(result2) == 1.0d0), "single col: normalization failed")
   end subroutine test_single_row_col
 
@@ -227,7 +227,7 @@ contains
     integer(int32) :: ierr
     allocate(mat(1,1), result(1,1))
     call root_mean_sq_normalization(0, 0, mat, result, ierr)
-    call assert_equal_int(ierr, ERR_EMPTY_INPUT, "root_mean_sq_normalization returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "root_mean_sq_normalization returned error")
     ! No assertion needed: just check no crash
   end subroutine test_empty_matrix
 
@@ -238,7 +238,7 @@ contains
     mat(:, 1) = [1.0d0, 2.0d0, 3.0d0]
     mat(:, 2) = [2.0d0, 4.0d0, 6.0d0]
     call root_mean_sq_normalization(2, 3, mat, result, ierr)
-    call assert_equal_int(ierr, ERR_OK, "root_mean_sq_normalization returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
     do i_tissue = 1, 3
       call assert_equal_real(result(i_tissue, 2), result(i_tissue, 1), 1d-12, "symmetric rows: not equal after normalization")
     end do

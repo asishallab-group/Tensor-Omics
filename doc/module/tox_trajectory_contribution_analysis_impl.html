@@ -1,0 +1,2191 @@
+<!-- -*- mode: jinja2 -*- -->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="description" content="Documentation for TensorOmics">
+    <meta name="author" content="" >
+    <link rel="icon" href="../favicon.png">
+
+    <title>tox_trajectory_contribution_analysis_impl &ndash; TensorOmics</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <!-- Font Awesome -->
+    <link href="../css/fontawesome.min.css" rel="stylesheet">
+    <link href="../css/brands.min.css" rel="stylesheet">
+    <link href="../css/regular.min.css" rel="stylesheet">
+    <link href="../css/solid.min.css" rel="stylesheet">
+    <link href="../css/v4-font-face.min.css" rel="stylesheet">
+    <link href="../css/v4-shims.min.css" rel="stylesheet">
+    <!-- MathJax -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        TeX: { equationNumbers: { autoNumber: "AMS" } }
+      });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@2.7.9/MathJax.js?config=TeX-AMS-MML_HTMLorMML" async
+            integrity="sha256-DViIOMYdwlM/axqoGDPeUyf0urLoHMN4QACBKyB58Uw=" crossorigin="anonymous"></script>
+    <!-- Other scripts and stylesheets -->
+    <link href="../css/local.css" rel="stylesheet">
+    <link href="../css/pygments.css" rel="stylesheet">
+    <script src="../js/svg-pan-zoom.min.js"></script>
+  </head>
+
+  <body>
+
+    <!-- Fixed navbar -->
+    <div class="container-fluid mb-sm-4 mb-xl-2">
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container">
+          <a class="navbar-brand" href="../index.html">TensorOmics </a>
+          <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar"
+                  aria-expanded="false" aria-controls="navbar" aria-label="Toggle navigation">
+                  <span class="navbar-toggler-icon">
+          </button>
+
+          <div id="navbar" class="navbar-collapse collapse">
+            <ul class="navbar-nav">
+                  <li class="nav-item">
+                    <a class="nav-link" href="../lists/files.html">Source Files</a>
+                  </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../lists/modules.html">Modules</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../lists/procedures.html">Procedures</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../lists/types.html">Derived Types</a>
+                </li>
+            </ul>
+              <div class="d-flex align-items-end flex-grow-1">
+                <form action="../search.html" role="search" class="ms-auto">
+                  <input type="text" class="form-control" aria-label="Search" placeholder="Search" name="q" id="tipue_search_input" autocomplete="off" required>
+                </form>
+              </div>
+          </div><!--/.nav-collapse -->
+        </div>
+      </nav>
+    </div>
+
+    <div class="container">
+  <div class="row">
+    <h1>tox_trajectory_contribution_analysis_impl
+      <small>Module</small>
+      
+    </h1>
+      <div class="container p-2 mb-4 bg-light border rounded-3">
+    <div class="row align-items-center justify-content-between" id="info-bar">
+      <div class="col">
+        <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
+
+            <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
+              <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
+                 title=" 1.6% of total for modules and submodules.">297 statements</a>
+            </li>
+
+            <li class="list-inline-item" id="source-file">
+              <i class="fa fa-code"></i>
+              <a href="../src/tox_trajectory_contribution_analysis_impl.F90"> Source File</a>
+            </li>
+        </ul>
+      </div>
+      <div class="col">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb justify-content-end mb-0">
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_trajectory_contribution_analysis_impl.f90.html'>tox_trajectory_contribution_analysis_impl.F90</a></li>
+            <li class="breadcrumb-item active" aria-current="page">tox_trajectory_contribution_analysis_impl</li>
+          </ol>
+        </nav>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Enable Bootstrap tooltips
+    (function () {
+      const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+      const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+    })();
+  </script>
+
+  </div>
+
+  <div class="row">
+    <div class="col-md-3">
+        <div id="sidebar">
+      <h3>Contents</h3>
+  
+      <div class="card mb-4">
+      <a data-bs-toggle="collapse" href="#vars-0"
+         aria-expanded="false" aria-controls="vars-0">
+         <h4 class="card-header bg-primary text-white">Variables</h4>
+      </a>
+      <div id="vars-0" class="collapse">
+        <div class="list-group list-group-flush">
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#variable-mode_baseline_raw">MODE_BASELINE_RAW</a>
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#variable-mode_baseline_min">MODE_BASELINE_MIN</a>
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#variable-mode_baseline_mean">MODE_BASELINE_MEAN</a>
+        </div>
+      </div>
+    </div>
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+      <div class="card mb-4">
+      <a data-bs-toggle="collapse" href="#subs-0"
+         aria-expanded="false" aria-controls="subs-0">
+         <h4 class="card-header bg-primary text-white">Subroutines</h4>
+      </a>
+      <div id="subs-0" class="collapse">
+        <div class="list-group list-group-flush">
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#proc-select_random_sample">select_random_sample</a>
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#proc-select_random_sample_helper">select_random_sample_helper</a>
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#proc-perform_permutation_test_impl">perform_permutation_test_impl</a>
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#proc-compute_p_values_impl">compute_p_values_impl</a>
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#proc-compute_contributions_impl">compute_contributions_impl</a>
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#proc-compute_all_contributions_impl">compute_all_contributions_impl</a>
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#proc-compute_baselines_factor_dependent_impl">compute_baselines_factor_dependent_impl</a>
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#proc-compute_velocity_trajectory_helper">compute_velocity_trajectory_helper</a>
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#proc-compute_factor_velocity_from_trajectories_helper">compute_factor_velocity_from_trajectories_helper</a>
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#proc-compute_velocity_trajectory_impl">compute_velocity_trajectory_impl</a>
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#proc-compute_acceleration_from_velocity_trajectory_impl">compute_acceleration_from_velocity_trajectory_impl</a>
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#proc-compute_velocity_trajectories_impl">compute_velocity_trajectories_impl</a>
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#proc-compute_acceleration_from_velocity_impl">compute_acceleration_from_velocity_impl</a>
+            <a class="list-group-item" href="../module/tox_trajectory_contribution_analysis_impl.html#proc-compute_velocity_acceleration_contributions_impl">compute_velocity_acceleration_contributions_impl</a>
+        </div>
+      </div>
+    </div>
+
+  
+  
+  
+  
+  
+  
+  
+
+
+  </div>
+
+    </div>
+
+    <div class="col-md-9" id='text'>
+      <p>Module for quantifying how much one trajectory (a "factor") contributes to another (a "dependent") over time.</p>
+<p>Contributions are computed per timepoint as the product of both series' deviations from a chosen
+baseline, for raw expression trajectories as well as for their velocity (first difference) and
+acceleration (second difference) derivatives. Statistical significance of an observed contribution can
+be assessed via a permutation test that recomputes the same contribution against a randomly chosen
+other sample.</p>
+<br>          <div class="card mb-4">
+      <h3 class="card-header card-title bg-light">Uses</h3>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item">
+              <ul class="list-inline">
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='f42_random_impl.html'>f42_random_impl</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+              </ul>
+            </li>
+        </ul>
+      </div>
+    </div>
+
+      
+      <br>
+
+
+        <section>
+          <h2>Variables</h2>
+            <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Visibility</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+<th></th><th scope="col">Initial</th>        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-mode_baseline_raw"></span>
+              integer(kind=int32),
+            </td>
+              <td>public,</td>
+            <td>
+parameter               
+            </td>
+            <td>::</td>
+            <td><strong>MODE_BASELINE_RAW</strong></td>
+<td> =</td>
+                <td>1_int32</td>
+            <td>
+                <p><code>baseline_mode</code> value for no centering (raw values)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-mode_baseline_min"></span>
+              integer(kind=int32),
+            </td>
+              <td>public,</td>
+            <td>
+parameter               
+            </td>
+            <td>::</td>
+            <td><strong>MODE_BASELINE_MIN</strong></td>
+<td> =</td>
+                <td>2_int32</td>
+            <td>
+                <p><code>baseline_mode</code> value for centering on each series' minimum value</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-mode_baseline_mean"></span>
+              integer(kind=int32),
+            </td>
+              <td>public,</td>
+            <td>
+parameter               
+            </td>
+            <td>::</td>
+            <td><strong>MODE_BASELINE_MEAN</strong></td>
+<td> =</td>
+                <td>3_int32</td>
+            <td>
+                <p><code>baseline_mode</code> value for centering on each series' arithmetic mean</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+        </section>
+        <br>
+
+
+
+
+
+
+        <section>
+          <h2>Subroutines</h2>
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-select_random_sample"></span> <h3>public  subroutine <a href='../proc/select_random_sample.html'>select_random_sample</a>(n_samples, current_sample, random_sample, ierr)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Selects a random sample different to <code>current_sample</code>. For reproducibility call <a href="../proc/init_random.html">init_random</a> beforehand.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_samples~29"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_samples</strong></td>
+            <td>
+<p>number of samples</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-current_sample"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>current_sample</strong></td>
+            <td>
+<p>sample that won't be selected</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-random_sample"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>random_sample</strong></td>
+            <td>
+<p>selected random sample</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~250"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-select_random_sample_helper"></span> <h3>public  subroutine <a href='../proc/select_random_sample_helper.html'>select_random_sample_helper</a>(n_samples, current_sample, random_sample)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Selects a random sample different to <code>current_sample</code>. For reproducibility call <a href="../proc/init_random.html">init_random</a> beforehand.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_samples~30"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_samples</strong></td>
+            <td>
+<p>number of samples</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-current_sample~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>current_sample</strong></td>
+            <td>
+<p>sample that won't be selected</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-random_sample~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>random_sample</strong></td>
+            <td>
+<p>selected random sample</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-perform_permutation_test_impl"></span> <h3>public  subroutine <a href='../proc/perform_permutation_test_impl.html'>perform_permutation_test_impl</a>(trajectories, n_factors, n_samples, n_timepoints, factor_idx, dependent_idx, sample_idx, baseline_mode, n_permutations, local_contributions, total_contributions, tmp_factor, tmp_dependent, random_seed, ierr)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>For a factor-dependent pair, calculates the contributions against the same dependent taken from a random different sample</p><a href="../proc/perform_permutation_test_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-trajectories~21"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_factors, n_samples, n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>trajectories</strong></td>
+            <td>
+<p>expression vectors across different samples over time</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_factors~25"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_factors</strong></td>
+            <td>
+<p>number of factors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_samples~31"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_samples</strong></td>
+            <td>
+<p>number of samples</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_timepoints~33"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_timepoints</strong></td>
+            <td>
+<p>number of timepoints</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-factor_idx~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>factor_idx</strong></td>
+            <td>
+<p>index of factor to compute the permutation contributions for
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_factors</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dependent_idx~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>dependent_idx</strong></td>
+            <td>
+<p>index of dependent to compute the permutation contributions for
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_factors</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-sample_idx~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>sample_idx</strong></td>
+            <td>
+<p>index of sample to compute the permutation contributions for
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_samples</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-baseline_mode~17"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>baseline_mode</strong></td>
+            <td>
+<a href="../proc/perform_permutation_test_impl.html#variable-baseline_mode~17" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_permutations~12"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_permutations</strong></td>
+            <td>
+<p>number of permutations to perform</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-local_contributions~11"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_timepoints, n_permutations)
+            </td>
+            <td>::</td>
+            <td><strong>local_contributions</strong></td>
+            <td>
+<p>Per-timepoint contributions per permutation</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-total_contributions~9"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_permutations)
+            </td>
+            <td>::</td>
+            <td><strong>total_contributions</strong></td>
+            <td>
+<p>Total contribution (<code>sum(local_contributions)</code>) per permutation</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_factor~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_factor</strong></td>
+            <td>
+<p>Working array to hold the factor in contiguous memory</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_dependent~10"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_dependent</strong></td>
+            <td>
+<p>Working array to hold the random dependent in contiguous memory</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-random_seed~10"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>random_seed</strong></td>
+            <td>
+<p>Seed to use for random number generation.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~251"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_p_values_impl"></span> <h3>public pure subroutine <a href='../proc/compute_p_values_impl.html'>compute_p_values_impl</a>(local_contributions_observed, total_contribution_observed, local_contributions_perm_test, total_contributions_perm_test, n_timepoints, n_permutations, local_p_values, total_p_value)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Calculates the p values for the contributions once the permutation tests are done</p><a href="../proc/compute_p_values_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-local_contributions_observed~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>local_contributions_observed</strong></td>
+            <td>
+<p>Per-timepoint contributions for the observed factor-dependent-sample combination</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-total_contribution_observed~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>total_contribution_observed</strong></td>
+            <td>
+<p>Total contribution (<code>sum(local_contributions)</code>) for the observed factor-dependent-sample combination</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-local_contributions_perm_test~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_timepoints, n_permutations)
+            </td>
+            <td>::</td>
+            <td><strong>local_contributions_perm_test</strong></td>
+            <td>
+<p>Per-timepoint contributions for the factor-dependent-random_sample combinations from <a href="../proc/perform_permutation_test_impl.html">perform_permutation_test_impl</a></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-total_contributions_perm_test~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_permutations)
+            </td>
+            <td>::</td>
+            <td><strong>total_contributions_perm_test</strong></td>
+            <td>
+<p>Total contribution (<code>sum(local_contributions)</code>) for the factor-dependent-random_sample combinations from <a href="../proc/perform_permutation_test_impl.html">perform_permutation_test_impl</a></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_timepoints~34"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_timepoints</strong></td>
+            <td>
+<p>number of timepoints</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_permutations~13"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_permutations</strong></td>
+            <td>
+<p>number of permutations to perform</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-local_p_values~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>local_p_values</strong></td>
+            <td>
+<p>calculated p values for local contributions, like: <code>(local_contributions_perm_test &gt;= local_contributions_observed)/n_permutations</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-total_p_value~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>total_p_value</strong></td>
+            <td>
+<p>calculated p values for total contributions, like: <code>(total_contributions_perm_test &gt;= total_contribution_observed)/n_permutations</code></p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_contributions_impl"></span> <h3>public pure subroutine <a href='../proc/compute_contributions_impl.html'>compute_contributions_impl</a>(factor, dependent, n_dims, baseline_mode, local_contributions, total_contribution, ierr)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Performs contribution analysis for a specific factor-dependent pair</p><a href="../proc/compute_contributions_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-factor~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dims)
+            </td>
+            <td>::</td>
+            <td><strong>factor</strong></td>
+            <td>
+<p>Factor time series, length n_timepoints</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dependent~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dims)
+            </td>
+            <td>::</td>
+            <td><strong>dependent</strong></td>
+            <td>
+<p>Dependent variable time series, length n_timepoints</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dims~24"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_dims</strong></td>
+            <td>
+<p>Number of elements in <code>factor</code> and <code>dependent</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-baseline_mode~18"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>baseline_mode</strong></td>
+            <td>
+<a href="../proc/compute_contributions_impl.html#variable-baseline_mode~18" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-local_contributions~12"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_dims)
+            </td>
+            <td>::</td>
+            <td><strong>local_contributions</strong></td>
+            <td>
+<p>Per-element contributions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-total_contribution~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>total_contribution</strong></td>
+            <td>
+<p>Total contribution (<code>sum(local_contributions)</code>)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~252"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_all_contributions_impl"></span> <h3>public pure subroutine <a href='../proc/compute_all_contributions_impl.html'>compute_all_contributions_impl</a>(trajectories, n_factors, n_samples, n_timepoints, factor_indices, n_selected_factors, dependent_indices, n_selected_dependents, baseline_mode, local_contributions, total_contributions, tmp_factors, tmp_dependent, ierr)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Contribution analysis for every selected factor-dependent pair</p><a href="../proc/compute_all_contributions_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-trajectories~22"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_factors, n_samples, n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>trajectories</strong></td>
+            <td>
+<p>expression vectors across different samples over time</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_factors~26"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_factors</strong></td>
+            <td>
+<p>number of factors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_samples~32"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_samples</strong></td>
+            <td>
+<p>number of samples</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_timepoints~35"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_timepoints</strong></td>
+            <td>
+<p>number of timepoints</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-factor_indices~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_selected_factors)
+            </td>
+            <td>::</td>
+            <td><strong>factor_indices</strong></td>
+            <td>
+<p>indices of factors to compute the contributions for
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_factors</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_selected_factors~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_selected_factors</strong></td>
+            <td>
+<p>number of selected factors in <code>factor_indices</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dependent_indices~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_selected_dependents)
+            </td>
+            <td>::</td>
+            <td><strong>dependent_indices</strong></td>
+            <td>
+<p>indices of dependents to compute the contributions for
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_factors</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_selected_dependents~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_selected_dependents</strong></td>
+            <td>
+<p>number of selected dependents in <code>dependent_indices</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-baseline_mode~19"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>baseline_mode</strong></td>
+            <td>
+<a href="../proc/compute_all_contributions_impl.html#variable-baseline_mode~19" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-local_contributions~13"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_timepoints, n_selected_factors, n_selected_dependents, n_samples)
+            </td>
+            <td>::</td>
+            <td><strong>local_contributions</strong></td>
+            <td>
+<p>Per-timepoint contributions per sample-dependent-factor combination</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-total_contributions~10"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_selected_factors, n_selected_dependents, n_samples)
+            </td>
+            <td>::</td>
+            <td><strong>total_contributions</strong></td>
+            <td>
+<p>Total contribution (<code>sum(local_contributions)</code>) per sample-dependent-factor combination</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_factors~7"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_timepoints, n_selected_factors)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_factors</strong></td>
+            <td>
+<p>Working array to hold the currently handled sample's factors in contiguous memory</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_dependent~11"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_dependent</strong></td>
+            <td>
+<p>Working array to hold the currently handled dependent in contiguous memory</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~253"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_baselines_factor_dependent_impl"></span> <h3>public pure subroutine <a href='../proc/compute_baselines_factor_dependent_impl.html'>compute_baselines_factor_dependent_impl</a>(n_timepoints, factor, dependent, baseline_mode, factor_baseline, dependent_baseline, ierr)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/jitu2d" target="_blank" >Jitu Daba</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Compute scalar baselines for a factor and dependent variable time series</p><a href="../proc/compute_baselines_factor_dependent_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_timepoints~36"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_timepoints</strong></td>
+            <td>
+<p>Number of timepoints in both factor and dependent arrays</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-factor~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>factor</strong></td>
+            <td>
+<p>Factor time series, length n_timepoints</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dependent~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>dependent</strong></td>
+            <td>
+<p>Dependent variable time series, length n_timepoints</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-baseline_mode~20"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>baseline_mode</strong></td>
+            <td>
+<a href="../proc/compute_baselines_factor_dependent_impl.html#variable-baseline_mode~20" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-factor_baseline~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>factor_baseline</strong></td>
+            <td>
+<p>Computed baseline for factor</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dependent_baseline~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>dependent_baseline</strong></td>
+            <td>
+<p>Computed baseline for dependent variable</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~254"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_velocity_trajectory_helper"></span> <h3>public pure subroutine <a href='../proc/compute_velocity_trajectory_helper.html'>compute_velocity_trajectory_helper</a>(trajectory, velocity, n_timepoints)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/jitu2d" target="_blank" >Jitu Daba</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>This routine computes velocity trajectory from a single position trajectory, no input validation</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-trajectory~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>trajectory</strong></td>
+            <td>
+<p>input position trajectory</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-velocity~9"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(max(0_int32, n_timepoints - 1))
+            </td>
+            <td>::</td>
+            <td><strong>velocity</strong></td>
+            <td>
+<p>output velocity trajectory</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_timepoints~37"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_timepoints</strong></td>
+            <td>
+<p>number of timepoints</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_factor_velocity_from_trajectories_helper"></span> <h3>public pure subroutine <a href='../proc/compute_factor_velocity_from_trajectories_helper.html'>compute_factor_velocity_from_trajectories_helper</a>(trajectories, n_factors, n_samples, n_timepoints, factor_idx, sample_idx, velocity)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/jitu2d" target="_blank" >Jitu Daba</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>This routine computes velocity trajectory from the <code>trajectories(n_factors, n_samples, n_timepoints)</code> matrix</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-trajectories~23"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_factors, n_samples, n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>trajectories</strong></td>
+            <td>
+<p>input position trajectories</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_factors~27"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_factors</strong></td>
+            <td>
+<p>number of factors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_samples~33"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_samples</strong></td>
+            <td>
+<p>number of samples</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_timepoints~38"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_timepoints</strong></td>
+            <td>
+<p>number of timepoints</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-factor_idx~6"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>factor_idx</strong></td>
+            <td>
+<p>factor index of the trajectory</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-sample_idx~6"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>sample_idx</strong></td>
+            <td>
+<p>sample index of the trajectory</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-velocity~10"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(max(0, n_timepoints - 1))
+            </td>
+            <td>::</td>
+            <td><strong>velocity</strong></td>
+            <td>
+<p>Calculated velocity for the selected trajectory</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_velocity_trajectory_impl"></span> <h3>public pure subroutine <a href='../proc/compute_velocity_trajectory_impl.html'>compute_velocity_trajectory_impl</a>(trajectory, velocity, n_timepoints)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/jitu2d" target="_blank" >Jitu Daba</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Compute velocity trajectory from a single position trajectory</p><a href="../proc/compute_velocity_trajectory_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-trajectory~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>trajectory</strong></td>
+            <td>
+<p>input position trajectory</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-velocity~11"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(max(0_int32, n_timepoints - 1))
+            </td>
+            <td>::</td>
+            <td><strong>velocity</strong></td>
+            <td>
+<p>output velocity trajectory</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_timepoints~39"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_timepoints</strong></td>
+            <td>
+<p>number of timepoints</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_acceleration_from_velocity_trajectory_impl"></span> <h3>public pure subroutine <a href='../proc/compute_acceleration_from_velocity_trajectory_impl.html'>compute_acceleration_from_velocity_trajectory_impl</a>(velocity, acceleration, n_timepoints)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/jitu2d" target="_blank" >Jitu Daba</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Compute acceleration trajectory from a single velocity trajectory</p><a href="../proc/compute_acceleration_from_velocity_trajectory_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-velocity~12"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(max(0_int32, n_timepoints - 1))
+            </td>
+            <td>::</td>
+            <td><strong>velocity</strong></td>
+            <td>
+<p>velocity trajectory</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-acceleration~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(max(0_int32, n_timepoints - 2))
+            </td>
+            <td>::</td>
+            <td><strong>acceleration</strong></td>
+            <td>
+<p>acceleration trajectory</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_timepoints~40"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_timepoints</strong></td>
+            <td>
+<p>number of timepoints</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_velocity_trajectories_impl"></span> <h3>public pure subroutine <a href='../proc/compute_velocity_trajectories_impl.html'>compute_velocity_trajectories_impl</a>(trajectories, velocity, n_factors, n_samples, n_timepoints)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/jitu2d" target="_blank" >Jitu Daba</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Computes velocity trajectories from position trajectories</p><a href="../proc/compute_velocity_trajectories_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-trajectories~24"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_factors, n_samples, n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>trajectories</strong></td>
+            <td>
+<p>input position trajectories</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-velocity~13"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(max(0_int32, n_timepoints - 1), n_factors, n_samples)
+            </td>
+            <td>::</td>
+            <td><strong>velocity</strong></td>
+            <td>
+<p>output velocity trajectories</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_factors~28"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_factors</strong></td>
+            <td>
+<p>number of factors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_samples~34"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_samples</strong></td>
+            <td>
+<p>number of samples</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_timepoints~41"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_timepoints</strong></td>
+            <td>
+<p>number of timepoints</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_acceleration_from_velocity_impl"></span> <h3>public pure subroutine <a href='../proc/compute_acceleration_from_velocity_impl.html'>compute_acceleration_from_velocity_impl</a>(velocity, acceleration, n_factors, n_samples, n_timepoints)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/jitu2d" target="_blank" >Jitu Daba</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Computes acceleration trajectories from velocity trajectories</p><a href="../proc/compute_acceleration_from_velocity_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-velocity~14"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(max(0_int32, n_timepoints - 1), n_factors, n_samples)
+            </td>
+            <td>::</td>
+            <td><strong>velocity</strong></td>
+            <td>
+<p>input velocity trajectories</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-acceleration~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(max(0_int32, n_timepoints - 2), n_factors, n_samples)
+            </td>
+            <td>::</td>
+            <td><strong>acceleration</strong></td>
+            <td>
+<p>output acceleration trajectories</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_factors~29"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_factors</strong></td>
+            <td>
+<p>number of factors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_samples~35"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_samples</strong></td>
+            <td>
+<p>number of samples</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_timepoints~42"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_timepoints</strong></td>
+            <td>
+<p>number of timepoints</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_velocity_acceleration_contributions_impl"></span> <h3>public pure subroutine <a href='../proc/compute_velocity_acceleration_contributions_impl.html'>compute_velocity_acceleration_contributions_impl</a>(trajectories, n_factors, n_samples, n_timepoints, baseline_mode, tmp_factors, tmp_dependent, tmp_contributions, contrib_velocity, velocity_contribution_series, contrib_acceleration, acceleration_contribution_series, ierr)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/jitu2d" target="_blank" >Jitu Daba</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Compute velocity and acceleration contributions for all variable pairs</p><a href="../proc/compute_velocity_acceleration_contributions_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-trajectories~25"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_factors, n_samples, n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>trajectories</strong></td>
+            <td>
+<p>input position trajectories</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_factors~30"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_factors</strong></td>
+            <td>
+<p>number of factors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_samples~36"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_samples</strong></td>
+            <td>
+<p>number of samples</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_timepoints~43"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_timepoints</strong></td>
+            <td>
+<p>number of timepoints</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-baseline_mode~21"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>baseline_mode</strong></td>
+            <td>
+<a href="../proc/compute_velocity_acceleration_contributions_impl.html#variable-baseline_mode~21" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_factors~8"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_timepoints - 1, n_factors)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_factors</strong></td>
+            <td>
+<p>workspace for factor data (used for velocity and acceleration)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_dependent~12"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_timepoints - 1)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_dependent</strong></td>
+            <td>
+<p>workspace for dependent data (used for velocity and acceleration)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_contributions~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_timepoints - 1)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_contributions</strong></td>
+            <td>
+<p>workspace for contribution calculations (used for velocity and acceleration)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-contrib_velocity~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_factors, n_factors, n_samples)
+            </td>
+            <td>::</td>
+            <td><strong>contrib_velocity</strong></td>
+            <td>
+<p>output velocity contributions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-velocity_contribution_series~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_timepoints, n_factors, n_factors, n_samples)
+            </td>
+            <td>::</td>
+            <td><strong>velocity_contribution_series</strong></td>
+            <td>
+<p>output velocity contribution series</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-contrib_acceleration~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_factors, n_factors, n_samples)
+            </td>
+            <td>::</td>
+            <td><strong>contrib_acceleration</strong></td>
+            <td>
+<p>output acceleration contributions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-acceleration_contribution_series~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_timepoints, n_factors, n_factors, n_samples)
+            </td>
+            <td>::</td>
+            <td><strong>acceleration_contribution_series</strong></td>
+            <td>
+<p>output acceleration contribution series</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~255"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+        </section>
+        <br>
+
+
+
+    </div>
+  </div>
+
+      <hr>
+    </div> <!-- /container -->
+    <footer>
+      <div class="container">
+        <div class="row justify-content-between">
+          <div class="col">
+            <p>
+              TensorOmics
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
+</p>
+          </div>
+          <div class="col">
+            <p class="text-end">
+              Documentation generated by
+              <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
+ on 2026-09-14 09:28 +0000             </p>
+          </div>
+        </div>
+        <br>
+      </div> <!-- /container -->
+    </footer>
+  </body>
+</html>

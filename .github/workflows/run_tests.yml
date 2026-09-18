@@ -32,14 +32,23 @@ jobs:
         with:
           compiler: ${{ inputs.compiler }}
 
+      # --skip-code-generation: neither Python nor ford is installed yet at this point, and the
+      # generated sources are committed, so a build here compiles the tree as it stands. The
+      # final step below installs the generator and checks that that is still the right tree.
       - name: Run Fortran Tests
-        run: bash test_runner.sh ${{ inputs.extra_build_args }} --compiler="${{ inputs.compiler }}"
+        run: bash test_runner.sh ${{ inputs.extra_build_args }} --skip-code-generation --compiler="${{ inputs.compiler }}"
 
       - name: Install R
         uses: ./.github/actions/install-R
 
+      # `status` rather than a bare loop: a loop exits with the status of its *last* iteration,
+      # so a suite that fails anywhere but at the end passes the step silently.
       - name: Run R Tests
-        run: for i in rcpp/test/*.[rR]; do echo ; echo $i ; Rscript $i ; done
+        run: |
+          bash build.sh ${{ inputs.extra_build_args }} --skip-code-generation --compiler="${{ inputs.compiler }}"
+          status=0
+          for i in r/test/*.[rR]; do echo ; echo $i ; Rscript $i || status=1 ; done
+          exit $status
 
       - name: Install Python
         uses: ./.github/actions/install-Python
@@ -47,7 +56,12 @@ jobs:
           packages: numpy pandas
 
       - name: Run Python Tests
-        run: for i in python/test/*.py; do echo ; echo $i ; python $i ; done
+        run: |
+          status=0
+          for i in python/test/*.py; do echo ; echo $i ; python $i || status=1 ; done
+          exit $status
 
-      - name: Run Snippet Generator
-        run: python helper/generate_snippets.py
+      - name: Ensure the code generator doesn't need to be run.
+        run: |
+          pip install ford
+          python helper/generate_code.py --check

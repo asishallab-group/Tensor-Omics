@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.6% of total for modules and submodules.">55 statements</a>
+                 title=" 0.3% of total for modules and submodules.">55 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -173,8 +173,8 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='f42_serde_arrays_utils.html'>f42_serde_arrays_utils</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
               </ul>
             </li>
         </ul>
@@ -194,15 +194,16 @@
         <section>
           <h2>Subroutines</h2>
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-deserialize_int_helper"></span> <h3>public  subroutine <a href='../proc/deserialize_int_helper.html'>deserialize_int_helper</a>(arr, n_elements, orig_shape, filename, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-deserialize_int_helper"></span> <h3>public  subroutine <a href='../proc/deserialize_int_helper.html'>deserialize_int_helper</a>(arr, n_elements, arr_shape, filename, ierr)  
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+        <dt>Category</dt><dd>C-binding</dd>
     </dl>
 
-  <p>Deserialize a flat integer array from a file</p>
+  <p>Deserialize a flat integer array from a file</p><a href="../proc/deserialize_int_helper.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -217,7 +218,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-arr~64"></span>
+              <span class="anchor" id="variable-arr~66"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -232,7 +233,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_elements~20"></span>
+              <span class="anchor" id="variable-n_elements~19"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -247,7 +248,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-orig_shape~19"></span>
+              <span class="anchor" id="variable-arr_shape~19"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -255,14 +256,15 @@
               dimension(:)
             </td>
             <td>::</td>
-            <td><strong>orig_shape</strong></td>
+            <td><strong>arr_shape</strong></td>
             <td>
-<p>Original shape of the flattened array <code>arr</code></p>
+<p>Extents of <code>arr</code>, one per dimension
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>dims_out</code> output produced by <a href="../proc/get_array_metadata.html">get_array_metadata</a>.</p><a href="../proc/deserialize_int_helper.html#variable-arr_shape~19" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~90"></span>
+              <span class="anchor" id="variable-filename~88"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -277,7 +279,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~338"></span>
+              <span class="anchor" id="variable-ierr~333"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -321,7 +323,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-arr~65"></span>
+              <span class="anchor" id="variable-arr~67"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -336,7 +338,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~91"></span>
+              <span class="anchor" id="variable-filename~89"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -351,7 +353,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~339"></span>
+              <span class="anchor" id="variable-ierr~334"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -395,7 +397,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-arr~66"></span>
+              <span class="anchor" id="variable-arr~68"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -410,7 +412,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~92"></span>
+              <span class="anchor" id="variable-filename~90"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -425,7 +427,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~340"></span>
+              <span class="anchor" id="variable-ierr~335"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -469,7 +471,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-arr~67"></span>
+              <span class="anchor" id="variable-arr~69"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -484,7 +486,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~93"></span>
+              <span class="anchor" id="variable-filename~91"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -499,7 +501,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~341"></span>
+              <span class="anchor" id="variable-ierr~336"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -543,7 +545,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-arr~68"></span>
+              <span class="anchor" id="variable-arr~70"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -558,7 +560,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~94"></span>
+              <span class="anchor" id="variable-filename~92"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -573,7 +575,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~342"></span>
+              <span class="anchor" id="variable-ierr~337"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -617,7 +619,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-arr~69"></span>
+              <span class="anchor" id="variable-arr~71"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -632,7 +634,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~95"></span>
+              <span class="anchor" id="variable-filename~93"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -647,7 +649,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~343"></span>
+              <span class="anchor" id="variable-ierr~338"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -690,7 +692,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

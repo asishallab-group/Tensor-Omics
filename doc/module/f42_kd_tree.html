@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 2.2% of total for modules and submodules.">185 statements</a>
+                 title=" 0.7% of total for modules and submodules.">129 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -141,14 +141,10 @@
       </a>
       <div id="subs-0" class="collapse">
         <div class="list-group list-group-flush">
-            <a class="list-group-item" href="../module/f42_kd_tree.html#proc-build_kd_index_alloc">build_kd_index_alloc</a>
             <a class="list-group-item" href="../module/f42_kd_tree.html#proc-build_kd_index">build_kd_index</a>
-            <a class="list-group-item" href="../module/f42_kd_tree.html#proc-build_kd_index_helper">build_kd_index_helper</a>
-            <a class="list-group-item" href="../module/f42_kd_tree.html#proc-partial_sort_by_dimension">partial_sort_by_dimension</a>
-            <a class="list-group-item" href="../module/f42_kd_tree.html#proc-partial_sort_by_dimension_helper">partial_sort_by_dimension_helper</a>
-            <a class="list-group-item" href="../module/f42_kd_tree.html#proc-build_spherical_kd_alloc">build_spherical_kd_alloc</a>
+            <a class="list-group-item" href="../module/f42_kd_tree.html#proc-build_kd_index_expert">build_kd_index_expert</a>
             <a class="list-group-item" href="../module/f42_kd_tree.html#proc-build_spherical_kd">build_spherical_kd</a>
-            <a class="list-group-item" href="../module/f42_kd_tree.html#proc-get_kd_point">get_kd_point</a>
+            <a class="list-group-item" href="../module/f42_kd_tree.html#proc-build_spherical_kd_expert">build_spherical_kd_expert</a>
         </div>
       </div>
     </div>
@@ -172,16 +168,16 @@ Builds a k-d tree by recursively partitioning <code>kd_indices</code> around the
 caller-supplied, cycling dimension order, using a stack-based (non-recursive) traversal so it
 is safe to call from <code>pure</code> procedures. The tree is stored implicitly as an in-place-permuted
 index array rather than as linked nodes.</p>
+<p>Generated from <a href="../module/f42_kd_tree_impl.html">f42_kd_tree_impl</a>; do not edit -- regenerate instead.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='f42_utils.html'>f42_utils</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='f42_kd_tree_impl.html'>f42_kd_tree_impl</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
               </ul>
             </li>
         </ul>
@@ -201,15 +197,11 @@ index array rather than as linked nodes.</p>
         <section>
           <h2>Subroutines</h2>
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-build_kd_index_alloc"></span> <h3>public pure subroutine <a href='../proc/build_kd_index_alloc.html'>build_kd_index_alloc</a>(points, n_dimensions, n_points, kd_indices, dimension_order, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-build_kd_index"></span> <h3>public pure subroutine <a href='../proc/build_kd_index.html'>build_kd_index</a>(points, n_dimensions, n_points, kd_indices, dimension_order, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Build a k-d tree index using a stack-based, non-recursive approach.</p>
+          
+  <p>Validates its inputs, prepares what <a href="../proc/build_kd_index_impl.html">build_kd_index_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/build_kd_index_expert.html">build_kd_index_expert</a> to prepare it yourself.</p><a href="../proc/build_kd_index.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -224,7 +216,7 @@ index array rather than as linked nodes.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-points"></span>
+              <span class="anchor" id="variable-points~9"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -239,7 +231,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dimensions"></span>
+              <span class="anchor" id="variable-n_dimensions~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -254,7 +246,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~50"></span>
+              <span class="anchor" id="variable-n_points~61"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -269,7 +261,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kd_indices"></span>
+              <span class="anchor" id="variable-kd_indices~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -284,7 +276,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dimension_order"></span>
+              <span class="anchor" id="variable-dimension_order~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -294,12 +286,14 @@ index array rather than as linked nodes.</p>
             <td>::</td>
             <td><strong>dimension_order</strong></td>
             <td>
-<p>Dimension order (by variance)</p>
+<p>Dimension order (by variance)
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~147"></span>
+              <span class="anchor" id="variable-ierr~345"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -309,7 +303,7 @@ index array rather than as linked nodes.</p>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>Error code</p>
+<p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -320,15 +314,11 @@ index array rather than as linked nodes.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-build_kd_index"></span> <h3>public pure subroutine <a href='../proc/build_kd_index.html'>build_kd_index</a>(points, n_dimensions, n_points, kd_indices, dimension_order, tmp_workspace, tmp_value_buffer, tmp_permutation, tmp_recursion_stack, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-build_kd_index_expert"></span> <h3>public pure subroutine <a href='../proc/build_kd_index_expert.html'>build_kd_index_expert</a>(points, n_dimensions, n_points, kd_indices, dimension_order, tmp_workspace, tmp_value_buffer, tmp_permutation, tmp_recursion_stack, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Build a k-d tree index using a stack-based, non-recursive approach.</p>
+          
+  <p>Validates its inputs, then calls <a href="../proc/build_kd_index_impl.html">build_kd_index_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/build_kd_index.html">build_kd_index</a> does both.</p><a href="../proc/build_kd_index_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -343,7 +333,7 @@ index array rather than as linked nodes.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-points~2"></span>
+              <span class="anchor" id="variable-points~10"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -358,7 +348,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dimensions~2"></span>
+              <span class="anchor" id="variable-n_dimensions~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -373,7 +363,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~51"></span>
+              <span class="anchor" id="variable-n_points~62"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -388,7 +378,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kd_indices~2"></span>
+              <span class="anchor" id="variable-kd_indices~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -403,7 +393,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dimension_order~2"></span>
+              <span class="anchor" id="variable-dimension_order~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -413,12 +403,14 @@ index array rather than as linked nodes.</p>
             <td>::</td>
             <td><strong>dimension_order</strong></td>
             <td>
-<p>Dimension order (by variance)</p>
+<p>Dimension order (by variance)
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_workspace~2"></span>
+              <span class="anchor" id="variable-tmp_workspace~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -433,7 +425,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_value_buffer~2"></span>
+              <span class="anchor" id="variable-tmp_value_buffer~7"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -448,7 +440,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation~2"></span>
+              <span class="anchor" id="variable-tmp_permutation~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -463,7 +455,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_recursion_stack~2"></span>
+              <span class="anchor" id="variable-tmp_recursion_stack~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -478,7 +470,7 @@ index array rather than as linked nodes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~148"></span>
+              <span class="anchor" id="variable-ierr~346"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -488,7 +480,7 @@ index array rather than as linked nodes.</p>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>Error code</p>
+<p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -499,19 +491,11 @@ index array rather than as linked nodes.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-build_kd_index_helper"></span> <h3>public pure subroutine <a href='../proc/build_kd_index_helper.html'>build_kd_index_helper</a>(points, n_dimensions, n_points, kd_indices, dimension_order, tmp_workspace, tmp_value_buffer, tmp_permutation, tmp_recursion_stack)  
+    <div class="card-header codesum"><span class="anchor" id="proc-build_spherical_kd"></span> <h3>public pure subroutine <a href='../proc/build_spherical_kd.html'>build_spherical_kd</a>(points, n_dimensions, n_points, kd_indices, dimension_order, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>(no input validation) Build a k-d tree index using a stack-based, non-recursive approach.
-Choose split dimension by cycling through dimension_order
-Find median index
-Partition kd_indices(left_idx:right_idx) by points(current_dim, kd_indices(:))
-Push right and left intervals onto stack</p>
+          
+  <p>Validates its inputs, prepares what <a href="../proc/build_spherical_kd_impl.html">build_spherical_kd_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/build_spherical_kd_expert.html">build_spherical_kd_expert</a> to prepare it yourself.</p><a href="../proc/build_spherical_kd.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -526,7 +510,7 @@ Push right and left intervals onto stack</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-points~3"></span>
+              <span class="anchor" id="variable-points~11"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -541,7 +525,7 @@ Push right and left intervals onto stack</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dimensions~3"></span>
+              <span class="anchor" id="variable-n_dimensions~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -556,7 +540,7 @@ Push right and left intervals onto stack</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~52"></span>
+              <span class="anchor" id="variable-n_points~63"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -571,7 +555,7 @@ Push right and left intervals onto stack</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kd_indices~3"></span>
+              <span class="anchor" id="variable-kd_indices~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -586,7 +570,7 @@ Push right and left intervals onto stack</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dimension_order~3"></span>
+              <span class="anchor" id="variable-dimension_order~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -596,12 +580,131 @@ Push right and left intervals onto stack</p>
             <td>::</td>
             <td><strong>dimension_order</strong></td>
             <td>
-<p>Dimension order (by variance)</p>
+<p>Dimension order (by variance)
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_workspace~3"></span>
+              <span class="anchor" id="variable-ierr~347"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-build_spherical_kd_expert"></span> <h3>public pure subroutine <a href='../proc/build_spherical_kd_expert.html'>build_spherical_kd_expert</a>(points, n_dimensions, n_points, kd_indices, dimension_order, tmp_workspace, tmp_value_buffer, tmp_permutation, tmp_recursion_stack, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/build_spherical_kd_impl.html">build_spherical_kd_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/build_spherical_kd.html">build_spherical_kd</a> does both.</p><a href="../proc/build_spherical_kd_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-points~12"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>points</strong></td>
+            <td>
+<p>Data points</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dimensions~11"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_dimensions</strong></td>
+            <td>
+<p>Number of dimensions</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~64"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of points</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kd_indices~12"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>kd_indices</strong></td>
+            <td>
+<p>Output index array (k-d tree order)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-dimension_order~10"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dimensions)
+            </td>
+            <td>::</td>
+            <td><strong>dimension_order</strong></td>
+            <td>
+<p>Dimension order (by variance)
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_workspace~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -616,7 +719,7 @@ Push right and left intervals onto stack</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_value_buffer~3"></span>
+              <span class="anchor" id="variable-tmp_value_buffer~9"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -631,7 +734,7 @@ Push right and left intervals onto stack</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation~3"></span>
+              <span class="anchor" id="variable-tmp_permutation~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -646,7 +749,7 @@ Push right and left intervals onto stack</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_recursion_stack~3"></span>
+              <span class="anchor" id="variable-tmp_recursion_stack~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -659,188 +762,9 @@ Push right and left intervals onto stack</p>
 <p>Stack for l, r, depth</p>
             </td>
         </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-partial_sort_by_dimension"></span> <h3>public pure subroutine <a href='../proc/partial_sort_by_dimension.html'>partial_sort_by_dimension</a>(points, n_points, n_dimensions, kd_indices, left_idx, right_idx, dim, tmp_workspace, tmp_value_buffer, tmp_permutation, ierr)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-points~4"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_dimensions, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>points</strong></td>
-            <td>
-<p>Input points array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_points~53"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_points</strong></td>
-            <td>
-<p>size of points</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_dimensions~4"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_dimensions</strong></td>
-            <td>
-<p>Number of dimensions</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-kd_indices~4"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>kd_indices</strong></td>
-            <td>
-<p>Index array to modify</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-left_idx~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>left_idx</strong></td>
-            <td>
-<p>Left index of subarray</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-right_idx~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>right_idx</strong></td>
-            <td>
-<p>Right index of subarray</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-dim"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>dim</strong></td>
-            <td>
-<p>Dimension to sort by</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_workspace~4"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_workspace</strong></td>
-            <td>
-<p>Workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_value_buffer~4"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_value_buffer</strong></td>
-            <td>
-<p>Buffer for dimension values</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_permutation~4"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_permutation</strong></td>
-            <td>
-<p>Permutation array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~149"></span>
+              <span class="anchor" id="variable-ierr~348"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -850,595 +774,7 @@ Push right and left intervals onto stack</p>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-partial_sort_by_dimension_helper"></span> <h3>public pure subroutine <a href='../proc/partial_sort_by_dimension_helper.html'>partial_sort_by_dimension_helper</a>(points, n_points, n_dimensions, kd_indices, left_idx, right_idx, dim, tmp_workspace, tmp_value_buffer, tmp_permutation)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>(no input validation) sorts kd_indices(left_idx:right_idx) by points(dimension, kd_indices(:))</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-points~5"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_dimensions, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>points</strong></td>
-            <td>
-<p>Input points array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_points~54"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_points</strong></td>
-            <td>
-<p>size of points</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_dimensions~5"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_dimensions</strong></td>
-            <td>
-<p>Number of dimensions</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-kd_indices~5"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>kd_indices</strong></td>
-            <td>
-<p>Index array to modify</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-left_idx~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>left_idx</strong></td>
-            <td>
-<p>Left index of subarray</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-right_idx~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>right_idx</strong></td>
-            <td>
-<p>Right index of subarray</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-dim~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>dim</strong></td>
-            <td>
-<p>Dimension to sort by</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_workspace~5"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_workspace</strong></td>
-            <td>
-<p>Workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_value_buffer~5"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_value_buffer</strong></td>
-            <td>
-<p>Buffer for dimension values</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_permutation~5"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_permutation</strong></td>
-            <td>
-<p>Permutation array</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-build_spherical_kd_alloc"></span> <h3>public pure subroutine <a href='../proc/build_spherical_kd_alloc.html'>build_spherical_kd_alloc</a>(points, n_dimensions, n_points, kd_indices, dimension_order, ierr)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Build a k-d tree index over points assumed to lie on the unit sphere (unit vectors).
-This is a thin, semantically-named wrapper: partitioning is identical to
-<a href="../proc/build_kd_index_alloc.html">build_kd_index_alloc</a> (plain per-axis median splits);
-callers are responsible for ensuring <code>points</code> are actually unit-normalized beforehand.</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-points~6"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_dimensions, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>points</strong></td>
-            <td>
-<p>Data points</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_dimensions~6"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_dimensions</strong></td>
-            <td>
-<p>Number of dimensions</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_points~55"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_points</strong></td>
-            <td>
-<p>Number of points</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-kd_indices~6"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points)
-            </td>
-            <td>::</td>
-            <td><strong>kd_indices</strong></td>
-            <td>
-<p>Output index array (k-d tree order)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-dimension_order~4"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_dimensions)
-            </td>
-            <td>::</td>
-            <td><strong>dimension_order</strong></td>
-            <td>
-<p>Dimension order (by variance)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~150"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-build_spherical_kd"></span> <h3>public pure subroutine <a href='../proc/build_spherical_kd.html'>build_spherical_kd</a>(vectors, n_dimensions, n_vectors, sphere_indices, dimension_order, tmp_workspace, tmp_value_buffer, tmp_permutation, tmp_recursion_stack, ierr)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Build a k-d tree index over points assumed to lie on the unit sphere (unit vectors), with
-caller-provided workspace (no internal allocation). See
-<a href="../proc/build_spherical_kd_alloc.html">build_spherical_kd_alloc</a> for the allocating variant and
-a note on why this delegates to the plain (non-spherical) k-d partitioning.</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-vectors"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_dimensions, n_vectors)
-            </td>
-            <td>::</td>
-            <td><strong>vectors</strong></td>
-            <td>
-<p>Input unit vectors</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_dimensions~7"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_dimensions</strong></td>
-            <td>
-<p>Number of dimensions</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_vectors"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_vectors</strong></td>
-            <td>
-<p>Number of vectors</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-sphere_indices"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_vectors)
-            </td>
-            <td>::</td>
-            <td><strong>sphere_indices</strong></td>
-            <td>
-<p>Output index array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-dimension_order~5"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_dimensions)
-            </td>
-            <td>::</td>
-            <td><strong>dimension_order</strong></td>
-            <td>
-<p>Dimension order</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_workspace~6"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_vectors)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_workspace</strong></td>
-            <td>
-<p>Workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_value_buffer~6"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_vectors)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_value_buffer</strong></td>
-            <td>
-<p>Value buffer</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_permutation~6"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_vectors)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_permutation</strong></td>
-            <td>
-<p>Permutation array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_recursion_stack~4"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(3, n_vectors)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_recursion_stack</strong></td>
-            <td>
-<p>Stack for recursive calls</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~151"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-get_kd_point"></span> <h3>public pure subroutine <a href='../proc/get_kd_point.html'>get_kd_point</a>(points, kd_indices, position, point_values, ierr)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Retrieves the coordinate vector of the point stored at a given position of a built k-d
-index, i.e. <code>point_values = points(:, kd_indices(position))</code>.</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-points~7"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(:, :)
-            </td>
-            <td>::</td>
-            <td><strong>points</strong></td>
-            <td>
-<p>Input points</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-kd_indices~7"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>kd_indices</strong></td>
-            <td>
-<p>KD index array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-position~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>position</strong></td>
-            <td>
-<p>Position in index</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-point_values"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>point_values</strong></td>
-            <td>
-<p>Output point values</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~152"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
+<p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -1471,7 +807,7 @@ index, i.e. <code>point_values = points(:, kd_indices(position))</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

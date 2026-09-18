@@ -85,12 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">22 statements</a>
+                 title=" 0.1% of total for procedures.">22 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -151,13 +150,14 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine compute_tissue_versatility(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, n_selected_vectors, axes_selection, n_selected_axes, tissue_versatilities, tissue_angles_deg, ierr)  
+    <h2>public pure subroutine compute_tissue_versatility(n_axes, n_vectors, expression_vectors, vectors_selection_mask, n_selected_vectors, axes_selection_mask, n_selected_axes, tissue_versatilities, tissue_angles_deg, ierr)  
 </h2>
     
 
-    <p>Computes normalized tissue versatility for selected expression vectors.
-The metric is based on the angle between each gene expression vector and the space diagonal.
+    <p>The metric is based on the angle between each gene expression vector and the space diagonal.
 Versatility is normalized to [0, 1], where 0 means uniform expression and 1 means expression in only one axis.</p>
+<p>The masks follow the <code>n_selected_</code> convention, so the generated wrapper validates that each
+selection count matches its mask; <code>n_selected_axes</code> (not an array extent) carries its own floor.</p>
 
 
     <h3>Arguments</h3>
@@ -173,7 +173,7 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~7"></span>
+              <span class="anchor" id="variable-n_axes~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -203,7 +203,7 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~11"></span>
+              <span class="anchor" id="variable-expression_vectors~12"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -218,22 +218,22 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-exp_vecs_selection_index"></span>
-              logical,
+              <span class="anchor" id="variable-vectors_selection_mask~2"></span>
+              logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
               dimension(n_vectors)
             </td>
             <td>::</td>
-            <td><strong>exp_vecs_selection_index</strong></td>
+            <td><strong>vectors_selection_mask</strong></td>
             <td>
                 <p>Logical array (n_vectors), .TRUE. for vectors to process</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_vectors"></span>
+              <span class="anchor" id="variable-n_selected_vectors~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -243,27 +243,27 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
             <td>::</td>
             <td><strong>n_selected_vectors</strong></td>
             <td>
-                <p>Number of selected expression vectors (count of .TRUE. in exp_vecs_selection_index)</p>
+                <p>Number of selected expression vectors (count of .TRUE. in vectors_selection_mask)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-axes_selection"></span>
-              logical,
+              <span class="anchor" id="variable-axes_selection_mask~4"></span>
+              logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
               dimension(n_axes)
             </td>
             <td>::</td>
-            <td><strong>axes_selection</strong></td>
+            <td><strong>axes_selection_mask</strong></td>
             <td>
                 <p>Logical array (n_axes), .TRUE. for axes to include in calculation</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_axes"></span>
+              <span class="anchor" id="variable-n_selected_axes~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -273,12 +273,13 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
             <td>::</td>
             <td><strong>n_selected_axes</strong></td>
             <td>
-                <p>Number of selected axes (count of .TRUE. in axes_selection)</p>
+                <p>Number of selected axes (count of .TRUE. in axes_selection_mask)
+The minimum valid value is <code>1_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tissue_versatilities"></span>
+              <span class="anchor" id="variable-tissue_versatilities~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -293,7 +294,7 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tissue_angles_deg"></span>
+              <span class="anchor" id="variable-tissue_angles_deg~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -308,7 +309,7 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~162"></span>
+              <span class="anchor" id="variable-ierr~98"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -318,7 +319,7 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -355,7 +356,7 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

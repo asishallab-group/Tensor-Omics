@@ -1,0 +1,1196 @@
+<!-- -*- mode: jinja2 -*- -->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="description" content="Documentation for TensorOmics">
+    <meta name="author" content="" >
+    <link rel="icon" href="../favicon.png">
+
+    <title>f42_stats &ndash; TensorOmics</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <!-- Font Awesome -->
+    <link href="../css/fontawesome.min.css" rel="stylesheet">
+    <link href="../css/brands.min.css" rel="stylesheet">
+    <link href="../css/regular.min.css" rel="stylesheet">
+    <link href="../css/solid.min.css" rel="stylesheet">
+    <link href="../css/v4-font-face.min.css" rel="stylesheet">
+    <link href="../css/v4-shims.min.css" rel="stylesheet">
+    <!-- MathJax -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        TeX: { equationNumbers: { autoNumber: "AMS" } }
+      });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@2.7.9/MathJax.js?config=TeX-AMS-MML_HTMLorMML" async
+            integrity="sha256-DViIOMYdwlM/axqoGDPeUyf0urLoHMN4QACBKyB58Uw=" crossorigin="anonymous"></script>
+    <!-- Other scripts and stylesheets -->
+    <link href="../css/local.css" rel="stylesheet">
+    <link href="../css/pygments.css" rel="stylesheet">
+    <script src="../js/svg-pan-zoom.min.js"></script>
+  </head>
+
+  <body>
+
+    <!-- Fixed navbar -->
+    <div class="container-fluid mb-sm-4 mb-xl-2">
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container">
+          <a class="navbar-brand" href="../index.html">TensorOmics </a>
+          <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar"
+                  aria-expanded="false" aria-controls="navbar" aria-label="Toggle navigation">
+                  <span class="navbar-toggler-icon">
+          </button>
+
+          <div id="navbar" class="navbar-collapse collapse">
+            <ul class="navbar-nav">
+                  <li class="nav-item">
+                    <a class="nav-link" href="../lists/files.html">Source Files</a>
+                  </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../lists/modules.html">Modules</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../lists/procedures.html">Procedures</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../lists/types.html">Derived Types</a>
+                </li>
+            </ul>
+              <div class="d-flex align-items-end flex-grow-1">
+                <form action="../search.html" role="search" class="ms-auto">
+                  <input type="text" class="form-control" aria-label="Search" placeholder="Search" name="q" id="tipue_search_input" autocomplete="off" required>
+                </form>
+              </div>
+          </div><!--/.nav-collapse -->
+        </div>
+      </nav>
+    </div>
+
+    <div class="container">
+  <div class="row">
+    <h1>f42_stats
+      <small>Module</small>
+      
+    </h1>
+      <div class="container p-2 mb-4 bg-light border rounded-3">
+    <div class="row align-items-center justify-content-between" id="info-bar">
+      <div class="col">
+        <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
+
+            <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
+              <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
+                 title=" 0.8% of total for modules and submodules.">155 statements</a>
+            </li>
+
+            <li class="list-inline-item" id="source-file">
+              <i class="fa fa-code"></i>
+              <a href="../src/f42_stats.F90"> Source File</a>
+            </li>
+        </ul>
+      </div>
+      <div class="col">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb justify-content-end mb-0">
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_stats.f90.html'>f42_stats.F90</a></li>
+            <li class="breadcrumb-item active" aria-current="page">f42_stats</li>
+          </ol>
+        </nav>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Enable Bootstrap tooltips
+    (function () {
+      const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+      const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+    })();
+  </script>
+
+  </div>
+
+  <div class="row">
+    <div class="col-md-3">
+        <div id="sidebar">
+      <h3>Contents</h3>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+      <div class="card mb-4">
+      <a data-bs-toggle="collapse" href="#subs-0"
+         aria-expanded="false" aria-controls="subs-0">
+         <h4 class="card-header bg-primary text-white">Subroutines</h4>
+      </a>
+      <div id="subs-0" class="collapse">
+        <div class="list-group list-group-flush">
+            <a class="list-group-item" href="../module/f42_stats.html#proc-loess_smooth_2d">loess_smooth_2d</a>
+            <a class="list-group-item" href="../module/f42_stats.html#proc-compute_edf">compute_edf</a>
+            <a class="list-group-item" href="../module/f42_stats.html#proc-compute_edf_expert">compute_edf_expert</a>
+            <a class="list-group-item" href="../module/f42_stats.html#proc-calc_percentile">calc_percentile</a>
+            <a class="list-group-item" href="../module/f42_stats.html#proc-calc_percentile_expert">calc_percentile_expert</a>
+            <a class="list-group-item" href="../module/f42_stats.html#proc-compute_scaled_distance_quantile">compute_scaled_distance_quantile</a>
+            <a class="list-group-item" href="../module/f42_stats.html#proc-compute_scaled_distance_quantile_expert">compute_scaled_distance_quantile_expert</a>
+        </div>
+      </div>
+    </div>
+
+  
+  
+  
+  
+  
+  
+  
+
+
+  </div>
+
+    </div>
+
+    <div class="col-md-9" id='text'>
+      <p>Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.</p>
+<p>One of the modules the <code>f42_utils</code> family gathers.</p>
+<p>Generated from <a href="../module/f42_stats_impl.html">f42_stats_impl</a>; do not edit -- regenerate instead.</p>
+<br>          <div class="card mb-4">
+      <h3 class="card-header card-title bg-light">Uses</h3>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item">
+              <ul class="list-inline">
+                  <li class="list-inline-item"><a href='f42_stats_impl.html'>f42_stats_impl</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='f42_sort_impl.html'>f42_sort_impl</a></li>
+              </ul>
+            </li>
+        </ul>
+      </div>
+    </div>
+
+      
+      <br>
+
+
+
+
+
+
+
+
+        <section>
+          <h2>Subroutines</h2>
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-loess_smooth_2d"></span> <h3>public pure subroutine <a href='../proc/loess_smooth_2d.html'>loess_smooth_2d</a>(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, kernel_sigma, kernel_cutoff, y_out, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/loess_smooth_2d_impl.html">loess_smooth_2d_impl</a>.</p><a href="../proc/loess_smooth_2d.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_total~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_total</strong></td>
+            <td>
+<p>Total number of reference points.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_target~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_target</strong></td>
+            <td>
+<p>Number of target points to smooth.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-x_ref~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_total)
+            </td>
+            <td>::</td>
+            <td><strong>x_ref</strong></td>
+            <td>
+<p>Reference x-coordinates.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-y_ref~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_total)
+            </td>
+            <td>::</td>
+            <td><strong>y_ref</strong></td>
+            <td>
+<p>Reference y-coordinates (length n_total).</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-indices_used~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_used)
+            </td>
+            <td>::</td>
+            <td><strong>indices_used</strong></td>
+            <td>
+<p>Indices of reference points used for smoothing (only valid indices).
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_total</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_used~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_used</strong></td>
+            <td>
+<p>Number of indices actually used for smoothing.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-x_query~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_target)
+            </td>
+            <td>::</td>
+            <td><strong>x_query</strong></td>
+            <td>
+<p>Target x-coordinates to smooth.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kernel_sigma~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>kernel_sigma</strong></td>
+            <td>
+<p>Bandwidth parameter for the kernel.
+The minimum valid value is <code>0.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-kernel_cutoff~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>kernel_cutoff</strong></td>
+            <td>
+<p>Cutoff for the kernel, not used if zero
+The minimum valid value is <code>0.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-y_out~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_target)
+            </td>
+            <td>::</td>
+            <td><strong>y_out</strong></td>
+            <td>
+<p>Output smoothed values (length n_target).</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~272"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_edf"></span> <h3>public pure subroutine <a href='../proc/compute_edf.html'>compute_edf</a>(values, n_values, unique_values, cdf_values, n_unique, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, prepares what <a href="../proc/compute_edf_impl.html">compute_edf_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/compute_edf_expert.html">compute_edf_expert</a> to prepare it yourself.</p><a href="../proc/compute_edf.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-values~11"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_values)
+            </td>
+            <td>::</td>
+            <td><strong>values</strong></td>
+            <td>
+<p>Array of observed data values (e.g., contributions or spikes).</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_values~9"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_values</strong></td>
+            <td>
+<p>Number of values in the input array.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-unique_values~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_values)
+            </td>
+            <td>::</td>
+            <td><strong>unique_values</strong></td>
+            <td>
+<p>Sorted unique data values.
+The first <code>n_unique</code> elements will hold the results.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-cdf_values~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_values)
+            </td>
+            <td>::</td>
+            <td><strong>cdf_values</strong></td>
+            <td>
+<p>Corresponding cumulative frequencies between 0 and 1.
+The first <code>n_unique</code> elements will hold the results.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_unique~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_unique</strong></td>
+            <td>
+<p>Number of unique values found (actual size of output arrays)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~273"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_edf_expert"></span> <h3>public pure subroutine <a href='../proc/compute_edf_expert.html'>compute_edf_expert</a>(values, n_values, values_perm, unique_values, cdf_values, n_unique, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/compute_edf_impl.html">compute_edf_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/compute_edf.html">compute_edf</a> does both.</p><a href="../proc/compute_edf_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-values~12"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_values)
+            </td>
+            <td>::</td>
+            <td><strong>values</strong></td>
+            <td>
+<p>Array of observed data values (e.g., contributions or spikes).</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_values~10"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_values</strong></td>
+            <td>
+<p>Number of values in the input array.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-values_perm~6"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_values)
+            </td>
+            <td>::</td>
+            <td><strong>values_perm</strong></td>
+            <td>
+<p>Permutation of <code>values</code> in ascending order. The allocating entry point builds
+and heapsorts it for you; the expert one takes whatever order you supply.
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_values</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-unique_values~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_values)
+            </td>
+            <td>::</td>
+            <td><strong>unique_values</strong></td>
+            <td>
+<p>Sorted unique data values.
+The first <code>n_unique</code> elements will hold the results.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-cdf_values~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_values)
+            </td>
+            <td>::</td>
+            <td><strong>cdf_values</strong></td>
+            <td>
+<p>Corresponding cumulative frequencies between 0 and 1.
+The first <code>n_unique</code> elements will hold the results.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_unique~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_unique</strong></td>
+            <td>
+<p>Number of unique values found (actual size of output arrays)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~274"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-calc_percentile"></span> <h3>public pure subroutine <a href='../proc/calc_percentile.html'>calc_percentile</a>(array, n_array, percentile, value, n_considered, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, prepares what <a href="../proc/calc_percentile_impl.html">calc_percentile_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/calc_percentile_expert.html">calc_percentile_expert</a> to prepare it yourself.</p><a href="../proc/calc_percentile.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-array~21"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_array)
+            </td>
+            <td>::</td>
+            <td><strong>array</strong></td>
+            <td>
+<p>input array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_array~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_array</strong></td>
+            <td>
+<p>number of elements in <code>array</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-percentile~7"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>percentile</strong></td>
+            <td>
+<p>desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
+The minimum valid value is <code>0.0_real64</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-value~9"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>value</strong></td>
+            <td>
+<p>output percentile value</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_considered~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_considered</strong></td>
+            <td>
+<p>How many leading entries of <code>array_perm</code> the percentile is taken over, for a
+percentile of a subset -- the trailing entries are ignored rather than sliced
+off, so the permutation stays the shape the sort produced. Zero, the default,
+considers all <code>n_array</code> of them.
+The default value is <code>0_int32</code>.
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>n_array</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~275"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-calc_percentile_expert"></span> <h3>public pure subroutine <a href='../proc/calc_percentile_expert.html'>calc_percentile_expert</a>(array, n_array, array_perm, percentile, value, n_considered, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/calc_percentile_impl.html">calc_percentile_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/calc_percentile.html">calc_percentile</a> does both.</p><a href="../proc/calc_percentile_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-array~22"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_array)
+            </td>
+            <td>::</td>
+            <td><strong>array</strong></td>
+            <td>
+<p>input array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_array~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_array</strong></td>
+            <td>
+<p>number of elements in <code>array</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-array_perm~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_array)
+            </td>
+            <td>::</td>
+            <td><strong>array_perm</strong></td>
+            <td>
+<p>Permutation of <code>array</code> in ascending order. The allocating entry point builds and
+heapsorts it for you; the expert one takes whatever order you supply.
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_array</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-percentile~8"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>percentile</strong></td>
+            <td>
+<p>desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
+The minimum valid value is <code>0.0_real64</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-value~10"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>value</strong></td>
+            <td>
+<p>output percentile value</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_considered~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_considered</strong></td>
+            <td>
+<p>How many leading entries of <code>array_perm</code> the percentile is taken over, for a
+percentile of a subset -- the trailing entries are ignored rather than sliced
+off, so the permutation stays the shape the sort produced. Zero, the default,
+considers all <code>n_array</code> of them.
+The default value is <code>0_int32</code>.
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>n_array</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~276"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_scaled_distance_quantile"></span> <h3>public pure subroutine <a href='../proc/compute_scaled_distance_quantile.html'>compute_scaled_distance_quantile</a>(n_genes, rdi, sorted_rdi, quantile, c_const, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, prepares what <a href="../proc/compute_scaled_distance_quantile_impl.html">compute_scaled_distance_quantile_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/compute_scaled_distance_quantile_expert.html">compute_scaled_distance_quantile_expert</a> to prepare it yourself.</p><a href="../proc/compute_scaled_distance_quantile.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~63"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>Number of genes being processed.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-rdi~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>rdi</strong></td>
+            <td>
+<p>empirical distribution D
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-sorted_rdi~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>sorted_rdi</strong></td>
+            <td>
+<p>empirical distribution D with non negative values
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-quantile~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>quantile</strong></td>
+            <td>
+<p>Output array to store the computed quantile for each gene.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-c_const~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>c_const</strong></td>
+            <td>
+<p>Constant used in the computation, typically 1</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~277"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_scaled_distance_quantile_expert"></span> <h3>public pure subroutine <a href='../proc/compute_scaled_distance_quantile_expert.html'>compute_scaled_distance_quantile_expert</a>(n_genes, rdi, sorted_rdi, sorted_rdi_perm, quantile, c_const, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/compute_scaled_distance_quantile_impl.html">compute_scaled_distance_quantile_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/compute_scaled_distance_quantile.html">compute_scaled_distance_quantile</a> does both.</p><a href="../proc/compute_scaled_distance_quantile_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~64"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>Number of genes being processed.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-rdi~7"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>rdi</strong></td>
+            <td>
+<p>empirical distribution D
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-sorted_rdi~7"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>sorted_rdi</strong></td>
+            <td>
+<p>empirical distribution D with non negative values
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-sorted_rdi_perm~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>sorted_rdi_perm</strong></td>
+            <td>
+<p>Permutation of <code>sorted_rdi</code> in ascending order. The allocating entry point builds
+and heapsorts it for you; the expert one takes whatever order you supply.
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_genes</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-quantile~7"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>quantile</strong></td>
+            <td>
+<p>Output array to store the computed quantile for each gene.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-c_const~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>c_const</strong></td>
+            <td>
+<p>Constant used in the computation, typically 1</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~278"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+        </section>
+        <br>
+
+
+
+    </div>
+  </div>
+
+      <hr>
+    </div> <!-- /container -->
+    <footer>
+      <div class="container">
+        <div class="row justify-content-between">
+          <div class="col">
+            <p>
+              TensorOmics
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
+</p>
+          </div>
+          <div class="col">
+            <p class="text-end">
+              Documentation generated by
+              <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
+ on 2026-09-14 09:28 +0000             </p>
+          </div>
+        </div>
+        <br>
+      </div> <!-- /container -->
+    </footer>
+  </body>
+</html>

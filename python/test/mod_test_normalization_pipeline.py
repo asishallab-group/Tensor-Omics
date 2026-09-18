@@ -1,5 +1,5 @@
 """
-Test suite for tox_normalization_pipeline (Python)
+Test suite for normalization_pipeline (Python)
 Mirrors R/Fortran tests: basic, edge case, pipeline vs manual
 """
 import numpy as np
@@ -8,8 +8,9 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from tensoromics_functions import tox_normalization_pipeline, tox_normalize_by_std_dev, tox_quantile_normalization, tox_calculate_tissue_averages, tox_log2_transformation
-from test_helpers import run_all_tests
+from tensor_omics import normalization_pipeline, normalize_by_std_dev, quantile_normalization, calc_tiss_avg, log2_transformation
+from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_INVALID_INPUT
 
 
 def test_basic():
@@ -20,7 +21,7 @@ def test_basic():
             input_matrix[j, i] = (i + 1) * 2.0 + (j + 1) * 0.5
     group_s = np.array([1,4], dtype=np.int32)
     group_c = np.array([3,3], dtype=np.int32)
-    result = tox_normalization_pipeline(input_matrix, group_c, span=0.75, degree=2, use_quantile=1)
+    result = normalization_pipeline(input_matrix, group_c, span=0.75, degree=2, use_quantile=1)
     assert np.all(~np.isnan(result)), "NaN in output"
     assert np.all(result >= 0), "Negative values in output"
     assert result.shape == (n_grps, n_genes), f"Output shape mismatch: {result.shape}"
@@ -28,14 +29,12 @@ def test_basic():
 
 def test_edge_case():
     n_genes, n_tissues, n_grps = 10, 6, 2
-    input_matrix = np.zeros((n_genes, n_tissues), dtype=np.float64)
+    # (n_tissues, n_genes), as the working cases above build it -- the other way round the
+    # call dies on the shape and never reaches the zero-variance path this case is about
+    input_matrix = np.zeros((n_tissues, n_genes), dtype=np.float64, order="F")
     group_s = np.array([1,4], dtype=np.int32)
     group_c = np.array([3,3], dtype=np.int32)
-    try:
-        tox_normalization_pipeline(input_matrix, group_c, span=0.75, degree=2, use_quantile=1)
-        assert False, "Expected error for zero-variance input"
-    except Exception as err:
-        pass
+    assert_error(lambda: normalization_pipeline(input_matrix, group_c, span=0.75, degree=2, use_quantile=1), "Expected error for zero-variance input", ERR_INVALID_INPUT)
 
 
 def test_pipeline_vs_manual():
@@ -57,25 +56,26 @@ def test_pipeline_vs_manual():
     degree = 2
 
     # Test WITH quantile normalization
-    result_pipeline_quantile = tox_normalization_pipeline(
+    result_pipeline_quantile = normalization_pipeline(
         input_matrix.copy(), group_c, span=span, degree=degree, use_quantile=1
     )
 
     # Manual with quantile: std_dev → quantile → avg → log2
-    temp1 = tox_normalize_by_std_dev(input_matrix.copy(), span=span, degree=degree)
-    temp2 = tox_quantile_normalization(temp1)
-    temp3 = tox_calculate_tissue_averages(temp2, group_c)
-    result_manual_quantile = tox_log2_transformation(temp3)
+    temp1 = normalize_by_std_dev(input_matrix.copy(), span=span, degree=degree)
+    # quantile_normalization returns the rank means alongside the matrix
+    temp2 = quantile_normalization(temp1)["normalized_expr"]
+    temp3 = calc_tiss_avg(group_c, temp2)
+    result_manual_quantile = log2_transformation(temp3)
 
     # Test WITHOUT quantile normalization
-    result_pipeline_no_quantile = tox_normalization_pipeline(
+    result_pipeline_no_quantile = normalization_pipeline(
         input_matrix.copy(), group_c, span=span, degree=degree, use_quantile=0
     )
 
     # Manual without quantile: std_dev → avg → log2
-    temp1_no_q = tox_normalize_by_std_dev(input_matrix.copy(), span=span, degree=degree)
-    temp2_no_q = tox_calculate_tissue_averages(temp1_no_q, group_c)
-    result_manual_no_quantile = tox_log2_transformation(temp2_no_q)
+    temp1_no_q = normalize_by_std_dev(input_matrix.copy(), span=span, degree=degree)
+    temp2_no_q = calc_tiss_avg(group_c, temp1_no_q)
+    result_manual_no_quantile = log2_transformation(temp2_no_q)
 
     # Verify shapes
     assert result_pipeline_quantile.shape == (n_grps, n_genes), 1

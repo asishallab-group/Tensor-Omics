@@ -2,13 +2,58 @@ import numpy as np
 import sys
 import os
 
-# Add parent directory to path to import tensoromics_functions
+# Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensoromics_functions import (tox_serialize_char_nd, tox_serialize_int_nd, tox_serialize_real_nd,
-                                   tox_deserialize_char_nd, tox_deserialize_int_nd, tox_deserialize_real_nd,
-                                   tox_serialize_logical_nd, tox_serialize_complex_nd,
-                                   tox_deserialize_logical_nd, tox_deserialize_complex_nd)
+from tensor_omics import (serialize_char_helper, serialize_int_helper, serialize_real_helper,
+                          serialize_logical_helper, serialize_complex_helper,
+                          deserialize_char_helper, deserialize_int_helper, deserialize_real_helper,
+                          deserialize_logical_helper, deserialize_complex_helper)
 from test_helpers import run_all_tests
+
+# The generated deserialize helpers read the file's own shape (via get_array_metadata, wired
+# up as a DM_OUTPUT_FROM producer) and hand back an array already in that shape. So there is
+# nothing left to do here: serialize takes the shape off the array, deserialize needs only
+# the filename. The `_nd` names are kept so the tests below read as before.
+
+
+def tox_serialize_int_nd(array, filename):
+    serialize_int_helper(np.asfortranarray(array, dtype=np.int32), filename)
+
+
+def tox_deserialize_int_nd(filename):
+    return deserialize_int_helper(filename)
+
+
+def tox_serialize_real_nd(array, filename):
+    serialize_real_helper(np.asfortranarray(array, dtype=np.float64), filename)
+
+
+def tox_deserialize_real_nd(filename):
+    return deserialize_real_helper(filename)
+
+
+def tox_serialize_logical_nd(array, filename):
+    serialize_logical_helper(np.asfortranarray(array, dtype=np.bool_), filename)
+
+
+def tox_deserialize_logical_nd(filename):
+    return deserialize_logical_helper(filename)
+
+
+def tox_serialize_complex_nd(array, filename):
+    serialize_complex_helper(np.asfortranarray(array, dtype=np.complex128), filename)
+
+
+def tox_deserialize_complex_nd(filename):
+    return deserialize_complex_helper(filename)
+
+
+def tox_serialize_char_nd(array, filename):
+    serialize_char_helper(np.asfortranarray(array), filename)
+
+
+def tox_deserialize_char_nd(filename):
+    return deserialize_char_helper(filename)
 
 
 # Tests for integer

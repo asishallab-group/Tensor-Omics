@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.2% of total for modules and submodules.">101 statements</a>
+                 title=" 0.6% of total for modules and submodules.">117 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -123,19 +123,7 @@
         <div id="sidebar">
       <h3>Contents</h3>
   
-      <div class="card mb-4">
-      <a data-bs-toggle="collapse" href="#vars-0"
-         aria-expanded="false" aria-controls="vars-0">
-         <h4 class="card-header bg-primary text-white">Variables</h4>
-      </a>
-      <div id="vars-0" class="collapse">
-        <div class="list-group list-group-flush">
-            <a class="list-group-item" href="../module/tox_gene_centroids.html#variable-mode_group_orthologs">MODE_GROUP_ORTHOLOGS</a>
-            <a class="list-group-item" href="../module/tox_gene_centroids.html#variable-mode_group_all">MODE_GROUP_ALL</a>
-        </div>
-      </div>
-    </div>
-
+  
   
   
   
@@ -154,9 +142,10 @@
       <div id="subs-0" class="collapse">
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../module/tox_gene_centroids.html#proc-mean_vector">mean_vector</a>
-            <a class="list-group-item" href="../module/tox_gene_centroids.html#proc-mean_vector_helper">mean_vector_helper</a>
-            <a class="list-group-item" href="../module/tox_gene_centroids.html#proc-group_centroid">group_centroid</a>
-            <a class="list-group-item" href="../module/tox_gene_centroids.html#proc-group_centroid_helper">group_centroid_helper</a>
+            <a class="list-group-item" href="../module/tox_gene_centroids.html#proc-group_centroid_orthologs">group_centroid_orthologs</a>
+            <a class="list-group-item" href="../module/tox_gene_centroids.html#proc-group_centroid_orthologs_expert">group_centroid_orthologs_expert</a>
+            <a class="list-group-item" href="../module/tox_gene_centroids.html#proc-group_centroid_all">group_centroid_all</a>
+            <a class="list-group-item" href="../module/tox_gene_centroids.html#proc-group_centroid_all_expert">group_centroid_all_expert</a>
         </div>
       </div>
     </div>
@@ -175,19 +164,23 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      <p>Module for computing expression centroids of gene families.</p>
-<p>This module contains the core scientific kernel. The C and R interface
-wrappers are defined outside the module for compatibility.</p>
+      <p>Expression centroids of gene families.</p>
+<p><code>mean_vector</code> is the centroid of a set of expression vectors. <code>group_centroid_orthologs</code>
+and <code>group_centroid_all</code> take the centroid of a family: over its orthologs only, or over
+every gene in it -- two routines rather than one taking a flag, so which set a result is
+over is visible at the call site.</p>
+<p>Generated from <a href="../module/tox_gene_centroids_impl.html">tox_gene_centroids_impl</a>; do not edit -- regenerate instead.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='f42_utils.html'>f42_utils</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='tox_gene_centroids_impl.html'>tox_gene_centroids_impl</a></li>
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
               </ul>
             </li>
         </ul>
@@ -198,57 +191,6 @@ wrappers are defined outside the module for compatibility.</p>
       <br>
 
 
-        <section>
-          <h2>Variables</h2>
-            <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Visibility</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-<th></th><th scope="col">Initial</th>        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-mode_group_orthologs"></span>
-              integer(kind=int32),
-            </td>
-              <td>public,</td>
-            <td>
-parameter               
-            </td>
-            <td>::</td>
-            <td><strong>MODE_GROUP_ORTHOLOGS</strong></td>
-<td> =</td>
-                <td>0_int32</td>
-            <td>
-                <p>Mode code for grouping by orthologs in <a href="../proc/group_centroid.html">group_centroid</a></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-mode_group_all"></span>
-              integer(kind=int32),
-            </td>
-              <td>public,</td>
-            <td>
-parameter               
-            </td>
-            <td>::</td>
-            <td><strong>MODE_GROUP_ALL</strong></td>
-<td> =</td>
-                <td>1_int32</td>
-            <td>
-                <p>Mode code for taking all genes as a group in <a href="../proc/group_centroid.html">group_centroid</a></p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-        </section>
-        <br>
 
 
 
@@ -261,265 +203,8 @@ parameter
     <div class="card-header codesum"><span class="anchor" id="proc-mean_vector"></span> <h3>public pure subroutine <a href='../proc/mean_vector.html'>mean_vector</a>(expression_vectors, n_axes, n_genes, gene_indices, n_selected_genes, centroid, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/studfaensen" target="_blank" >Luka Faensen</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Computes the element-wise mean for a given set of vectors.</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-expression_vectors"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_axes, n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>expression_vectors</strong></td>
-            <td>
-<p>The input matrix of all gene expression vectors (n_axes x n_genes).</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_axes"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_axes</strong></td>
-            <td>
-<p>Number of axes (tissues/dimensions).</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_genes~7"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_genes</strong></td>
-            <td>
-<p>Total number of genes in the input matrix.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-gene_indices"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_selected_genes)
-            </td>
-            <td>::</td>
-            <td><strong>gene_indices</strong></td>
-            <td>
-<p>An array containing the column indices of the selected genes in 'expression_vectors'.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_selected_genes"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_selected_genes</strong></td>
-            <td>
-<p>The number of genes in the current family to be averaged.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-centroid"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_axes)
-            </td>
-            <td>::</td>
-            <td><strong>centroid</strong></td>
-            <td>
-<p>The output vector representing the computed centroid.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~82"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-mean_vector_helper"></span> <h3>public pure subroutine <a href='../proc/mean_vector_helper.html'>mean_vector_helper</a>(expression_vectors, n_axes, n_genes, gene_indices, n_selected_genes, centroid)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/studfaensen" target="_blank" >Luka Faensen</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Computes the element-wise mean for a given set of vectors.</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-expression_vectors~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_axes, n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>expression_vectors</strong></td>
-            <td>
-<p>The input matrix of all gene expression vectors (n_axes x n_genes).</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_axes~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_axes</strong></td>
-            <td>
-<p>Number of axes (tissues/dimensions).</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_genes~8"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_genes</strong></td>
-            <td>
-<p>Total number of genes in the input matrix.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-gene_indices~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_selected_genes)
-            </td>
-            <td>::</td>
-            <td><strong>gene_indices</strong></td>
-            <td>
-<p>An array containing the column indices of the selected genes in 'expression_vectors'.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_selected_genes~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_selected_genes</strong></td>
-            <td>
-<p>The number of genes in the current family to be averaged.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-centroid~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_axes)
-            </td>
-            <td>::</td>
-            <td><strong>centroid</strong></td>
-            <td>
-<p>The output vector representing the computed centroid.</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-group_centroid"></span> <h3>public pure subroutine <a href='../proc/group_centroid.html'>group_centroid</a>(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, mode, tmp_group_indices, ierr, ortholog_set)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/studfaensen" target="_blank" >Luka Faensen</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Iterates over families, filters gene indices, and computes centroids.</p>
+          
+  <p>Validates its inputs, then calls <a href="../proc/mean_vector_impl.html">mean_vector_impl</a>.</p><a href="../proc/mean_vector.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -549,7 +234,452 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~3"></span>
+              <span class="anchor" id="variable-n_axes~7"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_axes</strong></td>
+            <td>
+<p>Number of axes (tissues/dimensions).</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~6"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>Total number of genes in the input matrix.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_indices"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_selected_genes)
+            </td>
+            <td>::</td>
+            <td><strong>gene_indices</strong></td>
+            <td>
+<p>An array containing the column indices of the selected genes in 'expression_vectors'.
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_genes</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_selected_genes"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_selected_genes</strong></td>
+            <td>
+<p>The number of genes in the current family to be averaged.
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>n_genes</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-centroid"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_axes)
+            </td>
+            <td>::</td>
+            <td><strong>centroid</strong></td>
+            <td>
+<p>The output vector representing the computed centroid.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~32"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-group_centroid_orthologs"></span> <h3>public pure subroutine <a href='../proc/group_centroid_orthologs.html'>group_centroid_orthologs</a>(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, ortholog_set, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, prepares what <a href="../proc/group_centroid_impl.html">group_centroid_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/group_centroid_orthologs_expert.html">group_centroid_orthologs_expert</a> to prepare it yourself.</p><a href="../proc/group_centroid_orthologs.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expression_vectors~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_axes, n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>expression_vectors</strong></td>
+            <td>
+<p>The input matrix of all gene expression vectors (n_axes x n_genes).</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_axes~8"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_axes</strong></td>
+            <td>
+<p>Number of axes (tissues/dimensions).</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~7"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>Total number of genes in the 'expression_vectors' matrix.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_family"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_family</strong></td>
+            <td>
+<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>expression_vectors</code>, using <code>0_int32</code> for unassigned genes
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_families</code>.
+The value <code>0_int32</code> is additionally accepted.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_families~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_families</strong></td>
+            <td>
+<p>Total number of gene families to compute centroids for.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-centroid_matrix"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_axes, n_families)
+            </td>
+            <td>::</td>
+            <td><strong>centroid_matrix</strong></td>
+            <td>
+<p>The output matrix (n_axes x n_families) to store the computed centroids.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ortholog_set"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>ortholog_set</strong></td>
+            <td>
+<p>A logical array indicating if a gene is part of a specific subset (e.g., orthologs).</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~33"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-group_centroid_orthologs_expert"></span> <h3>public pure subroutine <a href='../proc/group_centroid_orthologs_expert.html'>group_centroid_orthologs_expert</a>(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, tmp_group_indices, ortholog_set, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/group_centroid_impl.html">group_centroid_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/group_centroid_orthologs.html">group_centroid_orthologs</a> does both.</p><a href="../proc/group_centroid_orthologs_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expression_vectors~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_axes, n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>expression_vectors</strong></td>
+            <td>
+<p>The input matrix of all gene expression vectors (n_axes x n_genes).</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_axes~9"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_axes</strong></td>
+            <td>
+<p>Number of axes (tissues/dimensions).</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~8"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>Total number of genes in the 'expression_vectors' matrix.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_family~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_family</strong></td>
+            <td>
+<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>expression_vectors</code>, using <code>0_int32</code> for unassigned genes
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_families</code>.
+The value <code>0_int32</code> is additionally accepted.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_families~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_families</strong></td>
+            <td>
+<p>Total number of gene families to compute centroids for.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-centroid_matrix~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_axes, n_families)
+            </td>
+            <td>::</td>
+            <td><strong>centroid_matrix</strong></td>
+            <td>
+<p>The output matrix (n_axes x n_families) to store the computed centroids.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_group_indices~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_group_indices</strong></td>
+            <td>
+<p>Work array for storing the indices of one family's genes.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ortholog_set~2"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>ortholog_set</strong></td>
+            <td>
+<p>A logical array indicating if a gene is part of a specific subset (e.g., orthologs).</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~34"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-group_centroid_all"></span> <h3>public pure subroutine <a href='../proc/group_centroid_all.html'>group_centroid_all</a>(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, prepares what <a href="../proc/group_centroid_impl.html">group_centroid_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/group_centroid_all_expert.html">group_centroid_all_expert</a> to prepare it yourself.</p><a href="../proc/group_centroid_all.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expression_vectors~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_axes, n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>expression_vectors</strong></td>
+            <td>
+<p>The input matrix of all gene expression vectors (n_axes x n_genes).</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_axes~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -589,12 +719,15 @@ parameter
             <td>::</td>
             <td><strong>gene_to_family</strong></td>
             <td>
-<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>expression_vectors</code>, using <code>0_int32</code> for unassigned genes</p>
+<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>expression_vectors</code>, using <code>0_int32</code> for unassigned genes
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_families</code>.
+The value <code>0_int32</code> is additionally accepted.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families"></span>
+              <span class="anchor" id="variable-n_families~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -609,7 +742,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroid_matrix"></span>
+              <span class="anchor" id="variable-centroid_matrix~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -624,37 +757,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>mode</strong></td>
-            <td>
-<p>used mode for grouping</p><a href="../proc/group_centroid.html#variable-mode" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_group_indices"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_group_indices</strong></td>
-            <td>
-<p>An output array for storing indices.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~83"></span>
+              <span class="anchor" id="variable-ierr~35"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -664,22 +767,7 @@ parameter
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>Error code</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ortholog_set"></span>
-              logical,
-            </td>
-<td>intent(in),</td>
-              <td>optional,</td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>ortholog_set</strong></td>
-            <td>
-<p>A logical array indicating if a gene is part of a specific subset (e.g., orthologs).</p>
+<p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -690,15 +778,11 @@ parameter
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-group_centroid_helper"></span> <h3>public pure subroutine <a href='../proc/group_centroid_helper.html'>group_centroid_helper</a>(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, mode, tmp_group_indices, ortholog_set)  
+    <div class="card-header codesum"><span class="anchor" id="proc-group_centroid_all_expert"></span> <h3>public pure subroutine <a href='../proc/group_centroid_all_expert.html'>group_centroid_all_expert</a>(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, tmp_group_indices, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/studfaensen" target="_blank" >Luka Faensen</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Iterates over families, filters gene indices, and computes centroids.</p>
+          
+  <p>Validates its inputs, then calls <a href="../proc/group_centroid_impl.html">group_centroid_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/group_centroid_all.html">group_centroid_all</a> does both.</p><a href="../proc/group_centroid_all_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -713,7 +797,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~4"></span>
+              <span class="anchor" id="variable-expression_vectors~7"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -728,7 +812,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~4"></span>
+              <span class="anchor" id="variable-n_axes~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -768,12 +852,15 @@ parameter
             <td>::</td>
             <td><strong>gene_to_family</strong></td>
             <td>
-<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>expression_vectors</code>, using <code>0_int32</code> for unassigned genes</p>
+<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>expression_vectors</code>, using <code>0_int32</code> for unassigned genes
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_families</code>.
+The value <code>0_int32</code> is additionally accepted.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~2"></span>
+              <span class="anchor" id="variable-n_families~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -788,7 +875,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroid_matrix~2"></span>
+              <span class="anchor" id="variable-centroid_matrix~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -803,22 +890,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>mode</strong></td>
-            <td>
-<p>used mode for grouping</p><a href="../proc/group_centroid_helper.html#variable-mode~2" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_group_indices~2"></span>
+              <span class="anchor" id="variable-tmp_group_indices~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -828,22 +900,22 @@ parameter
             <td>::</td>
             <td><strong>tmp_group_indices</strong></td>
             <td>
-<p>An output array for storing indices.</p>
+<p>Work array for storing the indices of one family's genes.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ortholog_set~2"></span>
-              logical,
+              <span class="anchor" id="variable-ierr~36"></span>
+              integer(kind=int32),
             </td>
-<td>intent(in),</td>
-              <td>optional,</td>            <td>
-              dimension(n_genes)
+<td>intent(out)</td>
+              <td></td>            <td>
+              
             </td>
             <td>::</td>
-            <td><strong>ortholog_set</strong></td>
+            <td><strong>ierr</strong></td>
             <td>
-<p>A logical array indicating if a gene is part of a specific subset (e.g., orthologs).</p>
+<p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -876,7 +948,7 @@ parameter
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

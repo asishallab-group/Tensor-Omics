@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">45 statements</a>
+                 title=" 0.3% of total for procedures.">50 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_euclidean_distance.F90"> Source File</a>
+              <a href="../src/tox_euclidean_distance_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_euclidean_distance.f90.html'>tox_euclidean_distance.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_euclidean_distance_c.f90.html'>tox_euclidean_distance_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_euclidean_distance_c.html'>tox_euclidean_distance_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">distance_to_centroid_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine distance_to_centroid_c(n_genes, n_families, genes, centroids, gene_to_fam, distances, n_elements, ierr) bind(C, name="distance_to_centroid_c")  
+    <h2>public  subroutine distance_to_centroid_c(n_genes, n_families, genes, centroids, gene_to_fam, distances, n_tissues, ierr) bind(C, name="distance_to_centroid_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -158,8 +159,6 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='../module/tox_euclidean_distance.html'>tox_euclidean_distance</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -167,8 +166,7 @@
     </div>
 
 
-    <p>C wrapper for distance_to_centroid.
-Exposes distance_to_centroid to C via iso_c_binding types.</p>
+    <p>For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.</p>
 
 
     <h3>Arguments</h3>
@@ -184,7 +182,7 @@ Exposes distance_to_centroid to C via iso_c_binding types.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~37"></span>
+              <span class="anchor" id="variable-n_genes~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -199,7 +197,7 @@ Exposes distance_to_centroid to C via iso_c_binding types.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~15"></span>
+              <span class="anchor" id="variable-n_families~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -214,37 +212,37 @@ Exposes distance_to_centroid to C via iso_c_binding types.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~4"></span>
+              <span class="anchor" id="variable-genes~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_elements, n_genes), target
+              dimension(n_tissues, n_genes), target
             </td>
             <td>::</td>
             <td><strong>genes</strong></td>
             <td>
-                <p>Gene expression matrix (n_elements × n_genes), column-major</p>
+                <p>Gene expression matrix (n_tissues × n_genes), column-major</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroids~3"></span>
+              <span class="anchor" id="variable-centroids~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_elements, n_families), target
+              dimension(n_tissues, n_families), target
             </td>
             <td>::</td>
             <td><strong>centroids</strong></td>
             <td>
-                <p>Family centroid matrix (n_elements × n_families), column-major</p>
+                <p>Family centroid matrix (n_tissues × n_families), column-major, <code>-1.0_real64</code> for unassigned genes</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~17"></span>
+              <span class="anchor" id="variable-gene_to_fam~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -254,12 +252,15 @@ Exposes distance_to_centroid to C via iso_c_binding types.</p>
             <td>::</td>
             <td><strong>gene_to_fam</strong></td>
             <td>
-                <p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>genes</code>, using <code>0_int32</code> for unassigned genes</p>
+                <p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>genes</code>, using <code>0_int32</code> for unassigned genes
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_families</code>.
+The value <code>0_int32</code> is additionally accepted.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~12"></span>
+              <span class="anchor" id="variable-distances~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -274,7 +275,7 @@ Exposes distance_to_centroid to C via iso_c_binding types.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_elements~15"></span>
+              <span class="anchor" id="variable-n_tissues~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -282,14 +283,14 @@ Exposes distance_to_centroid to C via iso_c_binding types.</p>
               target
             </td>
             <td>::</td>
-            <td><strong>n_elements</strong></td>
+            <td><strong>n_tissues</strong></td>
             <td>
                 <p>Expression vector dimension</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~182"></span>
+              <span class="anchor" id="variable-ierr~17"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -299,7 +300,7 @@ Exposes distance_to_centroid to C via iso_c_binding types.</p>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -336,7 +337,7 @@ Exposes distance_to_centroid to C via iso_c_binding types.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

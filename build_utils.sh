@@ -15,6 +15,20 @@ else
   DIRECTIVES="-DNO_COLORS"
 fi
 
+# The build scripts depend on bash, the compilers and fpm -- nothing else: no awk, sed, grep, cut,
+# sort or hashing tool, because not every machine a contributor builds on has them all (macOS has
+# no sha256sum, BSD xargs no -d). These are the few text operations the scripts need, in bash.
+
+# The first line of $1 (instead of `head -1`).
+function first_line() {
+  printf '%s' "${1%%$'\n'*}"
+}
+
+# Whether the file $2 exists and its contents match the extended regex $1 (instead of `grep -q`).
+function file_matches() {
+  [[ -f "$2" && "$(<"$2")" =~ $1 ]]
+}
+
 function init() {
   handle_args "$@"
   # --compiler beats global $TOX_COMPILER beats global $FC
@@ -25,11 +39,108 @@ function init() {
     exit 1
   fi
   get_flags_and_features
+  get_c_flags
+}
+
+# Flags for the C sources (the R .Call shims in src/generated/bindings/r). fpm's --flag is Fortran
+# only, so C needs its own. The shims are guarded by NO_R_BINDING / NO_C_BINDING, so when
+# either is set they compile to empty objects that need no R headers; otherwise they need R's
+# include path. If the R layer is wanted but R is not installed, drop it with a warning.
+function get_c_flags() {
+  # C_ONLY_FLAGS is what the C sources get and the Fortran ones do not. $DIRECTIVES goes to
+  # both, and fpm keys its build directories by the Fortran flags, so a directive never needs
+  # a clean build. A C-only flag does: the library sits in the Fortran-keyed directory, so
+  # switching one back reuses the objects without relinking -- check_build_state hashes these.
+  # That is also why the R fallback adds NO_R_BINDING to $DIRECTIVES, not to the C flags alone.
+  C_ONLY_FLAGS="-fPIC"
+  if [[ "$DIRECTIVES" == *NO_R_BINDING* || "$DIRECTIVES" == *NO_C_BINDING* ]]; then
+    :
+  elif [[ -z $(command -v R) ]]; then
+    warning "'$(echo_compiler R)' not found -- building without the R binding.
+Install R to include it, or pass '$COLOR_LIGHT_GRAY--directive=NO_R_BINDING$COLOR_CREAM' to silence this."
+    DIRECTIVES="$DIRECTIVES -DNO_R_BINDING"
+  else
+    C_ONLY_FLAGS="$C_ONLY_FLAGS $(R CMD config --cppflags)"
+  fi
+  C_FLAGS="$C_ONLY_FLAGS $DIRECTIVES"
+}
+
+# fpm decides what to recompile from each source's own content, and keys its build directories
+# by the compiler's name and the Fortran flags. Whatever else changes what the library should
+# contain is invisible to it, so it is recorded here and answered with a clean build:
+#   - the hand-written headers: fpm never hashes what a source #includes (fortran-lang/fpm#358).
+#     tox_marshal.h is not among them -- the generator stamps its hash into every shim instead.
+#   - fpm.toml and the link flags: a changed link library alone does not relink the library.
+#   - the C-only flags: see get_c_flags.
+#   - the Fortran compiler's version: an upgrade keeps the name, and the old .mod files with it.
+# This replaces the clean build on every branch switch, which was a stand-in for the same
+# thing, and it also catches these changes when no branch changed -- a pull, a stash pop, an
+# edit to macros.h.
+#
+# The inputs themselves are stored, not a hash of them: bash has no hashing, and the file then
+# shows what the last build saw. One file per compiler, as a clean build deletes only that
+# compiler's directories.
+function build_state() {
+  (  # a subshell, so the glob options set here stay here
+    shopt -s globstar nullglob
+    LC_ALL=C  # glob order independent of the locale
+    printf '%s\n' "$(first_line "$("$COMPILER" --version 2>/dev/null)")"
+    printf '%s\n' "C_ONLY_FLAGS=$C_ONLY_FLAGS" "LINK_FLAGS=$LINK_FLAGS"
+    printf '%s\n' "--- fpm.toml" "$(<fpm.toml)"
+    for header in *.h src/**/*.h; do
+      [[ "$header" == src/generated/* ]] && continue
+      printf '%s\n' "--- $header" "$(<"$header")"
+    done
+  )
+}
+
+function check_build_state() {
+  declare state_file="build/.${COMPILER}.buildstate" state
+  state=$(build_state)
+  if [[ ! -f "$state_file" || "$(<"$state_file")" != "$state" ]]; then
+    TOX_CLEAN_BUILD=1
+    # the markers of the two schemes this replaced: hash-named build states, and branch names
+    rm -f "build/.${COMPILER}."*.buildstate "build/.${COMPILER}."*.branch build/.branch
+    printf '%s\n' "$state" > "$state_file"
+  fi
+}
+
+# Regenerates the bindings and the generated Fortran wrappers from `src/` before compiling, so a
+# source change and its generated layers can never drift apart in a build. Everything under
+# `src/generated` is committed as well, so a machine without the generator's dependencies still
+# builds -- it just builds what is in the tree, which is what the warning below says.
+# `--skip-code-generation` skips the stage outright.
+function generate_code() {
+  if [[ "$TOX_SKIP_CODE_GENERATION" ]]; then
+    return
+  fi
+
+  declare python=$(command -v python3 || command -v python)
+  declare hint="pass '$COLOR_LIGHT_GRAY--skip-code-generation$COLOR_CREAM' to silence this."
+  if [[ -z "$python" ]]; then
+    warning "'$(echo_compiler python3)' not found -- building the generated sources as they stand in the tree.
+Install Python to regenerate them, or $hint"
+    return
+  fi
+  if ! "$python" -c "import ford" >/dev/null 2>&1; then
+    warning "'$(echo_compiler ford)' not found -- building the generated sources as they stand in the tree.
+Run '$COLOR_LIGHT_GRAY${python##*/} -m pip install ford$COLOR_CREAM' to regenerate them, or $hint"
+    return
+  fi
+
+  cecho "${COLOR_CREAM}Generating the bindings from $(echo_compiler src/)"
+  "$python" helper/generate_code.py
+  check_exit_code "Code generation failed"
 }
 
 function utils_fpm() {
   cecho "${COLOR_CREAM}Using compiler: $(echo_compiler $COMPILER)"
-  declare -a prefix=(fpm build)
+  # --tests: fpm rebuilds a target's dependents only within the run that rebuilds the target,
+  # and records nothing for the next run. A plain `fpm build` leaves the tests out of the model,
+  # so a changed module (a parameter value, an interface) recompiled the library but left the
+  # test objects compiled against the old .mod -- and the `fpm test` that followed found both
+  # up to date. Building them here puts them in the same run, and only the stale ones rebuild.
+  declare -a prefix=(fpm build --tests)
   declare libpath="$LD_LIBRARY_PATH"
   if [[ "$1" == "test" ]]; then
     prefix=(fpm test --target "${2:-run_tests}")
@@ -40,7 +151,7 @@ function utils_fpm() {
   elif [[ "$1" == "list" ]]; then
     prefix=(fpm build --list)
   fi
-  LD_LIBRARY_PATH="$libpath" "${prefix[@]}" --features "$FEATURES" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --link-flag "-Lexternal" --flag "-I." -- $ARGS
+  LD_LIBRARY_PATH="$libpath" "${prefix[@]}" --features "$FEATURES" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --c-flag "$C_FLAGS" --link-flag "$LINK_FLAGS" -- $ARGS
   exit_code=$?
   rm -f build/cache.toml  # can cause issues (when switching branches and external libs are missing), but doesn't affect compilation when missing
   (exit $exit_code)
@@ -85,6 +196,15 @@ Use '$COLOR_LIGHT_GRAY--override-flags$COLOR_CREAM' to define additional compile
 }
 
 function get_flags_and_features() {
+  # -Lexternal is where build.sh puts the loess archives it builds, so no override removes it
+  LINK_FLAGS="-Lexternal"
+  if [[ "$TOX_OVERRIDE_LINK_FLAGS" ]]; then
+    # The compiler's own feature -- what get_compiler put in $FEATURES -- carries nothing but
+    # its link libraries, so replacing those means leaving it out. They cannot be passed via
+    # --override-flags instead: fpm never hands --flag to the link of the shared library.
+    FEATURES=
+    LINK_FLAGS="$LINK_FLAGS $TOX_OVERRIDE_LINK_FLAGS"
+  fi
   if [[ "$TOX_OVERRIDE_FLAGS" ]]; then
     FLAGS="$TOX_OVERRIDE_FLAGS"
     FEATURES=
@@ -93,7 +213,7 @@ function get_flags_and_features() {
 
   if [[ $TOX_MAX_PERFORMANCE ]]; then
     FEATURES="$FEATURES,optimization"
-    FLAGS="-DMAX_PERFORMANCE -O3"
+    FLAGS="-O3"
     if [[ $TOX_DEBUG ]]; then
       declare ans=y
       if [[ -z $TOX_YES ]]; then
@@ -108,13 +228,17 @@ function get_flags_and_features() {
         exit 1
       fi
     fi
-  elif [[ $TOX_DIAGNOSTICS || $TOX_DEBUG ]]; then
+  else
+    # Stated for the default build too: once `--features` is passed, fpm adds none of its own
+    # profile flags, so the level used to be whatever each compiler assumes without one --
+    # -O0 for gfortran, -O2 for ifx -- and the two default builds were quietly different.
     FLAGS="-O0"
   fi
   if [[ $TOX_DIAGNOSTICS || $TOX_DEBUG ]]; then
     FEATURES="$FEATURES,diagnostics"
   fi
   FEATURES="$FEATURES,default"
+  FEATURES="${FEATURES#,}"  # the compiler's feature is absent under --override-link-flags
 }
 
 function handle_args() {
@@ -143,7 +267,6 @@ function handle_args() {
 
       if [[ "$varname" == "TOX_DIRECTIVE" ]]; then
         DIRECTIVES="$DIRECTIVES -D${val}"
-        TOX_CLEAN_BUILD=1
       else
         declare -g "${varname}=$val"
       fi
@@ -161,6 +284,34 @@ function find_and_mv_libs() {
       cp "${lib}" "$2" 2>/dev/null
     fi
   done <<< "$1"
+}
+
+# fpm links a library only in a run that recompiles one of its objects, and records nothing for
+# the next run. A run that compiles changed library sources and then fails before the link -- a
+# test that does not compile stops it a level short -- leaves the library older than its own
+# objects, and every later run finds them up to date: "Project is up to date", and the tests and
+# the bindings keep loading the old code. The build state cannot see this (no input changed); the
+# clean builds on branch switches used to wipe it away by accident. So a library older than any
+# object `fpm build --list` names for it ($1) is removed here, before the build, and fpm links it
+# again -- which also repairs a tree an earlier run left behind.
+function remove_stale_libraries() {
+  declare line library newest_object=""
+  declare -a libraries=()
+  while IFS= read -r line; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    if [[ $line == *.so || $line == *.a ]]; then
+      libraries+=("$line")
+    elif [[ $line == *.o && -e $line && ( -z $newest_object || $line -nt $newest_object ) ]]; then
+      newest_object="$line"
+    fi
+  done <<< "$1"
+  [[ $newest_object ]] || return 0
+  for library in "${libraries[@]}"; do
+    if [[ -e $library && $newest_object -nt $library ]]; then
+      warning "'$library' is older than its object '$newest_object' -- an earlier build stopped before linking it. Relinking."
+      rm -f "$library"
+    fi
+  done
 }
 
 function echo_compiler() {

@@ -2,6 +2,7 @@
 module mod_test_tox_data
     use asserts
     use iso_fortran_env, only: real64, int32
+    use iso_c_binding, only: c_bool
     use tox_data_tools
     use tox_data_validation
     use tox_data_accessors
@@ -63,7 +64,7 @@ contains
     subroutine setup_global_data()
         character(len=256), allocatable :: expr_file(:)
         integer(int32) :: ierr, i, n_genes_kept
-        logical, allocatable :: ortholog_mask(:), unassigned_mask(:)
+        logical(c_bool), allocatable :: ortholog_mask(:), unassigned_mask(:)
         integer(int32), allocatable :: selected_indices(:), value_cols(:)
 
         ! Initialize file lists
@@ -89,7 +90,7 @@ contains
 
         ! Read gene IDs
         call read_gene_ids_from_tsv_file(expr_file(1), gene_ids, 1, 1, ierr)
-        call assert_equal_int(ierr, 0, "Reading gene IDs should succeed")
+        call assert_equal_int(get_err_code(ierr), 0, "Reading gene IDs should succeed")
 
         ! write(*,*) 'First 10 gene IDs:'
         ! do i = 1, min(10, n_genes)
@@ -103,7 +104,7 @@ contains
 
         ! Read family mapping
         call read_orthofinder_file('material/Orthogroups.tsv', gene_ids, gene_family_ids, gene_to_fam, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Reading family file should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Reading family file should succeed")
 
         ! Print first 10 family IDs
         ! write(*,*) 'First 10 family IDs:'
@@ -114,7 +115,7 @@ contains
         call get_unassigned_mask(gene_to_fam, unassigned_mask, n_genes_kept)
         call apply_unassigned_mask(gene_ids, kallisto_expr, gene_to_fam, unassigned_mask, n_genes_kept, ierr)
 
-        call assert_equal_int(ierr, ERR_OK, "Filtering unassigned genes should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Filtering unassigned genes should succeed")
         n_genes = n_genes_kept  ! Update n_genes to reflect the filtered count
 
         ! Compute centroids
@@ -131,15 +132,15 @@ contains
 
         ! write(*,*) 'Size of family_centroids: ', size(family_centroids, 1), size(family_centroids, 2)
 
-        call group_centroid(kallisto_expr, total_samples, n_genes, gene_to_fam, &
-                            n_families, family_centroids, MODE_GROUP_ALL, selected_indices, ierr, ortholog_mask)
-        call assert_equal_int(ierr, ERR_OK, "Computing centroids should succeed")
+        call group_centroid_all_expert(kallisto_expr, total_samples, n_genes, gene_to_fam, &
+                                n_families, family_centroids, selected_indices, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Computing centroids should succeed")
 
         ! Compute shift vectors
         allocate (shift_vectors(2*total_samples, n_genes))
         call compute_shift_vector_field(total_samples, n_genes, n_families, kallisto_expr, &
                                         family_centroids, gene_to_fam, shift_vectors, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Computing shift vectors should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Computing shift vectors should succeed")
 
         ! Clean up temporary arrays
         deallocate (ortholog_mask, selected_indices)
@@ -179,10 +180,10 @@ contains
         call assert_true(all(kallisto_expr >= 0.0_real64), "All expression values should be non-negative")
 
         call read_gene_ids_from_tsv_file('test/test_files/kallisto_dup_gene_ids.tsv', gene_ids_false_inputs, 1, 1, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Error while reading duplicate gene ids")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error while reading duplicate gene ids")
 
         call validate_string_array_uniqueness(gene_ids_false_inputs, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "Duplicate gene IDs should be detected")
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Duplicate gene IDs should be detected")
 
         inf_file = [ &
                    'test/test_files/kallisto_Inf.tsv']
@@ -206,31 +207,31 @@ contains
                    'test/test_files/kallisto_csv_values.csv']
 
         call read_expression_vectors_tsv(inf_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "Error while reading expression vectors, should get invalid input for Inf in expression data")
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Error while reading expression vectors, should get invalid input for Inf in expression data")
         call set_ok(ierr)
 
         call read_expression_vectors_tsv(nan_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "Error while reading expression vectors, should get invalid input for NaN in expression data")
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Error while reading expression vectors, should get invalid input for NaN in expression data")
         call set_ok(ierr)
 
         call read_expression_vectors_tsv(invalid_struct_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr)
-        call assert_equal_int(ierr, ERR_READ_DATA, "Should throw error for invalid structure")
+        call assert_equal_int(get_err_code(ierr), ERR_READ_DATA, "Should throw error for invalid structure")
         call set_ok(ierr)
 
         call read_expression_vectors_tsv(no_genes_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [1, 2, 3, 4, 5, 6], 1, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Should print warnings for missing genes")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Should print warnings for missing genes")
         call set_ok(ierr)
 
         call read_expression_vectors_tsv(empty_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [1, 2, 3, 4, 5, 6], 1, ierr)
-        call assert_equal_int(ierr, ERR_READ_DATA, "should throw error for empty file")
+        call assert_equal_int(get_err_code(ierr), ERR_READ_DATA, "should throw error for empty file")
         call set_ok(ierr)
 
         call read_expression_vectors_tsv(mixed_seperators, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "Should throw error for file with mixed seperators")
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Should throw error for file with mixed seperators")
         call set_ok(ierr)
 
         call read_expression_vectors_tsv(csv_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr, ',')
-        call assert_equal_int(ierr, ERR_OK, "Should read csv file without error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Should read csv file without error")
 
     end subroutine test_read_expression_data
 
@@ -248,20 +249,20 @@ contains
 
         call validate_data_structure(n_genes, n_families, total_samples, gene_ids, gene_family_ids, gene_to_fam, &
                                      kallisto_expr, family_centroids, shift_vectors, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Data structure could not be validated")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Data structure could not be validated")
 
         call validate_empty_strings(gene_ids, "Gene IDs", ierr)
-        call assert_equal_int(ierr, ERR_OK, "Gene IDs could not be validated - contains empty strings")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Gene IDs could not be validated - contains empty strings")
 
         call validate_empty_strings(gene_family_ids, "Family IDs", ierr)
-        call assert_equal_int(ierr, ERR_OK, "Family Ids contain empty entries")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Family Ids contain empty entries")
 
-        call validate_expression_data(kallisto_expr, .true., ierr)
-        call assert_equal_int(ierr, ERR_OK, "Expression data could not be validated")
+        call validate_expression_data(kallisto_expr, .true._c_bool, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Expression data could not be validated")
 
         call validate_all_data(n_genes, n_families, total_samples, gene_ids, gene_family_ids, &
-                               gene_to_fam, kallisto_expr, family_centroids, shift_vectors, ierr, .true., .true.)
-        call assert_equal_int(ierr, ERR_OK, "Data could not be validated")
+                               gene_to_fam, kallisto_expr, family_centroids, shift_vectors, ierr, .true._c_bool, .true._c_bool)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Data could not be validated")
     end subroutine test_validate_data
 
     !> Test centroid computation
@@ -308,10 +309,10 @@ contains
         integer(int32) :: total_elements
 
         call save_expression_vectors(kallisto_expr, "kallisto_data.test.bin", ierr)
-        call assert_equal_int(ierr, ERR_OK, "Saving expression data should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Saving expression data should succeed")
 
         call get_array_metadata("kallisto_data.test.bin", dims, 2, ndims, type_code, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Reading metadata should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Reading metadata should succeed")
         call assert_equal_int(type_code, REAL_TYPE_CODE, "Type code mismatch")
         call assert_equal_int(ndims, 2, "Array should have 2 dimensions")
         call assert_equal_int(dims(1), total_samples, "First dimension should match sample count")
@@ -319,7 +320,7 @@ contains
 
         allocate (kallisto_expr_verify(dims(1), dims(2)))
         call load_expression_vectors(kallisto_expr_verify, 'kallisto_data.test.bin', ierr)
-        call assert_equal_int(ierr, ERR_OK, "Loading expression data should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Loading expression data should succeed")
 
         ! Fixed call to match the assert_equal_array_real interface
         total_elements = size(kallisto_expr)
@@ -335,6 +336,7 @@ contains
     !> Test computation of shift vectors
     subroutine test_compute_shift_vectors()
         integer(int32) :: i
+        real(real64) :: expected_shift(total_samples)
 
         call assert_true(allocated(shift_vectors), "Shift vectors should be allocated")
         call assert_equal_int(size(shift_vectors, 1), 2*total_samples, "Shift vectors should have 2*d rows")
@@ -353,8 +355,9 @@ contains
         ! Verify shift vectors are correctly computed
         do i = 1, n_genes
             if (gene_to_fam(i) >= 1 .and. gene_to_fam(i) <= n_families) then
+                expected_shift = kallisto_expr(:, i) - family_centroids(:, gene_to_fam(i))
                 call assert_equal_array_real(shift_vectors(total_samples + 1:2*total_samples, i), &
-                                             kallisto_expr(:, i) - family_centroids(:, gene_to_fam(i)), &
+                                             expected_shift, &
                                              total_samples, 1e-12_real64, &
                                              "Shift vector should be expression minus centroid")
             end if
@@ -368,10 +371,10 @@ contains
         real(real64), allocatable :: shift_vectors_loaded(:, :)
 
         call save_expression_vectors(shift_vectors, 'shift_vectors.test.bin', ierr)
-        call assert_equal_int(ierr, ERR_OK, "Saving shift vectors should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Saving shift vectors should succeed")
 
         call get_array_metadata('shift_vectors.test.bin', dims, 2, ndims, type_code, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Reading metadata should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Reading metadata should succeed")
         call assert_equal_int(type_code, REAL_TYPE_CODE, "Type code mismatch")
         call assert_equal_int(ndims, 2, "Array should have 2 dimensions")
         call assert_equal_int(dims(1), 2*total_samples, "First dimension should match 2*d")
@@ -379,7 +382,7 @@ contains
 
         allocate (shift_vectors_loaded(dims(1), dims(2)))
         call load_expression_vectors(shift_vectors_loaded, 'shift_vectors.test.bin', ierr)
-        call assert_equal_int(ierr, ERR_OK, "Loading shift vectors should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Loading shift vectors should succeed")
 
         ! Verify loaded data matches original
         total_elements = size(shift_vectors)
@@ -396,16 +399,16 @@ contains
         integer(int32) :: ierr, ndims, dims(1), type_code
         character(len=256), allocatable :: loaded_gene_ids(:)
         call save_gene_ids(gene_ids, 'gene_ids.test.bin', ierr)
-        call assert_equal_int(ierr, ERR_OK, "Saving gene IDs should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Saving gene IDs should succeed")
 
         call get_array_metadata('gene_ids.test.bin', dims, 1, ndims, type_code, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Getting metadata should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Getting metadata should succeed")
         call assert_in_range_int(type_code, minval=0_int32, maxval=huge(1_int32), msg="Type code mismatch")
 
         call assert_equal_int(ndims, 1, "Gene IDs should be 1D array")
         allocate (loaded_gene_ids(dims(1)))
         call load_gene_ids(loaded_gene_ids, 'gene_ids.test.bin', ierr)
-        call assert_equal_int(ierr, ERR_OK, "Loading gene IDs should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Loading gene IDs should succeed")
 
         call assert_equal_array_char(loaded_gene_ids, gene_ids, 128, dims(1), &
                                      "Loaded gene IDs should match original")
@@ -415,14 +418,14 @@ contains
         integer(int32) :: ierr, ndims, dims(1), type_code
         integer(int32), allocatable :: loaded_gene_to_fam(:)
         call save_gene_to_family(gene_to_fam, 'gene_to_fam.test.bin', ierr)
-        call assert_equal_int(ierr, ERR_OK, "Saving gene to family mapping should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Saving gene to family mapping should succeed")
         call get_array_metadata('gene_to_fam.test.bin', dims, 1, ndims, type_code, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Getting metadata should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Getting metadata should succeed")
         call assert_equal_int(type_code, INTEGER_TYPE_CODE, "Type code mismatch")
         call assert_equal_int(ndims, 1, "Gene to family mapping should be 1D array")
         allocate (loaded_gene_to_fam(dims(1)))
         call load_gene_to_family(loaded_gene_to_fam, 'gene_to_fam.test.bin', ierr)
-        call assert_equal_int(ierr, ERR_OK, "Loading gene to family mapping should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Loading gene to family mapping should succeed")
         call assert_equal_array_int(loaded_gene_to_fam, gene_to_fam, dims(1), &
                                     "Loaded gene to family mapping should match original")
     end subroutine test_read_write_gene_to_fam
@@ -431,14 +434,14 @@ contains
         integer(int32) :: ierr, ndims, dims(1), type_code
         character(len=256), allocatable :: loaded_family_ids(:)
         call save_family_ids(gene_family_ids, 'family_ids.test.bin', ierr)
-        call assert_equal_int(ierr, ERR_OK, "Saving family IDs should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Saving family IDs should succeed")
         call get_array_metadata('family_ids.test.bin', dims, 1, ndims, type_code, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Getting metadata should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Getting metadata should succeed")
         call assert_in_range_int(type_code, minval=0_int32, maxval=huge(1_int32), msg="Type code mismatch")
         call assert_equal_int(ndims, 1, "Family IDs should be 1D array")
         allocate (loaded_family_ids(dims(1)))
         call load_family_ids(loaded_family_ids, 'family_ids.test.bin', ierr)
-        call assert_equal_int(ierr, ERR_OK, "Loading family IDs should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Loading family IDs should succeed")
         call assert_equal_array_char(loaded_family_ids, gene_family_ids, 128, dims(1), &
                                      "Loaded family IDs should match original")
     end subroutine test_read_write_family_ids
@@ -447,14 +450,14 @@ contains
         integer(int32) :: ierr, ndims, dims(2), type_code
         real(real64), allocatable :: loaded_centroids(:, :)
         call save_family_centroids(family_centroids, 'family_centroids.test.bin', ierr)
-        call assert_equal_int(ierr, ERR_OK, "Saving family centroids should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Saving family centroids should succeed")
         call get_array_metadata('family_centroids.test.bin', dims, 2, ndims, type_code, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Getting metadata should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Getting metadata should succeed")
         call assert_equal_int(type_code, REAL_TYPE_CODE, "Type code mismatch")
         call assert_equal_int(ndims, 2, "Family centroids should be 2D array")
         allocate (loaded_centroids(dims(1), dims(2)))
         call load_family_centroids(loaded_centroids, 'family_centroids.test.bin', ierr)
-        call assert_equal_int(ierr, ERR_OK, "Loading family centroids should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Loading family centroids should succeed")
         call assert_equal_array_real(loaded_centroids, &
                                      family_centroids, &
                                      size(family_centroids), 1e-12_real64, &
@@ -470,7 +473,7 @@ contains
         gene_idx = get_gene_index(gene_ids, 'NP_001000001.1')
         call assert_equal_int(gene_idx, 2, "Gene index for NP_001000001.1 should be 2")
         call get_family_for_gene_index(gene_idx, gene_to_fam, family_idx, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Getting family index should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Getting family index should succeed")
         call assert_equal_int(family_idx, 48, "Family index for gene index 2")
         call assert_string_equal(gene_family_ids(family_idx), 'OG0000047', &
                                  "Family ID for family index 48 should be OG0000047")
@@ -479,7 +482,7 @@ contains
         call assert_equal_int(family_idx, 2, "Family index for OG0000001 should be 2")
         call get_family_centroid(family_idx, family_centroids, returned_centroid, ierr)
 
-        call assert_equal_int(ierr, ERR_OK, "Getting family centroid should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Getting family centroid should succeed")
         call assert_equal_array_real(returned_centroid, family_centroids(:, family_idx), &
                                      size(family_centroids, 1), 1e-12_real64, &
                                      "Retrieved centroid should match original")
@@ -509,7 +512,7 @@ contains
                            family_centroids=family_centroids, family_centroids_file="family_centroids.test.bin", &
                            shift_vectors=shift_vectors, shift_vectors_file="shift_vectors.test.bin")
 
-        call assert_equal_int(ierr, ERR_OK, "Error saving archive")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error saving archive")
 
         call read_tox_data("archive_1_f.test.zip", ierr, &
                            gene_ids=gene_ids_verify, &
@@ -519,7 +522,7 @@ contains
                            family_centroids=family_centroids_verify, &
                            shift_vectors=shift_vectors_verify)
 
-        call assert_equal_int(ierr, ERR_OK, "Error reading archive")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error reading archive")
 
         call assert_true(allocated(gene_ids_verify), "gene_ids_verify should be allocated")
         call assert_equal_array_char(gene_ids, gene_ids_verify, 128, size(gene_ids), "Gene IDs should match")
@@ -553,13 +556,13 @@ contains
                            gene_ids=gene_ids, gene_ids_file="gene_ids_v2.test.bin", &
                            expression=kallisto_expr, expression_file="kallisto_v2.test.bin")
 
-        call assert_equal_int(ierr, ERR_OK, "Error saving archive")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error saving archive")
 
         call read_tox_data("archive_2_f.test.zip", ierr, &
                            gene_ids=gene_ids_verify, &
                            expression=kallisto_verify)
 
-        call assert_equal_int(ierr, ERR_OK, "Error reading archive")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error reading archive")
 
         ! Verify the data
         call assert_true(allocated(gene_ids_verify), "Gene IDs should be allocated")
@@ -575,7 +578,7 @@ contains
                            family_centroids=family_centroids_verify, &
                            shift_vectors=shift_vectors_verify)
 
-        call assert_equal_int(ierr, ERR_OK, "Error reading archive for missing arrays")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error reading archive for missing arrays")
 
         call assert_true(allocated(gene_ids_verify), "gene_ids_verify should be allocated")
         call assert_true(allocated(kallisto_verify), "kallisto_verify should be allocated")
@@ -598,13 +601,13 @@ contains
                            family_ids=gene_family_ids, family_ids_file="family_ids_v3.test.bin", &
                            family_centroids=family_centroids, family_centroids_file="family_centroids_v3.test.bin")
 
-        call assert_equal_int(ierr, ERR_OK, "Error saving archive")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error saving archive")
 
         call read_tox_data("archive_3_f.test.zip", ierr, &
                            family_ids=gene_family_ids_verify, &
                            family_centroids=family_centroids_verify)
 
-        call assert_equal_int(ierr, ERR_OK, "Error reading archive")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error reading archive")
 
         call assert_true(allocated(gene_family_ids_verify), "Family IDs should be allocated")
         call assert_equal_array_char(gene_family_ids, gene_family_ids_verify, 128, size(gene_family_ids), "Family IDs should match")
@@ -620,11 +623,11 @@ contains
         ! print *, "Test 4: Saving empty archive"
         call save_tox_data("archive_4_f.test.zip", ierr)
 
-        call assert_equal_int(ierr, ERR_OK, "Error saving empty archive")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error saving empty archive")
 
         call read_tox_data("archive_4_f.test.zip", ierr)
 
-        call assert_equal_int(ierr, ERR_READ_DATA, "Reading empty archive should throw error")
+        call assert_equal_int(get_err_code(ierr), ERR_READ_DATA, "Reading empty archive should throw error")
 
         ! print *, "Empty archive test passed"
 
@@ -806,19 +809,19 @@ contains
         print *, "Serializing arrays to files..."
 
         call serialize_int_1d(int_1d, "int_1d.test.bin", ierr)
-        call assert_equal_int(ierr, ERR_OK, "Error serializing int_1d")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error serializing int_1d")
 
         call serialize_int_2d(int_2d, "int_2d.test.bin", ierr)
-        call assert_equal_int(ierr, ERR_OK, "Error serializing int_2d")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error serializing int_2d")
 
         call serialize_real_1d(real_1d, "real_1d.test.bin", ierr)
-        call assert_equal_int(ierr, ERR_OK, "Error serializing real_1d")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error serializing real_1d")
 
         call serialize_real_2d(real_2d, "real_2d.test.bin", ierr)
-        call assert_equal_int(ierr, ERR_OK, "Error serializing real_2d")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error serializing real_2d")
 
         call serialize_char_1d(char_1d, "char_1d.test.bin", ierr)
-        call assert_equal_int(ierr, ERR_OK, "Error serializing char_1d")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error serializing char_1d")
 
         ! Set up keys and filenames for ZIP archive
         keys(1) = 'integer_1d'
@@ -839,7 +842,7 @@ contains
         ! Create ZIP archive
         print *, "Creating ZIP archive..."
         call create_zip_archive("archive_manual_1.test.zip", keys, filenames, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Error creating ZIP archive")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error creating ZIP archive")
 
         print *, "ZIP archive created successfully"
 
@@ -854,7 +857,7 @@ contains
         ! Extract ZIP archive
         print *, "Extracting ZIP archive..."
         call extract_zip_archive("archive_manual_1.test.zip", extracted_keys, extracted_filenames, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Error extracting ZIP archive")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error extracting ZIP archive")
 
         !print *, "ZIP archive extracted successfully"
 
@@ -869,40 +872,40 @@ contains
 
         ! Read and verify 1D integer array
         call get_array_metadata('int_1d.test.bin', dims, 1, ndims, type_code, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Error reading metadata for 1D integer array")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error reading metadata for 1D integer array")
         call assert_equal_int(type_code, INTEGER_TYPE_CODE, "Type code mismatch")
 
         allocate (read_int_1d(dims(1)))
         call deserialize_int_1d(read_int_1d, "int_1d.test.bin", ierr)
-        call assert_equal_int(ierr, ERR_OK, "Error reading 1D integer array")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error reading 1D integer array")
 
         ! Read and verify 2D integer array
         call get_array_metadata('int_2d.test.bin', dims, 2, ndims, type_code, ierr)
         allocate (read_int_2d(dims(1), dims(2)))
         call assert_equal_int(type_code, INTEGER_TYPE_CODE, "Type code mismatch")
         call deserialize_int_2d(read_int_2d, "int_2d.test.bin", ierr)
-        call assert_equal_int(ierr, ERR_OK, "Error reading 2D integer array")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error reading 2D integer array")
 
         ! Read and verify 1D real array
         call get_array_metadata('real_1d.test.bin', dims, 1, ndims, type_code, ierr)
         allocate (read_real_1d(dims(1)))
         call assert_equal_int(type_code, REAL_TYPE_CODE, "Type code mismatch")
         call deserialize_real_1d(read_real_1d, "real_1d.test.bin", ierr)
-        call assert_equal_int(ierr, ERR_OK, "Error reading 1D real array")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error reading 1D real array")
 
         ! Read and verify 2D real array
         call get_array_metadata('real_2d.test.bin', dims, 2, ndims, type_code, ierr)
         allocate (read_real_2d(dims(1), dims(2)))
         call assert_equal_int(type_code, REAL_TYPE_CODE, "Type code mismatch")
         call deserialize_real_2d(read_real_2d, "real_2d.test.bin", ierr)
-        call assert_equal_int(ierr, ERR_OK, "Error reading 2D real array")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error reading 2D real array")
 
         ! Read and verify 1D character array
         call get_array_metadata('char_1d.test.bin', dims, 1, ndims, type_code, ierr)
         call assert_equal_int(type_code, len(char_1d), "Type code mismatch")
         allocate (character(len=type_code) :: read_char_1d(dims(1)))
         call deserialize_char_1d(read_char_1d, "char_1d.test.bin", ierr)
-        call assert_equal_int(ierr, ERR_OK, "Error reading 1D character array")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Error reading 1D character array")
 
         ! Clean up extracted files
         ! call delete_file("test_inc
@@ -926,7 +929,7 @@ contains
         character(len=6), allocatable :: keys(:)
         integer(int32), allocatable :: values(:)
         integer(int32) :: value, i, ierr
-        logical :: in_hashset
+        logical(c_bool) :: in_hashset
 
         allocate (keys(5))
         allocate (values(5))
@@ -967,7 +970,7 @@ contains
         do i = 1, 5
             call hashset_put(test_hashset, keys(i), ierr)
         end do
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, 'Inserting duplicate key should return error')
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, 'Inserting duplicate key should return error')
         call set_ok(ierr)
 
         do i = 1, 5
@@ -991,7 +994,7 @@ contains
         test_gene_ids = ['NP_001000001.1', 'NP_001000002.1', 'NP_001000001.1']  ! Duplicate
 
         call validate_string_array_uniqueness(test_gene_ids, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "Should detect duplicate gene IDs")
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Should detect duplicate gene IDs")
 
         deallocate (test_gene_ids)
     end subroutine test_validate_duplicate_gene_ids
@@ -1013,8 +1016,8 @@ contains
         test_expr(2, 2) = ieee_value(1.0_real64, ieee_quiet_nan)
 
         ! Test the validation routine directly
-        call validate_expression_data(test_expr, .false., ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "Validation should detect computational NaN")
+        call validate_expression_data(test_expr, .false._c_bool, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Validation should detect computational NaN")
 
         deallocate (test_expr)
     end subroutine test_validate_nan_direct
@@ -1033,8 +1036,8 @@ contains
         ! Inject Inf directly
         test_expr(1, 3) = ieee_value(1.0_real64, ieee_positive_inf)
 
-        call validate_expression_data(test_expr, .false., ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "Validation should detect computational Inf")
+        call validate_expression_data(test_expr, .false._c_bool, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Validation should detect computational Inf")
 
         deallocate (test_expr)
     end subroutine test_validate_inf_direct
@@ -1047,8 +1050,8 @@ contains
         allocate (test_expr(2, 2))
         test_expr = reshape([1.0_real64, -2.0_real64, 3.0_real64, 4.0_real64], [2, 2])  ! Negative value
 
-        call validate_expression_data(test_expr, .true., ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "Should detect negative expression values")
+        call validate_expression_data(test_expr, .true._c_bool, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Should detect negative expression values")
 
         deallocate (test_expr)
     end subroutine test_validate_negative_expression
@@ -1063,7 +1066,7 @@ contains
         n_families = 3  ! Only families 1,2,3 exist
 
         call validate_gene_to_family_mapping(test_gene_to_fam, n_families, ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "Should detect invalid family indices")
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Should detect invalid family indices")
 
         deallocate (test_gene_to_fam)
     end subroutine test_validate_invalid_gene_to_fam
@@ -1077,7 +1080,7 @@ contains
         test_strings = ['NP_001000001.1', '              ', 'NP_001000003.1']  ! Empty string
 
         call validate_empty_strings(test_strings, "test_array", ierr)
-        call assert_equal_int(ierr, ERR_INVALID_INPUT, "Should detect empty strings")
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Should detect empty strings")
 
         deallocate (test_strings)
     end subroutine test_validate_empty_strings
@@ -1104,7 +1107,7 @@ contains
 
         call validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_family_ids, &
                                      gene_to_fam, expression_vectors, family_centroids, shift_vectors, ierr)
-        call assert_equal_int(ierr, ERR_SIZE_MISMATCH, "Should detect dimension mismatch")
+        call assert_equal_int(get_err_code(ierr), ERR_SIZE_MISMATCH, "Should detect dimension mismatch")
 
         deallocate (gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors)
     end subroutine test_validate_dimension_mismatch
