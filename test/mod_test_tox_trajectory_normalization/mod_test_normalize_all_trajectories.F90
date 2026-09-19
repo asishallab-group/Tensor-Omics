@@ -92,8 +92,8 @@ contains
         real(real64) :: trajectories_norm(n_factors, n_samples, n_timepoints), expected(n_factors, n_samples, n_timepoints)
         integer(int32) :: status(n_factors, n_samples), expected_status(n_factors, n_samples), ierr, i_sample
 
-        ! QUESTION: what a constant series should give is open (see
-        ! test_normalize_variable_timeseries_constant_series); today zeros and ERR_DIVISION_BY_ZERO.
+        ! A constant series is zeros with ERR_DIVISION_BY_ZERO in its status only (see
+        ! test_normalize_variable_timeseries_constant_series).
         ramp = [0.0_real64, 1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
         ramp_norm = [0.0_real64, 0.25_real64, 0.5_real64, 0.75_real64, 1.0_real64]
         trajectories = 7.0_real64
@@ -186,8 +186,8 @@ contains
         call assert_equal_array_real(one_sample_norm, one_sample_expected, 9, 0.0_real64, &
                                      "test_normalize_all_trajectories_single_of_each: n_samples = 1, trajectories_norm")
 
-        ! QUESTION: a single time point is a constant series; today zeros and ERR_DIVISION_BY_ZERO
-        ! in every status (see test_normalize_variable_timeseries_constant_series).
+        ! A single time point is a constant series: zeros and ERR_DIVISION_BY_ZERO in every
+        ! status (see test_normalize_variable_timeseries_constant_series).
         one_timepoint(:, :, 1) = series
         one_timepoint_expected = 0.0_real64
         one_timepoint_norm = UNWRITTEN

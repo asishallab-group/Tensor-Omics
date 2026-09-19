@@ -119,9 +119,9 @@ contains
         real(real64) :: v(n_points), v_norm(n_points), expected(n_points)
         integer(int32) :: status, ierr
 
-        ! QUESTION: the contract does not say what a constant series gives. Today it is all zeros,
-        ! with `status` = ERR_DIVISION_BY_ZERO and `ierr` = ERR_OK: a per-series warning, not an
-        ! error, and one that reaches neither `ierr` nor any caller that ignores `status`.
+        ! A constant series is all zeros, with `status` = ERR_DIVISION_BY_ZERO and `ierr` = ERR_OK:
+        ! a per-series warning, not an error, since a pipeline can reach it from valid input
+        ! (FES, 2026-09-19).
         expected = 0.0_real64
 
         v = 3.14_real64
@@ -160,10 +160,10 @@ contains
         real(real64) :: v(n_points), v_norm(n_points), expected(n_points)
         integer(int32) :: status, ierr
 
-        ! BUG: the constant test is `is_close(max - min, 0)`, whose absolute floor of 1e-12 calls
-        ! every range below 1e-12 constant, whatever the magnitude of the data: both series come
-        ! back as zeros with status ERR_DIVISION_BY_ZERO. (The old suite pinned those zeros for
-        ! [1, 2, 3]*tiny on purpose; the scale-free answer is [0, 0.5, 1], as for [1, 2, 3] itself.)
+        ! Regression: the constant test used to be `is_close(max - min, 0)`, whose absolute floor
+        ! of 1e-12 called every range below 1e-12 constant, whatever the magnitude of the data:
+        ! both series came back as zeros with status ERR_DIVISION_BY_ZERO. Only an exactly
+        ! constant series is one now (FES, 2026-09-19); [1, 2, 3]*tiny is [0, 0.5, 1].
         expected = [0.0_real64, 0.5_real64, 1.0_real64]
 
         v = [0.0_real64, scale(1.0_real64, -41), scale(1.0_real64, -40)]

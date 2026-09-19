@@ -83,7 +83,9 @@ def normalize_variable_timeseries(
             Normalized time series
             A result is a value; call `.copy()` to obtain a modifiable array.
         status : int
-            Status code for specific warnings
+            `ERR_DIVISION_BY_ZERO` when the series is constant, a single time point included: it
+            is then written as zeros. A warning for this series, not an error -- `ierr` stays OK,
+            as a pipeline can reach a constant series from valid input.
 
     Raises
     ------
@@ -148,7 +150,9 @@ def normalize_single_trajectory(
             Normalized trajectory for one sample
             A result is a value; call `.copy()` to obtain a modifiable array.
         status : np.ndarray[np.int32] of shape (n_factors,), read-only
-            Status code for specific warnings, one per factor
+            One status per factor, as
+            :func:`tensor_omics.normalize_variable_timeseries`
+            sets it
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -219,7 +223,9 @@ def normalize_all_trajectories(
             Normalized trajectories
             A result is a value; call `.copy()` to obtain a modifiable array.
         status : np.ndarray[np.int32] of shape (n_factors, n_samples,), column-major (order='F'), read-only
-            Status code for specific warnings, one per factor per sample
+            One status per factor and sample, as
+            :func:`tensor_omics.normalize_variable_timeseries`
+            sets it
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises

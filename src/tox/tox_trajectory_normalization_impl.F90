@@ -8,7 +8,6 @@
 module tox_trajectory_normalization_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO
-    use f42_math_impl, only: is_close
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     M_IMPLICIT_NONE
 
@@ -29,7 +28,9 @@ contains
         real(real64), intent(out) :: v_norm(n_points)
             !! Normalized time series
         integer(int32), intent(out) :: status
-            !! Status code for specific warnings
+            !! `ERR_DIVISION_BY_ZERO` when the series is constant, a single time point included: it
+            !! is then written as zeros. A warning for this series, not an error -- `ierr` stays OK,
+            !! as a pipeline can reach a constant series from valid input.
 
         real(real64) :: min_val, max_val, denominator
         integer(int32) :: i_point
@@ -40,8 +41,11 @@ contains
         max_val = maxval(v)
         denominator = max_val - min_val
 
-        ! Check for division by zero (min approximately equal to max)
-        if (is_close(denominator, 0.0_real64)) then
+        ! Only an exactly constant series has no range to scale by: any other, however narrow,
+        ! still spreads over [0, 1] -- a tolerance would call a series constant by its magnitude.
+        ! max - min is never negative, so `<=` is that exact test without comparing reals for
+        ! equality.
+        if (denominator <= 0.0_real64) then
             v_norm = 0.0_real64
             call set_err(status, ERR_DIVISION_BY_ZERO)
             return
@@ -75,7 +79,9 @@ contains
         real(real64), intent(out) :: trajectory_norm(n_timepoints, n_factors)
             !! Normalized trajectory for one sample
         integer(int32), dimension(n_factors), intent(out) :: status
-            !! Status code for specific warnings, one per factor
+            !! One status per factor, as
+            !! [[tox_trajectory_normalization_impl(module):normalize_variable_timeseries_impl(subroutine)]]
+            !! sets it
 
         integer(int32) :: i_factor
 
@@ -112,7 +118,9 @@ contains
         real(real64), intent(out) :: tmp_series_norm(n_timepoints)
             !! Work array: the normalized time series
         integer(int32), dimension(n_factors, n_samples), intent(out) :: status
-            !! Status code for specific warnings, one per factor per sample
+            !! One status per factor and sample, as
+            !! [[tox_trajectory_normalization_impl(module):normalize_variable_timeseries_impl(subroutine)]]
+            !! sets it
 
         integer(int32) :: i_sample, i_factor, i_timepoint
 

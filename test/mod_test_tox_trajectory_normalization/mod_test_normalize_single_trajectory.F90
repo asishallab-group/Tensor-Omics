@@ -106,8 +106,8 @@ contains
         real(real64) :: expected(n_timepoints, n_factors)
         integer(int32) :: status(n_factors), expected_status(n_factors), ierr
 
-        ! QUESTION: what a constant series should give is open (see
-        ! test_normalize_variable_timeseries_constant_series); today zeros and ERR_DIVISION_BY_ZERO.
+        ! A constant series is zeros with ERR_DIVISION_BY_ZERO in its status only (see
+        ! test_normalize_variable_timeseries_constant_series).
         trajectory(:, 1) = [9.0_real64, 1.0_real64, 17.0_real64, 5.0_real64, 13.0_real64]
         trajectory(:, 2) = 5.0_real64
         trajectory(:, 3) = [1.0_real64, 2.0_real64, 4.0_real64, 8.0_real64, 17.0_real64]
@@ -132,8 +132,8 @@ contains
         real(real64) :: expected(n_timepoints, n_factors)
         integer(int32) :: status(n_factors), expected_status(n_factors), ierr
 
-        ! QUESTION: as in test_normalize_single_trajectory_constant_factor, today zeros and
-        ! ERR_DIVISION_BY_ZERO for every factor.
+        ! As in test_normalize_single_trajectory_constant_factor: zeros and ERR_DIVISION_BY_ZERO
+        ! for every factor.
         trajectory(1, :) = [3.0_real64, -7.0_real64]
         expected = 0.0_real64
         expected_status = ERR_DIVISION_BY_ZERO
