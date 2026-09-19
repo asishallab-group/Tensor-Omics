@@ -60,7 +60,8 @@ contains
         real(real64), dimension(:), intent(in) :: vec
             !! Vector to compute the standard deviation value from
         logical(c_bool), intent(in), optional :: do_bessel_correction
-            !! Tells whether to apply the bessel's correction or not, default: `.false.`
+            !! Tells whether to apply the bessel's correction or not, default: `.false.`. A single
+            !! value has no spread, so its standard deviation is 0 in either mode.
             !!
             !! |    Case     |                                                Formula                                                      |
             !! |-------------|-------------------------------------------------------------------------------------------------------------|
@@ -76,6 +77,11 @@ contains
         mean_val = mean(vec)
         n_elements = size(vec, kind=int32)
         if (bessel) then
+            ! a single value has no spread: Bessel's n - 1 would divide 0 by 0
+            if (n_elements <= 1) then
+                std_dev = 0.0_real64
+                return
+            end if
             squares_sum = 0.0_real64
             do concurrent(i_element=1:n_elements) shared(vec, mean_val) reduce(+:squares_sum)
                 squares_sum = squares_sum + (vec(i_element) - mean_val)**2
