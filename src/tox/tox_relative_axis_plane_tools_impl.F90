@@ -4,7 +4,7 @@
 !| what can be read off a vector once it is projected onto one.
 !|
 !| A RAP is picked by selecting axes (tissues) from the full expression space.
-!| `vector_RAP_projection` projects a single vector onto it and `field_RAP_projection` a whole
+!| `omics_vector_RAP_projection` projects vectors onto it and `omics_field_RAP_projection` a whole
 !| field of them. Within the plane, `clock_hand_angle_between_vectors` measures the signed angle
 !| between two vectors -- signed by an orientation reference, so the sign means the same thing in
 !| every dimension -- and `clock_hand_angles_for_shift_vectors` does that for a whole shift
@@ -18,7 +18,7 @@ module tox_relative_axis_plane_tools_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: ERR_INVALID_INPUT, set_ok, is_err, set_err_once, ERR_DIVISION_BY_ZERO
-    use f42_math_impl, only: clamp, operator(.isclose.)
+    use f42_math_impl, only: EPS
     M_IMPLICIT_NONE
 
 contains
@@ -29,7 +29,7 @@ contains
         integer(int32), intent(in) :: n_axes
             !! number of axes
         integer(int32), intent(in) :: n_vecs
-            !! number of vectors per axis
+            !! number of vectors
         integer(int32), intent(in) :: n_selected_vecs
             !! count of `.true.` values in `vecs_selection_mask`
         integer(int32), intent(in) :: n_selected_axes
@@ -64,17 +64,20 @@ contains
         call project_selected_vecs_onto_rap_helper(projections, n_selected_axes, n_selected_vecs)
     end subroutine omics_vector_RAP_projection_impl
 
-    !> summary: Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.
+    !> summary: Project the shifts of selected vector fields onto the RAP constructed from a selected set of axes.
     !| AUTHOR_FRANZ_ERIC_SILL
     pure subroutine omics_field_RAP_projection_impl(fields, n_axes, n_fields, fields_selection_mask, n_selected_fields, axes_selection_mask, n_selected_axes, projections)
         integer(int32), intent(in) :: n_axes
             !! number of axes
         integer(int32), intent(in) :: n_fields
-            !! number of vectors per axis
+            !! number of fields
         real(real64), dimension(n_axes, 2, n_fields), intent(in) :: fields
-            !! matrix with vector fields; each field holds two vectors, the origin first and the target second
+            !! matrix with vector fields; each field holds two vectors, its origin first (e.g. a
+            !! family centroid) and the shift from it second (e.g. paralog minus centroid), as
+            !! [[tox_shift_vectors_impl(module):compute_shift_vector_field_impl(subroutine)]] stores
+            !! them. The shift is projected; the origin does not enter the projection.
         logical(c_bool), dimension(n_fields), intent(in) :: fields_selection_mask
-            !! `.true.` for vectors where projection is to be computed
+            !! `.true.` for fields where projection is to be computed
         integer(int32), intent(in) :: n_selected_fields
             !! count of `.true.` values in `fields_selection_mask`
         logical(c_bool), dimension(n_axes), intent(in) :: axes_selection_mask
@@ -92,8 +95,8 @@ contains
                 i_axis_proj = 1
                 do i_axis = 1, n_axes
                     if (axes_selection_mask(i_axis)) then
-                        ! compute shift vector as difference between origin and target
-                        projections(i_axis_proj, i_vec_proj) = fields(i_axis, 1, i_vec) - fields(i_axis, 2, i_vec)
+                        ! the field's second vector is the shift itself
+                        projections(i_axis_proj, i_vec_proj) = fields(i_axis, 2, i_vec)
 
                         i_axis_proj = i_axis_proj + 1
                     end if
@@ -112,7 +115,7 @@ contains
         integer(int32), intent(in) :: n_selected_axes
             !! number of selected axes
         integer(int32), intent(in) :: n_selected_vecs
-            !! number of selected vectors per axis
+            !! number of selected vectors
         real(real64), dimension(n_selected_axes, n_selected_vecs), intent(inout) :: selected_vecs
             !! matrix with vectors for selected axes
 
@@ -127,12 +130,14 @@ contains
         ! mean of v's coordinates ("diagonal_component") from each coordinate of v.
         do concurrent (i_vec = 1:n_selected_vecs) local(diagonal_component) shared(n_selected_axes, selected_vecs)
 
-            ! calculate diagonal component to be subtracted from vectors for projection
+            ! calculate diagonal component to be subtracted from vectors for projection. Each
+            ! coordinate is divided before it is added: a mean is never larger than its largest
+            ! value, but the sum can overflow where the mean does not.
             diagonal_component = 0.0_real64
-            do concurrent (i_axis = 1:n_selected_axes) shared(selected_vecs, i_vec) reduce(+:diagonal_component)
-                diagonal_component = diagonal_component + selected_vecs(i_axis, i_vec)
+            do concurrent (i_axis = 1:n_selected_axes) shared(selected_vecs, i_vec, n_selected_axes) &
+                reduce(+:diagonal_component)
+                diagonal_component = diagonal_component + selected_vecs(i_axis, i_vec)/real(n_selected_axes, real64)
             end do
-            diagonal_component = diagonal_component / n_selected_axes
 
             ! transform vector to its projection
             do concurrent (i_axis = 1:n_selected_axes) shared(selected_vecs, i_vec, diagonal_component)
@@ -142,109 +147,178 @@ contains
     end subroutine project_selected_vecs_onto_rap_helper
 
 
-    !> summary: Compute the signed clock hand angle between two RAP-projected and normalized vectors.
+    !> summary: Compute the signed clock hand angle between two RAP-projected vectors.
     !| AUTHOR_VIVIAN_BASS
-    !| The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying
+    !| The unsigned angle is the one between the two directions; their lengths do not matter, so
+    !| the vectors need not be normalized. `orientation_reference` supplies the sign by saying
     !| which way round the plane the two vectors span counts as positive. Reports
+    !| `ERR_DIVISION_BY_ZERO` when `v1` or `v2` is the zero vector, which has no direction, and
     !| `ERR_INVALID_INPUT` when the reference is orthogonal to the rotation and so orients nothing.
     pure subroutine clock_hand_angle_between_vectors_impl(v1, v2, n_dims, orientation_reference, &
                                                             signed_angle, ierr)
         integer(int32), intent(in) :: n_dims
             !! Dimension of both vectors
         real(real64), dimension(n_dims), intent(in) :: v1
-            !! First normalized vector in RAP space
+            !! First vector in RAP space, of any length but zero
         real(real64), dimension(n_dims), intent(in) :: v2
-            !! Second normalized vector in RAP space
+            !! Second vector in RAP space, of any length but zero
         real(real64), dimension(n_dims), intent(in) :: orientation_reference
             !! Orients the plane the rotation happens in, so the angle can carry a sign. A
             !! rotation from one vector to another has no inherent direction above two
             !! dimensions -- and in RAP space not even in two, since the axes are tissues or
             !! factors and carry no handedness -- so the caller states which way round counts
             !! as positive. The sign is that of this vector's component along the rotation.
+            !! For three selected tissues, `d x v1`, with `d` the space diagonal, reproduces the
+            !! determinant rule `sign(det[d, v1, v2])`; a fixed vector, such as the anchor axis
+            !! projected onto the RAP, gives every angle the same sense of clockwise.
         real(real64), intent(out) :: signed_angle
             !! Signed angle between vectors in radians [-pi, pi]
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        logical(c_bool) :: undefined_sign
+        logical(c_bool) :: zero_vector, undefined_sign
 
         call set_ok(ierr)
-        call clock_hand_angle_between_vectors_helper(v1, v2, n_dims, orientation_reference, &
-                                                     signed_angle, undefined_sign)
+        call clock_hand_angle_between_vectors_helper(v1, v2, n_dims, orientation_reference, .false._c_bool, &
+                                                     signed_angle, zero_vector, undefined_sign)
+        if (zero_vector) call set_err_once(ierr, ERR_DIVISION_BY_ZERO)
         ! not a bad argument on its own -- the reference only fails to orient *this* rotation,
         ! which no check on any single argument could have foreseen
         if (undefined_sign) call set_err_once(ierr, ERR_INVALID_INPUT)
     end subroutine clock_hand_angle_between_vectors_impl
 
     !> AUTHOR_VIVIAN_BASS
-    !| Compute the signed clock hand angle between two RAP-projected and normalized vectors.
+    !| Compute the signed clock hand angle between two RAP-projected vectors.
     !|
-    !| The unsigned angle is `acos(v1 . v2)`. The sign is the caller's convention: the rotation
-    !| from `v1` to `v2` sweeps through the plane the two span, and `orientation_reference` says
-    !| which way round that plane is positive. Concretely, the sign is that of
-    !| `orientation_reference . (v2 - (v1 . v2) v1)` -- the reference measured against the part
-    !| of `v2` perpendicular to `v1`, which is the direction the rotation actually moves in.
+    !| The unsigned angle is `atan2(|v1| |p|, v1 . v2)`, where `p = v2 - ((v1 . v2)/(v1 . v1)) v1`
+    !| is the part of `v2` perpendicular to `v1`: the arctangent of the angle's sine and cosine
+    !| parts, both scaled by the same lengths. Unlike `acos(v1 . v2)` for unit vectors, it needs
+    !| no normalized input and keeps its accuracy near 0 and PI, where acos loses half its digits.
+    !| The sign is the caller's convention: the rotation from `v1` to `v2` sweeps through the plane
+    !| the two span, and `orientation_reference` says which way round that plane is positive.
+    !| Concretely, the sign is that of `orientation_reference . p` -- the reference measured
+    !| against the direction the rotation actually moves in.
     !|
     !| In two dimensions this reduces to the familiar determinant when the reference is `v1`
     !| turned a quarter turn; there is simply no such canonical quarter turn in higher ones.
     !|
-    !| `undefined_sign` reports the one case with no answer: the reference is orthogonal to the
-    !| rotation, so it orients nothing. Parallel `v1`/`v2` are not that case -- the angle is
-    !| then 0 or pi and the sign does not matter, so the unsigned angle is returned as is.
+    !| `zero_vector` reports a zero `v1` or `v2`, which has no direction to turn from or to.
+    !| `undefined_sign` reports the one other case with no answer: the reference is orthogonal
+    !| to the rotation, so it orients nothing. Parallel `v1`/`v2` are not that case -- the angle
+    !| is then 0 or pi and the sign does not matter, so the unsigned angle is returned as is.
     !|
     !| Shared compute core: the single-vector angle, reused per field by
     !| [[tox_relative_axis_plane_tools_impl(module):clock_hand_angles_for_shift_vectors_impl(subroutine)]].
     pure subroutine clock_hand_angle_between_vectors_helper(v1, v2, n_dims, orientation_reference, &
-                                                            signed_angle, undefined_sign)
+                                                            second_is_shift, signed_angle, zero_vector, &
+                                                            undefined_sign)
         integer(int32), intent(in) :: n_dims
             !! Dimension of both vectors
         real(real64), dimension(n_dims), intent(in) :: v1
-            !! First normalized vector in RAP space
+            !! First vector in RAP space, of any length but zero
         real(real64), dimension(n_dims), intent(in) :: v2
-            !! Second normalized vector in RAP space
+            !! Second vector in RAP space, of any length but zero
         real(real64), dimension(n_dims), intent(in) :: orientation_reference
             !! Orients the plane the rotation happens in, so the angle can carry a sign. A
             !! rotation from one vector to another has no inherent direction above two
             !! dimensions -- and in RAP space not even in two, since the axes are tissues or
             !! factors and carry no handedness -- so the caller states which way round counts
             !! as positive. The sign is that of this vector's component along the rotation.
+            !! For three selected tissues, `d x v1`, with `d` the space diagonal, reproduces the
+            !! determinant rule `sign(det[d, v1, v2])`; a fixed vector, such as the anchor axis
+            !! projected onto the RAP, gives every angle the same sense of clockwise.
+        logical(c_bool), intent(in) :: second_is_shift
+            !! `.true.` when `v2` is a shift from `v1` rather than a vector of its own: the angle
+            !! then turns from `v1` to `v1 + v2`, which is formed element by element, not stored
         real(real64), intent(out) :: signed_angle
             !! Signed angle between vectors in radians [-pi, pi]
+        logical(c_bool), intent(out) :: zero_vector
+            !! `.true.` when `v1` or `v2` is the zero vector, so there is no angle
         logical(c_bool), intent(out) :: undefined_sign
             !! `.true.` when the reference orients nothing, so no sign could be given
 
-        real(real64) :: dot_product, unsigned_angle, along_rotation, perpendicular
-        integer(int32) :: i_dim
+        real(real64) :: largest_1, largest_2, largest_reference, dot_12, squared_1, squared_2
+        real(real64) :: squared_perpendicular, squared_reference, along_rotation, projection_factor
+        real(real64) :: perpendicular_component, unsigned_angle, rounding_level, shift_weight
+        integer(int32) :: i_dim, exponent_1, exponent_2, exponent_reference
 
+        signed_angle = 0.0_real64
+        zero_vector = .false.
         undefined_sign = .false.
+        ! the second vector is v2 + shift_weight*v1: v2 itself, or the point a shift v2 from v1
+        ! reaches. Adding 0*v1 to a finite v2 changes nothing, so both cases share one code path.
+        shift_weight = merge(1.0_real64, 0.0_real64, logical(second_is_shift))
 
-        dot_product = 0.0_real64
-        do concurrent (i_dim = 1:n_dims) shared(v1, v2) reduce(+:dot_product)
-            dot_product = dot_product + v1(i_dim)*v2(i_dim)
+        largest_1 = 0.0_real64
+        largest_2 = 0.0_real64
+        largest_reference = 0.0_real64
+        do concurrent (i_dim = 1:n_dims) shared(v1, v2, orientation_reference, shift_weight) &
+            reduce(max:largest_1, largest_2, largest_reference)
+            largest_1 = max(largest_1, abs(v1(i_dim)))
+            largest_2 = max(largest_2, abs(v2(i_dim) + shift_weight*v1(i_dim)))
+            largest_reference = max(largest_reference, abs(orientation_reference(i_dim)))
         end do
 
-        ! numerical slack can push a normalized dot product just outside the domain of acos
-        dot_product = clamp(dot_product, min_val=-1.0_real64, max_val=1.0_real64)
-        unsigned_angle = acos(dot_product)
+        ! Only an exactly zero vector is rejected: it alone has no direction, and any other,
+        ! however short, still has one -- a tolerance would reject valid vectors by their length.
+        ! A largest magnitude is never negative, so `<=` is that exact test without comparing
+        ! reals for equality.
+        if (largest_1 <= 0.0_real64 .or. largest_2 <= 0.0_real64) then
+            zero_vector = .true.
+            return
+        end if
+
+        ! The angle does not depend on the vectors' lengths, so each is scaled by a power of two
+        ! near its largest component. That is exact, and it keeps the products below from
+        ! overflowing or underflowing whatever the magnitudes. A zero reference stays zero.
+        exponent_1 = exponent(largest_1)
+        exponent_2 = exponent(largest_2)
+        exponent_reference = exponent(largest_reference)
+
+        dot_12 = 0.0_real64
+        squared_1 = 0.0_real64
+        squared_2 = 0.0_real64
+        do concurrent (i_dim = 1:n_dims) shared(v1, v2, exponent_1, exponent_2, shift_weight) &
+            reduce(+:dot_12, squared_1, squared_2)
+            dot_12 = dot_12 + scale(v1(i_dim), -exponent_1)*scale(v2(i_dim) + shift_weight*v1(i_dim), -exponent_2)
+            squared_1 = squared_1 + scale(v1(i_dim), -exponent_1)**2
+            squared_2 = squared_2 + scale(v2(i_dim) + shift_weight*v1(i_dim), -exponent_2)**2
+        end do
 
         ! the part of v2 perpendicular to v1 is the direction the rotation moves in; the
         ! reference's component along it is what gives the rotation a sign
+        projection_factor = dot_12/squared_1
+        squared_perpendicular = 0.0_real64
+        squared_reference = 0.0_real64
         along_rotation = 0.0_real64
-        perpendicular = 0.0_real64
-        do concurrent (i_dim = 1:n_dims) shared(v1, v2, orientation_reference, dot_product) &
-            reduce(+:along_rotation, perpendicular)
-            along_rotation = along_rotation &
-                             + orientation_reference(i_dim)*(v2(i_dim) - dot_product*v1(i_dim))
-            perpendicular = perpendicular + (v2(i_dim) - dot_product*v1(i_dim))**2
+        do concurrent (i_dim = 1:n_dims) local(perpendicular_component) &
+            shared(v1, v2, orientation_reference, exponent_1, exponent_2, exponent_reference, projection_factor, &
+                   shift_weight) &
+            reduce(+:squared_perpendicular, squared_reference, along_rotation)
+            perpendicular_component = scale(v2(i_dim) + shift_weight*v1(i_dim), -exponent_2) &
+                                      - projection_factor*scale(v1(i_dim), -exponent_1)
+            squared_perpendicular = squared_perpendicular + perpendicular_component**2
+            squared_reference = squared_reference + scale(orientation_reference(i_dim), -exponent_reference)**2
+            along_rotation = along_rotation + scale(orientation_reference(i_dim), -exponent_reference)*perpendicular_component
         end do
 
-        if (perpendicular .isclose. 0.0_real64) then
-            ! v1 and v2 are (anti)parallel: the angle is 0 or pi and has no side to fall on
+        unsigned_angle = atan2(sqrt(squared_1*squared_perpendicular), dot_12)
+
+        ! Both checks below compare with what rounding can leave behind, relative to the scaled
+        ! lengths: a sum of n_dims rounded products is off by up to about n_dims*EPS of them.
+        ! is_close's absolute floor would instead decide by the vectors' lengths -- every turn
+        ! below 1e-6 rad counted as parallel, and a reference shorter than 1e-12 as orienting
+        ! nothing.
+        rounding_level = real(n_dims, real64)*EPS*sqrt(squared_2)
+
+        if (sqrt(squared_perpendicular) <= rounding_level) then
+            ! v1 and v2 are (anti)parallel, as far as rounding can tell: the angle is 0 or pi and
+            ! has no side to fall on
             signed_angle = unsigned_angle
             return
         end if
 
-        if (along_rotation .isclose. 0.0_real64) then
+        if (abs(along_rotation) <= rounding_level*sqrt(squared_reference)) then
             ! the reference is orthogonal to the rotation, so it orients nothing
             signed_angle = unsigned_angle
             undefined_sign = .true.
@@ -254,12 +328,18 @@ contains
         signed_angle = sign(1.0_real64, along_rotation)*unsigned_angle
     end subroutine clock_hand_angle_between_vectors_helper
 
-    !> summary: Compute signed rotation angles between for shift vectors, so between their origin and target
+    !> summary: Compute the signed clock hand angle of every selected shift, from its origin to the point it reaches
     !| AUTHOR_VIVIAN_BASS
-    !| Each selected field is angled by the rule of
+    !| Each selected field, an origin `o` and a shift `s` from it, turns from `o` to `o + s` -- from
+    !| a family centroid to its paralog, for the fields
+    !| [[tox_shift_vectors_impl(module):compute_shift_vector_field_impl(subroutine)]] stores -- by the
+    !| rule of
     !| [[tox_relative_axis_plane_tools_impl(module):clock_hand_angle_between_vectors_impl(subroutine)]],
-    !| with one `orientation_reference` shared by the whole batch. A single field whose rotation
-    !| the reference fails to orient fails the call.
+    !| with one `orientation_reference` shared by the whole batch. The rule angles RAP-space
+    !| vectors, so project origins and shifts first; projection is linear, so `o + s` of the
+    !| projected pair is the projected paralog. A single selected field whose origin or `o + s`
+    !| is zero fails the call with `ERR_DIVISION_BY_ZERO`, and one whose rotation the reference
+    !| fails to orient with `ERR_INVALID_INPUT`.
     pure subroutine clock_hand_angles_for_shift_vectors_impl(fields, n_dims, n_fields, &
                                                         fields_selection_mask, &
                                                         n_selected_fields, orientation_reference, &
@@ -269,7 +349,9 @@ contains
         integer(int32), intent(in) :: n_fields
             !! Number of vector pairs
         real(real64), dimension(n_dims, 2, n_fields), intent(in) :: fields
-            !! matrix with vector fields; each field holds two vectors, the origin first and the target second
+            !! matrix with vector fields; each field holds two vectors, its origin first and the
+            !! shift from it second, as
+            !! [[tox_shift_vectors_impl(module):compute_shift_vector_field_impl(subroutine)]] stores them
         logical(c_bool), dimension(n_fields), intent(in) :: fields_selection_mask
             !! .true. for vector pairs where angle should be computed
         integer(int32), intent(in) :: n_selected_fields
@@ -280,13 +362,16 @@ contains
             !! dimensions -- and in RAP space not even in two, since the axes are tissues or
             !! factors and carry no handedness -- so the caller states which way round counts
             !! as positive. The sign is that of this vector's component along the rotation.
+            !! For three selected tissues, `d x v1`, with `d` the space diagonal, reproduces the
+            !! determinant rule `sign(det[d, v1, v2])`; a fixed vector, such as the anchor axis
+            !! projected onto the RAP, gives every angle the same sense of clockwise.
         real(real64), dimension(n_selected_fields), intent(out) :: signed_angles
-            !! Signed rotation angles between vector pairs in radians [-π, π]
+            !! Signed rotation angles between vector pairs in radians [-pi, pi]
         integer(int32), intent(out) :: ierr
             !! Error code
 
         integer(int32) :: i_field, result_idx
-        logical(c_bool) :: undefined_sign
+        logical(c_bool) :: zero_vector, undefined_sign
 
         call set_ok(ierr)
 
@@ -294,8 +379,9 @@ contains
         do i_field = 1, n_fields
             if (fields_selection_mask(i_field)) then
                 call clock_hand_angle_between_vectors_helper(fields(:, 1, i_field), fields(:, 2, i_field), &
-                                                             n_dims, orientation_reference, &
-                                                             signed_angles(result_idx), undefined_sign)
+                                                             n_dims, orientation_reference, .true._c_bool, &
+                                                             signed_angles(result_idx), zero_vector, undefined_sign)
+                if (zero_vector) call set_err_once(ierr, ERR_DIVISION_BY_ZERO)
                 ! one reference orients every field, so a failure is the reference's and not
                 ! this field's -- report it once and let the rest be computed
                 if (undefined_sign) call set_err_once(ierr, ERR_INVALID_INPUT)
@@ -304,67 +390,82 @@ contains
         end do
     end subroutine clock_hand_angles_for_shift_vectors_impl
 
-    !> summary: Compute the fractional contribution of each axis to a RAP-projected and normalized vector
+    !> summary: Compute the fractional contribution of each axis to a RAP-projected vector
     !| AUTHOR_VIVIAN_BASS
     !| Shared utility: the shift-vector and expression-vector entry points below both drive it.
+    !| The shares depend on the vector's direction alone, so it need not be normalized; the zero
+    !| vector, which has no direction, is `ERR_DIVISION_BY_ZERO`.
     pure subroutine compute_relative_axis_contributions_impl(vec, n_axes, contributions, ierr)
         integer(int32), intent(in) :: n_axes
             !! Number of axes (length of vec and contributions)
         real(real64), dimension(n_axes), intent(in) :: vec
-            !! RAP-projected and normalized vector (expression or shift)
+            !! RAP-projected vector (expression or shift), of any length but zero
         real(real64), dimension(n_axes), intent(out) :: contributions
-            !! Fractional contribution of each axis (output), values in [0,1], sum to 1
+            !! Fractional contribution of each axis, values in [0,1], sum to 1
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        real(real64) :: total_abs
-        integer(int32) :: i_axis
+        real(real64) :: largest, total_abs
+        integer(int32) :: i_axis, scale_exponent
 
         ! Error handling
         call set_ok(ierr)
 
-        total_abs = 0.0_real64
-        do concurrent (i_axis = 1:n_axes) shared(vec) reduce(+:total_abs)
-            total_abs = total_abs + abs(vec(i_axis))
+        largest = 0.0_real64
+        do concurrent (i_axis = 1:n_axes) shared(vec) reduce(max:largest)
+            largest = max(largest, abs(vec(i_axis)))
         end do
 
-        if (total_abs .isclose. 0.0_real64) then
+        ! Only an exactly zero vector is rejected: it alone has no direction, and any other,
+        ! however short, still divides into shares -- a tolerance would reject valid vectors by
+        ! their length. A largest magnitude is never negative, so `<=` is that exact test without
+        ! comparing reals for equality.
+        if (largest <= 0.0_real64) then
             contributions = 0.0_real64
             call set_err_once(ierr, ERR_DIVISION_BY_ZERO, arg_pos=1_int32)
             return
         end if
 
-        do concurrent (i_axis = 1:n_axes) shared(contributions, vec, total_abs)
-            contributions(i_axis) = abs(vec(i_axis))/total_abs
+        ! Every component is scaled by the same power of two near the largest one. That is exact,
+        ! so the shares are the unscaled vector's, while the sum stays at most n_axes and cannot
+        ! overflow however huge the components are.
+        scale_exponent = exponent(largest)
+        total_abs = 0.0_real64
+        do concurrent (i_axis = 1:n_axes) shared(vec, scale_exponent) reduce(+:total_abs)
+            total_abs = total_abs + scale(abs(vec(i_axis)), -scale_exponent)
+        end do
+
+        do concurrent (i_axis = 1:n_axes) shared(contributions, vec, scale_exponent, total_abs)
+            contributions(i_axis) = scale(abs(vec(i_axis)), -scale_exponent)/total_abs
         end do
     end subroutine compute_relative_axis_contributions_impl
 
-    !> summary: Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
+    !> summary: Compute fractional contribution of each axis to a RAP-projected shift vector.
     !| AUTHOR_VIVIAN_BASS
     !| Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)
     pure subroutine relative_axes_changes_from_shift_vector_impl(vec, n_axes, contributions, ierr)
         integer(int32), intent(in) :: n_axes
             !! Number of axes
         real(real64), dimension(n_axes), intent(in) :: vec
-            !! RAP-projected and normalized shift vector
+            !! RAP-projected shift vector, of any length but zero
         real(real64), dimension(n_axes), intent(out) :: contributions
-            !! Fractional contribution of each axis (output), values in [0,1], sum to 1
+            !! Fractional contribution of each axis, values in [0,1], sum to 1
         integer(int32), intent(out) :: ierr
             !! Error code
 
         call compute_relative_axis_contributions_impl(vec, n_axes, contributions, ierr)
     end subroutine relative_axes_changes_from_shift_vector_impl
 
-    !> summary: Compute fractional contribution of each axis to a RAP-projected and normalized expression vector.
+    !> summary: Compute fractional contribution of each axis to a RAP-projected expression vector.
     !| AUTHOR_VIVIAN_BASS
     !| Wrapper for single RAP-projected expression vectors
     pure subroutine relative_axes_expression_from_expression_vector_impl(vec, n_axes, contributions, ierr)
         integer(int32), intent(in) :: n_axes
             !! Number of axes
         real(real64), dimension(n_axes), intent(in) :: vec
-            !! RAP-projected and normalized expression vector
+            !! RAP-projected expression vector, of any length but zero
         real(real64), dimension(n_axes), intent(out) :: contributions
-            !! Fractional contribution of each axis (output), values in [0,1], sum to 1
+            !! Fractional contribution of each axis, values in [0,1], sum to 1
         integer(int32), intent(out) :: ierr
             !! Error code
 
