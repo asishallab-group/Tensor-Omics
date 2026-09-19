@@ -7,6 +7,7 @@ program main
     use mod_test_bst, only: get_all_tests_bst
     use mod_test_kd_tree, only: get_all_tests_kd_tree
     use mod_test_sorting, only: get_all_tests_sorting
+    use mod_test_asserts, only: get_all_tests_asserts
     use mod_test_get_outliers, only: get_all_tests_get_outliers
     use mod_test_loess_smoothing, only: get_all_tests_loess_smoothing
     use mod_test_tox_normalization, only: get_all_tests_tox_normalization
@@ -40,6 +41,7 @@ program main
     call add_suite("quantile", get_all_tests_quantile)
     call add_suite("kd_tree", get_all_tests_kd_tree)
     call add_suite("sorting", get_all_tests_sorting)
+    call add_suite("asserts", get_all_tests_asserts)
     call add_suite("get_outliers", get_all_tests_get_outliers)
     call add_suite("loess_smoothing", get_all_tests_loess_smoothing)
     call add_suite("tox_normalization", get_all_tests_tox_normalization)

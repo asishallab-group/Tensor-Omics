@@ -34,6 +34,7 @@
 !/test/mod_test_*/
 !/test/mod_test_*/*.[fF]90
 !/test/run_tests.[Ff]90
+!/test/test_build_utils.sh
 
 # test_framework: asserts and test_suite, a local fpm package the tests take as a dev-dependency,
 # so that a suite in a subdirectory of test/ can use them (fpm scopes test sources to their dir)
