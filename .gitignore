@@ -25,8 +25,8 @@
 !/LICENSE
 
 # test
-# A suite with one child module per procedure keeps them in test/mod_test_<module>/, beside the
-# parent test/mod_test_<module>.F90 that gathers them.
+# A suite with one child module per procedure keeps them in test/mod_test_<module>/, together
+# with the parent mod_test_<module>.F90 that gathers them.
 !/test
 !/test/test_files
 !/test/test_files/**/*
