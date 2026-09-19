@@ -17,6 +17,14 @@ check_exit_code "Test runner failed"
 failed=0
 
 echo
+if bash test/test_build_utils.sh; then
+  cecho "test/test_build_utils.sh: ${COLOR_GREEN}success"
+else
+  cecho "test/test_build_utils.sh: ${COLOR_RED}failed"
+  failed=1
+fi
+
+echo
 for i in python/test/*.py; do
   if python3 "$i" >/dev/null 2>/dev/null; then
     cecho "$i: ${COLOR_GREEN}success"

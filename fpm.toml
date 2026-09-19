@@ -12,6 +12,12 @@ type = "shared"
 # also what a project depending on this one would need.
 include-dir = ["."]
 
+# The Fortran test framework (asserts, test_suite). A library of its own so that a suite in a
+# subdirectory of test/ can use it: fpm lets a test source see only library modules and modules in
+# its own directory or below. See test_framework/fpm.toml.
+[dev-dependencies]
+test_framework = { path = "test_framework" }
+
 [features]
 unknown-compiler.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
 gfortran.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
@@ -25,6 +31,23 @@ diagnostics.ifx.flags = "-g -traceback -check all -warn all -diag-enable=all -st
 diagnostics.gfortran.flags = "-g -fbacktrace -fcheck=all -Wall -Wextra -Warray-temporaries -Wrealloc-lhs-all -std=f2023 -pedantic"
 
 default.linux.flags = "-fPIC"
+
+# fpm links the root library against every package it knows, the test_framework dev-dependency
+# included and even without --tests (resolve_target_linking in fpm_targets.f90). Without these
+# flags, libtensor_omics.so would record a NEEDED libtest_framework.so that it never uses, and
+# the Python and R bindings could not load it. The linker keeps only libraries something
+# references.
+default.linux.link-time-flags = "-Wl,--as-needed"
+default.macos.link-time-flags = "-Wl,-dead_strip_dylibs"
+
+# Above -O0, ifx reassociates floating-point expressions by default, across parentheses too. Code
+# whose accuracy depends on evaluation order then silently loses it: f42's log1p came out as the
+# naive log(1 + x). So every ifx build respects parentheses, as the Fortran standard asks and as
+# gfortran does by default. -fp-model precise also rules out the other value-changing rewrites
+# (reordered sums, division by a rounded reciprocal), so ifx results match gfortran's instead of
+# differing by a few ulps. Measured on 10 workloads: no cost on 9, k-means 2.2x slower (its
+# 12-dimension sum of squares may no longer be split for vectorization).
+default.ifx.flags = "-assume protect_parens -fp-model precise"
 
 [[test]]
 name = "run_tests"
