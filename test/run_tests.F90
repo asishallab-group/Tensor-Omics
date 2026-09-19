@@ -24,7 +24,7 @@ program main
     use mod_test_arrays, only: get_all_tests_arrays
     use mod_test_paralog_analysis, only: get_all_tests_paralog_analysis
     use mod_test_trajectory_contribution_analysis, only: get_all_tests_trajectory_contribution_analysis
-    use mod_test_trajectory_normalization, only: get_all_tests_trajectory_normalization
+    use mod_test_tox_trajectory_normalization, only: get_all_tests_tox_trajectory_normalization
     use mod_test_clustering, only: get_all_tests_clustering
     use mod_test_data_integration, only: get_all_tests_data_integration
     use mod_test_binary_search, only: get_all_tests_binary_search
@@ -57,7 +57,7 @@ program main
     call add_suite("gene_centroids", get_all_tests_gene_centroids)
     call add_suite("paralog_analysis", get_all_tests_paralog_analysis)
     call add_suite("trajectory_contribution_analysis", get_all_tests_trajectory_contribution_analysis)
-    call add_suite("trajectory_normalization", get_all_tests_trajectory_normalization)
+    call add_suite("tox_trajectory_normalization", get_all_tests_tox_trajectory_normalization)
     call add_suite("conversions", get_all_tests_conversions)
     call add_suite("clustering", get_all_tests_clustering)
     call add_suite("data_integration", get_all_tests_data_integration)
