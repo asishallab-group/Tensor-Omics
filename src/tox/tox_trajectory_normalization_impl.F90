@@ -9,6 +9,7 @@ module tox_trajectory_normalization_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO
     use f42_math_impl, only: is_close
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     M_IMPLICIT_NONE
 
     private
@@ -46,9 +47,19 @@ contains
             return
         end if
 
-        do concurrent (i_point = 1:n_points) shared(v_norm, v, min_val, denominator)
-            v_norm(i_point) = (v(i_point) - min_val)/denominator
-        end do
+        if (ieee_is_finite(denominator)) then
+            do concurrent (i_point = 1:n_points) shared(v_norm, v, min_val, denominator)
+                v_norm(i_point) = (v(i_point) - min_val)/denominator
+            end do
+        else
+            ! max - min overflows only for a finite series whose extremes are near huge with
+            ! opposite signs. Halving every term keeps each difference finite, and the ratio of
+            ! two halved differences is the same ratio.
+            denominator = max_val/2.0_real64 - min_val/2.0_real64
+            do concurrent (i_point = 1:n_points) shared(v_norm, v, min_val, denominator)
+                v_norm(i_point) = (v(i_point)/2.0_real64 - min_val/2.0_real64)/denominator
+            end do
+        end if
     end subroutine normalize_variable_timeseries_impl
 
     !> summary: Normalize all factors in a single trajectory independently across time

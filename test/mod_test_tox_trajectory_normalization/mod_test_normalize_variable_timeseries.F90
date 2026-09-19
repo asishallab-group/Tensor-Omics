@@ -219,9 +219,9 @@ contains
         real(real64) :: v(n_points), v_norm(n_points), expected(n_points)
         integer(int32) :: status, ierr
 
-        ! BUG: the range overflows to Inf and v_norm comes out as [0, 0, NaN] -- the middle point
-        ! divides a finite value by Inf, the maximum Inf by Inf. TOX writes a NaN, and status says
-        ! OK. (assert_equal_array_real lets a NaN through, as NaN > tol is false: hence the no-NaN
+        ! Regression: the range used to overflow to Inf and v_norm came out as [0, 0, NaN] -- the
+        ! middle point divided a finite value by Inf, the maximum Inf by Inf. TOX wrote a NaN, and
+        ! status said OK. (assert_equal_array_real lets a NaN through, as NaN > tol is false: hence the no-NaN
         ! check.)
         expected = [0.0_real64, 0.5_real64, 1.0_real64]
 

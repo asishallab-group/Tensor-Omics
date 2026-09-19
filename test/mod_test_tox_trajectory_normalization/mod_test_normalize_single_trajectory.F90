@@ -156,8 +156,8 @@ contains
         real(real64) :: expected(n_timepoints, n_factors)
         integer(int32) :: status(n_factors), expected_status(n_factors), ierr
 
-        ! BUG: factor 2 comes out as [0, 0, NaN] with status OK -- max - min overflows to Inf (see
-        ! test_normalize_variable_timeseries_range_overflows). Factor 1 is unaffected.
+        ! Regression: factor 2 used to come out as [0, 0, NaN] with status OK, as max - min
+        ! overflowed to Inf (see test_normalize_variable_timeseries_range_overflows).
         trajectory(:, 1) = [-scale(1.0_real64, 1022), 0.0_real64, scale(1.0_real64, 1022)]
         trajectory(:, 2) = [-huge(1.0_real64), 0.0_real64, huge(1.0_real64)]
         expected(:, 1) = [0.0_real64, 0.5_real64, 1.0_real64]

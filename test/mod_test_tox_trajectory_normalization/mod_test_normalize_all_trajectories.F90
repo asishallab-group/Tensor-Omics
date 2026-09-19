@@ -208,8 +208,8 @@ contains
         real(real64) :: trajectories_norm(n_factors, n_samples, n_timepoints), expected(n_factors, n_samples, n_timepoints)
         integer(int32) :: status(n_factors, n_samples), expected_status(n_factors, n_samples), ierr
 
-        ! BUG: series (2, 1) comes out as [0, 0, NaN] with status OK -- max - min overflows to Inf
-        ! (see test_normalize_variable_timeseries_range_overflows). Series (1, 1) is unaffected.
+        ! Regression: series (2, 1) used to come out as [0, 0, NaN] with status OK, as max - min
+        ! overflowed to Inf (see test_normalize_variable_timeseries_range_overflows).
         trajectories(1, 1, :) = [-scale(1.0_real64, 1022), 0.0_real64, scale(1.0_real64, 1022)]
         trajectories(2, 1, :) = [-huge(1.0_real64), 0.0_real64, huge(1.0_real64)]
         expected(1, 1, :) = [0.0_real64, 0.5_real64, 1.0_real64]
