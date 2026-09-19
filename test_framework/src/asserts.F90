@@ -19,7 +19,7 @@ module asserts
     public :: assert_err
     public :: assert_true, assert_false, assert_equal_int, assert_not_equal_int, assert_array_int_contains
     public :: assert_equal_real, assert_not_equal_real, assert_equal_array_int
-    public :: assert_equal_array_real, assert_no_nan_real, assert_no_inf_real
+    public :: assert_equal_array_real, assert_identical_array_real, assert_no_nan_real, assert_no_inf_real
     public :: assert_in_range_real, assert_in_range_int, assert_contains_int, assert_sorted_int
     public :: assert_sorted_real, assert_string_equal
     public :: assert_string_contains, assert_allclose_array_real
@@ -101,7 +101,9 @@ contains
         complex(real64), intent(in) :: a, b
         real(real64), intent(in) :: tol
         character(*), intent(in) :: msg
-        if (abs(a - b) > tol) then
+        ! the pass condition, negated: every comparison with NaN is false, so a NaN fails, and
+        ! a == b keeps two equal infinities equal although Inf - Inf is NaN
+        if (.not. (a == b .or. abs(a - b) <= tol)) then
             call assertion_error(msg, got=""//a, expected=""//b, tol=""//tol)
         end if
     end subroutine
@@ -123,10 +125,12 @@ contains
         real(real64), intent(in) :: tol
         character(*), intent(in) :: msg
         integer(int32) :: i, n_diff
-        n_diff = count(abs(a - b) > tol)
+        ! the pass condition, negated: every comparison with NaN is false, so a NaN fails, and
+        ! a == b keeps two equal infinities equal although Inf - Inf is NaN
+        n_diff = count(.not. (a == b .or. abs(a - b) <= tol))
         if (n_diff > 0) then
             do i = 1, n
-                if (abs(a(i) - b(i)) > tol) exit
+                if (.not. (a(i) == b(i) .or. abs(a(i) - b(i)) <= tol)) exit
             end do
             call assertion_error(msg, additional_msg=n_diff // " of " // n // " elements differ", &
                 got=""//a(i), expected=""//b(i), tol=""//tol, at=""//i)
@@ -242,7 +246,9 @@ contains
     subroutine assert_equal_real(a, b, tol, msg)
         real(real64), intent(in) :: a, b, tol
         character(*), intent(in) :: msg
-        if (abs(a - b) > tol) then
+        ! the pass condition, negated: every comparison with NaN is false, so a NaN fails, and
+        ! a == b keeps two equal infinities equal although Inf - Inf is NaN
+        if (.not. (a == b .or. abs(a - b) <= tol)) then
             call assertion_error(msg, got=""//a, expected=""//b, tol=""//tol)
         end if
     end subroutine
@@ -286,14 +292,34 @@ contains
             !! reported as `(row, column)` instead of as an index into the flattened array,
             !! which is what the caller is actually looking at.
         integer(int32) :: i, n_diff
-        n_diff = count(abs(a - b) > tol)
+        ! the pass condition, negated: every comparison with NaN is false, so a NaN fails, and
+        ! a == b keeps two equal infinities equal although Inf - Inf is NaN
+        n_diff = count(.not. (a == b .or. abs(a - b) <= tol))
         if (n_diff > 0) then
             do i = 1, n
-                if (abs(a(i) - b(i)) > tol) exit
+                if (.not. (a(i) == b(i) .or. abs(a(i) - b(i)) <= tol)) exit
             end do
             call assertion_error(msg, additional_msg=n_diff // " of " // n // " elements differ", &
                 got=""//a(i), expected=""//b(i), tol=""//tol, at=position_text(i, n_rows))
         end if
+    end subroutine
+
+    !> Asserts that two real arrays are identical element by element: equal, or both NaN. For
+    !| checking that an array came back unchanged -- an input a procedure rejected, say, NaN
+    !| included -- where assert_equal_array_real would fail on the NaN itself, as it should when
+    !| comparing results.
+    subroutine assert_identical_array_real(a, b, n, msg)
+        integer(int32), intent(in) :: n
+        real(real64), intent(in) :: a(n), b(n)
+        character(*), intent(in) :: msg
+        integer(int32) :: i
+
+        do i = 1, n
+            if (a(i) == b(i)) cycle
+            if (ieee_is_nan(a(i)) .and. ieee_is_nan(b(i))) cycle
+            call assertion_error(msg, additional_msg="elements differ", got=""//a(i), expected=""//b(i), at=""//i)
+            return
+        end do
     end subroutine
 
     !> Asserts that two character arrays are equal
@@ -344,7 +370,8 @@ contains
     subroutine assert_in_range_real(a, minval, maxval, msg)
         real(real64), intent(in) :: a, minval, maxval
         character(*), intent(in) :: msg
-        if (a < minval .or. a > maxval) then
+        ! the pass condition, negated, so a NaN -- in no range -- fails
+        if (.not. (a >= minval .and. a <= maxval)) then
             call assertion_error(msg, expected="value in range [" // minval // "," // maxval // "]", got=""//a)
         end if
     end subroutine
@@ -391,7 +418,8 @@ contains
         character(*), intent(in) :: msg
         integer :: i
         do i = 2, n
-            if (arr(i) < arr(i - 1)) then
+            ! the pass condition, negated, so a NaN -- ordered against nothing -- fails
+            if (.not. (arr(i) >= arr(i - 1))) then
                 call assertion_error(msg, additional_msg="not sorted", &
                     got=arr(i - 1) // " > " // arr(i), at=""//i)
                 return
@@ -438,12 +466,14 @@ contains
         integer :: i, n_diff
         real(real64) :: thresh
 
-        n_diff = count(abs(a - b) > atol + rtol*abs(b))
+        ! the pass condition, negated: every comparison with NaN is false, so a NaN fails, and
+        ! a == b keeps two equal infinities equal although Inf - Inf is NaN
+        n_diff = count(.not. (a == b .or. abs(a - b) <= atol + rtol*abs(b)))
         if (n_diff == 0) return
 
         do i = 1, n
             thresh = atol + rtol*abs(b(i))
-            if (abs(a(i) - b(i)) > thresh) exit
+            if (.not. (a(i) == b(i) .or. abs(a(i) - b(i)) <= thresh)) exit
         end do
         call assertion_error(msg, additional_msg=n_diff // " of " // n // " elements differ, " // &
             "|got - expected| = " // abs(a(i) - b(i)) // " exceeds atol + rtol*|expected| = " // thresh, &
@@ -464,7 +494,8 @@ contains
         if (present(tol)) actual_tol = tol
 
         s = sum(arr)
-        if (abs(s - expected) > actual_tol) then
+        ! the pass condition, negated, so a NaN sum fails
+        if (.not. (s == expected .or. abs(s - expected) <= actual_tol)) then
             call assertion_error(msg, got="sum=" // s, expected=""//expected, tol=""//actual_tol)
         end if
     end subroutine
