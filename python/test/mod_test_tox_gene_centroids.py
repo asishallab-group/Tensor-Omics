@@ -5,7 +5,9 @@ Fortran suite's job (test/mod_test_tox_gene_centroids.F90), as the coding guide'
 What" asks.
 
 The one value per procedure picks single columns, so no arithmetic is involved: it only shows that
-gene indices and family ids cross the binding 1-based and that the axes stay along the rows.
+a selection mask's entries line up with the genes, that family ids cross the binding 1-based and
+that the axes stay along the rows. The other value is the documented zero vector of an empty
+selection.
 """
 
 import os
@@ -51,44 +53,41 @@ def _expression_vectors():
 # -----------------------------------------------------------------------------------------------
 
 def test_mean_vector():
-    centroid = mean_vector(_expression_vectors(), [3])
+    centroid = mean_vector(_expression_vectors(), [False, False, True, False])
     _assert_result_array(centroid, (N_AXES,), np.float64, "centroid", fortran_order=False)
-    # the one value: a single 1-based index selects that column, the axes down its rows
+    # the one value: a mask selecting only gene 3 selects that column, the axes down its rows
     assert np.array_equal(centroid, [3.0, 30.0]), f"centroid: got {centroid}"
 
 
 def test_mean_vector_accepts_an_empty_selection():
-    # no genes selected is allowed (n_selected_genes >= 0), not an error
-    centroid = mean_vector(_expression_vectors(), np.empty(0, dtype=np.int32))
+    # a mask without genes is allowed, not an error, and gives the documented zero vector
+    centroid = mean_vector(_expression_vectors(), np.zeros(N_GENES, dtype=bool))
     _assert_result_array(centroid, (N_AXES,), np.float64, "centroid", fortran_order=False)
+    assert np.array_equal(centroid, [0.0, 0.0]), f"centroid: got {centroid}"
 
 
-def test_mean_vector_rejects_an_index_out_of_range():
-    # indices are 1-based: 0 and n_genes + 1 both lie outside
-    assert_error(lambda: mean_vector(_expression_vectors(), [0]), "gene index 0", ERR_INVALID_INPUT)
-    assert_error(lambda: mean_vector(_expression_vectors(), [N_GENES + 1]), "gene index n_genes + 1",
-                 ERR_INVALID_INPUT)
-
-
-def test_mean_vector_rejects_more_indices_than_genes():
-    # n_selected_genes, read off gene_indices, may not exceed n_genes
-    assert_error(lambda: mean_vector(_expression_vectors(), np.ones(N_GENES + 1, dtype=np.int32)),
-                 "more indices than genes", ERR_INVALID_INPUT)
+def test_mean_vector_rejects_a_short_mask():
+    # the binding's own extent check, before the library is called
+    assert_error(lambda: mean_vector(_expression_vectors(), np.ones(N_GENES - 1, dtype=bool)),
+                 "genes_selection_mask shorter than n_genes")
 
 
 def test_mean_vector_rejects_no_axes():
-    assert_error(lambda: mean_vector(np.empty((0, N_GENES)), [1]), "no axes", ERR_EMPTY_INPUT)
+    assert_error(lambda: mean_vector(np.empty((0, N_GENES)), np.ones(N_GENES, dtype=bool)), "no axes",
+                 ERR_EMPTY_INPUT)
 
 
 def test_mean_vector_rejects_nan():
+    # the NaN sits in gene 3, which the mask leaves out: the whole matrix is checked
     expression_vectors = _expression_vectors()
     expression_vectors[1, 2] = np.nan
-    assert_error(lambda: mean_vector(expression_vectors, [1]), "a NaN expression", ERR_NAN_INF)
+    assert_error(lambda: mean_vector(expression_vectors, [True, False, False, False]), "a NaN expression",
+                 ERR_NAN_INF)
 
 
 def test_mean_vector_rejects_a_vector():
     # the binding's own rank check, before the library is called
-    assert_error(lambda: mean_vector(np.ones(3), [1]), "expression_vectors must be 2-D")
+    assert_error(lambda: mean_vector(np.ones(3), [True, False, False]), "expression_vectors must be 2-D")
 
 
 # -----------------------------------------------------------------------------------------------

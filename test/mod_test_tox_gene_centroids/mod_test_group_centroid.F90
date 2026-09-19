@@ -1,7 +1,7 @@
 !> The `group_centroid` cases, for all four entry points: `group_centroid_all` and
 !| `group_centroid_orthologs`, and their `_expert` variants, which take the work array from the
 !| caller. The centroid of each family, over all its genes or its orthologs only; unassigned
-!| genes; empty families; gene order; cancellation and extreme magnitudes; the dimension and
+!| genes; empty families and their documented zero vector; gene order; cancellation and extreme magnitudes; the dimension and
 !| range checks and the NaN/Inf check.
 !|
 !| Every value case runs through both variants of its mode (`check_all`, `check_orthologs`),
@@ -25,8 +25,9 @@ module mod_test_group_centroid
     !> What `centroid_matrix` holds before a call, so that an output the procedure never writes
     !| shows.
     real(real64), parameter :: UNWRITTEN = -1.0_real64
-    !> What the work array holds before an `_expert` call.
-    integer(int32), parameter :: UNWRITTEN_INDEX = -1_int32
+    !> What the work array holds before an `_expert` call: every gene selected, so that a work
+    !| array the procedure does not fully reset would add foreign genes to a centroid.
+    logical(c_bool), parameter :: UNWRITTEN_MASK = .true._c_bool
     !> `gene_to_family` of a gene in no family (M_GENE_TO_FAM_SENTINEL in src/macros.h).
     integer(int32), parameter :: UNASSIGNED = 0_int32
 
@@ -134,9 +135,9 @@ contains
         gene_to_family = [1, 1, UNASSIGNED, 3]
         ortholog_set = [.true., .true., .true., .false.]
 
-        ! QUESTION: the centroid of a family with no gene to average is undefined; today it is the
-        ! zero vector, with ierr = ERR_OK and no other signal. The doc does not say so, and a zero
-        ! centroid is indistinguishable from a family expressed nowhere. Pinned as it is.
+        ! A family with no gene to average gets the zero vector, with ierr = ERR_OK, as the doc of
+        ! group_centroid_impl states: family 2 has no gene, and in the orthologs mode family 3 has
+        ! none that is an ortholog.
         expected(:, 1) = 6.0_real64
         expected(:, 2) = 0.0_real64
         expected(:, 3) = 5.0_real64
@@ -377,7 +378,8 @@ contains
         integer(int32), intent(in) :: gene_to_family(n_genes)
         character(*), intent(in) :: label
         real(real64) :: centroids(n_axes, n_families)
-        integer(int32) :: work(n_genes), ierr
+        logical(c_bool) :: work(n_genes)
+        integer(int32) :: ierr
 
         centroids = UNWRITTEN
         call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, ierr)
@@ -386,7 +388,7 @@ contains
                                      label//": group_centroid_all, centroids", n_rows=n_axes)
 
         centroids = UNWRITTEN
-        work = UNWRITTEN_INDEX
+        work = UNWRITTEN_MASK
         call group_centroid_all_expert(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, work, ierr)
         call assert_err(ierr, ERR_OK, label//": group_centroid_all_expert, ierr")
         call assert_equal_array_real(centroids, expected, n_axes*n_families, tol, &
@@ -403,7 +405,8 @@ contains
         logical(c_bool), intent(in) :: ortholog_set(n_genes)
         character(*), intent(in) :: label
         real(real64) :: centroids(n_axes, n_families)
-        integer(int32) :: work(n_genes), ierr
+        logical(c_bool) :: work(n_genes)
+        integer(int32) :: ierr
 
         centroids = UNWRITTEN
         call group_centroid_orthologs(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, &
@@ -413,7 +416,7 @@ contains
                                      label//": group_centroid_orthologs, centroids", n_rows=n_axes)
 
         centroids = UNWRITTEN
-        work = UNWRITTEN_INDEX
+        work = UNWRITTEN_MASK
         call group_centroid_orthologs_expert(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, &
                                              work, ortholog_set, ierr)
         call assert_err(ierr, ERR_OK, label//": group_centroid_orthologs_expert, ierr")
@@ -433,7 +436,8 @@ contains
         logical(c_bool), contiguous, intent(in) :: ortholog_set(:)
         character(*), intent(in) :: label
         real(real64) :: centroids(size(vectors, 1), max(n_families, 1))
-        integer(int32) :: work(size(vectors, 2)), ierr
+        logical(c_bool) :: work(size(vectors, 2))
+        integer(int32) :: ierr
 
         call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families, centroids, ierr)
         call assert_err(ierr, expected_code, label//": group_centroid_all", arg_pos)

@@ -6,16 +6,19 @@
 // tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
-void mean_vector_c(const double*, const int*, const int*, const int*, const int*, double*, int*);
+void mean_vector_c(const double*, const int*, const int*, const unsigned char*, const int*, double*, int*);
 void group_centroid_orthologs_c(const double*, const int*, const int*, const int*, const int*, double*, const unsigned char*, int*);
 void group_centroid_all_c(const double*, const int*, const int*, const int*, const int*, double*, int*);
 
-SEXP mean_vector_call(SEXP expression_vectors, SEXP gene_indices) {
+SEXP mean_vector_call(SEXP expression_vectors, SEXP genes_selection_mask) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_axes = INTEGER(Rf_getAttrib(expression_vectors, R_DimSymbol))[0];
     int n_genes = INTEGER(Rf_getAttrib(expression_vectors, R_DimSymbol))[1];
-    int n_selected_genes = (int) Rf_length(gene_indices);
+    int n_selected_genes = tox_sum_true(genes_selection_mask);
+
+    // convert what Fortran cannot take from R directly
+    unsigned char* genes_selection_mask_c = tox_bool_in(genes_selection_mask);
 
     // outputs and work space
     SEXP centroid = PROTECT(Rf_allocVector(REALSXP, n_axes)); nprot++;
@@ -25,7 +28,7 @@ SEXP mean_vector_call(SEXP expression_vectors, SEXP gene_indices) {
         REAL(expression_vectors),
         &n_axes,
         &n_genes,
-        INTEGER(gene_indices),
+        genes_selection_mask_c,
         &n_selected_genes,
         REAL(centroid),
         &ierr

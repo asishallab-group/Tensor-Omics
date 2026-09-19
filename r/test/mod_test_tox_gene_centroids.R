@@ -4,7 +4,9 @@
 # What" asks.
 #
 # The one value per procedure picks single columns, so no arithmetic is involved: it only shows
-# that gene indices and family ids cross the binding 1-based and that the axes stay along the rows.
+# that a selection mask's entries line up with the genes, that family ids cross the binding 1-based
+# and that the axes stay along the rows. The other value is the documented zero vector of an empty
+# selection.
 
 source("r/load_tensor_omics.R")
 source("r/test_helpers.R")
@@ -29,45 +31,45 @@ N_GENES <- 4L
 # -----------------------------------------------------------------------------------------------
 
 test_mean_vector <- function() {
-  centroid <- mean_vector(.expression_vectors(), 3L)
+  centroid <- mean_vector(.expression_vectors(), c(FALSE, FALSE, TRUE, FALSE))
   assert_true(is.double(centroid) && is.null(dim(centroid)) && length(centroid) == N_AXES,
               "centroid: expected a double vector, one per axis")
-  # the one value: a single 1-based index selects that column, the axes down its rows
+  # the one value: a mask selecting only gene 3 selects that column, the axes down its rows
   assert_true(identical(centroid, c(3, 30)), paste("centroid: got", toString(centroid)))
 }
 
 test_mean_vector_accepts_an_empty_selection <- function() {
-  # no genes selected is allowed (n_selected_genes >= 0), not an error
-  centroid <- mean_vector(.expression_vectors(), integer(0))
+  # a mask without genes is allowed, not an error, and gives the documented zero vector
+  centroid <- mean_vector(.expression_vectors(), rep(FALSE, N_GENES))
   assert_true(is.double(centroid) && length(centroid) == N_AXES, "centroid: expected a double vector, one per axis")
+  assert_true(identical(centroid, c(0, 0)), paste("centroid: got", toString(centroid)))
 }
 
-test_mean_vector_rejects_an_index_out_of_range <- function() {
-  # indices are 1-based: 0 and n_genes + 1 both lie outside
-  assert_error(mean_vector(.expression_vectors(), 0L), "gene index 0", ERR_INVALID_INPUT)
-  assert_error(mean_vector(.expression_vectors(), N_GENES + 1L), "gene index n_genes + 1", ERR_INVALID_INPUT)
+test_mean_vector_rejects_a_short_mask <- function() {
+  # the binding's own extent check, before the library is called
+  assert_error(mean_vector(.expression_vectors(), rep(TRUE, N_GENES - 1L)), "genes_selection_mask shorter than n_genes")
 }
 
-test_mean_vector_rejects_more_indices_than_genes <- function() {
-  # n_selected_genes, read off gene_indices, may not exceed n_genes
-  assert_error(mean_vector(.expression_vectors(), rep(1L, N_GENES + 1L)), "more indices than genes",
-               ERR_INVALID_INPUT)
+test_mean_vector_rejects_a_missing_selection_flag <- function() {
+  # the binding's own NA check, before the library is called
+  assert_error(mean_vector(.expression_vectors(), c(TRUE, NA, FALSE, FALSE)), "an NA in genes_selection_mask")
 }
 
 test_mean_vector_rejects_no_axes <- function() {
-  assert_error(mean_vector(matrix(numeric(0), nrow = 0, ncol = N_GENES), 1L), "no axes", ERR_EMPTY_INPUT)
+  assert_error(mean_vector(matrix(numeric(0), nrow = 0, ncol = N_GENES), rep(TRUE, N_GENES)), "no axes",
+               ERR_EMPTY_INPUT)
 }
 
 test_mean_vector_rejects_na <- function() {
-  # R's missing value is a NaN to the library
+  # R's missing value is a NaN to the library; it sits in gene 3, which the mask leaves out
   expression_vectors <- .expression_vectors()
   expression_vectors[2, 3] <- NA
-  assert_error(mean_vector(expression_vectors, 1L), "a missing expression", ERR_NAN_INF)
+  assert_error(mean_vector(expression_vectors, c(TRUE, FALSE, FALSE, FALSE)), "a missing expression", ERR_NAN_INF)
 }
 
 test_mean_vector_rejects_a_vector <- function() {
   # the binding's own type check, before the library is called
-  assert_error(mean_vector(c(1, 2, 3), 1L), "expression_vectors must be a matrix")
+  assert_error(mean_vector(c(1, 2, 3), c(TRUE, FALSE, FALSE)), "expression_vectors must be a matrix")
 }
 
 # -----------------------------------------------------------------------------------------------
