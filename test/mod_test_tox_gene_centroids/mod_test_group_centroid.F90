@@ -269,8 +269,8 @@ contains
         ortholog_set = .true.
         expected(:, 1) = [huge(1.0_real64), scale(1.25_real64, 1023), 2.0_real64*tiny(1.0_real64), 0.0_real64]
 
-        ! BUG: mean_vector_impl sums first and overflows: axes 1 and 2 come out as +Inf (huge +
-        ! huge and 2**1023 + 1.5*2**1023 exceed huge, about 2**1024), so TOX writes an Inf from finite input.
+        ! Regression: mean_vector_impl used to sum first and overflow: axes 1 and 2 came out as +Inf
+        ! (huge + huge and 2**1023 + 1.5*2**1023 exceed huge, about 2**1024), an Inf from finite input.
         call check_all(vectors, n_axes, n_genes, gene_to_family, n_families, expected, 0.0_real64, &
                        "test_group_centroid_extreme_magnitudes")
         call check_orthologs(vectors, n_axes, n_genes, gene_to_family, n_families, ortholog_set, expected, &

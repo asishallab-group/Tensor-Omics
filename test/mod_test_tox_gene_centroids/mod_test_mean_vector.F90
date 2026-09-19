@@ -210,8 +210,8 @@ contains
 
         call mean_vector(vectors, n_axes, n_genes, gene_indices, n_genes, centroid, ierr)
         call assert_err(ierr, ERR_OK, "test_mean_vector_extreme_magnitudes: ierr")
-        ! BUG: the sum comes first and overflows: axes 1 and 2 come out as +Inf (huge + huge and
-        ! 2**1023 + 1.5*2**1023 exceed huge, about 2**1024), so TOX writes an Inf from finite input.
+        ! Regression: the sum used to come first and overflow: axes 1 and 2 came out as +Inf (huge +
+        ! huge and 2**1023 + 1.5*2**1023 exceed huge, about 2**1024), an Inf from finite input.
         call assert_equal_array_real(centroid, expected, n_axes, 0.0_real64, &
                                      "test_mean_vector_extreme_magnitudes: centroid")
     end subroutine test_mean_vector_extreme_magnitudes

@@ -10,7 +10,6 @@ module tox_gene_centroids_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
-    use f42_vector_impl, only: add_vector
     M_IMPLICIT_NONE
 
     private
@@ -44,19 +43,31 @@ contains
         real(real64), dimension(n_axes), intent(out) :: centroid
             !! The output vector representing the computed centroid.
 
-        integer(int32) :: i_selected_gene, i_axis, gene_idx
+        integer(int32) :: i_selected_gene, i_axis, gene_idx, scale_exponent
+        real(real64) :: scaled_count
 
         ! If no genes are selected, return a zero vector
         centroid = 0.0_real64
         if (n_selected_genes == 0) return
 
-        do concurrent (i_selected_gene = 1:n_selected_genes) local(gene_idx) shared(gene_indices, centroid, expression_vectors)
+        ! A mean is never larger than its largest value, but the plain sum can overflow where the
+        ! mean does not. So every value is scaled by 2**-scale_exponent before it is added, where
+        ! 2**scale_exponent > n_selected_genes: exact, and the scaled sum stays below the largest
+        ! value. Dividing by the equally scaled count then gives the same quotient, with the same
+        ! rounding, as the plain sum divided by the count.
+        ! The genes are summed in order, not in a do concurrent: every gene adds into the same
+        ! centroid, which concurrent iterations may not do. The axes are independent.
+        scale_exponent = exponent(real(n_selected_genes, real64))
+        do i_selected_gene = 1, n_selected_genes
             gene_idx = gene_indices(i_selected_gene)
-            call add_vector(centroid, expression_vectors(:, gene_idx))
+            do concurrent (i_axis = 1:n_axes) shared(centroid, expression_vectors, gene_idx, scale_exponent)
+                centroid(i_axis) = centroid(i_axis) + scale(expression_vectors(i_axis, gene_idx), -scale_exponent)
+            end do
         end do
 
-        do concurrent (i_axis = 1:n_axes) shared(centroid, n_selected_genes)
-            centroid(i_axis) = centroid(i_axis) / real(n_selected_genes, real64)
+        scaled_count = scale(real(n_selected_genes, real64), -scale_exponent)
+        do concurrent (i_axis = 1:n_axes) shared(centroid, scaled_count)
+            centroid(i_axis) = centroid(i_axis)/scaled_count
         end do
     end subroutine mean_vector_impl
 
