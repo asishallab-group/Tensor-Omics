@@ -21,7 +21,7 @@ contains
     function get_all_tests_asserts() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(7))
+        allocate (all_tests(9))
         all_tests(1) = test_case("test_asserts_equal_real_fails_on_nan", test_asserts_equal_real_fails_on_nan)
         all_tests(2) = test_case("test_asserts_equal_array_real_fails_on_nan", test_asserts_equal_array_real_fails_on_nan)
         all_tests(3) = test_case("test_asserts_allclose_fails_on_nan", test_asserts_allclose_fails_on_nan)
@@ -29,6 +29,8 @@ contains
         all_tests(5) = test_case("test_asserts_range_sorted_sum_fail_on_nan", test_asserts_range_sorted_sum_fail_on_nan)
         all_tests(6) = test_case("test_asserts_equal_infinities_pass", test_asserts_equal_infinities_pass)
         all_tests(7) = test_case("test_asserts_not_equal_passes_on_nan", test_asserts_not_equal_passes_on_nan)
+        all_tests(8) = test_case("test_asserts_identical_accepts_nan_at_nan", test_asserts_identical_accepts_nan_at_nan)
+        all_tests(9) = test_case("test_asserts_identical_rejects_nan_at_number", test_asserts_identical_rejects_nan_at_number)
     end function get_all_tests_asserts
 
     ! ------------------------------------------------------------------ helpers
@@ -150,5 +152,27 @@ contains
     subroutine test_asserts_not_equal_passes_on_nan()
         call assert_not_equal_real(nan(), 1.0_real64, 1.0e-12_real64, "NaN is not equal to 1")
     end subroutine test_asserts_not_equal_passes_on_nan
+
+    !> Control: identical arrays, a NaN at the same position included, are identical.
+    subroutine test_asserts_identical_accepts_nan_at_nan()
+        real(real64) :: values(3)
+
+        values = [1.0_real64, nan(), -inf()]
+        call assert_identical_array_real(values, values, 3, "an array is identical to itself, NaN included")
+    end subroutine test_asserts_identical_accepts_nan_at_nan
+
+    !> A NaN where the other array holds a number is a difference.
+    subroutine test_asserts_identical_rejects_nan_at_number()
+        real(real64) :: values(3), changed(3)
+        integer :: before
+
+        values = [1.0_real64, 2.0_real64, 3.0_real64]
+        changed = values
+        changed(2) = nan()
+
+        before = assertion_failures_in_case()
+        call assert_identical_array_real(changed, values, 3, "(expected) NaN where a number was")
+        call expect_one_failure(before, "assert_identical_array_real(NaN at a number)")
+    end subroutine test_asserts_identical_rejects_nan_at_number
 
 end module mod_test_asserts
