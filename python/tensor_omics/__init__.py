@@ -15,6 +15,10 @@ from .f42_binary_search_tree import (
 from .f42_kd_tree import (
     build_kd_index,
     build_spherical_kd,
+    kd_knn_query,
+    kd_range_query_mask,
+    kd_range_query_list,
+    kd_range_query_count,
 )
 from .f42_serde_arrays_deserialize_char import (
     deserialize_char_helper,
@@ -257,6 +261,10 @@ __all__ = [
     "group_centroid_orthologs",
     "identify_outliers",
     "k_means_clustering",
+    "kd_knn_query",
+    "kd_range_query_count",
+    "kd_range_query_list",
+    "kd_range_query_mask",
     "linkage_clustering",
     "loess_fit_plain",
     "loess_fit_robust",
