@@ -21,7 +21,7 @@ module tox_shatter_cluster_data
                           ERR_ALLOC_FAIL, ERR_DIM_MISMATCH, ERR_INVALID_INPUT, validate_all_in_range_real
     use tox_gene_centroids, only: mean_vector
     use tox_euclidean_distance_impl, only: euclidean_distance_impl
-    use f42_sort_impl, only: sort_array_heapsort
+    use f42_sort_impl, only: sort_array_heapsort, init_perm
     use f42_stats, only: calc_percentile_expert
     use f42_stats_impl, only: calc_percentile_impl
     use f42_kd_tree_impl, only: vicinity_vectors_helper, vicinity_vectors_count_helper, &
@@ -169,11 +169,7 @@ contains
         M_DEFAULT_VAL(mean_to_other_vecs_dist_quant, actual_quant, 0.15_real64)
 
         ! Initializing perm
-        do concurrent(i_vec=1:n_vectors) shared(tmp_perm)
-
-            tmp_perm(i_vec) = i_vec
-
-        end do
+        call init_perm(tmp_perm)
 
         ! Calculating mean vector
         call mean_vector(vectors, n_dimensions, n_vectors, tmp_perm, n_vectors, tmp_mean_vec, ierr)
@@ -320,7 +316,7 @@ contains
 
         call set_ok(ierr)
 
-        ! Balanced contiguous tiles avoid multiplying n_vectors by a tile index.
+        ! Balanced contiguous tiles.
         tile_base = n_vectors/n_tiles
         tile_rem = mod(n_vectors, n_tiles)
 
@@ -520,9 +516,7 @@ contains
         integer(int32) :: i_vec, i_rank, candidate_idx, self_pos, median_pos
         real(real64) :: coverage_radius
 
-        do concurrent(i_vec=1:n_vectors) shared(tmp_perm)
-            tmp_perm(i_vec) = i_vec
-        end do
+        call init_perm(tmp_perm)
 
         call sort_array_heapsort(density_labels, tmp_perm)
 
@@ -553,9 +547,7 @@ contains
                                              n_dimensions, tmp_distances(i_vec))
             end do
 
-            do concurrent(i_vec=1:n_vectors) shared(tmp_perm)
-                tmp_perm(i_vec) = i_vec
-            end do
+            call init_perm(tmp_perm)
 
             call sort_array_heapsort(tmp_distances, tmp_perm)
 
@@ -619,20 +611,18 @@ contains
         integer(int32) :: i_vec
 
         ! 1. Calculate ambient median density: median_{i=1..N}(rho_i)
-        do concurrent(i_vec=1:n_vectors) shared(tmp_perm)
-            tmp_perm(i_vec) = i_vec
-        end do
+        call init_perm(tmp_perm)
         call sort_array_heapsort(density_labels, tmp_perm)
         call calc_percentile_impl(density_labels, n_vectors, tmp_perm, &
                                   0.5_real64, median_ambient)
 
         ! 2. Compute absolute deviation from ambient median for all vectors
-        do concurrent(i_vec=1:n_vectors) shared(tmp_abs_diff, tmp_perm, density_labels, median_ambient)
+        do concurrent(i_vec=1:n_vectors) shared(tmp_abs_diff, density_labels, median_ambient)
             tmp_abs_diff(i_vec) = abs(density_labels(i_vec) - median_ambient)
-            tmp_perm(i_vec) = i_vec
         end do
 
         ! 3. Compute MAD_ambient = median_{i=1..N}(|rho_i - median_ambient|)
+        call init_perm(tmp_perm)
         call sort_array_heapsort(tmp_abs_diff, tmp_perm)
         call calc_percentile_impl(tmp_abs_diff, n_vectors, tmp_perm, &
                                   0.5_real64, mad_ambient)
@@ -951,9 +941,9 @@ contains
             if (ensemble_mask(i_vec)) then
                 k = k + 1
                 tmp_abs_diff(k) = density_labels(i_vec)
-                tmp_perm(k) = k
             end if
         end do
+        call init_perm(tmp_perm(1:k))
         call sort_array_heapsort(tmp_abs_diff(1:k), tmp_perm(1:k))
         call calc_percentile_impl(tmp_abs_diff, n_vectors, tmp_perm, 0.5_real64, &
                                   ensemble_center_density, n_considered=k)
@@ -1353,9 +1343,7 @@ contains
         M_DEFAULT_VAL(t_observables, actual_t_obs, 10_int32)
         M_DEFAULT_VAL(n_tiles, actual_n_tiles, CM_DEFAULT_TILE_COUNT)
 
-        ! Allocation sizing only: tiles beyond n_seeds would receive an empty seed range and
-        ! sit idle, so their workspace is never touched. Narrowing the extent here avoids that
-        ! dead allocation without changing the result.
+        ! Limit workspace allocation to active seed tiles, avoiding unused memory without changing results.
         actual_n_tiles = min(actual_n_tiles, n_seeds)
 
         ! Compute required observable tracking depth columns
@@ -1381,8 +1369,7 @@ contains
             if (is_err(ierr)) return
         end if
 
-        ! Allocate per-tile growth workspaces. Seeds inside a tile are processed serially,
-        ! so a single set of workspaces per tile is reused across that tile's seeds.
+        ! Allocate per-tile growth workspaces.
         M_ALLOCATE(tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, actual_n_tiles))
         M_ALLOCATE(tmp_vicinity_mask(n_vectors, actual_n_tiles))
         M_ALLOCATE(tmp_surface_mask(n_vectors, actual_n_tiles))
@@ -1477,8 +1464,7 @@ contains
         call validate_dimension_size(n_seeds, ierr)
         if (is_err(ierr)) return
 
-        ! Only the lower bound is a real constraint. Tiles beyond n_seeds receive an empty
-        ! seed range and stay idle, so a larger n_tiles is wasteful but never incorrect.
+        ! Require only the lower bound; extra tiles remain idle and affect efficiency, not correctness.
         call validate_in_range_int(n_tiles, ierr, min=1_int32)
         if (size(tmp_observables, dim=1, kind=int32) /= CM_OBSERVABLE_COUNT) call set_err_once(ierr, ERR_DIM_MISMATCH)
 
@@ -1592,13 +1578,11 @@ contains
                                                   tmp_perm(:, 1), tmp_abs_diff(:, 1), &
                                                   median_ambient, mad_ambient)
 
-        ! Seeds are spread over n_tiles balanced tiles, the first tile_rem tiles taking one
-        ! extra seed. Products stay bounded by n_seeds, so the index arithmetic cannot overflow.
+        ! Distribute seeds evenly across tiles, with the first tile_rem tiles receiving one extra seed.
         tile_base = n_seeds/n_tiles
         tile_rem = mod(n_seeds, n_tiles)
 
-        ! Pure do concurrent outer-loop parallelization over independent seed tiles.
-        ! Tiles execute concurrently while the seeds within a tile execute serially.
+        ! Process independent seed tiles concurrently, with seeds within each tile handled serially.
         do concurrent(i_tile=1:n_tiles) &
             shared(vectors, n_dimensions, n_vectors, dimension_order, kd_indices, &
                    density_labels, seed_indices, n_seeds, r, alpha_mad, mad_ambient, alpha_accept, &
@@ -1706,8 +1690,7 @@ contains
         do while (is_growing)
             prev_count = count(current_mask)
 
-            ! Each accepted vector is queried once. Consume the frontier before median sorting
-            ! reuses tmp_perm; candidates from this round are queried only after acceptance.
+            ! Query each accepted vector once before median sorting reuses tmp_perm; query new candidates only after acceptance.
             do i_frontier = 1, n_frontier
                 frontier_idx = tmp_perm(i_frontier)
                 call vicinity_vectors_helper(vectors(:, frontier_idx), vectors, n_dimensions, n_vectors, r, &
@@ -1743,8 +1726,7 @@ contains
                                         alpha_accept, is_accepted)
 
             if (.not. is_accepted) then
-                ! iter counts the growth rounds that found candidates, so iter == 2 means this
-                ! was the first such round and no batch was ever accepted
+                ! iter counts candidate-producing growth rounds; iter == 2 means no previous batch was accepted.
                 if (iter == 2_int32) then
                     stop_reason = CM_STOP_NEVER_ACCEPTED
                 else
