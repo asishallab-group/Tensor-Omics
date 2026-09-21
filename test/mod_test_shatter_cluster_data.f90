@@ -108,8 +108,8 @@ contains
                                   test_obtain_ensembles_observable_window_match)
         all_tests(57) = test_case("test_obtain_ensembles_reports_degenerate_mad", &
                                   test_obtain_ensembles_reports_degenerate_mad)
-        all_tests(58) = test_case("test_merge_ensembles_transitivity_regimes", &
-                                  test_merge_ensembles_transitivity_regimes)
+        all_tests(58) = test_case("test_merge_ensembles_overlap_coefficient_regimes", &
+                                  test_merge_ensembles_overlap_coefficient_regimes)
         all_tests(59) = test_case("test_merge_ensembles_clears_unused_columns", &
                                   test_merge_ensembles_clears_unused_columns)
         all_tests(60) = test_case("test_density_labels_tiles", test_density_labels_tiles)
@@ -1632,7 +1632,7 @@ contains
 
         call assert_equal_int(ierr, ERR_OK, "obtain_ensembles execution check")
 
-        call merge_ensembles_alloc(raw_matrix, n_vecs, n_raw, min_intersection=1_int32, &
+        call merge_ensembles_alloc(raw_matrix, n_vecs, n_raw, min_overlap_coefficient=0.0_real64, &
                                    merged_matrix=merged_matrix, n_ensembles=n_merged, ierr=ierr)
 
         call assert_equal_int(ierr, ERR_OK, "merge_ensembles execution check")
@@ -1818,7 +1818,7 @@ contains
         call assert_equal_int(ierr, ERR_OK, "obtain_ensembles 500 execution check")
 
         call merge_ensembles_alloc(raw_matrix, n_vecs, n_raw, &
-                                   min_intersection=1_int32, &
+                                   min_overlap_coefficient=0.0_real64, &
                                    merged_matrix=merged_matrix, &
                                    n_ensembles=n_merged, ierr=ierr)
 
@@ -1857,7 +1857,7 @@ contains
         raw_masks(5, 4) = .true.
 
         call merge_ensembles_alloc(raw_masks, n_vectors, n_seeds, &
-                                   min_intersection=1_int32, &
+                                   min_overlap_coefficient=0.0_real64, &
                                    merged_matrix=merged_matrix, &
                                    n_ensembles=n_ensembles, ierr=ierr)
 
@@ -1889,7 +1889,7 @@ contains
         raw_masks(:, 2) = [.false., .true., .true., .false., .false.]
         raw_masks(:, 3) = [.false., .false., .false., .true., .true.]
 
-        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_intersection=1_int32, &
+        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_overlap_coefficient=0.0_real64, &
                                    merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
 
         call assert_equal_int(ierr, ERR_OK, "merge_ensembles_basic ierr check")
@@ -1909,7 +1909,7 @@ contains
         logical(c_bool), allocatable :: merged_matrix(:, :)
         integer(int32) :: n_ensembles, ierr
 
-        call merge_ensembles_alloc(raw_masks, n_vecs, 0_int32, min_intersection=1_int32, &
+        call merge_ensembles_alloc(raw_masks, n_vecs, 0_int32, min_overlap_coefficient=0.0_real64, &
                                    merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
 
         call assert_equal_int(ierr, ERR_OK, "merge_ensembles_zero_seeds ierr check")
@@ -1929,7 +1929,7 @@ contains
         raw_masks(:, 1) = [.true., .true., .false., .false.]
         raw_masks(:, 2) = [.false., .false., .true., .true.]
 
-        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_intersection=1_int32, &
+        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_overlap_coefficient=0.0_real64, &
                                    merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
 
         call assert_equal_int(ierr, ERR_OK, "merge_ensembles_no_overlap ierr check")
@@ -1946,16 +1946,16 @@ contains
 
         raw_masks = .true.
 
-        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_intersection=0_int32, &
+        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_overlap_coefficient=-0.1_real64, &
                                    merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
-        call assert_true(ierr /= ERR_OK, "min_intersection = 0 must fail")
+        call assert_true(ierr /= ERR_OK, "min_overlap_coefficient < 0 must fail")
 
-        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_intersection=n_vecs + 1_int32, &
+        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_overlap_coefficient=1.1_real64, &
                                    merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
-        call assert_true(ierr /= ERR_OK, "min_intersection > n_vectors must fail")
+        call assert_true(ierr /= ERR_OK, "min_overlap_coefficient > 1 must fail")
     end subroutine test_merge_ensembles_invalid_inputs
 
-    subroutine test_merge_ensembles_transitivity_regimes()
+    subroutine test_merge_ensembles_overlap_coefficient_regimes()
         integer(int32), parameter :: n_vecs = 5_int32
         integer(int32), parameter :: n_seeds = 3_int32
         integer(int32), parameter :: n_chain = 4_int32
@@ -1970,7 +1970,7 @@ contains
         raw_masks(1, 2) = .true.; raw_masks(2, 2) = .true.; raw_masks(4, 2) = .true.
         raw_masks(3, 3) = .true.; raw_masks(4, 3) = .true.; raw_masks(5, 3) = .true.
 
-        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_intersection=1_int32, &
+        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_overlap_coefficient=0.0_real64, &
                                    merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
         call assert_equal_int(ierr, ERR_OK, "transitivity regimes: threshold 1 execution check")
         call assert_equal_int(n_ensembles, 1_int32, "threshold 1 merges all three ensembles")
@@ -1978,13 +1978,25 @@ contains
                               "threshold 1 union covers every vector")
         deallocate (merged_matrix)
 
-        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_intersection=2_int32, &
+        ! OC(E1,E2) = 2/3, OC(E1,E3) = OC(E2,E3) = 1/3. A threshold between the two keeps E3 out, and --
+        ! unlike an absolute count on growing masks -- the E1/E2 union cannot pull it back in afterwards.
+        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_overlap_coefficient=0.6_real64, &
                                    merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
-        call assert_equal_int(ierr, ERR_OK, "transitivity regimes: threshold 2 execution check")
-        call assert_equal_int(n_ensembles, 1_int32, &
-                              "threshold 2 still merges E3 through the accumulated overlap")
-        call assert_equal_int(count(merged_matrix(:, 1)), n_vecs, &
-                              "threshold 2 union covers every vector")
+        call assert_equal_int(ierr, ERR_OK, "overlap coefficient regimes: threshold 0.6 execution check")
+        call assert_equal_int(n_ensembles, 2_int32, &
+                              "threshold 0.6 merges E1 and E2 but leaves E3 separate")
+        call assert_equal_int(count(merged_matrix(:, 1)), 4_int32, &
+                              "threshold 0.6 merges E1 and E2 into four vectors")
+        call assert_equal_int(count(merged_matrix(:, 2)), 3_int32, &
+                              "threshold 0.6 leaves E3 at its own three vectors")
+        deallocate (merged_matrix)
+
+        ! An Overlap Coefficient of 1 demands full containment of the smaller ensemble in the larger.
+        call merge_ensembles_alloc(raw_masks, n_vecs, n_seeds, min_overlap_coefficient=1.0_real64, &
+                                   merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
+        call assert_equal_int(ierr, ERR_OK, "overlap coefficient regimes: threshold 1.0 execution check")
+        call assert_equal_int(n_ensembles, 3_int32, &
+                              "threshold 1.0 merges nothing here, no ensemble contains another")
         deallocate (merged_matrix)
 
         chain_masks = .false.
@@ -1993,13 +2005,13 @@ contains
         chain_masks(3, 3) = .true.; chain_masks(4, 3) = .true.
         chain_masks(4, 4) = .true.; chain_masks(5, 4) = .true.
 
-        call merge_ensembles_alloc(chain_masks, n_vecs, n_chain, min_intersection=1_int32, &
+        call merge_ensembles_alloc(chain_masks, n_vecs, n_chain, min_overlap_coefficient=0.0_real64, &
                                    merged_matrix=merged_matrix, n_ensembles=n_ensembles, ierr=ierr)
         call assert_equal_int(ierr, ERR_OK, "transitivity regimes: chain execution check")
         call assert_equal_int(n_ensembles, 1_int32, "a chain of overlaps collapses to one ensemble")
         call assert_equal_int(count(merged_matrix(:, 1)), n_vecs, &
                               "the chain union covers every vector")
-    end subroutine test_merge_ensembles_transitivity_regimes
+    end subroutine test_merge_ensembles_overlap_coefficient_regimes
 
     subroutine test_merge_ensembles_clears_unused_columns()
         integer(int32), parameter :: n_vecs = 6_int32
@@ -2021,7 +2033,7 @@ contains
         tmp_active_flag = .false.
         tmp_parent = 0_int32
 
-        call merge_ensembles(raw_masks, n_vecs, n_seeds, 1_int32, &
+        call merge_ensembles(raw_masks, n_vecs, n_seeds, 0.0_real64, &
                              merged_masks, tmp_active_flag, tmp_parent, n_ensembles, ierr)
 
         call assert_equal_int(ierr, ERR_OK, "clear unused columns: execution check")
