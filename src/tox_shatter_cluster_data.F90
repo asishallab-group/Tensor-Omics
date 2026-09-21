@@ -3,6 +3,7 @@
 #define CM_OBSERVABLE_COUNT 5
 #define CM_SEEDING_COVERAGE_PERCENTILE 0.5_real64
 #define CM_DEFAULT_TILE_COUNT 8_int32
+#define CM_MIN_OVERLAP_COEFFICIENT_DEFAULT 0.9_real64
 
 #define CM_STOP_FIXED_POINT 1_int32
 #define CM_STOP_REJECT_AFTER_ACCEPT 2_int32
@@ -1782,7 +1783,7 @@ contains
 
     !> Allocating Wrapper for transitive set-union ensemble merging.
     subroutine merge_ensembles_alloc(raw_masks, n_vectors, n_seeds, &
-                                     min_intersection, merged_matrix, &
+                                     min_overlap_coefficient, merged_matrix, &
                                      n_ensembles, ierr)
 
         integer(int32), intent(in) :: n_vectors
@@ -1791,8 +1792,8 @@ contains
         !! Total number of grown raw ensemble columns
         logical(c_bool), intent(in) :: raw_masks(n_vectors, n_seeds)
         !! Input matrix of raw boolean ensemble masks [n_vectors x n_seeds]
-        integer(int32), intent(in), optional :: min_intersection
-        !! Minimum points in common to trigger a merge (defaults to 1)
+        real(real64), intent(in), optional :: min_overlap_coefficient
+        !! Minimum Overlap Coefficient to trigger a merge (defaults to 0.9)
         logical(c_bool), allocatable, intent(out) :: merged_matrix(:, :)
         !! Output matrix storing final merged non-singleton ensemble masks [n_vectors x n_ensembles]
         integer(int32), intent(out) :: n_ensembles
@@ -1800,7 +1801,7 @@ contains
         integer(int32), intent(out) :: ierr
         !! Error status flag
 
-        integer(int32) :: actual_min_intersect
+        real(real64) :: actual_min_overlap
         logical(c_bool), allocatable :: tmp_merged_masks(:, :)
         logical(c_bool), allocatable :: tmp_active_flag(:)
         integer(int32), allocatable :: tmp_parent(:)
@@ -1818,16 +1819,16 @@ contains
             return
         end if
 
-        call validate_in_range_int(min_intersection, ierr, min=1_int32, max=n_vectors)
+        call validate_in_range_real(min_overlap_coefficient, ierr, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 
-        M_DEFAULT_VAL(min_intersection, actual_min_intersect, 1_int32)
+        M_DEFAULT_VAL(min_overlap_coefficient, actual_min_overlap, CM_MIN_OVERLAP_COEFFICIENT_DEFAULT)
 
         M_ALLOCATE(tmp_merged_masks(n_vectors, n_seeds))
         M_ALLOCATE(tmp_active_flag(n_seeds))
         M_ALLOCATE(tmp_parent(n_seeds))
 
-        call merge_ensembles(raw_masks, n_vectors, n_seeds, actual_min_intersect, &
+        call merge_ensembles(raw_masks, n_vectors, n_seeds, actual_min_overlap, &
                              tmp_merged_masks, tmp_active_flag, tmp_parent, n_ensembles, ierr)
 
         if (is_err(ierr)) return
@@ -1841,7 +1842,7 @@ contains
     end subroutine merge_ensembles_alloc
 
     !> Validated Entry Point for transitive set-union ensemble merging.
-    subroutine merge_ensembles(raw_masks, n_vectors, n_seeds, min_intersection, &
+    subroutine merge_ensembles(raw_masks, n_vectors, n_seeds, min_overlap_coefficient, &
                                merged_masks, tmp_active_flag, tmp_parent, n_ensembles, ierr)
 
         integer(int32), intent(in) :: n_vectors
@@ -1850,14 +1851,14 @@ contains
         !! Total number of grown raw ensemble columns
         logical(c_bool), intent(in) :: raw_masks(n_vectors, n_seeds)
         !! Input matrix of raw boolean ensemble masks [n_vectors x n_seeds]
-        integer(int32), intent(in) :: min_intersection
-        !! Minimum points in common to trigger a merge
+        real(real64), intent(in) :: min_overlap_coefficient
+        !! Minimum Overlap Coefficient to trigger a merge
         logical(c_bool), intent(out) :: merged_masks(n_vectors, n_seeds)
         !! Workspace matrix storing final merged ensemble masks
         logical(c_bool), intent(inout) :: tmp_active_flag(n_seeds)
-        !! Preallocated workspace tracking active unmerged seeds
+        !! Preallocated workspace marking the component roots that survive as ensembles
         integer(int32), intent(inout) :: tmp_parent(n_seeds)
-        !! Preallocated union-find parent pointers, used when `min_intersection` is 1
+        !! Preallocated union-find parent pointers
         integer(int32), intent(out) :: n_ensembles
         !! Final count of merged non-singleton ensembles
         integer(int32), intent(out) :: ierr
@@ -1867,40 +1868,39 @@ contains
 
         call validate_dimension_size(n_vectors, ierr)
         call validate_in_range_int(n_seeds, ierr, min=0_int32, max=n_vectors)
-        call validate_in_range_int(min_intersection, ierr, min=1_int32, max=n_vectors)
+        call validate_in_range_real(min_overlap_coefficient, ierr, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 
-        call merge_ensembles_helper(raw_masks, n_vectors, n_seeds, min_intersection, &
+        call merge_ensembles_helper(raw_masks, n_vectors, n_seeds, min_overlap_coefficient, &
                                     merged_masks, tmp_active_flag, tmp_parent, n_ensembles, ierr)
 
     end subroutine merge_ensembles
 
-    !> Core Implementation for pairwise ensemble merging based on set intersection.
+    !> Core Implementation for pairwise ensemble merging based on the Overlap Coefficient.
     pure subroutine merge_ensembles_helper(raw_masks, n_vectors, n_seeds, &
-                                           min_intersection, merged_masks, &
+                                           min_overlap_coefficient, merged_masks, &
                                            tmp_active_flag, tmp_parent, n_ensembles, ierr)
 
         integer(int32), intent(in) :: n_vectors
         !! Total number of ambient vectors
         integer(int32), intent(in) :: n_seeds
         !! Total number of grown raw ensemble columns
-        integer(int32), intent(in) :: min_intersection
-        !! Minimum overlapping vectors required to merge two ensembles
+        real(real64), intent(in) :: min_overlap_coefficient
+        !! Minimum Overlap Coefficient required to merge two ensembles
         logical(c_bool), intent(in) :: raw_masks(n_vectors, n_seeds)
         !! Matrix of raw unmerged boolean ensemble masks
         logical(c_bool), intent(out) :: merged_masks(n_vectors, n_seeds)
         !! Output matrix storing merged boolean ensemble masks
         logical(c_bool), intent(inout) :: tmp_active_flag(n_seeds)
-        !! Preallocated workspace tracking active unmerged seeds
+        !! Preallocated workspace marking the component roots that survive as ensembles
         integer(int32), intent(inout) :: tmp_parent(n_seeds)
-        !! Preallocated union-find parent pointers, used when `min_intersection` is 1
+        !! Preallocated union-find parent pointers
         integer(int32), intent(out) :: n_ensembles
         !! Final count of merged non-singleton ensembles
         integer(int32), intent(out) :: ierr
         !! Error status flag
 
-        integer(int32) :: i, j, shared_count, root_i, root_j
-        logical(c_bool) :: merged_any
+        integer(int32) :: i, j, shared_count, size_i, size_j, root_i, root_j
 
         call set_ok(ierr)
 
@@ -1910,66 +1910,46 @@ contains
             return
         end if
 
-        if (min_intersection == 1_int32) then
-            ! Union-find finds the overlap graph's connected components in one O(S^2*N) pass instead of repeated pairwise sweeps.
-            do i = 1, n_seeds
-                tmp_parent(i) = i
-            end do
+        do i = 1, n_seeds
+            tmp_parent(i) = i
+        end do
 
-            do i = 1, n_seeds
-                do j = i + 1, n_seeds
-                    ! any() may stop at the first shared vector, count() could not
-                    if (any(raw_masks(:, i) .and. raw_masks(:, j))) then
-                        call find_root_helper(tmp_parent, n_seeds, i, root_i)
-                        call find_root_helper(tmp_parent, n_seeds, j, root_j)
+        ! Merge connected components of the raw-mask overlap graph in one O(S^2*N) union-find pass.
+        do i = 1, n_seeds
+            size_i = count(raw_masks(:, i))
+            if (size_i == 0_int32) cycle
 
-                        ! Attach to the smaller index so each component keeps the lowest column, matching the iterative branch.
-                        if (root_i < root_j) then
-                            tmp_parent(root_j) = root_i
-                        else if (root_j < root_i) then
-                            tmp_parent(root_i) = root_j
-                        end if
-                    end if
-                end do
-            end do
+            do j = i + 1, n_seeds
+                shared_count = count(raw_masks(:, i) .and. raw_masks(:, j))
+                ! A disjoint pair never merges, whatever the threshold; this also keeps min() below nonzero.
+                if (shared_count < 1_int32) cycle
 
-            merged_masks = .false.
-            tmp_active_flag = .false.
+                ! Only paid for pairs that actually intersect, so the extra count stays off the common path.
+                size_j = count(raw_masks(:, j))
 
-            do i = 1, n_seeds
+                ! Overlap Coefficient: |E_i intersection E_j| / min(|E_i|, |E_j|)
+                if (real(shared_count, real64) / real(min(size_i, size_j), real64) < min_overlap_coefficient) cycle
+
                 call find_root_helper(tmp_parent, n_seeds, i, root_i)
-                merged_masks(:, root_i) = merged_masks(:, root_i) .or. raw_masks(:, i)
-                tmp_active_flag(root_i) = .true.
+                call find_root_helper(tmp_parent, n_seeds, j, root_j)
+
+                ! Attach to the smaller index so each component keeps its lowest column.
+                if (root_i < root_j) then
+                    tmp_parent(root_j) = root_i
+                else if (root_j < root_i) then
+                    tmp_parent(root_i) = root_j
+                end if
             end do
-        else
+        end do
 
-            ! For larger overlap thresholds, merged overlaps accumulate, requiring iteration to a fixed point.
-            merged_masks = raw_masks
-            tmp_active_flag = .true.
+        merged_masks = .false.
+        tmp_active_flag = .false.
 
-            do
-                merged_any = .false.
-                do i = 1, n_seeds
-                    if (.not. tmp_active_flag(i)) cycle
-
-                    do j = i + 1, n_seeds
-                        if (.not. tmp_active_flag(j)) cycle
-
-                        ! Evaluate common members between ensemble i and ensemble j
-                        shared_count = count(merged_masks(:, i) .and. merged_masks(:, j))
-
-                        if (shared_count >= min_intersection) then
-                            ! Union sets into ensemble i and deactivate ensemble j
-                            merged_masks(:, i) = merged_masks(:, i) .or. merged_masks(:, j)
-                            tmp_active_flag(j) = .false.
-                            merged_any = .true.
-                        end if
-                    end do
-                end do
-
-                if (.not. merged_any) exit
-            end do
-        end if
+        do i = 1, n_seeds
+            call find_root_helper(tmp_parent, n_seeds, i, root_i)
+            merged_masks(:, root_i) = merged_masks(:, root_i) .or. raw_masks(:, i)
+            tmp_active_flag(root_i) = .true.
+        end do
 
         ! Compact merged ensembles to the front, omitting singletons as unassigned/noise.
         n_ensembles = 0_int32
