@@ -207,8 +207,11 @@ contains
     !| Implements Issue #187's two-stage geometric-search-then-local-refinement algorithm for one
     !| neighborhood's pooled residuals (`pooled_residuals`, across all its neighbors and all
     !| studies): find the largest bin count `M` in `[m_min, m_max]` whose equal-width histogram
-    !| over `[-shared_residual_range, shared_residual_range]` has every bin at or above
-    !| `min_residuals_per_bin` (the occupancy criterion), rather than the generic
+    !| over `[shared_residual_range_low, shared_residual_range_high]` -- this neighborhood's own
+    !| asymmetric range, the `lower_residual_range_quantile`/`upper_residual_range_quantile`
+    !| percentiles of its own pooled signed residuals, rather than a single dataset-wide symmetric
+    !| range -- has every bin at or above `min_residuals_per_bin` (the occupancy criterion), rather
+    !| than the generic
     !| Sturges/Freedman-Diaconis rule
     !| [[tox_data_integration_js_comp_test_impl(module):estimate_bin_count_impl(interface)]] alone
     !| applies, which is why that routine is still called here too -- purely for the
@@ -244,9 +247,10 @@ contains
             n_residuals,&
             max_n_reps_all_studies,&
             n_neighbors,&
-            shared_residual_range,&
             selected_n_bins,&
             occupancy_failed,&
+            shared_residual_range_low,&
+            shared_residual_range_high,&
             n_pooled_residuals,&
             min_bin_occupancy,&
             mean_bin_occupancy,&
@@ -257,6 +261,8 @@ contains
             m_max,&
             min_residuals_per_bin,&
             gamma_occupancy,&
+            lower_residual_range_quantile,&
+            upper_residual_range_quantile,&
             ierr&
         ) bind(C, name="determine_bin_count_occupancy_c")
         use tox_data_integration_js_comp_test, only: determine_bin_count_occupancy
@@ -272,9 +278,6 @@ contains
         integer(c_int), intent(in), target :: n_neighbors
             !! Neighborhood size of the candidate under test
             !! The minimum valid value is `1_int32`.
-        real(c_double), intent(in), target :: shared_residual_range
-            !! Computed residual range (R)
-            !! The minimum valid value is `0.0_real64`.
         integer(c_int), intent(out), target :: selected_n_bins
             !! The chosen M_j: the largest bin count in [m_min, m_max] whose pooled histogram has
             !! every bin at or above min_residuals_per_bin; m_min when occupancy_failed
@@ -283,6 +286,16 @@ contains
             !! the case where every pooled residual is NaN) -- per Issue #187's FAILURE policy, the
             !! caller should reject this neighborhood rather than build a histogram from
             !! selected_n_bins
+        real(c_double), intent(out), target :: shared_residual_range_low
+            !! This neighborhood's own lower residual-range bound (R_low): the
+            !! lower_residual_range_quantile percentile of its own pooled signed residuals --
+            !! replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
+            !! occupancy_failed because every pooled residual is NaN
+        real(c_double), intent(out), target :: shared_residual_range_high
+            !! This neighborhood's own upper residual-range bound (R_high): the
+            !! upper_residual_range_quantile percentile of its own pooled signed residuals --
+            !! replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
+            !! occupancy_failed because every pooled residual is NaN
         integer(c_int), intent(out), target :: n_pooled_residuals
             !! Count of non-NaN pooled residuals (N_j)
         integer(c_int), intent(out), target :: min_bin_occupancy
@@ -321,6 +334,18 @@ contains
             !! never advances
             !! The minimum valid value is `above(1.0_real64)`.
             !! The default value is `1.25_real64`.
+        real(c_double), intent(in), target :: lower_residual_range_quantile
+            !! Quantile in [0,1] for this neighborhood's own lower residual-range bound
+            !! (shared_residual_range_low)
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.05_real64`.
+        real(c_double), intent(in), target :: upper_residual_range_quantile
+            !! Quantile in [0,1] for this neighborhood's own upper residual-range bound
+            !! (shared_residual_range_high)
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -329,9 +354,10 @@ contains
         M_CHECK_NON_NULL(n_residuals)
         M_CHECK_NON_NULL(max_n_reps_all_studies)
         M_CHECK_NON_NULL(n_neighbors)
-        M_CHECK_NON_NULL(shared_residual_range)
         M_CHECK_NON_NULL(selected_n_bins)
         M_CHECK_NON_NULL(occupancy_failed)
+        M_CHECK_NON_NULL(shared_residual_range_low)
+        M_CHECK_NON_NULL(shared_residual_range_high)
         M_CHECK_NON_NULL(n_pooled_residuals)
         M_CHECK_NON_NULL(min_bin_occupancy)
         M_CHECK_NON_NULL(mean_bin_occupancy)
@@ -342,6 +368,8 @@ contains
         M_CHECK_NON_NULL(m_max)
         M_CHECK_NON_NULL(min_residuals_per_bin)
         M_CHECK_NON_NULL(gamma_occupancy)
+        M_CHECK_NON_NULL(lower_residual_range_quantile)
+        M_CHECK_NON_NULL(upper_residual_range_quantile)
         M_CHECK_ARRAY_NON_NULL(pooled_residuals, n_residuals)
 
         call determine_bin_count_occupancy(&
@@ -349,9 +377,10 @@ contains
             n_residuals = n_residuals,&
             max_n_reps_all_studies = max_n_reps_all_studies,&
             n_neighbors = n_neighbors,&
-            shared_residual_range = shared_residual_range,&
             selected_n_bins = selected_n_bins,&
             occupancy_failed = occupancy_failed,&
+            shared_residual_range_low = shared_residual_range_low,&
+            shared_residual_range_high = shared_residual_range_high,&
             n_pooled_residuals = n_pooled_residuals,&
             min_bin_occupancy = min_bin_occupancy,&
             mean_bin_occupancy = mean_bin_occupancy,&
@@ -362,6 +391,8 @@ contains
             m_max = m_max,&
             min_residuals_per_bin = min_residuals_per_bin,&
             gamma_occupancy = gamma_occupancy,&
+            lower_residual_range_quantile = lower_residual_range_quantile,&
+            upper_residual_range_quantile = upper_residual_range_quantile,&
             ierr = ierr&
         )
     end subroutine determine_bin_count_occupancy_c
@@ -370,8 +401,11 @@ contains
     !| Implements Issue #187's two-stage geometric-search-then-local-refinement algorithm for one
     !| neighborhood's pooled residuals (`pooled_residuals`, across all its neighbors and all
     !| studies): find the largest bin count `M` in `[m_min, m_max]` whose equal-width histogram
-    !| over `[-shared_residual_range, shared_residual_range]` has every bin at or above
-    !| `min_residuals_per_bin` (the occupancy criterion), rather than the generic
+    !| over `[shared_residual_range_low, shared_residual_range_high]` -- this neighborhood's own
+    !| asymmetric range, the `lower_residual_range_quantile`/`upper_residual_range_quantile`
+    !| percentiles of its own pooled signed residuals, rather than a single dataset-wide symmetric
+    !| range -- has every bin at or above `min_residuals_per_bin` (the occupancy criterion), rather
+    !| than the generic
     !| Sturges/Freedman-Diaconis rule
     !| [[tox_data_integration_js_comp_test_impl(module):estimate_bin_count_impl(interface)]] alone
     !| applies, which is why that routine is still called here too -- purely for the
@@ -408,9 +442,10 @@ contains
             n_residuals,&
             max_n_reps_all_studies,&
             n_neighbors,&
-            shared_residual_range,&
             selected_n_bins,&
             occupancy_failed,&
+            shared_residual_range_low,&
+            shared_residual_range_high,&
             n_pooled_residuals,&
             min_bin_occupancy,&
             mean_bin_occupancy,&
@@ -422,6 +457,8 @@ contains
             m_max,&
             min_residuals_per_bin,&
             gamma_occupancy,&
+            lower_residual_range_quantile,&
+            upper_residual_range_quantile,&
             ierr&
         ) bind(C, name="determine_bin_count_occupancy_expert_c")
         use tox_data_integration_js_comp_test, only: determine_bin_count_occupancy_expert
@@ -441,9 +478,6 @@ contains
         integer(c_int), intent(in), target :: n_neighbors
             !! Neighborhood size of the candidate under test
             !! The minimum valid value is `1_int32`.
-        real(c_double), intent(in), target :: shared_residual_range
-            !! Computed residual range (R)
-            !! The minimum valid value is `0.0_real64`.
         integer(c_int), intent(out), target :: selected_n_bins
             !! The chosen M_j: the largest bin count in [m_min, m_max] whose pooled histogram has
             !! every bin at or above min_residuals_per_bin; m_min when occupancy_failed
@@ -452,6 +486,16 @@ contains
             !! the case where every pooled residual is NaN) -- per Issue #187's FAILURE policy, the
             !! caller should reject this neighborhood rather than build a histogram from
             !! selected_n_bins
+        real(c_double), intent(out), target :: shared_residual_range_low
+            !! This neighborhood's own lower residual-range bound (R_low): the
+            !! lower_residual_range_quantile percentile of its own pooled signed residuals --
+            !! replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
+            !! occupancy_failed because every pooled residual is NaN
+        real(c_double), intent(out), target :: shared_residual_range_high
+            !! This neighborhood's own upper residual-range bound (R_high): the
+            !! upper_residual_range_quantile percentile of its own pooled signed residuals --
+            !! replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
+            !! occupancy_failed because every pooled residual is NaN
         integer(c_int), intent(out), target :: n_pooled_residuals
             !! Count of non-NaN pooled residuals (N_j)
         integer(c_int), intent(out), target :: min_bin_occupancy
@@ -494,6 +538,18 @@ contains
             !! never advances
             !! The minimum valid value is `above(1.0_real64)`.
             !! The default value is `1.25_real64`.
+        real(c_double), intent(in), target :: lower_residual_range_quantile
+            !! Quantile in [0,1] for this neighborhood's own lower residual-range bound
+            !! (shared_residual_range_low)
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.05_real64`.
+        real(c_double), intent(in), target :: upper_residual_range_quantile
+            !! Quantile in [0,1] for this neighborhood's own upper residual-range bound
+            !! (shared_residual_range_high)
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -502,9 +558,10 @@ contains
         M_CHECK_NON_NULL(n_residuals)
         M_CHECK_NON_NULL(max_n_reps_all_studies)
         M_CHECK_NON_NULL(n_neighbors)
-        M_CHECK_NON_NULL(shared_residual_range)
         M_CHECK_NON_NULL(selected_n_bins)
         M_CHECK_NON_NULL(occupancy_failed)
+        M_CHECK_NON_NULL(shared_residual_range_low)
+        M_CHECK_NON_NULL(shared_residual_range_high)
         M_CHECK_NON_NULL(n_pooled_residuals)
         M_CHECK_NON_NULL(min_bin_occupancy)
         M_CHECK_NON_NULL(mean_bin_occupancy)
@@ -515,6 +572,8 @@ contains
         M_CHECK_NON_NULL(m_max)
         M_CHECK_NON_NULL(min_residuals_per_bin)
         M_CHECK_NON_NULL(gamma_occupancy)
+        M_CHECK_NON_NULL(lower_residual_range_quantile)
+        M_CHECK_NON_NULL(upper_residual_range_quantile)
         M_CHECK_ARRAY_NON_NULL(pooled_residuals, n_residuals)
         M_CHECK_ARRAY_NON_NULL(pooled_residuals_perm, n_residuals)
         M_CHECK_ARRAY_NON_NULL(tmp_bin_counts, 256)
@@ -525,9 +584,10 @@ contains
             n_residuals = n_residuals,&
             max_n_reps_all_studies = max_n_reps_all_studies,&
             n_neighbors = n_neighbors,&
-            shared_residual_range = shared_residual_range,&
             selected_n_bins = selected_n_bins,&
             occupancy_failed = occupancy_failed,&
+            shared_residual_range_low = shared_residual_range_low,&
+            shared_residual_range_high = shared_residual_range_high,&
             n_pooled_residuals = n_pooled_residuals,&
             min_bin_occupancy = min_bin_occupancy,&
             mean_bin_occupancy = mean_bin_occupancy,&
@@ -539,6 +599,8 @@ contains
             m_max = m_max,&
             min_residuals_per_bin = min_residuals_per_bin,&
             gamma_occupancy = gamma_occupancy,&
+            lower_residual_range_quantile = lower_residual_range_quantile,&
+            upper_residual_range_quantile = upper_residual_range_quantile,&
             ierr = ierr&
         )
     end subroutine determine_bin_count_occupancy_expert_c
@@ -1588,7 +1650,6 @@ contains
             max_n_reps_all_studies,&
             n_points,&
             n_neighbors,&
-            shared_residual_range,&
             gene_means,&
             gene_means_perms,&
             residuals,&
@@ -1596,6 +1657,8 @@ contains
             neighborhood_indices,&
             neighborhood_range,&
             n_bins_per_point,&
+            shared_residual_range_low,&
+            shared_residual_range_high,&
             max_n_bins_per_point,&
             occupancy_failed,&
             n_pooled_residuals,&
@@ -1620,6 +1683,8 @@ contains
             m_min,&
             m_max,&
             gamma_occupancy,&
+            lower_residual_range_quantile,&
+            upper_residual_range_quantile,&
             ierr&
         ) bind(C, name="run_js_comp_test_c")
         use tox_data_integration_js_comp_test, only: run_js_comp_test
@@ -1639,9 +1704,6 @@ contains
         integer(c_int), intent(in), target :: n_neighbors
             !! Number of neighbors per neighborhood
             !! The minimum valid value is `1_int32`.
-        real(c_double), intent(in), target :: shared_residual_range
-            !! Computed residual range (R)
-            !! The minimum valid value is `0.0_real64`.
         real(c_double), dimension(max_n_genes_all_studies, n_studies), intent(in), target :: gene_means
             !! Per-gene mean expression values for all studies
             !! NaN is permitted for this value.
@@ -1664,6 +1726,14 @@ contains
             !! This reference point's own selected histogram bin count (Issue #187's `M_j`), from
             !! Pass B's occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood
             !! may use a different bin count
+        real(c_double), dimension(n_points), intent(out), target :: shared_residual_range_low
+            !! This reference point's own lower residual-range bound (R_low), from Pass B's
+            !! occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood may use a
+            !! different, asymmetric range (Step 3)
+        real(c_double), dimension(n_points), intent(out), target :: shared_residual_range_high
+            !! This reference point's own upper residual-range bound (R_high), from Pass B's
+            !! occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood may use a
+            !! different, asymmetric range (Step 3)
         integer(c_int), intent(out), target :: max_n_bins_per_point
             !! The widest `n_bins_per_point` value across all `n_points` reference points
             !! (`maxval(n_bins_per_point(1:n_points))`), derived once after Pass B. The number of
@@ -1759,6 +1829,18 @@ contains
             !! advances
             !! The minimum valid value is `above(1.0_real64)`.
             !! The default value is `1.25_real64`.
+        real(c_double), intent(in), target :: lower_residual_range_quantile
+            !! Quantile in [0,1] for each reference point's own lower residual-range bound,
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.05_real64`.
+        real(c_double), intent(in), target :: upper_residual_range_quantile
+            !! Quantile in [0,1] for each reference point's own upper residual-range bound,
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator for
             !! the permutation test
@@ -1770,7 +1852,6 @@ contains
         M_CHECK_NON_NULL(max_n_reps_all_studies)
         M_CHECK_NON_NULL(n_points)
         M_CHECK_NON_NULL(n_neighbors)
-        M_CHECK_NON_NULL(shared_residual_range)
         M_CHECK_NON_NULL(max_n_bins_per_point)
         M_CHECK_NON_NULL(n_permutations)
         M_CHECK_NON_NULL(random_seed)
@@ -1778,6 +1859,8 @@ contains
         M_CHECK_NON_NULL(m_min)
         M_CHECK_NON_NULL(m_max)
         M_CHECK_NON_NULL(gamma_occupancy)
+        M_CHECK_NON_NULL(lower_residual_range_quantile)
+        M_CHECK_NON_NULL(upper_residual_range_quantile)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(gene_means_perms, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
@@ -1785,6 +1868,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(neighborhood_indices, n_neighbors * n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(neighborhood_range, 2 * n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(n_bins_per_point, n_points)
+        M_CHECK_ARRAY_NON_NULL(shared_residual_range_low, n_points)
+        M_CHECK_ARRAY_NON_NULL(shared_residual_range_high, n_points)
         M_CHECK_ARRAY_NON_NULL(occupancy_failed, n_points)
         M_CHECK_ARRAY_NON_NULL(n_pooled_residuals, n_points)
         M_CHECK_ARRAY_NON_NULL(min_bin_occupancy, n_points)
@@ -1809,7 +1894,6 @@ contains
             max_n_reps_all_studies = max_n_reps_all_studies,&
             n_points = n_points,&
             n_neighbors = n_neighbors,&
-            shared_residual_range = shared_residual_range,&
             gene_means = gene_means,&
             gene_means_perms = gene_means_perms,&
             residuals = residuals,&
@@ -1817,6 +1901,8 @@ contains
             neighborhood_indices = neighborhood_indices,&
             neighborhood_range = neighborhood_range,&
             n_bins_per_point = n_bins_per_point,&
+            shared_residual_range_low = shared_residual_range_low,&
+            shared_residual_range_high = shared_residual_range_high,&
             max_n_bins_per_point = max_n_bins_per_point,&
             occupancy_failed = occupancy_failed,&
             n_pooled_residuals = n_pooled_residuals,&
@@ -1841,6 +1927,8 @@ contains
             m_min = m_min,&
             m_max = m_max,&
             gamma_occupancy = gamma_occupancy,&
+            lower_residual_range_quantile = lower_residual_range_quantile,&
+            upper_residual_range_quantile = upper_residual_range_quantile,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_c
@@ -1948,7 +2036,6 @@ contains
             max_n_reps_all_studies,&
             n_points,&
             n_neighbors,&
-            shared_residual_range,&
             gene_means,&
             gene_means_perms,&
             residuals,&
@@ -1956,6 +2043,8 @@ contains
             neighborhood_indices,&
             neighborhood_range,&
             n_bins_per_point,&
+            shared_residual_range_low,&
+            shared_residual_range_high,&
             max_n_bins_per_point,&
             occupancy_failed,&
             n_pooled_residuals,&
@@ -1992,6 +2081,8 @@ contains
             m_min,&
             m_max,&
             gamma_occupancy,&
+            lower_residual_range_quantile,&
+            upper_residual_range_quantile,&
             ierr&
         ) bind(C, name="run_js_comp_test_expert_c")
         use tox_data_integration_js_comp_test, only: run_js_comp_test_expert
@@ -2011,9 +2102,6 @@ contains
         integer(c_int), intent(in), target :: n_neighbors
             !! Number of neighbors per neighborhood
             !! The minimum valid value is `1_int32`.
-        real(c_double), intent(in), target :: shared_residual_range
-            !! Computed residual range (R)
-            !! The minimum valid value is `0.0_real64`.
         real(c_double), dimension(max_n_genes_all_studies, n_studies), intent(in), target :: gene_means
             !! Per-gene mean expression values for all studies
             !! NaN is permitted for this value.
@@ -2036,6 +2124,14 @@ contains
             !! This reference point's own selected histogram bin count (Issue #187's `M_j`), from
             !! Pass B's occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood
             !! may use a different bin count
+        real(c_double), dimension(n_points), intent(out), target :: shared_residual_range_low
+            !! This reference point's own lower residual-range bound (R_low), from Pass B's
+            !! occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood may use a
+            !! different, asymmetric range (Step 3)
+        real(c_double), dimension(n_points), intent(out), target :: shared_residual_range_high
+            !! This reference point's own upper residual-range bound (R_high), from Pass B's
+            !! occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood may use a
+            !! different, asymmetric range (Step 3)
         integer(c_int), intent(out), target :: max_n_bins_per_point
             !! The widest `n_bins_per_point` value across all `n_points` reference points
             !! (`maxval(n_bins_per_point(1:n_points))`), derived once after Pass B. The number of
@@ -2168,6 +2264,18 @@ contains
             !! advances
             !! The minimum valid value is `above(1.0_real64)`.
             !! The default value is `1.25_real64`.
+        real(c_double), intent(in), target :: lower_residual_range_quantile
+            !! Quantile in [0,1] for each reference point's own lower residual-range bound,
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.05_real64`.
+        real(c_double), intent(in), target :: upper_residual_range_quantile
+            !! Quantile in [0,1] for each reference point's own upper residual-range bound,
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator for
             !! the permutation test
@@ -2179,7 +2287,6 @@ contains
         M_CHECK_NON_NULL(max_n_reps_all_studies)
         M_CHECK_NON_NULL(n_points)
         M_CHECK_NON_NULL(n_neighbors)
-        M_CHECK_NON_NULL(shared_residual_range)
         M_CHECK_NON_NULL(max_n_bins_per_point)
         M_CHECK_NON_NULL(n_permutations)
         M_CHECK_NON_NULL(random_seed)
@@ -2187,6 +2294,8 @@ contains
         M_CHECK_NON_NULL(m_min)
         M_CHECK_NON_NULL(m_max)
         M_CHECK_NON_NULL(gamma_occupancy)
+        M_CHECK_NON_NULL(lower_residual_range_quantile)
+        M_CHECK_NON_NULL(upper_residual_range_quantile)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(gene_means_perms, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
@@ -2194,6 +2303,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(neighborhood_indices, n_neighbors * n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(neighborhood_range, 2 * n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(n_bins_per_point, n_points)
+        M_CHECK_ARRAY_NON_NULL(shared_residual_range_low, n_points)
+        M_CHECK_ARRAY_NON_NULL(shared_residual_range_high, n_points)
         M_CHECK_ARRAY_NON_NULL(occupancy_failed, n_points)
         M_CHECK_ARRAY_NON_NULL(n_pooled_residuals, n_points)
         M_CHECK_ARRAY_NON_NULL(min_bin_occupancy, n_points)
@@ -2230,7 +2341,6 @@ contains
             max_n_reps_all_studies = max_n_reps_all_studies,&
             n_points = n_points,&
             n_neighbors = n_neighbors,&
-            shared_residual_range = shared_residual_range,&
             gene_means = gene_means,&
             gene_means_perms = gene_means_perms,&
             residuals = residuals,&
@@ -2238,6 +2348,8 @@ contains
             neighborhood_indices = neighborhood_indices,&
             neighborhood_range = neighborhood_range,&
             n_bins_per_point = n_bins_per_point,&
+            shared_residual_range_low = shared_residual_range_low,&
+            shared_residual_range_high = shared_residual_range_high,&
             max_n_bins_per_point = max_n_bins_per_point,&
             occupancy_failed = occupancy_failed,&
             n_pooled_residuals = n_pooled_residuals,&
@@ -2274,6 +2386,8 @@ contains
             m_min = m_min,&
             m_max = m_max,&
             gamma_occupancy = gamma_occupancy,&
+            lower_residual_range_quantile = lower_residual_range_quantile,&
+            upper_residual_range_quantile = upper_residual_range_quantile,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_expert_c
@@ -2352,7 +2466,6 @@ contains
             max_n_reps_all_studies,&
             gene_means,&
             residuals,&
-            shared_residual_range,&
             n_bootstraps,&
             join_method,&
             max_n_points_candidate,&
@@ -2360,6 +2473,8 @@ contains
             n_points,&
             n_neighbors,&
             n_bins_per_point,&
+            shared_residual_range_low,&
+            shared_residual_range_high,&
             best_candidate_pair_confidence_interval,&
             plateau_established,&
             n_admissible_evaluated,&
@@ -2381,6 +2496,8 @@ contains
             trace_max_bin_occupancy,&
             trace_sturges_bins,&
             trace_fd_bins,&
+            trace_shared_residual_range_low,&
+            trace_shared_residual_range_high,&
             min_residuals_per_bin,&
             min_neighbor_overlap,&
             succeeding_ci_overlap,&
@@ -2392,6 +2509,8 @@ contains
             m_min,&
             m_max,&
             gamma_occupancy,&
+            lower_residual_range_quantile,&
+            upper_residual_range_quantile,&
             two_sided_bootstrapping_significance_level,&
             random_seed,&
             ierr&
@@ -2423,9 +2542,6 @@ contains
         real(c_double), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in), target :: residuals
             !! Matrix of signed residuals per study
             !! NaN is permitted for this value.
-        real(c_double), intent(in), target :: shared_residual_range
-            !! Computed residual range (R)
-            !! The minimum valid value is `0.0_real64`.
         integer(c_int), intent(in), target :: n_bootstraps
             !! Number of bootstraps to perform for a candidate pair
             !! The minimum valid value is `1_int32`.
@@ -2456,6 +2572,15 @@ contains
             !! point (Issue #187: every neighborhood may use a different bin count). Only the
             !! leading `n_points` entries are meaningful, mirroring how `n_points`/`n_neighbors`
             !! above are the finally chosen candidate's own values
+        real(c_double), dimension(max_n_points_candidate), intent(out), target :: shared_residual_range_low
+            !! The finally chosen candidate's per-point lower residual-range bound (R_low), one per
+            !! reference point (Step 3: every neighborhood may use a different, asymmetric range).
+            !! Only the leading `n_points` entries are meaningful, mirroring `n_bins_per_point`
+            !! above; `0.0_real64` throughout in the two genuinely-degenerate cases where Pass B
+            !! never ran for the returned candidate (see the final three-way branch's own comments)
+        real(c_double), dimension(max_n_points_candidate), intent(out), target :: shared_residual_range_high
+            !! The finally chosen candidate's per-point upper residual-range bound (R_high),
+            !! mirroring `shared_residual_range_low` above in every respect
         real(c_double), dimension(2, n_studies), intent(out), target :: best_candidate_pair_confidence_interval
             !! The bootstrapped JSD confidence interval for the finally chosen candidate pair;
             !! `-1.0_real64` throughout only when `plateau_established` is `.false.` and no
@@ -2583,6 +2708,18 @@ contains
             !! above -- only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R
             !! caller must slice `[:trace_n_points[t], t]` themselves
             !! The first `n_admissible_evaluated` elements will hold the results.
+        real(c_double), dimension(max_n_points_candidate, 16), intent(out), target :: trace_shared_residual_range_low
+            !! Per-admissible-candidate, per-reference-point lower residual-range bound (R_low)
+            !! from determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+            !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(c_double), dimension(max_n_points_candidate, 16), intent(out), target :: trace_shared_residual_range_high
+            !! Per-admissible-candidate, per-reference-point upper residual-range bound (R_high)
+            !! from determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+            !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
         integer(c_int), intent(in), target :: min_residuals_per_bin
             !! Minimum count each bin of the consensus pmf must reach to pass the second
             !! admissibility gate. Reuses Issue #187's occupancy-search default rather than an
@@ -2655,6 +2792,18 @@ contains
             !! advances
             !! The minimum valid value is `above(1.0_real64)`.
             !! The default value is `1.25_real64`.
+        real(c_double), intent(in), target :: lower_residual_range_quantile
+            !! Quantile in [0,1] for each reference point's own lower residual-range bound,
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.05_real64`.
+        real(c_double), intent(in), target :: upper_residual_range_quantile
+            !! Quantile in [0,1] for each reference point's own upper residual-range bound,
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95_real64`.
         real(c_double), intent(in), target :: two_sided_bootstrapping_significance_level
             !! Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
             !! to bootstrap_histogram_impl itself
@@ -2674,7 +2823,6 @@ contains
         M_CHECK_NON_NULL(n_studies)
         M_CHECK_NON_NULL(max_n_genes_all_studies)
         M_CHECK_NON_NULL(max_n_reps_all_studies)
-        M_CHECK_NON_NULL(shared_residual_range)
         M_CHECK_NON_NULL(n_bootstraps)
         M_CHECK_NON_NULL(max_n_points_candidate)
         M_CHECK_NON_NULL(max_n_neighbors_candidate)
@@ -2692,12 +2840,16 @@ contains
         M_CHECK_NON_NULL(m_min)
         M_CHECK_NON_NULL(m_max)
         M_CHECK_NON_NULL(gamma_occupancy)
+        M_CHECK_NON_NULL(lower_residual_range_quantile)
+        M_CHECK_NON_NULL(upper_residual_range_quantile)
         M_CHECK_NON_NULL(two_sided_bootstrapping_significance_level)
         M_CHECK_NON_NULL(random_seed)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(join_method, 11)
         M_CHECK_ARRAY_NON_NULL(n_bins_per_point, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(shared_residual_range_low, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(shared_residual_range_high, max_n_points_candidate)
         M_CHECK_ARRAY_NON_NULL(best_candidate_pair_confidence_interval, 2 * n_studies)
         M_CHECK_ARRAY_NON_NULL(trace_n_points, 16)
         M_CHECK_ARRAY_NON_NULL(trace_n_neighbors, 16)
@@ -2717,6 +2869,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(trace_max_bin_occupancy, max_n_points_candidate * 16)
         M_CHECK_ARRAY_NON_NULL(trace_sturges_bins, max_n_points_candidate * 16)
         M_CHECK_ARRAY_NON_NULL(trace_fd_bins, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_shared_residual_range_low, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_shared_residual_range_high, max_n_points_candidate * 16)
         M_CHECK_ARRAY_NON_NULL(plateau_mode, 19)
 
         block
@@ -2758,7 +2912,6 @@ contains
             max_n_reps_all_studies = max_n_reps_all_studies,&
             gene_means = gene_means,&
             residuals = residuals,&
-            shared_residual_range = shared_residual_range,&
             n_bootstraps = n_bootstraps,&
             join_method = join_method_mode_f,&
             max_n_points_candidate = max_n_points_candidate,&
@@ -2766,6 +2919,8 @@ contains
             n_points = n_points,&
             n_neighbors = n_neighbors,&
             n_bins_per_point = n_bins_per_point,&
+            shared_residual_range_low = shared_residual_range_low,&
+            shared_residual_range_high = shared_residual_range_high,&
             best_candidate_pair_confidence_interval = best_candidate_pair_confidence_interval,&
             plateau_established = plateau_established,&
             n_admissible_evaluated = n_admissible_evaluated,&
@@ -2787,6 +2942,8 @@ contains
             trace_max_bin_occupancy = trace_max_bin_occupancy,&
             trace_sturges_bins = trace_sturges_bins,&
             trace_fd_bins = trace_fd_bins,&
+            trace_shared_residual_range_low = trace_shared_residual_range_low,&
+            trace_shared_residual_range_high = trace_shared_residual_range_high,&
             min_residuals_per_bin = min_residuals_per_bin,&
             min_neighbor_overlap = min_neighbor_overlap,&
             succeeding_ci_overlap = succeeding_ci_overlap,&
@@ -2798,6 +2955,8 @@ contains
             m_min = m_min,&
             m_max = m_max,&
             gamma_occupancy = gamma_occupancy,&
+            lower_residual_range_quantile = lower_residual_range_quantile,&
+            upper_residual_range_quantile = upper_residual_range_quantile,&
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
             random_seed = random_seed,&
             ierr = ierr&
@@ -2878,7 +3037,6 @@ contains
             max_n_reps_all_studies,&
             gene_means,&
             residuals,&
-            shared_residual_range,&
             n_bootstraps,&
             join_method,&
             max_n_points_candidate,&
@@ -2887,6 +3045,8 @@ contains
             n_points,&
             n_neighbors,&
             n_bins_per_point,&
+            shared_residual_range_low,&
+            shared_residual_range_high,&
             best_candidate_pair_confidence_interval,&
             plateau_established,&
             n_admissible_evaluated,&
@@ -2908,6 +3068,8 @@ contains
             trace_max_bin_occupancy,&
             trace_sturges_bins,&
             trace_fd_bins,&
+            trace_shared_residual_range_low,&
+            trace_shared_residual_range_high,&
             tmp_gene_means_perms,&
             tmp_gene_means_perm_all,&
             tmp_x_star,&
@@ -2917,6 +3079,8 @@ contains
             tmp_counts_point_major,&
             tmp_pmf_point_major,&
             tmp_n_bins_per_point,&
+            tmp_shared_residual_range_low,&
+            tmp_shared_residual_range_high,&
             tmp_pmfs,&
             tmp_counts,&
             tmp_included_n_reps,&
@@ -2943,6 +3107,10 @@ contains
             tmp_fd_bins,&
             tmp_best_n_bins_per_point,&
             tmp_best_uncertainty_n_bins_per_point,&
+            tmp_best_shared_residual_range_low,&
+            tmp_best_shared_residual_range_high,&
+            tmp_best_uncertainty_shared_residual_range_low,&
+            tmp_best_uncertainty_shared_residual_range_high,&
             min_residuals_per_bin,&
             min_neighbor_overlap,&
             succeeding_ci_overlap,&
@@ -2954,6 +3122,8 @@ contains
             m_min,&
             m_max,&
             gamma_occupancy,&
+            lower_residual_range_quantile,&
+            upper_residual_range_quantile,&
             two_sided_bootstrapping_significance_level,&
             random_seed,&
             ierr&
@@ -2999,9 +3169,6 @@ contains
         real(c_double), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in), target :: residuals
             !! Matrix of signed residuals per study
             !! NaN is permitted for this value.
-        real(c_double), intent(in), target :: shared_residual_range
-            !! Computed residual range (R)
-            !! The minimum valid value is `0.0_real64`.
         integer(c_int), intent(in), target :: n_bootstraps
             !! Number of bootstraps to perform for a candidate pair
             !! The minimum valid value is `1_int32`.
@@ -3023,6 +3190,15 @@ contains
             !! point (Issue #187: every neighborhood may use a different bin count). Only the
             !! leading `n_points` entries are meaningful, mirroring how `n_points`/`n_neighbors`
             !! above are the finally chosen candidate's own values
+        real(c_double), dimension(max_n_points_candidate), intent(out), target :: shared_residual_range_low
+            !! The finally chosen candidate's per-point lower residual-range bound (R_low), one per
+            !! reference point (Step 3: every neighborhood may use a different, asymmetric range).
+            !! Only the leading `n_points` entries are meaningful, mirroring `n_bins_per_point`
+            !! above; `0.0_real64` throughout in the two genuinely-degenerate cases where Pass B
+            !! never ran for the returned candidate (see the final three-way branch's own comments)
+        real(c_double), dimension(max_n_points_candidate), intent(out), target :: shared_residual_range_high
+            !! The finally chosen candidate's per-point upper residual-range bound (R_high),
+            !! mirroring `shared_residual_range_low` above in every respect
         real(c_double), dimension(2, n_studies), intent(out), target :: best_candidate_pair_confidence_interval
             !! The bootstrapped JSD confidence interval for the finally chosen candidate pair;
             !! `-1.0_real64` throughout only when `plateau_established` is `.false.` and no
@@ -3150,6 +3326,18 @@ contains
             !! above -- only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R
             !! caller must slice `[:trace_n_points[t], t]` themselves
             !! The first `n_admissible_evaluated` elements will hold the results.
+        real(c_double), dimension(max_n_points_candidate, 16), intent(out), target :: trace_shared_residual_range_low
+            !! Per-admissible-candidate, per-reference-point lower residual-range bound (R_low)
+            !! from determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+            !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(c_double), dimension(max_n_points_candidate, 16), intent(out), target :: trace_shared_residual_range_high
+            !! Per-admissible-candidate, per-reference-point upper residual-range bound (R_high)
+            !! from determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+            !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
         integer(c_int), dimension(max_n_genes_all_studies, n_studies), intent(out), target :: tmp_gene_means_perms
             !! Working array: each study's own sorting permutation for `gene_means`
         integer(c_int), dimension(max_n_genes_all_studies*n_studies), intent(out), target :: tmp_gene_means_perm_all
@@ -3183,6 +3371,12 @@ contains
             !! occupancy search
             !! ([[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]])
             !! for each reference point independently
+        real(c_double), dimension(max_n_points_candidate), intent(out), target :: tmp_shared_residual_range_low
+            !! Working array: this candidate's per-point lower residual-range bound (R_low), from
+            !! Pass B's occupancy search, mirroring tmp_n_bins_per_point above
+        real(c_double), dimension(max_n_points_candidate), intent(out), target :: tmp_shared_residual_range_high
+            !! Working array: this candidate's per-point upper residual-range bound (R_high),
+            !! mirroring tmp_shared_residual_range_low above
         real(c_double), dimension(256, max_n_points_candidate, n_studies), intent(out), target :: tmp_pmfs
             !! Working array: every study's bin-major pmf for the current candidate. `256` =
             !! MAX_N_BINS, see tmp_counts_point_major above
@@ -3261,6 +3455,20 @@ contains
             !! Working array: a snapshot of tmp_n_bins_per_point for whichever admissible candidate
             !! currently has the smallest bootstrapped uncertainty, mirroring how
             !! tmp_best_uncertainty_confidence_interval already works
+        real(c_double), dimension(max_n_points_candidate), intent(out), target :: tmp_best_shared_residual_range_low
+            !! Working array: a snapshot of tmp_shared_residual_range_low for whichever candidate is
+            !! currently best_candidate_index, updated at the exact same sites as
+            !! tmp_best_n_bins_per_point above
+        real(c_double), dimension(max_n_points_candidate), intent(out), target :: tmp_best_shared_residual_range_high
+            !! Working array: a snapshot of tmp_shared_residual_range_high, mirroring
+            !! tmp_best_shared_residual_range_low above
+        real(c_double), dimension(max_n_points_candidate), intent(out), target :: tmp_best_uncertainty_shared_residual_range_low
+            !! Working array: a snapshot of tmp_shared_residual_range_low for whichever admissible
+            !! candidate currently has the smallest bootstrapped uncertainty, updated at the exact
+            !! same site as tmp_best_uncertainty_n_bins_per_point above
+        real(c_double), dimension(max_n_points_candidate), intent(out), target :: tmp_best_uncertainty_shared_residual_range_high
+            !! Working array: a snapshot of tmp_shared_residual_range_high, mirroring
+            !! tmp_best_uncertainty_shared_residual_range_low above
         integer(c_int), intent(in), target :: min_residuals_per_bin
             !! Minimum count each bin of the consensus pmf must reach to pass the second
             !! admissibility gate. Reuses Issue #187's occupancy-search default rather than an
@@ -3333,6 +3541,18 @@ contains
             !! advances
             !! The minimum valid value is `above(1.0_real64)`.
             !! The default value is `1.25_real64`.
+        real(c_double), intent(in), target :: lower_residual_range_quantile
+            !! Quantile in [0,1] for each reference point's own lower residual-range bound,
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.05_real64`.
+        real(c_double), intent(in), target :: upper_residual_range_quantile
+            !! Quantile in [0,1] for each reference point's own upper residual-range bound,
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95_real64`.
         real(c_double), intent(in), target :: two_sided_bootstrapping_significance_level
             !! Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
             !! to bootstrap_histogram_impl itself
@@ -3352,7 +3572,6 @@ contains
         M_CHECK_NON_NULL(n_studies)
         M_CHECK_NON_NULL(max_n_genes_all_studies)
         M_CHECK_NON_NULL(max_n_reps_all_studies)
-        M_CHECK_NON_NULL(shared_residual_range)
         M_CHECK_NON_NULL(n_bootstraps)
         M_CHECK_NON_NULL(max_n_points_candidate)
         M_CHECK_NON_NULL(max_n_neighbors_candidate)
@@ -3371,12 +3590,16 @@ contains
         M_CHECK_NON_NULL(m_min)
         M_CHECK_NON_NULL(m_max)
         M_CHECK_NON_NULL(gamma_occupancy)
+        M_CHECK_NON_NULL(lower_residual_range_quantile)
+        M_CHECK_NON_NULL(upper_residual_range_quantile)
         M_CHECK_NON_NULL(two_sided_bootstrapping_significance_level)
         M_CHECK_NON_NULL(random_seed)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(join_method, 11)
         M_CHECK_ARRAY_NON_NULL(n_bins_per_point, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(shared_residual_range_low, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(shared_residual_range_high, max_n_points_candidate)
         M_CHECK_ARRAY_NON_NULL(best_candidate_pair_confidence_interval, 2 * n_studies)
         M_CHECK_ARRAY_NON_NULL(trace_n_points, 16)
         M_CHECK_ARRAY_NON_NULL(trace_n_neighbors, 16)
@@ -3396,6 +3619,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(trace_max_bin_occupancy, max_n_points_candidate * 16)
         M_CHECK_ARRAY_NON_NULL(trace_sturges_bins, max_n_points_candidate * 16)
         M_CHECK_ARRAY_NON_NULL(trace_fd_bins, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_shared_residual_range_low, max_n_points_candidate * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_shared_residual_range_high, max_n_points_candidate * 16)
         M_CHECK_ARRAY_NON_NULL(tmp_gene_means_perms, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_gene_means_perm_all, (max_n_genes_all_studies*n_studies))
         M_CHECK_ARRAY_NON_NULL(tmp_x_star, max_n_points_candidate)
@@ -3405,6 +3630,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_counts_point_major, max_n_points_candidate * 256)
         M_CHECK_ARRAY_NON_NULL(tmp_pmf_point_major, max_n_points_candidate * 256)
         M_CHECK_ARRAY_NON_NULL(tmp_n_bins_per_point, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(tmp_shared_residual_range_low, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(tmp_shared_residual_range_high, max_n_points_candidate)
         M_CHECK_ARRAY_NON_NULL(tmp_pmfs, 256 * max_n_points_candidate * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_counts, 256 * max_n_points_candidate * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_included_n_reps, max_n_points_candidate * n_studies)
@@ -3431,6 +3658,10 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_fd_bins, max_n_points_candidate)
         M_CHECK_ARRAY_NON_NULL(tmp_best_n_bins_per_point, max_n_points_candidate)
         M_CHECK_ARRAY_NON_NULL(tmp_best_uncertainty_n_bins_per_point, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(tmp_best_shared_residual_range_low, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(tmp_best_shared_residual_range_high, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(tmp_best_uncertainty_shared_residual_range_low, max_n_points_candidate)
+        M_CHECK_ARRAY_NON_NULL(tmp_best_uncertainty_shared_residual_range_high, max_n_points_candidate)
         M_CHECK_ARRAY_NON_NULL(plateau_mode, 19)
 
         block
@@ -3472,7 +3703,6 @@ contains
             max_n_reps_all_studies = max_n_reps_all_studies,&
             gene_means = gene_means,&
             residuals = residuals,&
-            shared_residual_range = shared_residual_range,&
             n_bootstraps = n_bootstraps,&
             join_method = join_method_mode_f,&
             max_n_points_candidate = max_n_points_candidate,&
@@ -3481,6 +3711,8 @@ contains
             n_points = n_points,&
             n_neighbors = n_neighbors,&
             n_bins_per_point = n_bins_per_point,&
+            shared_residual_range_low = shared_residual_range_low,&
+            shared_residual_range_high = shared_residual_range_high,&
             best_candidate_pair_confidence_interval = best_candidate_pair_confidence_interval,&
             plateau_established = plateau_established,&
             n_admissible_evaluated = n_admissible_evaluated,&
@@ -3502,6 +3734,8 @@ contains
             trace_max_bin_occupancy = trace_max_bin_occupancy,&
             trace_sturges_bins = trace_sturges_bins,&
             trace_fd_bins = trace_fd_bins,&
+            trace_shared_residual_range_low = trace_shared_residual_range_low,&
+            trace_shared_residual_range_high = trace_shared_residual_range_high,&
             tmp_gene_means_perms = tmp_gene_means_perms,&
             tmp_gene_means_perm_all = tmp_gene_means_perm_all,&
             tmp_x_star = tmp_x_star,&
@@ -3511,6 +3745,8 @@ contains
             tmp_counts_point_major = tmp_counts_point_major,&
             tmp_pmf_point_major = tmp_pmf_point_major,&
             tmp_n_bins_per_point = tmp_n_bins_per_point,&
+            tmp_shared_residual_range_low = tmp_shared_residual_range_low,&
+            tmp_shared_residual_range_high = tmp_shared_residual_range_high,&
             tmp_pmfs = tmp_pmfs,&
             tmp_counts = tmp_counts,&
             tmp_included_n_reps = tmp_included_n_reps,&
@@ -3537,6 +3773,10 @@ contains
             tmp_fd_bins = tmp_fd_bins,&
             tmp_best_n_bins_per_point = tmp_best_n_bins_per_point,&
             tmp_best_uncertainty_n_bins_per_point = tmp_best_uncertainty_n_bins_per_point,&
+            tmp_best_shared_residual_range_low = tmp_best_shared_residual_range_low,&
+            tmp_best_shared_residual_range_high = tmp_best_shared_residual_range_high,&
+            tmp_best_uncertainty_shared_residual_range_low = tmp_best_uncertainty_shared_residual_range_low,&
+            tmp_best_uncertainty_shared_residual_range_high = tmp_best_uncertainty_shared_residual_range_high,&
             min_residuals_per_bin = min_residuals_per_bin,&
             min_neighbor_overlap = min_neighbor_overlap,&
             succeeding_ci_overlap = succeeding_ci_overlap,&
@@ -3548,6 +3788,8 @@ contains
             m_min = m_min,&
             m_max = m_max,&
             gamma_occupancy = gamma_occupancy,&
+            lower_residual_range_quantile = lower_residual_range_quantile,&
+            upper_residual_range_quantile = upper_residual_range_quantile,&
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
             random_seed = random_seed,&
             ierr = ierr&

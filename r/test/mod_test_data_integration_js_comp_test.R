@@ -66,32 +66,38 @@ test_determine_bin_count_occupancy <- function() {
   # test_determine_bin_count_occupancy_* tests).
   residuals <- seq(-60, 59, by = 1) # 120 values, matches a Fortran fixture
 
-  out <- determine_bin_count_occupancy(residuals, max_n_reps_all_studies = 1, n_neighbors = 1,
-                                        shared_residual_range = 60.0)
-  for (key in c("selected_n_bins", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy",
-                "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins")) {
+  out <- determine_bin_count_occupancy(residuals, max_n_reps_all_studies = 1, n_neighbors = 1)
+  for (key in c("selected_n_bins", "occupancy_failed", "shared_residual_range_low", "shared_residual_range_high",
+                "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy",
+                "sturges_bins", "fd_bins")) {
     assert_true(key %in% names(out), paste0("missing expected output key '", key, "'"))
   }
   assert_true(is.logical(out$occupancy_failed), "occupancy_failed should be logical")
   assert_equal_int(as.integer(out$n_pooled_residuals), 120L, "expected n_pooled_residuals=120")
-  assert_equal_int(as.integer(out$selected_n_bins), 12L, "expected selected_n_bins=12")
+  # shared_residual_range_low/high are now this neighborhood's own 5th/95th percentiles (Step 3),
+  # not a caller-supplied dataset-wide range -- see mod_test_data_integration_js_comp_test.F90's
+  # test_occupancy_finds_valid_below_m_max for the hand-computed derivation of this exact fixture.
+  assert_equal_numeric(out$shared_residual_range_low, -54.05, msg = "expected shared_residual_range_low=-54.05")
+  assert_equal_numeric(out$shared_residual_range_high, 53.05, msg = "expected shared_residual_range_high=53.05")
+  assert_equal_int(as.integer(out$selected_n_bins), 10L, "expected selected_n_bins=10")
   assert_true(!out$occupancy_failed, "occupancy should not fail on this dense fixture")
 
   # The expert entry point, given the same sorting permutation, must agree.
   residuals_perm <- order(residuals)
   out_expert <- determine_bin_count_occupancy_expert(residuals, residuals_perm, max_n_reps_all_studies = 1,
-                                                       n_neighbors = 1, shared_residual_range = 60.0)
+                                                       n_neighbors = 1)
   assert_equal_int(as.integer(out_expert$selected_n_bins), as.integer(out$selected_n_bins),
                     "expert entry point should agree with the plain one given the same sorted permutation")
 
   # All-NaN pool: occupancy_failed must be TRUE, and every occupancy diagnostic must be 0.
   residuals_nan <- rep(NaN, 4)
-  out_nan <- determine_bin_count_occupancy(residuals_nan, max_n_reps_all_studies = 1, n_neighbors = 1,
-                                            shared_residual_range = 9.0)
+  out_nan <- determine_bin_count_occupancy(residuals_nan, max_n_reps_all_studies = 1, n_neighbors = 1)
   assert_true(out_nan$occupancy_failed, "all-NaN pool must FAIL")
   assert_equal_int(as.integer(out_nan$n_pooled_residuals), 0L, "expected n_pooled_residuals=0")
   assert_equal_int(as.integer(out_nan$min_bin_occupancy), 0L, "expected min_bin_occupancy=0")
   assert_equal_int(as.integer(out_nan$max_bin_occupancy), 0L, "expected max_bin_occupancy=0")
+  assert_equal_numeric(out_nan$shared_residual_range_low, 0.0, msg = "expected shared_residual_range_low=0")
+  assert_equal_numeric(out_nan$shared_residual_range_high, 0.0, msg = "expected shared_residual_range_high=0")
 }
 
 test_generate_js_comp_test_candidates <- function() {
@@ -414,7 +420,7 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
   # min_residuals_per_bin=1 (its default is 10, which this tiny 4-residual fixture could never
   # satisfy) so the occupancy search actually succeeds, matching the Fortran fixture's own
   # override -- exercised here for call-ability, not to reproduce that test's exact numbers.
-  result <- run_js_comp_test(n_neighbors = 1L, shared_residual_range = 4.0, gene_means = gene_means,
+  result <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
                               gene_means_perms = gene_means_perms, residuals = residuals, x_star = x_star,
                               n_permutations = 0L, random_seed = 1L, min_residuals_per_bin = 1L)
 
@@ -423,6 +429,8 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
   assert_equal_int(dim(result$neighborhood_indices), c(1L, n_points, n_studies), "neighborhood_indices shape")
   assert_equal_int(dim(result$neighborhood_range), c(2L, n_points, n_studies), "neighborhood_range shape")
   assert_equal_int(length(result$n_bins_per_point), n_points, "n_bins_per_point shape")
+  assert_equal_int(length(result$shared_residual_range_low), n_points, "shared_residual_range_low shape")
+  assert_equal_int(length(result$shared_residual_range_high), n_points, "shared_residual_range_high shape")
   assert_true(is.numeric(result$max_n_bins_per_point), "max_n_bins_per_point must be numeric")
   assert_equal_int(length(result$occupancy_failed), n_points, "occupancy_failed shape")
   assert_equal_int(length(result$n_pooled_residuals), n_points, "n_pooled_residuals shape")
@@ -475,7 +483,7 @@ test_run_js_comp_test_parameter_search <- function() {
   # (test_param_search_no_plateau_falls_back_to_finest).
   # ============================================================
   bounds <- calc_js_comp_test_candidate_bounds(max_n_genes_all_studies)
-  result <- run_js_comp_test_parameter_search(gene_means, residuals, shared_residual_range = 1.0, n_bootstraps = 10L,
+  result <- run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps = 10L,
                                                join_method = "join_min",
                                                max_n_points_candidate = bounds$max_n_points_candidate,
                                                max_n_neighbors_candidate = bounds$max_n_neighbors_candidate,
@@ -505,7 +513,7 @@ test_run_js_comp_test_parameter_search <- function() {
   }
 
   bounds_2 <- calc_js_comp_test_candidate_bounds(max_n_genes_2)
-  result2 <- run_js_comp_test_parameter_search(gene_means_2, residuals_2, shared_residual_range = 1.0,
+  result2 <- run_js_comp_test_parameter_search(gene_means_2, residuals_2,
                                                 n_bootstraps = 5L, join_method = "join_min",
                                                 max_n_points_candidate = bounds_2$max_n_points_candidate,
                                                 max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
@@ -525,7 +533,7 @@ test_run_js_comp_test_parameter_search <- function() {
   # diagnostics: plateau_mode as a mode string, the new threshold optionals, and the trace_*
   # outputs' presence and shape. Reuses Test 2's single-candidate setup.
   # ============================================================
-  result3 <- run_js_comp_test_parameter_search(gene_means_2, residuals_2, shared_residual_range = 1.0,
+  result3 <- run_js_comp_test_parameter_search(gene_means_2, residuals_2,
                                                 n_bootstraps = 5L, join_method = "join_min",
                                                 max_n_points_candidate = bounds_2$max_n_points_candidate,
                                                 max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
@@ -559,14 +567,21 @@ test_run_js_comp_test_parameter_search <- function() {
   # test_param_search_different_neighborhoods_different_m_j/
   # test_param_search_final_n_bins_matches_selected_trace_column).
   # ============================================================
-  for (key in c("n_bins_per_point", "trace_selected_n_bins", "trace_occupancy_failed",
+  for (key in c("n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high",
+                "trace_selected_n_bins", "trace_occupancy_failed",
                 "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy",
-                "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins")) {
+                "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins",
+                "trace_shared_residual_range_low", "trace_shared_residual_range_high")) {
     assert_true(!is.null(result2[[key]]), paste0("missing expected output '", key, "'"))
   }
   assert_true(is.integer(result2$n_bins_per_point), "n_bins_per_point should be an integer vector")
   assert_true(length(result2$n_bins_per_point) == bounds_2$max_n_points_candidate,
               "n_bins_per_point should be sized to max_n_points_candidate")
+  assert_true(is.numeric(result2$shared_residual_range_low), "shared_residual_range_low should be numeric")
+  assert_true(length(result2$shared_residual_range_low) == bounds_2$max_n_points_candidate,
+              "shared_residual_range_low should be sized to max_n_points_candidate")
+  assert_true(length(result2$shared_residual_range_high) == length(result2$shared_residual_range_low),
+              "shared_residual_range_high shape matches shared_residual_range_low")
   assert_true(is.integer(result2$trace_selected_n_bins), "trace_selected_n_bins should be an integer matrix")
   assert_true(nrow(result2$trace_selected_n_bins) == bounds_2$max_n_points_candidate,
               "trace_selected_n_bins should have max_n_points_candidate rows")
@@ -574,7 +589,8 @@ test_run_js_comp_test_parameter_search <- function() {
   assert_true(all(dim(result2$trace_occupancy_failed) == dim(result2$trace_selected_n_bins)),
               "trace_occupancy_failed shape matches trace_selected_n_bins")
   for (key in c("trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_max_bin_occupancy",
-                "trace_sturges_bins", "trace_fd_bins")) {
+                "trace_sturges_bins", "trace_fd_bins",
+                "trace_shared_residual_range_low", "trace_shared_residual_range_high")) {
     assert_true(all(dim(result2[[key]]) == dim(result2$trace_selected_n_bins)),
                 paste0(key, " shape mismatch"))
   }

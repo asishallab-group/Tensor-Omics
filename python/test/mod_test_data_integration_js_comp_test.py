@@ -97,34 +97,42 @@ def test_determine_bin_count_occupancy():
     # test_determine_bin_count_occupancy_* tests).
     residuals = np.arange(-60, 60, dtype=np.float64)  # 120 values, matches a Fortran fixture
 
-    result = determine_bin_count_occupancy(residuals, max_n_reps_all_studies=1, n_neighbors=1,
-                                            shared_residual_range=60.0)
+    result = determine_bin_count_occupancy(residuals, max_n_reps_all_studies=1, n_neighbors=1)
     assert isinstance(result, dict), f"expected a dict, got {type(result)}"
-    for key in ("selected_n_bins", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy",
-                "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins"):
+    for key in ("selected_n_bins", "occupancy_failed", "shared_residual_range_low", "shared_residual_range_high",
+                "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy",
+                "sturges_bins", "fd_bins"):
         assert key in result, f"missing expected output key '{key}'"
     assert isinstance(result["occupancy_failed"], (bool, np.bool_)), \
         f"expected occupancy_failed to be a bool, got {type(result['occupancy_failed'])}"
     assert result["n_pooled_residuals"] == 120, \
         f"expected n_pooled_residuals=120, got {result['n_pooled_residuals']}"
-    assert result["selected_n_bins"] == 12, f"expected selected_n_bins=12, got {result['selected_n_bins']}"
+    # shared_residual_range_low/high are now this neighborhood's own 5th/95th percentiles (Step 3),
+    # not a caller-supplied dataset-wide range -- see mod_test_data_integration_js_comp_test.F90's
+    # test_occupancy_finds_valid_below_m_max for the hand-computed derivation of this exact fixture.
+    assert abs(result["shared_residual_range_low"] - (-54.05)) < TOL, \
+        f"expected shared_residual_range_low=-54.05, got {result['shared_residual_range_low']}"
+    assert abs(result["shared_residual_range_high"] - 53.05) < TOL, \
+        f"expected shared_residual_range_high=53.05, got {result['shared_residual_range_high']}"
+    assert result["selected_n_bins"] == 10, f"expected selected_n_bins=10, got {result['selected_n_bins']}"
     assert not result["occupancy_failed"]
 
     # The expert entry point, given the same sorting permutation, must agree.
     residuals_perm = (np.argsort(residuals, kind="mergesort") + 1).astype(np.int32)
     result_expert = determine_bin_count_occupancy_expert(residuals, residuals_perm, max_n_reps_all_studies=1,
-                                                           n_neighbors=1, shared_residual_range=60.0)
+                                                           n_neighbors=1)
     assert result_expert["selected_n_bins"] == result["selected_n_bins"], \
         "expert entry point should agree with the plain one given the same sorted permutation"
 
     # All-NaN pool: occupancy_failed must be True, and every occupancy diagnostic must be 0.
     residuals_nan = np.full(4, np.nan, dtype=np.float64)
-    result_nan = determine_bin_count_occupancy(residuals_nan, max_n_reps_all_studies=1, n_neighbors=1,
-                                                 shared_residual_range=9.0)
+    result_nan = determine_bin_count_occupancy(residuals_nan, max_n_reps_all_studies=1, n_neighbors=1)
     assert result_nan["occupancy_failed"]
     assert result_nan["n_pooled_residuals"] == 0
     assert result_nan["min_bin_occupancy"] == 0
     assert result_nan["max_bin_occupancy"] == 0
+    assert result_nan["shared_residual_range_low"] == 0.0
+    assert result_nan["shared_residual_range_high"] == 0.0
 
 
 def test_generate_js_comp_test_candidates():
@@ -468,7 +476,7 @@ def test_run_js_comp_test_two_studies_hand_traceable():
     # min_residuals_per_bin=1 (its default is 10, which this tiny 4-residual fixture could never
     # satisfy) so the occupancy search actually succeeds, matching the Fortran fixture's own
     # override -- exercised here for call-ability, not to reproduce that test's exact numbers.
-    result = run_js_comp_test(n_neighbors=1, shared_residual_range=4.0, gene_means=gene_means,
+    result = run_js_comp_test(n_neighbors=1, gene_means=gene_means,
                                gene_means_perms=gene_means_perms, residuals=residuals, x_star=x_star,
                                n_permutations=0, random_seed=1, min_residuals_per_bin=1)
 
@@ -476,6 +484,8 @@ def test_run_js_comp_test_two_studies_hand_traceable():
     assert result["neighborhood_indices"].shape == (1, n_points, n_studies)
     assert result["neighborhood_range"].shape == (2, n_points, n_studies)
     assert result["n_bins_per_point"].shape == (n_points,)
+    assert result["shared_residual_range_low"].shape == (n_points,)
+    assert result["shared_residual_range_high"].shape == (n_points,)
     assert isinstance(result["max_n_bins_per_point"], (int, np.integer))
     assert result["occupancy_failed"].shape == (n_points,)
     assert result["n_pooled_residuals"].shape == (n_points,)
@@ -525,7 +535,7 @@ def test_run_js_comp_test_parameter_search():
     # are derived purely from the GAMMA-decay constants and max_n_genes_all_studies=2000.
     # ============================================================
     bounds = calc_js_comp_test_candidate_bounds(max_n_genes_all_studies)
-    result = run_js_comp_test_parameter_search(gene_means, residuals, shared_residual_range=1.0, n_bootstraps=10,
+    result = run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=10,
                                                 join_method='join_min',
                                                 max_n_points_candidate=bounds["max_n_points_candidate"],
                                                 max_n_neighbors_candidate=bounds["max_n_neighbors_candidate"],
@@ -555,7 +565,7 @@ def test_run_js_comp_test_parameter_search():
         residuals_2[:, :, i_study] = np.array([-0.5, 0.0, 0.5]).reshape(3, 1)
 
     bounds_2 = calc_js_comp_test_candidate_bounds(max_n_genes_2)
-    result2 = run_js_comp_test_parameter_search(gene_means_2, residuals_2, shared_residual_range=1.0,
+    result2 = run_js_comp_test_parameter_search(gene_means_2, residuals_2,
                                                  n_bootstraps=5, join_method='join_min',
                                                  max_n_points_candidate=bounds_2["max_n_points_candidate"],
                                                  max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
@@ -576,7 +586,7 @@ def test_run_js_comp_test_parameter_search():
     # trace_* outputs' presence, dtype and shape. Reuses Test 2's single-candidate setup so the
     # search actually reaches and bootstraps a candidate.
     # ============================================================
-    result3 = run_js_comp_test_parameter_search(gene_means_2, residuals_2, shared_residual_range=1.0,
+    result3 = run_js_comp_test_parameter_search(gene_means_2, residuals_2,
                                                  n_bootstraps=5, join_method='join_min',
                                                  max_n_points_candidate=bounds_2["max_n_points_candidate"],
                                                  max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
@@ -612,12 +622,17 @@ def test_run_js_comp_test_parameter_search():
     # test_param_search_different_neighborhoods_different_m_j/
     # test_param_search_final_n_bins_matches_selected_trace_column).
     # ============================================================
-    for key in ("n_bins_per_point", "trace_selected_n_bins", "trace_occupancy_failed",
+    for key in ("n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high",
+                "trace_selected_n_bins", "trace_occupancy_failed",
                 "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy",
-                "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins"):
+                "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins",
+                "trace_shared_residual_range_low", "trace_shared_residual_range_high"):
         assert key in result2, f"missing expected output key '{key}'"
     assert result2["n_bins_per_point"].dtype == np.int32
     assert result2["n_bins_per_point"].shape == (bounds_2["max_n_points_candidate"],)
+    assert result2["shared_residual_range_low"].dtype == np.float64
+    assert result2["shared_residual_range_low"].shape == (bounds_2["max_n_points_candidate"],)
+    assert result2["shared_residual_range_high"].shape == result2["shared_residual_range_low"].shape
     assert result2["trace_selected_n_bins"].dtype == np.int32
     assert result2["trace_selected_n_bins"].shape[0] == bounds_2["max_n_points_candidate"]
     assert result2["trace_occupancy_failed"].dtype == np.bool_
@@ -627,6 +642,9 @@ def test_run_js_comp_test_parameter_search():
                 "trace_sturges_bins", "trace_fd_bins"):
         assert result2[key].shape == result2["trace_selected_n_bins"].shape, \
             f"{key} shape mismatch: {result2[key].shape}"
+    assert result2["trace_shared_residual_range_low"].dtype == np.float64
+    assert result2["trace_shared_residual_range_low"].shape == result2["trace_selected_n_bins"].shape
+    assert result2["trace_shared_residual_range_high"].shape == result2["trace_selected_n_bins"].shape
     # n_points=300 leading entries of n_bins_per_point must match the sole admissible candidate's
     # own trace_selected_n_bins column (test_param_search_final_n_bins_matches_selected_trace_column
     # is the Fortran suite's rigorous version of this same wiring check).

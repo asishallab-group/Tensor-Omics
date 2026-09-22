@@ -34,7 +34,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(73))
+        allocate (all_tests(75))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -192,6 +192,10 @@ contains
                                   test_occupancy_min_residuals_per_bin_zero_accepted)
         all_tests(73) = test_case("test_run_js_comp_test_accepts_min_residuals_per_bin_zero", &
                                   test_run_js_comp_test_accepts_min_residuals_per_bin_zero)
+        all_tests(74) = test_case("test_occupancy_range_asymmetric_skewed_residuals", &
+                                  test_occupancy_range_asymmetric_skewed_residuals)
+        all_tests(75) = test_case("test_occupancy_range_hand_computed_percentile", &
+                                  test_occupancy_range_hand_computed_percentile)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -1578,42 +1582,48 @@ contains
                                "Laplace correction: p must be (0+1)/(n_permutations+1) = 1/11, not 0.0")
     end subroutine test_permutation_pvalue_laplace_corrected_never_exactly_zero
 
-    !> End-to-end, fully closed-form 2-study case run through `run_js_comp_test` with
-    !| `n_permutations=0`: GSL's `create_rng` still runs (so `ierr` is genuinely exercised), but the
-    !| permutation loop itself never executes, so `gjct_permutation_test_impl` leaves everything
-    !| untouched and `run_js_comp_test_impl`'s final re-derivation step reproduces exactly the same
-    !| values it already had -- making the whole pipeline deterministic and hand-traceable.
+    !> End-to-end 2-study case run through `run_js_comp_test` with `n_permutations=0`: GSL's
+    !| `create_rng` still runs (so `ierr` is genuinely exercised), but the permutation loop itself
+    !| never executes, so `gjct_permutation_test_impl` leaves everything untouched and
+    !| `run_js_comp_test_impl`'s final re-derivation step reproduces exactly the same values it
+    !| already had -- making the whole pipeline deterministic and hand-traceable.
     !|
     !| One reference point, one neighbor per study (`x_star=1.0` sits exactly on gene 1's mean, so
     !| both studies trivially pick gene 1 -- see test_construct_neighborhoods_ranged_basic's own
     !| binary-search trace for why an exact match gives insertion index 1). Study 1's two replicate
-    !| residuals are `[-1, 1]`, study 2's are `[-3, 3]`, pooled into `[-1, 1, -3, 3]` (`N_j=4`).
-    !| Issue #187's occupancy search picks the bin count now, not a caller-supplied `n_bins`:
-    !| `min_residuals_per_bin=1` is passed explicitly (its default, 10, could never be satisfied by
-    !| only 4 pooled residuals), and starting from the default `m_min=3`, bin occupancies are
-    !| `[1, 2, 1]` at `m=3` (admissible), `[1, 1, 1, 1]` at `m=4` (still admissible), and
-    !| `[1, 1, 0, 1, 1]` at `m=5` (bin 3 empty, inadmissible) -- the resulting refinement interval
-    !| `(4, 5)` is empty, so `n_bins_per_point(1) = 4` and `occupancy_failed(1) = .false.`,
-    !| reproducing exactly the old caller-supplied `n_bins=4` this test hand-traced before Issue
-    !| #187, spanning `[-4, 4]` (bin width 2.0, via `build_residual_histograms_impl`'s own
-    !| `bin_idx = min(n_bins, int((clamped+R)/bin_width)+1)`): study 1 -> pmf `[0, 0.5, 0.5, 0]`,
-    !| study 2 -> pmf `[0.5, 0, 0, 0.5]`, mean pmf -> uniform `[0.25, 0.25, 0.25, 0.25]`.
+    !| residuals are `[-1, 1]`, study 2's are `[-3, 3]`, pooled into `[-1, 1, -3, 3]`, sorted
+    !| `[-3, -1, 1, 3]` (`N_j=4`).
     !|
-    !| Study 2's pmf is study 1's own pmf under the bin permutation `1<->4, 2<->3`, which also fixes
-    !| the uniform mean pmf -- so by that symmetry both studies' JSD against the mean must be
-    !| identical. Working the Jensen-Shannon sum out by hand (`compute_divergence_per_reference_point_impl`'s
-    !| own formula, `0.5*sum(s1*log(s1/S_mean) + s2*log(s2/S_mean))`, then rescaled by `/LOG_2`)
-    !| collapses to the closed form `1.5 - 0.75*log2(3)`: bins 1 and 4 each contribute
-    !| `0.25*ln(2)`, bins 2 and 3 each contribute `0.5*ln(4/3) + 0.25*ln(2/3)`, so the raw (pre-rescale)
-    !| sum is `0.5*ln2 + ln(4/3) + 0.5*ln(2/3) = 3*ln2 - 1.5*ln3`; halving (the JSD's own `0.5*`) and
-    !| dividing by `ln2` gives `1.5 - 0.75*(ln3/ln2) = 1.5 - 0.75*log2(3)`. With `n_points=1` the
-    !| single reference point's weight is always exactly 1.0 (its own plus the consensus's included
-    !| reps divide out exactly), so `global_js_divergence` equals that same closed form too.
+    !| Step 3 (per-neighborhood residual range): `shared_residual_range_low`/`_high` are now this
+    !| point's own 5th/95th percentile of its own pooled residuals, not a caller-supplied scalar.
+    !| `rank(0.05,4)=0.05*3+1=1.15` -> interpolate value(1)=-3, value(2)=-1 at fraction 0.15 ->
+    !| R_low = -3 + 0.15*2 = -2.7; `rank(0.95,4)=0.95*3+1=3.85` -> interpolate value(3)=1,
+    !| value(4)=3 at fraction 0.85 -> R_high = 1 + 0.85*2 = 2.7 (span 5.4, narrower than the old
+    !| hand-picked `R=4.0`).
+    !|
+    !| Issue #187's occupancy search picks the bin count: `min_residuals_per_bin=1` is passed
+    !| explicitly (its default, 10, could never be satisfied by only 4 pooled residuals). Starting
+    !| from the default `m_min=3`, bin width is `5.4/3=1.8`, boundaries `[-2.7,-0.9),[-0.9,0.9),
+    !| [0.9,2.7]`: `-3`(clamped to `-2.7`) and `-1` both land in bin 1, `1` and `3`(clamped to
+    !| `2.7`) both land in bin 3, leaving bin 2 completely EMPTY -- `min_occ=0 < 1`, inadmissible
+    !| already at `m_min`. This is the FAILURE case from Issue #187's own pseudocode: even the
+    !| minimum resolution is unsupported, so `occupancy_failed(1) = .true.` and
+    !| `n_bins_per_point(1)` stays at `m_min = 3` (the routine's own documented behavior: a point
+    !| that fails occupancy still gets a real histogram built at `m_min`, and still contributes to
+    !| `global_js_divergence` -- see this routine's own doc block).
+    !|
+    !| At `M=3`, `R_low=-2.7`, `R_high=2.7` (bin width 1.8): study 1's `[-1, 1]` -> bin 1 (`-1`),
+    !| bin 3 (`1`) -> counts `[1, 0, 1]`. Study 2's `[-3, 3]`, both clamped to `[-2.7, 2.7]` ->
+    !| bin 1 (`-2.7`), bin 3 (`2.7`) -> counts `[1, 0, 1]` -- IDENTICAL to study 1's, an accidental
+    !| consequence of this fixture's own symmetric residuals under the new narrower, still-symmetric
+    !| derived range (a coincidence of this particular data, not a general property of the
+    !| asymmetric-range design). Both studies' pmf is therefore `[0.5, 0, 0.5]`, the mean pmf is the
+    !| same `[0.5, 0, 0.5]`, and since each study's own pmf exactly equals the consensus,
+    !| `global_js_divergence` is exactly `0.0` for both -- no closed-form derivation needed, unlike
+    !| the pre-Step-3 antisymmetric-bin-permutation case this fixture used to exercise.
     subroutine test_run_js_comp_test_two_studies_hand_traceable()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
         integer(int32), parameter :: n_points = 1, n_neighbors = 1
-        real(real64), parameter :: LOG2_3 = 1.5849625007211562_real64 ! log2(3) = ln(3)/ln(2)
-        real(real64), parameter :: EXPECTED_JSD = 1.5_real64 - 0.75_real64*LOG2_3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
         integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
@@ -1621,6 +1631,7 @@ contains
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
         integer(int32) :: neighborhood_range(2, n_points, n_studies)
         integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
+        real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
         logical(c_bool) :: occupancy_failed(n_points)
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
@@ -1651,8 +1662,9 @@ contains
         x_star = [1.0_real64]
 
         call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                              4.0_real64, gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
-                              neighborhood_range, n_bins_per_point, max_n_bins_per_point, occupancy_failed, &
+                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                              max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
                               sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
                               mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
@@ -1665,33 +1677,44 @@ contains
         call assert_equal_array_int(neighborhood_indices(:, 1, 2), [1], n_neighbors, &
                                     "test_run_js_comp_test_two_studies_hand_traceable: study 2 neighbor is gene 1")
 
-        call assert_equal_int(n_bins_per_point(1), 4_int32, &
-                              "test_run_js_comp_test_two_studies_hand_traceable: occupancy search picks 4 bins")
-        call assert_equal_int(max_n_bins_per_point, 4_int32, &
-                              "test_run_js_comp_test_two_studies_hand_traceable: max_n_bins_per_point is 4")
-        call assert_false(occupancy_failed(1), &
-                          "test_run_js_comp_test_two_studies_hand_traceable: occupancy search succeeds")
+        call assert_equal_real(shared_residual_range_low(1), -2.7_real64, TOL, &
+                               "test_run_js_comp_test_two_studies_hand_traceable: "// &
+                               "shared_residual_range_low == 5th percentile of pooled [-3,-1,1,3]")
+        call assert_equal_real(shared_residual_range_high(1), 2.7_real64, TOL, &
+                               "test_run_js_comp_test_two_studies_hand_traceable: "// &
+                               "shared_residual_range_high == 95th percentile of pooled [-3,-1,1,3]")
+        call assert_equal_int(n_bins_per_point(1), 3_int32, &
+                              "test_run_js_comp_test_two_studies_hand_traceable: "// &
+                              "occupancy search FAILS at m_min=3 (bin 2 empty), so n_bins_per_point stays m_min")
+        call assert_equal_int(max_n_bins_per_point, 3_int32, &
+                              "test_run_js_comp_test_two_studies_hand_traceable: max_n_bins_per_point is 3")
+        call assert_true(occupancy_failed(1), &
+                         "test_run_js_comp_test_two_studies_hand_traceable: "// &
+                         "occupancy genuinely fails at the default m_min under the new narrower derived range")
 
-        call assert_equal_array_int(counts(1:4, 1, 1), [0, 1, 1, 0], 4_int32, &
+        call assert_equal_array_int(counts(1:3, 1, 1), [1, 0, 1], 3_int32, &
                                     "test_run_js_comp_test_two_studies_hand_traceable: study 1 counts")
-        call assert_equal_array_int(counts(1:4, 1, 2), [1, 0, 0, 1], 4_int32, &
+        call assert_equal_array_int(counts(1:3, 1, 2), [1, 0, 1], 3_int32, &
                                     "test_run_js_comp_test_two_studies_hand_traceable: study 2 counts")
         call assert_equal_int(included_n_reps(1, 1), 2_int32, &
                               "test_run_js_comp_test_two_studies_hand_traceable: study 1 included_n_reps")
         call assert_equal_int(included_n_reps(1, 2), 2_int32, &
                               "test_run_js_comp_test_two_studies_hand_traceable: study 2 included_n_reps")
 
-        call assert_equal_array_real(mean_pmf(1:4, 1), [0.25_real64, 0.25_real64, 0.25_real64, 0.25_real64], 4_int32, TOL, &
-                                     "test_run_js_comp_test_two_studies_hand_traceable: mean_pmf should be uniform")
-        call assert_equal_array_int(mean_pmf_counts(1:4, 1), [1, 1, 1, 1], 4_int32, &
+        call assert_equal_array_real(mean_pmf(1:3, 1), [0.5_real64, 0.0_real64, 0.5_real64], 3_int32, TOL, &
+                                     "test_run_js_comp_test_two_studies_hand_traceable: "// &
+                                     "mean_pmf equals both studies' own identical pmf")
+        call assert_equal_array_int(mean_pmf_counts(1:3, 1), [2, 0, 2], 3_int32, &
                                     "test_run_js_comp_test_two_studies_hand_traceable: mean_pmf_counts")
         call assert_equal_int(mean_pmf_included_n_reps(1), 4_int32, &
                               "test_run_js_comp_test_two_studies_hand_traceable: mean_pmf_included_n_reps")
 
-        call assert_equal_real(global_js_divergence(1), EXPECTED_JSD, 1d-9, &
-                               "test_run_js_comp_test_two_studies_hand_traceable: study 1 global JSD, closed form")
-        call assert_equal_real(global_js_divergence(2), EXPECTED_JSD, 1d-9, &
-                               "test_run_js_comp_test_two_studies_hand_traceable: study 2 global JSD, closed form")
+        call assert_equal_real(global_js_divergence(1), 0.0_real64, TOL, &
+                               "test_run_js_comp_test_two_studies_hand_traceable: "// &
+                               "study 1's pmf equals the consensus exactly -> JSD == 0")
+        call assert_equal_real(global_js_divergence(2), 0.0_real64, TOL, &
+                               "test_run_js_comp_test_two_studies_hand_traceable: "// &
+                               "study 2's pmf equals the consensus exactly -> JSD == 0")
         call assert_equal_real(weights(1, 1), 1.0_real64, TOL, &
                                "test_run_js_comp_test_two_studies_hand_traceable: single reference point weight is 1.0")
         call assert_equal_real(weights(1, 2), 1.0_real64, TOL, &
@@ -1711,16 +1734,20 @@ contains
     !| by the sibling entry point's own tests. Fixed by loosening this routine's bound to `0` too.
     !|
     !| Identical fixture to `test_run_js_comp_test_two_studies_hand_traceable` above (same
-    !| `gene_means`/`residuals`/`x_star`, pooled residuals `[-1, 1, -3, 3]`), except
-    !| `min_residuals_per_bin=0_int32` (proving the loosened bound is genuinely accepted, not just
-    !| documentation) and an explicit `m_max=4_int32` to bound the occupancy search's early-return
-    !| branch deterministically -- with `min_residuals_per_bin=0`, occupancy is trivially satisfied
-    !| at every candidate `M` (`min_occ >= 0` always holds), so without a bounded `m_max` the search
-    !| would run all the way to the default `m_max=120` instead of reproducing the same `M=4`
-    !| histogram as the hand-traceable test above. Since the underlying data and bin count are
-    !| identical to that test, every downstream numeric result (`counts`, `mean_pmf`,
-    !| `global_js_divergence`) is identical too -- only `occupancy_failed`'s reason for being
-    !| `.false.` differs (trivially satisfied here vs. genuinely satisfied there).
+    !| `gene_means`/`residuals`/`x_star`, pooled residuals `[-1, 1, -3, 3]`, own
+    !| `shared_residual_range_low`/`_high` = -2.7/2.7 -- see that test's docstring for the
+    !| derivation), except `min_residuals_per_bin=0_int32` (proving the loosened bound is genuinely
+    !| accepted, not just documentation) and an explicit `m_max=4_int32` to bound the occupancy
+    !| search's early-return branch deterministically -- with `min_residuals_per_bin=0`, occupancy
+    !| is trivially satisfied at every candidate `M` (`min_occ >= 0` always holds), so without a
+    !| bounded `m_max` the search would run all the way to the default `m_max=120` instead of
+    !| stopping at `M=4`. Unlike the hand-traceable test above (which FAILS at the default `m_min=3`
+    !| and never reaches `M=4` at all), forcing `M=4` here reproduces the SAME per-bin split that
+    !| test's own pre-Step-3 fixture had (`[0,1,1,0]`/`[1,0,0,1]`): at `M=4` the still-symmetric
+    !| `[-2.7, 2.7]` range splits this data into the same relative quarters the old `[-4, 4]` range
+    !| did, so every downstream numeric result (`counts`, `mean_pmf`, `global_js_divergence`) is
+    !| unchanged from before Step 3 -- only `occupancy_failed`'s reason for being `.false.` differs
+    !| (trivially satisfied here vs. genuinely satisfied in a from-scratch search).
     subroutine test_run_js_comp_test_accepts_min_residuals_per_bin_zero()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
         integer(int32), parameter :: n_points = 1, n_neighbors = 1
@@ -1733,6 +1760,7 @@ contains
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
         integer(int32) :: neighborhood_range(2, n_points, n_studies)
         integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
+        real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
         logical(c_bool) :: occupancy_failed(n_points)
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
@@ -1763,8 +1791,9 @@ contains
         x_star = [1.0_real64]
 
         call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                              4.0_real64, gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
-                              neighborhood_range, n_bins_per_point, max_n_bins_per_point, occupancy_failed, &
+                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                              max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
                               sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
                               mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
@@ -1774,6 +1803,10 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: "// &
                               "min_residuals_per_bin=0 must be accepted, not rejected by DM_MIN")
+        call assert_equal_real(shared_residual_range_low(1), -2.7_real64, TOL, &
+                               "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: shared_residual_range_low")
+        call assert_equal_real(shared_residual_range_high(1), 2.7_real64, TOL, &
+                               "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: shared_residual_range_high")
 
         call assert_equal_int(n_bins_per_point(1), 4_int32, &
                               "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: "// &
@@ -1802,17 +1835,23 @@ contains
     !| Studies 1 and 2 are identical to each other (residuals `[-1,-1,1,1]`, pmf `[0, 0.5, 0.5, 0]`);
     !| study 3 is a deliberately constructed outlier whose every replicate lands in the SAME bin
     !| (`[-3.9,-3.9,-3.9,-3.9]`, pmf `[1, 0, 0, 0]`). `m_min=4` is passed explicitly so Issue #187's
-    !| occupancy search reproduces exactly the old caller-supplied `n_bins=4` this test hand-traced
-    !| before Issue #187 -- the pooled pool's 4th bin (`[1.333, 4]` at `m=3`'s own width, or
-    !| `[1, 4]` retargeted for `m=4`'s narrower bins) is never populated by any of this fixture's
-    !| residuals, so occupancy fails even at `m=4` (an empty bin can never reach any positive
-    !| `min_residuals_per_bin`) regardless of that threshold's value: `occupancy_failed(1) = .true.`
-    !| and `n_bins_per_point(1) = m_min = 4` by construction, exactly the asymmetry
-    !| `run_js_comp_test_impl`'s own doc block describes -- this occupancy-failed point still gets a
-    !| real histogram and still contributes to `global_js_divergence`/the permutation test below,
-    !| entirely unaffected by the occupancy search's own verdict. The consensus mean pmf, averaging
-    !| all three, is `[1/3, 1/3, 1/3, 0]` with `mean_pmf_counts=[4, 4, 4, 0]`. Study 3's own pmf puts
-    !| everything in a bin that holds only 4 of the pooled pool's 12 replicates, so drawing (without
+    !| occupancy search reproduces the same forced `n_bins=4` this test hand-traced before Issue
+    !| #187, but Step 3's own per-neighborhood range changes WHICH bin ends up empty: pooled
+    !| residuals sorted are `[-3.9,-3.9,-3.9,-3.9,-1,-1,-1,-1,1,1,1,1]` (`N=12`), giving
+    !| `rank(0.05,12)=1.55` -> `R_low=-3.9` (interpolating between two `-3.9` values) and
+    !| `rank(0.95,12)=11.45` -> `R_high=1.0` (interpolating between two `1` values) -- an
+    !| asymmetric range, unlike the old caller-supplied symmetric `[-4,4]`. At `M=4` over
+    !| `[-3.9, 1.0]` (bin width `1.225`), the SECOND bin (`[-2.675,-1.45)`) is the one that ends up
+    !| empty, not the fourth: the `-3.9`s land in bin 1, both studies' `-1`s land in bin 3, and both
+    !| studies' `1`s land in bin 4 (clamped/capped to the last bin). Occupancy still fails even at
+    !| `m=4` (an empty bin can never reach any positive `min_residuals_per_bin`) regardless of that
+    !| threshold's value: `occupancy_failed(1) = .true.` and `n_bins_per_point(1) = m_min = 4` by
+    !| construction, exactly the asymmetry `run_js_comp_test_impl`'s own doc block describes -- this
+    !| occupancy-failed point still gets a real histogram and still contributes to
+    !| `global_js_divergence`/the permutation test below, entirely unaffected by the occupancy
+    !| search's own verdict. The consensus mean pmf, averaging all three, is `[1/3, 0, 1/3, 1/3]`
+    !| with `mean_pmf_counts=[4, 0, 4, 4]`. Study 3's own pmf puts everything in a bin that holds
+    !| only 4 of the pooled pool's 12 replicates, so drawing (without
     !| replacement, `random_multiv_hypergeom`) another 4-for-4 landing entirely in that one bin
     !| purely by chance is exceedingly rare -- its empirical p-value must come out small, while
     !| studies 1/2's own draws, being close to what the consensus itself is built from, should not
@@ -1828,6 +1867,7 @@ contains
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
         integer(int32) :: neighborhood_range(2, n_points, n_studies)
         integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
+        real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
         logical(c_bool) :: occupancy_failed(n_points)
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
@@ -1857,8 +1897,9 @@ contains
         x_star = [1.0_real64]
 
         call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                              4.0_real64, gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
-                              neighborhood_range, n_bins_per_point, max_n_bins_per_point, occupancy_failed, &
+                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                              max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
                               sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
                               mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
@@ -1867,13 +1908,17 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_run_js_comp_test_three_studies_outlier_has_small_p_value: ierr should be OK")
 
+        call assert_equal_real(shared_residual_range_low(1), -3.9_real64, TOL, &
+                               "test_run_js_comp_test_three_studies_outlier_has_small_p_value: shared_residual_range_low")
+        call assert_equal_real(shared_residual_range_high(1), 1.0_real64, TOL, &
+                               "test_run_js_comp_test_three_studies_outlier_has_small_p_value: shared_residual_range_high")
         call assert_equal_int(n_bins_per_point(1), 4_int32, &
                               "test_run_js_comp_test_three_studies_outlier_has_small_p_value: n_bins_per_point == m_min")
         call assert_true(occupancy_failed(1), &
                          "test_run_js_comp_test_three_studies_outlier_has_small_p_value: "// &
-                         "the pooled pool's 4th bin is always empty, so occupancy fails even at m_min")
+                         "the pooled pool's 2nd bin is always empty, so occupancy fails even at m_min")
 
-        call assert_equal_array_int(mean_pmf_counts(1:4, 1), [4, 4, 4, 0], 4_int32, &
+        call assert_equal_array_int(mean_pmf_counts(1:4, 1), [4, 0, 4, 4], 4_int32, &
                                     "test_run_js_comp_test_three_studies_outlier_has_small_p_value: mean_pmf_counts")
 
         call assert_true(p_values(3) <= 0.05_real64, &
@@ -1895,20 +1940,31 @@ contains
     !| entire candidate containing such a point.
     !|
     !| Two reference points, one neighbor per study, 2 studies: point 1 (`x_star=1.0`, gene 1) is
-    !| the SAME well-supported fixture as the hand-traceable test above (residuals `[-1,1]`/`[-3,3]`,
-    !| `min_residuals_per_bin=1` override) and lands on `n_bins_per_point(1)=4`,
-    !| `occupancy_failed(1)=.false.`, closed-form JSD `1.5 - 0.75*log2(3)` for both studies exactly
-    !| as before. Point 2 (`x_star=5.0`, gene 2) is deliberately data-starved: study 1's two
-    !| replicates are both `-3.9`; study 2's are `-3.9`/`3.9` (one of each) -- the pooled pool's
-    !| middle bin (spanning `[-1.333, 1.333]` at the default `m_min=3`) is never populated by any of
-    !| these three-out-of-four-residuals-at--3.9 values, so occupancy fails already at `m_min=3` and
-    !| `n_bins_per_point(2) = m_min = 3` by construction (`FAILURE` per Issue #187's own policy).
+    !| the SAME fixture as the hand-traceable test above (residuals `[-1,1]`/`[-3,3]`,
+    !| `min_residuals_per_bin=1` override) -- own `shared_residual_range_low`/`_high` = -2.7/2.7,
+    !| own occupancy search FAILS at the default `m_min=3` (bin 2 empty), giving
+    !| `n_bins_per_point(1)=3`, `occupancy_failed(1)=.true.`, and (as that test's own docstring
+    !| derives) both studies land on the IDENTICAL pmf `[0.5, 0, 0.5]`, so point 1's own JSD is
+    !| exactly `0.0` for both studies -- see that test's docstring for the full derivation, not
+    !| repeated here. Point 2 (`x_star=5.0`, gene 2) is deliberately data-starved: study 1's two
+    !| replicates are both `-3.9`; study 2's are `-3.9`/`3.9` (one of each). Pooled and sorted:
+    !| `[-3.9,-3.9,-3.9,3.9]` (`N=4`). `rank(0.05,4)=1.15` -> `R_low=-3.9` (interpolating between
+    !| two `-3.9` values); `rank(0.95,4)=3.85` -> `R_high=-3.9+0.85*(3.9-(-3.9))=2.73`. At the
+    !| default `m_min=3` over `[-3.9, 2.73]` (bin width `2.21`), the middle bin
+    !| (`[-1.69, 0.52)`) is never populated by any of these three-out-of-four-residuals-at--3.9
+    !| values, so occupancy fails already at `m_min=3` and `n_bins_per_point(2) = m_min = 3` by
+    !| construction (`FAILURE` per Issue #187's own policy) -- coincidentally the same `m=3` this
+    !| point's occupancy search would have failed at under the old caller-supplied symmetric range
+    !| too, though the range bounds themselves differ.
     !|
     !| At `n_bins_per_point(2)=3`, study 1's own pmf at point 2 is `[1, 0, 0]` (both replicates in
-    !| bin 1), study 2's is `[0.5, 0, 0.5]` (one replicate each in bins 1 and 3); their consensus
-    !| mean pmf is `[0.75, 0, 0.25]`. Working `compute_divergence_per_reference_point_impl`'s own
-    !| formula out by hand for each study against that consensus (bin 2 skipped throughout, since
-    !| `S_mean=0` there for both):
+    !| bin 1, `-3.9` sitting exactly at `R_low`), study 2's is `[0.5, 0, 0.5]` (one replicate each
+    !| in bins 1 and 3, `3.9` clamped to `R_high=2.73`); their consensus mean pmf is
+    !| `[0.75, 0, 0.25]` -- numerically IDENTICAL to what the pre-Step-3 fixture had, since both the
+    !| old symmetric and new asymmetric ranges happen to place these particular residuals in the
+    !| same relative bins. Working `compute_divergence_per_reference_point_impl`'s own formula out
+    !| by hand for each study against that consensus (bin 2 skipped throughout, since `S_mean=0`
+    !| there for both) therefore reproduces the exact same pre-Step-3 constants:
     !|
     !| - Study 1: bin 1 contributes `1*ln(1/0.875) + 0.75*ln(0.75/0.875)` (`S_mean=0.875`), bin 3
     !|   contributes `0.25*ln(0.25/0.125)` (`S_mean=0.125`); halved and rescaled by `/LOG_2` gives
@@ -1918,26 +1974,20 @@ contains
     !|   gives `POINT2_JSD_STUDY2 ~= 0.048794940695398498`.
     !|
     !| Both values are real, positive, and clearly distinct from each other, from zero, and from
-    !| point 1's own `1.5 - 0.75*log2(3)` -- proof this occupancy-failed point is not silently
+    !| point 1's own (now exactly `0.0`) JSD -- proof this occupancy-failed point is not silently
     !| zeroed, skipped, or coincidentally aliased onto point 1's own value, but genuinely computed
-    !| from its own (degenerate) data. (An earlier draft of this fixture used two disjoint
-    !| single-bin deltas for point 2 -- verified BY RUNNING IT that this codebase's own
-    !| study-vs-consensus JSD convention collapses any two-study, fully-disjoint-single-bin-delta
-    !| pair to the exact same universal constant `1.5 - 0.75*log2(3)` as point 1's own fixture,
-    !| regardless of which bins are involved, which would have made this test's two points
-    !| indistinguishable by pure coincidence -- the asymmetric split used here avoids that trap.)
+    !| from its own (degenerate) data.
     !|
     !| Both points have `included_n_reps=2` for every study and no NaN anywhere, so
     !| `compute_weighted_global_divergence_impl`'s weights come out equal (`0.5` each: `(2+4)/12`
     !| for either point, `total_sample_count=12`). `global_js_divergence` is therefore exactly
-    !| `0.5*point_1_jsd + 0.5*point_2_jsd_study_i` per study -- clearly different from point 1's own
-    !| JSD alone, which is what would happen if point 2's occupancy-failed contribution were instead
-    !| silently rejected or zero-weighted.
+    !| `0.5*0.0 + 0.5*point_2_jsd_study_i` per study -- clearly different from `0.0` alone, which is
+    !| what would happen if point 2's occupancy-failed contribution were instead silently rejected
+    !| or zero-weighted.
     subroutine test_run_js_comp_test_occupancy_failed_point_still_contributes()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
         integer(int32), parameter :: n_points = 2, n_neighbors = 1
-        real(real64), parameter :: LOG2_3 = 1.5849625007211562_real64 ! log2(3) = ln(3)/ln(2)
-        real(real64), parameter :: POINT1_JSD = 1.5_real64 - 0.75_real64*LOG2_3
+        real(real64), parameter :: POINT1_JSD = 0.0_real64 ! see hand-traceable test's own docstring
         real(real64), parameter :: POINT2_JSD_STUDY1 = 0.13792538097002990_real64 ! hand-derived, see doc block above
         real(real64), parameter :: POINT2_JSD_STUDY2 = 0.048794940695398498_real64 ! hand-derived, see doc block above
         real(real64), parameter :: EXPECTED_GLOBAL_JSD_STUDY1 = 0.5_real64*POINT1_JSD + 0.5_real64*POINT2_JSD_STUDY1
@@ -1949,6 +1999,7 @@ contains
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
         integer(int32) :: neighborhood_range(2, n_points, n_studies)
         integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
+        real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
         logical(c_bool) :: occupancy_failed(n_points)
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
@@ -1979,8 +2030,9 @@ contains
         x_star = [1.0_real64, 5.0_real64]
 
         call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                              4.0_real64, gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
-                              neighborhood_range, n_bins_per_point, max_n_bins_per_point, occupancy_failed, &
+                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                              max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
                               sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
                               mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
@@ -1989,10 +2041,11 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_run_js_comp_test_occupancy_failed_point_still_contributes: ierr should be OK")
 
-        call assert_false(occupancy_failed(1), &
-                          "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
-                          "point 1 is well-supported")
-        call assert_equal_int(n_bins_per_point(1), 4_int32, &
+        call assert_true(occupancy_failed(1), &
+                         "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
+                         "point 1 now fails occupancy too under the new narrower derived range "// &
+                         "(see the hand-traceable test's own docstring)")
+        call assert_equal_int(n_bins_per_point(1), 3_int32, &
                               "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
                               "point 1's own bin count")
 
@@ -2003,9 +2056,9 @@ contains
                               "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
                               "point 2's n_bins_per_point == m_min (default 3), per Issue #187's own FAILURE policy")
 
-        call assert_equal_int(max_n_bins_per_point, 4_int32, &
+        call assert_equal_int(max_n_bins_per_point, 3_int32, &
                               "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
-                              "max_n_bins_per_point is the wider of the two points' own bin counts")
+                              "max_n_bins_per_point: both points now select 3 bins")
 
         ! The occupancy-failed point still gets a REAL, non-skipped, non-zeroed contribution: its
         ! own weight is positive (both replicates counted, nothing excluded) and its JSD is a real,
@@ -2059,6 +2112,8 @@ contains
         integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
         integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
         integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        real(real64), allocatable :: shared_residual_range_low(:), shared_residual_range_high(:)
+        real(real64), allocatable :: trace_shared_residual_range_low(:, :), trace_shared_residual_range_high(:, :)
         integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
         integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
         real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
@@ -2085,18 +2140,24 @@ contains
         allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
         allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
         allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
+                 trace_shared_residual_range_high(max_n_points_candidate, 16))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, &
+                                               residuals, 10_int32, METHOD_JOIN_MIN, &
                                                max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
-                                               n_bins_per_point, best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                                               best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
-                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
+                                               trace_sturges_bins, trace_fd_bins, &
+                                               trace_shared_residual_range_low, trace_shared_residual_range_high, &
+                                               ierr=ierr, &
                                                min_residuals_per_bin=1000000_int32, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
@@ -2143,6 +2204,8 @@ contains
         integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
         integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
         integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        real(real64), allocatable :: shared_residual_range_low(:), shared_residual_range_high(:)
+        real(real64), allocatable :: trace_shared_residual_range_low(:, :), trace_shared_residual_range_high(:, :)
         integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
         integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
         real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
@@ -2169,18 +2232,24 @@ contains
         allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
         allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
         allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
+                 trace_shared_residual_range_high(max_n_points_candidate, 16))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 1.0_real64, 5_int32, METHOD_JOIN_MIN, &
+                                               residuals, 5_int32, METHOD_JOIN_MIN, &
                                                max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
-                                               n_bins_per_point, best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                                               best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
-                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
+                                               trace_sturges_bins, trace_fd_bins, &
+                                               trace_shared_residual_range_low, trace_shared_residual_range_high, &
+                                               ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                random_seed=1_int32)
 
@@ -2251,6 +2320,8 @@ contains
         integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
         integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
         integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        real(real64), allocatable :: shared_residual_range_low(:), shared_residual_range_high(:)
+        real(real64), allocatable :: trace_shared_residual_range_low(:, :), trace_shared_residual_range_high(:, :)
         integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
         integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
         real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
@@ -2277,18 +2348,24 @@ contains
         allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
         allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
         allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
+                 trace_shared_residual_range_high(max_n_points_candidate, 16))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, &
+                                               residuals, 10_int32, METHOD_JOIN_MIN, &
                                                max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
-                                               n_bins_per_point, best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                                               best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
-                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
+                                               trace_sturges_bins, trace_fd_bins, &
+                                               trace_shared_residual_range_low, trace_shared_residual_range_high, &
+                                               ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                random_seed=1_int32)
 
@@ -2382,6 +2459,8 @@ contains
         integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
         integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
         integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        real(real64), allocatable :: shared_residual_range_low(:), shared_residual_range_high(:)
+        real(real64), allocatable :: trace_shared_residual_range_low(:, :), trace_shared_residual_range_high(:, :)
         integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
         integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
         real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
@@ -2408,18 +2487,24 @@ contains
         allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
         allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
         allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
+                 trace_shared_residual_range_high(max_n_points_candidate, 16))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, &
+                                               residuals, 10_int32, METHOD_JOIN_MIN, &
                                                max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
-                                               n_bins_per_point, best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                                               best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
-                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
+                                               trace_sturges_bins, trace_fd_bins, &
+                                               trace_shared_residual_range_low, trace_shared_residual_range_high, &
+                                               ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_EFFECT_SIZE, random_seed=1_int32)
 
@@ -2458,6 +2543,8 @@ contains
         integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
         integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
         integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        real(real64), allocatable :: shared_residual_range_low(:), shared_residual_range_high(:)
+        real(real64), allocatable :: trace_shared_residual_range_low(:, :), trace_shared_residual_range_high(:, :)
         integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
         integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
         real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
@@ -2484,18 +2571,24 @@ contains
         allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
         allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
         allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
+                 trace_shared_residual_range_high(max_n_points_candidate, 16))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, &
+                                               residuals, 10_int32, METHOD_JOIN_MIN, &
                                                max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
-                                               n_bins_per_point, best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                                               best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
-                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
+                                               trace_sturges_bins, trace_fd_bins, &
+                                               trace_shared_residual_range_low, trace_shared_residual_range_high, &
+                                               ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_BOTH, random_seed=1_int32)
 
@@ -2545,7 +2638,12 @@ contains
     !| `m_max=120` bins per point -- a real, different bin count from before, which is why the
     !| bootstrapped confidence-interval values below (script-verified via a temporary debug print,
     !| not hand-derived) differ from this test's pre-#187 values, even though the candidate
-    !| selection itself (still candidate 5) does not.
+    !| selection itself (still candidate 5) does not. Re-verified again after Step 3 (per-neighborhood
+    !| residual range): `m_max=120` bins is still selected everywhere, unchanged, but each point's
+    !| histogram range is now its own percentile-derived `[R_low, R_high]` instead of the old
+    !| dataset-wide symmetric range, which shifts the actual bin boundaries -- and therefore the
+    !| bootstrapped CI values below -- even though candidate selection (still candidate 5) and every
+    !| other structural assertion in this test are unaffected.
     subroutine test_param_search_no_plateau_uses_smallest_uncertainty()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 20000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
@@ -2553,6 +2651,8 @@ contains
         integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
         integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
         integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        real(real64), allocatable :: shared_residual_range_low(:), shared_residual_range_high(:)
+        real(real64), allocatable :: trace_shared_residual_range_low(:, :), trace_shared_residual_range_high(:, :)
         integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
         integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
         real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
@@ -2585,18 +2685,24 @@ contains
         allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
         allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
         allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
+                 trace_shared_residual_range_high(max_n_points_candidate, 16))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 3.0_real64, 10_int32, METHOD_JOIN_MIN, &
+                                               residuals, 10_int32, METHOD_JOIN_MIN, &
                                                max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
-                                               n_bins_per_point, best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                                               best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
-                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
+                                               trace_sturges_bins, trace_fd_bins, &
+                                               trace_shared_residual_range_low, trace_shared_residual_range_high, &
+                                               ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                random_seed=1_int32)
 
@@ -2618,10 +2724,10 @@ contains
                          "test_param_search_no_plateau_uses_smallest_uncertainty: "// &
                          "a real confidence interval is returned, not the -1.0 sentinel")
         call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), &
-                                     [4.1542644883962090e-04_real64, 1.1633554673480007e-02_real64], 2_int32, TOL, &
+                                     [9.3534521490265630e-04_real64, 1.8753358853084691e-02_real64], 2_int32, TOL, &
                                      "test_param_search_no_plateau_uses_smallest_uncertainty: study 1 CI")
         call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 2), &
-                                     [4.1545307590114001e-04_real64, 1.1622383168417013e-02_real64], 2_int32, TOL, &
+                                     [9.3509303187972945e-04_real64, 1.8663009912309732e-02_real64], 2_int32, TOL, &
                                      "test_param_search_no_plateau_uses_smallest_uncertainty: study 2 CI")
 
     end subroutine test_param_search_no_plateau_uses_smallest_uncertainty
@@ -2641,6 +2747,8 @@ contains
         integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
         integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
         integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        real(real64), allocatable :: shared_residual_range_low(:), shared_residual_range_high(:)
+        real(real64), allocatable :: trace_shared_residual_range_low(:, :), trace_shared_residual_range_high(:, :)
         integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
         integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
         real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
@@ -2673,18 +2781,24 @@ contains
         allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
         allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
         allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
+                 trace_shared_residual_range_high(max_n_points_candidate, 16))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 3.0_real64, 10_int32, METHOD_JOIN_MIN, &
+                                               residuals, 10_int32, METHOD_JOIN_MIN, &
                                                max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
-                                               n_bins_per_point, best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                                               best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
-                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
+                                               trace_sturges_bins, trace_fd_bins, &
+                                               trace_shared_residual_range_low, trace_shared_residual_range_high, &
+                                               ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_EFFECT_SIZE, random_seed=1_int32)
 
@@ -2722,6 +2836,8 @@ contains
         integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
         integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
         integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        real(real64), allocatable :: shared_residual_range_low(:), shared_residual_range_high(:)
+        real(real64), allocatable :: trace_shared_residual_range_low(:, :), trace_shared_residual_range_high(:, :)
         integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
         integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
         real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
@@ -2754,18 +2870,24 @@ contains
         allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
         allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
         allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
+                 trace_shared_residual_range_high(max_n_points_candidate, 16))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 3.0_real64, 10_int32, METHOD_JOIN_MIN, &
+                                               residuals, 10_int32, METHOD_JOIN_MIN, &
                                                max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
-                                               n_bins_per_point, best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                                               best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
-                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
+                                               trace_sturges_bins, trace_fd_bins, &
+                                               trace_shared_residual_range_low, trace_shared_residual_range_high, &
+                                               ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_BOTH, random_seed=1_int32)
 
@@ -2824,6 +2946,8 @@ contains
         integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
         integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
         integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        real(real64), allocatable :: shared_residual_range_low(:), shared_residual_range_high(:)
+        real(real64), allocatable :: trace_shared_residual_range_low(:, :), trace_shared_residual_range_high(:, :)
         integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
         integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
         real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
@@ -2850,11 +2974,15 @@ contains
         allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
         allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
         allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
+                 trace_shared_residual_range_high(max_n_points_candidate, 16))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 1.0_real64, 5_int32, METHOD_JOIN_MIN, &
+                                               residuals, 5_int32, METHOD_JOIN_MIN, &
                                                max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
-                                               n_bins_per_point, best_candidate_pair_confidence_interval, &
+                                               n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                                               best_candidate_pair_confidence_interval, &
                                                plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
@@ -2862,7 +2990,9 @@ contains
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
-                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
+                                               trace_sturges_bins, trace_fd_bins, &
+                                               trace_shared_residual_range_low, trace_shared_residual_range_high, &
+                                               ierr=ierr, &
                                                min_neighbor_overlap=0.0_real64, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
@@ -2900,8 +3030,7 @@ contains
     !| repeated across `max_n_reps_all_studies=3` replicates and `n_studies=2` studies: exactly 6
     !| pooled residuals per point, regardless of which gene. Genes 1-50 ("clustered") all get the
     !| SAME residual, `0.0_real64`, on every replicate of every study. Genes 51-100 ("spread") get 6
-    !| DISTINCT values laid out across `(rep, study)` -- `{-2.5, -1.5, -0.5, 0.5, 1.5, 2.5}` -- evenly
-    !| spanning `[-shared_residual_range, shared_residual_range] = [-3, 3]`.
+    !| DISTINCT values laid out across `(rep, study)` -- `{-2.5, -1.5, -0.5, 0.5, 1.5, 2.5}`.
     !|
     !| `m_min=1` (overriding the default 3) and `min_residuals_per_bin=1` (overriding the default 10)
     !| are both necessary for this fixture: a clustered point's 6 identical values can never fill more
@@ -2910,19 +3039,35 @@ contains
     !| that path) rather than a valid, admissible, small `M_j` -- `m_min=1` lets a clustered point
     !| legitimately select `M_j=1` instead. Hand-traced through
     !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
-    !| own geometric search (`gamma_occupancy` default 1.25):
-    !| - Clustered (all six residuals `0.0`): `M=1`, bin_width=6, all six land in the one bin,
-    !|   `min_occ=6>=1` -> valid. `M=2` next (`ceil(1.25*1)=2`): bin_width=3, all six still land in
-    !|   the bin covering `[0,3]`, the other bin empty -> `min_occ=0<1` -> invalid immediately. Stage 2
-    !|   refines the (2,1) interval, which is empty (nothing strictly between 1 and 2) -> `best_m=1`.
-    !| - Spread (`{-2.5,-1.5,-0.5,0.5,1.5,2.5}`): `M=1,2,3,4,5` are all valid (traced by hand: minimum
-    !|   occupancy 6,3,2,1,1 respectively, always `>=1`); `M=7` (`ceil(1.25*5)=6.25->7`) is the first
-    !|   invalid one (pigeonhole: 6 values can never fill 7 bins without leaving one empty -- `min_occ=0`).
-    !|   Stage 2 then refines `M=6` alone (the only integer strictly between `m_valid=5` and
-    !|   `m_invalid=7`): bin_width=1.0 puts each of the 6 values in its own bin, `min_occ=1>=1` ->
-    !|   valid, `best_m=6`.
+    !| own geometric search (`gamma_occupancy` default 1.25); Step 3 makes both points' own
+    !| `shared_residual_range_low`/`_high` their own 5th/95th-percentile-derived range, not the old
+    !| dataset-wide `[-3, 3]`:
+    !| - Clustered (all six residuals `0.0`): every percentile of a constant array is that same
+    !|   constant, so `R_low = R_high = 0.0` -- the same zero-range degenerate fallback
+    !|   (`bin_width=1.0`, single occupied bin) `histogram_bin_counts` already used before Step 3,
+    !|   just reached by a different route (a derived, not caller-supplied, zero span). `M=1`: all
+    !|   six land in the one bin, `min_occ=6>=1` -> valid. `M=2` next (`ceil(1.25*1)=2`): the
+    !|   fallback `bin_width=1.0` does not depend on `M`, so both bins still resolve to the same
+    !|   single occupied index -> `min_occ=0<1` -> invalid immediately. Stage 2 refines the (2,1)
+    !|   interval, which is empty (nothing strictly between 1 and 2) -> `best_m=1`, unchanged from
+    !|   before Step 3.
+    !| - Spread (`{-2.5,-1.5,-0.5,0.5,1.5,2.5}`): `rank(0.05,6)=0.05*5+1=1.25` -> interpolate
+    !|   value(1)=-2.5, value(2)=-1.5 at fraction 0.25 -> `R_low=-2.25`; `rank(0.95,6)=5.75` ->
+    !|   interpolate value(5)=1.5, value(6)=2.5 at fraction 0.75 -> `R_high=2.25` (span `4.5`,
+    !|   narrower than the old `[-3,3]`, so the two extreme values now clamp). Retracing the
+    !|   geometric ladder against this narrower span: `M=1` (bin_width 4.5, one bin) -> `min_occ=6`;
+    !|   `M=2` (bin_width 2.25) -> `[3,3]`, `min_occ=3`; `M=3` (bin_width 1.5) -> `[2,2,2]`,
+    !|   `min_occ=2`; `M=4` (`ceil(1.25*3)=3.75->4`, bin_width 1.125) -> `[2,1,1,2]`, `min_occ=1` --
+    !|   all four valid so far. `M=5` (`ceil(1.25*4)=5`, bin_width 0.9, boundaries
+    !|   `[-2.25,-1.35),[-1.35,-0.45),[-0.45,0.45),[0.45,1.35),[1.35,2.25]`) -> the clamped/original
+    !|   values `{-2.25,-1.5,-0.5,0.5,1.5,2.25}` fall `[2,1,0,1,2]` -- the MIDDLE bin
+    !|   `[-0.45,0.45)` is empty (no residual value lands near zero), `min_occ=0<1` -> invalid.
+    !|   Stage 2 refines the interval strictly between `m_valid=4` and `m_invalid=5`, which is
+    !|   empty (no integer strictly between 4 and 5) -> `best_m=4`, a materially different result
+    !|   from the pre-Step-3 `best_m=6` (the old wider `[-3,3]` span never created that empty
+    !|   middle bin at any `M` up to 6).
     !| So `trace_selected_n_bins(:, 1)` must contain BOTH `1` (every point whose nearest gene is
-    !| clustered) and `6` (every point whose nearest gene is spread) -- never a single constant value
+    !| clustered) and `4` (every point whose nearest gene is spread) -- never a single constant value
     !| across all 300 rows. `min_neighbor_overlap=0.0` keeps gate 1 trivial (as in the single-candidate
     !| test above), and since every point's own selected `M_j` is, by construction, the LARGEST `M`
     !| its own pooled residuals actually support, gate 2 also passes for every point, so the single
@@ -2935,6 +3080,8 @@ contains
         integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
         integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate, i_gene, i_study
         integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        real(real64), allocatable :: shared_residual_range_low(:), shared_residual_range_high(:)
+        real(real64), allocatable :: trace_shared_residual_range_low(:, :), trace_shared_residual_range_high(:, :)
         integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
         integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
         real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
@@ -2970,11 +3117,15 @@ contains
         allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
         allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
         allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
+                 trace_shared_residual_range_high(max_n_points_candidate, 16))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 3.0_real64, 5_int32, METHOD_JOIN_MIN, &
+                                               residuals, 5_int32, METHOD_JOIN_MIN, &
                                                max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
-                                               n_bins_per_point, best_candidate_pair_confidence_interval, &
+                                               n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                                               best_candidate_pair_confidence_interval, &
                                                plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
@@ -2982,7 +3133,9 @@ contains
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
-                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
+                                               trace_sturges_bins, trace_fd_bins, &
+                                               trace_shared_residual_range_low, trace_shared_residual_range_high, &
+                                               ierr=ierr, &
                                                min_residuals_per_bin=1_int32, min_neighbor_overlap=0.0_real64, &
                                                m_min=1_int32, random_seed=1_int32)
 
@@ -3000,7 +3153,7 @@ contains
         call assert_equal_int(minval(trace_selected_n_bins(1:trace_n_points(1), 1)), 1_int32, &
                               "test_param_search_different_neighborhoods_different_m_j: "// &
                               "the clustered points' own M_j (hand-traced above)")
-        call assert_equal_int(maxval(trace_selected_n_bins(1:trace_n_points(1), 1)), 6_int32, &
+        call assert_equal_int(maxval(trace_selected_n_bins(1:trace_n_points(1), 1)), 4_int32, &
                               "test_param_search_different_neighborhoods_different_m_j: "// &
                               "the spread points' own M_j (hand-traced above)")
     end subroutine test_param_search_different_neighborhoods_different_m_j
@@ -3016,22 +3169,29 @@ contains
     !|
     !| Same LCG-residual fixture as `test_param_search_no_plateau_uses_smallest_uncertainty`
     !| (`max_n_genes_all_studies=20000`, deterministic pseudo-random residuals, `random_seed=1`), but
-    !| with `min_residuals_per_bin=50` instead of that test's `0` -- `0` makes every point's occupancy
+    !| with `min_residuals_per_bin=30` instead of that test's `0` -- `0` makes every point's occupancy
     !| search trivially run all the way to `m_max` (every `min_occ>=0` unconditionally), which would
     !| make `trace_selected_n_bins` constant everywhere and this test unable to distinguish "returned
-    !| the right column" from "returned any column" (they would all read the same value). `50` is
+    !| the right column" from "returned any column" (they would all read the same value). `30` is
     !| large enough, relative to this fixture's per-candidate pooled residual counts, to make the
-    !| occupancy search actually bind: bin counts vary BOTH across candidates (different `n_neighbors`
-    !| change `N_j`) and WITHIN a candidate's own column (real per-point dispersion differences in the
-    !| pseudo-random residuals) -- script-verified: `n_admissible_evaluated=3` (the search stops
-    !| earlier than the 6-candidate no-plateau fixture above, at a genuine CI-overlap plateau this
-    !| time, `plateau_established=.true.`), selecting the THIRD admissible candidate `(453, 176)` --
-    !| not the first, so the running best-candidate bin-count snapshot
-    !| (`tmp_best_n_bins_per_point`/`trace_selected_n_bins` column bookkeeping) is genuinely
-    !| overwritten as the loop progresses, not written once and left alone. That column's own bin
-    !| counts range over `{4, 5}` (not constant), so a wiring bug that returned an adjacent column
-    !| (1 or 2, both entirely `4`) would be caught by the elementwise comparison below, not silently
-    !| masked by every column holding the same value.
+    !| occupancy search actually bind: bin counts vary WITHIN a candidate's own column (real per-point
+    !| dispersion differences in the pseudo-random residuals) -- script-verified via a temporary debug
+    !| print (swept several thresholds; higher ones, e.g. `70` and above, turned out to make EVERY
+    !| point in a column pick the identical bin count under Step 3's own local per-point range --
+    !| every point's own pooled residual set is the same size for a fixed candidate regardless of
+    !| which genes it pools, and this fixture's residuals are close enough to identically distributed
+    !| that the occupancy search converges on one answer everywhere at a high threshold; `30` sits low
+    !| enough to still show real point-to-point spread): `n_admissible_evaluated=2` (this fixture now
+    !| plateaus one candidate earlier than it did before Step 3 -- a genuine consequence of the new
+    !| per-point range changing the observed JSD/CI, not a test bug), `plateau_established=.true.`,
+    !| selecting the SECOND admissible candidate `(566, 70)` -- not the first, so the running
+    !| best-candidate bin-count snapshot (`tmp_best_n_bins_per_point`/`tmp_best_shared_residual_range_low`/
+    !| `_high`, and `trace_selected_n_bins` column bookkeeping) is genuinely overwritten as the loop
+    !| progresses, not written once and left alone. That column's own bin counts range over `{10, 12}`
+    !| (not constant), while column 1's own range over `{23, 24}` -- both non-constant, but with
+    !| clearly different values -- so a wiring bug that returned column 1's snapshot instead would
+    !| still be caught by the final elementwise comparison below (exact per-point equality against
+    !| column 2, not merely "non-constant"), not silently masked by both columns looking similar.
     subroutine test_param_search_final_n_bins_matches_selected_trace_column()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 20000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
@@ -3039,6 +3199,8 @@ contains
         integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
         integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
         integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        real(real64), allocatable :: shared_residual_range_low(:), shared_residual_range_high(:)
+        real(real64), allocatable :: trace_shared_residual_range_low(:, :), trace_shared_residual_range_high(:, :)
         integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
         integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
         real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
@@ -3071,11 +3233,15 @@ contains
         allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
         allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
         allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
+                 trace_shared_residual_range_high(max_n_points_candidate, 16))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
-                                               residuals, 3.0_real64, 10_int32, METHOD_JOIN_MIN, &
+                                               residuals, 10_int32, METHOD_JOIN_MIN, &
                                                max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
-                                               n_bins_per_point, best_candidate_pair_confidence_interval, &
+                                               n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                                               best_candidate_pair_confidence_interval, &
                                                plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
@@ -3083,24 +3249,26 @@ contains
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
-                                               trace_sturges_bins, trace_fd_bins, ierr=ierr, &
-                                               min_residuals_per_bin=50_int32, min_neighbor_overlap=0.0_real64, &
+                                               trace_sturges_bins, trace_fd_bins, &
+                                               trace_shared_residual_range_low, trace_shared_residual_range_high, &
+                                               ierr=ierr, &
+                                               min_residuals_per_bin=30_int32, min_neighbor_overlap=0.0_real64, &
                                                random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_final_n_bins_matches_selected_trace_column: ierr should be OK")
-        call assert_equal_int(n_admissible_evaluated, 3_int32, &
+        call assert_equal_int(n_admissible_evaluated, 2_int32, &
                               "test_param_search_final_n_bins_matches_selected_trace_column: "// &
-                              "three candidates evaluated before the plateau -- not the first")
+                              "two candidates evaluated before the plateau -- not the first")
         call assert_true(plateau_established, &
                          "test_param_search_final_n_bins_matches_selected_trace_column: "// &
                          "a genuine CI-overlap plateau is found under this stricter min_residuals_per_bin")
-        call assert_equal_int(n_points, 453_int32, &
+        call assert_equal_int(n_points, 566_int32, &
                               "test_param_search_final_n_bins_matches_selected_trace_column: "// &
-                              "selects the THIRD admissible candidate's n_points, not the first")
-        call assert_equal_int(n_neighbors, 176_int32, &
+                              "selects the SECOND admissible candidate's n_points, not the first")
+        call assert_equal_int(n_neighbors, 70_int32, &
                               "test_param_search_final_n_bins_matches_selected_trace_column: "// &
-                              "selects the third admissible candidate's n_neighbors")
+                              "selects the second admissible candidate's n_neighbors")
 
         ! Find the trace column matching the actually-selected (n_points, n_neighbors) pair, rather
         ! than assuming it is column n_admissible_evaluated -- self-verifying regardless of which
@@ -3112,72 +3280,90 @@ contains
                 exit
             end if
         end do
-        call assert_equal_int(selected_column, 3_int32, &
+        call assert_equal_int(selected_column, 2_int32, &
                               "test_param_search_final_n_bins_matches_selected_trace_column: "// &
-                              "the selected candidate is trace column 3 (script-verified)")
+                              "the selected candidate is trace column 2 (script-verified)")
         call assert_true(logical(minval(trace_selected_n_bins(1:n_points, selected_column)) /= &
                                  maxval(trace_selected_n_bins(1:n_points, selected_column)), kind=c_bool), &
                          "test_param_search_final_n_bins_matches_selected_trace_column: "// &
-                         "the selected column's own bin counts are not constant either (4 and 5)")
+                         "the selected column's own bin counts are not constant either (10 and 12)")
         call assert_true(all(n_bins_per_point(1:n_points) == trace_selected_n_bins(1:n_points, selected_column)), &
                          "test_param_search_final_n_bins_matches_selected_trace_column: "// &
                          "returned n_bins_per_point equals the ACTUALLY-selected candidate's trace column, "// &
                          "not a stale earlier snapshot")
     end subroutine test_param_search_final_n_bins_matches_selected_trace_column
 
-    !> Geometric search finds M=12 (strictly between the default m_min=3 and m_max=120) directly,
-    !| without needing stage 2 at all. Residuals are every integer in [-60, 59] (120 values,
-    !| shared_residual_range=60.0), so at candidate M the pooled histogram is (almost) perfectly
-    !| uniform: bin_width = 120/M, and since every residual is a distinct integer with unit
-    !| spacing, the bin occupancy at M is exactly floor(120/M) or ceil(120/M). Tracing the default
-    !| geometric ladder (m_min=3, gamma_occupancy=1.25: 3 -> 4 -> 5 -> 7 -> 9 -> 12 -> 15 -> ...)
-    !| against min_residuals_per_bin=10:
-    !|   M          3   4   5    7    9   12   15
-    !|   min_occ   40  30  24  17   13   10    8
-    !| M=12 is the last admissible rung (min_occ=10, exactly at the threshold); M=15 fails
-    !| (min_occ=8). Stage 2 then refines 13 and 14 (both also fail: min_occ 9 and 8), so best_m
-    !| stays 12 -- this fixture is reused, with the SAME hand-computed table, by
-    !| test_occupancy_diagnostics_hand_computed below.
+    !> Residuals are every integer in [-60, 59] (120 values). Unlike the pre-Step-3 dataset-wide
+    !| symmetric range, `shared_residual_range_low`/`_high` are now this neighborhood's own
+    !| 5th/95th-percentile bounds: with `calc_percentile_rank(q, n) = q*(n-1)+1` and the sorted
+    !| values `value(k) = k - 61` for rank `k = 1..120`,
+    !|   rank(0.05, 120) = 0.05*119 + 1 = 6.95 -> interpolate value(6)=-55, value(7)=-54 at
+    !|     fraction 0.95 -> R_low = -55 + 0.95*1 = -54.05
+    !|   rank(0.95, 120) = 0.95*119 + 1 = 114.05 -> interpolate value(114)=53, value(115)=54 at
+    !|     fraction 0.05 -> R_high = 53 + 0.05*1 = 53.05
+    !| so the range [-54.05, 53.05] (span 107.1) already trims off the most extreme ~5% on each
+    !| side -- narrower than the full [-60, 59] data span -- which is why the two edge bins below
+    !| end up more populated than an interior one (clamping pushes the trimmed tails into them).
+    !| Tracing the default geometric ladder (m_min=3, gamma_occupancy=1.25: 3 -> 4 -> 5 -> 7 -> 9 ->
+    !| 12 -> ...) against min_residuals_per_bin=10:
+    !|   M          3    4    5    7    9   12
+    !|   min_occ   36   27   21   15   12    9
+    !| M=9 is the last admissible rung (min_occ=12); M=12 fails (min_occ=9). Stage 2 then refines
+    !| 10 and 11: M=10 has min_occ=10 (exactly at the threshold, passes), M=11 has min_occ=9
+    !| (fails) -- so best_m becomes 10, the larger of the two survivors -- this fixture is reused,
+    !| with the SAME hand-computed range, by test_occupancy_diagnostics_hand_computed below.
     subroutine test_occupancy_finds_valid_below_m_max()
         integer(int32), parameter :: n_residuals = 120
         real(real64) :: residuals(n_residuals)
         integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
         integer(int32) :: sturges_bins, fd_bins, ierr, i
-        real(real64) :: mean_bin_occupancy
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
         logical(c_bool) :: occupancy_failed
 
         do i = 1, n_residuals
             residuals(i) = real(i - 61, real64) ! -60, -59, ..., 59
         end do
 
-        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, 60.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                            max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_determine_bin_count_occupancy_finds_valid_below_m_max: ierr should be OK")
         call assert_false(occupancy_failed, &
                           "test_determine_bin_count_occupancy_finds_valid_below_m_max: occupancy should not fail")
-        call assert_equal_int(selected_n_bins, 12_int32, &
+        call assert_equal_real(shared_residual_range_low, -54.05_real64, TOL, &
+                               "test_determine_bin_count_occupancy_finds_valid_below_m_max: "// &
+                               "shared_residual_range_low == 5th percentile of [-60,59]")
+        call assert_equal_real(shared_residual_range_high, 53.05_real64, TOL, &
+                               "test_determine_bin_count_occupancy_finds_valid_below_m_max: "// &
+                               "shared_residual_range_high == 95th percentile of [-60,59]")
+        call assert_equal_int(selected_n_bins, 10_int32, &
                               "test_determine_bin_count_occupancy_finds_valid_below_m_max: "// &
-                              "should select M=12, strictly between m_min=3 and m_max=120")
+                              "should select M=10, strictly between m_min=3 and m_max=120")
         call assert_equal_int(n_pooled_residuals, 120_int32, &
                               "test_determine_bin_count_occupancy_finds_valid_below_m_max: n_pooled_residuals should be 120")
         call assert_equal_int(min_bin_occupancy, 10_int32, &
-                              "test_determine_bin_count_occupancy_finds_valid_below_m_max: min_bin_occupancy at M=12")
-        call assert_equal_int(max_bin_occupancy, 10_int32, &
-                              "test_determine_bin_count_occupancy_finds_valid_below_m_max: max_bin_occupancy at M=12")
-        call assert_equal_real(mean_bin_occupancy, 10.0_real64, TOL, &
-                               "test_determine_bin_count_occupancy_finds_valid_below_m_max: mean_bin_occupancy == 120/12")
+                              "test_determine_bin_count_occupancy_finds_valid_below_m_max: min_bin_occupancy at M=10")
+        call assert_equal_int(max_bin_occupancy, 17_int32, &
+                              "test_determine_bin_count_occupancy_finds_valid_below_m_max: max_bin_occupancy at M=10")
+        call assert_equal_real(mean_bin_occupancy, 12.0_real64, TOL, &
+                               "test_determine_bin_count_occupancy_finds_valid_below_m_max: mean_bin_occupancy == 120/10")
     end subroutine test_occupancy_finds_valid_below_m_max
 
-    !> Residuals are every integer in [-1200, 1199] (2400 values, shared_residual_range=1200.0):
-    !| dense enough that floor(2400/M) >= 20 for every M up to and including the default m_max=120
-    !| (the worst case, at M=120, is exactly floor(2400/120)=20 >= 10), so occupancy holds all the
-    !| way through the default geometric ladder's last rung (..., 94, 118, then clamped to 120).
-    !| `selected_n_bins == m_max` is reachable ONLY via the early-return branch: stage 2 only ever
-    !| tests strictly less than m_invalid, and m_invalid can be at most m_max, so a value of
-    !| exactly m_max could never come out of stage 2's refinement loop even if it ran -- this
+    !> Residuals are every integer in [-1200, 1199] (2400 values). `shared_residual_range_low`/
+    !| `_high` are the 5th/95th percentiles of this same data: `rank(0.05,2400)=0.05*2399+1=120.95`
+    !| -> interpolate value(120)=-1081, value(121)=-1080 at fraction 0.95 -> R_low = -1081 +
+    !| 0.95*1 = -1080.05; `rank(0.95,2400)=0.95*2399+1=2280.05` -> interpolate value(2280)=1079,
+    !| value(2281)=1080 at fraction 0.05 -> R_high = 1079 + 0.05*1 = 1079.05. This range
+    !| ([-1080.05, 1079.05], span 2159.1) is narrower than the full data span, so the two edge bins
+    !| absorb the trimmed ~5%-per-side tails and are far more populated than an interior one --
+    !| still comfortably above the default min_residuals_per_bin=10 at every M up to and including
+    !| the default m_max=120, so occupancy holds all the way through the default geometric ladder's
+    !| last rung. `selected_n_bins == m_max` is reachable ONLY via the early-return branch: stage 2
+    !| only ever tests strictly less than m_invalid, and m_invalid can be at most m_max, so a value
+    !| of exactly m_max could never come out of stage 2's refinement loop even if it ran -- this
     !| assertion is therefore only satisfiable by the early-return `if (trial_m == actual_m_max)`
     !| branch actually firing.
     subroutine test_occupancy_reaches_m_max_validly()
@@ -3185,30 +3371,38 @@ contains
         real(real64) :: residuals(n_residuals)
         integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
         integer(int32) :: sturges_bins, fd_bins, ierr, i
-        real(real64) :: mean_bin_occupancy
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
         logical(c_bool) :: occupancy_failed
 
         do i = 1, n_residuals
             residuals(i) = real(i - 1201, real64) ! -1200, -1199, ..., 1199
         end do
 
-        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, 1200.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                            max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_determine_bin_count_occupancy_reaches_m_max_validly: ierr should be OK")
         call assert_false(occupancy_failed, &
                           "test_determine_bin_count_occupancy_reaches_m_max_validly: occupancy should not fail")
+        call assert_equal_real(shared_residual_range_low, -1080.05_real64, TOL, &
+                               "test_determine_bin_count_occupancy_reaches_m_max_validly: "// &
+                               "shared_residual_range_low == 5th percentile of [-1200,1199]")
+        call assert_equal_real(shared_residual_range_high, 1079.05_real64, TOL, &
+                               "test_determine_bin_count_occupancy_reaches_m_max_validly: "// &
+                               "shared_residual_range_high == 95th percentile of [-1200,1199]")
         call assert_equal_int(selected_n_bins, 120_int32, &
                               "test_determine_bin_count_occupancy_reaches_m_max_validly: "// &
                               "should reach m_max=120, only possible via the early-return branch")
         call assert_equal_int(n_pooled_residuals, 2400_int32, &
                               "test_determine_bin_count_occupancy_reaches_m_max_validly: n_pooled_residuals should be 2400")
-        call assert_equal_int(min_bin_occupancy, 20_int32, &
+        call assert_equal_int(min_bin_occupancy, 18_int32, &
                               "test_determine_bin_count_occupancy_reaches_m_max_validly: min_bin_occupancy at M=120")
-        call assert_equal_int(max_bin_occupancy, 20_int32, &
-                              "test_determine_bin_count_occupancy_reaches_m_max_validly: max_bin_occupancy at M=120")
+        call assert_equal_int(max_bin_occupancy, 138_int32, &
+                              "test_determine_bin_count_occupancy_reaches_m_max_validly: "// &
+                              "max_bin_occupancy at M=120 (the two trimmed-tail edge bins)")
         call assert_equal_real(mean_bin_occupancy, 20.0_real64, TOL, &
                                "test_determine_bin_count_occupancy_reaches_m_max_validly: mean_bin_occupancy == 2400/120")
     end subroutine test_occupancy_reaches_m_max_validly
@@ -3216,19 +3410,26 @@ contains
     !> Only 5 pooled residuals total, so with the default min_residuals_per_bin=10 no bin at any
     !| M can ever reach 10 (there are not even 10 residuals to spread across bins) -- occupancy
     !| fails already at the default m_min=3 itself, the FAILURE case from Issue #187's own
-    !| pseudocode ("even the minimum resolution is unsupported").
+    !| pseudocode ("even the minimum resolution is unsupported"). `shared_residual_range_low`/
+    !| `_high` are this fixture's own 5th/95th percentiles: sorted `[-9,-5,0,5,9]`,
+    !| `rank(0.05,5)=0.05*4+1=1.2` -> interpolate value(1)=-9, value(2)=-5 at fraction 0.2 -> R_low
+    !| = -9 + 0.2*4 = -8.2; `rank(0.95,5)=0.95*4+1=4.8` -> interpolate value(4)=5, value(5)=9 at
+    !| fraction 0.8 -> R_high = 5 + 0.8*4 = 8.2. This still FAILS regardless of range, since the
+    !| occupancy criterion is bounded by the residual *count*, not by where the bin boundaries
+    !| happen to fall.
     subroutine test_occupancy_m_min_itself_invalid_failure()
         integer(int32), parameter :: n_residuals = 5
         real(real64) :: residuals(n_residuals)
         integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
         integer(int32) :: sturges_bins, fd_bins, ierr
-        real(real64) :: mean_bin_occupancy
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
         logical(c_bool) :: occupancy_failed
 
         residuals = [-9.0_real64, -5.0_real64, 0.0_real64, 5.0_real64, 9.0_real64]
 
-        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, 10.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                            max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
@@ -3236,6 +3437,12 @@ contains
         call assert_true(occupancy_failed, &
                          "test_determine_bin_count_occupancy_m_min_itself_invalid_failure: "// &
                          "5 residuals can never fill any bin to 10")
+        call assert_equal_real(shared_residual_range_low, -8.2_real64, TOL, &
+                               "test_determine_bin_count_occupancy_m_min_itself_invalid_failure: "// &
+                               "shared_residual_range_low == 5th percentile of [-9,-5,0,5,9]")
+        call assert_equal_real(shared_residual_range_high, 8.2_real64, TOL, &
+                               "test_determine_bin_count_occupancy_m_min_itself_invalid_failure: "// &
+                               "shared_residual_range_high == 95th percentile of [-9,-5,0,5,9]")
         call assert_equal_int(selected_n_bins, 3_int32, &
                               "test_determine_bin_count_occupancy_m_min_itself_invalid_failure: "// &
                               "selected_n_bins should still be set to m_min=3 on FAILURE")
@@ -3261,25 +3468,30 @@ contains
     !| loosening this routine's bound to `0` too, matching the already-correct sibling.
     !|
     !| Reuses `test_occupancy_m_min_itself_invalid_failure`'s exact 5-residual fixture
-    !| (`[-9,-5,0,5,9]`, `shared_residual_range=10.0`), which FAILS at the default
-    !| `min_residuals_per_bin=10` (no bin can ever reach 10 with only 5 residuals) -- but with
-    !| `min_residuals_per_bin=0_int32` passed explicitly, every candidate bin count is trivially
-    !| admissible (`min_occ >= 0` always holds), so the search never finds an inadmissible
-    !| candidate. `m_max=3_int32` (equal to the default `m_min`) bounds the search to its very
-    !| first candidate via the early-return branch: at `M=3` over `[-10,10]` (bin width 20/3), the
-    !| 5 residuals land `[-9,-5]->bin1, [0]->bin2, [5,9]->bin3`, i.e. counts `[2,1,2]`.
+    !| (`[-9,-5,0,5,9]`, its own R_low/R_high = -8.2/8.2 -- see that test's docstring for the
+    !| derivation), which FAILS at the default `min_residuals_per_bin=10` (no bin can ever reach 10
+    !| with only 5 residuals) -- but with `min_residuals_per_bin=0_int32` passed explicitly, every
+    !| candidate bin count is trivially admissible (`min_occ >= 0` always holds), so the search
+    !| never finds an inadmissible candidate. `m_max=3_int32` (equal to the default `m_min`) bounds
+    !| the search to its very first candidate via the early-return branch: at `M=3` over
+    !| `[-8.2, 8.2]` (bin width 16.4/3 ~= 5.467), the 5 residuals land
+    !| `[-9,-5]->bin1 (clamped), [0]->bin2, [5,9]->bin3 (clamped)`, i.e. counts `[2,1,2]` --
+    !| numerically the same bin counts as the pre-Step-3 fixture had, since this particular data is
+    !| symmetric enough that trimming its own tails to +-8.2 still splits the same way as the old
+    !| +-10 range did.
     subroutine test_occupancy_min_residuals_per_bin_zero_accepted()
         integer(int32), parameter :: n_residuals = 5
         real(real64) :: residuals(n_residuals)
         integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
         integer(int32) :: sturges_bins, fd_bins, ierr
-        real(real64) :: mean_bin_occupancy
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
         logical(c_bool) :: occupancy_failed
 
         residuals = [-9.0_real64, -5.0_real64, 0.0_real64, 5.0_real64, 9.0_real64]
 
-        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, 10.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                            max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr, &
                                            min_residuals_per_bin=0_int32, m_max=3_int32)
 
@@ -3289,6 +3501,12 @@ contains
         call assert_false(occupancy_failed, &
                           "test_occupancy_min_residuals_per_bin_zero_accepted: "// &
                           "min_residuals_per_bin=0 trivially satisfies the occupancy criterion everywhere")
+        call assert_equal_real(shared_residual_range_low, -8.2_real64, TOL, &
+                               "test_occupancy_min_residuals_per_bin_zero_accepted: "// &
+                               "shared_residual_range_low == 5th percentile of [-9,-5,0,5,9]")
+        call assert_equal_real(shared_residual_range_high, 8.2_real64, TOL, &
+                               "test_occupancy_min_residuals_per_bin_zero_accepted: "// &
+                               "shared_residual_range_high == 95th percentile of [-9,-5,0,5,9]")
         call assert_equal_int(selected_n_bins, 3_int32, &
                               "test_occupancy_min_residuals_per_bin_zero_accepted: "// &
                               "early return at m_max=3 (bounded to keep the search's first candidate deterministic)")
@@ -3302,30 +3520,31 @@ contains
                                "test_occupancy_min_residuals_per_bin_zero_accepted: mean_bin_occupancy == 5/3")
     end subroutine test_occupancy_min_residuals_per_bin_zero_accepted
 
-    !> Issue #187's own worked example (m_valid=19, m_invalid=24 from the default geometric ladder
-    !| 3 -> 4 -> 5 -> 7 -> 9 -> 12 -> 15 -> 19 -> 24), engineered so refinement over {20,21,22,23}
-    !| is genuinely non-monotonic. Residuals are every integer in [-130, 129] EXCEPT the 17
-    !| integers [51, 67) (243 residuals total: 260 - 17), with min_residuals_per_bin=1 (an explicit
-    !| override -- only m_min/gamma_occupancy need to stay default to reproduce the issue's own
-    !| ladder; the occupancy threshold itself is free to choose, and 1 keeps the by-hand table
-    !| small: "occupancy admissible" now just means "no bin is completely empty", and the deleted
-    !| integers create exactly one gap capable of emptying a bin only for some, not all, of the
-    !| narrow candidates near the transition). Direct enumeration of every bin at every M in
-    !| {19,...,24} gives:
-    !|   M         19   20   21   22   23   24
-    !|   min_occ    3    0    1    3    0    0
-    !| M=20 and M=23 FAIL (some bin is empty) while M=21 and M=22 -- both LARGER than 20 -- PASS:
-    !| exactly the non-monotonicity Issue #187 warns a binary search cannot assume away (a binary
-    !| search that saw M=20 fail would, under a monotonicity assumption, never even try M=22).
-    !| Exhaustive refinement therefore correctly finds best_m=22 (the larger of the two survivors
-    !| {21,22}), strictly greater than m_valid=19. At M=22 the bin counts range from 3 (min) to 12
-    !| (max), summing to 243 as required.
+    !> Residuals are every integer in [-130, 129] EXCEPT the 16 integers [51, 67) (244 residuals
+    !| total: 260 - 16 -- the previous version of this fixture declared `n_residuals = 243`, one
+    !| short of the true count and an out-of-bounds write into `residuals(244)`; fixed here as part
+    !| of this test's own Step-3 rewrite, not a Step-3 behavior change).
+    !|
+    !| `shared_residual_range_low`/`_high` are this fixture's own 5th/95th percentiles, not the old
+    !| dataset-wide `+-130`: sorted, `rank(0.05,244)=0.05*243+1=13.15` -> interpolate the 13th/14th
+    !| smallest values at fraction 0.15 -> R_low = -117.85; `rank(0.95,244)=0.95*243+1=231.85` ->
+    !| interpolate the 231st/232nd smallest values at fraction 0.85 -> R_high = 116.85 (span
+    !| 234.7). Tracing the default geometric ladder (m_min=3, gamma_occupancy=1.25:
+    !| 3 -> 4 -> 5 -> 7 -> 9 -> 12 -> 15 -> 19 -> 24 -> 30) against min_residuals_per_bin=1 (an
+    !| explicit override, so "admissible" just means "no bin is completely empty"):
+    !|   M         12   15   19   24   30
+    !|   min_occ   11    3    1    1    0
+    !| M=24 is the last admissible rung (min_occ=1); M=30 fails (min_occ=0, the [51,67) gap finally
+    !| empties a bin at this resolution). Stage 2 then exhaustively tests 25..29 -- all FAIL
+    !| (min_occ=0 at every one) -- so best_m stays at m_valid=24, strictly greater than the smaller
+    !| admissible rungs below it. At M=24 the bin counts range from 1 (min) to 22 (max), summing to
+    !| 244 as required.
     subroutine test_occupancy_refinement_picks_above_m_valid()
-        integer(int32), parameter :: n_residuals = 243
+        integer(int32), parameter :: n_residuals = 244
         real(real64) :: residuals(n_residuals)
         integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
         integer(int32) :: sturges_bins, fd_bins, ierr, i, idx
-        real(real64) :: mean_bin_occupancy
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
         logical(c_bool) :: occupancy_failed
 
         idx = 0
@@ -3336,8 +3555,9 @@ contains
             end if
         end do
 
-        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, 130.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                            max_bin_occupancy, sturges_bins, fd_bins, min_residuals_per_bin=1_int32, &
                                            ierr=ierr)
 
@@ -3345,57 +3565,80 @@ contains
                               "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: ierr should be OK")
         call assert_false(occupancy_failed, &
                           "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: occupancy should not fail")
-        call assert_equal_int(n_pooled_residuals, 243_int32, &
+        call assert_equal_real(shared_residual_range_low, -117.85_real64, TOL, &
+                               "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: "// &
+                               "shared_residual_range_low == 5th percentile of the gap fixture")
+        call assert_equal_real(shared_residual_range_high, 116.85_real64, TOL, &
+                               "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: "// &
+                               "shared_residual_range_high == 95th percentile of the gap fixture")
+        call assert_equal_int(n_pooled_residuals, 244_int32, &
                               "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: n_pooled_residuals")
-        call assert_equal_int(selected_n_bins, 22_int32, &
+        call assert_equal_int(selected_n_bins, 24_int32, &
                               "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: "// &
-                              "best_m should be 22 (M=20 fails, M=21/22 pass, M=23 fails again)")
-        call assert_equal_int(min_bin_occupancy, 3_int32, &
-                              "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: min_bin_occupancy at M=22")
-        call assert_equal_int(max_bin_occupancy, 12_int32, &
-                              "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: max_bin_occupancy at M=22")
-        call assert_equal_real(mean_bin_occupancy, 243.0_real64/22.0_real64, TOL, &
+                              "best_m should be 24 (last admissible geometric rung; M=25..29 all fail)")
+        call assert_equal_int(min_bin_occupancy, 1_int32, &
+                              "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: min_bin_occupancy at M=24")
+        call assert_equal_int(max_bin_occupancy, 22_int32, &
+                              "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: max_bin_occupancy at M=24")
+        call assert_equal_real(mean_bin_occupancy, 244.0_real64/24.0_real64, TOL, &
                                "test_determine_bin_count_occupancy_refinement_picks_above_m_valid: mean_bin_occupancy")
     end subroutine test_occupancy_refinement_picks_above_m_valid
 
-    !> Residuals are every integer in [-48, 47] (96 values, shared_residual_range=48.0). Tracing
-    !| the default geometric ladder against the default min_residuals_per_bin=10:
+    !> Residuals are every integer in [-48, 47] (96 values). `shared_residual_range_low`/`_high`
+    !| are this fixture's own 5th/95th percentiles: `rank(0.05,96)=0.05*95+1=5.75` -> interpolate
+    !| value(5)=-44, value(6)=-43 at fraction 0.75 -> R_low = -44 + 0.75 = -43.25;
+    !| `rank(0.95,96)=0.95*95+1=91.25` -> interpolate value(91)=42, value(92)=43 at fraction 0.25
+    !| -> R_high = 42 + 0.25 = 42.25 (span 85.5). With the default min_residuals_per_bin=10, stage
+    !| 2 now actually finds an improvement over m_valid on this range (M=8 passes at min_occ=10,
+    !| beating m_valid=7) -- the opposite of what this test is named for, so
+    !| min_residuals_per_bin=9_int32 is passed explicitly instead, close to the default but chosen
+    !| so stage 2 genuinely finds nothing better here. Tracing the default geometric ladder against
+    !| min_residuals_per_bin=9:
     !|   M          3   4    5    7    9   12
-    !|   min_occ   32  24   19   13   10    8
-    !| M=9 is the last admissible rung (m_valid=9); M=12 fails (min_occ=8, m_invalid=12). Stage 2
-    !| then exhaustively tests 10 and 11 (min_occ 9 and 8 respectively, both < 10), so neither
-    !| beats m_valid -- best_m stays 9, demonstrating stage 2 running and finding nothing better.
+    !|   min_occ   28  21   17   12    9    7
+    !| M=9 is the last admissible rung (m_valid=9, min_occ=9, exactly at the threshold); M=12 fails
+    !| (min_occ=7, m_invalid=12). Stage 2 then exhaustively tests 10 and 11 (min_occ 8 and 7
+    !| respectively, both < 9), so neither beats m_valid -- best_m stays 9, demonstrating stage 2
+    !| running and finding nothing better.
     subroutine test_occupancy_refinement_finds_nothing_above_m_valid()
         integer(int32), parameter :: n_residuals = 96
         real(real64) :: residuals(n_residuals)
         integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
         integer(int32) :: sturges_bins, fd_bins, ierr, i
-        real(real64) :: mean_bin_occupancy
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
         logical(c_bool) :: occupancy_failed
 
         do i = 1, n_residuals
             residuals(i) = real(i - 49, real64) ! -48, -47, ..., 47
         end do
 
-        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, 48.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
-                                           max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr)
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, min_residuals_per_bin=9_int32, &
+                                           ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid: ierr should be OK")
         call assert_false(occupancy_failed, &
                           "test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid: "// &
                           "occupancy should not fail")
+        call assert_equal_real(shared_residual_range_low, -43.25_real64, TOL, &
+                               "test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid: "// &
+                               "shared_residual_range_low == 5th percentile of [-48,47]")
+        call assert_equal_real(shared_residual_range_high, 42.25_real64, TOL, &
+                               "test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid: "// &
+                               "shared_residual_range_high == 95th percentile of [-48,47]")
         call assert_equal_int(selected_n_bins, 9_int32, &
                               "test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid: "// &
                               "best_m should stay at m_valid=9 -- neither M=10 nor M=11 beats it")
         call assert_equal_int(n_pooled_residuals, 96_int32, &
                               "test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid: "// &
                               "n_pooled_residuals should be 96")
-        call assert_equal_int(min_bin_occupancy, 10_int32, &
+        call assert_equal_int(min_bin_occupancy, 9_int32, &
                               "test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid: "// &
                               "min_bin_occupancy at M=9")
-        call assert_equal_int(max_bin_occupancy, 11_int32, &
+        call assert_equal_int(max_bin_occupancy, 15_int32, &
                               "test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid: "// &
                               "max_bin_occupancy at M=9")
         call assert_equal_real(mean_bin_occupancy, 96.0_real64/9.0_real64, TOL, &
@@ -3405,21 +3648,23 @@ contains
 
     !> Every pooled residual is NaN: n_pooled_residuals must come out 0, matching
     !| estimate_bin_count_impl's own all-NaN branch (sturges_bins=fd_bins=1), and occupancy must
-    !| be reported as FAILURE with all three occupancy diagnostics zeroed, per the early-return
-    !| branch that never gets as far as testing any candidate M.
+    !| be reported as FAILURE with all three occupancy diagnostics AND the two range bounds
+    !| zeroed, per the early-return branch that never gets as far as computing a percentile or
+    !| testing any candidate M.
     subroutine test_occupancy_all_residuals_nan()
         integer(int32), parameter :: n_residuals = 4
         real(real64) :: residuals(n_residuals)
         integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
         integer(int32) :: sturges_bins, fd_bins, ierr
-        real(real64) :: mean_bin_occupancy, nan_val
+        real(real64) :: mean_bin_occupancy, nan_val, shared_residual_range_low, shared_residual_range_high
         logical(c_bool) :: occupancy_failed
 
         nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
         residuals = nan_val
 
-        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, 9.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                            max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
@@ -3428,6 +3673,12 @@ contains
                          "test_determine_bin_count_occupancy_all_residuals_nan: all-NaN pool must FAIL")
         call assert_equal_int(selected_n_bins, 3_int32, &
                               "test_determine_bin_count_occupancy_all_residuals_nan: selected_n_bins should be m_min=3")
+        call assert_equal_real(shared_residual_range_low, 0.0_real64, TOL, &
+                               "test_determine_bin_count_occupancy_all_residuals_nan: "// &
+                               "shared_residual_range_low should be 0 (all-NaN degenerate fallback)")
+        call assert_equal_real(shared_residual_range_high, 0.0_real64, TOL, &
+                               "test_determine_bin_count_occupancy_all_residuals_nan: "// &
+                               "shared_residual_range_high should be 0 (all-NaN degenerate fallback)")
         call assert_equal_int(n_pooled_residuals, 0_int32, &
                               "test_determine_bin_count_occupancy_all_residuals_nan: n_pooled_residuals should be 0")
         call assert_equal_int(min_bin_occupancy, 0_int32, &
@@ -3444,9 +3695,10 @@ contains
 
     !> gamma_occupancy=1.01 (close to 1) forces roughly 117 tiny geometric steps from m_min=3 up to
     !| m_max=120 instead of the default gamma=1.25's ~16 -- reusing
-    !| test_occupancy_reaches_m_max_validly's own dense fixture (every integer
-    !| in [-1200, 1199], shared_residual_range=1200.0, comfortably occupied at every M up to 120)
-    !| so the ONLY thing that changes is how many times `next_m = max(trial_m + 1, next_m)`'s
+    !| test_occupancy_reaches_m_max_validly's own dense fixture (every integer in [-1200, 1199],
+    !| own R_low/R_high = -1080.05/1079.05 -- see that test's docstring for the derivation --
+    !| comfortably occupied at every M up to 120) so the ONLY thing that changes is how many times
+    !| `next_m = max(trial_m + 1, next_m)`'s
     !| progress guarantee actually fires. Mathematically, for any gamma_occupancy > 1.0 (enforced
     !| by DM_MIN(above(1.0_real64))) and integer trial_m >= 1, `ceiling(gamma_occupancy*trial_m)`
     !| is already guaranteed > trial_m in exact arithmetic, so this specific gamma value cannot
@@ -3464,15 +3716,16 @@ contains
         real(real64) :: residuals(n_residuals)
         integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
         integer(int32) :: sturges_bins, fd_bins, ierr, i
-        real(real64) :: mean_bin_occupancy
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
         logical(c_bool) :: occupancy_failed
 
         do i = 1, n_residuals
             residuals(i) = real(i - 1201, real64) ! -1200, -1199, ..., 1199
         end do
 
-        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, 1200.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                            max_bin_occupancy, sturges_bins, fd_bins, gamma_occupancy=1.01_real64, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
@@ -3483,137 +3736,186 @@ contains
         call assert_equal_int(selected_n_bins, 120_int32, &
                               "test_determine_bin_count_occupancy_geometric_step_guarantees_progress: "// &
                               "the search must still terminate and reach m_max=120, not stall below it")
-        call assert_equal_int(min_bin_occupancy, 20_int32, &
+        call assert_equal_int(min_bin_occupancy, 18_int32, &
                               "test_determine_bin_count_occupancy_geometric_step_guarantees_progress: min_bin_occupancy")
-        call assert_equal_int(max_bin_occupancy, 20_int32, &
+        call assert_equal_int(max_bin_occupancy, 138_int32, &
                               "test_determine_bin_count_occupancy_geometric_step_guarantees_progress: max_bin_occupancy")
     end subroutine test_occupancy_geometric_step_guarantees_progress
 
-    !> Reuses test_occupancy_finds_valid_below_m_max's exact residual fixture
-    !| (every integer in [-60, 59], shared_residual_range=60.0), but with max_n_reps_all_studies=8,
-    !| n_neighbors=1 so estimate_bin_count_impl's own diagnostics are non-trivial (n_reps_neighborhood=8).
-    !| Sorted ascending, the 120 residuals are `value(i) = i - 61` for rank `i = 1..120`. With
+    !> Reuses test_occupancy_finds_valid_below_m_max's exact residual fixture (every integer in
+    !| [-60, 59], own R_low/R_high = -54.05/53.05 -- see that test's docstring for the derivation),
+    !| but with max_n_reps_all_studies=8, n_neighbors=1 so estimate_bin_count_impl's own
+    !| diagnostics are non-trivial (n_reps_neighborhood=8). `estimate_bin_count_impl`'s own quartile
+    !| arithmetic is unchanged by Step 3 -- it still runs directly on the raw pooled residuals, not
+    !| on R_low/R_high -- so its own inputs are exactly as before: sorted ascending, the 120
+    !| residuals are `value(i) = i - 61` for rank `i = 1..120`. With
     !| `calc_percentile_rank(q, n) = q*(n-1)+1`:
     !|   rank(0.25, 120) = 0.25*119 + 1 = 30.75 -> interpolate value(30)=-31, value(31)=-30 at
     !|     fraction 0.75 -> quartile_25 = -31 + 0.75*1 = -30.25
     !|   rank(0.75, 120) = 0.75*119 + 1 = 90.25 -> interpolate value(90)=29, value(91)=30 at
     !|     fraction 0.25 -> quartile_75 = 29 + 0.25*1 = 29.25
-    !| IQR = 29.25 - (-30.25) = 59.5. half_bin_width = 59.5 / 8**(1/3) = 59.5/2.0 = 29.75.
-    !| fd_raw = nint(60.0/29.75) = nint(2.0168...) = 2 -> fd_bins = 2.
-    !| sturges_raw = 1 + nint(log(8)/LOG_2) = 1 + nint(3.0) = 4 -> sturges_bins = 4.
+    !| IQR = 29.25 - (-30.25) = 59.5. half_bin_width = 59.5 / 8**(1/3) = 59.5/2.0 = 29.75. What DOES
+    !| change under Step 3 is what `estimate_bin_count_impl` is fed for its own one-sided
+    !| `shared_residual_range` argument: half the new asymmetric span, `(53.05 - (-54.05))/2 =
+    !| 53.55` (Step 3's own `half_span` local in `determine_bin_count_occupancy_impl`), not the old
+    !| dataset-wide `60.0`. fd_raw = nint(53.55/29.75) = nint(1.8...) = 2 -> fd_bins = 2 (same
+    !| result as before Step 3, since 53.55 and 60.0 both round to fd_raw=2 against this
+    !| half_bin_width -- a coincidence of this particular fixture, not a general guarantee).
+    !| sturges_raw = 1 + nint(log(8)/LOG_2) = 1 + nint(3.0) = 4 -> sturges_bins = 4 (untouched by
+    !| Step 3 entirely -- Sturges never used shared_residual_range).
     !| These four diagnostics (sturges_bins, fd_bins, n_pooled_residuals, and the occupancy
     !| triple at whatever M the search itself selects) are independently derived here: the
-    !| search's own selected_n_bins is asserted too (M=12, matching the sibling test above), but
+    !| search's own selected_n_bins is asserted too (M=10, matching the sibling test above), but
     !| every diagnostic assertion below stands on its own arithmetic, not on that search result.
     subroutine test_occupancy_diagnostics_hand_computed()
         integer(int32), parameter :: n_residuals = 120
         real(real64) :: residuals(n_residuals)
         integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
         integer(int32) :: sturges_bins, fd_bins, ierr, i
-        real(real64) :: mean_bin_occupancy
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
         logical(c_bool) :: occupancy_failed
 
         do i = 1, n_residuals
             residuals(i) = real(i - 61, real64) ! -60, -59, ..., 59
         end do
 
-        call determine_bin_count_occupancy(residuals, n_residuals, 8_int32, 1_int32, 60.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+        call determine_bin_count_occupancy(residuals, n_residuals, 8_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                            max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_determine_bin_count_occupancy_diagnostics_hand_computed: ierr should be OK")
         call assert_equal_int(n_pooled_residuals, 120_int32, &
                               "test_determine_bin_count_occupancy_diagnostics_hand_computed: n_pooled_residuals")
+        call assert_equal_real(shared_residual_range_low, -54.05_real64, TOL, &
+                               "test_determine_bin_count_occupancy_diagnostics_hand_computed: shared_residual_range_low")
+        call assert_equal_real(shared_residual_range_high, 53.05_real64, TOL, &
+                               "test_determine_bin_count_occupancy_diagnostics_hand_computed: shared_residual_range_high")
         call assert_equal_int(sturges_bins, 4_int32, &
                               "test_determine_bin_count_occupancy_diagnostics_hand_computed: sturges_bins")
         call assert_equal_int(fd_bins, 2_int32, &
                               "test_determine_bin_count_occupancy_diagnostics_hand_computed: fd_bins")
         call assert_false(occupancy_failed, &
                           "test_determine_bin_count_occupancy_diagnostics_hand_computed: occupancy should not fail")
-        call assert_equal_int(selected_n_bins, 12_int32, &
-                              "test_determine_bin_count_occupancy_diagnostics_hand_computed: search should still pick M=12")
+        call assert_equal_int(selected_n_bins, 10_int32, &
+                              "test_determine_bin_count_occupancy_diagnostics_hand_computed: search should still pick M=10")
         call assert_equal_int(min_bin_occupancy, 10_int32, &
-                              "test_determine_bin_count_occupancy_diagnostics_hand_computed: min_bin_occupancy at M=12")
-        call assert_equal_int(max_bin_occupancy, 10_int32, &
-                              "test_determine_bin_count_occupancy_diagnostics_hand_computed: max_bin_occupancy at M=12")
-        call assert_equal_real(mean_bin_occupancy, 10.0_real64, TOL, &
-                               "test_determine_bin_count_occupancy_diagnostics_hand_computed: mean_bin_occupancy == 120/12")
+                              "test_determine_bin_count_occupancy_diagnostics_hand_computed: min_bin_occupancy at M=10")
+        call assert_equal_int(max_bin_occupancy, 17_int32, &
+                              "test_determine_bin_count_occupancy_diagnostics_hand_computed: max_bin_occupancy at M=10")
+        call assert_equal_real(mean_bin_occupancy, 12.0_real64, TOL, &
+                               "test_determine_bin_count_occupancy_diagnostics_hand_computed: mean_bin_occupancy == 120/10")
     end subroutine test_occupancy_diagnostics_hand_computed
 
     !> Four sub-cases, each isolating exactly one optional argument's resolved default by
     !| comparing a call with it absent against a call overriding only that one argument (every
     !| other optional either absent in both calls, or pinned to the SAME override in both, so the
-    !| observed difference can only be attributed to the one argument actually being varied):
+    !| observed difference can only be attributed to the one argument actually being varied). Two
+    !| of the four (B, C) needed genuinely new fixtures/parameters for Step 3: with a per-neighborhood
+    !| percentile-derived range instead of a caller-supplied dataset-wide one, their old pre-Step-3
+    !| fixtures no longer isolate the same default -- see each sub-case's own note below.
     !|
-    !| (A) min_residuals_per_bin default=10: 20 residuals (every integer in [-10,9],
-    !|     shared_residual_range=10.0) give min_occ=6 at the default m_min=3 (bins [7,7,6]) --
-    !|     6 < 10 (default) FAILS, but 6 >= 5 (explicit override) PASSES.
-    !| (B) m_min default=3: 5 residuals clustered in the extreme upper end of the range (8.0, 8.5,
-    !|     9.0, 9.5, 9.8; shared_residual_range=10.0) put all 5 residuals in the single bin at
-    !|     M=1, but leave the lower bin(s) of M=2 and M=3 completely empty. With
-    !|     min_residuals_per_bin=1 explicit (so "admissible" just means "no empty bin"): starting
-    !|     the default m_min=3 hits an immediately-empty bin (FAILURE), but starting from an
-    !|     explicit m_min=1 succeeds at M=1 (all 5 in one bin) and then correctly fails to grow
-    !|     past it (M=2 has an empty bin), landing on selected_n_bins=1.
-    !| (C) gamma_occupancy default=1.25: reuses
-    !|     test_occupancy_refinement_picks_above_m_valid's own 243-residual
-    !|     gap fixture (min_residuals_per_bin=1 explicit in both calls, to isolate gamma alone).
-    !|     The default ladder (3,4,5,7,9,12,15,19,24) gives selected_n_bins=22 (verified there);
-    !|     an explicit gamma_occupancy=3.0 instead walks 3,9,27 (m_valid=9, m_invalid=27) and its
-    !|     much wider refinement window finds selected_n_bins=26 -- a materially different answer,
-    !|     confirming the default is genuinely 1.25, not 3.0 (occupancy is not monotonic enough
-    !|     here for the two ladders to converge on the same answer).
-    !| (D) m_max default=120: reuses
-    !|     test_occupancy_reaches_m_max_validly's own 2400-residual dense
-    !|     fixture, comfortably occupied (>= 10 per bin) at every M up to 120. Absent, the search
-    !|     reaches the default m_max=120 (early return); with an explicit m_max=50 (still
-    !|     comfortably occupied: floor(2400/50)=48 >= 10), the ladder instead clamps to and returns
-    !|     50.
+    !| (A) min_residuals_per_bin default=10: 20 residuals (every integer in [-10,9]), own
+    !|     R_low/R_high = -9.05/8.05 (`rank(0.05,20)=0.05*19+1=1.95` -> interpolate value(1)=-10,
+    !|     value(2)=-9 at fraction 0.95 -> R_low = -10+0.95 = -9.05; `rank(0.95,20)=0.95*19+1=19.05`
+    !|     -> interpolate value(19)=8, value(20)=9 at fraction 0.05 -> R_high = 8+0.05 = 8.05), give
+    !|     min_occ=6 at the default m_min=3 (bins [7,6,7]) -- 6 < 10 (default) FAILS, but 6 >= 5
+    !|     (explicit override) PASSES.
+    !| (B) m_min default=3: pre-Step-3 this fixture clustered 5 residuals in the extreme upper end
+    !|     of a caller-supplied [-10,10] range to leave the lower bins of small M empty. Under
+    !|     Step 3 the range is no longer caller-supplied -- it is derived FROM the clustered data
+    !|     itself, so it never spans further than the data does, and the old fixture no longer
+    !|     produces an empty bin at any M. Replaced with a fixture that keeps this property under a
+    !|     percentile-derived range: 4 residuals tightly clustered near 0 (0.0, 0.1, 0.2, 0.3) plus
+    !|     one extreme outlier (100.0) -- the outlier still stretches R_high far beyond the cluster
+    !|     even though R_high is itself only the 95th percentile, not the outlier's own value.
+    !|     Sorted, `rank(0.05,5)=1.2` -> R_low = 0.0 + 0.2*(0.1-0.0) = 0.02; `rank(0.95,5)=4.8` ->
+    !|     R_high = 0.3 + 0.8*(100.0-0.3) = 80.06. At the default m_min=3 (bin_width =
+    !|     80.04/3 ~= 26.68): the cluster's 4 points all land in bin 1, the outlier (clamped to
+    !|     80.06) lands in bin 3, and bin 2 is completely empty -- FAILURE, with
+    !|     min_residuals_per_bin=1 explicit (so "admissible" just means "no empty bin"). Starting
+    !|     from an explicit m_min=1 instead: M=1 trivially passes (all 5 in one bin), M=2 also
+    !|     passes (bin_width=40.02: the 4 clustered points and the clamped outlier split 4/1, no
+    !|     empty bin), but M=3 fails the same way as above -- so the search stops advancing at
+    !|     M=2, landing on selected_n_bins=2 (not 1: unlike the old fixture, M=2 is also genuinely
+    !|     admissible here).
+    !| (C) gamma_occupancy default=1.25: reuses test_occupancy_refinement_picks_above_m_valid's own
+    !|     244-residual gap fixture (min_residuals_per_bin=1 explicit in both calls, to isolate
+    !|     gamma alone; own R_low/R_high = -117.85/116.85, see that test's docstring). The default
+    !|     ladder (3,4,5,7,9,12,15,19,24) gives selected_n_bins=24 (verified there). Pre-Step-3 this
+    !|     sub-case contrasted gamma_occupancy=3.0's wider ladder (3,9,27) against the default --
+    !|     but under the new percentile-derived range, that 3.0 override lands on the SAME answer
+    !|     (24) as the default, no longer demonstrating a difference. An explicit
+    !|     gamma_occupancy=1.5_real64 instead walks 3,5,8,12,18 (m_valid=12, m_invalid=18) and its
+    !|     refinement window {13,...,17} finds selected_n_bins=17 -- a materially different answer,
+    !|     confirming the default is genuinely 1.25, not 1.5.
+    !| (D) m_max default=120: reuses test_occupancy_reaches_m_max_validly's own 2400-residual dense
+    !|     fixture (own R_low/R_high = -1080.05/1079.05, see that test's docstring), comfortably
+    !|     occupied (>= 10 per bin) at every M up to 120. Absent, the search reaches the default
+    !|     m_max=120 (early return); with an explicit m_max=50 (still comfortably occupied), the
+    !|     ladder instead clamps to and returns 50.
     subroutine test_occupancy_defaults_match_issue_suggestions()
-        real(real64) :: residuals_a(20), residuals_b(5), residuals_c(243), residuals_d(2400)
+        real(real64) :: residuals_a(20), residuals_b(5), residuals_c(244), residuals_d(2400)
         integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
         integer(int32) :: sturges_bins, fd_bins, ierr, i, idx
-        real(real64) :: mean_bin_occupancy
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
         logical(c_bool) :: occupancy_failed
 
         ! (A) min_residuals_per_bin default=10
         do i = 1, 20
             residuals_a(i) = real(i - 11, real64) ! -10, -9, ..., 9
         end do
-        call determine_bin_count_occupancy(residuals_a, 20_int32, 1_int32, 1_int32, 10.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+        call determine_bin_count_occupancy(residuals_a, 20_int32, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                            max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr)
         call assert_true(occupancy_failed, &
                          "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
                          "(A) default min_residuals_per_bin=10 should FAIL this fixture (min_occ=6 < 10)")
-        call determine_bin_count_occupancy(residuals_a, 20_int32, 1_int32, 1_int32, 10.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+        call assert_equal_real(shared_residual_range_low, -9.05_real64, TOL, &
+                               "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
+                               "(A) shared_residual_range_low == 5th percentile of [-10,9]")
+        call assert_equal_real(shared_residual_range_high, 8.05_real64, TOL, &
+                               "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
+                               "(A) shared_residual_range_high == 95th percentile of [-10,9]")
+        call determine_bin_count_occupancy(residuals_a, 20_int32, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                            max_bin_occupancy, sturges_bins, fd_bins, min_residuals_per_bin=5_int32, &
                                            ierr=ierr)
         call assert_false(occupancy_failed, &
                           "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
                           "(A) explicit min_residuals_per_bin=5 should PASS the same fixture (min_occ=6 >= 5)")
 
-        ! (B) m_min default=3
-        residuals_b = [8.0_real64, 8.5_real64, 9.0_real64, 9.5_real64, 9.8_real64]
-        call determine_bin_count_occupancy(residuals_b, 5_int32, 1_int32, 1_int32, 10.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+        ! (B) m_min default=3 -- cluster + one extreme outlier, see docstring above for why this
+        ! fixture replaces the pre-Step-3 one
+        residuals_b = [0.0_real64, 0.1_real64, 0.2_real64, 0.3_real64, 100.0_real64]
+        call determine_bin_count_occupancy(residuals_b, 5_int32, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                            max_bin_occupancy, sturges_bins, fd_bins, min_residuals_per_bin=1_int32, &
                                            ierr=ierr)
         call assert_true(occupancy_failed, &
                          "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
-                         "(B) default m_min=3 should FAIL (M=3 already has an empty bin)")
-        call determine_bin_count_occupancy(residuals_b, 5_int32, 1_int32, 1_int32, 10.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                         "(B) default m_min=3 should FAIL (M=3 has an empty middle bin)")
+        call assert_equal_real(shared_residual_range_low, 0.02_real64, TOL, &
+                               "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
+                               "(B) shared_residual_range_low == 5th percentile of the cluster+outlier fixture")
+        call assert_equal_real(shared_residual_range_high, 80.06_real64, TOL, &
+                               "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
+                               "(B) shared_residual_range_high == 95th percentile of the cluster+outlier fixture")
+        call determine_bin_count_occupancy(residuals_b, 5_int32, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                            max_bin_occupancy, sturges_bins, fd_bins, min_residuals_per_bin=1_int32, &
                                            m_min=1_int32, ierr=ierr)
         call assert_false(occupancy_failed, &
                           "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
-                          "(B) explicit m_min=1 should PASS at M=1")
-        call assert_equal_int(selected_n_bins, 1_int32, &
+                          "(B) explicit m_min=1 should PASS, growing as far as M=2")
+        call assert_equal_int(selected_n_bins, 2_int32, &
                               "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
-                              "(B) selected_n_bins should be 1 with m_min=1")
+                              "(B) selected_n_bins should be 2 with m_min=1 (M=1 and M=2 both admissible, M=3 fails)")
 
         ! (C) gamma_occupancy default=1.25
         idx = 0
@@ -3623,37 +3925,122 @@ contains
                 residuals_c(idx) = real(i, real64)
             end if
         end do
-        call determine_bin_count_occupancy(residuals_c, 243_int32, 1_int32, 1_int32, 130.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+        call determine_bin_count_occupancy(residuals_c, 244_int32, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                            max_bin_occupancy, sturges_bins, fd_bins, min_residuals_per_bin=1_int32, &
                                            ierr=ierr)
-        call assert_equal_int(selected_n_bins, 22_int32, &
+        call assert_equal_int(selected_n_bins, 24_int32, &
                               "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
-                              "(C) default gamma_occupancy=1.25 should select M=22")
-        call determine_bin_count_occupancy(residuals_c, 243_int32, 1_int32, 1_int32, 130.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                              "(C) default gamma_occupancy=1.25 should select M=24")
+        call determine_bin_count_occupancy(residuals_c, 244_int32, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                            max_bin_occupancy, sturges_bins, fd_bins, min_residuals_per_bin=1_int32, &
-                                           gamma_occupancy=3.0_real64, ierr=ierr)
-        call assert_equal_int(selected_n_bins, 26_int32, &
+                                           gamma_occupancy=1.5_real64, ierr=ierr)
+        call assert_equal_int(selected_n_bins, 17_int32, &
                               "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
-                              "(C) explicit gamma_occupancy=3.0 should instead select M=26")
+                              "(C) explicit gamma_occupancy=1.5 should instead select M=17")
 
         ! (D) m_max default=120
         do i = 1, 2400
             residuals_d(i) = real(i - 1201, real64) ! -1200, -1199, ..., 1199
         end do
-        call determine_bin_count_occupancy(residuals_d, 2400_int32, 1_int32, 1_int32, 1200.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+        call determine_bin_count_occupancy(residuals_d, 2400_int32, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                            max_bin_occupancy, sturges_bins, fd_bins, ierr=ierr)
         call assert_equal_int(selected_n_bins, 120_int32, &
                               "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
                               "(D) default m_max=120 should be reached")
-        call determine_bin_count_occupancy(residuals_d, 2400_int32, 1_int32, 1_int32, 1200.0_real64, selected_n_bins, &
-                                           occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+        call determine_bin_count_occupancy(residuals_d, 2400_int32, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                            max_bin_occupancy, sturges_bins, fd_bins, m_max=50_int32, ierr=ierr)
         call assert_equal_int(selected_n_bins, 50_int32, &
                               "test_determine_bin_count_occupancy_defaults_match_issue_suggestions: "// &
                               "(D) explicit m_max=50 should instead be reached")
     end subroutine test_occupancy_defaults_match_issue_suggestions
+
+    !> Step 3 (per-neighborhood residual range): confirms shared_residual_range_low/_high are
+    !| genuinely asymmetric -- NOT mirror images of each other -- for a residual distribution whose
+    !| core is symmetric around zero but whose tail is not. 12 residuals: -5,-4,-3,-2,-1,0,1,2,3,4,5
+    !| (symmetric) plus one extreme positive outlier, 50.0. Sorted, with
+    !| `calc_percentile_rank(q,n) = q*(n-1)+1`:
+    !|   rank(0.05, 12) = 0.05*11 + 1 = 1.55 -> interpolate value(1)=-5, value(2)=-4 at fraction
+    !|     0.55 -> R_low = -5 + 0.55*1 = -4.45
+    !|   rank(0.95, 12) = 0.95*11 + 1 = 11.45 -> interpolate value(11)=5, value(12)=50 at fraction
+    !|     0.45 -> R_high = 5 + 0.45*45 = 25.25
+    !| |R_low| = 4.45 and R_high = 25.25 differ by more than 20 -- clearly not mirror images of one
+    !| another -- even though the 11 non-outlier residuals are themselves perfectly symmetric,
+    !| demonstrating that a single extreme value on one side is enough to pull that side's bound far
+    !| out while leaving the other essentially where a symmetric range would have put it. This is
+    !| exactly the design Step 3 replaces the old single symmetric shared_residual_range with.
+    subroutine test_occupancy_range_asymmetric_skewed_residuals()
+        integer(int32), parameter :: n_residuals = 12
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
+        logical(c_bool) :: occupancy_failed
+
+        residuals = [-5.0_real64, -4.0_real64, -3.0_real64, -2.0_real64, -1.0_real64, 0.0_real64, &
+                    1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64, 50.0_real64]
+
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, min_residuals_per_bin=1_int32, &
+                                           ierr=ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_occupancy_range_asymmetric_skewed_residuals: ierr should be OK")
+        call assert_equal_real(shared_residual_range_low, -4.45_real64, TOL, &
+                               "test_occupancy_range_asymmetric_skewed_residuals: "// &
+                               "shared_residual_range_low == 5th percentile of the skewed fixture")
+        call assert_equal_real(shared_residual_range_high, 25.25_real64, TOL, &
+                               "test_occupancy_range_asymmetric_skewed_residuals: "// &
+                               "shared_residual_range_high == 95th percentile of the skewed fixture")
+        call assert_true(abs(shared_residual_range_low) - shared_residual_range_high < -1.0_real64, &
+                         "test_occupancy_range_asymmetric_skewed_residuals: "// &
+                         "|shared_residual_range_low| and shared_residual_range_high must NOT be mirror images "// &
+                         "(the old symmetric [-R,R] design would have made them equal)")
+    end subroutine test_occupancy_range_asymmetric_skewed_residuals
+
+    !> Step 3 (per-neighborhood residual range): a direct hand-computed check of
+    !| shared_residual_range_low/_high against calc_percentile_impl's own nearest-rank/interpolation
+    !| formula, independent of whatever bin count the occupancy search separately selects (that
+    !| search's own output is not asserted here at all -- see the other test_occupancy_range_* and
+    !| test_occupancy_* tests for that). 8 residuals, every integer 1..8 (chosen so both quantile
+    !| ranks land on a clean fractional index):
+    !|   rank(0.05, 8) = 0.05*7 + 1 = 1.35 -> interpolate value(1)=1, value(2)=2 at fraction 0.35
+    !|     -> R_low = 1 + 0.35*1 = 1.35
+    !|   rank(0.95, 8) = 0.95*7 + 1 = 7.65 -> interpolate value(7)=7, value(8)=8 at fraction 0.65
+    !|     -> R_high = 7 + 0.65*1 = 7.65
+    subroutine test_occupancy_range_hand_computed_percentile()
+        integer(int32), parameter :: n_residuals = 8
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
+        logical(c_bool) :: occupancy_failed
+
+        residuals = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64, 6.0_real64, 7.0_real64, 8.0_real64]
+
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, min_residuals_per_bin=1_int32, &
+                                           ierr=ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_occupancy_range_hand_computed_percentile: ierr should be OK")
+        call assert_equal_real(shared_residual_range_low, 1.35_real64, TOL, &
+                               "test_occupancy_range_hand_computed_percentile: "// &
+                               "shared_residual_range_low == calc_percentile_impl(0.05) nearest-rank interpolation")
+        call assert_equal_real(shared_residual_range_high, 7.65_real64, TOL, &
+                               "test_occupancy_range_hand_computed_percentile: "// &
+                               "shared_residual_range_high == calc_percentile_impl(0.95) nearest-rank interpolation")
+    end subroutine test_occupancy_range_hand_computed_percentile
 
 end module mod_test_data_integration_js_comp_test

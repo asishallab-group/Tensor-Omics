@@ -214,8 +214,11 @@ contains
     !| Implements Issue #187's two-stage geometric-search-then-local-refinement algorithm for one
     !| neighborhood's pooled residuals (`pooled_residuals`, across all its neighbors and all
     !| studies): find the largest bin count `M` in `[m_min, m_max]` whose equal-width histogram
-    !| over `[-shared_residual_range, shared_residual_range]` has every bin at or above
-    !| `min_residuals_per_bin` (the occupancy criterion), rather than the generic
+    !| over `[shared_residual_range_low, shared_residual_range_high]` -- this neighborhood's own
+    !| asymmetric range, the `lower_residual_range_quantile`/`upper_residual_range_quantile`
+    !| percentiles of its own pooled signed residuals, rather than a single dataset-wide symmetric
+    !| range -- has every bin at or above `min_residuals_per_bin` (the occupancy criterion), rather
+    !| than the generic
     !| Sturges/Freedman-Diaconis rule
     !| [[tox_data_integration_js_comp_test_impl(module):estimate_bin_count_impl(interface)]] alone
     !| applies, which is why that routine is still called here too -- purely for the
@@ -251,9 +254,10 @@ contains
             n_residuals,&
             max_n_reps_all_studies,&
             n_neighbors,&
-            shared_residual_range,&
             selected_n_bins,&
             occupancy_failed,&
+            shared_residual_range_low,&
+            shared_residual_range_high,&
             n_pooled_residuals,&
             min_bin_occupancy,&
             mean_bin_occupancy,&
@@ -264,6 +268,8 @@ contains
             m_max,&
             min_residuals_per_bin,&
             gamma_occupancy,&
+            lower_residual_range_quantile,&
+            upper_residual_range_quantile,&
             ierr&
         )
         integer(int32), intent(in) :: n_residuals
@@ -277,9 +283,6 @@ contains
         integer(int32), intent(in) :: n_neighbors
             !! Neighborhood size of the candidate under test
             !! The minimum valid value is `1_int32`.
-        real(real64), intent(in) :: shared_residual_range
-            !! Computed residual range (R)
-            !! The minimum valid value is `0.0_real64`.
         integer(int32), intent(out) :: selected_n_bins
             !! The chosen M_j: the largest bin count in [m_min, m_max] whose pooled histogram has
             !! every bin at or above min_residuals_per_bin; m_min when occupancy_failed
@@ -288,6 +291,16 @@ contains
             !! the case where every pooled residual is NaN) -- per Issue #187's FAILURE policy, the
             !! caller should reject this neighborhood rather than build a histogram from
             !! selected_n_bins
+        real(real64), intent(out) :: shared_residual_range_low
+            !! This neighborhood's own lower residual-range bound (R_low): the
+            !! lower_residual_range_quantile percentile of its own pooled signed residuals --
+            !! replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
+            !! occupancy_failed because every pooled residual is NaN
+        real(real64), intent(out) :: shared_residual_range_high
+            !! This neighborhood's own upper residual-range bound (R_high): the
+            !! upper_residual_range_quantile percentile of its own pooled signed residuals --
+            !! replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
+            !! occupancy_failed because every pooled residual is NaN
         integer(int32), intent(out) :: n_pooled_residuals
             !! Count of non-NaN pooled residuals (N_j)
         integer(int32), intent(out) :: min_bin_occupancy
@@ -326,6 +339,18 @@ contains
             !! never advances
             !! The minimum valid value is `above(1.0_real64)`.
             !! The default value is `1.25_real64`.
+        real(real64), intent(in), optional :: lower_residual_range_quantile
+            !! Quantile in [0,1] for this neighborhood's own lower residual-range bound
+            !! (shared_residual_range_low)
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.05_real64`.
+        real(real64), intent(in), optional :: upper_residual_range_quantile
+            !! Quantile in [0,1] for this neighborhood's own upper residual-range bound
+            !! (shared_residual_range_high)
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
         integer(int32), dimension(:), allocatable :: pooled_residuals_perm
@@ -336,11 +361,12 @@ contains
         call validate_dimension_size(n_residuals, ierr, arg_pos=2_int32)
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=4_int32, min=1_int32)
-        call validate_in_range_real(shared_residual_range, ierr, arg_pos=5_int32, min=0.0_real64)
-        call validate_in_range_int(m_min, ierr, arg_pos=14_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=15_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=16_int32, min=0_int32)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=17_int32, min=above(1.0_real64))
+        call validate_in_range_int(m_min, ierr, arg_pos=15_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=16_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=17_int32, min=0_int32)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=18_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=19_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=20_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(pooled_residuals, n_residuals, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
@@ -356,9 +382,10 @@ contains
             n_residuals = n_residuals,&
             max_n_reps_all_studies = max_n_reps_all_studies,&
             n_neighbors = n_neighbors,&
-            shared_residual_range = shared_residual_range,&
             selected_n_bins = selected_n_bins,&
             occupancy_failed = occupancy_failed,&
+            shared_residual_range_low = shared_residual_range_low,&
+            shared_residual_range_high = shared_residual_range_high,&
             n_pooled_residuals = n_pooled_residuals,&
             min_bin_occupancy = min_bin_occupancy,&
             mean_bin_occupancy = mean_bin_occupancy,&
@@ -369,7 +396,9 @@ contains
             m_min = m_min,&
             m_max = m_max,&
             min_residuals_per_bin = min_residuals_per_bin,&
-            gamma_occupancy = gamma_occupancy&
+            gamma_occupancy = gamma_occupancy,&
+            lower_residual_range_quantile = lower_residual_range_quantile,&
+            upper_residual_range_quantile = upper_residual_range_quantile&
         )
     end subroutine determine_bin_count_occupancy
 
@@ -377,8 +406,11 @@ contains
     !| Implements Issue #187's two-stage geometric-search-then-local-refinement algorithm for one
     !| neighborhood's pooled residuals (`pooled_residuals`, across all its neighbors and all
     !| studies): find the largest bin count `M` in `[m_min, m_max]` whose equal-width histogram
-    !| over `[-shared_residual_range, shared_residual_range]` has every bin at or above
-    !| `min_residuals_per_bin` (the occupancy criterion), rather than the generic
+    !| over `[shared_residual_range_low, shared_residual_range_high]` -- this neighborhood's own
+    !| asymmetric range, the `lower_residual_range_quantile`/`upper_residual_range_quantile`
+    !| percentiles of its own pooled signed residuals, rather than a single dataset-wide symmetric
+    !| range -- has every bin at or above `min_residuals_per_bin` (the occupancy criterion), rather
+    !| than the generic
     !| Sturges/Freedman-Diaconis rule
     !| [[tox_data_integration_js_comp_test_impl(module):estimate_bin_count_impl(interface)]] alone
     !| applies, which is why that routine is still called here too -- purely for the
@@ -415,9 +447,10 @@ contains
             n_residuals,&
             max_n_reps_all_studies,&
             n_neighbors,&
-            shared_residual_range,&
             selected_n_bins,&
             occupancy_failed,&
+            shared_residual_range_low,&
+            shared_residual_range_high,&
             n_pooled_residuals,&
             min_bin_occupancy,&
             mean_bin_occupancy,&
@@ -429,6 +462,8 @@ contains
             m_max,&
             min_residuals_per_bin,&
             gamma_occupancy,&
+            lower_residual_range_quantile,&
+            upper_residual_range_quantile,&
             ierr&
         )
         integer(int32), intent(in) :: n_residuals
@@ -446,9 +481,6 @@ contains
         integer(int32), intent(in) :: n_neighbors
             !! Neighborhood size of the candidate under test
             !! The minimum valid value is `1_int32`.
-        real(real64), intent(in) :: shared_residual_range
-            !! Computed residual range (R)
-            !! The minimum valid value is `0.0_real64`.
         integer(int32), intent(out) :: selected_n_bins
             !! The chosen M_j: the largest bin count in [m_min, m_max] whose pooled histogram has
             !! every bin at or above min_residuals_per_bin; m_min when occupancy_failed
@@ -457,6 +489,16 @@ contains
             !! the case where every pooled residual is NaN) -- per Issue #187's FAILURE policy, the
             !! caller should reject this neighborhood rather than build a histogram from
             !! selected_n_bins
+        real(real64), intent(out) :: shared_residual_range_low
+            !! This neighborhood's own lower residual-range bound (R_low): the
+            !! lower_residual_range_quantile percentile of its own pooled signed residuals --
+            !! replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
+            !! occupancy_failed because every pooled residual is NaN
+        real(real64), intent(out) :: shared_residual_range_high
+            !! This neighborhood's own upper residual-range bound (R_high): the
+            !! upper_residual_range_quantile percentile of its own pooled signed residuals --
+            !! replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
+            !! occupancy_failed because every pooled residual is NaN
         integer(int32), intent(out) :: n_pooled_residuals
             !! Count of non-NaN pooled residuals (N_j)
         integer(int32), intent(out) :: min_bin_occupancy
@@ -499,6 +541,18 @@ contains
             !! never advances
             !! The minimum valid value is `above(1.0_real64)`.
             !! The default value is `1.25_real64`.
+        real(real64), intent(in), optional :: lower_residual_range_quantile
+            !! Quantile in [0,1] for this neighborhood's own lower residual-range bound
+            !! (shared_residual_range_low)
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.05_real64`.
+        real(real64), intent(in), optional :: upper_residual_range_quantile
+            !! Quantile in [0,1] for this neighborhood's own upper residual-range bound
+            !! (shared_residual_range_high)
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -507,11 +561,12 @@ contains
         call validate_dimension_size(n_residuals, ierr, arg_pos=3_int32)
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=4_int32, min=1_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
-        call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
-        call validate_in_range_int(m_min, ierr, arg_pos=16_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=17_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=18_int32, min=0_int32)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=19_int32, min=above(1.0_real64))
+        call validate_in_range_int(m_min, ierr, arg_pos=17_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=18_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=19_int32, min=0_int32)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=20_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=21_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=22_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(pooled_residuals, n_residuals, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(pooled_residuals_perm, n_residuals, ierr, arg_pos=2_int32, min=1_int32, max=n_residuals)
         if (is_err(ierr)) return
@@ -523,9 +578,10 @@ contains
             n_residuals = n_residuals,&
             max_n_reps_all_studies = max_n_reps_all_studies,&
             n_neighbors = n_neighbors,&
-            shared_residual_range = shared_residual_range,&
             selected_n_bins = selected_n_bins,&
             occupancy_failed = occupancy_failed,&
+            shared_residual_range_low = shared_residual_range_low,&
+            shared_residual_range_high = shared_residual_range_high,&
             n_pooled_residuals = n_pooled_residuals,&
             min_bin_occupancy = min_bin_occupancy,&
             mean_bin_occupancy = mean_bin_occupancy,&
@@ -536,7 +592,9 @@ contains
             m_min = m_min,&
             m_max = m_max,&
             min_residuals_per_bin = min_residuals_per_bin,&
-            gamma_occupancy = gamma_occupancy&
+            gamma_occupancy = gamma_occupancy,&
+            lower_residual_range_quantile = lower_residual_range_quantile,&
+            upper_residual_range_quantile = upper_residual_range_quantile&
         )
     end subroutine determine_bin_count_occupancy_expert
 
@@ -1563,7 +1621,6 @@ contains
             max_n_reps_all_studies,&
             n_points,&
             n_neighbors,&
-            shared_residual_range,&
             gene_means,&
             gene_means_perms,&
             residuals,&
@@ -1571,6 +1628,8 @@ contains
             neighborhood_indices,&
             neighborhood_range,&
             n_bins_per_point,&
+            shared_residual_range_low,&
+            shared_residual_range_high,&
             max_n_bins_per_point,&
             occupancy_failed,&
             n_pooled_residuals,&
@@ -1595,6 +1654,8 @@ contains
             m_min,&
             m_max,&
             gamma_occupancy,&
+            lower_residual_range_quantile,&
+            upper_residual_range_quantile,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -1612,9 +1673,6 @@ contains
         integer(int32), intent(in) :: n_neighbors
             !! Number of neighbors per neighborhood
             !! The minimum valid value is `1_int32`.
-        real(real64), intent(in) :: shared_residual_range
-            !! Computed residual range (R)
-            !! The minimum valid value is `0.0_real64`.
         real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
             !! Per-gene mean expression values for all studies
             !! NaN is permitted for this value.
@@ -1637,6 +1695,14 @@ contains
             !! This reference point's own selected histogram bin count (Issue #187's `M_j`), from
             !! Pass B's occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood
             !! may use a different bin count
+        real(real64), dimension(n_points), intent(out) :: shared_residual_range_low
+            !! This reference point's own lower residual-range bound (R_low), from Pass B's
+            !! occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood may use a
+            !! different, asymmetric range (Step 3)
+        real(real64), dimension(n_points), intent(out) :: shared_residual_range_high
+            !! This reference point's own upper residual-range bound (R_high), from Pass B's
+            !! occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood may use a
+            !! different, asymmetric range (Step 3)
         integer(int32), intent(out) :: max_n_bins_per_point
             !! The widest `n_bins_per_point` value across all `n_points` reference points
             !! (`maxval(n_bins_per_point(1:n_points))`), derived once after Pass B. The number of
@@ -1732,6 +1798,18 @@ contains
             !! advances
             !! The minimum valid value is `above(1.0_real64)`.
             !! The default value is `1.25_real64`.
+        real(real64), intent(in), optional :: lower_residual_range_quantile
+            !! Quantile in [0,1] for each reference point's own lower residual-range bound,
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.05_real64`.
+        real(real64), intent(in), optional :: upper_residual_range_quantile
+            !! Quantile in [0,1] for each reference point's own upper residual-range bound,
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator for
             !! the permutation test
@@ -1755,16 +1833,17 @@ contains
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_points, ierr, arg_pos=4_int32, min=1_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
-        call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
-        call validate_in_range_int(n_permutations, ierr, arg_pos=32_int32, min=0_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=34_int32, min=0_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=35_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=36_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=37_int32, min=above(1.0_real64))
-        call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=7_int32, allow_nan=.true._c_bool)
-        call validate_all_in_range_int(gene_means_perms, max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, min=1_int32, max=max_n_genes_all_studies)
-        call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=9_int32, allow_nan=.true._c_bool)
-        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=10_int32, allow_nan=.true._c_bool)
+        call validate_in_range_int(n_permutations, ierr, arg_pos=33_int32, min=0_int32)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=35_int32, min=0_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=36_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=37_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=38_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=39_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=40_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_int(gene_means_perms, max_n_genes_all_studies * n_studies, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies)
+        call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=9_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 
@@ -1787,7 +1866,6 @@ contains
             max_n_reps_all_studies = max_n_reps_all_studies,&
             n_points = n_points,&
             n_neighbors = n_neighbors,&
-            shared_residual_range = shared_residual_range,&
             gene_means = gene_means,&
             gene_means_perms = gene_means_perms,&
             residuals = residuals,&
@@ -1795,6 +1873,8 @@ contains
             neighborhood_indices = neighborhood_indices,&
             neighborhood_range = neighborhood_range,&
             n_bins_per_point = n_bins_per_point,&
+            shared_residual_range_low = shared_residual_range_low,&
+            shared_residual_range_high = shared_residual_range_high,&
             max_n_bins_per_point = max_n_bins_per_point,&
             occupancy_failed = occupancy_failed,&
             n_pooled_residuals = n_pooled_residuals,&
@@ -1831,6 +1911,8 @@ contains
             m_min = m_min,&
             m_max = m_max,&
             gamma_occupancy = gamma_occupancy,&
+            lower_residual_range_quantile = lower_residual_range_quantile,&
+            upper_residual_range_quantile = upper_residual_range_quantile,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -1939,7 +2021,6 @@ contains
             max_n_reps_all_studies,&
             n_points,&
             n_neighbors,&
-            shared_residual_range,&
             gene_means,&
             gene_means_perms,&
             residuals,&
@@ -1947,6 +2028,8 @@ contains
             neighborhood_indices,&
             neighborhood_range,&
             n_bins_per_point,&
+            shared_residual_range_low,&
+            shared_residual_range_high,&
             max_n_bins_per_point,&
             occupancy_failed,&
             n_pooled_residuals,&
@@ -1983,6 +2066,8 @@ contains
             m_min,&
             m_max,&
             gamma_occupancy,&
+            lower_residual_range_quantile,&
+            upper_residual_range_quantile,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -2000,9 +2085,6 @@ contains
         integer(int32), intent(in) :: n_neighbors
             !! Number of neighbors per neighborhood
             !! The minimum valid value is `1_int32`.
-        real(real64), intent(in) :: shared_residual_range
-            !! Computed residual range (R)
-            !! The minimum valid value is `0.0_real64`.
         real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
             !! Per-gene mean expression values for all studies
             !! NaN is permitted for this value.
@@ -2025,6 +2107,14 @@ contains
             !! This reference point's own selected histogram bin count (Issue #187's `M_j`), from
             !! Pass B's occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood
             !! may use a different bin count
+        real(real64), dimension(n_points), intent(out) :: shared_residual_range_low
+            !! This reference point's own lower residual-range bound (R_low), from Pass B's
+            !! occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood may use a
+            !! different, asymmetric range (Step 3)
+        real(real64), dimension(n_points), intent(out) :: shared_residual_range_high
+            !! This reference point's own upper residual-range bound (R_high), from Pass B's
+            !! occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood may use a
+            !! different, asymmetric range (Step 3)
         integer(int32), intent(out) :: max_n_bins_per_point
             !! The widest `n_bins_per_point` value across all `n_points` reference points
             !! (`maxval(n_bins_per_point(1:n_points))`), derived once after Pass B. The number of
@@ -2157,6 +2247,18 @@ contains
             !! advances
             !! The minimum valid value is `above(1.0_real64)`.
             !! The default value is `1.25_real64`.
+        real(real64), intent(in), optional :: lower_residual_range_quantile
+            !! Quantile in [0,1] for each reference point's own lower residual-range bound,
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.05_real64`.
+        real(real64), intent(in), optional :: upper_residual_range_quantile
+            !! Quantile in [0,1] for each reference point's own upper residual-range bound,
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator for
             !! the permutation test
@@ -2168,16 +2270,17 @@ contains
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_points, ierr, arg_pos=4_int32, min=1_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
-        call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
-        call validate_in_range_int(n_permutations, ierr, arg_pos=44_int32, min=0_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=46_int32, min=0_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=47_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=48_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=49_int32, min=above(1.0_real64))
-        call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=7_int32, allow_nan=.true._c_bool)
-        call validate_all_in_range_int(gene_means_perms, max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, min=1_int32, max=max_n_genes_all_studies)
-        call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=9_int32, allow_nan=.true._c_bool)
-        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=10_int32, allow_nan=.true._c_bool)
+        call validate_in_range_int(n_permutations, ierr, arg_pos=45_int32, min=0_int32)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=47_int32, min=0_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=48_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=49_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=50_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=51_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=52_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_int(gene_means_perms, max_n_genes_all_studies * n_studies, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies)
+        call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=9_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 
@@ -2187,7 +2290,6 @@ contains
             max_n_reps_all_studies = max_n_reps_all_studies,&
             n_points = n_points,&
             n_neighbors = n_neighbors,&
-            shared_residual_range = shared_residual_range,&
             gene_means = gene_means,&
             gene_means_perms = gene_means_perms,&
             residuals = residuals,&
@@ -2195,6 +2297,8 @@ contains
             neighborhood_indices = neighborhood_indices,&
             neighborhood_range = neighborhood_range,&
             n_bins_per_point = n_bins_per_point,&
+            shared_residual_range_low = shared_residual_range_low,&
+            shared_residual_range_high = shared_residual_range_high,&
             max_n_bins_per_point = max_n_bins_per_point,&
             occupancy_failed = occupancy_failed,&
             n_pooled_residuals = n_pooled_residuals,&
@@ -2231,6 +2335,8 @@ contains
             m_min = m_min,&
             m_max = m_max,&
             gamma_occupancy = gamma_occupancy,&
+            lower_residual_range_quantile = lower_residual_range_quantile,&
+            upper_residual_range_quantile = upper_residual_range_quantile,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -2310,7 +2416,6 @@ contains
             max_n_reps_all_studies,&
             gene_means,&
             residuals,&
-            shared_residual_range,&
             n_bootstraps,&
             join_method,&
             max_n_points_candidate,&
@@ -2318,6 +2423,8 @@ contains
             n_points,&
             n_neighbors,&
             n_bins_per_point,&
+            shared_residual_range_low,&
+            shared_residual_range_high,&
             best_candidate_pair_confidence_interval,&
             plateau_established,&
             n_admissible_evaluated,&
@@ -2339,6 +2446,8 @@ contains
             trace_max_bin_occupancy,&
             trace_sturges_bins,&
             trace_fd_bins,&
+            trace_shared_residual_range_low,&
+            trace_shared_residual_range_high,&
             min_residuals_per_bin,&
             min_neighbor_overlap,&
             succeeding_ci_overlap,&
@@ -2350,6 +2459,8 @@ contains
             m_min,&
             m_max,&
             gamma_occupancy,&
+            lower_residual_range_quantile,&
+            upper_residual_range_quantile,&
             two_sided_bootstrapping_significance_level,&
             random_seed,&
             ierr&
@@ -2378,9 +2489,6 @@ contains
         real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
             !! Matrix of signed residuals per study
             !! NaN is permitted for this value.
-        real(real64), intent(in) :: shared_residual_range
-            !! Computed residual range (R)
-            !! The minimum valid value is `0.0_real64`.
         integer(int32), intent(in) :: n_bootstraps
             !! Number of bootstraps to perform for a candidate pair
             !! The minimum valid value is `1_int32`.
@@ -2411,6 +2519,15 @@ contains
             !! point (Issue #187: every neighborhood may use a different bin count). Only the
             !! leading `n_points` entries are meaningful, mirroring how `n_points`/`n_neighbors`
             !! above are the finally chosen candidate's own values
+        real(real64), dimension(max_n_points_candidate), intent(out) :: shared_residual_range_low
+            !! The finally chosen candidate's per-point lower residual-range bound (R_low), one per
+            !! reference point (Step 3: every neighborhood may use a different, asymmetric range).
+            !! Only the leading `n_points` entries are meaningful, mirroring `n_bins_per_point`
+            !! above; `0.0_real64` throughout in the two genuinely-degenerate cases where Pass B
+            !! never ran for the returned candidate (see the final three-way branch's own comments)
+        real(real64), dimension(max_n_points_candidate), intent(out) :: shared_residual_range_high
+            !! The finally chosen candidate's per-point upper residual-range bound (R_high),
+            !! mirroring `shared_residual_range_low` above in every respect
         real(real64), dimension(2, n_studies), intent(out) :: best_candidate_pair_confidence_interval
             !! The bootstrapped JSD confidence interval for the finally chosen candidate pair;
             !! `-1.0_real64` throughout only when `plateau_established` is `.false.` and no
@@ -2538,6 +2655,18 @@ contains
             !! above -- only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R
             !! caller must slice `[:trace_n_points[t], t]` themselves
             !! The first `n_admissible_evaluated` elements will hold the results.
+        real(real64), dimension(max_n_points_candidate, 16), intent(out) :: trace_shared_residual_range_low
+            !! Per-admissible-candidate, per-reference-point lower residual-range bound (R_low)
+            !! from determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+            !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(real64), dimension(max_n_points_candidate, 16), intent(out) :: trace_shared_residual_range_high
+            !! Per-admissible-candidate, per-reference-point upper residual-range bound (R_high)
+            !! from determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+            !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum count each bin of the consensus pmf must reach to pass the second
             !! admissibility gate. Reuses Issue #187's occupancy-search default rather than an
@@ -2610,6 +2739,18 @@ contains
             !! advances
             !! The minimum valid value is `above(1.0_real64)`.
             !! The default value is `1.25_real64`.
+        real(real64), intent(in), optional :: lower_residual_range_quantile
+            !! Quantile in [0,1] for each reference point's own lower residual-range bound,
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.05_real64`.
+        real(real64), intent(in), optional :: upper_residual_range_quantile
+            !! Quantile in [0,1] for each reference point's own upper residual-range bound,
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95_real64`.
         real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
             !! Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
             !! to bootstrap_histogram_impl itself
@@ -2631,6 +2772,8 @@ contains
         integer(int32), dimension(:, :), allocatable :: tmp_counts_point_major
         real(real64), dimension(:, :), allocatable :: tmp_pmf_point_major
         integer(int32), dimension(:), allocatable :: tmp_n_bins_per_point
+        real(real64), dimension(:), allocatable :: tmp_shared_residual_range_low
+        real(real64), dimension(:), allocatable :: tmp_shared_residual_range_high
         real(real64), dimension(:, :, :), allocatable :: tmp_pmfs
         integer(int32), dimension(:, :, :), allocatable :: tmp_counts
         integer(int32), dimension(:, :), allocatable :: tmp_included_n_reps
@@ -2657,31 +2800,36 @@ contains
         integer(int32), dimension(:), allocatable :: tmp_fd_bins
         integer(int32), dimension(:), allocatable :: tmp_best_n_bins_per_point
         integer(int32), dimension(:), allocatable :: tmp_best_uncertainty_n_bins_per_point
+        real(real64), dimension(:), allocatable :: tmp_best_shared_residual_range_low
+        real(real64), dimension(:), allocatable :: tmp_best_shared_residual_range_high
+        real(real64), dimension(:), allocatable :: tmp_best_uncertainty_shared_residual_range_low
+        real(real64), dimension(:), allocatable :: tmp_best_uncertainty_shared_residual_range_high
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_in_range_int(n_studies, ierr, arg_pos=1_int32, min=1_int32)
         call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=2_int32, min=1_int32)
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
-        call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
-        call validate_in_range_int(n_bootstraps, ierr, arg_pos=7_int32, min=1_int32)
-        call validate_in_range_int(max_n_points_candidate, ierr, arg_pos=9_int32, min=1_int32)
-        call validate_in_range_int(max_n_neighbors_candidate, ierr, arg_pos=10_int32, min=1_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=35_int32, min=0_int32)
-        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=36_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=37_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=39_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=40_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_epsilon, ierr, arg_pos=41_int32, min=above(0.0_real64))
-        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=42_int32, min=1_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=43_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=44_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=45_int32, min=above(1.0_real64))
-        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=46_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_int(n_bootstraps, ierr, arg_pos=6_int32, min=1_int32)
+        call validate_in_range_int(max_n_points_candidate, ierr, arg_pos=8_int32, min=1_int32)
+        call validate_in_range_int(max_n_neighbors_candidate, ierr, arg_pos=9_int32, min=1_int32)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=38_int32, min=0_int32)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=39_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=40_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=42_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=43_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_epsilon, ierr, arg_pos=44_int32, min=above(0.0_real64))
+        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=45_int32, min=1_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=46_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=47_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=48_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=49_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=50_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=51_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
-        if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
-        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=38_int32); end if
+        if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
+        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=41_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -2699,6 +2847,8 @@ contains
         M_ALLOCATE(tmp_counts_point_major(max_n_points_candidate, 256))
         M_ALLOCATE(tmp_pmf_point_major(max_n_points_candidate, 256))
         M_ALLOCATE(tmp_n_bins_per_point(max_n_points_candidate))
+        M_ALLOCATE(tmp_shared_residual_range_low(max_n_points_candidate))
+        M_ALLOCATE(tmp_shared_residual_range_high(max_n_points_candidate))
         M_ALLOCATE(tmp_pmfs(256, max_n_points_candidate, n_studies))
         M_ALLOCATE(tmp_counts(256, max_n_points_candidate, n_studies))
         M_ALLOCATE(tmp_included_n_reps(max_n_points_candidate, n_studies))
@@ -2725,6 +2875,10 @@ contains
         M_ALLOCATE(tmp_fd_bins(max_n_points_candidate))
         M_ALLOCATE(tmp_best_n_bins_per_point(max_n_points_candidate))
         M_ALLOCATE(tmp_best_uncertainty_n_bins_per_point(max_n_points_candidate))
+        M_ALLOCATE(tmp_best_shared_residual_range_low(max_n_points_candidate))
+        M_ALLOCATE(tmp_best_shared_residual_range_high(max_n_points_candidate))
+        M_ALLOCATE(tmp_best_uncertainty_shared_residual_range_low(max_n_points_candidate))
+        M_ALLOCATE(tmp_best_uncertainty_shared_residual_range_high(max_n_points_candidate))
 
         call run_js_comp_test_parameter_search_impl(&
             n_studies = n_studies,&
@@ -2732,7 +2886,6 @@ contains
             max_n_reps_all_studies = max_n_reps_all_studies,&
             gene_means = gene_means,&
             residuals = residuals,&
-            shared_residual_range = shared_residual_range,&
             n_bootstraps = n_bootstraps,&
             join_method = join_method,&
             max_n_points_candidate = max_n_points_candidate,&
@@ -2741,6 +2894,8 @@ contains
             n_points = n_points,&
             n_neighbors = n_neighbors,&
             n_bins_per_point = n_bins_per_point,&
+            shared_residual_range_low = shared_residual_range_low,&
+            shared_residual_range_high = shared_residual_range_high,&
             best_candidate_pair_confidence_interval = best_candidate_pair_confidence_interval,&
             plateau_established = plateau_established,&
             n_admissible_evaluated = n_admissible_evaluated,&
@@ -2762,6 +2917,8 @@ contains
             trace_max_bin_occupancy = trace_max_bin_occupancy,&
             trace_sturges_bins = trace_sturges_bins,&
             trace_fd_bins = trace_fd_bins,&
+            trace_shared_residual_range_low = trace_shared_residual_range_low,&
+            trace_shared_residual_range_high = trace_shared_residual_range_high,&
             tmp_gene_means_perms = tmp_gene_means_perms,&
             tmp_gene_means_perm_all = tmp_gene_means_perm_all,&
             tmp_x_star = tmp_x_star,&
@@ -2771,6 +2928,8 @@ contains
             tmp_counts_point_major = tmp_counts_point_major,&
             tmp_pmf_point_major = tmp_pmf_point_major,&
             tmp_n_bins_per_point = tmp_n_bins_per_point,&
+            tmp_shared_residual_range_low = tmp_shared_residual_range_low,&
+            tmp_shared_residual_range_high = tmp_shared_residual_range_high,&
             tmp_pmfs = tmp_pmfs,&
             tmp_counts = tmp_counts,&
             tmp_included_n_reps = tmp_included_n_reps,&
@@ -2797,6 +2956,10 @@ contains
             tmp_fd_bins = tmp_fd_bins,&
             tmp_best_n_bins_per_point = tmp_best_n_bins_per_point,&
             tmp_best_uncertainty_n_bins_per_point = tmp_best_uncertainty_n_bins_per_point,&
+            tmp_best_shared_residual_range_low = tmp_best_shared_residual_range_low,&
+            tmp_best_shared_residual_range_high = tmp_best_shared_residual_range_high,&
+            tmp_best_uncertainty_shared_residual_range_low = tmp_best_uncertainty_shared_residual_range_low,&
+            tmp_best_uncertainty_shared_residual_range_high = tmp_best_uncertainty_shared_residual_range_high,&
             min_residuals_per_bin = min_residuals_per_bin,&
             min_neighbor_overlap = min_neighbor_overlap,&
             succeeding_ci_overlap = succeeding_ci_overlap,&
@@ -2808,6 +2971,8 @@ contains
             m_min = m_min,&
             m_max = m_max,&
             gamma_occupancy = gamma_occupancy,&
+            lower_residual_range_quantile = lower_residual_range_quantile,&
+            upper_residual_range_quantile = upper_residual_range_quantile,&
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
             random_seed = random_seed,&
             ierr = ierr&
@@ -2889,7 +3054,6 @@ contains
             max_n_reps_all_studies,&
             gene_means,&
             residuals,&
-            shared_residual_range,&
             n_bootstraps,&
             join_method,&
             max_n_points_candidate,&
@@ -2898,6 +3062,8 @@ contains
             n_points,&
             n_neighbors,&
             n_bins_per_point,&
+            shared_residual_range_low,&
+            shared_residual_range_high,&
             best_candidate_pair_confidence_interval,&
             plateau_established,&
             n_admissible_evaluated,&
@@ -2919,6 +3085,8 @@ contains
             trace_max_bin_occupancy,&
             trace_sturges_bins,&
             trace_fd_bins,&
+            trace_shared_residual_range_low,&
+            trace_shared_residual_range_high,&
             tmp_gene_means_perms,&
             tmp_gene_means_perm_all,&
             tmp_x_star,&
@@ -2928,6 +3096,8 @@ contains
             tmp_counts_point_major,&
             tmp_pmf_point_major,&
             tmp_n_bins_per_point,&
+            tmp_shared_residual_range_low,&
+            tmp_shared_residual_range_high,&
             tmp_pmfs,&
             tmp_counts,&
             tmp_included_n_reps,&
@@ -2954,6 +3124,10 @@ contains
             tmp_fd_bins,&
             tmp_best_n_bins_per_point,&
             tmp_best_uncertainty_n_bins_per_point,&
+            tmp_best_shared_residual_range_low,&
+            tmp_best_shared_residual_range_high,&
+            tmp_best_uncertainty_shared_residual_range_low,&
+            tmp_best_uncertainty_shared_residual_range_high,&
             min_residuals_per_bin,&
             min_neighbor_overlap,&
             succeeding_ci_overlap,&
@@ -2965,6 +3139,8 @@ contains
             m_min,&
             m_max,&
             gamma_occupancy,&
+            lower_residual_range_quantile,&
+            upper_residual_range_quantile,&
             two_sided_bootstrapping_significance_level,&
             random_seed,&
             ierr&
@@ -3007,9 +3183,6 @@ contains
         real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
             !! Matrix of signed residuals per study
             !! NaN is permitted for this value.
-        real(real64), intent(in) :: shared_residual_range
-            !! Computed residual range (R)
-            !! The minimum valid value is `0.0_real64`.
         integer(int32), intent(in) :: n_bootstraps
             !! Number of bootstraps to perform for a candidate pair
             !! The minimum valid value is `1_int32`.
@@ -3031,6 +3204,15 @@ contains
             !! point (Issue #187: every neighborhood may use a different bin count). Only the
             !! leading `n_points` entries are meaningful, mirroring how `n_points`/`n_neighbors`
             !! above are the finally chosen candidate's own values
+        real(real64), dimension(max_n_points_candidate), intent(out) :: shared_residual_range_low
+            !! The finally chosen candidate's per-point lower residual-range bound (R_low), one per
+            !! reference point (Step 3: every neighborhood may use a different, asymmetric range).
+            !! Only the leading `n_points` entries are meaningful, mirroring `n_bins_per_point`
+            !! above; `0.0_real64` throughout in the two genuinely-degenerate cases where Pass B
+            !! never ran for the returned candidate (see the final three-way branch's own comments)
+        real(real64), dimension(max_n_points_candidate), intent(out) :: shared_residual_range_high
+            !! The finally chosen candidate's per-point upper residual-range bound (R_high),
+            !! mirroring `shared_residual_range_low` above in every respect
         real(real64), dimension(2, n_studies), intent(out) :: best_candidate_pair_confidence_interval
             !! The bootstrapped JSD confidence interval for the finally chosen candidate pair;
             !! `-1.0_real64` throughout only when `plateau_established` is `.false.` and no
@@ -3158,6 +3340,18 @@ contains
             !! above -- only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R
             !! caller must slice `[:trace_n_points[t], t]` themselves
             !! The first `n_admissible_evaluated` elements will hold the results.
+        real(real64), dimension(max_n_points_candidate, 16), intent(out) :: trace_shared_residual_range_low
+            !! Per-admissible-candidate, per-reference-point lower residual-range bound (R_low)
+            !! from determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+            !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(real64), dimension(max_n_points_candidate, 16), intent(out) :: trace_shared_residual_range_high
+            !! Per-admissible-candidate, per-reference-point upper residual-range bound (R_high)
+            !! from determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+            !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+            !! The first `n_admissible_evaluated` elements will hold the results.
         integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(out) :: tmp_gene_means_perms
             !! Working array: each study's own sorting permutation for `gene_means`
         integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_gene_means_perm_all
@@ -3191,6 +3385,12 @@ contains
             !! occupancy search
             !! ([[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]])
             !! for each reference point independently
+        real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_shared_residual_range_low
+            !! Working array: this candidate's per-point lower residual-range bound (R_low), from
+            !! Pass B's occupancy search, mirroring tmp_n_bins_per_point above
+        real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_shared_residual_range_high
+            !! Working array: this candidate's per-point upper residual-range bound (R_high),
+            !! mirroring tmp_shared_residual_range_low above
         real(real64), dimension(256, max_n_points_candidate, n_studies), intent(out) :: tmp_pmfs
             !! Working array: every study's bin-major pmf for the current candidate. `256` =
             !! MAX_N_BINS, see tmp_counts_point_major above
@@ -3269,6 +3469,20 @@ contains
             !! Working array: a snapshot of tmp_n_bins_per_point for whichever admissible candidate
             !! currently has the smallest bootstrapped uncertainty, mirroring how
             !! tmp_best_uncertainty_confidence_interval already works
+        real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_best_shared_residual_range_low
+            !! Working array: a snapshot of tmp_shared_residual_range_low for whichever candidate is
+            !! currently best_candidate_index, updated at the exact same sites as
+            !! tmp_best_n_bins_per_point above
+        real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_best_shared_residual_range_high
+            !! Working array: a snapshot of tmp_shared_residual_range_high, mirroring
+            !! tmp_best_shared_residual_range_low above
+        real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_best_uncertainty_shared_residual_range_low
+            !! Working array: a snapshot of tmp_shared_residual_range_low for whichever admissible
+            !! candidate currently has the smallest bootstrapped uncertainty, updated at the exact
+            !! same site as tmp_best_uncertainty_n_bins_per_point above
+        real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_best_uncertainty_shared_residual_range_high
+            !! Working array: a snapshot of tmp_shared_residual_range_high, mirroring
+            !! tmp_best_uncertainty_shared_residual_range_low above
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum count each bin of the consensus pmf must reach to pass the second
             !! admissibility gate. Reuses Issue #187's occupancy-search default rather than an
@@ -3341,6 +3555,18 @@ contains
             !! advances
             !! The minimum valid value is `above(1.0_real64)`.
             !! The default value is `1.25_real64`.
+        real(real64), intent(in), optional :: lower_residual_range_quantile
+            !! Quantile in [0,1] for each reference point's own lower residual-range bound,
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.05_real64`.
+        real(real64), intent(in), optional :: upper_residual_range_quantile
+            !! Quantile in [0,1] for each reference point's own upper residual-range bound,
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95_real64`.
         real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
             !! Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
             !! to bootstrap_histogram_impl itself
@@ -3358,26 +3584,27 @@ contains
         call validate_in_range_int(n_studies, ierr, arg_pos=1_int32, min=1_int32)
         call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=2_int32, min=1_int32)
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
-        call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
-        call validate_in_range_int(n_bootstraps, ierr, arg_pos=7_int32, min=1_int32)
-        call validate_in_range_int(max_n_points_candidate, ierr, arg_pos=9_int32, min=1_int32)
-        call validate_in_range_int(max_n_neighbors_candidate, ierr, arg_pos=10_int32, min=1_int32)
-        call validate_in_range_int(n_bootstrapping_top_k_jsds, ierr, arg_pos=11_int32, min=1_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=71_int32, min=0_int32)
-        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=72_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=73_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=75_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=76_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_epsilon, ierr, arg_pos=77_int32, min=above(0.0_real64))
-        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=78_int32, min=1_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=79_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=80_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=81_int32, min=above(1.0_real64))
-        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=82_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_int(n_bootstraps, ierr, arg_pos=6_int32, min=1_int32)
+        call validate_in_range_int(max_n_points_candidate, ierr, arg_pos=8_int32, min=1_int32)
+        call validate_in_range_int(max_n_neighbors_candidate, ierr, arg_pos=9_int32, min=1_int32)
+        call validate_in_range_int(n_bootstrapping_top_k_jsds, ierr, arg_pos=10_int32, min=1_int32)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=80_int32, min=0_int32)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=81_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=82_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=84_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=85_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_epsilon, ierr, arg_pos=86_int32, min=above(0.0_real64))
+        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=87_int32, min=1_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=88_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=89_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=90_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=91_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=92_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=93_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
-        if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
-        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=74_int32); end if
+        if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
+        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=83_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -3387,7 +3614,6 @@ contains
             max_n_reps_all_studies = max_n_reps_all_studies,&
             gene_means = gene_means,&
             residuals = residuals,&
-            shared_residual_range = shared_residual_range,&
             n_bootstraps = n_bootstraps,&
             join_method = join_method,&
             max_n_points_candidate = max_n_points_candidate,&
@@ -3396,6 +3622,8 @@ contains
             n_points = n_points,&
             n_neighbors = n_neighbors,&
             n_bins_per_point = n_bins_per_point,&
+            shared_residual_range_low = shared_residual_range_low,&
+            shared_residual_range_high = shared_residual_range_high,&
             best_candidate_pair_confidence_interval = best_candidate_pair_confidence_interval,&
             plateau_established = plateau_established,&
             n_admissible_evaluated = n_admissible_evaluated,&
@@ -3417,6 +3645,8 @@ contains
             trace_max_bin_occupancy = trace_max_bin_occupancy,&
             trace_sturges_bins = trace_sturges_bins,&
             trace_fd_bins = trace_fd_bins,&
+            trace_shared_residual_range_low = trace_shared_residual_range_low,&
+            trace_shared_residual_range_high = trace_shared_residual_range_high,&
             tmp_gene_means_perms = tmp_gene_means_perms,&
             tmp_gene_means_perm_all = tmp_gene_means_perm_all,&
             tmp_x_star = tmp_x_star,&
@@ -3426,6 +3656,8 @@ contains
             tmp_counts_point_major = tmp_counts_point_major,&
             tmp_pmf_point_major = tmp_pmf_point_major,&
             tmp_n_bins_per_point = tmp_n_bins_per_point,&
+            tmp_shared_residual_range_low = tmp_shared_residual_range_low,&
+            tmp_shared_residual_range_high = tmp_shared_residual_range_high,&
             tmp_pmfs = tmp_pmfs,&
             tmp_counts = tmp_counts,&
             tmp_included_n_reps = tmp_included_n_reps,&
@@ -3452,6 +3684,10 @@ contains
             tmp_fd_bins = tmp_fd_bins,&
             tmp_best_n_bins_per_point = tmp_best_n_bins_per_point,&
             tmp_best_uncertainty_n_bins_per_point = tmp_best_uncertainty_n_bins_per_point,&
+            tmp_best_shared_residual_range_low = tmp_best_shared_residual_range_low,&
+            tmp_best_shared_residual_range_high = tmp_best_shared_residual_range_high,&
+            tmp_best_uncertainty_shared_residual_range_low = tmp_best_uncertainty_shared_residual_range_low,&
+            tmp_best_uncertainty_shared_residual_range_high = tmp_best_uncertainty_shared_residual_range_high,&
             min_residuals_per_bin = min_residuals_per_bin,&
             min_neighbor_overlap = min_neighbor_overlap,&
             succeeding_ci_overlap = succeeding_ci_overlap,&
@@ -3463,6 +3699,8 @@ contains
             m_min = m_min,&
             m_max = m_max,&
             gamma_occupancy = gamma_occupancy,&
+            lower_residual_range_quantile = lower_residual_range_quantile,&
+            upper_residual_range_quantile = upper_residual_range_quantile,&
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
             random_seed = random_seed,&
             ierr = ierr&

@@ -112,8 +112,11 @@ estimate_bin_count_expert <- function(residuals, residuals_perm, max_n_reps_all_
 #' Implements Issue #187's two-stage geometric-search-then-local-refinement algorithm for one
 #' neighborhood's pooled residuals (`pooled_residuals`, across all its neighbors and all
 #' studies): find the largest bin count `M` in `[m_min, m_max]` whose equal-width histogram
-#' over `[-shared_residual_range, shared_residual_range]` has every bin at or above
-#' `min_residuals_per_bin` (the occupancy criterion), rather than the generic
+#' over `[shared_residual_range_low, shared_residual_range_high]` -- this neighborhood's own
+#' asymmetric range, the `lower_residual_range_quantile`/`upper_residual_range_quantile`
+#' percentiles of its own pooled signed residuals, rather than a single dataset-wide symmetric
+#' range -- has every bin at or above `min_residuals_per_bin` (the occupancy criterion), rather
+#' than the generic
 #' Sturges/Freedman-Diaconis rule
 #' \code{\link{estimate_bin_count}} alone
 #' applies, which is why that routine is still called here too -- purely for the
@@ -157,8 +160,6 @@ estimate_bin_count_expert <- function(residuals, residuals_perm, max_n_reps_all_
 #'   The minimum valid value is `1`.
 #' @param n_neighbors a integer scalar. Neighborhood size of the candidate under test
 #'   The minimum valid value is `1`.
-#' @param shared_residual_range a numeric scalar. Computed residual range (R)
-#'   The minimum valid value is `0.0`.
 #' @param m_min a integer scalar. Smallest candidate bin count the search will ever test (M_min)
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `MAX_N_BINS`.
@@ -178,6 +179,16 @@ estimate_bin_count_expert <- function(residuals, residuals_perm, max_n_reps_all_
 #'   never advances
 #'   The minimum valid value is `above(1.0)`.
 #'   The default value is `1.25`.
+#' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own lower residual-range bound
+#'   (shared_residual_range_low)
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.05`.
+#' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own upper residual-range bound
+#'   (shared_residual_range_high)
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.95`.
 #' @return a named list with elements:
 #'   \item{selected_n_bins}{a integer scalar. The chosen M_j: the largest bin count in [m_min, m_max] whose pooled histogram has
 #'     every bin at or above min_residuals_per_bin; m_min when occupancy_failed}
@@ -185,6 +196,14 @@ estimate_bin_count_expert <- function(residuals, residuals_perm, max_n_reps_all_
 #'     the case where every pooled residual is NaN) -- per Issue #187's FAILURE policy, the
 #'     caller should reject this neighborhood rather than build a histogram from
 #'     selected_n_bins}
+#'   \item{shared_residual_range_low}{a numeric scalar. This neighborhood's own lower residual-range bound (R_low): the
+#'     lower_residual_range_quantile percentile of its own pooled signed residuals --
+#'     replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
+#'     occupancy_failed because every pooled residual is NaN}
+#'   \item{shared_residual_range_high}{a numeric scalar. This neighborhood's own upper residual-range bound (R_high): the
+#'     upper_residual_range_quantile percentile of its own pooled signed residuals --
+#'     replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
+#'     occupancy_failed because every pooled residual is NaN}
 #'   \item{n_pooled_residuals}{a integer scalar. Count of non-NaN pooled residuals (N_j)}
 #'   \item{min_bin_occupancy}{a integer scalar. Minimum bin count at selected_n_bins; 0 when occupancy_failed}
 #'   \item{mean_bin_occupancy}{a numeric scalar. Mean bin count at selected_n_bins (== n_pooled_residuals / selected_n_bins); 0 when
@@ -195,23 +214,26 @@ estimate_bin_count_expert <- function(residuals, residuals_perm, max_n_reps_all_
 #'   \item{fd_bins}{a integer scalar. Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
 #'     estimate_bin_count_impl -- a diagnostic only, never part of the search's own decision}
 #' @export
-determine_bin_count_occupancy <- function(pooled_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, m_min = 3L, m_max = 120L, min_residuals_per_bin = 10L, gamma_occupancy = 1.25) {
+determine_bin_count_occupancy <- function(pooled_residuals, max_n_reps_all_studies, n_neighbors, m_min = 3L, m_max = 120L, min_residuals_per_bin = 10L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95) {
     pooled_residuals <- .tox_as_double_vector(pooled_residuals, "pooled_residuals")
     max_n_reps_all_studies <- .tox_as_integer_scalar(max_n_reps_all_studies, "max_n_reps_all_studies")
     n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
-    shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
     m_min <- .tox_as_integer_scalar(m_min, "m_min")
     m_max <- .tox_as_integer_scalar(m_max, "m_max")
     min_residuals_per_bin <- .tox_as_integer_scalar(min_residuals_per_bin, "min_residuals_per_bin")
     gamma_occupancy <- .tox_as_double_scalar(gamma_occupancy, "gamma_occupancy")
-    .result <- .Call("determine_bin_count_occupancy_call", pooled_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, m_min, m_max, min_residuals_per_bin, gamma_occupancy)
-    .arguments <- c("pooled_residuals", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "shared_residual_range", "selected_n_bins", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "m_min", "m_max", "min_residuals_per_bin", "gamma_occupancy", "ierr")
-    .sources <- c(NA_character_, "pooled_residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
+    upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
+    .result <- .Call("determine_bin_count_occupancy_call", pooled_residuals, max_n_reps_all_studies, n_neighbors, m_min, m_max, min_residuals_per_bin, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile)
+    .arguments <- c("pooled_residuals", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "selected_n_bins", "occupancy_failed", "shared_residual_range_low", "shared_residual_range_high", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "m_min", "m_max", "min_residuals_per_bin", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr")
+    .sources <- c(NA_character_, "pooled_residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         selected_n_bins = .result$selected_n_bins,
         occupancy_failed = .result$occupancy_failed,
+        shared_residual_range_low = .result$shared_residual_range_low,
+        shared_residual_range_high = .result$shared_residual_range_high,
         n_pooled_residuals = .result$n_pooled_residuals,
         min_bin_occupancy = .result$min_bin_occupancy,
         mean_bin_occupancy = .result$mean_bin_occupancy,
@@ -226,8 +248,11 @@ determine_bin_count_occupancy <- function(pooled_residuals, max_n_reps_all_studi
 #' Implements Issue #187's two-stage geometric-search-then-local-refinement algorithm for one
 #' neighborhood's pooled residuals (`pooled_residuals`, across all its neighbors and all
 #' studies): find the largest bin count `M` in `[m_min, m_max]` whose equal-width histogram
-#' over `[-shared_residual_range, shared_residual_range]` has every bin at or above
-#' `min_residuals_per_bin` (the occupancy criterion), rather than the generic
+#' over `[shared_residual_range_low, shared_residual_range_high]` -- this neighborhood's own
+#' asymmetric range, the `lower_residual_range_quantile`/`upper_residual_range_quantile`
+#' percentiles of its own pooled signed residuals, rather than a single dataset-wide symmetric
+#' range -- has every bin at or above `min_residuals_per_bin` (the occupancy criterion), rather
+#' than the generic
 #' Sturges/Freedman-Diaconis rule
 #' \code{\link{estimate_bin_count}} alone
 #' applies, which is why that routine is still called here too -- purely for the
@@ -274,8 +299,6 @@ determine_bin_count_occupancy <- function(pooled_residuals, max_n_reps_all_studi
 #'   The minimum valid value is `1`.
 #' @param n_neighbors a integer scalar. Neighborhood size of the candidate under test
 #'   The minimum valid value is `1`.
-#' @param shared_residual_range a numeric scalar. Computed residual range (R)
-#'   The minimum valid value is `0.0`.
 #' @param m_min a integer scalar. Smallest candidate bin count the search will ever test (M_min)
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `MAX_N_BINS`.
@@ -295,6 +318,16 @@ determine_bin_count_occupancy <- function(pooled_residuals, max_n_reps_all_studi
 #'   never advances
 #'   The minimum valid value is `above(1.0)`.
 #'   The default value is `1.25`.
+#' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own lower residual-range bound
+#'   (shared_residual_range_low)
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.05`.
+#' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own upper residual-range bound
+#'   (shared_residual_range_high)
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.95`.
 #' @return a named list with elements:
 #'   \item{selected_n_bins}{a integer scalar. The chosen M_j: the largest bin count in [m_min, m_max] whose pooled histogram has
 #'     every bin at or above min_residuals_per_bin; m_min when occupancy_failed}
@@ -302,6 +335,14 @@ determine_bin_count_occupancy <- function(pooled_residuals, max_n_reps_all_studi
 #'     the case where every pooled residual is NaN) -- per Issue #187's FAILURE policy, the
 #'     caller should reject this neighborhood rather than build a histogram from
 #'     selected_n_bins}
+#'   \item{shared_residual_range_low}{a numeric scalar. This neighborhood's own lower residual-range bound (R_low): the
+#'     lower_residual_range_quantile percentile of its own pooled signed residuals --
+#'     replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
+#'     occupancy_failed because every pooled residual is NaN}
+#'   \item{shared_residual_range_high}{a numeric scalar. This neighborhood's own upper residual-range bound (R_high): the
+#'     upper_residual_range_quantile percentile of its own pooled signed residuals --
+#'     replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
+#'     occupancy_failed because every pooled residual is NaN}
 #'   \item{n_pooled_residuals}{a integer scalar. Count of non-NaN pooled residuals (N_j)}
 #'   \item{min_bin_occupancy}{a integer scalar. Minimum bin count at selected_n_bins; 0 when occupancy_failed}
 #'   \item{mean_bin_occupancy}{a numeric scalar. Mean bin count at selected_n_bins (== n_pooled_residuals / selected_n_bins); 0 when
@@ -312,27 +353,30 @@ determine_bin_count_occupancy <- function(pooled_residuals, max_n_reps_all_studi
 #'   \item{fd_bins}{a integer scalar. Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
 #'     estimate_bin_count_impl -- a diagnostic only, never part of the search's own decision}
 #' @export
-determine_bin_count_occupancy_expert <- function(pooled_residuals, pooled_residuals_perm, max_n_reps_all_studies, n_neighbors, shared_residual_range, m_min = 3L, m_max = 120L, min_residuals_per_bin = 10L, gamma_occupancy = 1.25) {
+determine_bin_count_occupancy_expert <- function(pooled_residuals, pooled_residuals_perm, max_n_reps_all_studies, n_neighbors, m_min = 3L, m_max = 120L, min_residuals_per_bin = 10L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95) {
     pooled_residuals <- .tox_as_double_vector(pooled_residuals, "pooled_residuals")
     pooled_residuals_perm <- .tox_as_integer_vector(pooled_residuals_perm, "pooled_residuals_perm")
     max_n_reps_all_studies <- .tox_as_integer_scalar(max_n_reps_all_studies, "max_n_reps_all_studies")
     n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
-    shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
     m_min <- .tox_as_integer_scalar(m_min, "m_min")
     m_max <- .tox_as_integer_scalar(m_max, "m_max")
     min_residuals_per_bin <- .tox_as_integer_scalar(min_residuals_per_bin, "min_residuals_per_bin")
     gamma_occupancy <- .tox_as_double_scalar(gamma_occupancy, "gamma_occupancy")
+    lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
+    upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
     if (length(pooled_residuals_perm) != length(pooled_residuals))
         .tox_shape_error("pooled_residuals_perm", length(pooled_residuals_perm), "pooled_residuals", length(pooled_residuals))
 
-    .result <- .Call("determine_bin_count_occupancy_expert_call", pooled_residuals, pooled_residuals_perm, max_n_reps_all_studies, n_neighbors, shared_residual_range, m_min, m_max, min_residuals_per_bin, gamma_occupancy)
-    .arguments <- c("pooled_residuals", "pooled_residuals_perm", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "shared_residual_range", "selected_n_bins", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "tmp_bin_counts", "m_min", "m_max", "min_residuals_per_bin", "gamma_occupancy", "ierr")
-    .sources <- c(NA_character_, NA_character_, "pooled_residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("determine_bin_count_occupancy_expert_call", pooled_residuals, pooled_residuals_perm, max_n_reps_all_studies, n_neighbors, m_min, m_max, min_residuals_per_bin, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile)
+    .arguments <- c("pooled_residuals", "pooled_residuals_perm", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "selected_n_bins", "occupancy_failed", "shared_residual_range_low", "shared_residual_range_high", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "tmp_bin_counts", "m_min", "m_max", "min_residuals_per_bin", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr")
+    .sources <- c(NA_character_, NA_character_, "pooled_residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         selected_n_bins = .result$selected_n_bins,
         occupancy_failed = .result$occupancy_failed,
+        shared_residual_range_low = .result$shared_residual_range_low,
+        shared_residual_range_high = .result$shared_residual_range_high,
         n_pooled_residuals = .result$n_pooled_residuals,
         min_bin_occupancy = .result$min_bin_occupancy,
         mean_bin_occupancy = .result$mean_bin_occupancy,
@@ -895,8 +939,6 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #'
 #' @param n_neighbors a integer scalar. Number of neighbors per neighborhood
 #'   The minimum valid value is `1`.
-#' @param shared_residual_range a numeric scalar. Computed residual range (R)
-#'   The minimum valid value is `0.0`.
 #' @param gene_means a numeric matrix. Per-gene mean expression values for all studies
 #'   NaN is permitted for this value.
 #' @param gene_means_perms a integer matrix. Per-study sorting permutation for `gene_means` (ascending, NaN last)
@@ -932,6 +974,16 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #'   advances
 #'   The minimum valid value is `above(1.0)`.
 #'   The default value is `1.25`.
+#' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's own lower residual-range bound,
+#'   forwarded to determine_bin_count_occupancy_impl
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.05`.
+#' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's own upper residual-range bound,
+#'   forwarded to determine_bin_count_occupancy_impl
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.95`.
 #' @return a named list with elements:
 #'   \item{neighborhood_indices}{a integer array of rank 3. Gene indices of the selected neighborhood, per reference point, per study (Pass A)}
 #'   \item{neighborhood_range}{a integer array of rank 3. For each reference point and study, the `[min_idx, max_idx]` neighborhood span, as
@@ -939,6 +991,12 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #'   \item{n_bins_per_point}{a integer vector. This reference point's own selected histogram bin count (Issue #187's `M_j`), from
 #'     Pass B's occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood
 #'     may use a different bin count}
+#'   \item{shared_residual_range_low}{a numeric vector. This reference point's own lower residual-range bound (R_low), from Pass B's
+#'     occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood may use a
+#'     different, asymmetric range (Step 3)}
+#'   \item{shared_residual_range_high}{a numeric vector. This reference point's own upper residual-range bound (R_high), from Pass B's
+#'     occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood may use a
+#'     different, asymmetric range (Step 3)}
 #'   \item{max_n_bins_per_point}{a integer scalar. The widest `n_bins_per_point` value across all `n_points` reference points
 #'     (`maxval(n_bins_per_point(1:n_points))`), derived once after Pass B. The number of
 #'     leading, meaningful bins/rows in `pmfs`, `counts`, `mean_pmf`, `mean_pmf_counts`,
@@ -985,9 +1043,8 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #'   \item{global_js_divergence}{a numeric vector. Weighted global JSD of each study against the consensus pmf}
 #'   \item{p_values}{a numeric vector. Empirical p-value per study from gjct_permutation_test_impl}
 #' @export
-run_js_comp_test <- function(n_neighbors, shared_residual_range, gene_means, gene_means_perms, residuals, x_star, n_permutations = 1000L, random_seed = 42L, min_residuals_per_bin = 10L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25) {
+run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residuals, x_star, n_permutations = 1000L, random_seed = 42L, min_residuals_per_bin = 10L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95) {
     n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
-    shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     gene_means_perms <- .tox_as_integer_matrix(gene_means_perms, "gene_means_perms")
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
@@ -998,6 +1055,8 @@ run_js_comp_test <- function(n_neighbors, shared_residual_range, gene_means, gen
     m_min <- .tox_as_integer_scalar(m_min, "m_min")
     m_max <- .tox_as_integer_scalar(m_max, "m_max")
     gamma_occupancy <- .tox_as_double_scalar(gamma_occupancy, "gamma_occupancy")
+    lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
+    upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
     if (dim(gene_means_perms)[2] != dim(gene_means)[2])
         .tox_shape_error("gene_means_perms", dim(gene_means_perms)[2], "gene_means", dim(gene_means)[2])
     if (dim(residuals)[3] != dim(gene_means)[2])
@@ -1007,15 +1066,17 @@ run_js_comp_test <- function(n_neighbors, shared_residual_range, gene_means, gen
     if (dim(residuals)[2] != dim(gene_means)[1])
         .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
 
-    .result <- .Call("run_js_comp_test_call", n_neighbors, shared_residual_range, gene_means, gene_means_perms, residuals, x_star, n_permutations, random_seed, min_residuals_per_bin, m_min, m_max, gamma_occupancy)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "shared_residual_range", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "ierr")
-    .sources <- c("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("run_js_comp_test_call", n_neighbors, gene_means, gene_means_perms, residuals, x_star, n_permutations, random_seed, min_residuals_per_bin, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         neighborhood_indices = .result$neighborhood_indices,
         neighborhood_range = .result$neighborhood_range,
         n_bins_per_point = .result$n_bins_per_point,
+        shared_residual_range_low = .result$shared_residual_range_low,
+        shared_residual_range_high = .result$shared_residual_range_high,
         max_n_bins_per_point = .result$max_n_bins_per_point,
         occupancy_failed = .result$occupancy_failed,
         n_pooled_residuals = .result$n_pooled_residuals,
@@ -1114,8 +1175,6 @@ run_js_comp_test <- function(n_neighbors, shared_residual_range, gene_means, gen
 #'   NaN is permitted for this value.
 #' @param residuals a numeric array of rank 3. Matrix of signed residuals per study
 #'   NaN is permitted for this value.
-#' @param shared_residual_range a numeric scalar. Computed residual range (R)
-#'   The minimum valid value is `0.0`.
 #' @param n_bootstraps a integer scalar. Number of bootstraps to perform for a candidate pair
 #'   The minimum valid value is `1`.
 #' @param join_method a string, one of "join_min", "join_max", "join_median". The way to evaluate all studies' confidence-interval overlaps for the plateau
@@ -1192,6 +1251,16 @@ run_js_comp_test <- function(n_neighbors, shared_residual_range, gene_means, gen
 #'   advances
 #'   The minimum valid value is `above(1.0)`.
 #'   The default value is `1.25`.
+#' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's own lower residual-range bound,
+#'   forwarded to determine_bin_count_occupancy_impl
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.05`.
+#' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's own upper residual-range bound,
+#'   forwarded to determine_bin_count_occupancy_impl
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.95`.
 #' @param two_sided_bootstrapping_significance_level a numeric scalar. Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
 #'   to bootstrap_histogram_impl itself
 #'   The minimum valid value is `0.0`.
@@ -1206,6 +1275,13 @@ run_js_comp_test <- function(n_neighbors, shared_residual_range, gene_means, gen
 #'     point (Issue #187: every neighborhood may use a different bin count). Only the
 #'     leading `n_points` entries are meaningful, mirroring how `n_points`/`n_neighbors`
 #'     above are the finally chosen candidate's own values}
+#'   \item{shared_residual_range_low}{a numeric vector. The finally chosen candidate's per-point lower residual-range bound (R_low), one per
+#'     reference point (Step 3: every neighborhood may use a different, asymmetric range).
+#'     Only the leading `n_points` entries are meaningful, mirroring `n_bins_per_point`
+#'     above; `0.0` throughout in the two genuinely-degenerate cases where Pass B
+#'     never ran for the returned candidate (see the final three-way branch's own comments)}
+#'   \item{shared_residual_range_high}{a numeric vector. The finally chosen candidate's per-point upper residual-range bound (R_high),
+#'     mirroring `shared_residual_range_low` above in every respect}
 #'   \item{best_candidate_pair_confidence_interval}{a numeric matrix. The bootstrapped JSD confidence interval for the finally chosen candidate pair;
 #'     `-1.0` throughout only when `plateau_established` is `FALSE` and no
 #'     smallest-bootstrap-uncertainty candidate could be substituted either (see
@@ -1306,11 +1382,20 @@ run_js_comp_test <- function(n_neighbors, shared_residual_range, gene_means, gen
 #'     above -- only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R
 #'     caller must slice `[:trace_n_points[t], t]` themselves
 #'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_shared_residual_range_low}{a numeric matrix. Per-admissible-candidate, per-reference-point lower residual-range bound (R_low)
+#'     from determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+#'     trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+#'     column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_shared_residual_range_high}{a numeric matrix. Per-admissible-candidate, per-reference-point upper residual-range bound (R_high)
+#'     from determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+#'     trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+#'     column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+#'     The first `n_admissible_evaluated` elements will hold the results.}
 #' @export
-run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_residual_range, n_bootstraps, join_method, max_n_points_candidate, max_n_neighbors_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_ci_overlap", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L) {
+run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, max_n_neighbors_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_ci_overlap", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L) {
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
-    shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
     n_bootstraps <- .tox_as_integer_scalar(n_bootstraps, "n_bootstraps")
     join_method <- .tox_as_mode(join_method, "join_method", c("join_min", "join_max", "join_median"))
     max_n_points_candidate <- .tox_as_integer_scalar(max_n_points_candidate, "max_n_points_candidate")
@@ -1326,6 +1411,8 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_resi
     m_min <- .tox_as_integer_scalar(m_min, "m_min")
     m_max <- .tox_as_integer_scalar(m_max, "m_max")
     gamma_occupancy <- .tox_as_double_scalar(gamma_occupancy, "gamma_occupancy")
+    lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
+    upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
     two_sided_bootstrapping_significance_level <- .tox_as_double_scalar(two_sided_bootstrapping_significance_level, "two_sided_bootstrapping_significance_level")
     random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
     if (dim(residuals)[3] != dim(gene_means)[2])
@@ -1333,15 +1420,17 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_resi
     if (dim(residuals)[2] != dim(gene_means)[1])
         .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
 
-    .result <- .Call("run_js_comp_test_parameter_search_call", gene_means, residuals, shared_residual_range, n_bootstraps, join_method, max_n_points_candidate, max_n_neighbors_candidate, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, two_sided_bootstrapping_significance_level, random_seed)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "two_sided_bootstrapping_significance_level", "random_seed", "ierr")
-    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "n_bins_per_point", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("run_js_comp_test_parameter_search_call", gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, max_n_neighbors_candidate, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, "n_bins_per_point", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         n_points = .result$n_points,
         n_neighbors = .result$n_neighbors,
         n_bins_per_point = .result$n_bins_per_point,
+        shared_residual_range_low = .result$shared_residual_range_low,
+        shared_residual_range_high = .result$shared_residual_range_high,
         best_candidate_pair_confidence_interval = .result$best_candidate_pair_confidence_interval,
         plateau_established = .result$plateau_established,
         trace_n_points = utils::head(.result$trace_n_points, .result$n_admissible_evaluated),
@@ -1361,6 +1450,8 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_resi
         trace_mean_bin_occupancy = .result$trace_mean_bin_occupancy[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
         trace_max_bin_occupancy = .result$trace_max_bin_occupancy[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
         trace_sturges_bins = .result$trace_sturges_bins[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
-        trace_fd_bins = .result$trace_fd_bins[, seq_len(.result$n_admissible_evaluated), drop = FALSE]
+        trace_fd_bins = .result$trace_fd_bins[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_shared_residual_range_low = .result$trace_shared_residual_range_low[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_shared_residual_range_high = .result$trace_shared_residual_range_high[, seq_len(.result$n_admissible_evaluated), drop = FALSE]
     )
 }

@@ -78,9 +78,10 @@ _lib.determine_bin_count_occupancy_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_bool),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
@@ -90,14 +91,16 @@ _lib.determine_bin_count_occupancy_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_DETERMINE_BIN_COUNT_OCCUPANCY_ARGUMENTS = ("pooled_residuals", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "shared_residual_range", "selected_n_bins", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "m_min", "m_max", "min_residuals_per_bin", "gamma_occupancy", "ierr",)
+_DETERMINE_BIN_COUNT_OCCUPANCY_ARGUMENTS = ("pooled_residuals", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "selected_n_bins", "occupancy_failed", "shared_residual_range_low", "shared_residual_range_high", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "m_min", "m_max", "min_residuals_per_bin", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_DETERMINE_BIN_COUNT_OCCUPANCY_ARGUMENT_SOURCES = (None, "pooled_residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_DETERMINE_BIN_COUNT_OCCUPANCY_ARGUMENT_SOURCES = (None, "pooled_residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.determine_bin_count_occupancy_expert_c.restype = None
 _lib.determine_bin_count_occupancy_expert_c.argtypes = (
@@ -106,9 +109,10 @@ _lib.determine_bin_count_occupancy_expert_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_bool),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
@@ -120,13 +124,15 @@ _lib.determine_bin_count_occupancy_expert_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_DETERMINE_BIN_COUNT_OCCUPANCY_EXPERT_ARGUMENTS = ("pooled_residuals", "pooled_residuals_perm", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "shared_residual_range", "selected_n_bins", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "tmp_bin_counts", "m_min", "m_max", "min_residuals_per_bin", "gamma_occupancy", "ierr",)
+_DETERMINE_BIN_COUNT_OCCUPANCY_EXPERT_ARGUMENTS = ("pooled_residuals", "pooled_residuals_perm", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "selected_n_bins", "occupancy_failed", "shared_residual_range_low", "shared_residual_range_high", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "tmp_bin_counts", "m_min", "m_max", "min_residuals_per_bin", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_DETERMINE_BIN_COUNT_OCCUPANCY_EXPERT_ARGUMENT_SOURCES = (None, None, "pooled_residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_DETERMINE_BIN_COUNT_OCCUPANCY_EXPERT_ARGUMENT_SOURCES = (None, None, "pooled_residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.generate_js_comp_test_candidates_c.restype = None
 _lib.generate_js_comp_test_candidates_c.argtypes = (
@@ -272,7 +278,6 @@ _lib.run_js_comp_test_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
@@ -280,6 +285,8 @@ _lib.run_js_comp_test_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=3, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=3, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
@@ -304,13 +311,15 @@ _lib.run_js_comp_test_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "shared_residual_range", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "ierr",)
+_RUN_JS_COMP_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_parameter_search_c.restype = None
 _lib.run_js_comp_test_parameter_search_c.argtypes = (
@@ -319,7 +328,6 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
@@ -327,6 +335,8 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_bool),
     ctypes.POINTER(ctypes.c_int),
@@ -348,6 +358,8 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
@@ -360,14 +372,16 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "two_sided_bootstrapping_significance_level", "random_seed", "ierr",)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def estimate_bin_count(
         residuals,
@@ -585,19 +599,23 @@ def determine_bin_count_occupancy(
         pooled_residuals,
         max_n_reps_all_studies,
         n_neighbors,
-        shared_residual_range,
         m_min=3,
         m_max=120,
         min_residuals_per_bin=10,
         gamma_occupancy=1.25,
+        lower_residual_range_quantile=0.05,
+        upper_residual_range_quantile=0.95,
 ):
     r"""Determine one neighborhood's occupancy-constrained histogram bin count (Issue #187)
 
     Implements Issue #187's two-stage geometric-search-then-local-refinement algorithm for one
     neighborhood's pooled residuals (`pooled_residuals`, across all its neighbors and all
     studies): find the largest bin count `M` in `[m_min, m_max]` whose equal-width histogram
-    over `[-shared_residual_range, shared_residual_range]` has every bin at or above
-    `min_residuals_per_bin` (the occupancy criterion), rather than the generic
+    over `[shared_residual_range_low, shared_residual_range_high]` -- this neighborhood's own
+    asymmetric range, the `lower_residual_range_quantile`/`upper_residual_range_quantile`
+    percentiles of its own pooled signed residuals, rather than a single dataset-wide symmetric
+    range -- has every bin at or above `min_residuals_per_bin` (the occupancy criterion), rather
+    than the generic
     Sturges/Freedman-Diaconis rule
     :func:`tensor_omics.estimate_bin_count` alone
     applies, which is why that routine is still called here too -- purely for the
@@ -640,9 +658,6 @@ def determine_bin_count_occupancy(
     n_neighbors : int
         Neighborhood size of the candidate under test
         The minimum valid value is `1`.
-    shared_residual_range : float
-        Computed residual range (R)
-        The minimum valid value is `0.0`.
     m_min : int, optional, default 3
         Smallest candidate bin count the search will ever test (M_min)
         The minimum valid value is `1`.
@@ -666,6 +681,18 @@ def determine_bin_count_occupancy(
         never advances
         The minimum valid value is `above(1.0)`.
         The default value is `1.25`.
+    lower_residual_range_quantile : float, optional, default 0.05
+        Quantile in [0,1] for this neighborhood's own lower residual-range bound
+        (shared_residual_range_low)
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.05`.
+    upper_residual_range_quantile : float, optional, default 0.95
+        Quantile in [0,1] for this neighborhood's own upper residual-range bound
+        (shared_residual_range_high)
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.95`.
 
     Returns
     -------
@@ -680,6 +707,16 @@ def determine_bin_count_occupancy(
             the case where every pooled residual is NaN) -- per Issue #187's FAILURE policy, the
             caller should reject this neighborhood rather than build a histogram from
             selected_n_bins
+        shared_residual_range_low : float
+            This neighborhood's own lower residual-range bound (R_low): the
+            lower_residual_range_quantile percentile of its own pooled signed residuals --
+            replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
+            occupancy_failed because every pooled residual is NaN
+        shared_residual_range_high : float
+            This neighborhood's own upper residual-range bound (R_high): the
+            upper_residual_range_quantile percentile of its own pooled signed residuals --
+            replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
+            occupancy_failed because every pooled residual is NaN
         n_pooled_residuals : int
             Count of non-NaN pooled residuals (N_j)
         min_bin_occupancy : int
@@ -723,6 +760,8 @@ def determine_bin_count_occupancy(
     # outputs and work arrays, which the caller never sees
     selected_n_bins = ctypes.c_int(0)
     occupancy_failed = ctypes.c_bool(0)
+    shared_residual_range_low = ctypes.c_double(0)
+    shared_residual_range_high = ctypes.c_double(0)
     n_pooled_residuals = ctypes.c_int(0)
     min_bin_occupancy = ctypes.c_int(0)
     mean_bin_occupancy = ctypes.c_double(0)
@@ -736,9 +775,10 @@ def determine_bin_count_occupancy(
         ctypes.byref(ctypes.c_int(n_residuals)),
         ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
         ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ctypes.c_double(shared_residual_range)),
         ctypes.byref(selected_n_bins),
         ctypes.byref(occupancy_failed),
+        ctypes.byref(shared_residual_range_low),
+        ctypes.byref(shared_residual_range_high),
         ctypes.byref(n_pooled_residuals),
         ctypes.byref(min_bin_occupancy),
         ctypes.byref(mean_bin_occupancy),
@@ -749,6 +789,8 @@ def determine_bin_count_occupancy(
         ctypes.byref(ctypes.c_int(m_max)),
         ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
         ctypes.byref(ctypes.c_double(gamma_occupancy)),
+        ctypes.byref(ctypes.c_double(lower_residual_range_quantile)),
+        ctypes.byref(ctypes.c_double(upper_residual_range_quantile)),
         ctypes.byref(ierr),
     )
 
@@ -757,6 +799,8 @@ def determine_bin_count_occupancy(
     return {
         "selected_n_bins": selected_n_bins.value,
         "occupancy_failed": occupancy_failed.value,
+        "shared_residual_range_low": shared_residual_range_low.value,
+        "shared_residual_range_high": shared_residual_range_high.value,
         "n_pooled_residuals": n_pooled_residuals.value,
         "min_bin_occupancy": min_bin_occupancy.value,
         "mean_bin_occupancy": mean_bin_occupancy.value,
@@ -770,19 +814,23 @@ def determine_bin_count_occupancy_expert(
         pooled_residuals_perm,
         max_n_reps_all_studies,
         n_neighbors,
-        shared_residual_range,
         m_min=3,
         m_max=120,
         min_residuals_per_bin=10,
         gamma_occupancy=1.25,
+        lower_residual_range_quantile=0.05,
+        upper_residual_range_quantile=0.95,
 ):
     r"""Determine one neighborhood's occupancy-constrained histogram bin count (Issue #187)
 
     Implements Issue #187's two-stage geometric-search-then-local-refinement algorithm for one
     neighborhood's pooled residuals (`pooled_residuals`, across all its neighbors and all
     studies): find the largest bin count `M` in `[m_min, m_max]` whose equal-width histogram
-    over `[-shared_residual_range, shared_residual_range]` has every bin at or above
-    `min_residuals_per_bin` (the occupancy criterion), rather than the generic
+    over `[shared_residual_range_low, shared_residual_range_high]` -- this neighborhood's own
+    asymmetric range, the `lower_residual_range_quantile`/`upper_residual_range_quantile`
+    percentiles of its own pooled signed residuals, rather than a single dataset-wide symmetric
+    range -- has every bin at or above `min_residuals_per_bin` (the occupancy criterion), rather
+    than the generic
     Sturges/Freedman-Diaconis rule
     :func:`tensor_omics.estimate_bin_count` alone
     applies, which is why that routine is still called here too -- purely for the
@@ -829,9 +877,6 @@ def determine_bin_count_occupancy_expert(
     n_neighbors : int
         Neighborhood size of the candidate under test
         The minimum valid value is `1`.
-    shared_residual_range : float
-        Computed residual range (R)
-        The minimum valid value is `0.0`.
     m_min : int, optional, default 3
         Smallest candidate bin count the search will ever test (M_min)
         The minimum valid value is `1`.
@@ -855,6 +900,18 @@ def determine_bin_count_occupancy_expert(
         never advances
         The minimum valid value is `above(1.0)`.
         The default value is `1.25`.
+    lower_residual_range_quantile : float, optional, default 0.05
+        Quantile in [0,1] for this neighborhood's own lower residual-range bound
+        (shared_residual_range_low)
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.05`.
+    upper_residual_range_quantile : float, optional, default 0.95
+        Quantile in [0,1] for this neighborhood's own upper residual-range bound
+        (shared_residual_range_high)
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.95`.
 
     Returns
     -------
@@ -869,6 +926,16 @@ def determine_bin_count_occupancy_expert(
             the case where every pooled residual is NaN) -- per Issue #187's FAILURE policy, the
             caller should reject this neighborhood rather than build a histogram from
             selected_n_bins
+        shared_residual_range_low : float
+            This neighborhood's own lower residual-range bound (R_low): the
+            lower_residual_range_quantile percentile of its own pooled signed residuals --
+            replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
+            occupancy_failed because every pooled residual is NaN
+        shared_residual_range_high : float
+            This neighborhood's own upper residual-range bound (R_high): the
+            upper_residual_range_quantile percentile of its own pooled signed residuals --
+            replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
+            occupancy_failed because every pooled residual is NaN
         n_pooled_residuals : int
             Count of non-NaN pooled residuals (N_j)
         min_bin_occupancy : int
@@ -924,6 +991,8 @@ def determine_bin_count_occupancy_expert(
     # outputs and work arrays, which the caller never sees
     selected_n_bins = ctypes.c_int(0)
     occupancy_failed = ctypes.c_bool(0)
+    shared_residual_range_low = ctypes.c_double(0)
+    shared_residual_range_high = ctypes.c_double(0)
     n_pooled_residuals = ctypes.c_int(0)
     min_bin_occupancy = ctypes.c_int(0)
     mean_bin_occupancy = ctypes.c_double(0)
@@ -939,9 +1008,10 @@ def determine_bin_count_occupancy_expert(
         ctypes.byref(ctypes.c_int(n_residuals)),
         ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
         ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ctypes.c_double(shared_residual_range)),
         ctypes.byref(selected_n_bins),
         ctypes.byref(occupancy_failed),
+        ctypes.byref(shared_residual_range_low),
+        ctypes.byref(shared_residual_range_high),
         ctypes.byref(n_pooled_residuals),
         ctypes.byref(min_bin_occupancy),
         ctypes.byref(mean_bin_occupancy),
@@ -953,6 +1023,8 @@ def determine_bin_count_occupancy_expert(
         ctypes.byref(ctypes.c_int(m_max)),
         ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
         ctypes.byref(ctypes.c_double(gamma_occupancy)),
+        ctypes.byref(ctypes.c_double(lower_residual_range_quantile)),
+        ctypes.byref(ctypes.c_double(upper_residual_range_quantile)),
         ctypes.byref(ierr),
     )
 
@@ -961,6 +1033,8 @@ def determine_bin_count_occupancy_expert(
     return {
         "selected_n_bins": selected_n_bins.value,
         "occupancy_failed": occupancy_failed.value,
+        "shared_residual_range_low": shared_residual_range_low.value,
+        "shared_residual_range_high": shared_residual_range_high.value,
         "n_pooled_residuals": n_pooled_residuals.value,
         "min_bin_occupancy": min_bin_occupancy.value,
         "mean_bin_occupancy": mean_bin_occupancy.value,
@@ -1851,7 +1925,6 @@ def bootstrap_histogram(
 
 def run_js_comp_test(
         n_neighbors,
-        shared_residual_range,
         gene_means,
         gene_means_perms,
         residuals,
@@ -1862,6 +1935,8 @@ def run_js_comp_test(
         m_min=3,
         m_max=120,
         gamma_occupancy=1.25,
+        lower_residual_range_quantile=0.05,
+        upper_residual_range_quantile=0.95,
 ):
     r"""Run the JSD-Comp-Test pipeline for one fixed (n_points, n_neighbors) parameter setting
 
@@ -1967,9 +2042,6 @@ def run_js_comp_test(
     n_neighbors : int
         Number of neighbors per neighborhood
         The minimum valid value is `1`.
-    shared_residual_range : float
-        Computed residual range (R)
-        The minimum valid value is `0.0`.
     gene_means : np.ndarray[np.float64] of shape (max_n_genes_all_studies, n_studies,), column-major (order='F')
         Per-gene mean expression values for all studies
         NaN is permitted for this value.
@@ -2015,6 +2087,18 @@ def run_js_comp_test(
         advances
         The minimum valid value is `above(1.0)`.
         The default value is `1.25`.
+    lower_residual_range_quantile : float, optional, default 0.05
+        Quantile in [0,1] for each reference point's own lower residual-range bound,
+        forwarded to determine_bin_count_occupancy_impl
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.05`.
+    upper_residual_range_quantile : float, optional, default 0.95
+        Quantile in [0,1] for each reference point's own upper residual-range bound,
+        forwarded to determine_bin_count_occupancy_impl
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.95`.
 
     Returns
     -------
@@ -2032,6 +2116,16 @@ def run_js_comp_test(
             This reference point's own selected histogram bin count (Issue #187's `M_j`), from
             Pass B's occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood
             may use a different bin count
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        shared_residual_range_low : np.ndarray[np.float64] of shape (n_points,), read-only
+            This reference point's own lower residual-range bound (R_low), from Pass B's
+            occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood may use a
+            different, asymmetric range (Step 3)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        shared_residual_range_high : np.ndarray[np.float64] of shape (n_points,), read-only
+            This reference point's own upper residual-range bound (R_high), from Pass B's
+            occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood may use a
+            different, asymmetric range (Step 3)
             A result is a value; call `.copy()` to obtain a modifiable array.
         max_n_bins_per_point : int
             The widest `n_bins_per_point` value across all `n_points` reference points
@@ -2178,6 +2272,8 @@ def run_js_comp_test(
     neighborhood_indices = np.empty((n_neighbors, n_points, n_studies,), dtype=np.int32, order='F')
     neighborhood_range = np.empty((2, n_points, n_studies,), dtype=np.int32, order='F')
     n_bins_per_point = np.empty((n_points,), dtype=np.int32, order='C')
+    shared_residual_range_low = np.empty((n_points,), dtype=np.float64, order='C')
+    shared_residual_range_high = np.empty((n_points,), dtype=np.float64, order='C')
     max_n_bins_per_point = ctypes.c_int(0)
     occupancy_failed = np.empty((n_points,), dtype=np.bool_, order='C')
     n_pooled_residuals = np.empty((n_points,), dtype=np.int32, order='C')
@@ -2204,7 +2300,6 @@ def run_js_comp_test(
         ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
         ctypes.byref(ctypes.c_int(n_points)),
         ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ctypes.c_double(shared_residual_range)),
         gene_means,
         gene_means_perms,
         residuals,
@@ -2212,6 +2307,8 @@ def run_js_comp_test(
         neighborhood_indices,
         neighborhood_range,
         n_bins_per_point,
+        shared_residual_range_low,
+        shared_residual_range_high,
         ctypes.byref(max_n_bins_per_point),
         occupancy_failed,
         n_pooled_residuals,
@@ -2236,6 +2333,8 @@ def run_js_comp_test(
         ctypes.byref(ctypes.c_int(m_min)),
         ctypes.byref(ctypes.c_int(m_max)),
         ctypes.byref(ctypes.c_double(gamma_occupancy)),
+        ctypes.byref(ctypes.c_double(lower_residual_range_quantile)),
+        ctypes.byref(ctypes.c_double(upper_residual_range_quantile)),
         ctypes.byref(ierr),
     )
 
@@ -2245,6 +2344,8 @@ def run_js_comp_test(
     neighborhood_indices.flags.writeable = False
     neighborhood_range.flags.writeable = False
     n_bins_per_point.flags.writeable = False
+    shared_residual_range_low.flags.writeable = False
+    shared_residual_range_high.flags.writeable = False
     occupancy_failed.flags.writeable = False
     n_pooled_residuals.flags.writeable = False
     min_bin_occupancy.flags.writeable = False
@@ -2267,6 +2368,8 @@ def run_js_comp_test(
         "neighborhood_indices": neighborhood_indices,
         "neighborhood_range": neighborhood_range,
         "n_bins_per_point": n_bins_per_point,
+        "shared_residual_range_low": shared_residual_range_low,
+        "shared_residual_range_high": shared_residual_range_high,
         "max_n_bins_per_point": max_n_bins_per_point.value,
         "occupancy_failed": occupancy_failed,
         "n_pooled_residuals": n_pooled_residuals,
@@ -2290,7 +2393,6 @@ def run_js_comp_test(
 def run_js_comp_test_parameter_search(
         gene_means,
         residuals,
-        shared_residual_range,
         n_bootstraps,
         join_method,
         max_n_points_candidate,
@@ -2306,6 +2408,8 @@ def run_js_comp_test_parameter_search(
         m_min=3,
         m_max=120,
         gamma_occupancy=1.25,
+        lower_residual_range_quantile=0.05,
+        upper_residual_range_quantile=0.95,
         two_sided_bootstrapping_significance_level=2.5,
         random_seed=42,
 ):
@@ -2387,9 +2491,6 @@ def run_js_comp_test_parameter_search(
     residuals : np.ndarray[np.float64] of shape (max_n_reps_all_studies, max_n_genes_all_studies, n_studies,), column-major (order='F')
         Matrix of signed residuals per study
         NaN is permitted for this value.
-    shared_residual_range : float
-        Computed residual range (R)
-        The minimum valid value is `0.0`.
     n_bootstraps : int
         Number of bootstraps to perform for a candidate pair
         The minimum valid value is `1`.
@@ -2482,6 +2583,18 @@ def run_js_comp_test_parameter_search(
         advances
         The minimum valid value is `above(1.0)`.
         The default value is `1.25`.
+    lower_residual_range_quantile : float, optional, default 0.05
+        Quantile in [0,1] for each reference point's own lower residual-range bound,
+        forwarded to determine_bin_count_occupancy_impl
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.05`.
+    upper_residual_range_quantile : float, optional, default 0.95
+        Quantile in [0,1] for each reference point's own upper residual-range bound,
+        forwarded to determine_bin_count_occupancy_impl
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.95`.
     two_sided_bootstrapping_significance_level : float, optional, default 2.5
         Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
         to bootstrap_histogram_impl itself
@@ -2506,6 +2619,17 @@ def run_js_comp_test_parameter_search(
             point (Issue #187: every neighborhood may use a different bin count). Only the
             leading `n_points` entries are meaningful, mirroring how `n_points`/`n_neighbors`
             above are the finally chosen candidate's own values
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        shared_residual_range_low : np.ndarray[np.float64] of shape (max_n_points_candidate,), read-only
+            The finally chosen candidate's per-point lower residual-range bound (R_low), one per
+            reference point (Step 3: every neighborhood may use a different, asymmetric range).
+            Only the leading `n_points` entries are meaningful, mirroring `n_bins_per_point`
+            above; `0.0` throughout in the two genuinely-degenerate cases where Pass B
+            never ran for the returned candidate (see the final three-way branch's own comments)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        shared_residual_range_high : np.ndarray[np.float64] of shape (max_n_points_candidate,), read-only
+            The finally chosen candidate's per-point upper residual-range bound (R_high),
+            mirroring `shared_residual_range_low` above in every respect
             A result is a value; call `.copy()` to obtain a modifiable array.
         best_candidate_pair_confidence_interval : np.ndarray[np.float64] of shape (2, n_studies,), column-major (order='F'), read-only
             The bootstrapped JSD confidence interval for the finally chosen candidate pair;
@@ -2646,6 +2770,20 @@ def run_js_comp_test_parameter_search(
             caller must slice `[:trace_n_points[t], t]` themselves
             The first `n_admissible_evaluated` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_shared_residual_range_low : np.ndarray[np.float64] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point lower residual-range bound (R_low)
+            from determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+            column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_shared_residual_range_high : np.ndarray[np.float64] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point upper residual-range bound (R_high)
+            from determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
+            column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -2692,6 +2830,8 @@ def run_js_comp_test_parameter_search(
     n_points = ctypes.c_int(0)
     n_neighbors = ctypes.c_int(0)
     n_bins_per_point = np.empty((max_n_points_candidate,), dtype=np.int32, order='C')
+    shared_residual_range_low = np.empty((max_n_points_candidate,), dtype=np.float64, order='C')
+    shared_residual_range_high = np.empty((max_n_points_candidate,), dtype=np.float64, order='C')
     best_candidate_pair_confidence_interval = np.empty((2, n_studies,), dtype=np.float64, order='F')
     plateau_established = ctypes.c_bool(0)
     n_admissible_evaluated = ctypes.c_int(0)
@@ -2713,6 +2853,8 @@ def run_js_comp_test_parameter_search(
     trace_max_bin_occupancy = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
     trace_sturges_bins = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
     trace_fd_bins = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
+    trace_shared_residual_range_low = np.empty((max_n_points_candidate, 16,), dtype=np.float64, order='F')
+    trace_shared_residual_range_high = np.empty((max_n_points_candidate, 16,), dtype=np.float64, order='F')
     ierr = ctypes.c_int(0)
 
     _lib.run_js_comp_test_parameter_search_c(
@@ -2721,7 +2863,6 @@ def run_js_comp_test_parameter_search(
         ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
         gene_means,
         residuals,
-        ctypes.byref(ctypes.c_double(shared_residual_range)),
         ctypes.byref(ctypes.c_int(n_bootstraps)),
         join_method,
         ctypes.byref(ctypes.c_int(max_n_points_candidate)),
@@ -2729,6 +2870,8 @@ def run_js_comp_test_parameter_search(
         ctypes.byref(n_points),
         ctypes.byref(n_neighbors),
         n_bins_per_point,
+        shared_residual_range_low,
+        shared_residual_range_high,
         best_candidate_pair_confidence_interval,
         ctypes.byref(plateau_established),
         ctypes.byref(n_admissible_evaluated),
@@ -2750,6 +2893,8 @@ def run_js_comp_test_parameter_search(
         trace_max_bin_occupancy,
         trace_sturges_bins,
         trace_fd_bins,
+        trace_shared_residual_range_low,
+        trace_shared_residual_range_high,
         ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
         ctypes.byref(ctypes.c_double(min_neighbor_overlap)),
         ctypes.byref(ctypes.c_double(succeeding_ci_overlap)),
@@ -2761,6 +2906,8 @@ def run_js_comp_test_parameter_search(
         ctypes.byref(ctypes.c_int(m_min)),
         ctypes.byref(ctypes.c_int(m_max)),
         ctypes.byref(ctypes.c_double(gamma_occupancy)),
+        ctypes.byref(ctypes.c_double(lower_residual_range_quantile)),
+        ctypes.byref(ctypes.c_double(upper_residual_range_quantile)),
         ctypes.byref(ctypes.c_double(two_sided_bootstrapping_significance_level)),
         ctypes.byref(ctypes.c_int(random_seed)),
         ctypes.byref(ierr),
@@ -2770,6 +2917,8 @@ def run_js_comp_test_parameter_search(
 
     # a result is a value: modify a copy, not this
     n_bins_per_point.flags.writeable = False
+    shared_residual_range_low.flags.writeable = False
+    shared_residual_range_high.flags.writeable = False
     best_candidate_pair_confidence_interval.flags.writeable = False
     trace_n_points.flags.writeable = False
     trace_n_neighbors.flags.writeable = False
@@ -2789,11 +2938,15 @@ def run_js_comp_test_parameter_search(
     trace_max_bin_occupancy.flags.writeable = False
     trace_sturges_bins.flags.writeable = False
     trace_fd_bins.flags.writeable = False
+    trace_shared_residual_range_low.flags.writeable = False
+    trace_shared_residual_range_high.flags.writeable = False
 
     return {
         "n_points": n_points.value,
         "n_neighbors": n_neighbors.value,
         "n_bins_per_point": n_bins_per_point,
+        "shared_residual_range_low": shared_residual_range_low,
+        "shared_residual_range_high": shared_residual_range_high,
         "best_candidate_pair_confidence_interval": best_candidate_pair_confidence_interval,
         "plateau_established": plateau_established.value,
         "trace_n_points": trace_n_points[..., :n_admissible_evaluated.value],
@@ -2814,4 +2967,6 @@ def run_js_comp_test_parameter_search(
         "trace_max_bin_occupancy": trace_max_bin_occupancy[..., :n_admissible_evaluated.value],
         "trace_sturges_bins": trace_sturges_bins[..., :n_admissible_evaluated.value],
         "trace_fd_bins": trace_fd_bins[..., :n_admissible_evaluated.value],
+        "trace_shared_residual_range_low": trace_shared_residual_range_low[..., :n_admissible_evaluated.value],
+        "trace_shared_residual_range_high": trace_shared_residual_range_high[..., :n_admissible_evaluated.value],
     }
