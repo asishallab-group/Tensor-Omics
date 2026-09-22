@@ -90,7 +90,8 @@ _lib.build_residual_histograms_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
@@ -101,9 +102,9 @@ _lib.build_residual_histograms_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_BUILD_RESIDUAL_HISTOGRAMS_ARGUMENTS = ("neighborhood_residuals", "n_reps", "n_neighbors", "n_points", "shared_residual_range", "max_n_bins", "n_bins_per_point", "counts", "pmf", "included_n_reps", "neighbor_mask", "ierr",)
+_BUILD_RESIDUAL_HISTOGRAMS_ARGUMENTS = ("neighborhood_residuals", "n_reps", "n_neighbors", "n_points", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins", "n_bins_per_point", "counts", "pmf", "included_n_reps", "neighbor_mask", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_BUILD_RESIDUAL_HISTOGRAMS_ARGUMENT_SOURCES = (None, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", None, "counts", None, None, None, None, None, None,)
+_BUILD_RESIDUAL_HISTOGRAMS_ARGUMENT_SOURCES = (None, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", None, None, "counts", None, None, None, None, None, None,)
 
 _lib.calc_pmf_c.restype = None
 _lib.calc_pmf_c.argtypes = (
@@ -459,7 +460,8 @@ def determine_all_studies_shared_residual_range(
 
 def build_residual_histograms(
         neighborhood_residuals,
-        shared_residual_range,
+        shared_residual_range_low,
+        shared_residual_range_high,
         max_n_bins,
         n_bins_per_point,
         neighbor_mask=None,
@@ -473,16 +475,21 @@ def build_residual_histograms(
     neighborhood_residuals : np.ndarray[np.float64] of shape (n_reps, n_neighbors, n_points,), column-major (order='F')
         Computed neighborhood residuals for a study, NaN is explicitly allowed for missing values
         NaN is permitted for this value.
-    shared_residual_range : float
-        Computed residual range (R)
-        The minimum valid value is `0.0`.
+    shared_residual_range_low : np.ndarray[np.float64] of shape (n_points,)
+        Lower bound of the histogram range (R_low) for reference point i_point -- e.g. from
+        :func:`tensor_omics.determine_bin_count_occupancy`'s
+        own `shared_residual_range_low` output
+    shared_residual_range_high : np.ndarray[np.float64] of shape (n_points,)
+        Upper bound of the histogram range (R_high) for reference point i_point -- e.g. from
+        :func:`tensor_omics.determine_bin_count_occupancy`'s
+        own `shared_residual_range_high` output
     max_n_bins : int
         Widest histogram bin count used by any reference point in this call -- the array
         extent `counts`/`pmf` are declared with. A reference point whose own
         `n_bins_per_point` is smaller has its remaining columns zero-padded.
     n_bins_per_point : np.ndarray[np.int32] of shape (n_points,)
-        Number of equally sized histogram bins in range [-R,R] to use for this reference
-        point
+        Number of equally sized histogram bins in range [shared_residual_range_low(i_point),
+        shared_residual_range_high(i_point)] to use for this reference point
         The minimum valid value is `1`.
         The maximum valid value is `max_n_bins`.
     neighbor_mask : np.ndarray[np.bool_] of shape (n_neighbors, n_points,), column-major (order='F'), optional
@@ -523,6 +530,18 @@ def build_residual_histograms(
     if neighborhood_residuals.ndim != 3:
         raise ValueError(f"'neighborhood_residuals' must have 3 dimensions, but has {neighborhood_residuals.ndim}")
     try:
+        shared_residual_range_low = np.ascontiguousarray(shared_residual_range_low, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'shared_residual_range_low' must be an array of np.float64: {error}") from None
+    if shared_residual_range_low.ndim != 1:
+        raise ValueError(f"'shared_residual_range_low' must have 1 dimension, but has {shared_residual_range_low.ndim}")
+    try:
+        shared_residual_range_high = np.ascontiguousarray(shared_residual_range_high, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'shared_residual_range_high' must be an array of np.float64: {error}") from None
+    if shared_residual_range_high.ndim != 1:
+        raise ValueError(f"'shared_residual_range_high' must have 1 dimension, but has {shared_residual_range_high.ndim}")
+    try:
         n_bins_per_point = np.ascontiguousarray(n_bins_per_point, dtype=np.int32)
     except (TypeError, ValueError) as error:
         raise TypeError(f"'n_bins_per_point' must be an array of np.int32: {error}") from None
@@ -542,6 +561,14 @@ def build_residual_histograms(
     n_points = neighborhood_residuals.shape[2]
 
     # Fortran cannot check that shared extents agree; this can
+    if shared_residual_range_low.shape[0] != n_points:
+        raise ValueError(f"'shared_residual_range_low' has {shared_residual_range_low.shape[0]} along axis 0, but "
+            f"'neighborhood_residuals' implies n_points == {n_points}"
+        )
+    if shared_residual_range_high.shape[0] != n_points:
+        raise ValueError(f"'shared_residual_range_high' has {shared_residual_range_high.shape[0]} along axis 0, but "
+            f"'neighborhood_residuals' implies n_points == {n_points}"
+        )
     if n_bins_per_point.shape[0] != n_points:
         raise ValueError(f"'n_bins_per_point' has {n_bins_per_point.shape[0]} along axis 0, but "
             f"'neighborhood_residuals' implies n_points == {n_points}"
@@ -558,7 +585,8 @@ def build_residual_histograms(
         ctypes.byref(ctypes.c_int(n_reps)),
         ctypes.byref(ctypes.c_int(n_neighbors)),
         ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_double(shared_residual_range)),
+        shared_residual_range_low,
+        shared_residual_range_high,
         ctypes.byref(ctypes.c_int(max_n_bins)),
         n_bins_per_point,
         counts,

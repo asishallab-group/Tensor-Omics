@@ -396,7 +396,8 @@ contains
             n_reps,&
             n_neighbors,&
             n_points,&
-            shared_residual_range,&
+            shared_residual_range_low,&
+            shared_residual_range_high,&
             max_n_bins,&
             n_bins_per_point,&
             counts,&
@@ -420,12 +421,17 @@ contains
         real(c_double), dimension(n_reps, n_neighbors, n_points), intent(in), target :: neighborhood_residuals
             !! Computed neighborhood residuals for a study, NaN is explicitly allowed for missing values
             !! NaN is permitted for this value.
-        real(c_double), intent(in), target :: shared_residual_range
-            !! Computed residual range (R)
-            !! The minimum valid value is `0.0_real64`.
+        real(c_double), dimension(n_points), intent(in), target :: shared_residual_range_low
+            !! Lower bound of the histogram range (R_low) for reference point i_point -- e.g. from
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+            !! own `shared_residual_range_low` output
+        real(c_double), dimension(n_points), intent(in), target :: shared_residual_range_high
+            !! Upper bound of the histogram range (R_high) for reference point i_point -- e.g. from
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+            !! own `shared_residual_range_high` output
         integer(c_int), dimension(n_points), intent(in), target :: n_bins_per_point
-            !! Number of equally sized histogram bins in range [-R,R] to use for this reference
-            !! point
+            !! Number of equally sized histogram bins in range [shared_residual_range_low(i_point),
+            !! shared_residual_range_high(i_point)] to use for this reference point
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `max_n_bins`.
         integer(c_int), dimension(n_points, max_n_bins), intent(out), target :: counts
@@ -446,9 +452,10 @@ contains
         M_CHECK_NON_NULL(n_reps)
         M_CHECK_NON_NULL(n_neighbors)
         M_CHECK_NON_NULL(n_points)
-        M_CHECK_NON_NULL(shared_residual_range)
         M_CHECK_NON_NULL(max_n_bins)
         M_CHECK_ARRAY_NON_NULL(neighborhood_residuals, n_reps * n_neighbors * n_points)
+        M_CHECK_ARRAY_NON_NULL(shared_residual_range_low, n_points)
+        M_CHECK_ARRAY_NON_NULL(shared_residual_range_high, n_points)
         M_CHECK_ARRAY_NON_NULL(n_bins_per_point, n_points)
         M_CHECK_ARRAY_NON_NULL(counts, n_points * max_n_bins)
         M_CHECK_ARRAY_NON_NULL(pmf, n_points * max_n_bins)
@@ -459,7 +466,8 @@ contains
             n_reps = n_reps,&
             n_neighbors = n_neighbors,&
             n_points = n_points,&
-            shared_residual_range = shared_residual_range,&
+            shared_residual_range_low = shared_residual_range_low,&
+            shared_residual_range_high = shared_residual_range_high,&
             max_n_bins = max_n_bins,&
             n_bins_per_point = n_bins_per_point,&
             counts = counts,&

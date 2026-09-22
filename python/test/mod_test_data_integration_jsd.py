@@ -213,6 +213,8 @@ def test_tox_build_residual_histograms():
     n_bins = 4
     n_bins_per_point = np.full(n_points, n_bins, dtype=np.int32)
     R = 2.0
+    R_low = np.full(n_points, -R, dtype=np.float64)
+    R_high = np.full(n_points, R, dtype=np.float64)
 
     # ============================================================
     # Test 1 — Simple symmetric case, no NaNs
@@ -224,14 +226,14 @@ def test_tox_build_residual_histograms():
     E[:, 0, 2] = [2.5, -3.0, 1.2]
     E[:, 1, 2] = [0.4, -0.1, 0.0]
 
-    counts, pmf, included = build_residual_histograms_filtered(E, R, n_bins, n_bins_per_point, neighbor_mask=np.full((n_neighbors, n_points), False, order="F")).values()
+    counts, pmf, included = build_residual_histograms_filtered(E, R_low, R_high, n_bins, n_bins_per_point, neighbor_mask=np.full((n_neighbors, n_points), False, order="F")).values()
 
     assert np.all(counts == 0), "All counts should be zero"
     assert np.allclose(pmf, 0.0, atol=TOL), "All pmfs should be zero"
     assert np.all(included == 0), "All included should be zero"
 
     # the mask is per (neighbor, point), not per residual
-    def filtered(E, R, n_bins, n_bins_per_point): return build_residual_histograms_filtered(E, R, n_bins, n_bins_per_point, neighbor_mask=np.full(E.shape[1:], True, order="F"))
+    def filtered(E, R_low, R_high, n_bins, n_bins_per_point): return build_residual_histograms_filtered(E, R_low, R_high, n_bins, n_bins_per_point, neighbor_mask=np.full(E.shape[1:], True, order="F"))
 
     for func in (build_residual_histograms, filtered):
         print(f"... test {func.__name__.replace("filtered", "build_residual_histograms_filtered")}")
@@ -243,7 +245,7 @@ def test_tox_build_residual_histograms():
         E[:, 0, 2] = [2.5, -3.0, 1.2]
         E[:, 1, 2] = [0.4, -0.1, 0.0]
 
-        out = func(E, R, n_bins, n_bins_per_point)
+        out = func(E, R_low, R_high, n_bins, n_bins_per_point)
         counts = out["counts"]
         pmf = out["pmf"]
         included = out["included_n_reps"]
@@ -273,7 +275,7 @@ def test_tox_build_residual_histograms():
         E[1, 0, 1] = np.nan
         E[2, 1, 2] = np.nan
 
-        out = func(E, R, n_bins, n_bins_per_point)
+        out = func(E, R_low, R_high, n_bins, n_bins_per_point)
         counts = out["counts"]
         pmf = out["pmf"]
         included = out["included_n_reps"]
@@ -301,7 +303,7 @@ def test_tox_build_residual_histograms():
         # ============================================================
         E[:, :, :] = np.nan
 
-        out = func(E, R, n_bins, n_bins_per_point)
+        out = func(E, R_low, R_high, n_bins, n_bins_per_point)
         counts = out["counts"]
         pmf = out["pmf"]
         included = out["included_n_reps"]
@@ -326,7 +328,7 @@ def test_tox_build_residual_histograms():
             ]
         ], dtype=np.float64, order="F")
 
-        out = func(E, R, n_bins, n_bins_per_point)
+        out = func(E, R_low, R_high, n_bins, n_bins_per_point)
         counts = out["counts"]
         pmf = out["pmf"]
         included = out["included_n_reps"]

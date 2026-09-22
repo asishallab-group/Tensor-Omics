@@ -173,6 +173,8 @@ test_tox_build_residual_histograms <- function() {
     n_bins      <- 4
     n_bins_per_point <- rep(as.integer(n_bins), n_points)
     Rval        <- 2.0
+    R_low       <- rep(-Rval, n_points)
+    R_high      <- rep(Rval, n_points)
 
     # ============================================================
     # Test 1 — Simple symmetric case, no NaNs
@@ -188,7 +190,7 @@ test_tox_build_residual_histograms <- function() {
     neighbor_mask <- array(FALSE, dim = c(n_neighbors, n_points))
 
     out <- build_residual_histograms(
-        E, Rval, n_bins, n_bins_per_point, neighbor_mask = neighbor_mask
+        E, R_low, R_high, n_bins, n_bins_per_point, neighbor_mask = neighbor_mask
     )
 
     counts   <- out$counts
@@ -199,9 +201,9 @@ test_tox_build_residual_histograms <- function() {
     assert_true(all(abs(pmf - 0.0) < 1e-12), "All pmfs should be zero")
     assert_true(all(included == 0), "All included should be zero")
 
-    filtered <- function(E, Rval, n_bins, n_bins_per_point) {
+    filtered <- function(E, R_low, R_high, n_bins, n_bins_per_point) {
         build_residual_histograms(
-            E, Rval, n_bins, n_bins_per_point,
+            E, R_low, R_high, n_bins, n_bins_per_point,
             neighbor_mask = matrix(TRUE, nrow = dim(E)[3], ncol=dim(E)[2], byrow=TRUE)
         )
     }
@@ -215,7 +217,7 @@ test_tox_build_residual_histograms <- function() {
         E[,1,3] <- c( 2.5, -3.0, 1.2)
         E[,2,3] <- c( 0.4, -0.1, 0.0)
 
-        out <- func(E, Rval, n_bins, n_bins_per_point)
+        out <- func(E, R_low, R_high, n_bins, n_bins_per_point)
         counts   <- out$counts
         pmf      <- out$pmf
         included <- out$included_n_residuals
@@ -242,7 +244,7 @@ test_tox_build_residual_histograms <- function() {
         E[2,1,2] <- NaN
         E[3,2,3] <- NaN
 
-        out <- func(E, Rval, n_bins, n_bins_per_point)
+        out <- func(E, R_low, R_high, n_bins, n_bins_per_point)
         counts   <- out$counts
         pmf      <- out$pmf
         included <- out$included_n_residuals
@@ -271,7 +273,7 @@ test_tox_build_residual_histograms <- function() {
         # ============================================================
         E[,,] <- NaN
 
-        out <- func(E, Rval, n_bins, n_bins_per_point)
+        out <- func(E, R_low, R_high, n_bins, n_bins_per_point)
         assert_true(all(out$counts == 0), "test 3: All counts should be zero")
         assert_true(all(abs(out$pmf - 0.0) < 1e-12), "test 3: All pmfs should be zero")
         assert_true(all(out$included == 0), "test 3: All included should be zero")
@@ -285,7 +287,7 @@ test_tox_build_residual_histograms <- function() {
           -2,-1,0,1,2,0
         ), dim = c(3,2,3))
 
-        out <- func(E, Rval, n_bins, n_bins_per_point)
+        out <- func(E, R_low, R_high, n_bins, n_bins_per_point)
         counts   <- out$counts
         pmf      <- out$pmf
         included <- out$included_n_residuals

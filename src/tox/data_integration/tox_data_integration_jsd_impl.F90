@@ -188,7 +188,9 @@ contains
     !> summary: Summarize the neighborhood residuals in absolute histogram counts and probability mass functions
     !| AUTHOR_FRANZ_ERIC_SILL
     !| The probability mass function `pmf(residual, bin)` is actually a matrix.
-    pure subroutine build_residual_histograms_impl(neighborhood_residuals, n_reps, n_neighbors, n_points, shared_residual_range, max_n_bins, n_bins_per_point, counts, pmf, included_n_reps, neighbor_mask)
+    pure subroutine build_residual_histograms_impl(neighborhood_residuals, n_reps, n_neighbors, n_points, &
+                                                   shared_residual_range_low, shared_residual_range_high, max_n_bins, &
+                                                   n_bins_per_point, counts, pmf, included_n_reps, neighbor_mask)
         integer(int32), intent(in) :: n_reps
             !! Number of replicates of the study
         integer(int32), intent(in) :: n_neighbors
@@ -198,16 +200,21 @@ contains
         real(real64), dimension(n_reps, n_neighbors, n_points), intent(in) :: neighborhood_residuals
             !! Computed neighborhood residuals for a study, NaN is explicitly allowed for missing values
             !! DM_ALLOW_NAN
-        real(real64), intent(in) :: shared_residual_range
-            !! Computed residual range (R)
-            !! DM_MIN(0.0_real64)
+        real(real64), dimension(n_points), intent(in) :: shared_residual_range_low
+            !! Lower bound of the histogram range (R_low) for reference point i_point -- e.g. from
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+            !! own `shared_residual_range_low` output
+        real(real64), dimension(n_points), intent(in) :: shared_residual_range_high
+            !! Upper bound of the histogram range (R_high) for reference point i_point -- e.g. from
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+            !! own `shared_residual_range_high` output
         integer(int32), intent(in) :: max_n_bins
             !! Widest histogram bin count used by any reference point in this call -- the array
             !! extent `counts`/`pmf` are declared with. A reference point whose own
             !! `n_bins_per_point` is smaller has its remaining columns zero-padded.
         integer(int32), dimension(n_points), intent(in) :: n_bins_per_point
-            !! Number of equally sized histogram bins in range [-R,R] to use for this reference
-            !! point
+            !! Number of equally sized histogram bins in range [shared_residual_range_low(i_point),
+            !! shared_residual_range_high(i_point)] to use for this reference point
             !! DM_MIN(1_int32)
             !! DM_MAX(max_n_bins)
         integer(int32), dimension(n_points, max_n_bins), intent(out) :: counts
@@ -235,15 +242,19 @@ contains
         ! inner (i_neighbor) loop must be a plain sequential `do`: different neighbors can hit the same
         ! (i_point, bin_idx) count simultaneously, so `counts(i_point, bin_idx) = counts(i_point, bin_idx) + 1`
         ! would be a data race under `do concurrent`.
-        do concurrent(i_point=1:n_points) local(included_reps, bin_width, bin_idx, clamped_residual) shared(included_n_reps)
-            ! Guard against a zero range (e.g. `determine_shared_residual_range_impl` returns 0.0 when all
-            ! pooled residuals are NaN): fall back to a fixed bin width so every (clamped-to-zero) residual
-            ! deterministically lands in a single bin instead of dividing by zero below. `bin_width` is now
-            ! per-point, since `n_bins_per_point` may differ across reference points.
-            if (shared_residual_range <= 0.0_real64) then
+        do concurrent(i_point=1:n_points) local(included_reps, bin_width, bin_idx, clamped_residual) &
+                shared(included_n_reps, n_bins_per_point, shared_residual_range_low, shared_residual_range_high)
+            ! Guard against a zero-or-negative range (e.g. the 0.0/0.0 degenerate fallback
+            ! `determine_bin_count_occupancy_impl` returns when all pooled residuals are NaN): fall
+            ! back to a fixed bin width so every (clamped) residual deterministically lands in a
+            ! single bin instead of dividing by zero (or a negative width) below. `bin_width` is
+            ! per-point, since both `n_bins_per_point` and the range itself may differ across
+            ! reference points.
+            if (shared_residual_range_high(i_point) - shared_residual_range_low(i_point) <= 0.0_real64) then
                 bin_width = 1.0_real64
             else
-                bin_width = 2.0_real64*shared_residual_range/real(n_bins_per_point(i_point), real64)
+                bin_width = (shared_residual_range_high(i_point) - shared_residual_range_low(i_point))/ &
+                           real(n_bins_per_point(i_point), real64)
             end if
 
             included_reps = 0_int32
@@ -256,11 +267,14 @@ contains
                 ! Count non-NaNs and assign the to a bin
                 do i_rep = 1, n_reps
                     if (.not. ieee_is_nan(neighborhood_residuals(i_rep, i_neighbor, i_point))) then
-                        ! clamp residual to histogram range
-                        clamped_residual = clamp(neighborhood_residuals(i_rep, i_neighbor, i_point), min_val=-shared_residual_range, max_val=shared_residual_range)
+                        ! clamp residual to this point's own histogram range
+                        clamped_residual = clamp(neighborhood_residuals(i_rep, i_neighbor, i_point), &
+                                                 min_val=shared_residual_range_low(i_point), &
+                                                 max_val=shared_residual_range_high(i_point))
 
                         ! assign bin to residual, clamped to this point's own bin count
-                        bin_idx = min(n_bins_per_point(i_point), int((clamped_residual + shared_residual_range)/bin_width) + 1)
+                        bin_idx = min(n_bins_per_point(i_point), &
+                                     int((clamped_residual - shared_residual_range_low(i_point))/bin_width) + 1)
                         counts(i_point, bin_idx) = counts(i_point, bin_idx) + 1
 
                         included_reps = included_reps + 1
@@ -418,7 +432,7 @@ contains
     !> summary: Run the pipeline build_residual_histograms => compute_weighted_global_divergence
     !| AUTHOR_FRANZ_ERIC_SILL
     !| Internal helper: the per-family analysis drives this.
-    pure subroutine jct_compute_jsd_pipeline_helper(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, tmp_n_bins_per_point, neighbor_mask_S1, neighbor_mask_S2)
+    pure subroutine jct_compute_jsd_pipeline_helper(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, tmp_n_bins_per_point, tmp_shared_residual_range_low, tmp_shared_residual_range_high, neighbor_mask_S1, neighbor_mask_S2)
         integer(int32), intent(in) :: n_reps_S1
             !! Number of replicates in study 1
         integer(int32), intent(in) :: n_reps_S2
@@ -457,15 +471,29 @@ contains
             !! and keeps one uniform bin count -- passed on to
             !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]'s
             !! own `n_bins_per_point`
+        real(real64), dimension(n_points), intent(out) :: tmp_shared_residual_range_low
+            !! Working array: `-shared_residual_range` broadcast to every reference point, since
+            !! per-family analysis (this helper's only caller) is out of scope for the
+            !! per-neighborhood asymmetric range Step 3 introduced and keeps one uniform symmetric
+            !! range `[-shared_residual_range, shared_residual_range]` instead -- passed on to
+            !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]'s
+            !! own `shared_residual_range_low`
+        real(real64), dimension(n_points), intent(out) :: tmp_shared_residual_range_high
+            !! Working array: `shared_residual_range` broadcast to every reference point, mirroring
+            !! `tmp_shared_residual_range_low` above -- passed on to
+            !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]'s
+            !! own `shared_residual_range_high`
         logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S1
             !! Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
         logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S2
             !! Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
 
         tmp_n_bins_per_point = n_bins
+        tmp_shared_residual_range_low = -shared_residual_range
+        tmp_shared_residual_range_high = shared_residual_range
 
-        call build_residual_histograms_impl(neighborhood_residuals_S1, n_reps_S1, n_neighbors, n_points, shared_residual_range, n_bins, tmp_n_bins_per_point, tmp_counts, pmf_S1, included_n_reps_S1, neighbor_mask_S1)
-        call build_residual_histograms_impl(neighborhood_residuals_S2, n_reps_S2, n_neighbors, n_points, shared_residual_range, n_bins, tmp_n_bins_per_point, tmp_counts, pmf_S2, included_n_reps_S2, neighbor_mask_S2)
+        call build_residual_histograms_impl(neighborhood_residuals_S1, n_reps_S1, n_neighbors, n_points, tmp_shared_residual_range_low, tmp_shared_residual_range_high, n_bins, tmp_n_bins_per_point, tmp_counts, pmf_S1, included_n_reps_S1, neighbor_mask_S1)
+        call build_residual_histograms_impl(neighborhood_residuals_S2, n_reps_S2, n_neighbors, n_points, tmp_shared_residual_range_low, tmp_shared_residual_range_high, n_bins, tmp_n_bins_per_point, tmp_counts, pmf_S2, included_n_reps_S2, neighbor_mask_S2)
         call compute_divergence_per_reference_point_impl(pmf_S1, pmf_S2, n_points, n_bins, js_divergences)
         call compute_weighted_global_divergence_impl(js_divergences, n_points, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights)
     end subroutine jct_compute_jsd_pipeline_helper

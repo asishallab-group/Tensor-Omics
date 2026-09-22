@@ -281,6 +281,7 @@ contains
         integer(int32), dimension(n_points, n_bins) :: counts, expected_counts
         integer(int32), dimension(n_points) :: included
         real(real64) :: R
+        real(real64), dimension(n_points) :: R_low, R_high
         integer(int32) :: ierr
 
         ! ============================================================
@@ -291,6 +292,8 @@ contains
         ! Bins: [-2,-1), [-1,0), [0,1), [1,2]
         !
         R = 2.0_real64
+        R_low = -R
+        R_high = R
         n_bins_per_point = n_bins
 
         E(:, 1, 1) = [-2.0, -0.5, 0.2]
@@ -299,7 +302,7 @@ contains
         E(:, 1, 3) = [2.5, -3.0, 1.2] ! (clamping applies -> [2,-2,1.2])
         E(:, 2, 3) = [0.4, -0.1, 0.0]
 
-        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, n_bins_per_point, &
+        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R_low, R_high, n_bins, n_bins_per_point, &
                                        counts, pmf, included, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_build_residual_histograms: Test 1: ierr should be OK")
@@ -349,7 +352,7 @@ contains
         E(2, 1, 2) = ieee_value(1.0_real64, ieee_quiet_nan)
         E(3, 2, 3) = ieee_value(1.0_real64, ieee_quiet_nan)
 
-        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, n_bins_per_point, &
+        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R_low, R_high, n_bins, n_bins_per_point, &
                                        counts, pmf, included, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_build_residual_histograms: Test 2: ierr should be OK")
@@ -378,7 +381,7 @@ contains
         ! ============================================================
         E = ieee_value(1.0_real64, ieee_quiet_nan)
 
-        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, n_bins_per_point, &
+        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R_low, R_high, n_bins, n_bins_per_point, &
                                        counts, pmf, included, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_build_residual_histograms: Test 3: ierr should be OK")
@@ -402,7 +405,7 @@ contains
                      -2.0, -1.0, 0.0, 1.0, 2.0, 0.0, &
                      -2.0, -1.0, 0.0, 1.0, 2.0, 0.0], shape(E))
 
-        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, n_bins_per_point, &
+        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R_low, R_high, n_bins, n_bins_per_point, &
                                        counts, pmf, included, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_build_residual_histograms: Test 4: ierr should be OK")
@@ -447,17 +450,20 @@ contains
         integer(int32), dimension(n_points, max_n_bins) :: counts, expected_counts
         integer(int32), dimension(n_points) :: included
         real(real64) :: R
+        real(real64), dimension(n_points) :: R_low, R_high
         integer(int32) :: ierr
 
         ! Point 1: n_bins_per_point(1) = 2 -> bin_width = 2*R/2 = 2.0, bins [-2,0),[0,2]
         ! Point 2: n_bins_per_point(2) = 3 -> bin_width = 2*R/3 = 1.3333..., bins
         !          [-2,-0.6667),[-0.6667,0.6667),[0.6667,2]
         R = 2.0_real64
+        R_low = -R
+        R_high = R
 
         E(:, 1, 1) = [-0.3_real64, 1.9_real64]
         E(:, 1, 2) = [0.9_real64, -1.9_real64]
 
-        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, max_n_bins, n_bins_per_point, &
+        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R_low, R_high, max_n_bins, n_bins_per_point, &
                                        counts, pmf, included, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
@@ -523,19 +529,22 @@ contains
         integer(int32), dimension(n_points) :: included_S1, included_S2
         real(real64), dimension(n_points) :: js_divergences_padded, js_divergences_ref
         real(real64) :: R
+        real(real64), dimension(n_points) :: R_low, R_high
         integer(int32) :: ierr
 
         R = 2.0_real64
+        R_low = -R
+        R_high = R
         E_S1(:, 1, 1) = [-2.0_real64, 0.0_real64, 1.9_real64]
         E_S2(:, 1, 1) = [-0.5_real64, -0.5_real64, 1.99_real64]
 
         ! Padded: max_n_bins = 6, but this point's own bin count stays 3 -- columns 4-6
         ! zero-padded.
-        call build_residual_histograms(E_S1, n_reps_S1, n_neighbors, n_points, R, padded_max_n_bins, n_bins_per_point, &
+        call build_residual_histograms(E_S1, n_reps_S1, n_neighbors, n_points, R_low, R_high, padded_max_n_bins, n_bins_per_point, &
                                        counts_S1_padded, pmf_S1_padded, included_S1, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_build_residual_histograms_zero_padding_safe_for_jsd: S1 padded ierr should be OK")
-        call build_residual_histograms(E_S2, n_reps_S2, n_neighbors, n_points, R, padded_max_n_bins, n_bins_per_point, &
+        call build_residual_histograms(E_S2, n_reps_S2, n_neighbors, n_points, R_low, R_high, padded_max_n_bins, n_bins_per_point, &
                                        counts_S2_padded, pmf_S2_padded, included_S2, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_build_residual_histograms_zero_padding_safe_for_jsd: S2 padded ierr should be OK")
@@ -549,11 +558,11 @@ contains
 
         ! Reference: max_n_bins collapsed down to exactly this point's own bin count -- no
         ! padding at all.
-        call build_residual_histograms(E_S1, n_reps_S1, n_neighbors, n_points, R, own_n_bins, n_bins_per_point, &
+        call build_residual_histograms(E_S1, n_reps_S1, n_neighbors, n_points, R_low, R_high, own_n_bins, n_bins_per_point, &
                                        counts_S1_ref, pmf_S1_ref, included_S1, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_build_residual_histograms_zero_padding_safe_for_jsd: S1 ref ierr should be OK")
-        call build_residual_histograms(E_S2, n_reps_S2, n_neighbors, n_points, R, own_n_bins, n_bins_per_point, &
+        call build_residual_histograms(E_S2, n_reps_S2, n_neighbors, n_points, R_low, R_high, own_n_bins, n_bins_per_point, &
                                        counts_S2_ref, pmf_S2_ref, included_S2, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_build_residual_histograms_zero_padding_safe_for_jsd: S2 ref ierr should be OK")

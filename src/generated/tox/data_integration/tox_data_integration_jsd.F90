@@ -406,7 +406,8 @@ contains
             n_reps,&
             n_neighbors,&
             n_points,&
-            shared_residual_range,&
+            shared_residual_range_low,&
+            shared_residual_range_high,&
             max_n_bins,&
             n_bins_per_point,&
             counts,&
@@ -428,12 +429,17 @@ contains
         real(real64), dimension(n_reps, n_neighbors, n_points), intent(in) :: neighborhood_residuals
             !! Computed neighborhood residuals for a study, NaN is explicitly allowed for missing values
             !! NaN is permitted for this value.
-        real(real64), intent(in) :: shared_residual_range
-            !! Computed residual range (R)
-            !! The minimum valid value is `0.0_real64`.
+        real(real64), dimension(n_points), intent(in) :: shared_residual_range_low
+            !! Lower bound of the histogram range (R_low) for reference point i_point -- e.g. from
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+            !! own `shared_residual_range_low` output
+        real(real64), dimension(n_points), intent(in) :: shared_residual_range_high
+            !! Upper bound of the histogram range (R_high) for reference point i_point -- e.g. from
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+            !! own `shared_residual_range_high` output
         integer(int32), dimension(n_points), intent(in) :: n_bins_per_point
-            !! Number of equally sized histogram bins in range [-R,R] to use for this reference
-            !! point
+            !! Number of equally sized histogram bins in range [shared_residual_range_low(i_point),
+            !! shared_residual_range_high(i_point)] to use for this reference point
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `max_n_bins`.
         integer(int32), dimension(n_points, max_n_bins), intent(out) :: counts
@@ -454,10 +460,11 @@ contains
         call validate_dimension_size(n_reps, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_neighbors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=4_int32)
-        call validate_in_range_real(shared_residual_range, ierr, arg_pos=5_int32, min=0.0_real64)
-        call validate_dimension_size(max_n_bins, ierr, arg_pos=6_int32)
+        call validate_dimension_size(max_n_bins, ierr, arg_pos=7_int32)
         call validate_all_in_range_real(neighborhood_residuals, n_reps * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
-        call validate_all_in_range_int(n_bins_per_point, n_points, ierr, arg_pos=7_int32, min=1_int32, max=max_n_bins)
+        call validate_all_in_range_real(shared_residual_range_low, n_points, ierr, arg_pos=5_int32)
+        call validate_all_in_range_real(shared_residual_range_high, n_points, ierr, arg_pos=6_int32)
+        call validate_all_in_range_int(n_bins_per_point, n_points, ierr, arg_pos=8_int32, min=1_int32, max=max_n_bins)
         if (is_err(ierr)) return
 #endif
 
@@ -466,7 +473,8 @@ contains
             n_reps = n_reps,&
             n_neighbors = n_neighbors,&
             n_points = n_points,&
-            shared_residual_range = shared_residual_range,&
+            shared_residual_range_low = shared_residual_range_low,&
+            shared_residual_range_high = shared_residual_range_high,&
             max_n_bins = max_n_bins,&
             n_bins_per_point = n_bins_per_point,&
             counts = counts,&

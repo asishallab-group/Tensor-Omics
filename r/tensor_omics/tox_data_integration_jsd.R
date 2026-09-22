@@ -139,13 +139,17 @@ determine_all_studies_shared_residual_range <- function(neighborhood_residuals, 
 #'
 #' @param neighborhood_residuals a numeric array of rank 3. Computed neighborhood residuals for a study, NaN is explicitly allowed for missing values
 #'   NaN is permitted for this value.
-#' @param shared_residual_range a numeric scalar. Computed residual range (R)
-#'   The minimum valid value is `0.0`.
+#' @param shared_residual_range_low a numeric vector. Lower bound of the histogram range (R_low) for reference point i_point -- e.g. from
+#'   \code{\link{determine_bin_count_occupancy}}'s
+#'   own `shared_residual_range_low` output
+#' @param shared_residual_range_high a numeric vector. Upper bound of the histogram range (R_high) for reference point i_point -- e.g. from
+#'   \code{\link{determine_bin_count_occupancy}}'s
+#'   own `shared_residual_range_high` output
 #' @param max_n_bins a integer scalar. Widest histogram bin count used by any reference point in this call -- the array
 #'   extent `counts`/`pmf` are declared with. A reference point whose own
 #'   `n_bins_per_point` is smaller has its remaining columns zero-padded.
-#' @param n_bins_per_point a integer vector. Number of equally sized histogram bins in range [-R,R] to use for this reference
-#'   point
+#' @param n_bins_per_point a integer vector. Number of equally sized histogram bins in range [shared_residual_range_low(i_point),
+#'   shared_residual_range_high(i_point)] to use for this reference point
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `max_n_bins`.
 #' @param neighbor_mask a logical matrix. Optional mask to exclude specific neighbors (e.g. for family-wise analysis)
@@ -156,19 +160,24 @@ determine_all_studies_shared_residual_range <- function(neighborhood_residuals, 
 #'     Zero-padded beyond `n_bins_per_point(i_point)` for each reference point `i_point`}
 #'   \item{included_n_reps}{a integer vector. Stores the count of non-NaN replicates (included ones)}
 #' @export
-build_residual_histograms <- function(neighborhood_residuals, shared_residual_range, max_n_bins, n_bins_per_point, neighbor_mask = NULL) {
+build_residual_histograms <- function(neighborhood_residuals, shared_residual_range_low, shared_residual_range_high, max_n_bins, n_bins_per_point, neighbor_mask = NULL) {
     neighborhood_residuals <- .tox_as_double_array(neighborhood_residuals, "neighborhood_residuals", 3L)
-    shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
+    shared_residual_range_low <- .tox_as_double_vector(shared_residual_range_low, "shared_residual_range_low")
+    shared_residual_range_high <- .tox_as_double_vector(shared_residual_range_high, "shared_residual_range_high")
     max_n_bins <- .tox_as_integer_scalar(max_n_bins, "max_n_bins")
     n_bins_per_point <- .tox_as_integer_vector(n_bins_per_point, "n_bins_per_point")
     if (!is.null(neighbor_mask))
         neighbor_mask <- .tox_as_logical_matrix(neighbor_mask, "neighbor_mask")
+    if (length(shared_residual_range_low) != dim(neighborhood_residuals)[3])
+        .tox_shape_error("shared_residual_range_low", length(shared_residual_range_low), "neighborhood_residuals", dim(neighborhood_residuals)[3])
+    if (length(shared_residual_range_high) != dim(neighborhood_residuals)[3])
+        .tox_shape_error("shared_residual_range_high", length(shared_residual_range_high), "neighborhood_residuals", dim(neighborhood_residuals)[3])
     if (length(n_bins_per_point) != dim(neighborhood_residuals)[3])
         .tox_shape_error("n_bins_per_point", length(n_bins_per_point), "neighborhood_residuals", dim(neighborhood_residuals)[3])
 
-    .result <- .Call("build_residual_histograms_call", neighborhood_residuals, shared_residual_range, max_n_bins, n_bins_per_point, neighbor_mask)
-    .arguments <- c("neighborhood_residuals", "n_reps", "n_neighbors", "n_points", "shared_residual_range", "max_n_bins", "n_bins_per_point", "counts", "pmf", "included_n_reps", "neighbor_mask", "ierr")
-    .sources <- c(NA_character_, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", NA_character_, "counts", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("build_residual_histograms_call", neighborhood_residuals, shared_residual_range_low, shared_residual_range_high, max_n_bins, n_bins_per_point, neighbor_mask)
+    .arguments <- c("neighborhood_residuals", "n_reps", "n_neighbors", "n_points", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins", "n_bins_per_point", "counts", "pmf", "included_n_reps", "neighbor_mask", "ierr")
+    .sources <- c(NA_character_, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", NA_character_, NA_character_, "counts", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
