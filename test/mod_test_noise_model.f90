@@ -244,6 +244,10 @@ contains
         real(real64) :: pool_case(8), pool_control(8)
         real(real64) :: p_value
         integer(int32), parameter :: n_boot = 2000, n_rep = 3
+        ! The helper no longer calls random_number per draw: it reads a CHUNK of
+        ! pre-drawn values from a caller-owned buffer (sized n_rep_case + n_rep_control
+        ! per draw), so the buffer has to be supplied here too.
+        real(real64) :: rbuf(2 * n_rep * n_boot)
 
         pool_case    = [ 0.10_real64, -0.10_real64,  0.20_real64, -0.20_real64, &
                          0.05_real64, -0.05_real64,  0.15_real64, -0.15_real64]
@@ -252,19 +256,19 @@ contains
 
         ! (a) observed = 0 → every null statistic (|mean diff| >= 0) qualifies → p = 1
         call compute_pvalue_bootstrap_mean_helper(pool_case, 8, pool_control, 8, &
-                                                  n_rep, n_rep, 0.0_real64, n_boot, p_value)
+                                                  n_rep, n_rep, 0.0_real64, n_boot, rbuf, p_value)
         call assert_equal_real(p_value, 1.0_real64, TOL, &
                                "bootstrap (obs=0): p_value must be 1 (every draw qualifies)")
 
         ! (b) impossible-to-exceed observed → no draw qualifies → p = 1/(n_boot+1)
         call compute_pvalue_bootstrap_mean_helper(pool_case, 8, pool_control, 8, &
-                                                  n_rep, n_rep, 100.0_real64, n_boot, p_value)
+                                                  n_rep, n_rep, 100.0_real64, n_boot, rbuf, p_value)
         call assert_equal_real(p_value, 1.0_real64 / real(n_boot + 1, real64), TOL, &
                                "bootstrap (obs huge): p_value must equal 1/(n_boot+1)")
 
         ! (c) moderate observed → valid p-value in (0, 1]
         call compute_pvalue_bootstrap_mean_helper(pool_case, 8, pool_control, 8, &
-                                                  n_rep, n_rep, 0.05_real64, n_boot, p_value)
+                                                  n_rep, n_rep, 0.05_real64, n_boot, rbuf, p_value)
         call assert_true(p_value > 0.0_real64 .and. p_value <= 1.0_real64, &
                          "bootstrap (moderate): p_value out of (0, 1]")
         call assert_true(p_value == p_value, "bootstrap (moderate): p_value must not be NaN")
@@ -310,6 +314,7 @@ contains
             means_control, replicates_control, N_GENES, N_SAMPLES, &
             observed_own, compute_own, &
             N_GENES, norm_method, k_start, k_step, k_max, tau, 0.0_real64, &
+            NULL_METHOD_POOLED, &
             pvalues_own, n_genes_with_pvalue, &
             max_pool_size, &
             neigh_own_case, neigh_own_control, neigh_case, &
@@ -369,7 +374,7 @@ contains
     subroutine test_prepare_sorted_data_log_transform()
         integer(int32), parameter :: n_genes = 3, n_samples = 3
         real(real64) :: means(n_genes), replicates(n_samples, n_genes)
-        real(real64) :: expected_residual, log2_factor, log2_gene_mean
+        real(real64) :: expected_residual, log2_factor, log2_gene_mean, bessel
         type(sorted_data_t) :: sorted_data
         integer(int32) :: ierr, i_sample, sorted_pos, orig_idx
 
@@ -384,14 +389,20 @@ contains
         call assert_equal_int(ierr, ERR_OK, "log-transform prepare_sorted_data: ierr should be OK")
 
         log2_factor = 1.0_real64 / log(2.0_real64)
+        ! prepare_sorted_data_helper scales every residual by the Bessel correction
+        ! sqrt(n/(n-1)) at construction: residuals x - xbar have variance
+        ! sigma^2 (n-1)/n, so the raw pool understates sigma (18% at n = 3). The
+        ! expected value here has to carry the same factor.
+        bessel = sqrt(real(n_samples, real64) / real(n_samples - 1, real64))
 
         do sorted_pos = 1, n_genes
             orig_idx = sorted_data%original_indices(sorted_pos)
             log2_gene_mean = sum(log(replicates(:, orig_idx) + 1.0_real64)) &
                               * log2_factor / real(n_samples, real64)
             do i_sample = 1, n_samples
-                expected_residual = log(replicates(i_sample, orig_idx) + 1.0_real64) * log2_factor &
-                                     - log2_gene_mean
+                expected_residual = bessel * ( &
+                    log(replicates(i_sample, orig_idx) + 1.0_real64) * log2_factor &
+                    - log2_gene_mean)
                 call assert_equal_real(sorted_data%residuals_packed(i_sample, sorted_pos), &
                                        expected_residual, TOL, &
                                        "log-transform residual mismatch at gene "//str(orig_idx)// &
@@ -566,6 +577,7 @@ contains
                 means_control, replicates_control, N_GENES, N_SAMPLES, &
                 observed_own, compute_own, &
                 N_GENES, method_norm(i_method), k_start, k_step, k_max, tau, 0.0_real64, &
+                NULL_METHOD_POOLED, &
                 pvalues_own, n_genes_with_pvalue, &
                 max_pool_size, &
                 neigh_own_case, neigh_own_control, neigh_case, &

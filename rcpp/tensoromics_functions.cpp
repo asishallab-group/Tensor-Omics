@@ -1228,6 +1228,64 @@ void compute_noise_pvalues_pipeline_exact_c(
   int* ierr
 );
 
+// Multidimensional (multi-axis) noise model -- Issue #185.
+// Deliberately NOT ABI-compatible with the two scalar entry points above: nearly
+// every array carries an extra axis dimension, so this is a separate binding
+// rather than another `model_variant` of the shared driver. `n_axes = 1` reduces
+// to the scalar EXACT model numerically, not by signature. See tox_noise_model_md.F90.
+//
+// `replicates_*_packed` holds the axis blocks back to back, block `a` being an
+// (n_rep_a x n_genes) column-major matrix; `n_packed_*` is its total length and is
+// cross-checked in Fortran against the value derived from `n_rep_*_per_axis`, so a
+// short buffer returns ERR_DIM_MISMATCH instead of being read past its end.
+//
+// `enum_max_product` is a long long: the joint outcome space passes 2^31 at d = 2
+// with quite ordinary neighbourhoods, so an int cap could not express the
+// interesting thresholds.
+void compute_noise_pvalues_pipeline_md_c(
+  const double* means_case,
+  const double* replicates_case_packed,
+  const int* n_packed_case,
+  const int* n_rep_case_per_axis,
+  const double* means_control,
+  const double* replicates_control_packed,
+  const int* n_packed_control,
+  const int* n_rep_control_per_axis,
+  double* beta_obs,
+  const int* compute_pvalue_own,
+  const int* beta_mode,
+  const int* beta_centre,
+  const int* n_genes,
+  const int* n_axes,
+  const int* norm_method,
+  const int* k_start,
+  const int* k_step,
+  const int* k_max,
+  const double* tau,
+  const double* trim_frac,
+  const int* null_method,
+  const int* sampling_mode,
+  const int* n_draws_max,
+  const int* n_exceed_target,
+  const long long* enum_max_product,
+  const int* seed,
+  const int* max_pool_size,
+  double* pvalues_own,
+  double* d_obs,
+  double* d_std_obs,
+  double* d_sq_null_mean,
+  int* method_used,
+  int* n_draws_used,
+  int* neighborhood_size_case,
+  int* neighborhood_size_control,
+  double* var_null,
+  double* beta_check_cor,
+  double* beta_check_mad,
+  double* delta_hat,
+  int* n_genes_with_pvalue,
+  int* ierr
+);
+
 // Calculates the length of the longest contained string in the Rcpp::CharacterVector
 int get_max_string_length(const Rcpp::CharacterVector& string_vec) {
     int max_len = 0;
@@ -4891,3 +4949,231 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
         norm_method, k_start, k_step, k_max, tau, trim_frac, null_method, max_pool_size);
 }
 
+
+
+// ---------------------------------------------------------------------------
+// Multidimensional (multi-axis) noise model
+// ---------------------------------------------------------------------------
+
+// Pack a list of per-axis replicate matrices into the single contiguous buffer the
+// Fortran side expects. Each element must be an (n_rep_a x n_genes) NumericMatrix;
+// R matrices are already column-major (samples fastest within a gene column), which
+// is exactly what prepare_sorted_data reads, so block `a` copies verbatim -- the
+// packed layout was chosen to make this a memcpy rather than a transpose. Fills
+// `n_rep_per_axis` on the way through and validates that every axis agrees on the
+// gene count and carries at least 2 replicates.
+static std::vector<double> pack_axis_replicates(
+    const Rcpp::List& replicate_list,
+    const char* side,
+    int n_genes,
+    Rcpp::IntegerVector& n_rep_per_axis) {
+
+    int n_axes = replicate_list.size();
+    std::vector<double> packed;
+    std::size_t total = 0;
+
+    for (int a = 0; a < n_axes; ++a) {
+        Rcpp::NumericMatrix m = Rcpp::as<Rcpp::NumericMatrix>(replicate_list[a]);
+        if (m.ncol() != n_genes)
+            Rcpp::stop("%s axis %d has %d gene columns, expected %d: every axis must "
+                       "describe the same gene set in the same order.",
+                       side, a + 1, m.ncol(), n_genes);
+        if (m.nrow() < 2)
+            Rcpp::stop("%s axis %d has %d replicate(s); at least 2 are needed to form a "
+                       "residual variance.", side, a + 1, m.nrow());
+        n_rep_per_axis[a] = m.nrow();
+        total += static_cast<std::size_t>(m.nrow()) * static_cast<std::size_t>(n_genes);
+    }
+
+    packed.resize(total);
+    std::size_t off = 0;
+    for (int a = 0; a < n_axes; ++a) {
+        Rcpp::NumericMatrix m = Rcpp::as<Rcpp::NumericMatrix>(replicate_list[a]);
+        std::size_t n = static_cast<std::size_t>(m.nrow()) * static_cast<std::size_t>(n_genes);
+        std::memcpy(packed.data() + off, m.begin(), n * sizeof(double));
+        off += n;
+    }
+    return packed;
+}
+
+//' Compute multidimensional noise-model p-values (multi-axis, gene-vs-own)
+//'
+//' Generalises the scalar noise model to \code{d} INDEPENDENT axes. A gene is one
+//' vector; the axes are not tested individually. Per gene,
+//' \code{beta(a) = mean_case(a) - mean_ctrl(a)}, and two norms are computed:
+//' \code{D = sqrt(sum beta^2)} (effect size, log2FC units) and
+//' \code{D_std = sqrt(sum beta^2 / Var_null(a))} (test statistic, unitless, and
+//' with independent axes the full Mahalanobis statistic). \code{D_std} drives the
+//' p-value.
+//'
+//' The null is a product of residual vectors: one residual per axis per side, each
+//' scaled by \code{1/sqrt(n)} of ITS OWN side, so ragged designs are handled per
+//' side rather than per axis. \code{Var_null(a) = Var(pool_case)/n_case +
+//' Var(pool_ctrl)/n_ctrl} follows in closed form and is returned.
+//'
+//' Three paths, decided and reported per gene in \code{method_used}: enumerated
+//' (exact, no floor, taken while the joint space fits \code{enum_max_product} --
+//' in practice the d = 1 regression path), systematic stride sampling (default),
+//' and RNG sampling.
+//'
+//' Assumes every sample belongs to exactly one axis. That assumption is what makes
+//' the Cartesian-product null correct, it is NOT checkable from the numbers here,
+//' and the R wrapper \code{tox_compute_noise_pvalues_pipeline_md} enforces it by
+//' comparing sample identifiers across the per-axis matrices.
+//'
+//' @param case_means NumericMatrix of case means (n_genes x n_axes); the kNN
+//'   matching coordinate, not the statistic.
+//' @param case_replicates List of per-axis NumericMatrix, each
+//'   (n_replicates_axis x n_genes). Replicate counts may differ between axes.
+//' @param control_means NumericMatrix of control means (n_genes x n_axes)
+//' @param control_replicates List of per-axis NumericMatrix, each
+//'   (n_replicates_axis x n_genes)
+//' @param beta_obs NumericMatrix (n_axes x n_genes) of observed per-axis
+//'   statistics; ignored when beta_mode = 0.
+//' @param valid_genes_own IntegerVector indicating which genes to test
+//' @param beta_mode Integer 0 = compute beta internally (default, scale-coherent);
+//'   1 = use the supplied beta_obs and report beta_check_cor / beta_check_mad.
+//' @param beta_centre Integer 0 = no composition centring; 1 = subtract the
+//'   per-axis median beta across genes. Must be 0 if R has already normalised.
+//' @param norm_method Integer normalization method (0 = linear, non-zero = log2)
+//' @param k_start Integer initial neighbour-gene count
+//' @param k_step Integer adaptive growth step
+//' @param k_max Integer maximum neighbour-gene count
+//' @param tau Double adaptive stopping threshold
+//' @param trim_frac Double symmetric per-tail residual trim fraction; raw
+//'   normalization only, as in the scalar models.
+//' @param null_method Integer; ABI parity only, must be 0. Gene-blocking is not a
+//'   distinct null under one-residual-per-side draws.
+//' @param sampling_mode Integer 0 = systematic stride (default), 1 = RNG
+//' @param n_draws_max Integer M; p-value floor 1/(M + 1) on the sampled paths
+//' @param n_exceed_target Integer Besag-Clifford exceedance target; 0 disables
+//'   sequential stopping (the default, and the reference arm).
+//' @param enum_max_product Double, read as an integer count: enumerate exactly
+//'   while the joint outcome space fits this; 0 forces sampling.
+//' @param seed Integer RNG seed (consumed only by sampling_mode = 1)
+//' @param max_pool_size Integer maximum residual pool size per axis
+//'
+//' @return List with pvalues_own, d_obs, d_std_obs, d_sq_null_mean, method_used,
+//'   n_draws_used, beta_obs (filled and/or centred), per-axis
+//'   neighborhood_size_case / neighborhood_size_control / var_null
+//'   (n_axes x n_genes), beta_check_cor, beta_check_mad, delta_hat, n_success and
+//'   error code.
+// [[Rcpp::export]]
+Rcpp::List tox_compute_noise_pvalues_pipeline_md_rcpp(
+    Rcpp::NumericMatrix case_means,
+    Rcpp::List case_replicates,
+    Rcpp::NumericMatrix control_means,
+    Rcpp::List control_replicates,
+    Rcpp::NumericMatrix beta_obs,
+    Rcpp::IntegerVector valid_genes_own,
+    int beta_mode,
+    int beta_centre,
+    int norm_method,
+    int k_start,
+    int k_step,
+    int k_max,
+    double tau,
+    double trim_frac,
+    int null_method,
+    int sampling_mode,
+    int n_draws_max,
+    int n_exceed_target,
+    double enum_max_product,
+    int seed,
+    int max_pool_size) {
+
+    int n_axes = case_replicates.size();
+    if (control_replicates.size() != n_axes)
+        Rcpp::stop("case_replicates has %d axes but control_replicates has %d.",
+                   n_axes, (int)control_replicates.size());
+    if (n_axes < 1)
+        Rcpp::stop("At least one axis is required.");
+
+    int n_genes = case_means.nrow();
+    if (case_means.ncol() != n_axes || control_means.ncol() != n_axes)
+        Rcpp::stop("case_means / control_means must be (n_genes x n_axes) with n_axes = %d.", n_axes);
+    if (control_means.nrow() != n_genes)
+        Rcpp::stop("case_means and control_means disagree on the gene count (%d vs %d).",
+                   n_genes, control_means.nrow());
+    if (valid_genes_own.size() != n_genes)
+        Rcpp::stop("valid_genes_own has length %d, expected %d.",
+                   (int)valid_genes_own.size(), n_genes);
+
+    // R has no native 64-bit integer, so the enumeration cap crosses as a double
+    // and is converted here. It is a count, not a measurement: reject anything that
+    // is not exactly representable rather than silently truncating.
+    if (!(enum_max_product >= 0.0) || enum_max_product > 9.007199254740992e15)
+        Rcpp::stop("enum_max_product must be a non-negative count below 2^53; got %g.",
+                   enum_max_product);
+    long long enum_cap = (long long)enum_max_product;
+
+    Rcpp::IntegerVector n_rep_case_per_axis(n_axes);
+    Rcpp::IntegerVector n_rep_control_per_axis(n_axes);
+    std::vector<double> packed_case =
+        pack_axis_replicates(case_replicates, "case_replicates", n_genes, n_rep_case_per_axis);
+    std::vector<double> packed_control =
+        pack_axis_replicates(control_replicates, "control_replicates", n_genes, n_rep_control_per_axis);
+
+    int n_packed_case = (int)packed_case.size();
+    int n_packed_control = (int)packed_control.size();
+
+    // beta_obs is written by Fortran (filled when beta_mode = 0, centred when
+    // beta_centre = 1), so work on a copy rather than mutating the caller's matrix.
+    Rcpp::NumericMatrix beta_work(n_axes, n_genes);
+    if (beta_mode == 1) {
+        if (beta_obs.nrow() != n_axes || beta_obs.ncol() != n_genes)
+            Rcpp::stop("beta_obs must be (n_axes x n_genes) = (%d x %d) when beta_mode = 1.",
+                       n_axes, n_genes);
+        std::memcpy(beta_work.begin(), beta_obs.begin(),
+                    (std::size_t)n_axes * (std::size_t)n_genes * sizeof(double));
+    }
+
+    Rcpp::NumericVector pvalues_own(n_genes);
+    Rcpp::NumericVector d_obs(n_genes);
+    Rcpp::NumericVector d_std_obs(n_genes);
+    Rcpp::NumericVector d_sq_null_mean(n_genes);
+    Rcpp::IntegerVector method_used(n_genes);
+    Rcpp::IntegerVector n_draws_used(n_genes);
+    Rcpp::IntegerMatrix neighborhood_size_case(n_axes, n_genes);
+    Rcpp::IntegerMatrix neighborhood_size_control(n_axes, n_genes);
+    Rcpp::NumericMatrix var_null(n_axes, n_genes);
+    Rcpp::NumericVector beta_check_cor(n_axes);
+    Rcpp::NumericVector beta_check_mad(n_axes);
+    Rcpp::NumericVector delta_hat(n_axes);
+
+    int n_success = 0;
+    int ierr = 0;
+
+    compute_noise_pvalues_pipeline_md_c(
+        case_means.begin(), packed_case.data(), &n_packed_case, n_rep_case_per_axis.begin(),
+        control_means.begin(), packed_control.data(), &n_packed_control,
+        n_rep_control_per_axis.begin(),
+        beta_work.begin(), valid_genes_own.begin(), &beta_mode, &beta_centre,
+        &n_genes, &n_axes, &norm_method,
+        &k_start, &k_step, &k_max, &tau, &trim_frac, &null_method,
+        &sampling_mode, &n_draws_max, &n_exceed_target, &enum_cap, &seed, &max_pool_size,
+        pvalues_own.begin(), d_obs.begin(), d_std_obs.begin(), d_sq_null_mean.begin(),
+        method_used.begin(), n_draws_used.begin(),
+        neighborhood_size_case.begin(), neighborhood_size_control.begin(), var_null.begin(),
+        beta_check_cor.begin(), beta_check_mad.begin(), delta_hat.begin(),
+        &n_success, &ierr);
+
+    return Rcpp::List::create(
+        Rcpp::Named("pvalues_own") = pvalues_own,
+        Rcpp::Named("d_obs") = d_obs,
+        Rcpp::Named("d_std_obs") = d_std_obs,
+        Rcpp::Named("d_sq_null_mean") = d_sq_null_mean,
+        Rcpp::Named("method_used") = method_used,
+        Rcpp::Named("n_draws_used") = n_draws_used,
+        Rcpp::Named("beta_obs") = beta_work,
+        Rcpp::Named("neighborhood_size_case") = neighborhood_size_case,
+        Rcpp::Named("neighborhood_size_control") = neighborhood_size_control,
+        Rcpp::Named("var_null") = var_null,
+        Rcpp::Named("beta_check_cor") = beta_check_cor,
+        Rcpp::Named("beta_check_mad") = beta_check_mad,
+        Rcpp::Named("delta_hat") = delta_hat,
+        Rcpp::Named("n_rep_case_per_axis") = n_rep_case_per_axis,
+        Rcpp::Named("n_rep_control_per_axis") = n_rep_control_per_axis,
+        Rcpp::Named("n_success") = n_success,
+        Rcpp::Named("ierr") = ierr);
+}

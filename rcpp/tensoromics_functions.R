@@ -3716,3 +3716,251 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
     return(result)
 }
 
+
+#' Assert that no sample identifier is shared between axes
+#'
+#' The multidimensional noise model builds its null as the Cartesian product of
+#' the per-axis residual distributions. That is correct precisely because the axes
+#' share no samples: not knowing which sample in axis 1 corresponds to which in
+#' axis 2 is exactly the condition under which drawing each axis independently
+#' reproduces the true joint null. If a plant, subject, extraction batch or a
+#' shared control group recurs across axes, the product null is wrong and the
+#' p-values are anti-conservative.
+#'
+#' Pairing is metadata, not something the numbers reveal, so this check reads it
+#' off the replicate matrices' rownames and turns a silent validity failure into a
+#' loud one. Both groups are checked together: a sample that is a case on one axis
+#' and a control on another violates the assumption just as badly as a repeat
+#' within a group.
+#'
+#' @param replicate_lists Named list of lists of replicate matrices (samples x
+#'   genes), e.g. `list(case = case_replicates, control = control_replicates)`.
+#'
+#' @return Invisibly `TRUE`. Errors otherwise.
+#' @keywords internal
+tox_md_assert_disjoint_samples <- function(replicate_lists) {
+  ids <- character(0)
+  owner <- character(0)
+
+  for (grp in names(replicate_lists)) {
+    mats <- replicate_lists[[grp]]
+    for (i in seq_along(mats)) {
+      rn <- rownames(mats[[i]])
+      label <- paste0(grp, " axis ", i)
+      if (is.null(rn) || any(is.na(rn)) || any(!nzchar(rn)))
+        stop("The multi-axis noise model assumes every sample belongs to exactly one axis, ",
+             "and verifies it from the replicate matrices' rownames -- but ", label,
+             " has no usable sample identifiers. Set rownames() to the sample IDs, or pass ",
+             "check_axis_samples = FALSE to waive the check (and with it the independence ",
+             "assumption the p-values rest on).", call. = FALSE)
+      if (anyDuplicated(rn))
+        stop("Duplicated sample identifiers within ", label, ": ",
+             paste(unique(rn[duplicated(rn)]), collapse = ", "),
+             ". Each replicate must be a distinct sample.", call. = FALSE)
+      ids <- c(ids, rn)
+      owner <- c(owner, rep(label, length(rn)))
+    }
+  }
+
+  dup <- unique(ids[duplicated(ids)])
+  if (length(dup) > 0) {
+    detail <- vapply(head(dup, 10L), function(d)
+      paste0(d, " (", paste(owner[ids == d], collapse = " + "), ")"),
+      character(1))
+    stop("The multi-axis noise model assumes every sample belongs to exactly one axis, ",
+         "but ", length(dup), " sample identifier(s) appear on more than one axis:\n  ",
+         paste(detail, collapse = "\n  "),
+         if (length(dup) > 10L) "\n  ..." else "",
+         "\nShared samples (a common control group, repeated subjects, one extraction batch ",
+         "across axes) make the per-axis residuals correlated, so the Cartesian-product null ",
+         "is anti-conservative. Split the samples, or use a model that accounts for the ",
+         "pairing -- do not silence this.", call. = FALSE)
+  }
+
+  invisible(TRUE)
+}
+
+#' Compute multidimensional noise-model p-values (multi-axis)
+#'
+#' Generalises \code{\link{tox_compute_noise_pvalues_pipeline}} from one
+#' case/control contrast to \code{d} INDEPENDENT axes (tissues, stages,
+#' conditions). A gene is one vector; the axes are not tested individually. Per
+#' gene, \eqn{\hat\beta_a} is the axis-\eqn{a} case-minus-control mean difference
+#' and two norms are computed:
+#' \deqn{D = \sqrt{\sum_a \hat\beta_a^2}, \qquad
+#'       D_{std} = \sqrt{\sum_a \hat\beta_a^2 / \mathrm{Var}_{null}(a)}}
+#' \code{D} is the effect size in log2FC units and \code{D_std} is the test
+#' statistic — with independent axes the null covariance is diagonal, so
+#' \code{D_std} is the full Mahalanobis statistic. \code{D_std} drives the p-value
+#' and the ranking; report \code{D} next to each gene, and
+#' \code{pmax(0, d_obs^2 - d_sq_null_mean)} as its bias-corrected version
+#' (\code{D} is upward biased — its expectation is non-zero even under H0).
+#'
+#' The null takes ONE residual per axis per side, each scaled by \code{1/sqrt(n)}
+#' of its own side, so a ragged design is handled per side rather than per axis.
+#' \code{Var_null(a) = Var(pool_case)/n_case + Var(pool_ctrl)/n_ctrl} then follows
+#' in closed form with no sampling, and is returned as \code{var_null}.
+#'
+#' @section Three paths:
+#' Reported per gene in \code{method_used}: \code{0} enumerated (exact, no floor,
+#' taken while the joint outcome space fits \code{enum_max_product} — in practice
+#' the \code{d = 1} regression path, since the space grows quadratically in the
+#' neighbourhood size), \code{1} systematic stride sampling (the default:
+#' deterministic, seed-free, lower variance than random draws at the same
+#' \code{M}), \code{2} RNG sampling. Note that \code{(1+B)/(M+1)} is justified as a
+#' valid Monte-Carlo p-value under RANDOM draws; under systematic sampling it is an
+#' approximation of the exact enumerated tail, so compare the two arms on a mock
+#' null before relying on it.
+#'
+#' @section Scope assumption:
+#' Every sample must belong to exactly one axis — that is what makes the
+#' Cartesian-product null correct. Enforced by comparing sample identifiers
+#' (rownames) across the per-axis replicate matrices; see \code{check_axis_samples}.
+#'
+#' @param case_replicates List of per-axis case replicate matrices, each
+#'   (samples x genes). Replicate counts may differ between axes; gene columns
+#'   must be identical and in the same order. Rownames must be the sample IDs.
+#' @param control_replicates List of per-axis control replicate matrices, same
+#'   shape rules.
+#' @param case_means Matrix (n_genes x n_axes) of case means — the kNN matching
+#'   coordinate, not the statistic. \code{NULL} (default) derives it per axis as
+#'   the arithmetic replicate mean.
+#' @param control_means Matrix (n_genes x n_axes) of control means, or \code{NULL}.
+#' @param beta_obs Matrix (n_axes x n_genes) of externally estimated per-axis
+#'   statistics. Only used when \code{beta_mode = 1}.
+#' @param valid_genes_own Integer vector (1 = test this gene). \code{NULL} tests all.
+#' @param beta_mode 0 = compute beta internally (default, scale-coherent with the
+#'   residual pools); 1 = use \code{beta_obs}. In mode 1 the internal estimate is
+#'   still computed and reported against the supplied one through
+#'   \code{beta_check_cor} / \code{beta_check_mad}: correlation near 1 with a large
+#'   MAD is a units problem (edgeR coefficients are natural log, a factor of ln 2,
+#'   and shrunk by default); degraded correlation is shrinkage or non-linearity.
+#' @param beta_centre 0 = no composition centring (default); 1 = subtract the
+#'   per-axis median beta across genes — median centring of log-ratios, the TPM-side
+#'   analogue of what TMM does for counts. \strong{Must be 0 whenever the R side has
+#'   already normalised}, or the data are centred twice. \code{delta_hat} is
+#'   reported either way, so the shift can be sized before deciding.
+#' @param norm_method 0 = linear, non-zero = log2. Applied per axis.
+#' @param k_start,k_step,k_max,tau Adaptive kNN neighbourhood settings, per axis.
+#'   These count GENES, not residuals.
+#' @param trim_frac Symmetric per-tail residual trim fraction; raw normalization
+#'   only, as in the scalar models.
+#' @param null_method ABI parity only; must be 0. Gene-blocking is not a distinct
+#'   null when a draw takes one residual per side.
+#' @param sampling_mode 0 = systematic stride (default), 1 = RNG.
+#' @param n_draws_max Integer M, default 20000. The p-value floor is 1/(M + 1).
+#'   M is set by BH over the gene count, not by the number of axes: the estimate is
+#'   of a one-dimensional tail probability, so there is no dimensional surcharge.
+#'   At G = 20000 and q = 0.05 roughly 20 genes must be tied at the floor before any
+#'   is rejected; M = 4e5 is where the floor stops binding altogether.
+#' @param n_exceed_target Besag-Clifford exceedance target. 0 (default) disables
+#'   sequential stopping. Non-zero is a DIFFERENT estimator with granularity
+#'   \code{c/m} whose interaction with BH is unverified — keep the fixed-M arm as
+#'   the reference until a mock-null run says otherwise.
+#' @param enum_max_product Enumerate exactly while the joint outcome space
+#'   \code{prod_a (n_pool_case_a * n_pool_ctrl_a)} fits this; 0 forces sampling.
+#'   Default 1e5, which keeps realistic \code{d = 1} runs exact and \code{d >= 2}
+#'   sampled.
+#' @param seed Integer RNG seed (consumed only by \code{sampling_mode = 1}).
+#' @param max_pool_size Integer maximum residual pool size per axis.
+#' @param check_axis_samples Logical; enforce the scope assumption from the
+#'   matrices' rownames (default TRUE). Setting FALSE waives the assumption the
+#'   p-values rest on — do it only when the disjointness is established elsewhere.
+#'
+#' @return A list with \code{pvalues_own}, \code{d_obs}, \code{d_std_obs},
+#'   \code{d_sq_null_mean}, \code{method_used}, \code{n_draws_used}, the (possibly
+#'   filled/centred) \code{beta_obs}, per-axis \code{neighborhood_size_case} /
+#'   \code{neighborhood_size_control} / \code{var_null} (n_axes x n_genes),
+#'   \code{beta_check_cor}, \code{beta_check_mad}, \code{delta_hat},
+#'   \code{n_rep_case_per_axis}, \code{n_rep_control_per_axis}, \code{n_success}
+#'   and \code{ierr}. Genes that were not tested carry \code{pvalues_own = -1}.
+#' @export
+tox_compute_noise_pvalues_pipeline_md <- function(
+    case_replicates,
+    control_replicates,
+    case_means = NULL,
+    control_means = NULL,
+    beta_obs = NULL,
+    valid_genes_own = NULL,
+    beta_mode = 0L,
+    beta_centre = 0L,
+    norm_method = 0L,
+    k_start = 20L,
+    k_step = 1L,
+    k_max = 50L,
+    tau = 0.1,
+    trim_frac = 0.0,
+    null_method = 0L,
+    sampling_mode = 0L,
+    n_draws_max = 20000L,
+    n_exceed_target = 0L,
+    enum_max_product = 1e5,
+    seed = 42L,
+    max_pool_size,
+    check_axis_samples = TRUE
+) {
+    if (!is.list(case_replicates) || !is.list(control_replicates))
+        stop("case_replicates and control_replicates must be LISTS of per-axis matrices ",
+             "(one element per axis).", call. = FALSE)
+    n_axes <- length(case_replicates)
+    if (length(control_replicates) != n_axes)
+        stop("case_replicates has ", n_axes, " axes but control_replicates has ",
+             length(control_replicates), ".", call. = FALSE)
+    if (n_axes < 1L) stop("At least one axis is required.", call. = FALSE)
+
+    case_replicates <- lapply(case_replicates, as.matrix)
+    control_replicates <- lapply(control_replicates, as.matrix)
+
+    n_genes <- ncol(case_replicates[[1L]])
+    for (a in seq_len(n_axes)) {
+        if (ncol(case_replicates[[a]]) != n_genes || ncol(control_replicates[[a]]) != n_genes)
+            stop("Axis ", a, " disagrees on the gene count; every axis must describe the ",
+                 "same gene set in the same order.", call. = FALSE)
+        gn_c <- colnames(case_replicates[[a]])
+        gn_t <- colnames(control_replicates[[a]])
+        if (!is.null(gn_c) && !is.null(gn_t) && !identical(gn_c, gn_t))
+            stop("Axis ", a, ": case and control gene names differ or are ordered differently.",
+                 call. = FALSE)
+    }
+
+    # The scope assumption, checked before anything is computed.
+    if (isTRUE(check_axis_samples))
+        tox_md_assert_disjoint_samples(list(case = case_replicates,
+                                            control = control_replicates))
+
+    if (is.null(case_means))
+        case_means <- vapply(case_replicates, colMeans, numeric(n_genes))
+    if (is.null(control_means))
+        control_means <- vapply(control_replicates, colMeans, numeric(n_genes))
+    case_means <- matrix(as.numeric(case_means), nrow = n_genes, ncol = n_axes)
+    control_means <- matrix(as.numeric(control_means), nrow = n_genes, ncol = n_axes)
+
+    if (is.null(valid_genes_own)) valid_genes_own <- rep(1L, n_genes)
+    if (is.null(beta_obs)) beta_obs <- matrix(0.0, nrow = n_axes, ncol = n_genes)
+    beta_obs <- matrix(as.numeric(beta_obs), nrow = n_axes, ncol = n_genes)
+
+    result <- tox_compute_noise_pvalues_pipeline_md_rcpp(
+        case_means = case_means,
+        case_replicates = case_replicates,
+        control_means = control_means,
+        control_replicates = control_replicates,
+        beta_obs = beta_obs,
+        valid_genes_own = as.integer(valid_genes_own),
+        beta_mode = as.integer(beta_mode),
+        beta_centre = as.integer(beta_centre),
+        norm_method = as.integer(norm_method),
+        k_start = as.integer(k_start),
+        k_step = as.integer(k_step),
+        k_max = as.integer(k_max),
+        tau = as.numeric(tau),
+        trim_frac = as.numeric(trim_frac),
+        null_method = as.integer(null_method),
+        sampling_mode = as.integer(sampling_mode),
+        n_draws_max = as.integer(n_draws_max),
+        n_exceed_target = as.integer(n_exceed_target),
+        enum_max_product = as.numeric(enum_max_product),
+        seed = as.integer(seed),
+        max_pool_size = as.integer(max_pool_size)
+    )
+    return(result)
+}
