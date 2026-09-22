@@ -968,7 +968,7 @@
     "prefix": "tox:data_integration_jsd.use",
     "description": "use tox_data_integration_jsd, only: ...",
     "body": [
-      "use tox_data_integration_jsd, only: ${1|determine_shared_residual_range,determine_shared_residual_range_expert,determine_study_shared_residual_range,determine_all_studies_shared_residual_range,build_residual_histograms,calc_pmf,compute_divergence_per_reference_point,compute_weighted_global_divergence|}"
+      "use tox_data_integration_jsd, only: ${1|determine_shared_residual_range,determine_shared_residual_range_expert,determine_study_shared_residual_range,build_residual_histograms,calc_pmf,compute_divergence_per_reference_point,compute_weighted_global_divergence|}"
     ]
   },
   "determine_shared_residual_range (call)": {
@@ -1053,37 +1053,6 @@
       "    shared_residual_range=${7:shared_residual_range}, &",
       "    residual_range_quantile=${8:residual_range_quantile}, &",
       "    ierr=${9:ierr})",
-      "if (is_err(ierr)) return"
-    ]
-  },
-  "determine_all_studies_shared_residual_range (call)": {
-    "prefix": "tox:determine_all_studies_shared_residual_range",
-    "description": "N-study generalization of `determine_study_shared_residual_range_impl`: pools the absolute",
-    "body": [
-      "call determine_all_studies_shared_residual_range( &",
-      "    neighborhood_residuals=${1:neighborhood_residuals}, &",
-      "    n_studies=${2:n_studies}, &",
-      "    max_n_reps_all_studies=${3:max_n_reps_all_studies}, &",
-      "    n_neighbors=${4:n_neighbors}, &",
-      "    n_points=${5:n_points}, &",
-      "    shared_residual_range=${6:shared_residual_range}, &",
-      "    residual_range_quantile=${7:residual_range_quantile}, &",
-      "    ierr=${8:ierr})"
-    ]
-  },
-  "determine_all_studies_shared_residual_range (call, checked)": {
-    "prefix": "tox:determine_all_studies_shared_residual_range.checked",
-    "description": "N-study generalization of `determine_study_shared_residual_range_impl`: pools the absolute (with error check)",
-    "body": [
-      "call determine_all_studies_shared_residual_range( &",
-      "    neighborhood_residuals=${1:neighborhood_residuals}, &",
-      "    n_studies=${2:n_studies}, &",
-      "    max_n_reps_all_studies=${3:max_n_reps_all_studies}, &",
-      "    n_neighbors=${4:n_neighbors}, &",
-      "    n_points=${5:n_points}, &",
-      "    shared_residual_range=${6:shared_residual_range}, &",
-      "    residual_range_quantile=${7:residual_range_quantile}, &",
-      "    ierr=${8:ierr})",
       "if (is_err(ierr)) return"
     ]
   },

@@ -18,7 +18,6 @@ from tensor_omics import (
     compute_divergence_per_reference_point,
     compute_weighted_global_divergence,
     calc_pmf,
-    determine_all_studies_shared_residual_range,
 )
 from tensor_omics.error_handling import ERR_INVALID_INPUT
 
@@ -585,50 +584,6 @@ def test_calc_pmf():
     included_n_reps = np.array([1], dtype=np.int32, order="F")
 
     assert_error(lambda: calc_pmf(counts, included_n_reps), "Test 3 failed: expected ERR_INVALID_INPUT", ERR_INVALID_INPUT)
-
-
-def test_determine_all_studies_shared_residual_range():
-
-    # ============================================================
-    # Test 1 — Three single-replicate studies, hand-computed: pooled absolute residuals sorted
-    # are [3, 4, 5]; the default 95% quantile has rank 0.95*(3-1)+1 = 2.9, so
-    # R = sorted(2) + 0.9*(sorted(3)-sorted(2)) = 4 + 0.9*1 = 4.9
-    # ============================================================
-    all_studies = np.full((1, 1, 1, 3), np.nan, dtype=np.float64, order="F")
-    all_studies[0, 0, 0, 0] = 3.0
-    all_studies[0, 0, 0, 1] = -4.0
-    all_studies[0, 0, 0, 2] = 5.0
-
-    R = determine_all_studies_shared_residual_range(all_studies)
-    assert abs(R - 4.9) < TOL, f"Test 1 failed: expected 4.9, got {R}"
-
-    # ============================================================
-    # Test 2 — Regression-safety cross-check: feeding the same two studies both through
-    # determine_study_shared_residual_range (with S2 as-is) and through the N-study routine (S2
-    # padded with NaN up to S1's replicate count, n_studies=2) must give the exact same range.
-    # ============================================================
-    S1 = np.zeros((4, 2, 2), dtype=np.float64, order="F")
-    S1[:, 0, 0] = [1,  2,  3, 4]
-    S1[:, 1, 0] = [5,  6, -7, 8]
-    S1[:, 0, 1] = [9, 10, 11, 12]
-    S1[:, 1, 1] = [1, 1, 1, 1]
-
-    S2 = np.zeros((3, 2, 2), dtype=np.float64, order="F")
-    S2[:, 0, 0] = [2, -4,  6]
-    S2[:, 1, 0] = [8,  1,  3]
-    S2[:, 0, 1] = [5,  7,  9]
-    S2[:, 1, 1] = [0,  1,  2]
-
-    R_two_study = determine_study_shared_residual_range(S1, S2, 0.95)
-
-    all_studies = np.full((4, 2, 2, 2), np.nan, dtype=np.float64, order="F")
-    all_studies[:, :, :, 0] = S1
-    all_studies[:3, :, :, 1] = S2  # all_studies[3, :, :, 1] stays NaN -- padding S2 up to max_n_reps
-
-    R_all_studies = determine_all_studies_shared_residual_range(all_studies)
-    assert np.isclose(R_all_studies, R_two_study, atol=TOL), \
-        f"Test 2 failed: N-study range {R_all_studies} != two-study range {R_two_study}"
-    assert abs(R_all_studies - 10.65) < TOL, f"Test 2 failed: expected 10.65, got {R_all_studies}"
 
 
 def main():

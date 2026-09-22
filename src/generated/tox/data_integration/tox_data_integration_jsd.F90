@@ -11,13 +11,12 @@
 module tox_data_integration_jsd
     use f42_safeguard
     use tox_data_integration_jsd_impl, only: build_residual_histograms_impl, calc_pmf_impl, compute_divergence_per_reference_point_impl, compute_weighted_global_divergence_impl
-    use tox_data_integration_jsd_impl, only: determine_all_studies_shared_residual_range_impl, determine_shared_residual_range_impl, determine_study_shared_residual_range_impl
+    use tox_data_integration_jsd_impl, only: determine_shared_residual_range_impl, determine_study_shared_residual_range_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_sort_impl, only: init_perm, sort_array_heapsort
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
-    use tox_errors, only: validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size, validate_in_range_int
-    use tox_errors, only: validate_in_range_real
+    use tox_errors, only: validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -25,8 +24,6 @@ module tox_data_integration_jsd
     public :: determine_shared_residual_range_expert
     public :: determine_study_shared_residual_range
     public :: determine_study_shared_residual_range_expert
-    public :: determine_all_studies_shared_residual_range
-    public :: determine_all_studies_shared_residual_range_expert
     public :: build_residual_histograms
     public :: calc_pmf
     public :: compute_divergence_per_reference_point
@@ -267,137 +264,6 @@ contains
             residual_range_quantile = residual_range_quantile&
         )
     end subroutine determine_study_shared_residual_range_expert
-
-    !> summary: Validates its inputs, prepares what [[tox_data_integration_jsd_impl(module):determine_all_studies_shared_residual_range_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_jsd(module):determine_all_studies_shared_residual_range_expert]] to prepare it yourself.
-    !| N-study generalization of `determine_study_shared_residual_range_impl`: pools the absolute
-    !| residuals of every study, sorts them, and takes the quantile exactly as
-    !| `determine_shared_residual_range` does.
-    pure subroutine determine_all_studies_shared_residual_range(&
-            neighborhood_residuals,&
-            n_studies,&
-            max_n_reps_all_studies,&
-            n_neighbors,&
-            n_points,&
-            shared_residual_range,&
-            residual_range_quantile,&
-            ierr&
-        )
-        integer(int32), intent(in) :: n_studies
-            !! Number of studies
-            !! The minimum valid value is `1_int32`.
-        integer(int32), intent(in) :: max_n_reps_all_studies
-            !! Maximum number of replicates across all studies
-        integer(int32), intent(in) :: n_neighbors
-            !! Number of neighbors in the studies
-        integer(int32), intent(in) :: n_points
-            !! Number of reference points in the studies
-        real(real64), dimension(max_n_reps_all_studies, n_neighbors, n_points, n_studies), intent(in) :: neighborhood_residuals
-            !! Computed neighborhood residuals for every study, NaN is explicitly allowed for missing values
-            !! NaN is permitted for this value.
-        real(real64), intent(out) :: shared_residual_range
-            !! Computed residual range (R)
-        real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile in [0,1] for determining the residual range
-            !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `1.0_real64`.
-            !! The default value is `0.95_real64`.
-        integer(int32), intent(out) :: ierr
-            !! Error code; zero on success, non-zero on failure.
-        real(real64), dimension(:), allocatable :: tmp_abs_residual_pool
-        integer(int32), dimension(:), allocatable :: tmp_abs_residual_pool_perm
-
-        call set_ok(ierr)
-#ifndef NO_INPUT_VALIDATION
-        call validate_in_range_int(n_studies, ierr, arg_pos=2_int32, min=1_int32)
-        call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=3_int32)
-        call validate_dimension_size(n_neighbors, ierr, arg_pos=4_int32)
-        call validate_dimension_size(n_points, ierr, arg_pos=5_int32)
-        call validate_in_range_real(residual_range_quantile, ierr, arg_pos=7_int32, min=0.0_real64, max=1.0_real64)
-        call validate_all_in_range_real(neighborhood_residuals, max_n_reps_all_studies * n_neighbors * n_points * n_studies, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
-        if (is_err(ierr)) return
-#endif
-
-        M_ALLOCATE(tmp_abs_residual_pool(max_n_reps_all_studies*n_neighbors*n_points*n_studies))
-        M_ALLOCATE(tmp_abs_residual_pool_perm(max_n_reps_all_studies*n_neighbors*n_points*n_studies))
-
-        call determine_all_studies_shared_residual_range_impl(&
-            neighborhood_residuals = neighborhood_residuals,&
-            n_studies = n_studies,&
-            max_n_reps_all_studies = max_n_reps_all_studies,&
-            n_neighbors = n_neighbors,&
-            n_points = n_points,&
-            tmp_abs_residual_pool = tmp_abs_residual_pool,&
-            tmp_abs_residual_pool_perm = tmp_abs_residual_pool_perm,&
-            shared_residual_range = shared_residual_range,&
-            residual_range_quantile = residual_range_quantile&
-        )
-    end subroutine determine_all_studies_shared_residual_range
-
-    !> summary: Validates its inputs, then calls [[tox_data_integration_jsd_impl(module):determine_all_studies_shared_residual_range_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_data_integration_jsd(module):determine_all_studies_shared_residual_range]] does both.
-    !| N-study generalization of `determine_study_shared_residual_range_impl`: pools the absolute
-    !| residuals of every study, sorts them, and takes the quantile exactly as
-    !| `determine_shared_residual_range` does.
-    pure subroutine determine_all_studies_shared_residual_range_expert(&
-            neighborhood_residuals,&
-            n_studies,&
-            max_n_reps_all_studies,&
-            n_neighbors,&
-            n_points,&
-            tmp_abs_residual_pool,&
-            tmp_abs_residual_pool_perm,&
-            shared_residual_range,&
-            residual_range_quantile,&
-            ierr&
-        )
-        integer(int32), intent(in) :: n_studies
-            !! Number of studies
-            !! The minimum valid value is `1_int32`.
-        integer(int32), intent(in) :: max_n_reps_all_studies
-            !! Maximum number of replicates across all studies
-        integer(int32), intent(in) :: n_neighbors
-            !! Number of neighbors in the studies
-        integer(int32), intent(in) :: n_points
-            !! Number of reference points in the studies
-        real(real64), dimension(max_n_reps_all_studies, n_neighbors, n_points, n_studies), intent(in) :: neighborhood_residuals
-            !! Computed neighborhood residuals for every study, NaN is explicitly allowed for missing values
-            !! NaN is permitted for this value.
-        real(real64), dimension(max_n_reps_all_studies*n_neighbors*n_points*n_studies), intent(out) :: tmp_abs_residual_pool
-            !! Work array holding the pooled absolute residuals of every study
-        integer(int32), dimension(max_n_reps_all_studies*n_neighbors*n_points*n_studies), intent(out) :: tmp_abs_residual_pool_perm
-            !! Work array for the permutation that sorts `tmp_abs_residual_pool`
-        real(real64), intent(out) :: shared_residual_range
-            !! Computed residual range (R)
-        real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile in [0,1] for determining the residual range
-            !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `1.0_real64`.
-            !! The default value is `0.95_real64`.
-        integer(int32), intent(out) :: ierr
-            !! Error code; zero on success, non-zero on failure.
-
-        call set_ok(ierr)
-#ifndef NO_INPUT_VALIDATION
-        call validate_in_range_int(n_studies, ierr, arg_pos=2_int32, min=1_int32)
-        call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=3_int32)
-        call validate_dimension_size(n_neighbors, ierr, arg_pos=4_int32)
-        call validate_dimension_size(n_points, ierr, arg_pos=5_int32)
-        call validate_in_range_real(residual_range_quantile, ierr, arg_pos=9_int32, min=0.0_real64, max=1.0_real64)
-        call validate_all_in_range_real(neighborhood_residuals, max_n_reps_all_studies * n_neighbors * n_points * n_studies, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
-        if (is_err(ierr)) return
-#endif
-
-        call determine_all_studies_shared_residual_range_impl(&
-            neighborhood_residuals = neighborhood_residuals,&
-            n_studies = n_studies,&
-            max_n_reps_all_studies = max_n_reps_all_studies,&
-            n_neighbors = n_neighbors,&
-            n_points = n_points,&
-            tmp_abs_residual_pool = tmp_abs_residual_pool,&
-            tmp_abs_residual_pool_perm = tmp_abs_residual_pool_perm,&
-            shared_residual_range = shared_residual_range,&
-            residual_range_quantile = residual_range_quantile&
-        )
-    end subroutine determine_all_studies_shared_residual_range_expert
 
     !> summary: Validates its inputs, then calls [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl]].
     !| The probability mass function `pmf(residual, bin)` is actually a matrix.

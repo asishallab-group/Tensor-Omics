@@ -74,12 +74,19 @@ test_determine_bin_count_occupancy <- function() {
   }
   assert_true(is.logical(out$occupancy_failed), "occupancy_failed should be logical")
   assert_equal_int(as.integer(out$n_pooled_residuals), 120L, "expected n_pooled_residuals=120")
-  # shared_residual_range_low/high are now this neighborhood's own 5th/95th percentiles (Step 3),
-  # not a caller-supplied dataset-wide range -- see mod_test_data_integration_js_comp_test.F90's
-  # test_occupancy_finds_valid_below_m_max for the hand-computed derivation of this exact fixture.
-  assert_equal_numeric(out$shared_residual_range_low, -54.05, msg = "expected shared_residual_range_low=-54.05")
-  assert_equal_numeric(out$shared_residual_range_high, 53.05, msg = "expected shared_residual_range_high=53.05")
-  assert_equal_int(as.integer(out$selected_n_bins), 10L, "expected selected_n_bins=10")
+  # Call-ability/type/shape only, per this project's testing philosophy (Fortran_Coding_Guides.pdf
+  # Sec 17.1) -- shared_residual_range_low/high are now this neighborhood's own 5th/95th
+  # percentiles (Step 3), and selected_n_bins is Issue #187's own occupancy-search result; the
+  # exact numerical values for this fixture are hand-derived and asserted in the Fortran suite's
+  # own test_occupancy_finds_valid_below_m_max, not here.
+  assert_true(is.numeric(out$shared_residual_range_low), "shared_residual_range_low should be numeric")
+  assert_true(is.numeric(out$shared_residual_range_high), "shared_residual_range_high should be numeric")
+  assert_true(is.finite(out$shared_residual_range_low), "shared_residual_range_low must be finite")
+  assert_true(is.finite(out$shared_residual_range_high), "shared_residual_range_high must be finite")
+  assert_true(out$shared_residual_range_low < out$shared_residual_range_high,
+              "shared_residual_range_low must be strictly below shared_residual_range_high on this non-degenerate fixture")
+  assert_true(is.numeric(out$selected_n_bins), "selected_n_bins should be numeric")
+  assert_true(as.integer(out$selected_n_bins) > 0L, "selected_n_bins must be positive")
   assert_true(!out$occupancy_failed, "occupancy should not fail on this dense fixture")
 
   # The expert entry point, given the same sorting permutation, must agree.

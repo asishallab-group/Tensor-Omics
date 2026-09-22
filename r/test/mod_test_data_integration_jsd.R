@@ -500,52 +500,6 @@ test_calc_pmf <- function() {
   )
 }
 
-test_determine_all_studies_shared_residual_range <- function() {
-  TOL <- 1e-12
-
-  # ============================================================
-  # Test 1 — Three single-replicate studies, hand-computed: pooled absolute residuals sorted
-  # are [3, 4, 5]; the default 95% quantile has rank 0.95*(3-1)+1 = 2.9, so
-  # R = sorted(2) + 0.9*(sorted(3)-sorted(2)) = 4 + 0.9*1 = 4.9
-  # ============================================================
-  all_studies <- array(NA_real_, dim = c(1, 1, 1, 3))
-  all_studies[1, 1, 1, 1] <- 3.0
-  all_studies[1, 1, 1, 2] <- -4.0
-  all_studies[1, 1, 1, 3] <- 5.0
-
-  R <- determine_all_studies_shared_residual_range(all_studies)
-  assert_true(abs(R - 4.9) < TOL, "Test 1 failed: expected 4.9")
-
-  # ============================================================
-  # Test 2 — Regression-safety cross-check: feeding the same two studies both through
-  # determine_study_shared_residual_range (with S2 as-is) and through the N-study routine (S2
-  # padded with NA up to S1's replicate count, n_studies=2) must give the exact same range.
-  # ============================================================
-  S1 <- array(c(
-    1,2,3,4,
-    5,6,-7,8,
-    9,10,11,12,
-    1,1,1,1
-  ), dim = c(4, 2, 2))
-
-  S2 <- array(c(
-    2,-4,6,8,
-    1,3,5,7,
-    9,0,1,2
-  ), dim = c(3, 2, 2))
-
-  R_two_study <- determine_study_shared_residual_range(S1, S2, 0.95)
-
-  all_studies <- array(NA_real_, dim = c(4, 2, 2, 2))
-  all_studies[, , , 1] <- S1
-  all_studies[1:3, , , 2] <- S2  # all_studies[4, , , 2] stays NA -- padding S2 up to max_n_reps
-
-  R_all_studies <- determine_all_studies_shared_residual_range(all_studies)
-  assert_true(abs(R_all_studies - R_two_study) < TOL,
-             "Test 2 failed: N-study range does not match two-study range")
-  assert_true(abs(R_all_studies - 10.65) < TOL, "Test 2 failed: expected 10.65")
-}
-
 # test_gjct_permutation_test was removed here: gjct_permutation_test was replaced by a K-study,
 # consensus-based version (see tox_data_integration_js_comp_test) -- the old 2-study test that
 # lived in this file was removed rather than adapted, since the signature is unrelated. Its own

@@ -338,16 +338,6 @@
       ")"
     ]
   },
-  "determine_all_studies_shared_residual_range (call)": {
-    "prefix": "tox:determine_all_studies_shared_residual_range",
-    "description": "N-study generalization of `determine_study_shared_residual_range_impl`: pools the absolute",
-    "body": [
-      "${1:result} <- determine_all_studies_shared_residual_range(",
-      "  neighborhood_residuals = ${2:neighborhood_residuals},",
-      "  residual_range_quantile = ${3:0.95}",
-      ")"
-    ]
-  },
   "build_residual_histograms (call)": {
     "prefix": "tox:build_residual_histograms",
     "description": "The probability mass function `pmf(residual, bin)` is actually a matrix.",

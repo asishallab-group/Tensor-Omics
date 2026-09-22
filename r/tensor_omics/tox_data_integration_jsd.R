@@ -102,34 +102,6 @@ determine_study_shared_residual_range <- function(neighborhood_residuals_S1, nei
     .result$shared_residual_range
 }
 
-#' Compute the shared residual range [-R, R] from the neighborhood residuals of N studies
-#'
-#' N-study generalization of `determine_study_shared_residual_range_impl`: pools the absolute
-#' residuals of every study, sorts them, and takes the quantile exactly as
-#' `determine_shared_residual_range` does.
-#'
-#' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_all_studies_shared_residual_range}, whose argument names
-#' are the ones an error message reports.
-#'
-#' @param neighborhood_residuals a numeric array of rank 4. Computed neighborhood residuals for every study, NaN is explicitly allowed for missing values
-#'   NaN is permitted for this value.
-#' @param residual_range_quantile a numeric scalar. Quantile in [0,1] for determining the residual range
-#'   The minimum valid value is `0.0`.
-#'   The maximum valid value is `1.0`.
-#'   The default value is `0.95`.
-#' @return a numeric scalar. Computed residual range (R)
-#' @export
-determine_all_studies_shared_residual_range <- function(neighborhood_residuals, residual_range_quantile = 0.95) {
-    neighborhood_residuals <- .tox_as_double_array(neighborhood_residuals, "neighborhood_residuals", 4L)
-    residual_range_quantile <- .tox_as_double_scalar(residual_range_quantile, "residual_range_quantile")
-    .result <- .Call("determine_all_studies_shared_residual_range_call", neighborhood_residuals, residual_range_quantile)
-    .arguments <- c("neighborhood_residuals", "n_studies", "max_n_reps_all_studies", "n_neighbors", "n_points", "shared_residual_range", "residual_range_quantile", "ierr")
-    .sources <- c(NA_character_, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", NA_character_, NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
-
-    .result$shared_residual_range
-}
-
 #' Summarize the neighborhood residuals in absolute histogram counts and probability mass functions
 #'
 #' The probability mass function `pmf(residual, bin)` is actually a matrix.

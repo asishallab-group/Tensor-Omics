@@ -22,7 +22,6 @@ module mod_test_data_integration_js_comp_test
                                                        MODE_PLATEAU_BOTH, calc_js_comp_test_n_top_k_jsds, &
                                                        calc_js_comp_test_candidate_bounds
     use tox_errors
-    use f42_math_impl, only: above, below
     use test_suite, only: test_case
 
     implicit none
@@ -34,7 +33,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(75))
+        allocate (all_tests(72))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -46,155 +45,148 @@ contains
         all_tests(5) = test_case("test_construct_neighborhoods_ranged_plain_and_validation", &
                                  test_construct_neighborhoods_ranged_plain_and_validation)
 
-        all_tests(6) = test_case("test_all_studies_range_matches_two_study_routine", &
-                                 test_all_studies_range_matches_two_study_routine)
-        all_tests(7) = test_case("test_determine_all_studies_shared_residual_range_three_studies", &
-                                 test_determine_all_studies_shared_residual_range_three_studies)
-        all_tests(8) = test_case("test_all_studies_range_invalid_quantile", &
-                                 test_all_studies_range_invalid_quantile)
-
-        all_tests(9) = test_case("test_calc_pmf_matches_build_residual_histograms", &
+        all_tests(6) = test_case("test_calc_pmf_matches_build_residual_histograms", &
                                  test_calc_pmf_matches_build_residual_histograms)
-        all_tests(10) = test_case("test_calc_pmf_zero_included_reps", test_calc_pmf_zero_included_reps)
-        all_tests(11) = test_case("test_calc_pmf_rejects_negative_counts", test_calc_pmf_rejects_negative_counts)
+        all_tests(7) = test_case("test_calc_pmf_zero_included_reps", test_calc_pmf_zero_included_reps)
+        all_tests(8) = test_case("test_calc_pmf_rejects_negative_counts", test_calc_pmf_rejects_negative_counts)
 
-        all_tests(12) = test_case("test_estimate_bin_count_basic_hand_computed", test_estimate_bin_count_basic_hand_computed)
-        all_tests(13) = test_case("test_estimate_bin_count_all_nan_gives_one_bin", &
+        all_tests(9) = test_case("test_estimate_bin_count_basic_hand_computed", test_estimate_bin_count_basic_hand_computed)
+        all_tests(10) = test_case("test_estimate_bin_count_all_nan_gives_one_bin", &
                                   test_estimate_bin_count_all_nan_gives_one_bin)
-        all_tests(14) = test_case("test_estimate_bin_count_clamped_to_max_n_bins", &
+        all_tests(11) = test_case("test_estimate_bin_count_clamped_to_max_n_bins", &
                                   test_estimate_bin_count_clamped_to_max_n_bins)
 
-        all_tests(15) = test_case("test_generate_js_comp_test_candidates_collapses_at_8742", &
+        all_tests(12) = test_case("test_generate_js_comp_test_candidates_collapses_at_8742", &
                                   test_generate_js_comp_test_candidates_collapses_at_8742)
-        all_tests(16) = test_case("test_generate_js_comp_test_candidates_has_two_distinct_at_8743", &
+        all_tests(13) = test_case("test_generate_js_comp_test_candidates_has_two_distinct_at_8743", &
                                   test_generate_js_comp_test_candidates_has_two_distinct_at_8743)
-        all_tests(17) = test_case("test_generate_js_comp_test_candidates_validation", &
+        all_tests(14) = test_case("test_generate_js_comp_test_candidates_validation", &
                                   test_generate_js_comp_test_candidates_validation)
 
-        all_tests(18) = test_case("test_neighborhood_overlaps_all_pass", test_neighborhood_overlaps_all_pass)
-        all_tests(19) = test_case("test_neighborhood_overlaps_exactly_at_threshold_passes", &
+        all_tests(15) = test_case("test_neighborhood_overlaps_all_pass", test_neighborhood_overlaps_all_pass)
+        all_tests(16) = test_case("test_neighborhood_overlaps_exactly_at_threshold_passes", &
                                   test_neighborhood_overlaps_exactly_at_threshold_passes)
-        all_tests(20) = test_case("test_neighborhood_overlaps_below_threshold_fails", &
+        all_tests(17) = test_case("test_neighborhood_overlaps_below_threshold_fails", &
                                   test_neighborhood_overlaps_below_threshold_fails)
 
-        all_tests(21) = test_case("test_mean_pmf_min_counts_all_pass", test_mean_pmf_min_counts_all_pass)
-        all_tests(22) = test_case("test_mean_pmf_min_counts_exactly_at_threshold_passes", &
+        all_tests(18) = test_case("test_mean_pmf_min_counts_all_pass", test_mean_pmf_min_counts_all_pass)
+        all_tests(19) = test_case("test_mean_pmf_min_counts_exactly_at_threshold_passes", &
                                   test_mean_pmf_min_counts_exactly_at_threshold_passes)
-        all_tests(23) = test_case("test_mean_pmf_min_counts_below_threshold_fails", &
+        all_tests(20) = test_case("test_mean_pmf_min_counts_below_threshold_fails", &
                                   test_mean_pmf_min_counts_below_threshold_fails)
 
-        all_tests(24) = test_case("test_check_plateau_condition_join_min_requires_all", &
+        all_tests(21) = test_case("test_check_plateau_condition_join_min_requires_all", &
                                   test_check_plateau_condition_join_min_requires_all)
-        all_tests(25) = test_case("test_check_plateau_condition_join_max_requires_any", &
+        all_tests(22) = test_case("test_check_plateau_condition_join_max_requires_any", &
                                   test_check_plateau_condition_join_max_requires_any)
-        all_tests(26) = test_case("test_check_plateau_condition_join_median_requires_majority", &
+        all_tests(23) = test_case("test_check_plateau_condition_join_median_requires_majority", &
                                   test_check_plateau_condition_join_median_requires_majority)
-        all_tests(27) = test_case("test_check_plateau_condition_worse_than_previous_short_circuits", &
+        all_tests(24) = test_case("test_check_plateau_condition_worse_than_previous_short_circuits", &
                                   test_check_plateau_condition_worse_than_previous_short_circuits)
 
-        all_tests(28) = test_case("test_create_mean_pmf_two_studies_hand_computed", &
+        all_tests(25) = test_case("test_create_mean_pmf_two_studies_hand_computed", &
                                   test_create_mean_pmf_two_studies_hand_computed)
-        all_tests(29) = test_case("test_create_mean_pmf_three_studies_includes_self", &
+        all_tests(26) = test_case("test_create_mean_pmf_three_studies_includes_self", &
                                   test_create_mean_pmf_three_studies_includes_self)
-        all_tests(30) = test_case("test_create_mean_pmf_only_matches_create_mean_pmf", &
+        all_tests(27) = test_case("test_create_mean_pmf_only_matches_create_mean_pmf", &
                                   test_create_mean_pmf_only_matches_create_mean_pmf)
-        all_tests(31) = test_case("test_create_mean_pmf_validation", test_create_mean_pmf_validation)
+        all_tests(28) = test_case("test_create_mean_pmf_validation", test_create_mean_pmf_validation)
 
-        all_tests(32) = test_case("test_calc_js_comp_test_n_top_k_jsds_default_hand_computed", &
+        all_tests(29) = test_case("test_calc_js_comp_test_n_top_k_jsds_default_hand_computed", &
                                   test_calc_js_comp_test_n_top_k_jsds_default_hand_computed)
-        all_tests(33) = test_case("test_calc_js_comp_test_n_top_k_jsds_explicit_significance_level", &
+        all_tests(30) = test_case("test_calc_js_comp_test_n_top_k_jsds_explicit_significance_level", &
                                   test_calc_js_comp_test_n_top_k_jsds_explicit_significance_level)
-        all_tests(34) = test_case("test_calc_js_comp_test_n_top_k_jsds_clamped_to_at_least_one", &
+        all_tests(31) = test_case("test_calc_js_comp_test_n_top_k_jsds_clamped_to_at_least_one", &
                                   test_calc_js_comp_test_n_top_k_jsds_clamped_to_at_least_one)
 
-        all_tests(35) = test_case("test_bootstrap_histogram_seeded_reproducibility", &
+        all_tests(32) = test_case("test_bootstrap_histogram_seeded_reproducibility", &
                                   test_bootstrap_histogram_seeded_reproducibility)
-        all_tests(36) = test_case("test_bootstrap_histogram_degenerate_single_bin_zero_ci", &
+        all_tests(33) = test_case("test_bootstrap_histogram_degenerate_single_bin_zero_ci", &
                                   test_bootstrap_histogram_degenerate_single_bin_zero_ci)
 
-        all_tests(37) = test_case("test_gjct_permutation_test_conservation_of_counts", &
+        all_tests(34) = test_case("test_gjct_permutation_test_conservation_of_counts", &
                                   test_gjct_permutation_test_conservation_of_counts)
-        all_tests(38) = test_case("test_gjct_permutation_test_seeded_reproducibility", &
+        all_tests(35) = test_case("test_gjct_permutation_test_seeded_reproducibility", &
                                   test_gjct_permutation_test_seeded_reproducibility)
-        all_tests(39) = test_case("test_permutation_pvalue_laplace_corrected_never_exactly_zero", &
+        all_tests(36) = test_case("test_permutation_pvalue_laplace_corrected_never_exactly_zero", &
                                   test_permutation_pvalue_laplace_corrected_never_exactly_zero)
 
-        all_tests(40) = test_case("test_run_js_comp_test_two_studies_hand_traceable", &
+        all_tests(37) = test_case("test_run_js_comp_test_two_studies_hand_traceable", &
                                   test_run_js_comp_test_two_studies_hand_traceable)
-        all_tests(41) = test_case("test_run_js_comp_test_three_studies_outlier_has_small_p_value", &
+        all_tests(38) = test_case("test_run_js_comp_test_three_studies_outlier_has_small_p_value", &
                                   test_run_js_comp_test_three_studies_outlier_has_small_p_value)
-        all_tests(42) = test_case("test_param_search_no_plateau_falls_back_to_finest", &
+        all_tests(39) = test_case("test_param_search_no_plateau_falls_back_to_finest", &
                                   test_param_search_no_plateau_falls_back_to_finest)
-        all_tests(43) = test_case("test_param_search_single_candidate_bypasses_plateau", &
+        all_tests(40) = test_case("test_param_search_single_candidate_bypasses_plateau", &
                                   test_param_search_single_candidate_bypasses_plateau)
-        all_tests(44) = test_case("test_param_search_finds_plateau_mid_grid", &
+        all_tests(41) = test_case("test_param_search_finds_plateau_mid_grid", &
                                   test_param_search_finds_plateau_mid_grid)
 
-        all_tests(45) = test_case("test_effect_size_plateau_first_candidate_no_delta", &
+        all_tests(42) = test_case("test_effect_size_plateau_first_candidate_no_delta", &
                                   test_effect_size_plateau_first_candidate_no_delta)
-        all_tests(46) = test_case("test_effect_size_plateau_single_transition_insufficient", &
+        all_tests(43) = test_case("test_effect_size_plateau_single_transition_insufficient", &
                                   test_effect_size_plateau_single_transition_insufficient)
-        all_tests(47) = test_case("test_effect_size_plateau_two_consecutive_transitions", &
+        all_tests(44) = test_case("test_effect_size_plateau_two_consecutive_transitions", &
                                   test_effect_size_plateau_two_consecutive_transitions)
-        all_tests(48) = test_case("test_effect_size_plateau_resets_on_non_qualifying", &
+        all_tests(45) = test_case("test_effect_size_plateau_resets_on_non_qualifying", &
                                   test_effect_size_plateau_resets_on_non_qualifying)
-        all_tests(49) = test_case("test_effect_size_plateau_median_max_hand_computed", &
+        all_tests(46) = test_case("test_effect_size_plateau_median_max_hand_computed", &
                                   test_effect_size_plateau_median_max_hand_computed)
-        all_tests(50) = test_case("test_param_search_effect_size_mode_plateau", &
+        all_tests(47) = test_case("test_param_search_effect_size_mode_plateau", &
                                   test_param_search_effect_size_mode_plateau)
-        all_tests(51) = test_case("test_param_search_both_mode_uses_earlier_trigger", &
+        all_tests(48) = test_case("test_param_search_both_mode_uses_earlier_trigger", &
                                   test_param_search_both_mode_uses_earlier_trigger)
-        all_tests(52) = test_case("test_param_search_no_plateau_uses_smallest_uncertainty", &
+        all_tests(49) = test_case("test_param_search_no_plateau_uses_smallest_uncertainty", &
                                   test_param_search_no_plateau_uses_smallest_uncertainty)
-        all_tests(53) = test_case("test_param_search_no_plateau_effect_size_falls_back", &
+        all_tests(50) = test_case("test_param_search_no_plateau_effect_size_falls_back", &
                                   test_param_search_no_plateau_effect_size_falls_back)
-        all_tests(54) = test_case("test_param_search_no_plateau_both_falls_back", &
+        all_tests(51) = test_case("test_param_search_no_plateau_both_falls_back", &
                                   test_param_search_no_plateau_both_falls_back)
 
-        all_tests(55) = test_case("test_estimate_bin_count_sturges_wins_when_greater_than_fd", &
+        all_tests(52) = test_case("test_estimate_bin_count_sturges_wins_when_greater_than_fd", &
                                   test_estimate_bin_count_sturges_wins_when_greater_than_fd)
-        all_tests(56) = test_case("test_estimate_bin_count_near_zero_iqr_guard_falls_back_to_sturges", &
+        all_tests(53) = test_case("test_estimate_bin_count_near_zero_iqr_guard_falls_back_to_sturges", &
                                   test_estimate_bin_count_near_zero_iqr_falls_back_to_sturges)
 
-        all_tests(57) = test_case("test_determine_bin_count_occupancy_finds_valid_below_m_max", &
+        all_tests(54) = test_case("test_determine_bin_count_occupancy_finds_valid_below_m_max", &
                                   test_occupancy_finds_valid_below_m_max)
-        all_tests(58) = test_case("test_determine_bin_count_occupancy_reaches_m_max_validly", &
+        all_tests(55) = test_case("test_determine_bin_count_occupancy_reaches_m_max_validly", &
                                   test_occupancy_reaches_m_max_validly)
-        all_tests(59) = test_case("test_determine_bin_count_occupancy_m_min_itself_invalid_failure", &
+        all_tests(56) = test_case("test_determine_bin_count_occupancy_m_min_itself_invalid_failure", &
                                   test_occupancy_m_min_itself_invalid_failure)
-        all_tests(60) = test_case("test_determine_bin_count_occupancy_refinement_picks_above_m_valid", &
+        all_tests(57) = test_case("test_determine_bin_count_occupancy_refinement_picks_above_m_valid", &
                                   test_occupancy_refinement_picks_above_m_valid)
-        all_tests(61) = test_case("test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid", &
+        all_tests(58) = test_case("test_determine_bin_count_occupancy_refinement_finds_nothing_above_m_valid", &
                                   test_occupancy_refinement_finds_nothing_above_m_valid)
-        all_tests(62) = test_case("test_determine_bin_count_occupancy_all_residuals_nan", &
+        all_tests(59) = test_case("test_determine_bin_count_occupancy_all_residuals_nan", &
                                   test_occupancy_all_residuals_nan)
-        all_tests(63) = test_case("test_determine_bin_count_occupancy_geometric_step_guarantees_progress", &
+        all_tests(60) = test_case("test_determine_bin_count_occupancy_geometric_step_guarantees_progress", &
                                   test_occupancy_geometric_step_guarantees_progress)
-        all_tests(64) = test_case("test_determine_bin_count_occupancy_diagnostics_hand_computed", &
+        all_tests(61) = test_case("test_determine_bin_count_occupancy_diagnostics_hand_computed", &
                                   test_occupancy_diagnostics_hand_computed)
-        all_tests(65) = test_case("test_determine_bin_count_occupancy_defaults_match_issue_suggestions", &
+        all_tests(62) = test_case("test_determine_bin_count_occupancy_defaults_match_issue_suggestions", &
                                   test_occupancy_defaults_match_issue_suggestions)
 
-        all_tests(66) = test_case("test_mean_pmf_min_counts_per_point_bins_differ_all_pass", &
+        all_tests(63) = test_case("test_mean_pmf_min_counts_per_point_bins_differ_all_pass", &
                                   test_mean_pmf_min_counts_per_point_bins_differ_all_pass)
-        all_tests(67) = test_case("test_mean_pmf_min_counts_per_point_bins_differ_one_point_fails", &
+        all_tests(64) = test_case("test_mean_pmf_min_counts_per_point_bins_differ_one_point_fails", &
                                   test_mean_pmf_min_counts_per_point_bins_differ_one_point_fails)
 
-        all_tests(68) = test_case("test_param_search_occupancy_failure_rejects_candidate", &
+        all_tests(65) = test_case("test_param_search_occupancy_failure_rejects_candidate", &
                                   test_param_search_occupancy_failure_rejects_candidate)
-        all_tests(69) = test_case("test_param_search_different_neighborhoods_different_m_j", &
+        all_tests(66) = test_case("test_param_search_different_neighborhoods_different_m_j", &
                                   test_param_search_different_neighborhoods_different_m_j)
-        all_tests(70) = test_case("test_param_search_final_n_bins_matches_selected_trace_column", &
+        all_tests(67) = test_case("test_param_search_final_n_bins_matches_selected_trace_column", &
                                   test_param_search_final_n_bins_matches_selected_trace_column)
-        all_tests(71) = test_case("test_run_js_comp_test_occupancy_failed_point_still_contributes", &
+        all_tests(68) = test_case("test_run_js_comp_test_occupancy_failed_point_still_contributes", &
                                   test_run_js_comp_test_occupancy_failed_point_still_contributes)
-        all_tests(72) = test_case("test_occupancy_min_residuals_per_bin_zero_accepted", &
+        all_tests(69) = test_case("test_occupancy_min_residuals_per_bin_zero_accepted", &
                                   test_occupancy_min_residuals_per_bin_zero_accepted)
-        all_tests(73) = test_case("test_run_js_comp_test_accepts_min_residuals_per_bin_zero", &
+        all_tests(70) = test_case("test_run_js_comp_test_accepts_min_residuals_per_bin_zero", &
                                   test_run_js_comp_test_accepts_min_residuals_per_bin_zero)
-        all_tests(74) = test_case("test_occupancy_range_asymmetric_skewed_residuals", &
+        all_tests(71) = test_case("test_occupancy_range_asymmetric_skewed_residuals", &
                                   test_occupancy_range_asymmetric_skewed_residuals)
-        all_tests(75) = test_case("test_occupancy_range_hand_computed_percentile", &
+        all_tests(72) = test_case("test_occupancy_range_hand_computed_percentile", &
                                   test_occupancy_range_hand_computed_percentile)
     end function get_all_tests_data_integration_js_comp_test
 
@@ -347,86 +339,6 @@ contains
                         "test_construct_neighborhoods_ranged_plain_and_validation: n_neighbors=0 rejected", &
                         arg_pos=5_int32)
     end subroutine test_construct_neighborhoods_ranged_plain_and_validation
-
-    !> Feeding the same two studies both through `determine_study_shared_residual_range` (with
-    !| S2 as-is) and through the N-study routine (S2 padded with NaN up to S1's replicate count,
-    !| n_studies=2) must give the exact same range -- this is a regression-safety cross-check
-    !| against the already-tested two-study routine, not just a hand-computed number.
-    subroutine test_all_studies_range_matches_two_study_routine()
-        integer(int32), parameter :: n_reps_S1 = 4, n_reps_S2 = 3, n_neighbors = 2, n_points = 2
-        integer(int32), parameter :: n_studies = 2, max_n_reps = 4
-        real(real64), dimension(n_reps_S1, n_neighbors, n_points) :: S1
-        real(real64), dimension(n_reps_S2, n_neighbors, n_points) :: S2
-        real(real64), dimension(max_n_reps, n_neighbors, n_points, n_studies) :: all_studies
-        real(real64) :: R_two_study, R_all_studies
-        integer(int32) :: ierr
-
-        S1 = reshape([1, 2, 3, 4, 5, 6, -7, 8, 9, 10, 11, 12, 1, 1, 1, 1], shape(S1))
-        S2 = reshape([2, -4, 6, 8, 1, 3, 5, 7, 9, 0, 1, 2], shape(S2))
-
-        call determine_study_shared_residual_range(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, &
-                                                    R_two_study, ierr=ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_all_studies_range_matches_two_study_routine: two-study ierr")
-
-        all_studies = ieee_value(1.0_real64, ieee_quiet_nan)
-        all_studies(:, :, :, 1) = S1
-        all_studies(1:n_reps_S2, :, :, 2) = S2
-        ! all_studies(4, :, :, 2) stays NaN -- padding S2 up to max_n_reps
-
-        call determine_all_studies_shared_residual_range(all_studies, max_n_reps, n_neighbors, n_points, n_studies, &
-                                                          R_all_studies, ierr=ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_all_studies_range_matches_two_study_routine: N-study ierr")
-        call assert_equal_real(R_all_studies, R_two_study, TOL, &
-                               "test_all_studies_range_matches_two_study_routine: R mismatch")
-        call assert_equal_real(R_all_studies, 10.65_real64, TOL, &
-                               "test_all_studies_range_matches_two_study_routine: R should be 10.65")
-    end subroutine test_all_studies_range_matches_two_study_routine
-
-    !> Three single-replicate studies, hand-computed: pooled absolute residuals sorted are
-    !| [3, 4, 5]; the default 95% quantile has rank `0.95*(3-1)+1 = 2.9`, so
-    !| `R = sorted(2) + 0.9*(sorted(3)-sorted(2)) = 4 + 0.9*1 = 4.9`.
-    subroutine test_determine_all_studies_shared_residual_range_three_studies()
-        integer(int32), parameter :: n_neighbors = 1, n_points = 1, n_studies = 3, max_n_reps = 1
-        real(real64), dimension(max_n_reps, n_neighbors, n_points, n_studies) :: all_studies
-        real(real64) :: R
-        integer(int32) :: ierr
-
-        all_studies(1, 1, 1, 1) = 3.0_real64
-        all_studies(1, 1, 1, 2) = -4.0_real64
-        all_studies(1, 1, 1, 3) = 5.0_real64
-
-        call determine_all_studies_shared_residual_range(all_studies, max_n_reps, n_neighbors, n_points, n_studies, &
-                                                          R, ierr=ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_determine_all_studies_shared_residual_range_three_studies: ierr should be OK")
-        call assert_equal_real(R, 4.9_real64, TOL, &
-                               "test_determine_all_studies_shared_residual_range_three_studies: R should be 4.9")
-    end subroutine test_determine_all_studies_shared_residual_range_three_studies
-
-    !> Bounds on `residual_range_quantile` still apply through the N-study wrapper.
-    subroutine test_all_studies_range_invalid_quantile()
-        integer(int32), parameter :: n_neighbors = 1, n_points = 1, n_studies = 2, max_n_reps = 1
-        real(real64), dimension(max_n_reps, n_neighbors, n_points, n_studies) :: all_studies
-        real(real64) :: R, q
-        integer(int32) :: ierr
-
-        all_studies(1, 1, 1, 1) = 1.0_real64
-        all_studies(1, 1, 1, 2) = 2.0_real64
-
-        q = below(0.0_real64)
-        call determine_all_studies_shared_residual_range(all_studies, max_n_reps, n_neighbors, n_points, n_studies, &
-                                                          R, ierr=ierr, residual_range_quantile=q)
-        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, &
-                              "test_all_studies_range_invalid_quantile: below 0 rejected")
-
-        q = above(1.0_real64)
-        call determine_all_studies_shared_residual_range(all_studies, max_n_reps, n_neighbors, n_points, n_studies, &
-                                                          R, ierr=ierr, residual_range_quantile=q)
-        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, &
-                              "test_all_studies_range_invalid_quantile: above 1 rejected")
-    end subroutine test_all_studies_range_invalid_quantile
 
     !> `calc_pmf` is the counts-to-pmf half of `build_residual_histograms`, factored out; feeding
     !| it the exact `counts`/`included_n_reps` that routine's own basic fixture produces must

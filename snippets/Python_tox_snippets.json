@@ -347,7 +347,7 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation",
     "body": [
       "from tensor_omics.tox_data_integration_jsd import (",
-      "    ${1|determine_shared_residual_range,determine_shared_residual_range_expert,determine_study_shared_residual_range,determine_all_studies_shared_residual_range,build_residual_histograms,calc_pmf,compute_divergence_per_reference_point,compute_weighted_global_divergence|},",
+      "    ${1|determine_shared_residual_range,determine_shared_residual_range_expert,determine_study_shared_residual_range,build_residual_histograms,calc_pmf,compute_divergence_per_reference_point,compute_weighted_global_divergence|},",
       ")"
     ]
   },
@@ -380,16 +380,6 @@
       "    neighborhood_residuals_S1=${2:neighborhood_residuals_S1},",
       "    neighborhood_residuals_S2=${3:neighborhood_residuals_S2},",
       "    residual_range_quantile=${4:0.95},",
-      ")"
-    ]
-  },
-  "determine_all_studies_shared_residual_range (call)": {
-    "prefix": "tox:determine_all_studies_shared_residual_range",
-    "description": "N-study generalization of `determine_study_shared_residual_range_impl`: pools the absolute",
-    "body": [
-      "${1:result} = determine_all_studies_shared_residual_range(",
-      "    neighborhood_residuals=${2:neighborhood_residuals},",
-      "    residual_range_quantile=${3:0.95},",
       ")"
     ]
   },

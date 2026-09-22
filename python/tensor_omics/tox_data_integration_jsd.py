@@ -67,23 +67,6 @@ _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENTS = ("neighborhood_residuals_S1",
 #: For a derived argument, the one the caller passed it in
 _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES = (None, None, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", None, None, None,)
 
-_lib.determine_all_studies_shared_residual_range_c.restype = None
-_lib.determine_all_studies_shared_residual_range_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=4, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-)
-
-#: The wrapped procedure's arguments, so an error can name one
-_DETERMINE_ALL_STUDIES_SHARED_RESIDUAL_RANGE_ARGUMENTS = ("neighborhood_residuals", "n_studies", "max_n_reps_all_studies", "n_neighbors", "n_points", "shared_residual_range", "residual_range_quantile", "ierr",)
-#: For a derived argument, the one the caller passed it in
-_DETERMINE_ALL_STUDIES_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES = (None, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", None, None, None,)
-
 _lib.build_residual_histograms_c.restype = None
 _lib.build_residual_histograms_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
@@ -386,75 +369,6 @@ def determine_study_shared_residual_range(
     )
 
     check_err_code(ierr.value, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENTS, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES)
-
-    return shared_residual_range.value
-
-def determine_all_studies_shared_residual_range(
-        neighborhood_residuals,
-        residual_range_quantile=0.95,
-):
-    r"""Compute the shared residual range [-R, R] from the neighborhood residuals of N studies
-
-    N-study generalization of `determine_study_shared_residual_range_impl`: pools the absolute
-    residuals of every study, sorts them, and takes the quantile exactly as
-    `determine_shared_residual_range` does.
-
-    Parameters
-    ----------
-    neighborhood_residuals : np.ndarray[np.float64] of shape (max_n_reps_all_studies, n_neighbors, n_points, n_studies,), column-major (order='F')
-        Computed neighborhood residuals for every study, NaN is explicitly allowed for missing values
-        NaN is permitted for this value.
-    residual_range_quantile : float, optional, default 0.95
-        Quantile in [0,1] for determining the residual range
-        The minimum valid value is `0.0`.
-        The maximum valid value is `1.0`.
-        The default value is `0.95`.
-
-    Returns
-    -------
-    shared_residual_range : float
-        Computed residual range (R)
-
-    Raises
-    ------
-    ToxError
-        If the underlying Fortran reports an error.
-
-    Notes
-    -----
-    Generated from the Fortran procedure `tox_data_integration_jsd::determine_all_studies_shared_residual_range`, whose argument names are
-    the ones an error message reports.
-    """
-    # accept anything array-like, converting only when C needs it
-    try:
-        neighborhood_residuals = np.asfortranarray(neighborhood_residuals, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals' must be an array of np.float64: {error}") from None
-    if neighborhood_residuals.ndim != 4:
-        raise ValueError(f"'neighborhood_residuals' must have 4 dimensions, but has {neighborhood_residuals.ndim}")
-
-    # what the inputs already say, rather than asking for it again
-    n_studies = neighborhood_residuals.shape[3]
-    max_n_reps_all_studies = neighborhood_residuals.shape[0]
-    n_neighbors = neighborhood_residuals.shape[1]
-    n_points = neighborhood_residuals.shape[2]
-
-    # outputs and work arrays, which the caller never sees
-    shared_residual_range = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
-
-    _lib.determine_all_studies_shared_residual_range_c(
-        neighborhood_residuals,
-        ctypes.byref(ctypes.c_int(n_studies)),
-        ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(shared_residual_range),
-        ctypes.byref(ctypes.c_double(residual_range_quantile)),
-        ctypes.byref(ierr),
-    )
-
-    check_err_code(ierr.value, _DETERMINE_ALL_STUDIES_SHARED_RESIDUAL_RANGE_ARGUMENTS, _DETERMINE_ALL_STUDIES_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES)
 
     return shared_residual_range.value
 

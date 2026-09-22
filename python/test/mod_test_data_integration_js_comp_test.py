@@ -107,14 +107,22 @@ def test_determine_bin_count_occupancy():
         f"expected occupancy_failed to be a bool, got {type(result['occupancy_failed'])}"
     assert result["n_pooled_residuals"] == 120, \
         f"expected n_pooled_residuals=120, got {result['n_pooled_residuals']}"
-    # shared_residual_range_low/high are now this neighborhood's own 5th/95th percentiles (Step 3),
-    # not a caller-supplied dataset-wide range -- see mod_test_data_integration_js_comp_test.F90's
-    # test_occupancy_finds_valid_below_m_max for the hand-computed derivation of this exact fixture.
-    assert abs(result["shared_residual_range_low"] - (-54.05)) < TOL, \
-        f"expected shared_residual_range_low=-54.05, got {result['shared_residual_range_low']}"
-    assert abs(result["shared_residual_range_high"] - 53.05) < TOL, \
-        f"expected shared_residual_range_high=53.05, got {result['shared_residual_range_high']}"
-    assert result["selected_n_bins"] == 10, f"expected selected_n_bins=10, got {result['selected_n_bins']}"
+    # Call-ability/type/shape only, per this project's testing philosophy (Fortran_Coding_Guides.pdf
+    # Sec 17.1) -- shared_residual_range_low/high are now this neighborhood's own 5th/95th
+    # percentiles (Step 3), and selected_n_bins is Issue #187's own occupancy-search result; the
+    # exact numerical values for this fixture are hand-derived and asserted in the Fortran suite's
+    # own test_occupancy_finds_valid_below_m_max, not here.
+    assert isinstance(result["shared_residual_range_low"], (float, np.floating)), \
+        f"expected shared_residual_range_low to be a float, got {type(result['shared_residual_range_low'])}"
+    assert isinstance(result["shared_residual_range_high"], (float, np.floating)), \
+        f"expected shared_residual_range_high to be a float, got {type(result['shared_residual_range_high'])}"
+    assert np.isfinite(result["shared_residual_range_low"]), "shared_residual_range_low must be finite"
+    assert np.isfinite(result["shared_residual_range_high"]), "shared_residual_range_high must be finite"
+    assert result["shared_residual_range_low"] < result["shared_residual_range_high"], \
+        "shared_residual_range_low must be strictly below shared_residual_range_high on this non-degenerate fixture"
+    assert isinstance(result["selected_n_bins"], (int, np.integer)), \
+        f"expected selected_n_bins to be an int, got {type(result['selected_n_bins'])}"
+    assert result["selected_n_bins"] > 0, "selected_n_bins must be positive"
     assert not result["occupancy_failed"]
 
     # The expert entry point, given the same sorting permutation, must agree.

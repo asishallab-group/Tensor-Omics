@@ -17,7 +17,7 @@ module tox_data_integration_jsd_impl
     M_IMPLICIT_NONE
     private
     public :: determine_shared_residual_range_impl, determine_study_shared_residual_range_impl, &
-             determine_all_studies_shared_residual_range_impl, build_residual_histograms_impl, calc_pmf_impl, &
+             build_residual_histograms_impl, calc_pmf_impl, &
              compute_divergence_per_reference_point_impl, compute_weighted_global_divergence_impl, &
              jct_compute_jsd_pipeline_helper
 contains
@@ -129,61 +129,6 @@ contains
 
         call determine_shared_residual_range_impl(tmp_abs_residual_pool, tmp_abs_residual_pool_perm, pool_size, shared_residual_range, residual_range_quantile)
     end subroutine determine_study_shared_residual_range_impl
-
-    !> summary: Compute the shared residual range [-R, R] from the neighborhood residuals of N studies
-    !| AUTHOR_LASZLO_LANG
-    !| N-study generalization of `determine_study_shared_residual_range_impl`: pools the absolute
-    !| residuals of every study, sorts them, and takes the quantile exactly as
-    !| `determine_shared_residual_range` does.
-    pure subroutine determine_all_studies_shared_residual_range_impl(neighborhood_residuals, n_studies, max_n_reps_all_studies, n_neighbors, n_points, &
-                                                                       tmp_abs_residual_pool, tmp_abs_residual_pool_perm, shared_residual_range, residual_range_quantile)
-        integer(int32), intent(in) :: n_studies
-            !! Number of studies
-            !! DM_MIN(1_int32)
-        integer(int32), intent(in) :: max_n_reps_all_studies
-            !! Maximum number of replicates across all studies
-        integer(int32), intent(in) :: n_neighbors
-            !! Number of neighbors in the studies
-        integer(int32), intent(in) :: n_points
-            !! Number of reference points in the studies
-        real(real64), dimension(max_n_reps_all_studies, n_neighbors, n_points, n_studies), intent(in) :: neighborhood_residuals
-            !! Computed neighborhood residuals for every study, NaN is explicitly allowed for missing values
-            !! DM_ALLOW_NAN
-        real(real64), dimension(max_n_reps_all_studies*n_neighbors*n_points*n_studies), intent(out) :: tmp_abs_residual_pool
-            !! Work array holding the pooled absolute residuals of every study
-        integer(int32), dimension(max_n_reps_all_studies*n_neighbors*n_points*n_studies), intent(out) :: tmp_abs_residual_pool_perm
-            !! Work array for the permutation that sorts `tmp_abs_residual_pool`
-        real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile in [0,1] for determining the residual range
-            !! DM_MIN(0.0_real64)
-            !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(0.95_real64)
-        real(real64), intent(out) :: shared_residual_range
-            !! Computed residual range (R)
-
-        integer(int32) :: i_rep, i_neighbor, i_point, i_study, pool_size, n_predecessors
-
-        pool_size = max_n_reps_all_studies*n_neighbors*n_points*n_studies
-
-        ! Collect the absolute residual values, laid out exactly as a
-        ! (max_n_reps_all_studies, n_neighbors, n_points, n_studies) array would be
-        do concurrent(i_study=1:n_studies)
-            do concurrent(i_point=1:n_points) shared(i_study, max_n_reps_all_studies, n_neighbors, n_points)
-                do concurrent(i_neighbor=1:n_neighbors) local(n_predecessors) shared(i_point, i_study, max_n_reps_all_studies, n_neighbors, n_points)
-                    n_predecessors = (((i_study - 1)*n_points + (i_point - 1))*n_neighbors + (i_neighbor - 1))*max_n_reps_all_studies
-                    do concurrent(i_rep=1:max_n_reps_all_studies) shared(n_predecessors, tmp_abs_residual_pool, tmp_abs_residual_pool_perm, neighborhood_residuals, i_point, i_neighbor, i_study)
-                        tmp_abs_residual_pool(n_predecessors + i_rep) = abs(neighborhood_residuals(i_rep, i_neighbor, i_point, i_study))
-
-                        tmp_abs_residual_pool_perm(n_predecessors + i_rep) = n_predecessors + i_rep
-                    end do
-                end do
-            end do
-        end do
-
-        call sort_array_heapsort(tmp_abs_residual_pool, tmp_abs_residual_pool_perm)
-
-        call determine_shared_residual_range_impl(tmp_abs_residual_pool, tmp_abs_residual_pool_perm, pool_size, shared_residual_range, residual_range_quantile)
-    end subroutine determine_all_studies_shared_residual_range_impl
 
     !> summary: Summarize the neighborhood residuals in absolute histogram counts and probability mass functions
     !| AUTHOR_FRANZ_ERIC_SILL

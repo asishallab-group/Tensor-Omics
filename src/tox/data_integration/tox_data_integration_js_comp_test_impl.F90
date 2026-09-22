@@ -591,7 +591,7 @@ contains
     !| `tmp_neighborhood_residuals_gathered`), generalized here to pool across every study at once
     !| into one flat array instead of overwriting one reused per-study buffer. Mirrors the nested
     !| `do concurrent`-with-`local(...)` structure of
-    !| [[tox_data_integration_jsd_impl(module):determine_all_studies_shared_residual_range_impl(interface)]].
+    !| [[tox_data_integration_jsd_impl(module):determine_study_shared_residual_range_impl(interface)]].
     !|
     !| Not published, and not `_impl` (so it does not itself trigger wrapper generation): it has no
     !| caller yet in production code. It exists so a later restructuring of
