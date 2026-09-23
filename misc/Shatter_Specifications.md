@@ -123,3 +123,43 @@ merge happens in a full pass (worst case $O(S)$ passes, i.e. $O(S^3 N)$ total).
 $N^2S$ dominates memory; the same recompute-from-scratch-every-iteration pattern behind it also
 dominates time, since every growth iteration re-queries the KD-tree for every current member
 instead of only the members added in the previous step.
+
+# Per-seed growth radius
+
+Growth no longer shares one scalar radius across all seeds. `identify_ensemble_seeds_helper`
+already computes, for each selected seed, the chosen percentile (`coverage_quant`, default
+`CM_SEEDING_COVERAGE_PERCENTILE = 0.5`) of that seed's `k_seeding` nearest-neighbor distances, and
+uses it to mark the region the seed covers. That same value is now also returned, in
+`seed_radii(N)` -- one shared real array indexed by *vector* index, holding the radius at each
+seed's own index and `0` everywhere else. Indexing by vector rather than by selection rank keeps
+it order-independent: a caller that builds `seed_indices` in any order maps through it as
+`seed_radii(seed_indices)`.
+
+`obtain_ensembles_alloc` takes that array as the optional `seed_radii(S)`, aligned with
+`seed_indices`, and it takes precedence over the uniform `r`. Below the allocating layer the array
+is the only contract: `obtain_ensembles` and `obtain_ensembles_helper` take `seed_radii(S)` instead
+of a scalar, and `grow_single_seed_helper` -- which already grows exactly one seed -- receives
+`seed_radii(i_seed)` as its `r`. So seed $i$ and every later expansion of the ensemble around it
+query the K-D tree at the radius fitted to seed $i$'s own neighborhood. When `seed_radii` is absent
+the allocating layer broadcasts the scalar `r` (or the computed density radius) into the array, so
+the previous uniform-radius behavior is exactly what a constant array produces.
+
+Cost: $8S$ bytes, and nothing else -- no extra queries, since the radii fall out of work seeding
+already does.
+
+## What this buys, and what it costs
+
+- Dense regions grow tightly and sparse regions generously, instead of one radius being
+  simultaneously too coarse for the former and too tight for the latter.
+- Growth is no longer symmetric: seed $i$ reaches point $p$ at $r_i$ while seed $j$ does not reach
+  it at $r_j < |p - x_j|$. Membership therefore depends on which seed a region is grown from, and
+  the reconciliation stage (`merge_ensembles_helper`) is what puts the asymmetric raw ensembles
+  back together.
+- A seed sitting in a sparse pocket inside an otherwise dense region gets a large radius and can
+  overshoot into neighboring structure; the density-compatibility test (`alpha_mad`) is the only
+  thing holding it back, and it is scaled by the *ambient* MAD, not a local one.
+- The radii are estimated from `k_seeding` neighbors only, so they are noisy for small
+  `k_seeding` -- the percentile choice trades that noise against how aggressively the radius
+  tracks the local scale.
+- A single global `r` is no longer a meaningful knob to tune or report: growth behavior is now a
+  function of `k_seeding` and `coverage_quant` instead.

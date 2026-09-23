@@ -345,7 +345,8 @@ contains
     !> Allocating Wrapper for greedy density-ranked coverage-based seed selection.
     subroutine identify_ensemble_seeds_alloc(vectors, n_dimensions, n_vectors, density_labels, &
                                              dimension_order, kd_indices, k_seeding, &
-                                             sorted_perm, n_seeds, seed_mask, ierr)
+                                             sorted_perm, n_seeds, seed_mask, seed_radii, &
+                                             coverage_quant, ierr)
 
         integer(int32), intent(in) :: n_dimensions
         !! Number of dimensions
@@ -367,6 +368,10 @@ contains
         !! Number of selected seed vectors
         logical(c_bool), intent(out) :: seed_mask(n_vectors)
         !! Logical mask identifying selected seed vectors
+        real(real64), intent(out) :: seed_radii(n_vectors)
+        !! Per-seed growth radius, stored at each seed's own vector index; zero at non-seeds
+        real(real64), intent(in), optional :: coverage_quant
+        !! Optional percentile of k-nearest-neighbor distances used as the seed coverage and growth radius; defaults to 0.5.
         integer(int32), intent(out) :: ierr
         !! Error code
 
@@ -375,6 +380,7 @@ contains
         integer(int32), allocatable :: tmp_stack(:, :)
         logical(c_bool), allocatable :: tmp_visited_mask(:)
         logical(c_bool), allocatable :: tmp_newly_covered_mask(:)
+        real(real64) :: actual_coverage_quant
 
         call set_ok(ierr)
 
@@ -393,6 +399,7 @@ contains
 
         call validate_in_range_int(k_seeding, ierr, min=1_int32, &
                                    max=n_vectors - 1_int32)
+        call validate_in_range_real(coverage_quant, ierr, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 
         M_ALLOCATE(tmp_perm(n_vectors))
@@ -405,7 +412,8 @@ contains
                                      dimension_order, kd_indices, k_seeding, &
                                      tmp_perm, tmp_distances, tmp_stack, &
                                      tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
+                                     sorted_perm, n_seeds, seed_mask, seed_radii, &
+                                     coverage_quant, ierr)
 
     end subroutine identify_ensemble_seeds_alloc
 
@@ -414,7 +422,8 @@ contains
                                        dimension_order, kd_indices, k_seeding, &
                                        tmp_perm, tmp_distances, tmp_stack, &
                                        tmp_visited_mask, tmp_newly_covered_mask, &
-                                       sorted_perm, n_seeds, seed_mask, ierr)
+                                       sorted_perm, n_seeds, seed_mask, seed_radii, &
+                                       coverage_quant, ierr)
 
         integer(int32), intent(in) :: n_dimensions
         !! Number of dimensions
@@ -446,8 +455,15 @@ contains
         !! Number of selected seed vectors
         logical(c_bool), intent(out) :: seed_mask(n_vectors)
         !! Logical mask identifying selected seed vectors
+        real(real64), intent(out) :: seed_radii(n_vectors)
+        !! Per-seed growth radius, stored at each seed's own vector index; zero at non-seeds
+        real(real64), intent(in), optional :: coverage_quant
+        !! Optional percentile fraction (0.0 to 1.0) of the k nearest-neighbor distances
+        !! taken as a seed's coverage and growth radius, defaults to 0.5
         integer(int32), intent(out) :: ierr
         !! Error code
+
+        real(real64) :: actual_coverage_quant
 
         call set_ok(ierr)
 
@@ -466,13 +482,17 @@ contains
 
         call validate_in_range_int(k_seeding, ierr, min=1_int32, &
                                    max=n_vectors - 1_int32)
+        call validate_in_range_real(coverage_quant, ierr, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
+
+        M_DEFAULT_VAL(coverage_quant, actual_coverage_quant, CM_SEEDING_COVERAGE_PERCENTILE)
 
         call identify_ensemble_seeds_helper(vectors, n_dimensions, n_vectors, density_labels, &
                                             dimension_order, kd_indices, k_seeding, &
                                             tmp_perm, tmp_distances, tmp_stack, &
                                             tmp_visited_mask, tmp_newly_covered_mask, &
-                                            sorted_perm, n_seeds, seed_mask)
+                                            sorted_perm, n_seeds, seed_mask, seed_radii, &
+                                            actual_coverage_quant)
 
     end subroutine identify_ensemble_seeds
 
@@ -481,7 +501,8 @@ contains
                                                    dimension_order, kd_indices, k_seeding, &
                                                    tmp_perm, tmp_distances, tmp_stack, &
                                                    tmp_visited_mask, tmp_newly_covered_mask, &
-                                                   sorted_perm, n_seeds, seed_mask)
+                                                   sorted_perm, n_seeds, seed_mask, seed_radii, &
+                                                   coverage_quant)
 
         integer(int32), intent(in) :: n_dimensions
         !! Number of dimensions
@@ -513,8 +534,12 @@ contains
         !! Number of selected seed vectors
         logical(c_bool), intent(out) :: seed_mask(n_vectors)
         !! Logical mask identifying selected seed vectors
+        real(real64), intent(out) :: seed_radii(n_vectors)
+        !! Per-seed growth radius, stored at each seed's own vector index; zero at non-seeds
+        real(real64), intent(in) :: coverage_quant
+        !! Optional percentile of k-nearest-neighbor distances used as the seed coverage and growth radius; defaults to 0.5.
 
-        integer(int32) :: i_vec, i_rank, candidate_idx, self_pos, median_pos
+        integer(int32) :: i_vec, i_rank, candidate_idx, self_pos
         real(real64) :: coverage_radius
 
         call init_perm(tmp_perm)
@@ -527,6 +552,7 @@ contains
         end do
 
         seed_mask = .false.
+        seed_radii = 0.0_real64
         tmp_visited_mask = .false.
         n_seeds = 0_int32
 
@@ -568,17 +594,11 @@ contains
                 end do
             end if
 
-            ! Uses the 50th percentile of the k nearest-neighbor distances
-            ! as the seed coverage radius.
-            if (mod(k_seeding, 2_int32) == 1_int32) then
-                median_pos = (k_seeding + 1_int32)/2_int32
-                coverage_radius = tmp_distances(tmp_perm(median_pos))
-            else
-                median_pos = k_seeding/2_int32
-                coverage_radius = 0.5_real64* &
-                                  (tmp_distances(tmp_perm(median_pos)) + &
-                                   tmp_distances(tmp_perm(median_pos + 1_int32)))
-            end if
+            ! Use the chosen k-neighbor distance percentile as this seed's local seeding and growth radius.
+            call calc_percentile_impl(tmp_distances, n_vectors, tmp_perm, &
+                                      coverage_quant, coverage_radius, n_considered=k_seeding)
+
+            seed_radii(candidate_idx) = coverage_radius
 
             ! Mark the region represented by the current seed as visited.
             call vicinity_vectors_helper(vectors(:, candidate_idx), vectors, &
@@ -1250,7 +1270,7 @@ contains
     !> Allocating Wrapper for multi-ensemble parallel extraction.
     subroutine obtain_ensembles_alloc(vectors, n_dimensions, n_vectors, &
                                       dimension_order, kd_indices, density_labels, &
-                                      seed_indices, n_seeds, r, alpha_mad, &
+                                      seed_indices, n_seeds, r, seed_radii, alpha_mad, &
                                       alpha_accept, t_observables, n_tiles, &
                                       ensemble_matrix, stop_reasons, mad_ambient, &
                                       n_ensembles, ierr)
@@ -1272,7 +1292,10 @@ contains
         integer(int32), intent(in) :: seed_indices(n_seeds)
         !! Array of starting seed vector indices [[tox_shatter_cluster_data(module):identify_ensemble_seeds_alloc(subroutine)]].
         real(real64), intent(in), optional :: r
-        !! Search radius threshold for surface growth
+        !! Optional uniform search radius for surface growth, used for every seed that
+        !! `seed_radii` does not supply a radius for
+        real(real64), intent(in), optional :: seed_radii(n_seeds)
+        !! Optional per-seed growth radius; overrides `r` to let each ensemble grow at its locally fitted scale.
         real(real64), intent(in), optional :: alpha_mad
         !! MAD multiplier for density compatibility (defaults to 0.5)
         real(real64), intent(in), optional :: alpha_accept
@@ -1308,6 +1331,7 @@ contains
         logical(c_bool), allocatable :: tmp_current_mask(:, :)
         real(real64), allocatable :: tmp_mean_vec(:), tmp_distances(:)
         integer(int32), allocatable :: tmp_stop_reasons(:)
+        real(real64), allocatable :: tmp_seed_radii(:)
         real(real64) :: tmp_mad_ambient
 
         call set_ok(ierr)
@@ -1354,20 +1378,32 @@ contains
             required_cols = min(actual_t_obs, n_vectors)
         end if
 
-        ! Determine search radius r
-        if (present(r)) then
-            actual_r = r
-            call validate_in_range_real(actual_r, ierr, min=0.0_real64)
+        M_ALLOCATE(tmp_seed_radii(n_seeds))
+
+        ! Per-seed radii win outright; the scalar fallback is only computed when they are absent.
+        if (present(seed_radii)) then
+            call validate_all_in_range_real(seed_radii, n_seeds, ierr, min=0.0_real64)
             if (is_err(ierr)) return
+
+            tmp_seed_radii = seed_radii
         else
-            M_ALLOCATE(seed_perm(n_vectors))
-            M_ALLOCATE(tmp_mean_vec(n_dimensions))
-            M_ALLOCATE(tmp_distances(n_vectors))
-            call calculate_density_radius(vectors, n_dimensions, n_vectors, &
-                                          tmp_mean_vec, tmp_distances, seed_perm, &
-                                          actual_r, ierr=ierr)
-            deallocate (tmp_mean_vec, tmp_distances, seed_perm)
-            if (is_err(ierr)) return
+            ! Determine the uniform search radius r shared by every seed
+            if (present(r)) then
+                actual_r = r
+                call validate_in_range_real(actual_r, ierr, min=0.0_real64)
+                if (is_err(ierr)) return
+            else
+                M_ALLOCATE(seed_perm(n_vectors))
+                M_ALLOCATE(tmp_mean_vec(n_dimensions))
+                M_ALLOCATE(tmp_distances(n_vectors))
+                call calculate_density_radius(vectors, n_dimensions, n_vectors, &
+                                              tmp_mean_vec, tmp_distances, seed_perm, &
+                                              actual_r, ierr=ierr)
+                deallocate (tmp_mean_vec, tmp_distances, seed_perm)
+                if (is_err(ierr)) return
+            end if
+
+            tmp_seed_radii = actual_r
         end if
 
         ! Allocate per-tile growth workspaces.
@@ -1382,7 +1418,7 @@ contains
 
         call obtain_ensembles(vectors, n_dimensions, n_vectors, dimension_order, &
                               kd_indices, density_labels, seed_indices, n_seeds, &
-                              actual_r, actual_alpha_mad, actual_alpha_accept, &
+                              tmp_seed_radii, actual_alpha_mad, actual_alpha_accept, &
                               actual_t_obs, actual_n_tiles, tmp_stack, tmp_vicinity_mask, &
                               tmp_surface_mask, tmp_perm, tmp_abs_diff, tmp_observables, &
                               tmp_current_mask, &
@@ -1399,7 +1435,7 @@ contains
     !> Validated Entry Point for parallel ensemble extraction.
     subroutine obtain_ensembles(vectors, n_dimensions, n_vectors, dimension_order, &
                                 kd_indices, density_labels, seed_indices, n_seeds, &
-                                r, alpha_mad, alpha_accept, t_observables, n_tiles, &
+                                seed_radii, alpha_mad, alpha_accept, t_observables, n_tiles, &
                                 tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, &
                                 tmp_abs_diff, tmp_observables, tmp_current_mask, &
                                 ensemble_matrix, stop_reasons, mad_ambient, n_ensembles, ierr)
@@ -1420,8 +1456,8 @@ contains
         !! Precalculated density labels for ambient vectors [[tox_shatter_cluster_data(module):calculate_labels_as_density_alloc(subroutine)]].
         integer(int32), intent(in) :: seed_indices(n_seeds)
         !! Array of starting seed vector indices [[tox_shatter_cluster_data(module):identify_ensemble_seeds_alloc(subroutine)]].
-        real(real64), intent(in) :: r
-        !! Search radius threshold for surface growth
+        real(real64), intent(in) :: seed_radii(n_seeds)
+        !! Per-seed growth radius, allowing tighter growth in dense regions and wider growth in sparse regions.
         real(real64), intent(in) :: alpha_mad
         !! MAD multiplier for density compatibility threshold
         real(real64), intent(in) :: alpha_accept
@@ -1487,7 +1523,7 @@ contains
         if (is_err(ierr)) return
 
         ! Scalar parameter validation
-        call validate_in_range_real(r, ierr, min=0.0_real64)
+        call validate_all_in_range_real(seed_radii, n_seeds, ierr, min=0.0_real64)
         call validate_in_range_real(alpha_mad, ierr, min=0.0_real64)
         call validate_in_range_real(alpha_accept, ierr, min=0.0_real64)
         if (is_err(ierr)) return
@@ -1504,7 +1540,7 @@ contains
 
         call obtain_ensembles_helper(vectors, n_dimensions, n_vectors, dimension_order, &
                                      kd_indices, density_labels, seed_indices, n_seeds, &
-                                     r, alpha_mad, alpha_accept, t_observables, n_tiles, &
+                                     seed_radii, alpha_mad, alpha_accept, t_observables, n_tiles, &
                                      tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, &
                                      tmp_abs_diff, tmp_observables, tmp_current_mask, &
                                      ensemble_matrix, stop_reasons, mad_ambient, n_ensembles)
@@ -1514,7 +1550,7 @@ contains
     !> Core Implementation for tiled parallel seed ensemble growth.
     pure subroutine obtain_ensembles_helper(vectors, n_dimensions, n_vectors, dimension_order, &
                                             kd_indices, density_labels, seed_indices, n_seeds, &
-                                            r, alpha_mad, alpha_accept, t_observables, n_tiles, &
+                                            seed_radii, alpha_mad, alpha_accept, t_observables, n_tiles, &
                                             tmp_stack, tmp_vicinity_mask, tmp_surface_mask, tmp_perm, &
                                             tmp_abs_diff, tmp_observables, tmp_current_mask, &
                                             ensemble_matrix, stop_reasons, &
@@ -1536,8 +1572,8 @@ contains
         !! Precalculated density labels for ambient vectors [[tox_shatter_cluster_data(module):calculate_labels_as_density_alloc(subroutine)]].
         integer(int32), intent(in) :: seed_indices(n_seeds)
         !! Array of starting seed vector indices [[tox_shatter_cluster_data(module):identify_ensemble_seeds_alloc(subroutine)]].
-        real(real64), intent(in) :: r
-        !! Search radius threshold for surface growth
+        real(real64), intent(in) :: seed_radii(n_seeds)
+        !! Per-seed growth radius, allowing tighter growth in dense regions and wider growth in sparse regions.
         real(real64), intent(in) :: alpha_mad
         !! MAD multiplier for density compatibility threshold
         real(real64), intent(in) :: alpha_accept
@@ -1586,7 +1622,7 @@ contains
         ! Process independent seed tiles concurrently, with seeds within each tile handled serially.
         do concurrent(i_tile=1:n_tiles) &
             shared(vectors, n_dimensions, n_vectors, dimension_order, kd_indices, &
-                   density_labels, seed_indices, n_seeds, r, alpha_mad, mad_ambient, alpha_accept, &
+                   density_labels, seed_indices, n_seeds, seed_radii, alpha_mad, mad_ambient, alpha_accept, &
                    t_observables, tile_base, tile_rem, tmp_stack, tmp_vicinity_mask, &
                    tmp_surface_mask, tmp_perm, tmp_abs_diff, tmp_observables, &
                    tmp_current_mask, ensemble_matrix, stop_reasons) &
@@ -1605,7 +1641,7 @@ contains
 
                 call grow_single_seed_helper(vectors, n_dimensions, n_vectors, dimension_order, &
                                              kd_indices, density_labels, seed_indices(i_seed), &
-                                             r, alpha_mad, mad_ambient, alpha_accept, t_observables, &
+                                             seed_radii(i_seed), alpha_mad, mad_ambient, alpha_accept, t_observables, &
                                              tmp_stack(:, :, i_tile), tmp_vicinity_mask(:, i_tile), &
                                              tmp_surface_mask(:, i_tile), tmp_perm(:, i_tile), &
                                              tmp_abs_diff(:, i_tile), tmp_observables(:, :, i_tile), &
