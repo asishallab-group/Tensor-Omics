@@ -416,8 +416,7 @@ contains
         ! (1e300, 0), (0, 1e-300) and (1e300, 1e300) -- squares far beyond the range of a double --
         ! have the unit vectors e1, e2 and (1,1)/sqrt(2): the sum is (1 + 1/sqrt(2)) * (1,1),
         ! R = sqrt(2) * (1 + 1/sqrt(2)) / 3 = (sqrt(2) + 1)/3, sigma = sqrt(-2 ln R) = 0.6590, and the
-        ! direction is (1,1)/sqrt(2). Components above about 2^1022 (4.5e307) would hit the
-        ! documented limit of ifx's fast model with flush-to-zero, and are not used here.
+        ! direction is (1,1)/sqrt(2).
         expression_vectors = reshape([1.0e300_real64, 0.0_real64, 0.0_real64, 1.0e-300_real64, &
                                       1.0e300_real64, 1.0e300_real64], [n_axes, n_genes])
         gene_to_fam = 1

@@ -794,11 +794,6 @@ contains
     !| by the reciprocal) would then zero the whole vector. `scaled_norm` itself stays within
     !| \([2^{-500}, 2^{500} \sqrt{n}]\), so its reciprocal is always normal.
     !|
-    !| Known limit: under ifx's fast model with flush-to-zero in a Fortran main program, a vector
-    !| whose largest component exceeds about \(2^{1022}\) counts as having no direction, because
-    !| the reciprocal of that component is flushed (not with `-fp-model precise`, not in gfortran,
-    !| not from Python or R).
-    !|
     !| A vector whose largest component is subnormal counts as the zero vector. The same fast
     !| model computes `vector(i) * factor / scaled_norm` as `vector(i) * (factor / scaled_norm)`,
     !| and `factor / scaled_norm` is below `1 / largest`, which overflows exactly when the largest
