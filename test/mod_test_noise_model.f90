@@ -9,7 +9,8 @@
 !| only the `own` statistic. The exact/Monte-Carlo pairwise p-value has likewise
 !| been replaced by the bootstrap mean-difference null
 !| (`compute_pvalue_bootstrap_mean_helper`), and variance stratification has been
-!| removed — the `own` null is built directly from the gathered kNN pool.
+!| removed — the `own` null is built directly from the gathered kNN pool, with no
+!| tail trimming (that knob was tested and removed; see the eval doc).
 module mod_test_noise_model
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
@@ -30,7 +31,7 @@ contains
     function get_all_tests_noise_model() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate(all_tests(8))
+        allocate(all_tests(7))
         all_tests(1) = test_case("test_prepare_sorted_data",               test_prepare_sorted_data)
         all_tests(2) = test_case("test_gather_residuals_helper",           test_gather_residuals_helper)
         all_tests(3) = test_case("test_compute_pvalue_bootstrap_mean",     test_compute_pvalue_bootstrap_mean)
@@ -38,7 +39,6 @@ contains
         all_tests(5) = test_case("test_prepare_sorted_data_log_transform", test_prepare_sorted_data_log_transform)
         all_tests(6) = test_case("test_residuals_log_transform_centred",   test_residuals_log_transform_centred)
         all_tests(7) = test_case("test_full_pipeline_all_normalizations",  test_full_pipeline_all_normalizations)
-        all_tests(8) = test_case("test_trim_pool_tails_helper",            test_trim_pool_tails_helper)
     end function get_all_tests_noise_model
 
     ! =========================================================================
@@ -180,54 +180,6 @@ contains
         deallocate(pooled)
     end subroutine test_gather_residuals_helper
 
-    ! =========================================================================
-    ! test_trim_pool_tails_helper
-    ! =========================================================================
-    !| Raw-only symmetric quantile trim: sorts the pool and drops the k =
-    !| floor(n * trim_frac) smallest and largest residuals, keeping the central
-    !| ones compacted into pool(1:n_pool). Verified on a pool of 20 residuals
-    !| (the central values 1..18 plus a low -50 and high +50 outlier, unsorted so
-    !| the internal sort is exercised), plus the three documented no-op guards.
-    subroutine test_trim_pool_tails_helper()
-        real(real64) :: pool(20), pool0(20)
-        integer(int32) :: n_pool, i
-        real(real64) :: expected_sum
-
-        pool0 = [ 50.0_real64,   1.0_real64,  2.0_real64,  3.0_real64,  4.0_real64, &
-                   5.0_real64,   6.0_real64,  7.0_real64,  8.0_real64,  9.0_real64, &
-                  10.0_real64,  11.0_real64, -50.0_real64, 12.0_real64, 13.0_real64, &
-                  14.0_real64,  15.0_real64, 16.0_real64, 17.0_real64, 18.0_real64]
-
-        ! (a) 5% per tail of 20 -> k = floor(20*0.05) = 1: drop the min (-50) and
-        !     max (50), keep exactly the central 1..18 (sorted ascending).
-        pool = pool0; n_pool = 20
-        call trim_pool_tails_helper(pool, n_pool, 0.05_real64)
-        call assert_equal_int(n_pool, 18, "trim: kept count must be 20 - 2*1 = 18")
-        call assert_equal_real(pool(1),  1.0_real64,  TOL, "trim: smallest kept residual must be 1")
-        call assert_equal_real(pool(18), 18.0_real64, TOL, "trim: largest kept residual must be 18")
-        expected_sum = 0.0_real64
-        do i = 1, 18
-            expected_sum = expected_sum + real(i, real64)
-        end do
-        call assert_equal_real(sum(pool(1:18)), expected_sum, TOL, &
-                               "trim: kept residuals must be exactly central 1..18 (outliers removed)")
-
-        ! (b) trim_frac = 0 -> no-op
-        pool = pool0; n_pool = 20
-        call trim_pool_tails_helper(pool, n_pool, 0.0_real64)
-        call assert_equal_int(n_pool, 20, "trim (frac=0): count must be unchanged")
-        call assert_equal_real(sum(pool(1:20)), sum(pool0), TOL, "trim (frac=0): pool must be unchanged")
-
-        ! (c) k rounds down to 0 (pool too small for the fraction) -> no-op
-        pool = pool0; n_pool = 20
-        call trim_pool_tails_helper(pool, n_pool, 0.02_real64)   ! floor(20*0.02) = 0
-        call assert_equal_int(n_pool, 20, "trim (k=0): count must be unchanged")
-
-        ! (d) fraction >= 0.5 would empty the pool -> guarded, no-op
-        pool = pool0; n_pool = 20
-        call trim_pool_tails_helper(pool, n_pool, 0.6_real64)
-        call assert_equal_int(n_pool, 20, "trim (frac>=0.5): count must be unchanged (guard)")
-    end subroutine test_trim_pool_tails_helper
 
     ! =========================================================================
     ! test_compute_pvalue_bootstrap_mean
@@ -313,7 +265,7 @@ contains
             means_case, replicates_case, N_GENES, N_SAMPLES, &
             means_control, replicates_control, N_GENES, N_SAMPLES, &
             observed_own, compute_own, &
-            N_GENES, norm_method, k_start, k_step, k_max, tau, 0.0_real64, &
+            N_GENES, norm_method, k_start, k_step, k_max, tau, &
             NULL_METHOD_POOLED, &
             pvalues_own, n_genes_with_pvalue, &
             max_pool_size, &
@@ -576,7 +528,7 @@ contains
                 means_case, replicates_case, N_GENES, N_SAMPLES, &
                 means_control, replicates_control, N_GENES, N_SAMPLES, &
                 observed_own, compute_own, &
-                N_GENES, method_norm(i_method), k_start, k_step, k_max, tau, 0.0_real64, &
+                N_GENES, method_norm(i_method), k_start, k_step, k_max, tau, &
                 NULL_METHOD_POOLED, &
                 pvalues_own, n_genes_with_pvalue, &
                 max_pool_size, &

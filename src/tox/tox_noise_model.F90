@@ -492,53 +492,6 @@ contains
         n_pooled = current_size
     end subroutine gather_residuals_helper
 
-    !> Symmetric quantile trim of a gathered residual pool (raw normalization only).
-    !|
-    !| Sorts the first `n_pool` residuals ascending and drops the `k` smallest and
-    !| `k` largest, where `k = floor(n_pool * trim_frac)`, keeping the central
-    !| `n_pool - 2k` residuals compacted into `pool(1:n_pool)`. Purpose: in RAW
-    !| (linear) space the mean-neighbourhood still carries genuine variance
-    !| heterogeneity and heavy tails, so a few extreme residuals can inflate the
-    !| null; trimming both tails removes such artificial outliers. When the pool is
-    !| already homogeneous, the trimmed residuals sit close to the rest, so little
-    !| is lost. Under log normalization the trend is stabilized, so trimming is not
-    !| applied there (the caller passes `trim_frac = 0`).
-    !|
-    !| No-ops (pool unchanged) when `trim_frac <= 0`, when `k` rounds down to 0
-    !| (pool too small to trim — e.g. n_pool < 1/trim_frac), or when trimming would
-    !| empty the pool (`n_pool - 2k < 1`, e.g. trim_frac >= 0.5). The downstream
-    !| `< 10 residuals` gate still applies to the trimmed size.
-    pure subroutine trim_pool_tails_helper(pool, n_pool, trim_frac)
-        real(real64), intent(inout) :: pool(:)
-        !! Residual pool; on return its central residuals occupy pool(1:n_pool)
-        integer(int32), intent(inout) :: n_pool
-        !! Number of valid residuals in `pool`; reduced to the kept count on return
-        real(real64), intent(in) :: trim_frac
-        !! Fraction to trim from EACH tail (e.g. 0.05 keeps the central 90%)
-
-        integer(int32) :: k, n_keep, i
-        integer(int32) :: perm(n_pool), stack_left(n_pool), stack_right(n_pool)
-        real(real64) :: sorted_pool(n_pool)
-
-        if (trim_frac <= 0.0_real64 .or. n_pool < 1) return
-        k = int(real(n_pool, real64) * trim_frac, int32)   ! residuals dropped per tail
-        if (k <= 0) return                                 ! pool too small to trim
-        n_keep = n_pool - 2 * k
-        if (n_keep < 1) return                             ! never trim the pool empty
-
-        do concurrent(i = 1:n_pool) shared(perm)
-            perm(i) = i
-        end do
-        call sort_real(pool(1:n_pool), perm, stack_left, stack_right)
-        do concurrent(i = 1:n_pool) shared(sorted_pool, pool, perm)
-            sorted_pool(i) = pool(perm(i))
-        end do
-        ! Keep the central n_keep residuals (drop the k smallest and k largest).
-        do concurrent(i = 1:n_keep) shared(pool, sorted_pool, k)
-            pool(i) = sorted_pool(k + i)
-        end do
-        n_pool = n_keep
-    end subroutine trim_pool_tails_helper
 
     pure subroutine choose_index(means_sorted, n_genes, target_mean, idx, left_cand, right_cand)
         integer(int32), intent(in) :: n_genes
@@ -1091,7 +1044,7 @@ contains
         means_case, means_control, &
         observed_statistic_own, &
         compute_pvalue_own, &
-        n_genes, k_start, k_step, k_max, tau, trim_frac, null_method, &
+        n_genes, k_start, k_step, k_max, tau, null_method, &
         pvalues_own, n_genes_with_pvalue, &
         max_pool_size, &
         neighborhood_size_own_case, neighborhood_size_own_control, &
@@ -1123,11 +1076,6 @@ contains
         !! Hard upper limit on residual pool size
         real(real64), intent(in) :: tau
         !! Relative-change threshold for adaptive pool growth
-        real(real64), intent(in) :: trim_frac
-        !! Symmetric per-tail residual-pool trim fraction (0 = no trimming); the
-        !! caller passes the norm-gated value (raw only, and pooled null only —
-        !! trimming sorts the pool, which would destroy the per-gene block structure
-        !! the blocked null depends on, so the alloc layer forces it to 0 there)
         integer(int32), intent(in) :: null_method
         !! `NULL_METHOD_POOLED` (0) = iid resample from the pooled neighbourhood;
         !! `NULL_METHOD_BLOCKED` (1) = gene-blocked null, enumerated where it fits
@@ -1204,17 +1152,12 @@ contains
                                          k_start, k_step, k_max, tau, &
                                          tmp_pool_case, n_pool_case, &
                                          max_pool_size)
-            ! Raw-only outlier trim of each tail (no-op when trim_frac == 0). Applied
-            ! before the < 10 gate, so a pool trimmed below 10 is skipped like any
-            ! other under-populated pool.
-            call trim_pool_tails_helper(tmp_pool_case, n_pool_case, trim_frac)
             if (n_pool_case < 10) cycle
 
             call gather_residuals_helper(mean_control_val, sorted_control, &
                                          k_start, k_step, k_max, tau, &
                                          tmp_pool_control_own, n_pool_control_own, &
                                          max_pool_size)
-            call trim_pool_tails_helper(tmp_pool_control_own, n_pool_control_own, trim_frac)
             if (n_pool_control_own < 10) cycle
 
             observed_statistic_own_val = observed_statistic_own(i_gene)
@@ -1289,7 +1232,7 @@ contains
         means_case, replicates_case, n_genes_case, n_replicates_case, &
         means_control, replicates_control, n_genes_control, n_replicates_control, &
         observed_statistic_own, compute_pvalue_own, &
-        n_genes, norm_method, k_start, k_step, k_max, tau, trim_frac, null_method, &
+        n_genes, norm_method, k_start, k_step, k_max, tau, null_method, &
         pvalues_own, n_genes_with_pvalue, &
         max_pool_size, &
         neighborhood_size_own_case, neighborhood_size_own_control, &
@@ -1328,10 +1271,6 @@ contains
         !! Hard upper limit on residual pool size
         real(real64), intent(in) :: tau
         !! Relative-change threshold for adaptive pool growth
-        real(real64), intent(in) :: trim_frac
-        !! Symmetric per-tail residual-pool trim fraction in [0, 0.5); applied ONLY
-        !! for raw normalization (norm_method == 0) AND only under
-        !! `NULL_METHOD_POOLED`. 0 = no trimming.
         integer(int32), intent(in) :: null_method
         !! Null construction: `NULL_METHOD_POOLED` (0) resamples residuals iid from
         !! the whole neighbourhood pool; `NULL_METHOD_BLOCKED` (1) draws one neighbour
@@ -1361,7 +1300,6 @@ contains
         integer(int32) :: sort_ierr, blk_capacity, rbuf_size, per_iter_max
         integer(int32) :: k_eff_case, k_eff_control
         integer(int64) :: n_ms_case, n_ms_control, need_case, need_control
-        real(real64) :: effective_trim
 
         call set_ok(ierr)
 
@@ -1446,20 +1384,11 @@ contains
 
         if (is_err(ierr)) return
 
-        ! Residual-pool trimming is a raw-normalization-only knob: log/voom-style
-        ! transforms already stabilize the mean-variance trend, so there is nothing
-        ! to trim there. Gate it here so the helper receives an already-resolved
-        ! fraction (0 disables it).
-        ! Trimming sorts the pool in place, which destroys the per-gene block layout
-        ! the blocked null reads, so it is available only under NULL_METHOD_POOLED.
-        effective_trim = 0.0_real64
-        if (norm_method == 0 .and. null_method == NULL_METHOD_POOLED) effective_trim = trim_frac
-
         call compute_noise_pvalue_pipeline_helper( &
             sorted_case, sorted_control, &
             means_case, means_control, &
             observed_statistic_own, compute_pvalue_own, &
-            n_genes, k_start, k_step, k_max, tau, effective_trim, null_method, &
+            n_genes, k_start, k_step, k_max, tau, null_method, &
             pvalues_own, n_genes_with_pvalue, &
             max_pool_size, &
             neighborhood_size_own_case, neighborhood_size_own_control, &
@@ -1491,7 +1420,7 @@ subroutine compute_noise_pvalues_pipeline_c( &
     means_case, replicates_case, n_genes_case, n_replicates_case, &
     means_control, replicates_control, n_genes_control, n_replicates_control, &
     observed_statistic_own, compute_pvalue_own, &
-    n_genes, norm_method, k_start, k_step, k_max, tau, trim_frac, null_method, &
+    n_genes, norm_method, k_start, k_step, k_max, tau, null_method, &
     pvalues_own, n_genes_with_pvalue, &
     max_pool_size, &
     neighborhood_size_own_case, neighborhood_size_own_control, &
@@ -1536,9 +1465,6 @@ subroutine compute_noise_pvalues_pipeline_c( &
     !! Hard upper limit on residual pool size
     real(c_double), intent(in), target :: tau
     !! Relative-change threshold for adaptive pool growth
-    real(c_double), intent(in), target :: trim_frac
-    !! Symmetric per-tail residual-pool trim fraction in [0, 0.5); raw norm only,
-    !! and pooled null only (see `null_method`)
     integer(c_int), intent(in), target :: null_method
     !! Null construction: 0 = iid resample from the pooled neighbourhood (historical
     !! behaviour); 1 = gene-blocked null, exactly enumerated where it fits. Callers
@@ -1575,7 +1501,6 @@ subroutine compute_noise_pvalues_pipeline_c( &
     M_CHECK_NON_NULL(k_step)
     M_CHECK_NON_NULL(k_max)
     M_CHECK_NON_NULL(tau)
-    M_CHECK_NON_NULL(trim_frac)
     M_CHECK_NON_NULL(null_method)
     M_CHECK_NON_NULL(max_pool_size)
     M_CHECK_NON_NULL(pvalues_own)
@@ -1588,7 +1513,7 @@ subroutine compute_noise_pvalues_pipeline_c( &
         means_case, replicates_case, n_genes_case, n_replicates_case, &
         means_control, replicates_control, n_genes_control, n_replicates_control, &
         observed_statistic_own, compute_pvalue_own, &
-        n_genes, norm_method, k_start, k_step, k_max, tau, trim_frac, null_method, &
+        n_genes, norm_method, k_start, k_step, k_max, tau, null_method, &
         pvalues_own, n_genes_with_pvalue, &
         max_pool_size, &
         neighborhood_size_own_case, neighborhood_size_own_control, &

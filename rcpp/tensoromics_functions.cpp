@@ -1187,7 +1187,6 @@ void compute_noise_pvalues_pipeline_c(
   const int* k_step,
   const int* k_max,
   const double* tau,
-  const double* trim_frac,
   const int* null_method,
   double* pvalues_own,
   int* n_genes_with_pvalue,
@@ -1217,7 +1216,6 @@ void compute_noise_pvalues_pipeline_exact_c(
   const int* k_step,
   const int* k_max,
   const double* tau,
-  const double* trim_frac,
   const int* null_method,
   double* pvalues_own,
   int* n_genes_with_pvalue,
@@ -1262,7 +1260,6 @@ void compute_noise_pvalues_pipeline_md_c(
   const int* k_step,
   const int* k_max,
   const double* tau,
-  const double* trim_frac,
   const int* null_method,
   const int* sampling_mode,
   const int* n_draws_max,
@@ -4803,7 +4800,6 @@ static Rcpp::List run_noise_pvalues_pipeline(
     int k_step,
     int k_max,
     double tau,
-    double trim_frac,
     int null_method,
     int max_pool_size) {
 
@@ -4832,7 +4828,7 @@ static Rcpp::List run_noise_pvalues_pipeline(
             control_means.begin(), control_replicates.begin(), &control_n_genes, &control_n_samples,
             obs_own.begin(), valid_genes_own.begin(),
             &n_genes, &norm_method,
-            &k_start, &k_step, &k_max, &tau, &trim_frac, &null_method,
+            &k_start, &k_step, &k_max, &tau, &null_method,
             pvalues_own.begin(), &n_success, &max_pool_size,
             neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
             neighborhood_size_case.begin(),
@@ -4843,7 +4839,7 @@ static Rcpp::List run_noise_pvalues_pipeline(
             control_means.begin(), control_replicates.begin(), &control_n_genes, &control_n_samples,
             obs_own.begin(), valid_genes_own.begin(),
             &n_genes, &norm_method,
-            &k_start, &k_step, &k_max, &tau, &trim_frac, &null_method,
+            &k_start, &k_step, &k_max, &tau, &null_method,
             pvalues_own.begin(), &n_success, &max_pool_size,
             neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
             neighborhood_size_case.begin(),
@@ -4878,10 +4874,6 @@ static Rcpp::List run_noise_pvalues_pipeline(
 //' @param k_step Integer adaptive growth step
 //' @param k_max Integer maximum pool size
 //' @param tau Double adaptive stopping threshold
-//' @param trim_frac Double symmetric per-tail residual-pool trim fraction in
-//'   [0, 0.5); applied ONLY for raw normalization (norm_method == 0) AND only with
-//'   null_method = 0 (trimming sorts the pool, destroying the per-gene blocks the
-//'   blocked null reads). 0 = off.
 //' @param null_method Integer null construction for the baseline model: 0 =
 //'   resample n_rep residuals iid from the pooled neighbourhood (historical
 //'   behaviour); 1 = gene-blocked (pick a neighbour gene, resample within it),
@@ -4904,7 +4896,6 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_rcpp(
     int k_step,
     int k_max,
     double tau,
-    double trim_frac,
     int null_method,
     int max_pool_size) {
 
@@ -4912,7 +4903,7 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_rcpp(
         0,  // baseline (mean-difference null)
         case_means, case_replicates, control_means, control_replicates,
         obs_own, valid_genes_own,
-        norm_method, k_start, k_step, k_max, tau, trim_frac, null_method, max_pool_size);
+        norm_method, k_start, k_step, k_max, tau, null_method, max_pool_size);
 }
 
 //' Compute noise-model p-values (EXACT variant, gene-vs-own comparison)
@@ -4938,7 +4929,6 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
     int k_step,
     int k_max,
     double tau,
-    double trim_frac,
     int null_method,
     int max_pool_size) {
 
@@ -4946,7 +4936,7 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
         1,  // exact (sorted binary-search + sqrt(n) scaling)
         case_means, case_replicates, control_means, control_replicates,
         obs_own, valid_genes_own,
-        norm_method, k_start, k_step, k_max, tau, trim_frac, null_method, max_pool_size);
+        norm_method, k_start, k_step, k_max, tau, null_method, max_pool_size);
 }
 
 
@@ -5040,8 +5030,6 @@ static std::vector<double> pack_axis_replicates(
 //' @param k_step Integer adaptive growth step
 //' @param k_max Integer maximum neighbour-gene count
 //' @param tau Double adaptive stopping threshold
-//' @param trim_frac Double symmetric per-tail residual trim fraction; raw
-//'   normalization only, as in the scalar models.
 //' @param null_method Integer; ABI parity only, must be 0. Gene-blocking is not a
 //'   distinct null under one-residual-per-side draws.
 //' @param sampling_mode Integer 0 = systematic stride (default), 1 = RNG
@@ -5073,7 +5061,6 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_md_rcpp(
     int k_step,
     int k_max,
     double tau,
-    double trim_frac,
     int null_method,
     int sampling_mode,
     int n_draws_max,
@@ -5150,7 +5137,7 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_md_rcpp(
         n_rep_control_per_axis.begin(),
         beta_work.begin(), valid_genes_own.begin(), &beta_mode, &beta_centre,
         &n_genes, &n_axes, &norm_method,
-        &k_start, &k_step, &k_max, &tau, &trim_frac, &null_method,
+        &k_start, &k_step, &k_max, &tau, &null_method,
         &sampling_mode, &n_draws_max, &n_exceed_target, &enum_cap, &seed, &max_pool_size,
         pvalues_own.begin(), d_obs.begin(), d_std_obs.begin(), d_sq_null_mean.begin(),
         method_used.begin(), n_draws_used.begin(),

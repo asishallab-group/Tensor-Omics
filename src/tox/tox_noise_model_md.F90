@@ -85,9 +85,9 @@
 !| dimensional surcharge. It is a user parameter, not a compile-time constant;
 !| `DEFAULT_N_DRAWS_MAX` documents the recommended 2e4.
 !|
-!| **Reuse, not copy.** `sorted_data_t`, `prepare_sorted_data`,
-!| `gather_residuals_helper` and `trim_pool_tails_helper` come from `noise_model`
-!| directly; the validated scalar modules are not modified.
+!| **Reuse, not copy.** `sorted_data_t`, `prepare_sorted_data` and
+!| `gather_residuals_helper` come from `noise_model` directly; the validated scalar
+!| modules are not modified.
 module noise_model_md
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, int64, real64
@@ -97,7 +97,7 @@ module noise_model_md
                           validate_dimension_size, validate_all_in_range_real
     use f42_utils, only: sort_real, init_random
     use noise_model, only: sorted_data_t, prepare_sorted_data, &
-                           gather_residuals_helper, trim_pool_tails_helper, &
+                           gather_residuals_helper, &
                            NULL_METHOD_POOLED, RNG_BUFFER_MAX, NOISE_LOG_OFFSET
     implicit none
 
@@ -813,8 +813,8 @@ contains
     !> Core pipeline: per-gene multidimensional p-values from pre-built structures.
     !|
     !| For each gene, per axis and per side, gather an adaptive kNN residual pool in
-    !| that axis's mean space (`gather_residuals_helper`, unchanged), optionally trim
-    !| its tails, then scale it by `1/sqrt(n)` of its own side. Scaling the POOL once
+    !| that axis's mean space (`gather_residuals_helper`, unchanged), then scale it
+    !| by `1/sqrt(n)` of its own side. Scaling the POOL once
     !| per gene rather than each draw is what turns the plan's per-draw
     !| `eps/sqrt(n)` into a plain pool difference, and it is exactly what
     !| `noise_model_exact` does in 1-D — which is why the `d = 1` enumerated path
@@ -838,7 +838,7 @@ contains
     subroutine compute_noise_pvalue_pipeline_md_helper( &
         sorted_case, sorted_control, means_case, means_control, &
         beta_obs, compute_pvalue_own, &
-        n_genes, n_axes, k_start, k_step, k_max, tau, trim_frac, &
+        n_genes, n_axes, k_start, k_step, k_max, tau, &
         sampling_mode, n_draws_max, n_exceed_target, enum_max_product, max_pool_size, &
         pvalues_own, d_obs, d_std_obs, d_sq_null_mean, method_used, n_draws_used, &
         neighborhood_size_case, neighborhood_size_control, var_null, &
@@ -870,8 +870,6 @@ contains
         !! Hard cap on neighbour genes
         real(real64), intent(in) :: tau
         !! Relative-change threshold for adaptive pool growth
-        real(real64), intent(in) :: trim_frac
-        !! Per-tail residual trim fraction, already norm-gated by the caller
         integer(int32), intent(in) :: sampling_mode
         !! `SAMPLING_SYSTEMATIC` or `SAMPLING_RNG`
         integer(int32), intent(in) :: n_draws_max
@@ -950,13 +948,11 @@ contains
                                              k_start, k_step, k_max, tau, &
                                              tmp_pools_case(:, i_axis), tmp_n_pool_case(i_axis), &
                                              max_pool_size)
-                call trim_pool_tails_helper(tmp_pools_case(:, i_axis), tmp_n_pool_case(i_axis), trim_frac)
 
                 call gather_residuals_helper(means_control(i_gene, i_axis), sorted_control(i_axis), &
                                              k_start, k_step, k_max, tau, &
                                              tmp_pools_control(:, i_axis), tmp_n_pool_control(i_axis), &
                                              max_pool_size)
-                call trim_pool_tails_helper(tmp_pools_control(:, i_axis), tmp_n_pool_control(i_axis), trim_frac)
 
                 neighborhood_size_case(i_axis, i_gene) = tmp_n_pool_case(i_axis)
                 neighborhood_size_control(i_axis, i_gene) = tmp_n_pool_control(i_axis)
@@ -1037,14 +1033,11 @@ contains
     !|      interfaces, where a rank mismatch is a hard error).
     !|   6. Run the gene loop.
     !|
-    !| `trim_frac` is raw-normalization only, as in the scalar modules: log/voom-style
-    !| transforms already stabilize the mean-variance trend, so there is nothing to
-    !| trim there.
     subroutine compute_noise_pvalue_pipeline_md( &
         means_case, replicates_case_packed, n_rep_case_per_axis, &
         means_control, replicates_control_packed, n_rep_control_per_axis, &
         beta_obs, compute_pvalue_own, beta_mode, beta_centre, &
-        n_genes, n_axes, norm_method, k_start, k_step, k_max, tau, trim_frac, &
+        n_genes, n_axes, norm_method, k_start, k_step, k_max, tau, &
         null_method, sampling_mode, n_draws_max, n_exceed_target, enum_max_product, &
         seed, max_pool_size, &
         pvalues_own, d_obs, d_std_obs, d_sq_null_mean, &
@@ -1090,8 +1083,6 @@ contains
         !! Hard cap on neighbour genes
         real(real64), intent(in) :: tau
         !! Relative-change threshold for adaptive pool growth
-        real(real64), intent(in) :: trim_frac
-        !! Per-tail residual trim fraction in [0, 0.5); raw normalization only
         integer(int32), intent(in) :: null_method
         !! Kept for ABI parity with the scalar modules; only `NULL_METHOD_POOLED` (0)
         !! is accepted. Under this module's construction a draw takes ONE residual per
@@ -1156,7 +1147,7 @@ contains
         integer(int32) :: i_axis, i_gene, n_rep_c, n_rep_t, off_c, off_t
         integer(int32) :: n_packed_case, n_packed_control, sort_ierr
         integer(int32) :: per_iter_max, rbuf_size, n_finite
-        real(real64) :: effective_trim, med
+        real(real64) :: med
 
         call set_ok(ierr)
 
@@ -1297,13 +1288,10 @@ contains
         end if
         M_ALLOCATE(rbuf(rbuf_size))
 
-        effective_trim = 0.0_real64
-        if (norm_method == 0) effective_trim = trim_frac
-
         call compute_noise_pvalue_pipeline_md_helper( &
             sorted_case, sorted_control, means_case, means_control, &
             beta_obs, compute_pvalue_own, &
-            n_genes, n_axes, k_start, k_step, k_max, tau, effective_trim, &
+            n_genes, n_axes, k_start, k_step, k_max, tau, &
             sampling_mode, n_draws_max, n_exceed_target, enum_max_product, max_pool_size, &
             pvalues_own, d_obs, d_std_obs, d_sq_null_mean, method_used, n_draws_used, &
             neighborhood_size_case, neighborhood_size_control, var_null, &
@@ -1341,7 +1329,7 @@ subroutine compute_noise_pvalues_pipeline_md_c( &
     means_case, replicates_case_packed, n_packed_case, n_rep_case_per_axis, &
     means_control, replicates_control_packed, n_packed_control, n_rep_control_per_axis, &
     beta_obs, compute_pvalue_own, beta_mode, beta_centre, &
-    n_genes, n_axes, norm_method, k_start, k_step, k_max, tau, trim_frac, &
+    n_genes, n_axes, norm_method, k_start, k_step, k_max, tau, &
     null_method, sampling_mode, n_draws_max, n_exceed_target, enum_max_product, &
     seed, max_pool_size, &
     pvalues_own, d_obs, d_std_obs, d_sq_null_mean, method_used, n_draws_used, &
@@ -1396,8 +1384,6 @@ subroutine compute_noise_pvalues_pipeline_md_c( &
     !! Hard cap on neighbour genes
     real(c_double), intent(in), target :: tau
     !! Relative-change threshold for adaptive pool growth
-    real(c_double), intent(in), target :: trim_frac
-    !! Per-tail residual trim fraction; raw normalization only
     integer(c_int), intent(in), target :: null_method
     !! ABI parity only; must be 0 (see the Fortran argument doc)
     integer(c_int), intent(in), target :: sampling_mode
@@ -1464,7 +1450,6 @@ subroutine compute_noise_pvalues_pipeline_md_c( &
     M_CHECK_NON_NULL(k_step)
     M_CHECK_NON_NULL(k_max)
     M_CHECK_NON_NULL(tau)
-    M_CHECK_NON_NULL(trim_frac)
     M_CHECK_NON_NULL(null_method)
     M_CHECK_NON_NULL(sampling_mode)
     M_CHECK_NON_NULL(n_draws_max)
@@ -1504,7 +1489,7 @@ subroutine compute_noise_pvalues_pipeline_md_c( &
         means_case, replicates_case_packed, n_rep_case_per_axis, &
         means_control, replicates_control_packed, n_rep_control_per_axis, &
         beta_obs, compute_pvalue_own, beta_mode, beta_centre, &
-        n_genes, n_axes, norm_method, k_start, k_step, k_max, tau, trim_frac, &
+        n_genes, n_axes, norm_method, k_start, k_step, k_max, tau, &
         null_method, sampling_mode, n_draws_max, n_exceed_target, &
         int(enum_max_product, int64), seed, max_pool_size, &
         pvalues_own, d_obs, d_std_obs, d_sq_null_mean, method_used, n_draws_used, &

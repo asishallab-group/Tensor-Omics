@@ -3613,8 +3613,6 @@ compute_scaled_distance_quantile <- function(distribution, c_const) {
 #' @param k_step Integer adaptive increment.
 #' @param k_max Integer maximum neighborhood size.
 #' @param tau Numeric adaptive stopping threshold.
-#' @param trim_frac Numeric symmetric per-tail residual-pool trim fraction in
-#'   [0, 0.5); applied ONLY for raw normalization (norm_method == 0). 0 = off.
 #' @param null_method Integer null construction (baseline model only): 0 =
 #'   resample `n_rep` residuals iid from the POOLED neighbourhood (historical
 #'   behaviour); 1 = GENE-BLOCKED — pick one neighbour gene, then resample
@@ -3643,7 +3641,6 @@ tox_compute_noise_pvalues_pipeline <- function(
     k_step = 100L,
     k_max = 1000L,
     tau = 0.01,
-    trim_frac = 0.0,
     null_method = 0L,
     max_pool_size
 ) {
@@ -3660,7 +3657,6 @@ tox_compute_noise_pvalues_pipeline <- function(
         k_step = as.integer(k_step),
         k_max = as.integer(k_max),
         tau = as.numeric(tau),
-        trim_frac = as.numeric(trim_frac),
         null_method = as.integer(null_method),
         max_pool_size = as.integer(max_pool_size)
     )
@@ -3692,7 +3688,6 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
     k_step = 100L,
     k_max = 1000L,
     tau = 0.01,
-    trim_frac = 0.0,
     null_method = 0L,
     max_pool_size
 ) {
@@ -3709,7 +3704,6 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
         k_step = as.integer(k_step),
         k_max = as.integer(k_max),
         tau = as.numeric(tau),
-        trim_frac = as.numeric(trim_frac),
         null_method = as.integer(null_method),
         max_pool_size = as.integer(max_pool_size)
     )
@@ -3843,8 +3837,6 @@ tox_md_assert_disjoint_samples <- function(replicate_lists) {
 #' @param norm_method 0 = linear, non-zero = log2. Applied per axis.
 #' @param k_start,k_step,k_max,tau Adaptive kNN neighbourhood settings, per axis.
 #'   These count GENES, not residuals.
-#' @param trim_frac Symmetric per-tail residual trim fraction; raw normalization
-#'   only, as in the scalar models.
 #' @param null_method ABI parity only; must be 0. Gene-blocking is not a distinct
 #'   null when a draw takes one residual per side.
 #' @param sampling_mode 0 = systematic stride (default), 1 = RNG.
@@ -3889,7 +3881,6 @@ tox_compute_noise_pvalues_pipeline_md <- function(
     k_step = 1L,
     k_max = 50L,
     tau = 0.1,
-    trim_frac = 0.0,
     null_method = 0L,
     sampling_mode = 0L,
     n_draws_max = 20000L,
@@ -3953,7 +3944,6 @@ tox_compute_noise_pvalues_pipeline_md <- function(
         k_step = as.integer(k_step),
         k_max = as.integer(k_max),
         tau = as.numeric(tau),
-        trim_frac = as.numeric(trim_frac),
         null_method = as.integer(null_method),
         sampling_mode = as.integer(sampling_mode),
         n_draws_max = as.integer(n_draws_max),

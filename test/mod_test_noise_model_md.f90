@@ -213,7 +213,7 @@ contains
             means_case, packed_case, n_rep_case, &
             means_control, packed_control, n_rep_control, &
             beta_obs, valid, beta_mode, beta_centre, &
-            n_genes, n_axes, norm_method, K_START, K_STEP, K_MAX, TAU, 0.0_real64, &
+            n_genes, n_axes, norm_method, K_START, K_STEP, K_MAX, TAU, &
             NULL_METHOD_POOLED, sampling_mode, n_draws_max, n_exceed_target, enum_max_product, &
             SEED, MAX_POOL, &
             pvalues, d_obs, d_std_obs, d_sq_null_mean, method_used, n_draws_used, &
@@ -277,7 +277,7 @@ contains
                 means_case(:, 1), rep_case, n_genes, n_rep_case(1), &
                 means_control(:, 1), rep_control, n_genes, n_rep_control(1), &
                 obs_own, valid, n_genes, norm_method, K_START, K_STEP, K_MAX, TAU, &
-                0.0_real64, p_exact, n_with_p_exact, MAX_POOL, &
+                p_exact, n_with_p_exact, MAX_POOL, &
                 nb_own_case, nb_own_control, nb_scalar, ierr_exact)
             call assert_equal_int(ierr_exact, ERR_OK, &
                                   "d1: exact pipeline ierr (norm "//str(norm_method)//")")
@@ -1101,7 +1101,7 @@ contains
             means_case, packed_case, n_rep_case, &
             means_control, packed_control, n_rep_control, &
             beta_obs, valid, beta_mode, beta_centre, &
-            n_genes, n_axes, 0, K_START, K_STEP, K_MAX, TAU, 0.0_real64, &
+            n_genes, n_axes, 0, K_START, K_STEP, K_MAX, TAU, &
             null_method, sampling_mode, n_draws_max, 0, enum_max_product, SEED, MAX_POOL, &
             p, d_obs, d_std, s, meth, nd, nbc, nbt, vn, cc, mm, dh, nwp, ierr)
     end function bad_run
