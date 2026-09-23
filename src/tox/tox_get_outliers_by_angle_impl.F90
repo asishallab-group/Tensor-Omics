@@ -43,9 +43,10 @@ module tox_get_outliers_by_angle_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
-    use tox_errors, only: set_ok, set_err, STAT_NO_STABLE_DIRECTION, STAT_NO_ANGULAR_VARIATION, &
+    use tox_errors, only: set_ok, set_err, is_err, STAT_NO_STABLE_DIRECTION, STAT_NO_ANGULAR_VARIATION, &
                           STAT_TOO_FEW_MEMBERS, STAT_NO_FAMILY, STAT_ZERO_VECTOR
-    use f42_math_impl, only: wrap_angle
+    use f42_math_impl, only: wrap_angle, angular_distance, one_minus_cosine, log_one_minus
+    use f42_vector_impl, only: scaled_length, has_direction, angle_to_direction
     use f42_sort_impl, only: sort_array_heapsort
     use f42_stats_impl, only: calc_percentile_impl
     M_IMPLICIT_NONE
@@ -141,7 +142,7 @@ contains
             !! At most 5 (\(R \ge e^{-12.5} \approx 4 \times 10^{-6}\)): above that, a resultant that cancels only up to rounding would pass as a stable direction.
 
         real(real64) :: actual_min_dispersion, actual_max_dispersion
-        real(real64) :: gene_factor, gene_scaled_norm, sum_factor, sum_scaled_norm, deviation, sum_one_minus_cosine
+        real(real64) :: gene_factor, gene_scaled_norm, sum_factor, sum_scaled_norm, deviation
         integer(int32) :: i_gene, i_family, i_axis
 
         M_DEFAULT_VAL(min_angular_dispersion, actual_min_dispersion, CM_MIN_ANGULAR_DISPERSION_DEFAULT)
@@ -194,26 +195,18 @@ contains
         do i_gene = 1, n_genes
             i_family = gene_to_fam(i_gene)
             if (i_family == M_GENE_TO_FAM_SENTINEL) cycle
-            if (status(i_family) /= 0_int32) cycle
+            if (is_err(status(i_family))) cycle
 
             deviation = angle_to_direction(n_axes, expression_vectors(:, i_gene), family_directions(:, i_family))
             if (deviation < 0.0_real64) cycle  ! a zero vector has no direction
             angular_dispersions(i_family) = angular_dispersions(i_family) + one_minus_cosine(deviation)
         end do
 
-        do concurrent (i_family = 1:n_families) local(sum_one_minus_cosine) &
-            shared(family_directions, angular_dispersions, member_counts, status, n_axes, actual_min_dispersion, &
-                   actual_max_dispersion)
-
-            if (status(i_family) /= 0_int32) then
-                angular_dispersions(i_family) = CM_ANGULAR_DISPERSION_SENTINEL
-                cycle
-            end if
-            sum_one_minus_cosine = angular_dispersions(i_family)
-            call classify_dispersion(sum_one_minus_cosine, member_counts(i_family), n_axes, actual_min_dispersion, &
-                                     actual_max_dispersion, angular_dispersions(i_family), status(i_family))
-            ! a direction that is not stable is no direction: the mean of a nearly cancelling
-            ! resultant is rounding noise
+        call classify_dispersions(n_families, member_counts, n_axes, actual_min_dispersion, actual_max_dispersion, &
+                                  angular_dispersions, status)
+        ! a direction that is not stable is no direction: the mean of a nearly cancelling
+        ! resultant is rounding noise
+        do concurrent (i_family = 1:n_families) shared(family_directions, status)
             if (status(i_family) == STAT_NO_STABLE_DIRECTION) family_directions(:, i_family) = 0.0_real64
         end do
     end subroutine compute_family_direction_impl
@@ -247,17 +240,19 @@ contains
             !! `CM_ANGULAR_DEVIATIONS_SENTINEL` where the gene has no family, its expression vector
             !! is zero or all subnormal, or its family has no direction
 
+        real(real64) :: deviation
         integer(int32) :: i_gene, i_family
 
-        do concurrent (i_gene = 1:n_genes) local(i_family) &
+        do concurrent (i_gene = 1:n_genes) local(i_family, deviation) &
             shared(expression_vectors, family_directions, gene_to_fam, angular_deviations, n_axes)
 
             angular_deviations(i_gene) = CM_ANGULAR_DEVIATIONS_SENTINEL
             i_family = gene_to_fam(i_gene)
             if (i_family == M_GENE_TO_FAM_SENTINEL) cycle
 
-            angular_deviations(i_gene) = angle_to_direction(n_axes, expression_vectors(:, i_gene), &
-                                                            family_directions(:, i_family))
+            deviation = angle_to_direction(n_axes, expression_vectors(:, i_gene), family_directions(:, i_family))
+            if (deviation < 0.0_real64) cycle  ! either vector is zero: no direction
+            angular_deviations(i_gene) = deviation
         end do
     end subroutine compute_angular_deviations_impl
 
@@ -313,7 +308,7 @@ contains
             !! At most 5 (\(R \ge e^{-12.5} \approx 4 \times 10^{-6}\)): above that, a resultant that cancels only up to rounding would pass as a stable direction.
 
         real(real64) :: actual_min_dispersion, actual_max_dispersion
-        real(real64) :: sum_sin, sum_cos, sum_one_minus_cosine
+        real(real64) :: sum_sin, sum_cos
         integer(int32) :: i_gene, i_family
 
         M_DEFAULT_VAL(min_angular_dispersion, actual_min_dispersion, CM_MIN_ANGULAR_DISPERSION_DEFAULT)
@@ -369,25 +364,17 @@ contains
         do i_gene = 1, n_genes
             i_family = gene_to_fam(i_gene)
             if (i_family == M_GENE_TO_FAM_SENTINEL) cycle
-            if (status(i_family) /= 0_int32) cycle
+            if (is_err(status(i_family))) cycle
 
             angular_dispersions(i_family) = angular_dispersions(i_family) &
                 + one_minus_cosine(angular_distance(signed_angles(i_gene), family_mean_angles(i_family)))
         end do
 
         ! signed angles have no axes, so the noise floor has no axis term
-        do concurrent (i_family = 1:n_families) local(sum_one_minus_cosine) &
-            shared(family_mean_angles, angular_dispersions, member_counts, status, actual_min_dispersion, &
-                   actual_max_dispersion)
-
-            if (status(i_family) /= 0_int32) then
-                angular_dispersions(i_family) = CM_ANGULAR_DISPERSION_SENTINEL
-                cycle
-            end if
-            sum_one_minus_cosine = angular_dispersions(i_family)
-            call classify_dispersion(sum_one_minus_cosine, member_counts(i_family), 0_int32, actual_min_dispersion, &
-                                     actual_max_dispersion, angular_dispersions(i_family), status(i_family))
-            ! a mean that is not stable is no mean: that of a nearly cancelling resultant is noise
+        call classify_dispersions(n_families, member_counts, 0_int32, actual_min_dispersion, actual_max_dispersion, &
+                                  angular_dispersions, status)
+        ! a mean that is not stable is no mean: that of a nearly cancelling resultant is noise
+        do concurrent (i_family = 1:n_families) shared(family_mean_angles, status)
             if (status(i_family) == STAT_NO_STABLE_DIRECTION) family_mean_angles(i_family) = CM_FAMILY_MEAN_ANGLE_SENTINEL
         end do
     end subroutine compute_family_direction_rap_impl
@@ -783,138 +770,6 @@ contains
     ! Private helpers
     ! ------------------------------------------------------------------------------------------
 
-    !> Length of a vector as `scaled_norm / factor`, where `scaled_norm` is the Euclidean length
-    !| of `vector * factor` and `factor` a power of two that brings the largest component into
-    !| \([2^{-500}, 2^{500}]\) -- 1 for most data. So the sum of squares can neither overflow nor
-    !| underflow, and `vector(i) * factor / scaled_norm` is the unit vector's component.
-    !|
-    !| The factor is a constant rather than the reciprocal of the largest component: that
-    !| reciprocal is subnormal for components near `huge`, and a build that flushes subnormals to
-    !| zero (ifx's default floating-point model, which also turns a division into a multiplication
-    !| by the reciprocal) would then zero the whole vector. `scaled_norm` itself stays within
-    !| \([2^{-500}, 2^{500} \sqrt{n}]\), so its reciprocal is always normal.
-    !|
-    !| A vector whose largest component is subnormal counts as the zero vector. The same fast
-    !| model computes `vector(i) * factor / scaled_norm` as `vector(i) * (factor / scaled_norm)`,
-    !| and `factor / scaled_norm` is below `1 / largest`, which overflows exactly when the largest
-    !| component is subnormal -- turning such a vector into infinities and NaN where subnormals are
-    !| not flushed (as when Python or R load the library). A build that flushes them already sees
-    !| zero, so this makes every build agree.
-    pure subroutine scaled_length(n_axes, vector, factor, scaled_norm)
-        integer(int32), intent(in) :: n_axes
-            !! Length of `vector`
-        real(real64), intent(in) :: vector(n_axes)
-            !! The vector
-        real(real64), intent(out) :: factor
-            !! Power of two the vector is multiplied by before its length is taken
-        real(real64), intent(out) :: scaled_norm
-            !! Euclidean length of `vector * factor`; zero exactly for the zero vector and for one
-            !! whose components are all subnormal
-
-        real(real64), parameter :: LARGEST_UNSCALED = 2.0_real64**500, SMALLEST_UNSCALED = 2.0_real64**(-500)
-        real(real64), parameter :: SCALE_DOWN = 2.0_real64**(-600), SCALE_UP = 2.0_real64**600
-        real(real64) :: largest
-        integer(int32) :: i_axis
-
-        largest = 0.0_real64
-        do i_axis = 1, n_axes
-            largest = max(largest, abs(vector(i_axis)))
-        end do
-
-        factor = 1.0_real64
-        scaled_norm = 0.0_real64
-        if (largest < tiny(1.0_real64)) return
-        if (largest > LARGEST_UNSCALED) factor = SCALE_DOWN
-        if (largest < SMALLEST_UNSCALED) factor = SCALE_UP
-
-        do concurrent (i_axis = 1:n_axes) shared(vector, factor) reduce(+:scaled_norm)
-            scaled_norm = scaled_norm + (vector(i_axis)*factor)**2
-        end do
-        scaled_norm = sqrt(scaled_norm)
-    end subroutine scaled_length
-
-    !> Whether a vector has a direction: not the zero vector, nor one whose components are all
-    !| subnormal -- the same rule scaled_length applies.
-    pure logical(c_bool) function has_direction(n_axes, vector)
-        integer(int32), intent(in) :: n_axes
-            !! Length of `vector`
-        real(real64), intent(in) :: vector(n_axes)
-            !! The vector
-
-        real(real64) :: factor, scaled_norm
-
-        call scaled_length(n_axes, vector, factor, scaled_norm)
-        has_direction = scaled_norm > 0.0_real64
-    end function has_direction
-
-    !> The angle between a vector and a direction, in `[0, pi]`, or `CM_ANGULAR_DEVIATIONS_SENTINEL`
-    !| where either is the zero vector.
-    !|
-    !| For the unit vectors u and v it is 2 atan2(|u - v|, |u + v|): unlike the acos of their dot
-    !| product, this stays accurate near 0 and pi, where acos turns one rounding error of the
-    !| cosine into an angle of about 1e-8.
-    pure real(real64) function angle_to_direction(n_axes, vector, direction) result(angle)
-        integer(int32), intent(in) :: n_axes
-            !! Length of both vectors
-        real(real64), intent(in) :: vector(n_axes)
-            !! The vector, of any length
-        real(real64), intent(in) :: direction(n_axes)
-            !! The direction, of any length
-
-        real(real64) :: vector_factor, vector_scaled_norm, direction_factor, direction_scaled_norm
-        real(real64) :: vector_unit, direction_unit, difference_squared, sum_squared
-        integer(int32) :: i_axis
-
-        angle = CM_ANGULAR_DEVIATIONS_SENTINEL
-        call scaled_length(n_axes, vector, vector_factor, vector_scaled_norm)
-        call scaled_length(n_axes, direction, direction_factor, direction_scaled_norm)
-        if (vector_scaled_norm == 0.0_real64 .or. direction_scaled_norm == 0.0_real64) return
-
-        difference_squared = 0.0_real64
-        sum_squared = 0.0_real64
-        do i_axis = 1, n_axes
-            vector_unit = (vector(i_axis)*vector_factor)/vector_scaled_norm
-            direction_unit = (direction(i_axis)*direction_factor)/direction_scaled_norm
-            difference_squared = difference_squared + (vector_unit - direction_unit)**2
-            sum_squared = sum_squared + (vector_unit + direction_unit)**2
-        end do
-        angle = 2.0_real64*atan2(sqrt(difference_squared), sqrt(sum_squared))
-    end function angle_to_direction
-
-    !> The absolute distance around the circle between two angles, in `[0, pi]`.
-    pure real(real64) function angular_distance(angle, mean_angle) result(distance)
-        real(real64), intent(in) :: angle
-            !! An angle in radians
-        real(real64), intent(in) :: mean_angle
-            !! The angle it is measured from
-
-        distance = abs(wrap_angle(angle - mean_angle))
-    end function angular_distance
-
-    !> \(1 - \cos\delta\) of an angular deviation, as \(2\sin^2(\delta/2)\), which keeps its
-    !| full relative precision for small deviations where \(1 - \cos\delta\) cancels.
-    pure real(real64) function one_minus_cosine(deviation)
-        real(real64), intent(in) :: deviation
-            !! Angular deviation in radians
-
-        one_minus_cosine = 2.0_real64*sin(0.5_real64*deviation)**2
-    end function one_minus_cosine
-
-    !> \(\ln(1 - x)\) for \(0 \le x < 1\), accurate also where \(x\) is small and \(1 - x\)
-    !| would round away its digits: there the series \(-(x + x^2/2 + \dots + x^6/6)\), whose
-    !| truncation error below \(10^{-3}\) is under \(x^6/7 < 1.5 \times 10^{-19}\) relative to its value.
-    pure real(real64) function log_one_minus(x)
-        real(real64), intent(in) :: x
-            !! Argument, in `[0, 1)`
-
-        if (x < 1.0e-3_real64) then
-            log_one_minus = -x*(1.0_real64 + x*(0.5_real64 + x*(1.0_real64/3.0_real64 &
-                            + x*(0.25_real64 + x*(0.2_real64 + x/6.0_real64)))))
-        else
-            log_one_minus = log(1.0_real64 - x)
-        end if
-    end function log_one_minus
-
     !> The largest angular dispersion rounding alone can produce in a family of identical or
     !| proportional members: \((m + 1.5\,n + 16)\,\varepsilon\) for \(m\) members in \(n\)
     !| axes, with \(\varepsilon\) the machine epsilon; signed angles pass \(n = 0\).
@@ -948,48 +803,58 @@ contains
         noise_floor = (real(n_members, real64) + 1.5_real64*real(n_axes, real64) + 16.0_real64)*epsilon(1.0_real64)
     end function dispersion_noise_floor
 
-    !> Angular dispersion and status of a family, from the sum of its members' \(1 - \cos\delta\).
+    !> Angular dispersion and status of every family whose `status` is still zero, from the sum of
+    !| its members' \(1 - \cos\delta\); a family already reported gets the dispersion sentinel.
     !|
     !| \(1 - R\) is that sum's mean, so \(\sigma = \sqrt{-2 \ln(1 - \text{mean})}\). A mean of 1
     !| or more is a resultant rounded to nothing, an unbounded dispersion; a dispersion within the
     !| noise floor is rounding, not variation.
-    pure subroutine classify_dispersion(sum_one_minus_cosine, n_members, n_axes, min_dispersion, max_dispersion, &
-                                        dispersion, status)
-        real(real64), intent(in) :: sum_one_minus_cosine
-            !! Sum over the members of \(1 - \cos\delta\), each deviation from the family's direction
-        integer(int32), intent(in) :: n_members
-            !! Number of members summed, at least one
+    pure subroutine classify_dispersions(n_families, member_counts, n_axes, min_dispersion, max_dispersion, &
+                                         angular_dispersions, status)
+        integer(int32), intent(in) :: n_families
+            !! Number of gene families
+        integer(int32), intent(in) :: member_counts(n_families)
+            !! Number of members summed per family, at least one where `status` is zero
         integer(int32), intent(in) :: n_axes
             !! Number of axes of the vectors, 0 for signed angles
         real(real64), intent(in) :: min_dispersion
             !! Smallest accepted dispersion
         real(real64), intent(in) :: max_dispersion
             !! Largest accepted dispersion
-        real(real64), intent(out) :: dispersion
-            !! The dispersion if it is accepted, otherwise `CM_ANGULAR_DISPERSION_SENTINEL`
-        integer(int32), intent(out) :: status
-            !! Zero if the dispersion is accepted, otherwise why not
+        real(real64), intent(inout) :: angular_dispersions(n_families)
+            !! On entry, per family the sum over its members of \(1 - \cos\delta\), each deviation
+            !! from the family's direction; on exit the dispersion where it is accepted, otherwise
+            !! `CM_ANGULAR_DISPERSION_SENTINEL`
+        integer(int32), intent(inout) :: status(n_families)
+            !! Zero for a family with statistics; on exit, why a family has no accepted dispersion
 
         real(real64) :: one_minus_resultant, sigma
+        integer(int32) :: i_family
 
-        call set_ok(status)
-        dispersion = CM_ANGULAR_DISPERSION_SENTINEL
+        do concurrent (i_family = 1:n_families) local(one_minus_resultant, sigma) &
+            shared(member_counts, n_axes, min_dispersion, max_dispersion, angular_dispersions, status)
 
-        one_minus_resultant = sum_one_minus_cosine/real(n_members, real64)
-        if (one_minus_resultant >= 1.0_real64) then
-            call set_err(status, STAT_NO_STABLE_DIRECTION)
-            return
-        end if
+            if (is_err(status(i_family))) then
+                angular_dispersions(i_family) = CM_ANGULAR_DISPERSION_SENTINEL
+                cycle
+            end if
+            one_minus_resultant = angular_dispersions(i_family)/real(member_counts(i_family), real64)
+            angular_dispersions(i_family) = CM_ANGULAR_DISPERSION_SENTINEL
+            if (one_minus_resultant >= 1.0_real64) then
+                call set_err(status(i_family), STAT_NO_STABLE_DIRECTION)
+                cycle
+            end if
 
-        sigma = sqrt(-2.0_real64*log_one_minus(one_minus_resultant))
-        if (sigma <= dispersion_noise_floor(n_members, n_axes) .or. sigma < min_dispersion) then
-            call set_err(status, STAT_NO_ANGULAR_VARIATION)
-        else if (sigma > max_dispersion) then
-            call set_err(status, STAT_NO_STABLE_DIRECTION)
-        else
-            dispersion = sigma
-        end if
-    end subroutine classify_dispersion
+            sigma = sqrt(-2.0_real64*log_one_minus(one_minus_resultant))
+            if (sigma <= dispersion_noise_floor(member_counts(i_family), n_axes) .or. sigma < min_dispersion) then
+                call set_err(status(i_family), STAT_NO_ANGULAR_VARIATION)
+            else if (sigma > max_dispersion) then
+                call set_err(status(i_family), STAT_NO_STABLE_DIRECTION)
+            else
+                angular_dispersions(i_family) = sigma
+            end if
+        end do
+    end subroutine classify_dispersions
 
     !> The status of one gene: why it has no relative angular deviation, or zero if it has one.
     pure integer(int32) function gene_status_of(family, family_status, gene_has_direction) result(gene_status)

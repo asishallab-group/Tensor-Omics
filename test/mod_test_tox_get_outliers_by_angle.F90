@@ -51,7 +51,7 @@ contains
     function get_all_tests_tox_get_outliers_by_angle() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(41))
+        allocate (all_tests(42))
         all_tests(1) = test_case("test_wrap_angle", test_wrap_angle)
         all_tests(2) = test_case("test_family_direction_exact", test_family_direction_exact)
         all_tests(3) = test_case("test_family_direction_zero_gene_skipped", test_family_direction_zero_gene_skipped)
@@ -99,6 +99,7 @@ contains
         all_tests(40) = test_case("test_subnormal_vector_is_zero_vector", test_subnormal_vector_is_zero_vector)
         all_tests(41) = test_case("test_cancellation_never_stable_up_to_the_limit", &
                                   test_cancellation_never_stable_up_to_the_limit)
+        all_tests(42) = test_case("test_noise_floor_at_its_boundary", test_noise_floor_at_its_boundary)
     end function get_all_tests_tox_get_outliers_by_angle
 
     ! ------------------------------------------------------------------------------------------
@@ -1706,6 +1707,59 @@ contains
         call compute_family_direction_rap(3, 1, angles, [1, 1, 1], means, dispersions, counts, status, ierr=ierr)
         call assert_equal_int(status(1), STAT_NO_ANGULAR_VARIATION, "rap tiny dispersion 1e-17: below the floor")
     end subroutine test_tiny_dispersion_above_and_below_floor
+
+    !> The noise floor at its boundary, for three members: (3 + 16) eps = 4.2e-15 for signed
+    !| angles, which have no axis term, and (3 + 1.5*2 + 16) eps = 4.9e-15 in two axes.
+    !|
+    !| The members of test_tiny_dispersion_above_and_below_floor, with deviations {-d, 0, d} exact
+    !| in both variants, have sigma = sqrt(8/3) sin(d/2) = 0.8165 d to 1e-15 relative (d is tiny,
+    !| and the logarithm keeps its digits). d = 22 eps gives 17.96 eps, below both floors;
+    !| d = 25 eps gives 20.41 eps, above the angles' floor and below the vectors' one; d = 29 eps
+    !| gives 23.68 eps, above both. Each margin is at least 1 eps, 5% of the value, far more than
+    !| the rounding of sigma. A floor with an axis term for signed angles, or without one for
+    !| vectors, fails at d = 25 eps.
+    subroutine test_noise_floor_at_its_boundary()
+        real(real64), parameter :: d_values(3) = [22.0_real64, 25.0_real64, 29.0_real64]*epsilon(1.0_real64)
+        ! the expected status per d: rejected, accepted only as signed angles, accepted by both
+        integer(int32), parameter :: expected_rap(3) = [STAT_NO_ANGULAR_VARIATION, ERR_OK, ERR_OK]
+        integer(int32), parameter :: expected_spherical(3) = [STAT_NO_ANGULAR_VARIATION, STAT_NO_ANGULAR_VARIATION, &
+                                                              ERR_OK]
+        real(real64) :: vectors(2, 3), directions(2, 1), dispersions(1), means(1), angles(3), d, sigma
+        integer(int32) :: counts(1), status(1), ierr, i_d
+
+        do i_d = 1, size(d_values)
+            d = d_values(i_d)
+            sigma = sqrt(8.0_real64/3.0_real64)*sin(0.5_real64*d)
+
+            angles(1) = -d
+            angles(2) = 0.0_real64
+            angles(3) = d
+            dispersions = UNWRITTEN
+            call compute_family_direction_rap(3, 1, angles, [1, 1, 1], means, dispersions, counts, status, ierr=ierr)
+            call assert_err(ierr, ERR_OK, "rap floor boundary: ierr")
+            call assert_equal_int(status(1), expected_rap(i_d), &
+                                  "rap floor boundary: status at d/eps = "//d_values(i_d)/epsilon(1.0_real64))
+            if (expected_rap(i_d) == ERR_OK) then
+                call assert_true(abs(dispersions(1)/sigma - 1.0_real64) <= 1.0e-12_real64, &
+                                 "rap floor boundary: sigma at d/eps = "//d_values(i_d)/epsilon(1.0_real64))
+            end if
+
+            vectors(1, :) = 1.0_real64
+            vectors(2, 1) = -d
+            vectors(2, 2) = 0.0_real64
+            vectors(2, 3) = d
+            dispersions = UNWRITTEN
+            call compute_family_direction(2, 3, 1, vectors, [1, 1, 1], directions, dispersions, counts, status, &
+                                          ierr=ierr)
+            call assert_err(ierr, ERR_OK, "spherical floor boundary: ierr")
+            call assert_equal_int(status(1), expected_spherical(i_d), &
+                                  "spherical floor boundary: status at d/eps = "//d_values(i_d)/epsilon(1.0_real64))
+            if (expected_spherical(i_d) == ERR_OK) then
+                call assert_true(abs(dispersions(1)/sigma - 1.0_real64) <= 1.0e-12_real64, &
+                                 "spherical floor boundary: sigma at d/eps = "//d_values(i_d)/epsilon(1.0_real64))
+            end if
+        end do
+    end subroutine test_noise_floor_at_its_boundary
 
     !> A nearly cancelling resultant is no stable direction, and like an exactly cancelling one it
     !| has no direction: RAP {0, pi/2, pi, -pi/2} (the sums are rounding residue, their atan2 an

@@ -36,6 +36,8 @@ program main
     use mod_test_root_mean_sq_normalization, only: get_all_tests_root_mean_sq_normalization
     use mod_test_empirical_pvalue, only: get_all_tests_empirical_pvalue
     use mod_test_tox_get_outliers_by_angle, only: get_all_tests_tox_get_outliers_by_angle
+    use mod_test_f42_math, only: get_all_tests_f42_math
+    use mod_test_f42_vector, only: get_all_tests_f42_vector
     implicit none
 
     integer :: nargs
@@ -77,6 +79,8 @@ program main
     call add_suite("empirical_pvalue", get_all_tests_empirical_pvalue)
     call add_suite("root_mean_sq_normalization", get_all_tests_root_mean_sq_normalization)
     call add_suite("tox_get_outliers_by_angle", get_all_tests_tox_get_outliers_by_angle)
+    call add_suite("f42_math", get_all_tests_f42_math)
+    call add_suite("f42_vector", get_all_tests_f42_vector)
 
     nargs = command_argument_count()
 
