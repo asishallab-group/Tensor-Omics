@@ -77,6 +77,10 @@ module tox_errors
         !! Array index out of bounds
     integer(int32), parameter :: ERR_DIVISION_BY_ZERO = 210
         !! Division by zero encountered
+    integer(int32), parameter :: ERR_JSON_SEQUENCE = 211
+        !! JSON writer called out of order: no valid document can follow
+    integer(int32), parameter :: ERR_INVALID_UTF8 = 212
+        !! String is not valid UTF-8
 
     !------------------------------
     ! 3xx: Memory
