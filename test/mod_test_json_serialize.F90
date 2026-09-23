@@ -27,7 +27,7 @@ contains
     function get_all_tests_json_serialize() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(40))
+        allocate (all_tests(39))
         all_tests(1) = test_case("test_empty_object_root", test_empty_object_root)
         all_tests(2) = test_case("test_empty_array_root", test_empty_array_root)
         all_tests(3) = test_case("test_scalar_roots", test_scalar_roots)
@@ -44,30 +44,29 @@ contains
         all_tests(14) = test_case("test_utf8_valid_passthrough", test_utf8_valid_passthrough)
         all_tests(15) = test_case("test_utf8_invalid_refused", test_utf8_invalid_refused)
         all_tests(16) = test_case("test_utf8_validator", test_utf8_validator)
-        all_tests(17) = test_case("test_is_finite", test_is_finite)
-        all_tests(18) = test_case("test_value_without_key_in_object", test_value_without_key_in_object)
-        all_tests(19) = test_case("test_key_in_array", test_key_in_array)
-        all_tests(20) = test_case("test_key_at_root", test_key_at_root)
-        all_tests(21) = test_case("test_mismatched_end", test_mismatched_end)
-        all_tests(22) = test_case("test_end_without_container", test_end_without_container)
-        all_tests(23) = test_case("test_second_root", test_second_root)
-        all_tests(24) = test_case("test_unclosed_container_at_close", test_unclosed_container_at_close)
-        all_tests(25) = test_case("test_no_root_at_close", test_no_root_at_close)
-        all_tests(26) = test_case("test_errors_are_sticky", test_errors_are_sticky)
-        all_tests(27) = test_case("test_writer_not_open", test_writer_not_open)
-        all_tests(28) = test_case("test_open_twice", test_open_twice)
-        all_tests(29) = test_case("test_writer_reuse", test_writer_reuse)
-        all_tests(30) = test_case("test_existing_file_refused", test_existing_file_refused)
-        all_tests(31) = test_case("test_unwritable_path", test_unwritable_path)
-        all_tests(32) = test_case("test_deep_nesting", test_deep_nesting)
-        all_tests(33) = test_case("test_string_longer_than_buffer", test_string_longer_than_buffer)
-        all_tests(34) = test_case("test_output_larger_than_buffer", test_output_larger_than_buffer)
-        all_tests(35) = test_case("test_fuzz_call_sequences", test_fuzz_call_sequences)
-        all_tests(36) = test_case("test_boolean_kinds", test_boolean_kinds)
-        all_tests(37) = test_case("test_unsupported_types", test_unsupported_types)
-        all_tests(38) = test_case("test_zero_decided_from_bits", test_zero_decided_from_bits)
-        all_tests(39) = test_case("test_empty_arrays", test_empty_arrays)
-        all_tests(40) = test_case("test_array_sections", test_array_sections)
+        all_tests(17) = test_case("test_value_without_key_in_object", test_value_without_key_in_object)
+        all_tests(18) = test_case("test_key_in_array", test_key_in_array)
+        all_tests(19) = test_case("test_key_at_root", test_key_at_root)
+        all_tests(20) = test_case("test_mismatched_end", test_mismatched_end)
+        all_tests(21) = test_case("test_end_without_container", test_end_without_container)
+        all_tests(22) = test_case("test_second_root", test_second_root)
+        all_tests(23) = test_case("test_unclosed_container_at_close", test_unclosed_container_at_close)
+        all_tests(24) = test_case("test_no_root_at_close", test_no_root_at_close)
+        all_tests(25) = test_case("test_errors_are_sticky", test_errors_are_sticky)
+        all_tests(26) = test_case("test_writer_not_open", test_writer_not_open)
+        all_tests(27) = test_case("test_open_twice", test_open_twice)
+        all_tests(28) = test_case("test_writer_reuse", test_writer_reuse)
+        all_tests(29) = test_case("test_existing_file_refused", test_existing_file_refused)
+        all_tests(30) = test_case("test_unwritable_path", test_unwritable_path)
+        all_tests(31) = test_case("test_deep_nesting", test_deep_nesting)
+        all_tests(32) = test_case("test_string_longer_than_buffer", test_string_longer_than_buffer)
+        all_tests(33) = test_case("test_output_larger_than_buffer", test_output_larger_than_buffer)
+        all_tests(34) = test_case("test_fuzz_call_sequences", test_fuzz_call_sequences)
+        all_tests(35) = test_case("test_boolean_kinds", test_boolean_kinds)
+        all_tests(36) = test_case("test_unsupported_types", test_unsupported_types)
+        all_tests(37) = test_case("test_zeros_and_subnormals", test_zeros_and_subnormals)
+        all_tests(38) = test_case("test_empty_arrays", test_empty_arrays)
+        all_tests(39) = test_case("test_array_sections", test_array_sections)
     end function get_all_tests_json_serialize
 
     ! ============================================================================================
@@ -359,31 +358,45 @@ contains
         call remove_file(filename)
     end subroutine test_real_array_across_blocks
 
+    !> A scalar NaN, +Inf or -Inf, as a member and as an element.
     subroutine test_nan_refused()
         character(len=*), parameter :: filename = "json_nan.test.json"
         type(json_writer) :: w
-        integer(int32) :: ierr
+        integer(int32) :: ierr, i_case, i_role
+        real(real64) :: non_finite(3)
 
-        call remove_file(filename)
-        call json_open(w, filename, ierr)
-        call json_begin_object(w)
-        call json_member(w, "x", ieee_value(1.0_real64, ieee_quiet_nan))
-        call assert_err(w%ierr, ERR_NAN_INF, "NaN member")
-        call assert_equal_int(int(w%failing_call, int32), 3, "NaN fails the third call")
-        call assert_no_file(filename, "NaN deletes the file at once")
-        call json_end_object(w)
-        call json_close(w, ierr)
-        call assert_err(ierr, ERR_NAN_INF, "close returns the NaN error")
-        call assert_no_file(filename, "NaN leaves no file")
+        non_finite = [ieee_value(1.0_real64, ieee_quiet_nan), ieee_value(1.0_real64, ieee_positive_inf), &
+                      ieee_value(1.0_real64, ieee_negative_inf)]
+        do i_case = 1, 3
+            do i_role = 1, 2
+                call remove_file(filename)
+                call json_open(w, filename, ierr)
+                if (i_role == 1) then
+                    call json_begin_object(w)
+                    call json_member(w, "x", non_finite(i_case))
+                else
+                    call json_begin_array(w)
+                    call json_element(w, non_finite(i_case))
+                end if
+                call assert_err(w%ierr, ERR_NAN_INF, "non-finite scalar, case "//i_case//" role "//i_role)
+                call assert_equal_int(int(w%failing_call, int32), 3, "it fails the third call, case "//i_case)
+                call assert_no_file(filename, "it deletes the file at once, case "//i_case)
+                call json_close(w, ierr)
+                call assert_err(ierr, ERR_NAN_INF, "close returns the error, case "//i_case)
+                call assert_no_file(filename, "it leaves no file, case "//i_case)
+            end do
+        end do
     end subroutine test_nan_refused
 
+    !> Every kind of non-finite value, at a block edge or inside a block: the infinities, a quiet,
+    !| a signalling and a negative NaN, each built where needed from its bits.
     subroutine test_infinity_refused_in_array()
         character(len=*), parameter :: filename = "json_infinity.test.json"
         type(json_writer) :: w
         integer(int32) :: ierr, i_case
         real(real64) :: values(300)
 
-        do i_case = 1, 3
+        do i_case = 1, 5
             values = 1.0_real64
             select case (i_case)
             case (1)
@@ -392,6 +405,10 @@ contains
                 values(1) = ieee_value(1.0_real64, ieee_negative_inf)
             case (3)
                 values(257) = ieee_value(1.0_real64, ieee_quiet_nan)
+            case (4)
+                values(256) = transfer(int(z'7FF0000000000001', int64), 1.0_real64)
+            case (5)
+                values(2) = transfer(int(z'FFF8000000000000', int64), 1.0_real64)
             end select
             call remove_file(filename)
             call json_open(w, filename, ierr)
@@ -533,16 +550,6 @@ contains
             call assert_false(json_is_valid_utf8("a"//invalid_utf8_case(i_case)), "invalid case "//i_case)
         end do
     end subroutine test_utf8_validator
-
-    subroutine test_is_finite()
-        call assert_false(json_is_finite(ieee_value(1.0_real64, ieee_quiet_nan)), "NaN")
-        call assert_false(json_is_finite(ieee_value(1.0_real64, ieee_positive_inf)), "+Inf")
-        call assert_false(json_is_finite(ieee_value(1.0_real64, ieee_negative_inf)), "-Inf")
-        call assert_true(json_is_finite(huge(1.0_real64)), "huge")
-        call assert_true(json_is_finite(-huge(1.0_real64)), "-huge")
-        call assert_true(json_is_finite(transfer(1_int64, 1.0_real64)), "smallest subnormal")
-        call assert_true(json_is_finite(-0.0_real64), "-0")
-    end subroutine test_is_finite
 
     ! ============================================================================================
     ! The state machine: each violation, its call number, and no file left
@@ -932,9 +939,9 @@ contains
         end do
     end subroutine test_unsupported_types
 
-    !> Zeros are recognised from the bits: a negative zero keeps its sign, and the smallest
-    !| subnormals, which compare equal to zero where denormals are flushed, are written in full.
-    subroutine test_zero_decided_from_bits()
+    !> A negative zero keeps its sign, and the smallest subnormals, which compare equal to zero
+    !| where denormals are flushed, are written in full.
+    subroutine test_zeros_and_subnormals()
         character(len=*), parameter :: filename = "json_zero_bits.test.json"
         type(json_writer) :: w
         integer(int32) :: ierr
@@ -955,7 +962,7 @@ contains
                                 //'"negative_subnormal":-4.9406564584124654E-324,' &
                                 //'"array":[4.9406564584124654E-324,-0.0,0.0]}'//LF, "zeros and subnormals")
         call remove_file(filename)
-    end subroutine test_zero_decided_from_bits
+    end subroutine test_zeros_and_subnormals
 
     !> An empty array is [] whatever its element type, a type the writer cannot write included.
     subroutine test_empty_arrays()

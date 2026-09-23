@@ -67,10 +67,10 @@
 !|
 !| Integers are written in full (`I0`). A `real(real64)` is written with 17 significant digits
 !| (`ES24.16E3`, leading blank removed, as in `-1.2345678901234567E-005`), which reads back as
-!| exactly the same double. A zero is recognised from its bits, never by comparing it with 0,
-!| and written as `0.0` or `-0.0`, so a negative zero keeps its sign and a subnormal number is
-!| never mistaken for zero. NaN and infinity have no JSON form and are refused with
-!| `ERR_NAN_INF`, again recognised from the bits, so the check survives fast-math compilation.
+!| exactly the same double. A zero is recognised by its IEEE class, never by comparing it with
+!| 0, and written as `0.0` or `-0.0`, so a negative zero keeps its sign and a subnormal number
+!| is never mistaken for zero, not even where denormals are flushed. NaN and infinity have no
+!| JSON form and are refused with `ERR_NAN_INF`.
 !|
 !| ### Strings
 !|
@@ -95,7 +95,10 @@ module f42_serde_json_serialize
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int8, int32, int64, real64
     use, intrinsic :: iso_c_binding, only: c_bool
-    use tox_errors, only: ERR_OK, ERR_FILE_OPEN, ERR_WRITE_DATA, ERR_NAN_INF, ERR_ALLOC_FAIL, &
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite, ieee_class, ieee_class_type, operator(==), &
+                                             ieee_positive_zero, ieee_negative_zero
+    use tox_errors, only: set_ok, set_err, is_ok, is_err, &
+                          ERR_OK, ERR_FILE_OPEN, ERR_WRITE_DATA, ERR_NAN_INF, ERR_ALLOC_FAIL, &
                           ERR_JSON_SEQUENCE, ERR_INVALID_UTF8, ERR_INVALID_INPUT
     M_IMPLICIT_NONE
 
@@ -104,12 +107,16 @@ module f42_serde_json_serialize
     public :: json_open, json_close
     public :: json_begin_object, json_end_object, json_begin_array, json_end_array
     public :: json_member, json_element, json_null
-    public :: json_is_valid_utf8, json_is_finite
+    public :: json_is_valid_utf8
 
     integer(int8), parameter :: CONTAINER_OBJECT = 1_int8
         !! Marks an open object on the container stack
     integer(int8), parameter :: CONTAINER_ARRAY = 2_int8
         !! Marks an open array on the container stack
+    character(len=*), parameter :: OPENING_BRACKETS = '{['
+        !! The opening bracket of each container kind, indexed by `CONTAINER_OBJECT` or `CONTAINER_ARRAY`
+    character(len=*), parameter :: CLOSING_BRACKETS = '}]'
+        !! The closing bracket of each container kind, indexed like `OPENING_BRACKETS`
     integer(int32), parameter :: INITIAL_STACK_CAPACITY = 16
         !! Container stack slots allocated by `json_open`; the stack doubles when full
     integer(int32), parameter :: BUFFER_CAPACITY = 262144
@@ -120,16 +127,14 @@ module f42_serde_json_serialize
         !! Width of one `ES24.16E3` field
     integer(int32), parameter :: INTEGER_FIELD_WIDTH = 21
         !! Room for one integer (at most 20 characters) and its comma
-    character(len=*), parameter :: REAL_BLOCK_FORMAT = '(256ES24.16E3)'
-        !! Format of one block of reals; the repeat count must equal `NUMBER_BLOCK`
-    character(len=*), parameter :: INTEGER_BLOCK_FORMAT = '(*(I0,:,","))'
-        !! Format of one block of integers, comma-separated
+    character(len=*), parameter :: REAL_FORMAT = '(*(ES24.16E3))'
+        !! Format of one real or a block of them, each in a field of `REAL_FIELD_WIDTH`
+    character(len=*), parameter :: INTEGER_FORMAT = '(*(I0,:,","))'
+        !! Format of one integer or a block of them, comma-separated
     character(len=*), parameter :: BACKSLASH = achar(92)
         !! The backslash, spelled so that no compiler reads it as an escape in a literal
     character(len=*), parameter :: HEX_DIGITS = '0123456789abcdef'
         !! Lowercase hexadecimal digits for `\u00xx`
-    integer(int64), parameter :: EXPONENT_MASK = 2047_int64
-        !! The eleven exponent bits of a real64, shifted down to the lowest bits
 
     !> A JSON document being written to a file; see [[f42_serde_json_serialize(module)]].
     !|
@@ -204,7 +209,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code: `ERR_OK`, `ERR_FILE_OPEN`, `ERR_ALLOC_FAIL` or `ERR_JSON_SEQUENCE`
 
-        integer(int32) :: iostat
+        integer(int32) :: alloc_stat, iostat
 
         if (w%is_open) then
             w%call_count = w%call_count + 1
@@ -213,7 +218,7 @@ contains
             return
         end if
 
-        w%ierr = ERR_OK
+        call set_ok(w%ierr)
         w%failing_call = 0
         w%call_count = 1
         w%buffer_used = 0
@@ -222,23 +227,23 @@ contains
         w%container_is_empty = .true.
         w%root_written = .false.
         if (allocated(w%filename)) deallocate (w%filename)
-        allocate (character(len=len_trim(filename)) :: w%filename, stat=iostat)
-        if (iostat /= 0) then
+        allocate (character(len=len_trim(filename)) :: w%filename, stat=alloc_stat)
+        if (alloc_stat /= 0) then
             call fail(w, ERR_ALLOC_FAIL)
         else
             w%filename(:) = filename(1:len_trim(filename))
         end if
 
-        if (.not. allocated(w%buffer) .and. w%ierr == ERR_OK) then
-            allocate (character(len=BUFFER_CAPACITY) :: w%buffer, stat=iostat)
-            if (iostat /= 0) call fail(w, ERR_ALLOC_FAIL)
+        if (.not. allocated(w%buffer) .and. is_ok(w%ierr)) then
+            allocate (character(len=BUFFER_CAPACITY) :: w%buffer, stat=alloc_stat)
+            if (alloc_stat /= 0) call fail(w, ERR_ALLOC_FAIL)
         end if
-        if (.not. allocated(w%container_kinds) .and. w%ierr == ERR_OK) then
-            allocate (w%container_kinds(INITIAL_STACK_CAPACITY), stat=iostat)
-            if (iostat /= 0) call fail(w, ERR_ALLOC_FAIL)
+        if (.not. allocated(w%container_kinds) .and. is_ok(w%ierr)) then
+            allocate (w%container_kinds(INITIAL_STACK_CAPACITY), stat=alloc_stat)
+            if (alloc_stat /= 0) call fail(w, ERR_ALLOC_FAIL)
         end if
 
-        if (w%ierr == ERR_OK) then
+        if (is_ok(w%ierr)) then
             open (newunit=w%unit, file=w%filename, access='stream', form='unformatted', &
                   status='new', action='write', iostat=iostat)
             if (iostat == 0) then
@@ -265,33 +270,22 @@ contains
         integer(int32), intent(out) :: ierr
             !! The writer's first error (`w%ierr`), `ERR_OK` when the file is complete
 
+        logical(c_bool) :: may_act
         integer(int32) :: iostat
         integer(int64) :: file_size
 
-        w%call_count = w%call_count + 1
-        if (w%ierr == ERR_OK) then
-            if (.not. w%is_open) then
-                call fail(w, ERR_JSON_SEQUENCE)
-            else if (w%depth > 0 .or. .not. w%root_written) then
-                call fail(w, ERR_JSON_SEQUENCE)
-            end if
-        end if
+        call start_call(w, may_act)
+        ! the root is written only when its last container closes, so it also means depth 0
+        if (may_act .and. .not. w%root_written) call fail(w, ERR_JSON_SEQUENCE)
+        call put(w, new_line('a'))
+        call flush_buffer(w)
 
-        if (w%ierr == ERR_OK) then
-            call put(w, new_line('a'))
-            call flush_buffer(w)
-        end if
-
-        if (w%ierr == ERR_OK) then
+        if (is_ok(w%ierr)) then
             close (w%unit, iostat=iostat)
             w%is_open = .false.
-            if (iostat == 0) then
-                inquire (file=w%filename, size=file_size, iostat=iostat)
-                if (iostat /= 0 .or. file_size /= w%bytes_written) then
-                    call fail(w, ERR_WRITE_DATA)
-                    call delete_file_by_name(w%filename)
-                end if
-            else
+            file_size = -1
+            if (iostat == 0) inquire (file=w%filename, size=file_size, iostat=iostat)
+            if (iostat /= 0 .or. file_size /= w%bytes_written) then
                 call fail(w, ERR_WRITE_DATA)
                 call delete_file_by_name(w%filename)
             end if
@@ -396,18 +390,6 @@ contains
         is_valid = .true.
     end function json_is_valid_utf8
 
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Whether `value` is finite -- neither NaN nor infinite -- decided from its exponent bits, so
-    !| the answer stays right under fast-math compilation, where a comparison may not.
-    elemental function json_is_finite(value) result(is_finite)
-        real(real64), intent(in) :: value
-            !! The value to test
-        logical(c_bool) :: is_finite
-            !! `.true.` when `value` can be written as a JSON number
-
-        is_finite = iand(shiftr(transfer(value, 0_int64), 52), EXPONENT_MASK) /= EXPONENT_MASK
-    end function json_is_finite
-
     ! ============================================================================================
     ! The generics' specifics: a scalar or a rank-1 array of any supported type
     ! ============================================================================================
@@ -476,17 +458,17 @@ contains
         if (.not. accepted) return
         select type (value)
         type is (integer(int32))
-            write (field, '(I0)') value
+            write (field, INTEGER_FORMAT) value
             call put(w, trim(field))
         type is (integer(int64))
-            write (field, '(I0)') value
+            write (field, INTEGER_FORMAT) value
             call put(w, trim(field))
         type is (real(real64))
-            if (.not. json_is_finite(value)) then
+            if (.not. ieee_is_finite(value)) then
                 call fail(w, ERR_NAN_INF)
                 return
             end if
-            write (field, '(ES24.16E3)') value
+            write (field, REAL_FORMAT) value
             call put_real_field(w, value, field)
         type is (logical(c_bool))
             call put_boolean(w, value)
@@ -504,8 +486,8 @@ contains
     !> Write a rank-1 array as the next value, dispatching on its type; an empty one is `[]`.
     !|
     !| Each branch hands the whole array to a routine of its type. Indexing the array inside
-    !| `select type` would be shorter, but nvfortran (25.7) then misplaces the elements of an
-    !| array section, while the whole array passed on arrives intact on every compiler.
+    !| `select type` would be shorter, but nvfortran (still 26.9) then misplaces the elements of
+    !| an array section, while the whole array passed on arrives intact on every compiler.
     subroutine write_values(w, values, key)
         type(json_writer), intent(inout) :: w
             !! The writer
@@ -519,31 +501,28 @@ contains
         call start_value(w, accepted, key)
         if (.not. accepted) return
         call put(w, '[')
-        ! An empty array is `[]` whatever its type, so it is written before the type is asked
-        ! for. That is also what keeps nvfortran 26.9 right: it sends a zero-size typed array
-        ! constructor such as `[integer ::]` to `class default`.
-        if (size(values, kind=int64) == 0) then
-            call put(w, ']')
-            call finish_value(w)
-            return
+        ! An empty array is `[]` whatever its type, so the type is only asked for when there
+        ! are elements. That is also what keeps nvfortran 26.9 right: it sends a zero-size typed
+        ! array constructor such as `[integer ::]` to `class default`.
+        if (size(values, kind=int64) > 0) then
+            select type (values)
+            type is (integer(int32))
+                call put_int32_list(w, values)
+            type is (integer(int64))
+                call put_int64_list(w, values)
+            type is (real(real64))
+                call put_real_list(w, values)
+            type is (logical(c_bool))
+                call put_c_bool_list(w, values)
+            type is (logical)
+                call put_logical_list(w, values)
+            type is (character(len=*))
+                call put_string_list(w, values)
+            class default
+                call fail(w, ERR_INVALID_INPUT)
+                return
+            end select
         end if
-        select type (values)
-        type is (integer(int32))
-            call put_int32_list(w, values)
-        type is (integer(int64))
-            call put_int64_list(w, values)
-        type is (real(real64))
-            call put_real_list(w, values)
-        type is (logical(c_bool))
-            call put_c_bool_list(w, values)
-        type is (logical)
-            call put_logical_list(w, values)
-        type is (character(len=*))
-            call put_string_list(w, values)
-        class default
-            call fail(w, ERR_INVALID_INPUT)
-            return
-        end select
         call put(w, ']')
         call finish_value(w)
     end subroutine write_values
@@ -560,7 +539,7 @@ contains
 
         do block_start = 1_int64, size(values, kind=int64), int(NUMBER_BLOCK, int64)
             block_end = min(block_start + NUMBER_BLOCK - 1, size(values, kind=int64))
-            write (block_text, INTEGER_BLOCK_FORMAT) (values(i_value), i_value = block_start, block_end)
+            write (block_text, INTEGER_FORMAT) (values(i_value), i_value = block_start, block_end)
             if (block_start > 1) call put(w, ',')
             call put(w, trim(block_text))
         end do
@@ -578,7 +557,7 @@ contains
 
         do block_start = 1_int64, size(values, kind=int64), int(NUMBER_BLOCK, int64)
             block_end = min(block_start + NUMBER_BLOCK - 1, size(values, kind=int64))
-            write (block_text, INTEGER_BLOCK_FORMAT) (values(i_value), i_value = block_start, block_end)
+            write (block_text, INTEGER_FORMAT) (values(i_value), i_value = block_start, block_end)
             if (block_start > 1) call put(w, ',')
             call put(w, trim(block_text))
         end do
@@ -596,14 +575,12 @@ contains
 
         do block_start = 1_int64, size(values, kind=int64), int(NUMBER_BLOCK, int64)
             block_end = min(block_start + NUMBER_BLOCK - 1, size(values, kind=int64))
-            do i_value = block_start, block_end
-                if (.not. json_is_finite(values(i_value))) then
-                    call fail(w, ERR_NAN_INF)
-                    return
-                end if
-            end do
+            if (.not. all(ieee_is_finite(values(block_start:block_end)))) then
+                call fail(w, ERR_NAN_INF)
+                return
+            end if
             ! an implied do, not a section: a section of a strided array is copied first by ifx
-            write (block_text, REAL_BLOCK_FORMAT) (values(i_value), i_value = block_start, block_end)
+            write (block_text, REAL_FORMAT) (values(i_value), i_value = block_start, block_end)
             do i_value = block_start, block_end
                 if (i_value > 1) call put(w, ',')
                 field_start = (i_value - block_start)*REAL_FIELD_WIDTH
@@ -662,6 +639,24 @@ contains
     ! The state machine
     ! ============================================================================================
 
+    !> Count a call, and tell whether it may act: the writer is open and has not failed. A call
+    !| on a writer that is not open fails it with `ERR_JSON_SEQUENCE`.
+    subroutine start_call(w, may_act)
+        type(json_writer), intent(inout) :: w
+            !! The writer
+        logical(c_bool), intent(out) :: may_act
+            !! Whether the call may go on
+
+        w%call_count = w%call_count + 1
+        may_act = .false.
+        ! a failed writer is never open: `fail` closes it
+        if (.not. w%is_open) then
+            call fail(w, ERR_JSON_SEQUENCE)
+            return
+        end if
+        may_act = .true.
+    end subroutine start_call
+
     !> Count the call and check that a value may start here, with or without a key; if it may,
     !| write the comma before it and its key.
     subroutine start_value(w, accepted, key)
@@ -672,27 +667,20 @@ contains
         character(len=*), intent(in), optional :: key
             !! Key in the enclosing object
 
-        logical(c_bool) :: key_required
+        logical(c_bool) :: is_misplaced
 
-        w%call_count = w%call_count + 1
-        accepted = .false.
-        if (w%ierr /= ERR_OK) return
+        call start_call(w, accepted)
+        if (.not. accepted) return
 
-        if (.not. w%is_open) then
-            call fail(w, ERR_JSON_SEQUENCE)
-            return
-        end if
         if (w%depth == 0) then
-            if (w%root_written .or. present(key)) then
-                call fail(w, ERR_JSON_SEQUENCE)
-                return
-            end if
+            is_misplaced = present(key) .or. w%root_written
         else
-            key_required = w%container_kinds(w%depth) == CONTAINER_OBJECT
-            if (key_required .neqv. logical(present(key), c_bool)) then
-                call fail(w, ERR_JSON_SEQUENCE)
-                return
-            end if
+            is_misplaced = (w%container_kinds(w%depth) == CONTAINER_OBJECT) .neqv. present(key)
+        end if
+        if (is_misplaced) then
+            call fail(w, ERR_JSON_SEQUENCE)
+            accepted = .false.
+            return
         end if
 
         if (.not. w%container_is_empty) call put(w, ',')
@@ -701,7 +689,7 @@ contains
             call put(w, ':')
         end if
         w%container_is_empty = .false.
-        accepted = w%ierr == ERR_OK
+        accepted = is_ok(w%ierr)
     end subroutine start_value
 
     !> Record that a value is complete; at the top level it is the root.
@@ -709,7 +697,7 @@ contains
         type(json_writer), intent(inout) :: w
             !! The writer
 
-        if (w%depth == 0 .and. w%ierr == ERR_OK) w%root_written = .true.
+        if (w%depth == 0 .and. is_ok(w%ierr)) w%root_written = .true.
     end subroutine finish_value
 
     !> Start a container as the next value and push it on the stack, growing the stack when full.
@@ -740,12 +728,7 @@ contains
         w%depth = w%depth + 1
         w%container_kinds(w%depth) = container_kind
         w%container_is_empty = .true.
-
-        if (container_kind == CONTAINER_OBJECT) then
-            call put(w, '{')
-        else
-            call put(w, '[')
-        end if
+        call put(w, OPENING_BRACKETS(container_kind:container_kind))
     end subroutine begin_container
 
     !> Count the call, check that the innermost open container is of the kind given, and close it.
@@ -755,9 +738,11 @@ contains
         integer(int8), intent(in) :: container_kind
             !! `CONTAINER_OBJECT` or `CONTAINER_ARRAY`
 
-        w%call_count = w%call_count + 1
-        if (w%ierr /= ERR_OK) return
-        if (.not. w%is_open .or. w%depth == 0) then
+        logical(c_bool) :: may_act
+
+        call start_call(w, may_act)
+        if (.not. may_act) return
+        if (w%depth == 0) then
             call fail(w, ERR_JSON_SEQUENCE)
             return
         end if
@@ -766,11 +751,7 @@ contains
             return
         end if
 
-        if (container_kind == CONTAINER_OBJECT) then
-            call put(w, '}')
-        else
-            call put(w, ']')
-        end if
+        call put(w, CLOSING_BRACKETS(container_kind:container_kind))
         w%depth = w%depth - 1
         w%container_is_empty = .false.
         call finish_value(w)
@@ -785,8 +766,8 @@ contains
 
         integer(int32) :: iostat
 
-        if (w%ierr /= ERR_OK) return
-        w%ierr = error_code
+        if (is_err(w%ierr)) return
+        call set_err(w%ierr, error_code)
         w%failing_call = w%call_count
         if (w%is_open) then
             close (w%unit, status='delete', iostat=iostat)
@@ -825,11 +806,11 @@ contains
         integer(int64) :: text_length
         integer(int32) :: iostat
 
-        if (w%ierr /= ERR_OK) return
+        if (is_err(w%ierr)) return
         text_length = len(text, kind=int64)
         if (w%buffer_used + text_length > BUFFER_CAPACITY) then
             call flush_buffer(w)
-            if (w%ierr /= ERR_OK) return
+            if (is_err(w%ierr)) return
             if (text_length > BUFFER_CAPACITY) then
                 write (w%unit, iostat=iostat) text
                 if (iostat /= 0) then
@@ -851,7 +832,7 @@ contains
 
         integer(int32) :: iostat
 
-        if (w%ierr /= ERR_OK .or. w%buffer_used == 0) return
+        if (is_err(w%ierr) .or. w%buffer_used == 0) return
         write (w%unit, iostat=iostat) w%buffer(1:w%buffer_used)
         if (iostat /= 0) then
             call fail(w, ERR_WRITE_DATA)
@@ -875,7 +856,11 @@ contains
         end if
     end subroutine put_boolean
 
-    !> Append one finite real, given its `ES24.16E3` field; a zero is decided from the bits.
+    !> Append one finite real, given its `ES24.16E3` field; a zero is recognised by its IEEE class.
+    !|
+    !| Not by comparing with zero: where denormals are flushed (ifx from `-O1` on) a subnormal
+    !| compares equal to zero, and `sign` drops the sign of `-0.0` on ifx without
+    !| `-assume minus0`. The class is right on every supported compiler and profile.
     subroutine put_real_field(w, value, field)
         type(json_writer), intent(inout) :: w
             !! The writer
@@ -884,15 +869,13 @@ contains
         character(len=REAL_FIELD_WIDTH), intent(in) :: field
             !! `value` formatted as `ES24.16E3`
 
-        integer(int64) :: bits
+        type(ieee_class_type) :: value_class
 
-        bits = transfer(value, bits)
-        if (shiftl(bits, 1) == 0_int64) then
-            if (bits < 0_int64) then
-                call put(w, '-0.0')
-            else
-                call put(w, '0.0')
-            end if
+        value_class = ieee_class(value)
+        if (value_class == ieee_negative_zero) then
+            call put(w, '-0.0')
+        else if (value_class == ieee_positive_zero) then
+            call put(w, '0.0')
         else
             call put(w, field(verify(field, ' '):))
         end if

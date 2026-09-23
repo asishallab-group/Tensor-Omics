@@ -323,6 +323,10 @@ contains
         expression_vectors(2, 3) = ieee_value(1.0_real64, ieee_positive_inf)
         call write_reference(filename, ierr, expression_vectors=expression_vectors)
         call assert_refused(ierr, ERR_NAN_INF, 4, filename, "+Inf in expression_vectors")
+        expression_vectors(2, 3) = 1.0_real64
+        expression_vectors(1, 1) = ieee_value(1.0_real64, ieee_quiet_nan)
+        call write_reference(filename, ierr, expression_vectors=expression_vectors)
+        call assert_refused(ierr, ERR_NAN_INF, 4, filename, "NaN in the first gene")
     end subroutine test_flyer_non_finite_expression
 
     subroutine test_flyer_non_finite_centroid()

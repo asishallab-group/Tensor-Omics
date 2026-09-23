@@ -12,11 +12,10 @@ module tox_data_flyer_json
     use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, set_err, set_err_once, is_err, get_err_code, &
                           validate_dimension_size, validate_in_range_int, validate_all_in_range_int, &
-                          ERR_ALLOC_FAIL, ERR_FILE_OPEN, ERR_INVALID_INPUT, ERR_INVALID_UTF8, ERR_NAN_INF
+                          validate_all_in_range_real, ERR_ALLOC_FAIL, ERR_FILE_OPEN, ERR_INVALID_INPUT, ERR_INVALID_UTF8
     use f42_sort_impl, only: init_perm, sort_array_heapsort
     use f42_serde_json_serialize, only: json_writer, json_open, json_close, json_begin_object, json_end_object, &
-                                        json_begin_array, json_end_array, json_member, json_null, &
-                                        json_is_valid_utf8, json_is_finite
+                                        json_begin_array, json_end_array, json_member, json_null, json_is_valid_utf8
     M_IMPLICIT_NONE
 
     private
@@ -133,7 +132,7 @@ contains
             !! Error code
 
         integer(int32), allocatable :: sort_perm(:), family_start(:), family_members(:)
-        integer(int32) :: i_gene, i_family, family_of_gene
+        integer(int32) :: i_gene, i_family
         type(json_writer) :: writer
 
         call set_ok(ierr)
@@ -146,8 +145,13 @@ contains
         ! One permutation serves every duplicate check, so it is sized for the longest list.
         M_ALLOCATE(sort_perm(max(n_axes, n_genes, n_families)))
 
-        call validate_all_finite(expression_vectors, 4_int32, ierr)
-        call validate_all_finite(family_centroids, 5_int32, ierr)
+        ! column by column, so no element count has to fit an int32
+        do i_gene = 1, n_genes
+            call validate_all_in_range_real(expression_vectors(:, i_gene), n_axes, ierr, arg_pos=4_int32)
+        end do
+        do i_family = 1, n_families
+            call validate_all_in_range_real(family_centroids(:, i_family), n_axes, ierr, arg_pos=5_int32)
+        end do
         call validate_all_in_range_int(gene_to_fam, n_genes, ierr, min=1_int32, max=n_families, &
                                        sentinel=M_GENE_TO_FAM_SENTINEL, arg_pos=6_int32)
         call validate_labels(axis_labels, .true._c_bool, sort_perm, 8_int32, ierr)
@@ -157,32 +161,8 @@ contains
         call validate_labels(gene_types, .false._c_bool, sort_perm, 12_int32, ierr)
         if (is_err(ierr)) return
 
-        ! The members of each family, as compressed rows: family f owns
-        ! family_members(family_start(f):family_start(f + 1) - 1), in ascending gene order.
-        M_ALLOCATE(family_start(n_families + 1))
-        family_start = 0
-        do i_gene = 1, n_genes
-            family_of_gene = gene_to_fam(i_gene)
-            if (family_of_gene > 0) family_start(family_of_gene + 1) = family_start(family_of_gene + 1) + 1
-        end do
-        family_start(1) = 1
-        do i_family = 2, n_families + 1
-            family_start(i_family) = family_start(i_family) + family_start(i_family - 1)
-        end do
-        M_ALLOCATE(family_members(family_start(n_families + 1) - 1))
-        ! Filling advances family_start(f) to the start of family f + 1 ...
-        do i_gene = 1, n_genes
-            family_of_gene = gene_to_fam(i_gene)
-            if (family_of_gene > 0) then
-                family_members(family_start(family_of_gene)) = i_gene
-                family_start(family_of_gene) = family_start(family_of_gene) + 1
-            end if
-        end do
-        ! ... so every start moves back by one family, walking down to leave the unread ones intact.
-        do i_family = n_families + 1, 2, -1
-            family_start(i_family) = family_start(i_family - 1)
-        end do
-        family_start(1) = 1
+        call group_genes_by_family(gene_to_fam, n_families, family_start, family_members, ierr)
+        if (is_err(ierr)) return
 
         call json_open(writer, filename, ierr)
         if (is_err(ierr)) then
@@ -211,7 +191,7 @@ contains
             call json_begin_object(writer)
             call json_member(writer, 'coordinates', expression_vectors(:, i_gene))
             call json_member(writer, 'id', gene_ids(i_gene))
-            if (gene_to_fam(i_gene) > 0) then
+            if (gene_to_fam(i_gene) /= M_GENE_TO_FAM_SENTINEL) then
                 call json_member(writer, 'family', family_ids(gene_to_fam(i_gene)))
             else
                 call json_null(writer, 'family')
@@ -229,26 +209,50 @@ contains
         call json_close(writer, ierr)
     end subroutine save_flyer_json
 
-    !> Report `ERR_NAN_INF` at `arg_pos` unless every value is finite.
-    subroutine validate_all_finite(values, arg_pos, ierr)
-        real(real64), intent(in) :: values(:, :)
-            !! The values
-        integer(int32), intent(in) :: arg_pos
-            !! Position of the argument holding them
-        integer(int32), intent(inout) :: ierr
-            !! Error code; only a first error is recorded
+    !> The genes of each family, in ascending order, as compressed rows: family `f` owns
+    !| `family_members(family_start(f):family_start(f + 1) - 1)`.
+    pure subroutine group_genes_by_family(gene_to_fam, n_families, family_start, family_members, ierr)
+        integer(int32), intent(in) :: gene_to_fam(:)
+            !! Family of each gene, already validated; `M_GENE_TO_FAM_SENTINEL` for none
+        integer(int32), intent(in) :: n_families
+            !! Number of families
+        integer(int32), allocatable, intent(out) :: family_start(:)
+            !! Where each family's genes start in `family_members`, and one past the last family's end
+        integer(int32), allocatable, intent(out) :: family_members(:)
+            !! The genes of every family, family after family
+        integer(int32), intent(out) :: ierr
+            !! Error code: `ERR_OK` or `ERR_ALLOC_FAIL`
 
-        integer(int32) :: i_column, i_row
+        integer(int32) :: i_gene, i_family, family_of_gene
 
-        do i_column = 1, size(values, 2, kind=int32)
-            do i_row = 1, size(values, 1, kind=int32)
-                if (.not. json_is_finite(values(i_row, i_column))) then
-                    call set_err_once(ierr, ERR_NAN_INF, arg_pos)
-                    return
-                end if
-            end do
+        call set_ok(ierr)
+        M_ALLOCATE(family_start(n_families + 1))
+        family_start = 0
+        do i_gene = 1, size(gene_to_fam, kind=int32)
+            family_of_gene = gene_to_fam(i_gene)
+            if (family_of_gene /= M_GENE_TO_FAM_SENTINEL) &
+                family_start(family_of_gene + 1) = family_start(family_of_gene + 1) + 1
         end do
-    end subroutine validate_all_finite
+        family_start(1) = 1
+        do i_family = 2, n_families + 1
+            family_start(i_family) = family_start(i_family) + family_start(i_family - 1)
+        end do
+        M_ALLOCATE(family_members(family_start(n_families + 1) - 1))
+        ! Filling advances family_start(f) to the start of family f + 1 ...
+        do i_gene = 1, size(gene_to_fam, kind=int32)
+            family_of_gene = gene_to_fam(i_gene)
+            if (family_of_gene /= M_GENE_TO_FAM_SENTINEL) then
+                family_members(family_start(family_of_gene)) = i_gene
+                family_start(family_of_gene) = family_start(family_of_gene) + 1
+            end if
+        end do
+        ! ... so every start moves back by one family, walking down to leave the unread ones intact
+        ! (family_start(n_families + 1), one past the end, is already right).
+        do i_family = n_families, 2, -1
+            family_start(i_family) = family_start(i_family - 1)
+        end do
+        family_start(1) = 1
+    end subroutine group_genes_by_family
 
     !> Check a list of strings for the file: valid UTF-8, and for identifiers also non-empty
     !| and unique.
