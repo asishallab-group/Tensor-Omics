@@ -107,6 +107,16 @@ ERR_ALLOC_FAIL = 301
 #: memory allocation failed
 ERR_POINTER_NULL = 302
 #: null pointer dereference
+STAT_NO_STABLE_DIRECTION = 401
+#: no stable direction: the unit vectors cancel out, exactly or up to rounding, or their angular dispersion exceeds the maximum
+STAT_NO_ANGULAR_VARIATION = 402
+#: no angular variation: the angular dispersion is too small to tell from rounding, or below the minimum
+STAT_TOO_FEW_MEMBERS = 403
+#: too few members: fewer than three genes of the family have a direction
+STAT_NO_FAMILY = 404
+#: no family: the gene is assigned to no family
+STAT_ZERO_VECTOR = 405
+#: zero vector: the gene's expression vector is zero (or all its components subnormal), so it has no direction
 ERR_UNIT_NOT_CONNECTED = 5002
 #: Fortran runtime error: unit not connected
 ERR_INTERNAL = 9001
@@ -221,6 +231,11 @@ _EXCEPTIONS = {
 
 #: Status codes are outcomes, not failures, and never raise
 _STATUSES = {
+    401: "STAT_NO_STABLE_DIRECTION",
+    402: "STAT_NO_ANGULAR_VARIATION",
+    403: "STAT_TOO_FEW_MEMBERS",
+    404: "STAT_NO_FAMILY",
+    405: "STAT_ZERO_VECTOR",
 }
 
 def check_err_code(ierr, arguments=(), sources=()):

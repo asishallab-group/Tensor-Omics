@@ -239,6 +239,26 @@ contains
         degrees = modulo(radians, 2*PI)*180/PI
     end function degrees
 
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Returns the given angle wrapped into \( (-\pi, \pi] \), the same direction on the circle:
+    !| \( \pi \) stays \( \pi \), \( -\pi \Rightarrow \pi \), \( \frac{3\cdot \pi}{2} \Rightarrow -\frac{\pi}{2} \).
+    !| An angle already in \( (-\pi, \pi] \) is returned unchanged, to the last bit.
+    !| The angle must be finite; a NaN or infinite one gives NaN.
+    pure elemental real(real64) function wrap_angle(angle) result(wrapped)
+        real(real64), intent(in) :: angle
+            !! angle to be wrapped, in radians
+
+        if (angle > -PI .and. angle <= PI) then
+            wrapped = angle
+            return
+        end if
+
+        ! `modulo` lies in [0, 2*PI), so `PI - modulo` lies in (-PI, PI]. Rounding can still land
+        ! a value a hair beyond PI on exactly -PI, which is the same direction as PI.
+        wrapped = PI - modulo(PI - angle, 2*PI)
+        if (wrapped <= -PI) wrapped = PI
+    end function wrap_angle
+
     !> AUTHOR_AARON_SCHROEDER
     !| Find the next power of two greater than or equal to n
     function next_power_of_two(n) result(power)
