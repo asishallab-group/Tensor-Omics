@@ -36,6 +36,7 @@ program main
     use mod_test_root_mean_sq_normalization, only: get_all_tests_root_mean_sq_normalization
     use mod_test_empirical_pvalue, only: get_all_tests_empirical_pvalue
     use mod_test_json_serialize, only: get_all_tests_json_serialize
+    use mod_test_flyer_json, only: get_all_tests_flyer_json
     implicit none
 
     integer :: nargs
@@ -77,6 +78,7 @@ program main
     call add_suite("empirical_pvalue", get_all_tests_empirical_pvalue)
     call add_suite("root_mean_sq_normalization", get_all_tests_root_mean_sq_normalization)
     call add_suite("json_serialize", get_all_tests_json_serialize)
+    call add_suite("flyer_json", get_all_tests_flyer_json)
 
     nargs = command_argument_count()
 
