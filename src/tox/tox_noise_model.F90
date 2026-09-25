@@ -34,7 +34,7 @@ module noise_model
     use, intrinsic :: iso_fortran_env, only: int32, int64, real64
     use tox_errors, only: set_ok, set_err, is_err, &
                           ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_NAN_INF, ERR_ALLOC_FAIL, &
-                          validate_dimension_size, validate_all_in_range_real, validate_all_in_range_int
+                          ERR_DIM_MISMATCH, validate_dimension_size, validate_all_in_range_real, validate_all_in_range_int
     use f42_utils, only: sort_real, sort_integer, init_random
     implicit none
 
@@ -1316,6 +1316,15 @@ contains
         call validate_dimension_size(k_step, ierr)
         call validate_dimension_size(k_max, ierr)
         call validate_dimension_size(max_pool_size, ierr)
+        ! The gene loop indexes means, replicates and the observed statistic with ONE
+        ! index 1..n_genes, so all three must describe the same genes. A replicate
+        ! matrix handed over genes x samples (the edgeR/DESeq2 convention) instead of
+        ! samples x genes swaps n_genes_* with n_replicates_* -- without this check the
+        ! pipeline runs to completion and returns p-values for the wrong matrix.
+        if (n_genes_case /= n_genes .or. n_genes_control /= n_genes) then
+            call set_err(ierr, ERR_DIM_MISMATCH)
+            return
+        end if
         call validate_all_in_range_real(means_case, n_genes_case, ierr)
         call validate_all_in_range_real(means_control, n_genes_control, ierr)
         call validate_all_in_range_real(replicates_case, n_replicates_case * n_genes_case, ierr)

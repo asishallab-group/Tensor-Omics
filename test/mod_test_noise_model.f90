@@ -15,6 +15,7 @@ module mod_test_noise_model
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use noise_model
+    use noise_model_exact, only: pipeline_exact => compute_noise_pvalue_pipeline
     use tox_normalization, only: normalize_by_std_dev_alloc, quantile_normalization
     use tox_errors
     use test_suite, only: test_case
@@ -31,7 +32,7 @@ contains
     function get_all_tests_noise_model() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate(all_tests(7))
+        allocate(all_tests(8))
         all_tests(1) = test_case("test_prepare_sorted_data",               test_prepare_sorted_data)
         all_tests(2) = test_case("test_gather_residuals_helper",           test_gather_residuals_helper)
         all_tests(3) = test_case("test_compute_pvalue_bootstrap_mean",     test_compute_pvalue_bootstrap_mean)
@@ -39,6 +40,7 @@ contains
         all_tests(5) = test_case("test_prepare_sorted_data_log_transform", test_prepare_sorted_data_log_transform)
         all_tests(6) = test_case("test_residuals_log_transform_centred",   test_residuals_log_transform_centred)
         all_tests(7) = test_case("test_full_pipeline_all_normalizations",  test_full_pipeline_all_normalizations)
+        all_tests(8) = test_case("test_pipeline_rejects_gene_dim_mismatch", test_pipeline_rejects_gene_dim_mismatch)
     end function get_all_tests_noise_model
 
     ! =========================================================================
@@ -574,5 +576,43 @@ contains
             end if
         end do
     end subroutine test_full_pipeline_all_normalizations
+
+    ! =========================================================================
+    ! test_pipeline_rejects_gene_dim_mismatch
+    ! =========================================================================
+    !| Both pipelines index means, replicates and the observed statistic with one
+    !| gene index, so a replicate matrix whose gene dimension differs from n_genes
+    !| (e.g. one handed over genes x samples instead of samples x genes) must be
+    !| rejected with ERR_DIM_MISMATCH rather than scored.
+    subroutine test_pipeline_rejects_gene_dim_mismatch()
+        integer(int32), parameter :: n_genes = 20, n_rep = 5
+        real(real64)   :: means(n_genes), obs(n_genes), pv(n_genes)
+        real(real64)   :: rep_ok(n_rep, n_genes), rep_swapped(n_genes, n_rep)
+        integer(int32) :: valid(n_genes), nb1(n_genes), nb2(n_genes), nb3(n_genes)
+        integer(int32) :: n_ok, ierr, i, k
+
+        do i = 1, n_genes
+            means(i) = real(i, real64)
+            do k = 1, n_rep
+                rep_ok(k, i) = means(i) + 0.1_real64 * real(k, real64)
+            end do
+        end do
+        rep_swapped = transpose(rep_ok)
+        obs = 0.0_real64; valid = 1
+
+        ! correct orientation: accepted
+        call compute_noise_pvalue_pipeline(means, rep_ok, n_genes, n_rep, means, rep_ok, n_genes, n_rep, &
+            obs, valid, n_genes, 0, 10, 2, 30, 0.1_real64, NULL_METHOD_POOLED, pv, n_ok, 500, nb1, nb2, nb3, ierr)
+        call assert_equal_int(ierr, ERR_OK, "dim check: correct orientation must be accepted")
+
+        ! control side handed over genes x samples: n_genes_control = n_rep /= n_genes
+        call compute_noise_pvalue_pipeline(means, rep_ok, n_genes, n_rep, means(1:n_rep), rep_swapped, n_rep, n_genes, &
+            obs, valid, n_genes, 0, 10, 2, 30, 0.1_real64, NULL_METHOD_POOLED, pv, n_ok, 500, nb1, nb2, nb3, ierr)
+        call assert_equal_int(ierr, ERR_DIM_MISMATCH, "dim check (bootstrap module): swapped control must be ERR_DIM_MISMATCH")
+
+        call pipeline_exact(means(1:n_rep), rep_swapped, n_rep, n_genes, means, rep_ok, n_genes, n_rep, &
+            obs, valid, n_genes, 0, 10, 2, 30, 0.1_real64, pv, n_ok, 500, nb1, nb2, nb3, ierr)
+        call assert_equal_int(ierr, ERR_DIM_MISMATCH, "dim check (exact module): swapped case must be ERR_DIM_MISMATCH")
+    end subroutine test_pipeline_rejects_gene_dim_mismatch
 
 end module mod_test_noise_model
