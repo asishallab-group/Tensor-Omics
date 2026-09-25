@@ -488,6 +488,9 @@ def test_calc_js_comp_test_candidate_bounds():
     assert bounds["max_n_neighbors_candidate"] >= int(np.max(candidates[1, :])), \
         "max_n_neighbors_candidate must be a safe upper bound on the grid's n_neighbors"
 
+    assert_error(lambda: calc_js_comp_test_candidate_bounds(0),
+                 "expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
+
 
 def test_gather_pooled_neighborhood_residuals():
     # Call-ability and return type/shape only, per this project's testing philosophy

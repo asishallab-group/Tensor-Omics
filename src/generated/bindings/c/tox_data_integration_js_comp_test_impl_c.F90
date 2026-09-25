@@ -53,6 +53,9 @@ contains
     !| largest `n_neighbors` candidate -- reached with the smallest `KX_FACTORS` entry at the
     !| smallest `n_points_high` the grid loop ever uses, which by construction never drops below
     !| `n_points_low`.
+    !|
+    !| Rejects a non-positive `max_n_genes_all_studies` with invalid input; both outputs are then
+    !| left undefined.
     subroutine calc_js_comp_test_candidate_bounds_c(&
             max_n_genes_all_studies,&
             max_n_points_candidate,&
@@ -69,7 +72,7 @@ contains
         integer(c_int), intent(out), target :: max_n_neighbors_candidate
             !! Safe upper bound on the `n_neighbors` candidate the grid ever produces
         integer(c_int), intent(out), target :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -80,7 +83,8 @@ contains
         call calc_js_comp_test_candidate_bounds(&
             max_n_genes_all_studies = max_n_genes_all_studies,&
             max_n_points_candidate = max_n_points_candidate,&
-            max_n_neighbors_candidate = max_n_neighbors_candidate&
+            max_n_neighbors_candidate = max_n_neighbors_candidate,&
+            ierr = ierr&
         )
     end subroutine calc_js_comp_test_candidate_bounds_c
 

@@ -40,7 +40,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(96))
+        allocate (all_tests(97))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -243,6 +243,8 @@ contains
                                   test_adaptive_constants_preclude_dead_clamps)
         all_tests(96) = test_case("test_adaptive_bounds_rejects_unrepresentable_k_start", &
                                   test_adaptive_bounds_rejects_unrepresentable_k_start)
+        all_tests(97) = test_case("test_candidate_bounds_rejects_nonpositive_genes", &
+                                  test_candidate_bounds_rejects_nonpositive_genes)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -2100,7 +2102,11 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_no_plateau_falls_back_to_finest: "// &
+                              "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
         allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
         allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
@@ -2192,7 +2198,11 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_single_candidate_bypasses_plateau: "// &
+                              "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
         allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
         allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
@@ -2308,7 +2318,11 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_finds_plateau_mid_grid: "// &
+                              "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
         allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
         allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
@@ -2447,7 +2461,11 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_effect_size_mode_plateau: "// &
+                              "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
         allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
         allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
@@ -2531,7 +2549,11 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_both_mode_uses_earlier_trigger: "// &
+                              "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
         allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
         allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
@@ -2645,7 +2667,11 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_no_plateau_uses_smallest_uncertainty: "// &
+                              "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
         allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
         allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
@@ -2743,7 +2769,11 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_no_plateau_effect_size_smallest_uncertainty: "// &
+                              "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
         allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
         allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
@@ -2835,7 +2865,11 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_no_plateau_both_uses_smallest_uncertainty: "// &
+                              "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
         allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
         allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
@@ -2942,7 +2976,11 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_occupancy_failure_rejects_candidate: "// &
+                              "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
         allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
         allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
@@ -3085,7 +3123,11 @@ contains
             residuals(3, i_gene, 2) = 2.5_real64
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_different_neighborhoods_different_m_j: "// &
+                              "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
         allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
         allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
@@ -3201,7 +3243,11 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_final_n_bins_matches_selected_trace_column: "// &
+                              "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
         allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
         allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
@@ -5163,5 +5209,22 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_adaptive_bounds_rejects_unrepresentable_k_start: G=huge, S=1 accepted")
     end subroutine test_adaptive_bounds_rejects_unrepresentable_k_start
+
+    !> The hand-validating candidate-grid producer backs its documented `DM_MIN(1_int32)` on
+    !| `max_n_genes_all_studies` (argument 1) itself: zero and a negative gene count are both
+    !| rejected with that position, and the smallest valid count `G=1` is accepted.
+    subroutine test_candidate_bounds_rejects_nonpositive_genes()
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate, ierr
+
+        call calc_js_comp_test_candidate_bounds(0_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_candidate_bounds_rejects_nonpositive_genes: G=0 rejected", arg_pos=1_int32)
+        call calc_js_comp_test_candidate_bounds(-5_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_candidate_bounds_rejects_nonpositive_genes: G=-5 rejected", arg_pos=1_int32)
+        call calc_js_comp_test_candidate_bounds(1_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_candidate_bounds_rejects_nonpositive_genes: G=1 accepted")
+    end subroutine test_candidate_bounds_rejects_nonpositive_genes
 
 end module mod_test_data_integration_js_comp_test

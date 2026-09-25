@@ -52,7 +52,7 @@ _lib.calc_js_comp_test_candidate_bounds_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CALC_JS_COMP_TEST_CANDIDATE_BOUNDS_ARGUMENTS = ("max_n_genes_all_studies", "max_n_points_candidate", "max_n_neighbors_candidate",)
+_CALC_JS_COMP_TEST_CANDIDATE_BOUNDS_ARGUMENTS = ("max_n_genes_all_studies", "max_n_points_candidate", "max_n_neighbors_candidate", "ierr",)
 
 _lib.calc_adaptive_js_comp_test_bounds_c.restype = None
 _lib.calc_adaptive_js_comp_test_bounds_c.argtypes = (
@@ -105,6 +105,9 @@ def calc_js_comp_test_candidate_bounds(
     largest `n_neighbors` candidate -- reached with the smallest `KX_FACTORS` entry at the
     smallest `n_points_high` the grid loop ever uses, which by construction never drops below
     `n_points_low`.
+
+    Rejects a non-positive `max_n_genes_all_studies` with invalid input; both outputs are then
+    left undefined.
 
     Parameters
     ----------

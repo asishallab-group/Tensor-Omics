@@ -432,6 +432,9 @@ test_calc_js_comp_test_candidate_bounds <- function() {
   candidates <- generate_js_comp_test_candidates(8742L)
   assert_true(bounds$max_n_neighbors_candidate >= max(candidates[2, ]),
               "max_n_neighbors_candidate must be a safe upper bound on the grid's n_neighbors")
+
+  assert_error(calc_js_comp_test_candidate_bounds(0L),
+               "expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
 }
 
 test_gather_pooled_neighborhood_residuals <- function() {

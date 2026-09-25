@@ -10,6 +10,9 @@
 #' smallest `n_points_high` the grid loop ever uses, which by construction never drops below
 #' `n_points_low`.
 #'
+#' Rejects a non-positive `max_n_genes_all_studies` with invalid input; both outputs are then
+#' left undefined.
+#'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_impl::calc_js_comp_test_candidate_bounds}, whose argument names
 #' are the ones an error message reports.
 #'
@@ -22,7 +25,7 @@
 calc_js_comp_test_candidate_bounds <- function(max_n_genes_all_studies) {
     max_n_genes_all_studies <- .tox_as_integer_scalar(max_n_genes_all_studies, "max_n_genes_all_studies")
     .result <- .Call("calc_js_comp_test_candidate_bounds_call", max_n_genes_all_studies)
-    .arguments <- c("max_n_genes_all_studies", "max_n_points_candidate", "max_n_neighbors_candidate")
+    .arguments <- c("max_n_genes_all_studies", "max_n_points_candidate", "max_n_neighbors_candidate", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
     list(

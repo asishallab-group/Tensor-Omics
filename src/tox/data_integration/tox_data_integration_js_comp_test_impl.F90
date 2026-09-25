@@ -186,8 +186,11 @@ contains
     !| largest `n_neighbors` candidate -- reached with the smallest `KX_FACTORS` entry at the
     !| smallest `n_points_high` the grid loop ever uses, which by construction never drops below
     !| `n_points_low`.
+    !|
+    !| Rejects a non-positive `max_n_genes_all_studies` with invalid input; both outputs are then
+    !| left undefined.
     pure subroutine calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, &
-                                                        max_n_neighbors_candidate)
+                                                        max_n_neighbors_candidate, ierr)
         integer(int32), intent(in) :: max_n_genes_all_studies
             !! Maximum number of genes across all studies
             !! DM_MIN(1_int32)
@@ -195,8 +198,14 @@ contains
             !! Exact upper bound on the `n_points` candidate the grid ever produces
         integer(int32), intent(out) :: max_n_neighbors_candidate
             !! Safe upper bound on the `n_neighbors` candidate the grid ever produces
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure
 
         integer(int32) :: n_points_low
+
+        call set_ok(ierr)
+        call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=1_int32, min=1_int32)
+        if (is_err(ierr)) return
 
         max_n_points_candidate = clamp(ceiling(4.0_real64*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), &
                                        min_val=MIN_POINTS, max_val=MAX_POINTS)

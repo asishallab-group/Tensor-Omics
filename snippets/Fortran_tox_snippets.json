@@ -1064,7 +1064,20 @@
       "call calc_js_comp_test_candidate_bounds( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
       "    max_n_points_candidate=${2:max_n_points_candidate}, &",
-      "    max_n_neighbors_candidate=${3:max_n_neighbors_candidate})"
+      "    max_n_neighbors_candidate=${3:max_n_neighbors_candidate}, &",
+      "    ierr=${4:ierr})"
+    ]
+  },
+  "calc_js_comp_test_candidate_bounds (call, checked)": {
+    "prefix": "tox:calc_js_comp_test_candidate_bounds.checked",
+    "description": "Closed-form from the GAMMA-decay candidate-grid formula (with error check)",
+    "body": [
+      "call calc_js_comp_test_candidate_bounds( &",
+      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
+      "    max_n_points_candidate=${2:max_n_points_candidate}, &",
+      "    max_n_neighbors_candidate=${3:max_n_neighbors_candidate}, &",
+      "    ierr=${4:ierr})",
+      "if (is_err(ierr)) return"
     ]
   },
   "calc_adaptive_js_comp_test_bounds (call)": {
