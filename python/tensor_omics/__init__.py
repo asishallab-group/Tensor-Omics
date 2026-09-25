@@ -80,6 +80,7 @@ from .tox_data_integration_js_comp_test import (
     determine_bin_count_occupancy_exhaustive,
     determine_bin_count_occupancy_exhaustive_expert,
     generate_js_comp_test_candidates,
+    generate_adaptive_js_comp_test_candidates,
     check_neighborhood_overlaps,
     check_mean_pmf_min_counts,
     check_plateau_condition,
@@ -92,6 +93,7 @@ from .tox_data_integration_js_comp_test import (
 )
 from .tox_data_integration_js_comp_test_impl import (
     calc_js_comp_test_candidate_bounds,
+    calc_adaptive_js_comp_test_bounds,
     gather_pooled_neighborhood_residuals,
     calc_js_comp_test_n_top_k_jsds,
 )
@@ -227,6 +229,7 @@ __all__ = [
     "build_kd_index",
     "build_residual_histograms",
     "build_spherical_kd",
+    "calc_adaptive_js_comp_test_bounds",
     "calc_fchange",
     "calc_js_comp_test_candidate_bounds",
     "calc_js_comp_test_n_top_k_jsds",
@@ -297,6 +300,7 @@ __all__ = [
     "fjct_compute_jsd",
     "fjct_compute_masked_jsd",
     "gather_pooled_neighborhood_residuals",
+    "generate_adaptive_js_comp_test_candidates",
     "generate_js_comp_test_candidates",
     "get_array_metadata",
     "get_tox_data_dims",

@@ -181,6 +181,16 @@
       ")"
     ]
   },
+  "generate_adaptive_js_comp_test_candidates (call)": {
+    "prefix": "tox:generate_adaptive_js_comp_test_candidates",
+    "description": "The adaptive-neighborhood counterpart (Issue #217) of",
+    "body": [
+      "${1:result} <- generate_adaptive_js_comp_test_candidates(",
+      "  max_n_genes_all_studies = ${2:max_n_genes_all_studies},",
+      "  n_studies = ${3:n_studies}",
+      ")"
+    ]
+  },
   "check_neighborhood_overlaps (call)": {
     "prefix": "tox:check_neighborhood_overlaps",
     "description": "Ported from 125-stabilize-jscomp's `test_neighborhood_overlaps_helper`: the first",
@@ -324,6 +334,16 @@
     "body": [
       "${1:result} <- calc_js_comp_test_candidate_bounds(",
       "  max_n_genes_all_studies = ${2:max_n_genes_all_studies}",
+      ")"
+    ]
+  },
+  "calc_adaptive_js_comp_test_bounds (call)": {
+    "prefix": "tox:calc_adaptive_js_comp_test_bounds",
+    "description": "Sizes the per-point work arrays of the adaptive (Issue #217) parameter search, whose",
+    "body": [
+      "${1:result} <- calc_adaptive_js_comp_test_bounds(",
+      "  max_n_genes_all_studies = ${2:max_n_genes_all_studies},",
+      "  n_studies = ${3:n_studies}",
       ")"
     ]
   },

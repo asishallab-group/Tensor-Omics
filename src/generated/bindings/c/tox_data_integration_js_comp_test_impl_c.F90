@@ -20,7 +20,11 @@
 !| testing every candidate `M` instead of the fast geometric-search-then-refinement the production
 !| routine uses, for validating that the fast search's own result is correct.
 !| `calc_js_comp_test_candidate_bounds` sizes the candidate-grid work arrays for a caller that
-!| allocates its own. Once a candidate has passed both gates, its bootstrap confidence interval
+!| allocates its own. For adaptive (heteroscedastic, Issue #217) neighborhood construction,
+!| [[tox_data_integration_js_comp_test_impl(module):generate_adaptive_js_comp_test_candidates_impl(interface)]]
+!| generates the ascending `(k_start, k_step, k_max)` growth-knob candidates instead, and
+!| `calc_adaptive_js_comp_test_bounds` recommends the reference-point capacity their search's
+!| per-point arrays are sized by. Once a candidate has passed both gates, its bootstrap confidence interval
 !| is resampled from the pooled consensus histogram by
 !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]] (heap
 !| size recommended by
@@ -35,6 +39,7 @@ module tox_data_integration_js_comp_test_impl_c
     private
 
     public :: calc_js_comp_test_candidate_bounds_c
+    public :: calc_adaptive_js_comp_test_bounds_c
     public :: gather_pooled_neighborhood_residuals_c
     public :: calc_js_comp_test_n_top_k_jsds_c
 
@@ -78,6 +83,61 @@ contains
             max_n_neighbors_candidate = max_n_neighbors_candidate&
         )
     end subroutine calc_js_comp_test_candidate_bounds_c
+
+    !> summary: C-wrapper for [[tox_data_integration_js_comp_test_impl(module):calc_adaptive_js_comp_test_bounds(subroutine)]]
+    !| Sizes the per-point work arrays of the adaptive (Issue #217) parameter search, whose
+    !| candidates come from
+    !| [[tox_data_integration_js_comp_test_impl(module):generate_adaptive_js_comp_test_candidates_impl(interface)]].
+    !| An adaptive candidate's reference-point count is not known before its neighborhoods are
+    !| grown, so this is a **practical capacity, not a proven bound**:
+    !| `max_n_points_candidate = min(N, ceiling(2 * N / k_start_last) + 1)`, with the safety factor
+    !| 2 being [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_POINT_CAPACITY_FACTOR(variable)]],
+    !| `N = max_n_genes_all_studies * n_studies` the padded pool size and `k_start_last` the
+    !| smallest `k_start` the candidate sequence contains (the candidate expected to emerge with
+    !| the most reference points). The only provable bound is `N` itself, because every new
+    !| reference point's seed strictly advances through the pool; sizing every per-point array by
+    !| `N` would be prohibitive, so a candidate that emerges with more points than this capacity is
+    !| rejected by the adaptive search with a capacity status rather than stored.
+    !|
+    !| Computed in 64-bit integer / double precision throughout, so `N` itself never overflows.
+    !| Enforces the candidate generator's representability bound, which the generator itself
+    !| cannot check: the first candidate's `k_start_1 = max(10, 2*n_studies, ceiling(0.02 * N))`
+    !| must not exceed `huge(1_int32)/4 = 536870911`, so that its `k_max = 4*k_start_1` fits a
+    !| 32-bit integer; otherwise this routine reports invalid input. The bound is joint in both
+    !| arguments, so the error names neither.
+    subroutine calc_adaptive_js_comp_test_bounds_c(&
+            max_n_genes_all_studies,&
+            n_studies,&
+            max_n_points_candidate,&
+            ierr&
+        ) bind(C, name="calc_adaptive_js_comp_test_bounds_c")
+        use tox_data_integration_js_comp_test_impl, only: calc_adaptive_js_comp_test_bounds
+
+        integer(c_int), intent(in), target :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(c_int), intent(in), target :: n_studies
+            !! Number of studies
+            !! The minimum valid value is `1_int32`.
+        integer(c_int), intent(out), target :: max_n_points_candidate
+            !! Practical upper bound on the number of reference points any adaptive candidate is
+            !! allowed to emerge with
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(max_n_genes_all_studies)
+        M_CHECK_NON_NULL(n_studies)
+        M_CHECK_NON_NULL(max_n_points_candidate)
+
+        call calc_adaptive_js_comp_test_bounds(&
+            max_n_genes_all_studies = max_n_genes_all_studies,&
+            n_studies = n_studies,&
+            max_n_points_candidate = max_n_points_candidate,&
+            ierr = ierr&
+        )
+    end subroutine calc_adaptive_js_comp_test_bounds_c
 
     !> summary: C-wrapper for [[tox_data_integration_js_comp_test_impl(module):gather_pooled_neighborhood_residuals(subroutine)]]
     !| Given one reference point's own per-study neighbor gene indices (one column of a larger

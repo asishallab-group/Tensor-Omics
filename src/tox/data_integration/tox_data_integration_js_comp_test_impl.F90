@@ -18,7 +18,11 @@
 !| testing every candidate `M` instead of the fast geometric-search-then-refinement the production
 !| routine uses, for validating that the fast search's own result is correct.
 !| `calc_js_comp_test_candidate_bounds` sizes the candidate-grid work arrays for a caller that
-!| allocates its own. Once a candidate has passed both gates, its bootstrap confidence interval
+!| allocates its own. For adaptive (heteroscedastic, Issue #217) neighborhood construction,
+!| [[tox_data_integration_js_comp_test_impl(module):generate_adaptive_js_comp_test_candidates_impl(interface)]]
+!| generates the ascending `(k_start, k_step, k_max)` growth-knob candidates instead, and
+!| `calc_adaptive_js_comp_test_bounds` recommends the reference-point capacity their search's
+!| per-point arrays are sized by. Once a candidate has passed both gates, its bootstrap confidence interval
 !| is resampled from the pooled consensus histogram by
 !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]] (heap
 !| size recommended by
@@ -27,7 +31,7 @@
 !| wire these building blocks together.
 module tox_data_integration_js_comp_test_impl
     use f42_safeguard
-    use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_fortran_env, only: int32, int64, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use f42_math_impl, only: clamp, is_close, LOG_2
@@ -35,7 +39,7 @@ module tox_data_integration_js_comp_test_impl
     use f42_sort_impl, only: init_perm, sort_array_heapsort, sort_real_heapsort_expl_size
     use f42_random_gsl, only: rng_t, create_rng, destroy_rng, random_multinomial
     use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, validate_dimension_size, &
-                          ERR_INVALID_INPUT
+                          validate_in_range_int, ERR_INVALID_INPUT
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
                                              compute_weighted_global_divergence_impl, &
                                              build_residual_histograms_impl, calc_pmf_impl
@@ -53,7 +57,10 @@ module tox_data_integration_js_comp_test_impl
              calc_js_comp_test_n_top_k_jsds, bootstrap_histogram_impl, run_js_comp_test_impl, &
              run_js_comp_test_parameter_search_impl, METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, &
              MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, MODE_PLATEAU_BOTH, KX_FACTORS, MAX_POINTS, MIN_POINTS, &
-             GAMMA, MAX_POINT_CANDIDATES, MAX_CANDIDATE_PAIRS, MAX_N_BINS
+             GAMMA, MAX_POINT_CANDIDATES, MAX_CANDIDATE_PAIRS, MAX_N_BINS, &
+             generate_adaptive_js_comp_test_candidates_impl, calc_adaptive_js_comp_test_bounds, &
+             ADAPTIVE_START_FRACTION, ADAPTIVE_GAMMA, ADAPTIVE_K_STEP_FRACTION, ADAPTIVE_K_MAX_FACTOR, &
+             ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_POINT_CAPACITY_FACTOR
 
     ! `join_method`'s mode table (see check_plateau_condition_impl below). The generator derives
     ! a mode argument's required parameter prefix from the argument's own name -- `join_method`
@@ -96,6 +103,31 @@ module tox_data_integration_js_comp_test_impl
         !! Fixed ceiling for a candidate's estimated histogram bin count (see
         !! estimate_bin_count_impl below): later stages of this pipeline size their histogram
         !! work arrays to this fixed bound rather than to a data-dependent one.
+
+    ! Issue #217: tuning constants of the adaptive (heteroscedastic) neighborhood construction's
+    ! ascending candidate sequence (generate_adaptive_js_comp_test_candidates_impl below) and of
+    ! its capacity producer (calc_adaptive_js_comp_test_bounds). Plain parameters, like GAMMA /
+    ! KX_FACTORS above: none of them is an argument default, so none needs a CM_ macro. Every one
+    ! of them is relative to the padded pool size `N = max_n_genes_all_studies * n_studies`, so
+    ! the sequence scales with the data instead of hitting a fixed floor the way the fixed-k
+    ! grid's `n_points_low = max(MIN_POINTS, ...)` does. The candidate cap is
+    ! MAX_CANDIDATE_PAIRS (16), shared with the fixed-k grid so both searches' trace arrays have
+    ! the same candidate extent. Provisional: the values are to be settled by real-data
+    ! validation of the adaptive search (Issue #217).
+    real(real64), parameter :: ADAPTIVE_START_FRACTION = 0.02_real64
+        !! First (largest) candidate `k_start`, as a fraction of the padded pool size `N`
+    real(real64), parameter :: ADAPTIVE_GAMMA = 0.8_real64
+        !! Decay factor of `k_start` between successive adaptive candidates
+    real(real64), parameter :: ADAPTIVE_K_STEP_FRACTION = 0.25_real64
+        !! A candidate's `k_step`, as a fraction of its own `k_start`
+    real(real64), parameter :: ADAPTIVE_K_MAX_FACTOR = 4.0_real64
+        !! A candidate's `k_max`, as a multiple of its own `k_start`
+    integer(int32), parameter :: ADAPTIVE_K_START_MIN_ABS = 10_int32
+        !! Absolute lower bound on any candidate's `k_start` (raised to `2*n_studies` when that
+        !! is larger)
+    real(real64), parameter :: ADAPTIVE_POINT_CAPACITY_FACTOR = 2.0_real64
+        !! Safety factor of the practical reference-point capacity over the naive estimate
+        !! `N / k_start`, in calc_adaptive_js_comp_test_bounds
 
     ! `plateau_mode`'s mode table (see run_js_comp_test_parameter_search_impl below). Issue #178:
     ! CI overlap can be too strict a plateau criterion once bootstrap confidence intervals are very
@@ -172,6 +204,63 @@ contains
         max_n_neighbors_candidate = max(1_int32, floor(real(max_n_genes_all_studies, real64)/ &
                                                         (KX_FACTORS(1)*real(n_points_low, real64)), kind=int32))
     end subroutine calc_js_comp_test_candidate_bounds
+
+    !> M_EXPORT_C
+    !| summary: Recommend a reference-point capacity for the adaptive js-comp-test candidate sequence
+    !| AUTHOR_LASZLO_LANG
+    !| Sizes the per-point work arrays of the adaptive (Issue #217) parameter search, whose
+    !| candidates come from
+    !| [[tox_data_integration_js_comp_test_impl(module):generate_adaptive_js_comp_test_candidates_impl(interface)]].
+    !| An adaptive candidate's reference-point count is not known before its neighborhoods are
+    !| grown, so this is a **practical capacity, not a proven bound**:
+    !| `max_n_points_candidate = min(N, ceiling(2 * N / k_start_last) + 1)`, with the safety factor
+    !| 2 being [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_POINT_CAPACITY_FACTOR(variable)]],
+    !| `N = max_n_genes_all_studies * n_studies` the padded pool size and `k_start_last` the
+    !| smallest `k_start` the candidate sequence contains (the candidate expected to emerge with
+    !| the most reference points). The only provable bound is `N` itself, because every new
+    !| reference point's seed strictly advances through the pool; sizing every per-point array by
+    !| `N` would be prohibitive, so a candidate that emerges with more points than this capacity is
+    !| rejected by the adaptive search with a capacity status rather than stored.
+    !|
+    !| Computed in 64-bit integer / double precision throughout, so `N` itself never overflows.
+    !| Enforces the candidate generator's representability bound, which the generator itself
+    !| cannot check: the first candidate's `k_start_1 = max(10, 2*n_studies, ceiling(0.02 * N))`
+    !| must not exceed `huge(1_int32)/4 = 536870911`, so that its `k_max = 4*k_start_1` fits a
+    !| 32-bit integer; otherwise this routine reports invalid input. The bound is joint in both
+    !| arguments, so the error names neither.
+    pure subroutine calc_adaptive_js_comp_test_bounds(max_n_genes_all_studies, n_studies, max_n_points_candidate, ierr)
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+            !! DM_MIN(1_int32)
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+            !! DM_MIN(1_int32)
+        integer(int32), intent(out) :: max_n_points_candidate
+            !! Practical upper bound on the number of reference points any adaptive candidate is
+            !! allowed to emerge with
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure
+
+        integer(int32) :: k_starts(16), n_k_starts
+        integer(int64) :: n_pool, capacity
+
+        call set_ok(ierr)
+        call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=1_int32, min=1_int32)
+        call validate_in_range_int(n_studies, ierr, arg_pos=2_int32, min=1_int32)
+        if (is_err(ierr)) return
+        ! Joint bound on (G, S): no arg_pos, because tox_errors' position 0 means "not one
+        ! argument", and blaming either one alone would name the wrong argument half the time.
+        if (adaptive_k_start_1(max_n_genes_all_studies, n_studies) > int(huge(1_int32)/4_int32, int64)) &
+            call set_err_once(ierr, ERR_INVALID_INPUT)
+        if (is_err(ierr)) return
+
+        call compute_adaptive_k_starts(max_n_genes_all_studies, n_studies, k_starts, n_k_starts)
+
+        n_pool = int(max_n_genes_all_studies, int64)*int(n_studies, int64)
+        capacity = ceiling(ADAPTIVE_POINT_CAPACITY_FACTOR*real(n_pool, real64)/ &
+                           real(k_starts(n_k_starts), real64), kind=int64) + 1_int64
+        max_n_points_candidate = int(min(n_pool, capacity), kind=int32)
+    end subroutine calc_adaptive_js_comp_test_bounds
 
     !> summary: Estimate the histogram bin count for one (n_points, n_neighbors) candidate
     !| AUTHOR_LASZLO_LANG
@@ -1081,6 +1170,145 @@ contains
             n_points_high = n_points_high*GAMMA
         end do
     end subroutine generate_js_comp_test_candidates_impl
+
+    !> summary: Generate the ascending adaptive (k_start, k_step, k_max) candidate sequence
+    !| AUTHOR_LASZLO_LANG
+    !| The adaptive-neighborhood counterpart (Issue #217) of
+    !| [[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]].
+    !| An adaptive candidate does not fix its number of reference points: each neighborhood is
+    !| grown from `k_start` pooled entries in rounds of `k_step` up to `k_max` while its residual
+    !| dispersion stays stable, and the next reference point is placed beyond it, so the point
+    !| count emerges from the growth knobs. This routine only generates those knobs. Because
+    !| `k_start` shrinks from one candidate to the next, the candidates **ascend** in the number of
+    !| reference points they are expected to produce.
+    !|
+    !| With `N = max_n_genes_all_studies * n_studies` (the padded pool size, not the count of
+    !| non-NaN means, so that the capacity producer
+    !| [[tox_data_integration_js_comp_test_impl(module):calc_adaptive_js_comp_test_bounds(interface)]]
+    !| and the search agree on the same number) and `floor_k = max(10, 2*n_studies)`:
+    !|
+    !| - `k_start_1 = max(floor_k, ceiling(0.02 * N))`
+    !| - `k_start_t = floor(k_start_1 * 0.8**(t-1))`
+    !| - stop once `k_start_t < floor_k`, or once 16 candidates are accepted
+    !| - `k_step_t = ceiling(0.25 * k_start_t)`
+    !| - `k_max_t = ceiling(4 * k_start_t)`
+    !|
+    !| The constants are [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_START_FRACTION(variable)]] (0.02),
+    !| [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_GAMMA(variable)]] (0.8),
+    !| [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_K_STEP_FRACTION(variable)]] (0.25),
+    !| [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_K_MAX_FACTOR(variable)]] (4),
+    !| [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_K_START_MIN_ABS(variable)]] (10) and
+    !| [[tox_data_integration_js_comp_test_impl(module):MAX_CANDIDATE_PAIRS(variable)]] (16).
+    !| With them, one decay step lowers any `k_start >= 10` by at least 2, so the values are
+    !| strictly descending without any deduplication, every `k_step` is at least 1 and every
+    !| `k_max` at least `k_start`.
+    !|
+    !| Each `k_start_t` is computed in double precision directly from `k_start_1`, not by
+    !| rounding the previous candidate again, so rounding never accumulates along the sequence.
+    !|
+    !| Every knob scales with `N`, so the sequence does not collapse for small data the way the
+    !| fixed-k grid does below about 8,743 genes, where its absolute `n_points_low` floor leaves
+    !| room for only a single `n_points` value. The first candidate is always accepted, so even a
+    !| data set smaller than `k_start_1` (for example 3 genes in 1 study, where `k_start_1 = 10`)
+    !| yields exactly one candidate; growing its neighborhoods then fails with a too-few-means
+    !| status, which is the adaptive search's to report, not this routine's.
+    !|
+    !| `N` is formed in 64-bit integer arithmetic and never overflows. The generated values are
+    !| representable as long as `k_start_1` does not exceed `huge(1_int32)/4 = 536870911` (so
+    !| that `k_max_1` fits a 32-bit integer), i.e. for `N` up to about 2.7e10 and `n_studies` up
+    !| to about 2.7e8 -- far beyond any real data set. This routine does not check that bound;
+    !| [[tox_data_integration_js_comp_test_impl(module):calc_adaptive_js_comp_test_bounds(interface)]],
+    !| which the adaptive search needs for its sizing anyway, rejects inputs beyond it.
+    pure subroutine generate_adaptive_js_comp_test_candidates_impl(max_n_genes_all_studies, n_studies, &
+                                                                   candidates_k_start_k_step_k_max, n_candidates)
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+            !! DM_MIN(1_int32)
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+            !! DM_MIN(1_int32)
+        integer(int32), intent(out) :: candidates_k_start_k_step_k_max(3, 16)
+            !! Candidate `[k_start, k_step, k_max]` triples, `k_start` strictly descending (so the
+            !! emerging number of reference points ascends)
+            !! DM_RESULT_SIZE_IS(n_candidates)
+        integer(int32), intent(out) :: n_candidates
+            !! Number of candidate triples actually filled (at least 1, at most 16)
+
+        integer(int32) :: k_starts(16), i_candidate, k_start
+
+        call compute_adaptive_k_starts(max_n_genes_all_studies, n_studies, k_starts, n_candidates)
+
+        do concurrent(i_candidate=1:n_candidates) local(k_start) shared(k_starts, candidates_k_start_k_step_k_max)
+            k_start = k_starts(i_candidate)
+            candidates_k_start_k_step_k_max(1, i_candidate) = k_start
+            candidates_k_start_k_step_k_max(2, i_candidate) = &
+                ceiling(ADAPTIVE_K_STEP_FRACTION*real(k_start, real64), kind=int32)
+            candidates_k_start_k_step_k_max(3, i_candidate) = &
+                ceiling(ADAPTIVE_K_MAX_FACTOR*real(k_start, real64), kind=int32)
+        end do
+    end subroutine generate_adaptive_js_comp_test_candidates_impl
+
+    !> summary: The adaptive candidate sequence's k_start values -- its one definition
+    !| AUTHOR_LASZLO_LANG
+    !| Shared by
+    !| [[tox_data_integration_js_comp_test_impl(module):generate_adaptive_js_comp_test_candidates_impl(interface)]]
+    !| and its capacity producer `calc_adaptive_js_comp_test_bounds`, so the smallest `k_start`
+    !| the producer sizes for is by construction the last one the generator emits. The rule is
+    !| documented on the generator. Every value is appended without deduplication: since
+    !| `(1 - ADAPTIVE_GAMMA) * ADAPTIVE_K_START_MIN_ABS >= 1` (`0.2 * 10 = 2`), one decay step lowers
+    !| any `k_start >= floor_k` by at least 1, so consecutive floors always differ. A retuning that
+    !| breaks that condition fails `test_adaptive_constants_preclude_dead_clamps` rather than
+    !| silently emitting a repeated candidate.
+    pure subroutine compute_adaptive_k_starts(max_n_genes_all_studies, n_studies, k_starts, n_k_starts)
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies, at least 1
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies, at least 1
+        integer(int32), intent(out) :: k_starts(16)
+            !! Accepted `k_start` values, strictly descending; only the first `n_k_starts` are set
+        integer(int32), intent(out) :: n_k_starts
+            !! Number of accepted `k_start` values, between 1 and MAX_CANDIDATE_PAIRS
+
+        integer(int64) :: floor_k, k_start_1, k_start
+
+        floor_k = adaptive_floor_k(n_studies)
+        k_start_1 = adaptive_k_start_1(max_n_genes_all_studies, n_studies)
+
+        ! A plain `do`: the loop stops at the first value below floor_k, whose position is not
+        ! known in advance. k_start_1 >= floor_k, so the first value is always accepted.
+        n_k_starts = 0_int32
+        do while (n_k_starts < MAX_CANDIDATE_PAIRS)
+            k_start = floor(real(k_start_1, real64)*ADAPTIVE_GAMMA**n_k_starts, kind=int64)
+            if (k_start < floor_k) exit
+            n_k_starts = n_k_starts + 1_int32
+            k_starts(n_k_starts) = int(k_start, int32)
+        end do
+    end subroutine compute_adaptive_k_starts
+
+    !> summary: The adaptive candidate sequence's lower bound on `k_start`, `max(10, 2*n_studies)`
+    !| AUTHOR_LASZLO_LANG
+    pure integer(int64) function adaptive_floor_k(n_studies) result(floor_k)
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies, at least 1
+
+        floor_k = max(int(ADAPTIVE_K_START_MIN_ABS, int64), 2_int64*int(n_studies, int64))
+    end function adaptive_floor_k
+
+    !> summary: The adaptive candidate sequence's first `k_start`, in 64-bit so it cannot overflow
+    !| AUTHOR_LASZLO_LANG
+    !| `max(floor_k, ceiling(0.02 * G * S))`; shared by the sequence and by the representability
+    !| check in `calc_adaptive_js_comp_test_bounds`.
+    pure integer(int64) function adaptive_k_start_1(max_n_genes_all_studies, n_studies) result(k_start_1)
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies, at least 1
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies, at least 1
+
+        integer(int64) :: n_pool
+
+        n_pool = int(max_n_genes_all_studies, int64)*int(n_studies, int64)
+        k_start_1 = max(adaptive_floor_k(n_studies), ceiling(ADAPTIVE_START_FRACTION*real(n_pool, real64), kind=int64))
+    end function adaptive_k_start_1
 
     !> summary: Test whether every pair of consecutive neighborhoods overlaps by at least a minimum fraction
     !| AUTHOR_LASZLO_LANG

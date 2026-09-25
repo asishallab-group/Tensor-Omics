@@ -17,13 +17,17 @@ module mod_test_data_integration_js_comp_test
                                                   check_mean_pmf_min_counts, check_plateau_condition, &
                                                   check_effect_size_plateau_condition, create_mean_pmf, &
                                                   create_mean_pmf_only, bootstrap_histogram, run_js_comp_test, &
-                                                  run_js_comp_test_parameter_search
+                                                  run_js_comp_test_parameter_search, &
+                                                  generate_adaptive_js_comp_test_candidates
     use tox_data_integration_js_comp_test_impl, only: METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, &
                                                        MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, &
                                                        MODE_PLATEAU_BOTH, calc_js_comp_test_n_top_k_jsds, &
                                                        calc_js_comp_test_candidate_bounds, &
                                                        gather_pooled_neighborhood_residuals, &
-                                                       determine_point_bin_count, build_point_study_histogram
+                                                       determine_point_bin_count, build_point_study_histogram, &
+                                                       calc_adaptive_js_comp_test_bounds, ADAPTIVE_GAMMA, &
+                                                       ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_K_STEP_FRACTION, &
+                                                       ADAPTIVE_K_MAX_FACTOR
     use tox_errors
     use test_suite, only: test_case
 
@@ -36,7 +40,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(86))
+        allocate (all_tests(96))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -219,6 +223,26 @@ contains
                                   test_point_study_histogram_excludes_nan_residuals)
         all_tests(86) = test_case("test_run_js_comp_test_too_many_neighbors_sets_ierr", &
                                   test_run_js_comp_test_too_many_neighbors_sets_ierr)
+        all_tests(87) = test_case("test_adaptive_candidates_small_n_does_not_collapse", &
+                                  test_adaptive_candidates_small_n_does_not_collapse)
+        all_tests(88) = test_case("test_adaptive_candidates_strictly_decreasing_and_formulas", &
+                                  test_adaptive_candidates_strictly_decreasing_and_formulas)
+        all_tests(89) = test_case("test_adaptive_candidates_study_floor_binds", &
+                                  test_adaptive_candidates_study_floor_binds)
+        all_tests(90) = test_case("test_adaptive_candidates_tiny_n_single_candidate", &
+                                  test_adaptive_candidates_tiny_n_single_candidate)
+        all_tests(91) = test_case("test_adaptive_candidates_capped_at_16", &
+                                  test_adaptive_candidates_capped_at_16)
+        all_tests(92) = test_case("test_adaptive_bounds_matches_generator_last_k_start", &
+                                  test_adaptive_bounds_matches_generator_last_k_start)
+        all_tests(93) = test_case("test_adaptive_candidates_validation", &
+                                  test_adaptive_candidates_validation)
+        all_tests(94) = test_case("test_adaptive_bounds_validation", &
+                                  test_adaptive_bounds_validation)
+        all_tests(95) = test_case("test_adaptive_constants_preclude_dead_clamps", &
+                                  test_adaptive_constants_preclude_dead_clamps)
+        all_tests(96) = test_case("test_adaptive_bounds_rejects_unrepresentable_k_start", &
+                                  test_adaptive_bounds_rejects_unrepresentable_k_start)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -4911,5 +4935,233 @@ contains
         call assert_true(all(p_values == -7.0_real64), &
                          "test_run_js_comp_test_too_many_neighbors_sets_ierr: p_values untouched")
     end subroutine test_run_js_comp_test_too_many_neighbors_sets_ierr
+
+    !> Issue #217 (D1), the small-N collapse criterion. `G=2000`, `S=2`: `N=4000`,
+    !| `floor_k=max(10, 2*2)=10`, `k_start_1=max(10, ceil(0.02*4000))=80`. Hand-derived, exact
+    !| rational arithmetic: `floor(80*0.8**t)` for t=0.. is 80, 64, 51 (51.2), 40 (40.96), 32
+    !| (32.768), 26 (26.2144), 20 (20.97), 16 (16.78), 13 (13.42), 10 (10.74), then 8 (8.59) < 10
+    !| stops -> 10 candidates. `k_step=max(1,ceil(k/4))`: 20,16,13,10,8,7,5,4,4,3. `k_max=4k`:
+    !| 320,256,204,160,128,104,80,64,52,40.
+    !| Contrast (asserted below): the fixed-k grid at `max_n_genes_all_studies=2000` has
+    !| `n_points_high=clamp(ceil(4*sqrt(2000))=179, 300, 1500)=300`, `n_points_low=max(300, 60)=300`,
+    !| and `300*0.8=240 < 300` ends the grid after its first `n_points`: 2 pairs
+    !| (`n_neighbors = floor(2000/(0.25*300)) = 26` and `floor(2000/(0.5*300)) = 13`), but only
+    !| ONE distinct `n_points` value (300) -- the collapse this sequence must not have.
+    subroutine test_adaptive_candidates_small_n_does_not_collapse()
+        integer(int32) :: candidates(3, 16), n_candidates, ierr
+        integer(int32) :: fixed_candidates(2, 16), n_fixed_candidates
+        integer(int32), parameter :: expected(3, 10) = reshape([ &
+                                     80, 20, 320, 64, 16, 256, 51, 13, 204, 40, 10, 160, 32, 8, 128, &
+                                     26, 7, 104, 20, 5, 80, 16, 4, 64, 13, 4, 52, 10, 3, 40], [3, 10])
+
+        call generate_adaptive_js_comp_test_candidates(2000_int32, 2_int32, candidates, n_candidates, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_adaptive_candidates_small_n_does_not_collapse: ierr should be OK")
+        call assert_true(n_candidates >= 8_int32, &
+                         "test_adaptive_candidates_small_n_does_not_collapse: at least 8 candidates")
+        call assert_equal_int(n_candidates, 10_int32, &
+                              "test_adaptive_candidates_small_n_does_not_collapse: exactly 10 candidates")
+        call assert_equal_array_int(candidates(:, 1:10), expected, 30_int32, &
+                                    "test_adaptive_candidates_small_n_does_not_collapse: full sequence", n_rows=3_int32)
+
+        call generate_js_comp_test_candidates(2000_int32, fixed_candidates, n_fixed_candidates, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_adaptive_candidates_small_n_does_not_collapse: fixed-k ierr should be OK")
+        call assert_equal_int(n_fixed_candidates, 2_int32, &
+                              "test_adaptive_candidates_small_n_does_not_collapse: fixed-k gives 2 pairs")
+        call assert_equal_int(count(fixed_candidates(1, 1:n_fixed_candidates) == 300_int32), 2_int32, &
+                              "test_adaptive_candidates_small_n_does_not_collapse: "// &
+                              "fixed-k pairs share the single n_points=300")
+    end subroutine test_adaptive_candidates_small_n_does_not_collapse
+
+    !> Issue #217 (D2), on a Kidney-sized case `G=26097`, `S=6`: `N=156582`,
+    !| `floor_k=max(10, 12)=12`, `k_start_1=ceil(0.02*156582)=ceil(3131.64)=3132`. Property check
+    !| over every candidate: `k_start` strictly decreasing and never below `floor_k`,
+    !| `k_step = max(1, ceil(k_start/4))`, `k_max = 4*k_start` (all integer arithmetic here, so
+    !| independent of the routine's real64 formulation). Hand-derived end points: 16 candidates
+    !| (capped; uncapped the sequence would run to 25), first 3132, last `floor(3132*0.8**15)=110`.
+    subroutine test_adaptive_candidates_strictly_decreasing_and_formulas()
+        integer(int32) :: candidates(3, 16), n_candidates, ierr, i_candidate, k_start
+
+        call generate_adaptive_js_comp_test_candidates(26097_int32, 6_int32, candidates, n_candidates, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_adaptive_candidates_strictly_decreasing_and_formulas: ierr should be OK")
+        call assert_equal_int(n_candidates, 16_int32, &
+                              "test_adaptive_candidates_strictly_decreasing_and_formulas: 16 candidates")
+        call assert_equal_int(candidates(1, 1), 3132_int32, &
+                              "test_adaptive_candidates_strictly_decreasing_and_formulas: first k_start 3132")
+        call assert_equal_int(candidates(1, n_candidates), 110_int32, &
+                              "test_adaptive_candidates_strictly_decreasing_and_formulas: last k_start 110")
+        do i_candidate = 1, n_candidates
+            k_start = candidates(1, i_candidate)
+            call assert_true(k_start >= 12_int32, &
+                             "test_adaptive_candidates_strictly_decreasing_and_formulas: k_start >= floor_k")
+            if (i_candidate > 1) call assert_true(k_start < candidates(1, i_candidate - 1), &
+                                                  "test_adaptive_candidates_strictly_decreasing_and_formulas: "// &
+                                                  "k_start strictly decreasing")
+            call assert_equal_int(candidates(2, i_candidate), max(1_int32, (k_start + 3_int32)/4_int32), &
+                                  "test_adaptive_candidates_strictly_decreasing_and_formulas: k_step formula")
+            call assert_equal_int(candidates(3, i_candidate), 4_int32*k_start, &
+                                  "test_adaptive_candidates_strictly_decreasing_and_formulas: k_max formula")
+        end do
+    end subroutine test_adaptive_candidates_strictly_decreasing_and_formulas
+
+    !> Issue #217 (D3a), the `2*n_studies` floor binding. `G=200`, `S=8`: `N=1600`,
+    !| `floor_k=max(10, 16)=16`, `k_start_1=max(16, ceil(32))=32`. Hand-derived: 32, 25 (25.6),
+    !| 20 (20.48), 16 (16.38), then 13 (13.1) < 16 stops -> 4 candidates ending exactly at the
+    !| floor. With the absolute floor of 10 alone the sequence would have continued to 13 and 10.
+    subroutine test_adaptive_candidates_study_floor_binds()
+        integer(int32) :: candidates(3, 16), n_candidates, ierr
+        integer(int32), parameter :: expected(3, 4) = reshape([32, 8, 128, 25, 7, 100, 20, 5, 80, 16, 4, 64], [3, 4])
+
+        call generate_adaptive_js_comp_test_candidates(200_int32, 8_int32, candidates, n_candidates, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_adaptive_candidates_study_floor_binds: ierr should be OK")
+        call assert_equal_int(n_candidates, 4_int32, "test_adaptive_candidates_study_floor_binds: 4 candidates")
+        call assert_equal_array_int(candidates(:, 1:4), expected, 12_int32, &
+                                    "test_adaptive_candidates_study_floor_binds: full sequence", n_rows=3_int32)
+    end subroutine test_adaptive_candidates_study_floor_binds
+
+    !> Issue #217 (D3b), tiny data. `G=3`, `S=1`: `N=3`, `floor_k=10`,
+    !| `k_start_1=max(10, ceil(0.06))=10 > N`. Documented behavior: still exactly one candidate
+    !| `[10, ceil(2.5)=3, 40]` (the next value `floor(8.0)=8` is below the floor); the adaptive
+    !| construction, not the generator, reports that 3 means cannot seed `k_start=10`.
+    subroutine test_adaptive_candidates_tiny_n_single_candidate()
+        integer(int32) :: candidates(3, 16), n_candidates, ierr
+
+        call generate_adaptive_js_comp_test_candidates(3_int32, 1_int32, candidates, n_candidates, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_adaptive_candidates_tiny_n_single_candidate: ierr should be OK")
+        call assert_equal_int(n_candidates, 1_int32, "test_adaptive_candidates_tiny_n_single_candidate: 1 candidate")
+        call assert_equal_array_int(candidates(:, 1), [10_int32, 3_int32, 40_int32], 3_int32, &
+                                    "test_adaptive_candidates_tiny_n_single_candidate: [10, 3, 40]")
+    end subroutine test_adaptive_candidates_tiny_n_single_candidate
+
+    !> Issue #217 (D4), the MAX_CANDIDATE_PAIRS cap. `G=20000`, `S=3`: `N=60000`, `floor_k=10`,
+    !| `k_start_1=ceil(1200)=1200`. Hand-derived (exact rationals), uncapped the sequence has 22
+    !| values >= 10 (down to 12); capped it stops after the 16th:
+    !| 1200, 960, 768, 614, 491, 393, 314, 251, 201, 161, 128, 103, 82, 65, 52, 42.
+    subroutine test_adaptive_candidates_capped_at_16()
+        integer(int32) :: candidates(3, 16), n_candidates, ierr
+        integer(int32), parameter :: expected_k_start(16) = [1200, 960, 768, 614, 491, 393, 314, 251, &
+                                                             201, 161, 128, 103, 82, 65, 52, 42]
+
+        call generate_adaptive_js_comp_test_candidates(20000_int32, 3_int32, candidates, n_candidates, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_adaptive_candidates_capped_at_16: ierr should be OK")
+        call assert_equal_int(n_candidates, 16_int32, "test_adaptive_candidates_capped_at_16: capped at 16")
+        call assert_equal_array_int(candidates(1, 1:16), expected_k_start, 16_int32, &
+                                    "test_adaptive_candidates_capped_at_16: k_start sequence")
+    end subroutine test_adaptive_candidates_capped_at_16
+
+    !> Issue #217 (D5): the capacity producer uses the generator's last `k_start`, through both
+    !| branches of its `min(N, ceiling(2*N/k_start_last) + 1)`. Hand-derived:
+    !| - `G=2000, S=2`: `k_start_last=10` (D1), `ceil(8000/10)+1 = 801 < 4000` -> 801
+    !| - `G=20000, S=3`: `k_start_last=42` (D4, capped), `ceil(120000/42)+1 = 2858+1 = 2859` -> 2859
+    !| - `G=1, S=1`: `k_start_last=10`, `ceil(2/10)+1 = 2 > N=1` -> clamped to `N = 1`
+    subroutine test_adaptive_bounds_matches_generator_last_k_start()
+        integer(int32) :: candidates(3, 16), n_candidates, max_n_points_candidate, ierr
+
+        call generate_adaptive_js_comp_test_candidates(2000_int32, 2_int32, candidates, n_candidates, ierr)
+        call calc_adaptive_js_comp_test_bounds(2000_int32, 2_int32, max_n_points_candidate, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_adaptive_bounds_matches_generator_last_k_start: ierr should be OK")
+        call assert_equal_int(max_n_points_candidate, 801_int32, &
+                              "test_adaptive_bounds_matches_generator_last_k_start: G=2000,S=2 gives 801")
+        call assert_equal_int(max_n_points_candidate, (2_int32*4000_int32 + candidates(1, n_candidates) - 1_int32)/ &
+                              candidates(1, n_candidates) + 1_int32, &
+                              "test_adaptive_bounds_matches_generator_last_k_start: formula on generator's last k_start")
+
+        call generate_adaptive_js_comp_test_candidates(20000_int32, 3_int32, candidates, n_candidates, ierr)
+        call calc_adaptive_js_comp_test_bounds(20000_int32, 3_int32, max_n_points_candidate, ierr)
+        call assert_equal_int(candidates(1, n_candidates), 42_int32, &
+                              "test_adaptive_bounds_matches_generator_last_k_start: capped last k_start 42")
+        call assert_equal_int(max_n_points_candidate, 2859_int32, &
+                              "test_adaptive_bounds_matches_generator_last_k_start: G=20000,S=3 gives 2859")
+
+        call calc_adaptive_js_comp_test_bounds(1_int32, 1_int32, max_n_points_candidate, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_adaptive_bounds_matches_generator_last_k_start: clamp case ierr OK")
+        call assert_equal_int(max_n_points_candidate, 1_int32, &
+                              "test_adaptive_bounds_matches_generator_last_k_start: clamped to N=1")
+    end subroutine test_adaptive_bounds_matches_generator_last_k_start
+
+    !> Issue #217 (D6a): the generated wrapper rejects a non-positive gene count (argument 1) and
+    !| a non-positive study count (argument 2).
+    subroutine test_adaptive_candidates_validation()
+        integer(int32) :: candidates(3, 16), n_candidates, ierr
+
+        call generate_adaptive_js_comp_test_candidates(0_int32, 2_int32, candidates, n_candidates, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_adaptive_candidates_validation: max_n_genes_all_studies=0 rejected", arg_pos=1_int32)
+        call generate_adaptive_js_comp_test_candidates(2000_int32, 0_int32, candidates, n_candidates, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_adaptive_candidates_validation: n_studies=0 rejected", arg_pos=2_int32)
+    end subroutine test_adaptive_candidates_validation
+
+    !> Issue #217 (D6b): the hand-validating capacity producer rejects a non-positive gene count
+    !| (argument 1) and a non-positive study count (argument 2) with its own positions.
+    subroutine test_adaptive_bounds_validation()
+        integer(int32) :: max_n_points_candidate, ierr
+
+        call calc_adaptive_js_comp_test_bounds(0_int32, 2_int32, max_n_points_candidate, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_adaptive_bounds_validation: max_n_genes_all_studies=0 rejected", arg_pos=1_int32)
+        call calc_adaptive_js_comp_test_bounds(2000_int32, 0_int32, max_n_points_candidate, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_adaptive_bounds_validation: n_studies=0 rejected", arg_pos=2_int32)
+    end subroutine test_adaptive_bounds_validation
+
+    !> Issue #217: the constant conditions that let the adaptive candidate sequence do without a
+    !| duplicate skip and without clamping `k_step`/`k_max`. For every `k_start >= floor_k >= 10`:
+    !| - `(1 - ADAPTIVE_GAMMA) * ADAPTIVE_K_START_MIN_ABS >= 1`: one decay step lowers the real
+    !|   value by at least 1, so consecutive floors differ (no repeated candidate)
+    !| - `ADAPTIVE_K_STEP_FRACTION * ADAPTIVE_K_START_MIN_ABS > 0`: `ceiling` of a positive value
+    !|   is at least 1, so `k_step >= 1`
+    !| - `ADAPTIVE_K_MAX_FACTOR >= 1`: `k_max >= k_start`
+    !| A retuning that breaks one of them fails here instead of silently changing the sequence.
+    subroutine test_adaptive_constants_preclude_dead_clamps()
+        call assert_true((1.0_real64 - ADAPTIVE_GAMMA)*real(ADAPTIVE_K_START_MIN_ABS, real64) >= 1.0_real64, &
+                         "test_adaptive_constants_preclude_dead_clamps: (1-gamma)*k_start_min >= 1")
+        call assert_true(ADAPTIVE_K_STEP_FRACTION*real(ADAPTIVE_K_START_MIN_ABS, real64) > 0.0_real64, &
+                         "test_adaptive_constants_preclude_dead_clamps: k_step fraction * k_start_min > 0")
+        call assert_true(ADAPTIVE_K_MAX_FACTOR >= 1.0_real64, &
+                         "test_adaptive_constants_preclude_dead_clamps: k_max factor >= 1")
+    end subroutine test_adaptive_constants_preclude_dead_clamps
+
+    !> Issue #217: the producer enforces the generator's representability bound
+    !| `k_start_1 <= huge(1_int32)/4 = 536870911` (hand-derived cases):
+    !| - `G = S = huge(1_int32)`: `N ~ 4.6e18` (fits int64), `k_start_1 = ceiling(0.02*N) ~ 9.2e16`
+    !|   -> rejected
+    !| - exact boundary on the `2*S` floor, `G = 1`: `S = 268435456` gives `k_start_1 = 2*S =
+    !|   536870912` -> rejected; `S = 268435455` gives `536870910` -> accepted, a single candidate,
+    !|   capacity `min(N, ceiling(2*N/k_start_1) + 1) = min(268435455, 1 + 1) = 2`
+    !| - `G = huge(1_int32)`, `S = 1`: `k_start_1 = ceiling(0.02*2147483647) = 42949673` -> accepted
+    !| Rejections carry no argument position (0): the bound is joint in both arguments.
+    subroutine test_adaptive_bounds_rejects_unrepresentable_k_start()
+        integer(int32) :: max_n_points_candidate, ierr
+
+        call calc_adaptive_js_comp_test_bounds(huge(1_int32), huge(1_int32), max_n_points_candidate, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_adaptive_bounds_rejects_unrepresentable_k_start: G=S=huge rejected", arg_pos=0_int32)
+
+        call calc_adaptive_js_comp_test_bounds(1_int32, 268435456_int32, max_n_points_candidate, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_adaptive_bounds_rejects_unrepresentable_k_start: 2*S one past the bound rejected", &
+                        arg_pos=0_int32)
+
+        call calc_adaptive_js_comp_test_bounds(1_int32, 268435455_int32, max_n_points_candidate, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_adaptive_bounds_rejects_unrepresentable_k_start: 2*S at the bound accepted")
+        call assert_equal_int(max_n_points_candidate, 2_int32, &
+                              "test_adaptive_bounds_rejects_unrepresentable_k_start: capacity at the bound is 2")
+
+        call calc_adaptive_js_comp_test_bounds(huge(1_int32), 1_int32, max_n_points_candidate, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_adaptive_bounds_rejects_unrepresentable_k_start: G=huge, S=1 accepted")
+    end subroutine test_adaptive_bounds_rejects_unrepresentable_k_start
 
 end module mod_test_data_integration_js_comp_test

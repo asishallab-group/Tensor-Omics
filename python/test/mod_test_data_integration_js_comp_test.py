@@ -21,6 +21,7 @@ from tensor_omics import (
     determine_bin_count_occupancy_exhaustive,
     determine_bin_count_occupancy_exhaustive_expert,
     generate_js_comp_test_candidates,
+    generate_adaptive_js_comp_test_candidates,
     check_neighborhood_overlaps,
     check_mean_pmf_min_counts,
     check_plateau_condition,
@@ -28,6 +29,7 @@ from tensor_omics import (
     create_mean_pmf_only,
     bootstrap_histogram,
     calc_js_comp_test_candidate_bounds,
+    calc_adaptive_js_comp_test_bounds,
     calc_js_comp_test_n_top_k_jsds,
     gather_pooled_neighborhood_residuals,
     run_js_comp_test,
@@ -729,6 +731,35 @@ def test_run_js_comp_test_parameter_search():
     n_points_2 = result2["n_points"]
     np.testing.assert_array_equal(result2["n_bins_per_point"][:n_points_2],
                                    result2["trace_selected_n_bins"][:n_points_2, 0])
+
+
+def test_generate_adaptive_js_comp_test_candidates():
+    # Call-ability, return type/shape and non-error only -- the hand-derived sequences are the
+    # Fortran suite's job (test_adaptive_candidates_*). G=2000, S=2 must not collapse to a single
+    # candidate the way the fixed-k grid does at this size.
+    candidates = generate_adaptive_js_comp_test_candidates(2000, 2)
+    assert isinstance(candidates, np.ndarray), f"expected an ndarray, got {type(candidates)}"
+    assert candidates.dtype == np.int32, f"expected int32, got {candidates.dtype}"
+    assert candidates.ndim == 2 and candidates.shape[0] == 3, f"expected shape (3, n), got {candidates.shape}"
+    assert 8 <= candidates.shape[1] <= 16, f"expected 8..16 candidates, got {candidates.shape[1]}"
+
+    assert_error(lambda: generate_adaptive_js_comp_test_candidates(0, 2),
+                 "expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
+    assert_error(lambda: generate_adaptive_js_comp_test_candidates(2000, 0),
+                 "expected ERR_INVALID_INPUT for n_studies=0", ERR_INVALID_INPUT)
+
+
+def test_calc_adaptive_js_comp_test_bounds():
+    # Call-ability, return type and non-error only (numerics: test_adaptive_bounds_* in Fortran).
+    max_n_points_candidate = calc_adaptive_js_comp_test_bounds(2000, 2)
+    assert isinstance(max_n_points_candidate, int), f"expected an int, got {type(max_n_points_candidate)}"
+    assert 1 <= max_n_points_candidate <= 2000 * 2, \
+        f"capacity must lie in [1, G*S], got {max_n_points_candidate}"
+
+    assert_error(lambda: calc_adaptive_js_comp_test_bounds(0, 2),
+                 "expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
+    assert_error(lambda: calc_adaptive_js_comp_test_bounds(2000, 0),
+                 "expected ERR_INVALID_INPUT for n_studies=0", ERR_INVALID_INPUT)
 
 
 def main():

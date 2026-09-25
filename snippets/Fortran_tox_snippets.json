@@ -276,7 +276,7 @@
     "prefix": "tox:data_integration_js_comp_test.use",
     "description": "use tox_data_integration_js_comp_test, only: ...",
     "body": [
-      "use tox_data_integration_js_comp_test, only: ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,determine_bin_count_occupancy_exhaustive,determine_bin_count_occupancy_exhaustive_expert,generate_js_comp_test_candidates,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|}"
+      "use tox_data_integration_js_comp_test, only: ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,determine_bin_count_occupancy_exhaustive,determine_bin_count_occupancy_exhaustive_expert,generate_js_comp_test_candidates,generate_adaptive_js_comp_test_candidates,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|}"
     ]
   },
   "estimate_bin_count (call)": {
@@ -573,6 +573,31 @@
       "    candidates_n_points_n_neighbors=${2:candidates_n_points_n_neighbors}, &",
       "    n_candidates=${3:n_candidates}, &",
       "    ierr=${4:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "generate_adaptive_js_comp_test_candidates (call)": {
+    "prefix": "tox:generate_adaptive_js_comp_test_candidates",
+    "description": "The adaptive-neighborhood counterpart (Issue #217) of",
+    "body": [
+      "call generate_adaptive_js_comp_test_candidates( &",
+      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
+      "    n_studies=${2:n_studies}, &",
+      "    candidates_k_start_k_step_k_max=${3:candidates_k_start_k_step_k_max}, &",
+      "    n_candidates=${4:n_candidates}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "generate_adaptive_js_comp_test_candidates (call, checked)": {
+    "prefix": "tox:generate_adaptive_js_comp_test_candidates.checked",
+    "description": "The adaptive-neighborhood counterpart (Issue #217) of (with error check)",
+    "body": [
+      "call generate_adaptive_js_comp_test_candidates( &",
+      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
+      "    n_studies=${2:n_studies}, &",
+      "    candidates_k_start_k_step_k_max=${3:candidates_k_start_k_step_k_max}, &",
+      "    n_candidates=${4:n_candidates}, &",
+      "    ierr=${5:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1029,7 +1054,7 @@
     "prefix": "tox:data_integration_js_comp_test_impl.use",
     "description": "use tox_data_integration_js_comp_test_impl, only: ...",
     "body": [
-      "use tox_data_integration_js_comp_test_impl, only: ${1|calc_js_comp_test_candidate_bounds,gather_pooled_neighborhood_residuals,calc_js_comp_test_n_top_k_jsds|}"
+      "use tox_data_integration_js_comp_test_impl, only: ${1|calc_js_comp_test_candidate_bounds,calc_adaptive_js_comp_test_bounds,gather_pooled_neighborhood_residuals,calc_js_comp_test_n_top_k_jsds|}"
     ]
   },
   "calc_js_comp_test_candidate_bounds (call)": {
@@ -1040,6 +1065,29 @@
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
       "    max_n_points_candidate=${2:max_n_points_candidate}, &",
       "    max_n_neighbors_candidate=${3:max_n_neighbors_candidate})"
+    ]
+  },
+  "calc_adaptive_js_comp_test_bounds (call)": {
+    "prefix": "tox:calc_adaptive_js_comp_test_bounds",
+    "description": "Sizes the per-point work arrays of the adaptive (Issue #217) parameter search, whose",
+    "body": [
+      "call calc_adaptive_js_comp_test_bounds( &",
+      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
+      "    n_studies=${2:n_studies}, &",
+      "    max_n_points_candidate=${3:max_n_points_candidate}, &",
+      "    ierr=${4:ierr})"
+    ]
+  },
+  "calc_adaptive_js_comp_test_bounds (call, checked)": {
+    "prefix": "tox:calc_adaptive_js_comp_test_bounds.checked",
+    "description": "Sizes the per-point work arrays of the adaptive (Issue #217) parameter search, whose (with error check)",
+    "body": [
+      "call calc_adaptive_js_comp_test_bounds( &",
+      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
+      "    n_studies=${2:n_studies}, &",
+      "    max_n_points_candidate=${3:max_n_points_candidate}, &",
+      "    ierr=${4:ierr})",
+      "if (is_err(ierr)) return"
     ]
   },
   "gather_pooled_neighborhood_residuals (call)": {

@@ -18,7 +18,11 @@ is a brute-force reference implementation of the same per-point bin-count search
 testing every candidate `M` instead of the fast geometric-search-then-refinement the production
 routine uses, for validating that the fast search's own result is correct.
 `calc_js_comp_test_candidate_bounds` sizes the candidate-grid work arrays for a caller that
-allocates its own. Once a candidate has passed both gates, its bootstrap confidence interval
+allocates its own. For adaptive (heteroscedastic, Issue #217) neighborhood construction,
+:func:`tensor_omics.generate_adaptive_js_comp_test_candidates`
+generates the ascending `(k_start, k_step, k_max)` growth-knob candidates instead, and
+`calc_adaptive_js_comp_test_bounds` recommends the reference-point capacity their search's
+per-point arrays are sized by. Once a candidate has passed both gates, its bootstrap confidence interval
 is resampled from the pooled consensus histogram by
 :func:`tensor_omics.bootstrap_histogram` (heap
 size recommended by
@@ -49,6 +53,17 @@ _lib.calc_js_comp_test_candidate_bounds_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _CALC_JS_COMP_TEST_CANDIDATE_BOUNDS_ARGUMENTS = ("max_n_genes_all_studies", "max_n_points_candidate", "max_n_neighbors_candidate",)
+
+_lib.calc_adaptive_js_comp_test_bounds_c.restype = None
+_lib.calc_adaptive_js_comp_test_bounds_c.argtypes = (
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_CALC_ADAPTIVE_JS_COMP_TEST_BOUNDS_ARGUMENTS = ("max_n_genes_all_studies", "n_studies", "max_n_points_candidate", "ierr",)
 
 _lib.gather_pooled_neighborhood_residuals_c.restype = None
 _lib.gather_pooled_neighborhood_residuals_c.argtypes = (
@@ -135,6 +150,73 @@ def calc_js_comp_test_candidate_bounds(
         "max_n_points_candidate": max_n_points_candidate.value,
         "max_n_neighbors_candidate": max_n_neighbors_candidate.value,
     }
+
+def calc_adaptive_js_comp_test_bounds(
+        max_n_genes_all_studies,
+        n_studies,
+):
+    r"""Recommend a reference-point capacity for the adaptive js-comp-test candidate sequence
+
+    Sizes the per-point work arrays of the adaptive (Issue #217) parameter search, whose
+    candidates come from
+    :func:`tensor_omics.generate_adaptive_js_comp_test_candidates`.
+    An adaptive candidate's reference-point count is not known before its neighborhoods are
+    grown, so this is a **practical capacity, not a proven bound**:
+    `max_n_points_candidate = min(N, ceiling(2 * N / k_start_last) + 1)`, with the safety factor
+    2 being ``ADAPTIVE_POINT_CAPACITY_FACTOR``,
+    `N = max_n_genes_all_studies * n_studies` the padded pool size and `k_start_last` the
+    smallest `k_start` the candidate sequence contains (the candidate expected to emerge with
+    the most reference points). The only provable bound is `N` itself, because every new
+    reference point's seed strictly advances through the pool; sizing every per-point array by
+    `N` would be prohibitive, so a candidate that emerges with more points than this capacity is
+    rejected by the adaptive search with a capacity status rather than stored.
+
+    Computed in 64-bit integer / double precision throughout, so `N` itself never overflows.
+    Enforces the candidate generator's representability bound, which the generator itself
+    cannot check: the first candidate's `k_start_1 = max(10, 2*n_studies, ceiling(0.02 * N))`
+    must not exceed `huge(1)/4 = 536870911`, so that its `k_max = 4*k_start_1` fits a
+    32-bit integer; otherwise this routine reports invalid input. The bound is joint in both
+    arguments, so the error names neither.
+
+    Parameters
+    ----------
+    max_n_genes_all_studies : int
+        Maximum number of genes across all studies
+        The minimum valid value is `1`.
+    n_studies : int
+        Number of studies
+        The minimum valid value is `1`.
+
+    Returns
+    -------
+    max_n_points_candidate : int
+        Practical upper bound on the number of reference points any adaptive candidate is
+        allowed to emerge with
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_js_comp_test_impl::calc_adaptive_js_comp_test_bounds`, whose argument names are
+    the ones an error message reports.
+    """
+    # outputs and work arrays, which the caller never sees
+    max_n_points_candidate = ctypes.c_int(0)
+    ierr = ctypes.c_int(0)
+
+    _lib.calc_adaptive_js_comp_test_bounds_c(
+        ctypes.byref(ctypes.c_int(max_n_genes_all_studies)),
+        ctypes.byref(ctypes.c_int(n_studies)),
+        ctypes.byref(max_n_points_candidate),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _CALC_ADAPTIVE_JS_COMP_TEST_BOUNDS_ARGUMENTS)
+
+    return max_n_points_candidate.value
 
 def gather_pooled_neighborhood_residuals(
         residuals,

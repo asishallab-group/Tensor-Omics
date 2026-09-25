@@ -675,4 +675,34 @@ test_run_js_comp_test_parameter_search <- function() {
               "n_bins_per_point matches the sole admissible candidate's trace column")
 }
 
+test_generate_adaptive_js_comp_test_candidates <- function() {
+  # Call-ability, return type/shape and non-error only -- the hand-derived sequences are the
+  # Fortran suite's job (test_adaptive_candidates_*). G=2000, S=2 must not collapse to a single
+  # candidate the way the fixed-k grid does at this size.
+  candidates <- generate_adaptive_js_comp_test_candidates(2000L, 2L)
+  assert_true(is.matrix(candidates), "expected a matrix")
+  assert_true(is.integer(candidates), "expected an integer matrix")
+  assert_equal_int(nrow(candidates), 3L, "expected 3 rows (k_start, k_step, k_max)")
+  assert_true(ncol(candidates) >= 8 && ncol(candidates) <= 16, "expected 8..16 candidates")
+
+  assert_error(generate_adaptive_js_comp_test_candidates(0L, 2L),
+               "expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
+  assert_error(generate_adaptive_js_comp_test_candidates(2000L, 0L),
+               "expected ERR_INVALID_INPUT for n_studies=0", ERR_INVALID_INPUT)
+}
+
+test_calc_adaptive_js_comp_test_bounds <- function() {
+  # Call-ability, return type and non-error only (numerics: test_adaptive_bounds_* in Fortran).
+  max_n_points_candidate <- calc_adaptive_js_comp_test_bounds(2000L, 2L)
+  assert_true(is.numeric(max_n_points_candidate) && length(max_n_points_candidate) == 1,
+              "expected a single number")
+  assert_true(max_n_points_candidate >= 1 && max_n_points_candidate <= 2000 * 2,
+              "capacity must lie in [1, G*S]")
+
+  assert_error(calc_adaptive_js_comp_test_bounds(0L, 2L),
+               "expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
+  assert_error(calc_adaptive_js_comp_test_bounds(2000L, 0L),
+               "expected ERR_INVALID_INPUT for n_studies=0", ERR_INVALID_INPUT)
+}
+
 run_all_tests()

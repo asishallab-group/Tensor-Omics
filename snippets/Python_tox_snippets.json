@@ -104,7 +104,7 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter Search",
     "body": [
       "from tensor_omics.tox_data_integration_js_comp_test import (",
-      "    ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,determine_bin_count_occupancy_exhaustive,determine_bin_count_occupancy_exhaustive_expert,generate_js_comp_test_candidates,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|},",
+      "    ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,determine_bin_count_occupancy_exhaustive,determine_bin_count_occupancy_exhaustive_expert,generate_js_comp_test_candidates,generate_adaptive_js_comp_test_candidates,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|},",
       ")"
     ]
   },
@@ -205,6 +205,16 @@
     "body": [
       "${1:result} = generate_js_comp_test_candidates(",
       "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
+      ")"
+    ]
+  },
+  "generate_adaptive_js_comp_test_candidates (call)": {
+    "prefix": "tox:generate_adaptive_js_comp_test_candidates",
+    "description": "The adaptive-neighborhood counterpart (Issue #217) of",
+    "body": [
+      "${1:result} = generate_adaptive_js_comp_test_candidates(",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
+      "    n_studies=${3:n_studies},",
       ")"
     ]
   },
@@ -350,7 +360,7 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter Search",
     "body": [
       "from tensor_omics.tox_data_integration_js_comp_test_impl import (",
-      "    ${1|calc_js_comp_test_candidate_bounds,gather_pooled_neighborhood_residuals,calc_js_comp_test_n_top_k_jsds|},",
+      "    ${1|calc_js_comp_test_candidate_bounds,calc_adaptive_js_comp_test_bounds,gather_pooled_neighborhood_residuals,calc_js_comp_test_n_top_k_jsds|},",
       ")"
     ]
   },
@@ -360,6 +370,16 @@
     "body": [
       "${1:result} = calc_js_comp_test_candidate_bounds(",
       "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
+      ")"
+    ]
+  },
+  "calc_adaptive_js_comp_test_bounds (call)": {
+    "prefix": "tox:calc_adaptive_js_comp_test_bounds",
+    "description": "Sizes the per-point work arrays of the adaptive (Issue #217) parameter search, whose",
+    "body": [
+      "${1:result} = calc_adaptive_js_comp_test_bounds(",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
+      "    n_studies=${3:n_studies},",
       ")"
     ]
   },

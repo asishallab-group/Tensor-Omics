@@ -13,6 +13,7 @@ void determine_bin_count_occupancy_expert_c(const double*, const int*, const int
 void determine_bin_count_occupancy_exhaustive_c(const double*, const int*, const int*, const double*, const double*, int*, unsigned char*, int*, double*, int*, const int*, const int*, const int*, int*);
 void determine_bin_count_occupancy_exhaustive_expert_c(const double*, const int*, const int*, const int*, const double*, const double*, int*, unsigned char*, int*, double*, int*, const int*, const int*, const int*, int*);
 void generate_js_comp_test_candidates_c(const int*, int*, int*, int*);
+void generate_adaptive_js_comp_test_candidates_c(const int*, const int*, int*, int*, int*);
 void check_neighborhood_overlaps_c(const int*, const int*, const double*, unsigned char*, int*);
 void check_mean_pmf_min_counts_c(const int*, const int*, const int*, const int*, const int*, unsigned char*, int*);
 void check_plateau_condition_c(const double*, double*, const int*, int*, int*, const int*, const char*, const double*, unsigned char*, int*);
@@ -414,6 +415,39 @@ SEXP generate_js_comp_test_candidates_call(SEXP max_n_genes_all_studies) {
     SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(ierr));
     SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 3)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("candidates_n_points_n_neighbors"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("n_candidates"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP generate_adaptive_js_comp_test_candidates_call(SEXP max_n_genes_all_studies, SEXP n_studies) {
+    int nprot = 0;
+    // scalar inputs, pulled from their length-1 vectors
+    int max_n_genes_all_studies_v = Rf_asInteger(max_n_genes_all_studies);
+    int n_studies_v = Rf_asInteger(n_studies);
+
+    // outputs and work space
+    SEXP candidates_k_start_k_step_k_max = PROTECT(Rf_allocVector(INTSXP, 3 * 16)); nprot++;
+    { SEXP candidates_k_start_k_step_k_max_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(candidates_k_start_k_step_k_max_dim)[0] = 3; INTEGER(candidates_k_start_k_step_k_max_dim)[1] = 16; Rf_setAttrib(candidates_k_start_k_step_k_max, R_DimSymbol, candidates_k_start_k_step_k_max_dim); UNPROTECT(1); }
+    int n_candidates = 0;
+    int ierr = 0;
+
+    generate_adaptive_js_comp_test_candidates_c(
+        &max_n_genes_all_studies_v,
+        &n_studies_v,
+        INTEGER(candidates_k_start_k_step_k_max),
+        &n_candidates,
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); nprot++;
+    SET_VECTOR_ELT(_out, 0, candidates_k_start_k_step_k_max);
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(n_candidates));
+    SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 3)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("candidates_k_start_k_step_k_max"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("n_candidates"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);

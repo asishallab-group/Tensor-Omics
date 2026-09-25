@@ -625,6 +625,76 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies) {
     .result$candidates_n_points_n_neighbors[, seq_len(.result$n_candidates), drop = FALSE]
 }
 
+#' Generate the ascending adaptive (k_start, k_step, k_max) candidate sequence
+#'
+#' The adaptive-neighborhood counterpart (Issue #217) of
+#' \code{\link{generate_js_comp_test_candidates}}.
+#' An adaptive candidate does not fix its number of reference points: each neighborhood is
+#' grown from `k_start` pooled entries in rounds of `k_step` up to `k_max` while its residual
+#' dispersion stays stable, and the next reference point is placed beyond it, so the point
+#' count emerges from the growth knobs. This routine only generates those knobs. Because
+#' `k_start` shrinks from one candidate to the next, the candidates **ascend** in the number of
+#' reference points they are expected to produce.
+#'
+#' With `N = max_n_genes_all_studies * n_studies` (the padded pool size, not the count of
+#' non-NaN means, so that the capacity producer
+#' \code{\link{calc_adaptive_js_comp_test_bounds}}
+#' and the search agree on the same number) and `floor_k = max(10, 2*n_studies)`:
+#'
+#' - `k_start_1 = max(floor_k, ceiling(0.02 * N))`
+#' - `k_start_t = floor(k_start_1 * 0.8**(t-1))`
+#' - stop once `k_start_t < floor_k`, or once 16 candidates are accepted
+#' - `k_step_t = ceiling(0.25 * k_start_t)`
+#' - `k_max_t = ceiling(4 * k_start_t)`
+#'
+#' The constants are \code{ADAPTIVE_START_FRACTION} (0.02),
+#' \code{ADAPTIVE_GAMMA} (0.8),
+#' \code{ADAPTIVE_K_STEP_FRACTION} (0.25),
+#' \code{ADAPTIVE_K_MAX_FACTOR} (4),
+#' \code{ADAPTIVE_K_START_MIN_ABS} (10) and
+#' \code{MAX_CANDIDATE_PAIRS} (16).
+#' With them, one decay step lowers any `k_start >= 10` by at least 2, so the values are
+#' strictly descending without any deduplication, every `k_step` is at least 1 and every
+#' `k_max` at least `k_start`.
+#'
+#' Each `k_start_t` is computed in double precision directly from `k_start_1`, not by
+#' rounding the previous candidate again, so rounding never accumulates along the sequence.
+#'
+#' Every knob scales with `N`, so the sequence does not collapse for small data the way the
+#' fixed-k grid does below about 8,743 genes, where its absolute `n_points_low` floor leaves
+#' room for only a single `n_points` value. The first candidate is always accepted, so even a
+#' data set smaller than `k_start_1` (for example 3 genes in 1 study, where `k_start_1 = 10`)
+#' yields exactly one candidate; growing its neighborhoods then fails with a too-few-means
+#' status, which is the adaptive search's to report, not this routine's.
+#'
+#' `N` is formed in 64-bit integer arithmetic and never overflows. The generated values are
+#' representable as long as `k_start_1` does not exceed `huge(1)/4 = 536870911` (so
+#' that `k_max_1` fits a 32-bit integer), i.e. for `N` up to about 2.7e10 and `n_studies` up
+#' to about 2.7e8 -- far beyond any real data set. This routine does not check that bound;
+#' \code{\link{calc_adaptive_js_comp_test_bounds}},
+#' which the adaptive search needs for its sizing anyway, rejects inputs beyond it.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::generate_adaptive_js_comp_test_candidates}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param max_n_genes_all_studies a integer scalar. Maximum number of genes across all studies
+#'   The minimum valid value is `1`.
+#' @param n_studies a integer scalar. Number of studies
+#'   The minimum valid value is `1`.
+#' @return a integer matrix. Candidate `[k_start, k_step, k_max]` triples, `k_start` strictly descending (so the
+#'   emerging number of reference points ascends)
+#'   The first `n_candidates` elements will hold the results.
+#' @export
+generate_adaptive_js_comp_test_candidates <- function(max_n_genes_all_studies, n_studies) {
+    max_n_genes_all_studies <- .tox_as_integer_scalar(max_n_genes_all_studies, "max_n_genes_all_studies")
+    n_studies <- .tox_as_integer_scalar(n_studies, "n_studies")
+    .result <- .Call("generate_adaptive_js_comp_test_candidates_call", max_n_genes_all_studies, n_studies)
+    .arguments <- c("max_n_genes_all_studies", "n_studies", "candidates_k_start_k_step_k_max", "n_candidates", "ierr")
+    .status <- check_err_code(.result$ierr, .arguments)
+
+    .result$candidates_k_start_k_step_k_max[, seq_len(.result$n_candidates), drop = FALSE]
+}
+
 #' Test whether every pair of consecutive neighborhoods overlaps by at least a minimum fraction
 #'
 #' Ported from 125-stabilize-jscomp's `test_neighborhood_overlaps_helper`: the first

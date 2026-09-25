@@ -31,6 +31,49 @@ calc_js_comp_test_candidate_bounds <- function(max_n_genes_all_studies) {
     )
 }
 
+#' Recommend a reference-point capacity for the adaptive js-comp-test candidate sequence
+#'
+#' Sizes the per-point work arrays of the adaptive (Issue #217) parameter search, whose
+#' candidates come from
+#' \code{\link{generate_adaptive_js_comp_test_candidates}}.
+#' An adaptive candidate's reference-point count is not known before its neighborhoods are
+#' grown, so this is a **practical capacity, not a proven bound**:
+#' `max_n_points_candidate = min(N, ceiling(2 * N / k_start_last) + 1)`, with the safety factor
+#' 2 being \code{ADAPTIVE_POINT_CAPACITY_FACTOR},
+#' `N = max_n_genes_all_studies * n_studies` the padded pool size and `k_start_last` the
+#' smallest `k_start` the candidate sequence contains (the candidate expected to emerge with
+#' the most reference points). The only provable bound is `N` itself, because every new
+#' reference point's seed strictly advances through the pool; sizing every per-point array by
+#' `N` would be prohibitive, so a candidate that emerges with more points than this capacity is
+#' rejected by the adaptive search with a capacity status rather than stored.
+#'
+#' Computed in 64-bit integer / double precision throughout, so `N` itself never overflows.
+#' Enforces the candidate generator's representability bound, which the generator itself
+#' cannot check: the first candidate's `k_start_1 = max(10, 2*n_studies, ceiling(0.02 * N))`
+#' must not exceed `huge(1)/4 = 536870911`, so that its `k_max = 4*k_start_1` fits a
+#' 32-bit integer; otherwise this routine reports invalid input. The bound is joint in both
+#' arguments, so the error names neither.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_impl::calc_adaptive_js_comp_test_bounds}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param max_n_genes_all_studies a integer scalar. Maximum number of genes across all studies
+#'   The minimum valid value is `1`.
+#' @param n_studies a integer scalar. Number of studies
+#'   The minimum valid value is `1`.
+#' @return a integer scalar. Practical upper bound on the number of reference points any adaptive candidate is
+#'   allowed to emerge with
+#' @export
+calc_adaptive_js_comp_test_bounds <- function(max_n_genes_all_studies, n_studies) {
+    max_n_genes_all_studies <- .tox_as_integer_scalar(max_n_genes_all_studies, "max_n_genes_all_studies")
+    n_studies <- .tox_as_integer_scalar(n_studies, "n_studies")
+    .result <- .Call("calc_adaptive_js_comp_test_bounds_call", max_n_genes_all_studies, n_studies)
+    .arguments <- c("max_n_genes_all_studies", "n_studies", "max_n_points_candidate", "ierr")
+    .status <- check_err_code(.result$ierr, .arguments)
+
+    .result$max_n_points_candidate
+}
+
 #' Pool one reference point's residuals across every neighbor and every study
 #'
 #' Given one reference point's own per-study neighbor gene indices (one column of a larger

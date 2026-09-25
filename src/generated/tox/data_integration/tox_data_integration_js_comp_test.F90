@@ -18,7 +18,11 @@
 !| testing every candidate `M` instead of the fast geometric-search-then-refinement the production
 !| routine uses, for validating that the fast search's own result is correct.
 !| `calc_js_comp_test_candidate_bounds` sizes the candidate-grid work arrays for a caller that
-!| allocates its own. Once a candidate has passed both gates, its bootstrap confidence interval
+!| allocates its own. For adaptive (heteroscedastic, Issue #217) neighborhood construction,
+!| [[tox_data_integration_js_comp_test_impl(module):generate_adaptive_js_comp_test_candidates_impl(interface)]]
+!| generates the ascending `(k_start, k_step, k_max)` growth-knob candidates instead, and
+!| `calc_adaptive_js_comp_test_bounds` recommends the reference-point capacity their search's
+!| per-point arrays are sized by. Once a candidate has passed both gates, its bootstrap confidence interval
 !| is resampled from the pooled consensus histogram by
 !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]] (heap
 !| size recommended by
@@ -33,8 +37,8 @@ module tox_data_integration_js_comp_test
     use tox_data_integration_js_comp_test_impl, only: MODE_PLATEAU_BOTH, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, bootstrap_histogram_impl
     use tox_data_integration_js_comp_test_impl, only: calc_js_comp_test_n_top_k_jsds, check_effect_size_plateau_condition_impl, check_mean_pmf_min_counts_impl, check_neighborhood_overlaps_impl
     use tox_data_integration_js_comp_test_impl, only: check_plateau_condition_impl, create_mean_pmf_impl, create_mean_pmf_only_impl, determine_bin_count_occupancy_exhaustive_impl
-    use tox_data_integration_js_comp_test_impl, only: determine_bin_count_occupancy_impl, estimate_bin_count_impl, generate_js_comp_test_candidates_impl, run_js_comp_test_impl
-    use tox_data_integration_js_comp_test_impl, only: run_js_comp_test_parameter_search_impl
+    use tox_data_integration_js_comp_test_impl, only: determine_bin_count_occupancy_impl, estimate_bin_count_impl, generate_adaptive_js_comp_test_candidates_impl, generate_js_comp_test_candidates_impl
+    use tox_data_integration_js_comp_test_impl, only: run_js_comp_test_impl, run_js_comp_test_parameter_search_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_math_impl, only: above
@@ -52,6 +56,7 @@ module tox_data_integration_js_comp_test
     public :: determine_bin_count_occupancy_exhaustive
     public :: determine_bin_count_occupancy_exhaustive_expert
     public :: generate_js_comp_test_candidates
+    public :: generate_adaptive_js_comp_test_candidates
     public :: check_neighborhood_overlaps
     public :: check_mean_pmf_min_counts
     public :: check_plateau_condition
@@ -922,6 +927,90 @@ contains
             n_candidates = n_candidates&
         )
     end subroutine generate_js_comp_test_candidates
+
+    !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_impl(module):generate_adaptive_js_comp_test_candidates_impl]].
+    !| The adaptive-neighborhood counterpart (Issue #217) of
+    !| [[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]].
+    !| An adaptive candidate does not fix its number of reference points: each neighborhood is
+    !| grown from `k_start` pooled entries in rounds of `k_step` up to `k_max` while its residual
+    !| dispersion stays stable, and the next reference point is placed beyond it, so the point
+    !| count emerges from the growth knobs. This routine only generates those knobs. Because
+    !| `k_start` shrinks from one candidate to the next, the candidates **ascend** in the number of
+    !| reference points they are expected to produce.
+    !|
+    !| With `N = max_n_genes_all_studies * n_studies` (the padded pool size, not the count of
+    !| non-NaN means, so that the capacity producer
+    !| [[tox_data_integration_js_comp_test_impl(module):calc_adaptive_js_comp_test_bounds(interface)]]
+    !| and the search agree on the same number) and `floor_k = max(10, 2*n_studies)`:
+    !|
+    !| - `k_start_1 = max(floor_k, ceiling(0.02 * N))`
+    !| - `k_start_t = floor(k_start_1 * 0.8**(t-1))`
+    !| - stop once `k_start_t < floor_k`, or once 16 candidates are accepted
+    !| - `k_step_t = ceiling(0.25 * k_start_t)`
+    !| - `k_max_t = ceiling(4 * k_start_t)`
+    !|
+    !| The constants are [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_START_FRACTION(variable)]] (0.02),
+    !| [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_GAMMA(variable)]] (0.8),
+    !| [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_K_STEP_FRACTION(variable)]] (0.25),
+    !| [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_K_MAX_FACTOR(variable)]] (4),
+    !| [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_K_START_MIN_ABS(variable)]] (10) and
+    !| [[tox_data_integration_js_comp_test_impl(module):MAX_CANDIDATE_PAIRS(variable)]] (16).
+    !| With them, one decay step lowers any `k_start >= 10` by at least 2, so the values are
+    !| strictly descending without any deduplication, every `k_step` is at least 1 and every
+    !| `k_max` at least `k_start`.
+    !|
+    !| Each `k_start_t` is computed in double precision directly from `k_start_1`, not by
+    !| rounding the previous candidate again, so rounding never accumulates along the sequence.
+    !|
+    !| Every knob scales with `N`, so the sequence does not collapse for small data the way the
+    !| fixed-k grid does below about 8,743 genes, where its absolute `n_points_low` floor leaves
+    !| room for only a single `n_points` value. The first candidate is always accepted, so even a
+    !| data set smaller than `k_start_1` (for example 3 genes in 1 study, where `k_start_1 = 10`)
+    !| yields exactly one candidate; growing its neighborhoods then fails with a too-few-means
+    !| status, which is the adaptive search's to report, not this routine's.
+    !|
+    !| `N` is formed in 64-bit integer arithmetic and never overflows. The generated values are
+    !| representable as long as `k_start_1` does not exceed `huge(1_int32)/4 = 536870911` (so
+    !| that `k_max_1` fits a 32-bit integer), i.e. for `N` up to about 2.7e10 and `n_studies` up
+    !| to about 2.7e8 -- far beyond any real data set. This routine does not check that bound;
+    !| [[tox_data_integration_js_comp_test_impl(module):calc_adaptive_js_comp_test_bounds(interface)]],
+    !| which the adaptive search needs for its sizing anyway, rejects inputs beyond it.
+    pure subroutine generate_adaptive_js_comp_test_candidates(&
+            max_n_genes_all_studies,&
+            n_studies,&
+            candidates_k_start_k_step_k_max,&
+            n_candidates,&
+            ierr&
+        )
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), dimension(3, 16), intent(out) :: candidates_k_start_k_step_k_max
+            !! Candidate `[k_start, k_step, k_max]` triples, `k_start` strictly descending (so the
+            !! emerging number of reference points ascends)
+            !! The first `n_candidates` elements will hold the results.
+        integer(int32), intent(out) :: n_candidates
+            !! Number of candidate triples actually filled (at least 1, at most 16)
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=1_int32, min=1_int32)
+        call validate_in_range_int(n_studies, ierr, arg_pos=2_int32, min=1_int32)
+        if (is_err(ierr)) return
+#endif
+
+        call generate_adaptive_js_comp_test_candidates_impl(&
+            max_n_genes_all_studies = max_n_genes_all_studies,&
+            n_studies = n_studies,&
+            candidates_k_start_k_step_k_max = candidates_k_start_k_step_k_max,&
+            n_candidates = n_candidates&
+        )
+    end subroutine generate_adaptive_js_comp_test_candidates
 
     !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl]].
     !| Ported from 125-stabilize-jscomp's `test_neighborhood_overlaps_helper`: the first

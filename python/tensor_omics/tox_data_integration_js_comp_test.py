@@ -18,7 +18,11 @@ is a brute-force reference implementation of the same per-point bin-count search
 testing every candidate `M` instead of the fast geometric-search-then-refinement the production
 routine uses, for validating that the fast search's own result is correct.
 `calc_js_comp_test_candidate_bounds` sizes the candidate-grid work arrays for a caller that
-allocates its own. Once a candidate has passed both gates, its bootstrap confidence interval
+allocates its own. For adaptive (heteroscedastic, Issue #217) neighborhood construction,
+:func:`tensor_omics.generate_adaptive_js_comp_test_candidates`
+generates the ascending `(k_start, k_step, k_max)` growth-knob candidates instead, and
+`calc_adaptive_js_comp_test_bounds` recommends the reference-point capacity their search's
+per-point arrays are sized by. Once a candidate has passed both gates, its bootstrap confidence interval
 is resampled from the pooled consensus histogram by
 :func:`tensor_omics.bootstrap_histogram` (heap
 size recommended by
@@ -195,6 +199,18 @@ _lib.generate_js_comp_test_candidates_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _GENERATE_JS_COMP_TEST_CANDIDATES_ARGUMENTS = ("max_n_genes_all_studies", "candidates_n_points_n_neighbors", "n_candidates", "ierr",)
+
+_lib.generate_adaptive_js_comp_test_candidates_c.restype = None
+_lib.generate_adaptive_js_comp_test_candidates_c.argtypes = (
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_GENERATE_ADAPTIVE_JS_COMP_TEST_CANDIDATES_ARGUMENTS = ("max_n_genes_all_studies", "n_studies", "candidates_k_start_k_step_k_max", "n_candidates", "ierr",)
 
 _lib.check_neighborhood_overlaps_c.restype = None
 _lib.check_neighborhood_overlaps_c.argtypes = (
@@ -1489,6 +1505,106 @@ def generate_js_comp_test_candidates(
     candidates_n_points_n_neighbors.flags.writeable = False
 
     return candidates_n_points_n_neighbors[..., :n_candidates.value]
+
+def generate_adaptive_js_comp_test_candidates(
+        max_n_genes_all_studies,
+        n_studies,
+):
+    r"""Generate the ascending adaptive (k_start, k_step, k_max) candidate sequence
+
+    The adaptive-neighborhood counterpart (Issue #217) of
+    :func:`tensor_omics.generate_js_comp_test_candidates`.
+    An adaptive candidate does not fix its number of reference points: each neighborhood is
+    grown from `k_start` pooled entries in rounds of `k_step` up to `k_max` while its residual
+    dispersion stays stable, and the next reference point is placed beyond it, so the point
+    count emerges from the growth knobs. This routine only generates those knobs. Because
+    `k_start` shrinks from one candidate to the next, the candidates **ascend** in the number of
+    reference points they are expected to produce.
+
+    With `N = max_n_genes_all_studies * n_studies` (the padded pool size, not the count of
+    non-NaN means, so that the capacity producer
+    :func:`tensor_omics.calc_adaptive_js_comp_test_bounds`
+    and the search agree on the same number) and `floor_k = max(10, 2*n_studies)`:
+
+    - `k_start_1 = max(floor_k, ceiling(0.02 * N))`
+    - `k_start_t = floor(k_start_1 * 0.8**(t-1))`
+    - stop once `k_start_t < floor_k`, or once 16 candidates are accepted
+    - `k_step_t = ceiling(0.25 * k_start_t)`
+    - `k_max_t = ceiling(4 * k_start_t)`
+
+    The constants are ``ADAPTIVE_START_FRACTION`` (0.02),
+    ``ADAPTIVE_GAMMA`` (0.8),
+    ``ADAPTIVE_K_STEP_FRACTION`` (0.25),
+    ``ADAPTIVE_K_MAX_FACTOR`` (4),
+    ``ADAPTIVE_K_START_MIN_ABS`` (10) and
+    ``MAX_CANDIDATE_PAIRS`` (16).
+    With them, one decay step lowers any `k_start >= 10` by at least 2, so the values are
+    strictly descending without any deduplication, every `k_step` is at least 1 and every
+    `k_max` at least `k_start`.
+
+    Each `k_start_t` is computed in double precision directly from `k_start_1`, not by
+    rounding the previous candidate again, so rounding never accumulates along the sequence.
+
+    Every knob scales with `N`, so the sequence does not collapse for small data the way the
+    fixed-k grid does below about 8,743 genes, where its absolute `n_points_low` floor leaves
+    room for only a single `n_points` value. The first candidate is always accepted, so even a
+    data set smaller than `k_start_1` (for example 3 genes in 1 study, where `k_start_1 = 10`)
+    yields exactly one candidate; growing its neighborhoods then fails with a too-few-means
+    status, which is the adaptive search's to report, not this routine's.
+
+    `N` is formed in 64-bit integer arithmetic and never overflows. The generated values are
+    representable as long as `k_start_1` does not exceed `huge(1)/4 = 536870911` (so
+    that `k_max_1` fits a 32-bit integer), i.e. for `N` up to about 2.7e10 and `n_studies` up
+    to about 2.7e8 -- far beyond any real data set. This routine does not check that bound;
+    :func:`tensor_omics.calc_adaptive_js_comp_test_bounds`,
+    which the adaptive search needs for its sizing anyway, rejects inputs beyond it.
+
+    Parameters
+    ----------
+    max_n_genes_all_studies : int
+        Maximum number of genes across all studies
+        The minimum valid value is `1`.
+    n_studies : int
+        Number of studies
+        The minimum valid value is `1`.
+
+    Returns
+    -------
+    candidates_k_start_k_step_k_max : np.ndarray[np.int32] of shape (3, 16,), column-major (order='F'), read-only
+        Candidate `[k_start, k_step, k_max]` triples, `k_start` strictly descending (so the
+        emerging number of reference points ascends)
+        The first `n_candidates` elements will hold the results.
+        A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_js_comp_test::generate_adaptive_js_comp_test_candidates`, whose argument names are
+    the ones an error message reports.
+    """
+    # outputs and work arrays, which the caller never sees
+    candidates_k_start_k_step_k_max = np.empty((3, 16,), dtype=np.int32, order='F')
+    n_candidates = ctypes.c_int(0)
+    ierr = ctypes.c_int(0)
+
+    _lib.generate_adaptive_js_comp_test_candidates_c(
+        ctypes.byref(ctypes.c_int(max_n_genes_all_studies)),
+        ctypes.byref(ctypes.c_int(n_studies)),
+        candidates_k_start_k_step_k_max,
+        ctypes.byref(n_candidates),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _GENERATE_ADAPTIVE_JS_COMP_TEST_CANDIDATES_ARGUMENTS)
+
+    # a result is a value: modify a copy, not this
+    candidates_k_start_k_step_k_max.flags.writeable = False
+
+    return candidates_k_start_k_step_k_max[..., :n_candidates.value]
 
 def check_neighborhood_overlaps(
         neighborhood_range,
