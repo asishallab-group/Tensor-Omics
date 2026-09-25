@@ -115,7 +115,8 @@ contains
         integer(c_int), intent(in), target :: n_studies
             !! Number of studies
         real(c_double), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in), target :: residuals
-            !! Matrix of signed residuals per study, NaN explicitly allowed for missing values
+            !! Matrix of signed residuals per study, NaN explicitly allowed for missing values;
+            !! unvalidated on this export path, so any value passes through as-is
         integer(c_int), dimension(n_neighbors, n_studies), intent(in), target :: neighborhood_indices_point
             !! Gene indices of one reference point's neighborhood, per study -- one column of a
             !! larger neighborhood_indices_all_studies(n_neighbors, n_points, n_studies), as sliced

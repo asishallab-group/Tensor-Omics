@@ -2332,8 +2332,9 @@ def run_js_comp_test(
     buffer was needed for this). Unlike that routine, there is no admissibility gate here, so
     Pass A always runs to completion for every study.
     - Pass B (per point, sequential -- see the implementation body's own comment for why): pools
-    every study's residuals for one reference point at a time (`gather_pooled_neighborhood_residuals`,
-    a private module helper, not itself published) and runs Issue #187's occupancy-constrained
+    every study's residuals for one reference point at a time
+    (:func:`tensor_omics.gather_pooled_neighborhood_residuals`,
+    now published as its own entry point) and runs Issue #187's occupancy-constrained
     bin-count search on the pooled result
     (:func:`tensor_omics.determine_bin_count_occupancy`),
     deciding `n_bins_per_point(i_point)` independently for every reference point, plus the

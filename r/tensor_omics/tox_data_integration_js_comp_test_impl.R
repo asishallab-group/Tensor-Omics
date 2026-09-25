@@ -51,7 +51,8 @@ calc_js_comp_test_candidate_bounds <- function(max_n_genes_all_studies) {
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_impl::gather_pooled_neighborhood_residuals}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param residuals a numeric array of rank 3. Matrix of signed residuals per study, NaN explicitly allowed for missing values
+#' @param residuals a numeric array of rank 3. Matrix of signed residuals per study, NaN explicitly allowed for missing values;
+#'   unvalidated on this export path, so any value passes through as-is
 #' @param neighborhood_indices_point a integer matrix. Gene indices of one reference point's neighborhood, per study -- one column of a
 #'   larger neighborhood_indices_all_studies(n_neighbors, n_points, n_studies), as sliced
 #'   by the caller

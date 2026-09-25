@@ -749,7 +749,8 @@ contains
         integer(int32), intent(in) :: n_studies
             !! Number of studies
         real(real64), intent(in) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-            !! Matrix of signed residuals per study, NaN explicitly allowed for missing values
+            !! Matrix of signed residuals per study, NaN explicitly allowed for missing values;
+            !! unvalidated on this export path, so any value passes through as-is
         integer(int32), intent(in) :: neighborhood_indices_point(n_neighbors, n_studies)
             !! Gene indices of one reference point's neighborhood, per study -- one column of a
             !! larger neighborhood_indices_all_studies(n_neighbors, n_points, n_studies), as sliced
@@ -1639,8 +1640,9 @@ contains
     !|   buffer was needed for this). Unlike that routine, there is no admissibility gate here, so
     !|   Pass A always runs to completion for every study.
     !| - Pass B (per point, sequential -- see the implementation body's own comment for why): pools
-    !|   every study's residuals for one reference point at a time (`gather_pooled_neighborhood_residuals`,
-    !|   a private module helper, not itself published) and runs Issue #187's occupancy-constrained
+    !|   every study's residuals for one reference point at a time
+    !|   ([[tox_data_integration_js_comp_test_impl(module):gather_pooled_neighborhood_residuals(interface)]],
+    !|   now published as its own entry point) and runs Issue #187's occupancy-constrained
     !|   bin-count search on the pooled result
     !|   ([[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]),
     !|   deciding `n_bins_per_point(i_point)` independently for every reference point, plus the

@@ -160,7 +160,8 @@ def gather_pooled_neighborhood_residuals(
     Parameters
     ----------
     residuals : np.ndarray[np.float64] of shape (max_n_reps_all_studies, max_n_genes_all_studies, n_studies,), column-major (order='F')
-        Matrix of signed residuals per study, NaN explicitly allowed for missing values
+        Matrix of signed residuals per study, NaN explicitly allowed for missing values;
+        unvalidated on this export path, so any value passes through as-is
     neighborhood_indices_point : np.ndarray[np.int32] of shape (n_neighbors, n_studies,), column-major (order='F')
         Gene indices of one reference point's neighborhood, per study -- one column of a
         larger neighborhood_indices_all_studies(n_neighbors, n_points, n_studies), as sliced
