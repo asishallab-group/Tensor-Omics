@@ -13,6 +13,10 @@
 !| [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]),
 !| and the plateau check that decides when the search has converged
 !| ([[tox_data_integration_js_comp_test_impl(module):check_plateau_condition_impl(interface)]]).
+!| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_exhaustive_impl(interface)]]
+!| is a brute-force reference implementation of the same per-point bin-count search, exhaustively
+!| testing every candidate `M` instead of the fast geometric-search-then-refinement the production
+!| routine uses, for validating that the fast search's own result is correct.
 !| `calc_js_comp_test_candidate_bounds` sizes the candidate-grid work arrays for a caller that
 !| allocates its own. Once a candidate has passed both gates, its bootstrap confidence interval
 !| is resampled from the pooled consensus histogram by
@@ -30,7 +34,8 @@ module tox_data_integration_js_comp_test_impl
     use f42_stats_impl, only: calc_percentile_impl
     use f42_sort_impl, only: init_perm, sort_array_heapsort, sort_real_heapsort_expl_size
     use f42_random_gsl, only: rng_t, create_rng, destroy_rng, random_multinomial
-    use tox_errors, only: set_ok, set_err_once, is_err, get_err_code
+    use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, validate_dimension_size, &
+                          ERR_INVALID_INPUT
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
                                              compute_weighted_global_divergence_impl, &
                                              build_residual_histograms_impl, calc_pmf_impl
@@ -38,7 +43,9 @@ module tox_data_integration_js_comp_test_impl
     use tox_data_integration_stats_impl, only: gjct_permutation_test_impl
     M_IMPLICIT_NONE
     private
-    public :: calc_js_comp_test_candidate_bounds, estimate_bin_count_impl, determine_bin_count_occupancy_impl, &
+    public :: calc_js_comp_test_candidate_bounds, gather_pooled_neighborhood_residuals, &
+             estimate_bin_count_impl, determine_bin_count_occupancy_impl, &
+             determine_bin_count_occupancy_exhaustive_impl, &
              generate_js_comp_test_candidates_impl, &
              check_neighborhood_overlaps_impl, check_mean_pmf_min_counts_impl, check_plateau_condition_impl, &
              check_effect_size_plateau_condition_impl, create_mean_pmf_impl, create_mean_pmf_only_impl, &
@@ -584,26 +591,155 @@ contains
         min_occupancy = minval(bin_counts)
     end subroutine histogram_bin_counts
 
-    !> Pools one reference point's residuals across all studies from each study's already-known
-    !| neighbor gene indices for that point -- the same gather
-    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_impl(interface)]] already
-    !| performs per study inline (its own `do concurrent` gather from `neighborhood_indices` into
-    !| `tmp_neighborhood_residuals_gathered`), generalized here to pool across every study at once
-    !| into one flat array instead of overwriting one reused per-study buffer. Mirrors the nested
-    !| `do concurrent`-with-`local(...)` structure of
-    !| [[tox_data_integration_jsd_impl(module):determine_study_shared_residual_range_impl(interface)]].
-    !|
-    !| Not published, and not `_impl` (so it does not itself trigger wrapper generation): it has no
-    !| caller yet in production code. It exists so a later restructuring of
-    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]/
-    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_impl(interface)]] (Issue
-    !| #187's own Steps 2.5/2.6) can pool a single reference point's residuals across studies before
-    !| calling
+    !> summary: Exhaustive brute-force reference implementation of Issue #187's occupancy search
+    !| AUTHOR_LASZLO_LANG
+    !| Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest
+    !| one whose pooled histogram satisfies the occupancy criterion, instead of
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+    !| own fast geometric-search-then-refinement. Exists purely to validate that routine's result:
+    !| occupancy is not guaranteed monotonic in `M` once bin boundaries are recomputed per candidate
+    !| (Issue #187 is explicit about this), so a search that stops at the first failure can in
+    !| principle miss a larger, independently-admissible `M` the geometric ladder never tries. Takes
+    !| `shared_residual_range_low`/`shared_residual_range_high`/`n_pooled_residuals` as direct
+    !| inputs, already produced by a prior
     !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
-    !| on the result, without duplicating this gather logic when that restructuring lands.
+    !| call, rather than re-deriving them -- this isolates the comparison to just the `M`-selection
+    !| algorithm, uncontaminated by a second independent percentile computation.
+    !|
+    !| Every candidate is independent (no early exit, no state carried between iterations, unlike
+    !| the production routine's own Stage 1/Stage 2), so this is a genuine `do concurrent` with
+    !| `reduce(max:...)`, not a sequential search: `candidate_bin_counts` is declared local to the
+    !| loop (an ordinary MAX_N_BINS-sized local, not a `tmp_` dummy -- precedented by
+    !| `run_js_comp_test_impl`'s own `candidates_n_points_n_neighbors` local) so each concurrent
+    !| iteration gets its own private scratch instead of racing on a shared buffer sliced by
+    !| `trial_m`. `reduce(max:...)` has no "argmax" form, so the winning `M`'s own
+    !| min/mean/max_bin_occupancy are recovered with one extra, ordinary (non-concurrent) call to
+    !| `histogram_bin_counts` for `best_m` alone once the reduction is done -- trivial cost next to
+    !| the search itself.
+    !|
+    !| `n_pooled_residuals == 0` and a degenerate zero-width range need no special-case branch here:
+    !| `histogram_bin_counts` already guards the degenerate range internally, and an all-zero pool
+    !| naturally resolves to `occupancy_failed` (or a trivial pass at `min_residuals_per_bin=0`,
+    !| with `mean_bin_occupancy=0.0`, no divide-by-zero) -- intentional, not an oversight.
+    pure subroutine determine_bin_count_occupancy_exhaustive_impl(pooled_residuals, pooled_residuals_perm, &
+                                                                   n_residuals, n_pooled_residuals, &
+                                                                   shared_residual_range_low, shared_residual_range_high, &
+                                                                   selected_n_bins, occupancy_failed, min_bin_occupancy, &
+                                                                   mean_bin_occupancy, max_bin_occupancy, m_min, m_max, &
+                                                                   min_residuals_per_bin)
+        integer(int32), intent(in) :: n_residuals
+            !! Number of pooled residuals
+        real(real64), intent(in) :: pooled_residuals(n_residuals)
+            !! Pooled signed residuals for one neighborhood, across all its neighbors and all studies
+            !! DM_ALLOW_NAN
+        integer(int32), intent(in) :: pooled_residuals_perm(n_residuals)
+            !! Sorting permutation for `pooled_residuals`, ascending, NaN last
+            !! DM_MIN(1_int32)
+            !! DM_MAX(n_residuals)
+        integer(int32), intent(in) :: n_pooled_residuals
+            !! Count of non-NaN pooled residuals (N_j), from a prior
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
+            !! call
+            !! DM_MIN(0_int32)
+            !! DM_MAX(n_residuals)
+        real(real64), intent(in) :: shared_residual_range_low
+            !! Lower bound of the histogram range (R_low), from a prior
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
+            !! call
+        real(real64), intent(in) :: shared_residual_range_high
+            !! Upper bound of the histogram range (R_high), from the same prior call as
+            !! `shared_residual_range_low`
+            !! DM_MIN(shared_residual_range_low)
+        integer(int32), intent(out) :: selected_n_bins
+            !! The largest bin count in [m_min, m_max] whose pooled histogram has every bin at or
+            !! above min_residuals_per_bin, found by exhaustive search; m_min when occupancy_failed
+        logical(c_bool), intent(out) :: occupancy_failed
+            !! `.true.` iff no candidate bin count in [m_min, m_max] satisfies the occupancy
+            !! criterion (including the case where n_pooled_residuals is 0 and min_residuals_per_bin
+            !! is not itself 0)
+        integer(int32), intent(out) :: min_bin_occupancy
+            !! Minimum bin count at selected_n_bins; 0 when occupancy_failed
+        real(real64), intent(out) :: mean_bin_occupancy
+            !! Mean bin count at selected_n_bins; 0 when occupancy_failed
+        integer(int32), intent(out) :: max_bin_occupancy
+            !! Maximum bin count at selected_n_bins; 0 when occupancy_failed
+        integer(int32), intent(in), optional :: m_min
+            !! Smallest candidate bin count tested (M_min)
+            !! DM_MIN(1_int32)
+            !! DM_MAX(MAX_N_BINS)
+            !! DM_DEFAULT(CM_OCCUPANCY_M_MIN_DEFAULT)
+        integer(int32), intent(in), optional :: m_max
+            !! Largest candidate bin count tested (M_max); if a caller passes `m_max < m_min`, the
+            !! implementation clamps it up to `m_min` internally rather than relying on an
+            !! unconfirmed generator capability to bound one optional argument by another
+            !! DM_MIN(1_int32)
+            !! DM_MAX(MAX_N_BINS)
+            !! DM_DEFAULT(CM_OCCUPANCY_M_MAX_DEFAULT)
+        integer(int32), intent(in), optional :: min_residuals_per_bin
+            !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
+            !! be admissible (n_min)
+            !! DM_MIN(0_int32)
+            !! DM_DEFAULT(CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
+
+        integer(int32) :: actual_m_min, actual_m_max, actual_min_residuals_per_bin
+        integer(int32) :: trial_m, best_m, min_occ
+        integer(int32) :: candidate_bin_counts(MAX_N_BINS)
+
+        M_DEFAULT_VAL(m_min, actual_m_min, CM_OCCUPANCY_M_MIN_DEFAULT)
+        M_DEFAULT_VAL(m_max, actual_m_max, CM_OCCUPANCY_M_MAX_DEFAULT)
+        M_DEFAULT_VAL(min_residuals_per_bin, actual_min_residuals_per_bin, CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
+        actual_m_max = max(actual_m_min, actual_m_max)
+
+        best_m = actual_m_min - 1_int32 ! sentinel: stays below actual_m_min if nothing passes
+        do concurrent(trial_m=actual_m_min:actual_m_max) local(candidate_bin_counts, min_occ) &
+                shared(pooled_residuals, pooled_residuals_perm, n_residuals, n_pooled_residuals, &
+                       shared_residual_range_low, shared_residual_range_high, actual_min_residuals_per_bin) &
+                reduce(max:best_m)
+            call histogram_bin_counts(pooled_residuals, pooled_residuals_perm, n_residuals, n_pooled_residuals, &
+                                      shared_residual_range_low, shared_residual_range_high, trial_m, &
+                                      candidate_bin_counts(1:trial_m), min_occ)
+            if (min_occ >= actual_min_residuals_per_bin) best_m = max(best_m, trial_m)
+        end do
+
+        if (best_m < actual_m_min) then
+            occupancy_failed = .true.
+            selected_n_bins = actual_m_min
+            min_bin_occupancy = 0_int32
+            mean_bin_occupancy = 0.0_real64
+            max_bin_occupancy = 0_int32
+            return
+        end if
+
+        selected_n_bins = best_m
+        occupancy_failed = .false.
+        call histogram_bin_counts(pooled_residuals, pooled_residuals_perm, n_residuals, n_pooled_residuals, &
+                                  shared_residual_range_low, shared_residual_range_high, best_m, &
+                                  candidate_bin_counts(1:best_m), min_occ)
+        min_bin_occupancy = min_occ
+        max_bin_occupancy = maxval(candidate_bin_counts(1:best_m))
+        mean_bin_occupancy = real(n_pooled_residuals, real64)/real(best_m, real64)
+    end subroutine determine_bin_count_occupancy_exhaustive_impl
+
+    !> M_EXPORT_C
+    !| summary: Pool one reference point's residuals across every neighbor and every study
+    !| AUTHOR_LASZLO_LANG
+    !| Given one reference point's own per-study neighbor gene indices (one column of a larger
+    !| `neighborhood_indices_all_studies(n_neighbors, n_points, n_studies)`, as produced by
+    !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_ranged_impl(interface)]]),
+    !| gathers that point's residual values from every neighbor gene, across every study, into one
+    !| flat pooled array. This is the exact same pooling
+    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_impl(interface)]] and
+    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
+    !| perform internally, per reference point, before handing the result to
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+    !| own occupancy search -- published so a caller can reconstruct that exact same input directly
+    !| on real data and feed it to
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_exhaustive_impl(interface)]]
+    !| (or to `determine_bin_count_occupancy` itself), to check whether the fast search and the
+    !| exhaustive reference ever actually disagree in practice, not just on a synthetic fixture.
     pure subroutine gather_pooled_neighborhood_residuals(residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
                                                          n_neighbors, n_studies, neighborhood_indices_point, &
-                                                         pooled_residuals)
+                                                         pooled_residuals, ierr)
         integer(int32), intent(in) :: max_n_reps_all_studies
             !! Maximum number of replicates across all studies
         integer(int32), intent(in) :: max_n_genes_all_studies
@@ -622,8 +758,41 @@ contains
             !! The pooled residual values for this reference point, across every neighbor and every
             !! study, laid out exactly as a (max_n_reps_all_studies, n_neighbors, n_studies) array
             !! would be
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure
 
         integer(int32) :: i_study, i_neighbor, i_rep, gene_idx, n_predecessors
+
+        call set_ok(ierr)
+        call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=2_int32)
+        call validate_dimension_size(max_n_genes_all_studies, ierr, arg_pos=3_int32)
+        call validate_dimension_size(n_neighbors, ierr, arg_pos=4_int32)
+        call validate_dimension_size(n_studies, ierr, arg_pos=5_int32)
+        if (is_err(ierr)) return
+
+        ! No size(...)-based cross-array shape check here, unlike validate_shift_vectors's pattern:
+        ! residuals/neighborhood_indices_point/pooled_residuals are explicit-shape dummies sized by
+        ! this routine's own scalar arguments, so size(residuals, 1) is tautologically equal to
+        ! max_n_reps_all_studies -- such a check could never fire. Real cross-argument shape
+        ! protection for Python/R callers lives one layer up, in the generated wrapper, which
+        ! derives all 4 extents from the arrays' own shapes and cross-checks them independently.
+
+        ! Every value of neighborhood_indices_point is a gene index used directly to subscript
+        ! residuals(i_rep, gene_idx, i_study) below -- a mismatched/stale index (a real mistake a
+        ! caller can make once this is R/Python-callable, not just a synthetic worry) would be a
+        ! genuine out-of-bounds read, not merely a wrong-answer bug. A plain sequential `do`, NOT
+        ! `do concurrent`: multiple iterations calling set_err_once on the same shared ierr scalar
+        ! -- a read-then-conditionally-write, not a plain write -- is not standard-conforming
+        ! do-concurrent semantics, unlike the gather loop below it (which only ever writes).
+        do i_study = 1, n_studies
+            do i_neighbor = 1, n_neighbors
+                gene_idx = neighborhood_indices_point(i_neighbor, i_study)
+                if (gene_idx < 1 .or. gene_idx > max_n_genes_all_studies) then
+                    call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=6_int32)
+                end if
+            end do
+        end do
+        if (is_err(ierr)) return
 
         do concurrent(i_study=1:n_studies)
             do concurrent(i_neighbor=1:n_neighbors) local(gene_idx, n_predecessors) &
@@ -1761,7 +1930,7 @@ contains
             !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator for
             !! the permutation test
 
-        integer(int32) :: i_study, i_point, i_neighbor, gene_idx, permutation_ierr, actual_n_permutations
+        integer(int32) :: i_study, i_point, i_neighbor, gene_idx, permutation_ierr, actual_n_permutations, gather_ierr
 
         call set_ok(ierr)
         M_DEFAULT_VAL(n_permutations, actual_n_permutations, 1000_int32)
@@ -1787,7 +1956,8 @@ contains
         do i_point = 1, n_points
             call gather_pooled_neighborhood_residuals(residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
                 n_neighbors, n_studies, neighborhood_indices(1:n_neighbors, i_point, 1:n_studies), &
-                tmp_pooled_residuals(1:max_n_reps_all_studies*n_neighbors*n_studies))
+                tmp_pooled_residuals(1:max_n_reps_all_studies*n_neighbors*n_studies), gather_ierr)
+            if (is_err(gather_ierr)) call set_err_once(ierr, get_err_code(gather_ierr))
 
             call init_perm(tmp_pooled_residuals_perm(1:max_n_reps_all_studies*n_neighbors*n_studies))
             call sort_array_heapsort(tmp_pooled_residuals(1:max_n_reps_all_studies*n_neighbors*n_studies), &
@@ -2416,7 +2586,7 @@ contains
             !! Error code; folds any GSL allocation failure bootstrap_histogram_impl reports
 
         integer(int32) :: candidates_n_points_n_neighbors(2, MAX_CANDIDATE_PAIRS)
-        integer(int32) :: i_candidate, i_study, i_point, i_neighbor, gene_idx, n_pool, max_n_bins
+        integer(int32) :: i_candidate, i_study, i_point, i_neighbor, gene_idx, n_pool, max_n_bins, gather_ierr
         integer(int32) :: prev_n_points, best_candidate_index, best_exceeded_ci_overlap_count, n_candidates
         integer(int32) :: pool_size, bootstrap_ierr, actual_min_residuals_per_bin
         integer(int32) :: actual_plateau_mode, actual_delta_min_consecutive_transitions, n_consecutive_effect_size_ok
@@ -2508,7 +2678,8 @@ contains
             do i_point = 1, n_points
                 call gather_pooled_neighborhood_residuals(residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
                     n_neighbors, n_studies, tmp_neighborhood_indices_all_studies(1:n_neighbors, i_point, 1:n_studies), &
-                    tmp_pooled_residuals(1:max_n_reps_all_studies*n_neighbors*n_studies))
+                    tmp_pooled_residuals(1:max_n_reps_all_studies*n_neighbors*n_studies), gather_ierr)
+                if (is_err(gather_ierr)) call set_err_once(ierr, get_err_code(gather_ierr))
 
                 call init_perm(tmp_pooled_residuals_perm(1:max_n_reps_all_studies*n_neighbors*n_studies))
                 call sort_array_heapsort(tmp_pooled_residuals(1:max_n_reps_all_studies*n_neighbors*n_studies), &

@@ -107,6 +107,46 @@ test_determine_bin_count_occupancy <- function() {
   assert_equal_numeric(out_nan$shared_residual_range_high, 0.0, msg = "expected shared_residual_range_high=0")
 }
 
+test_determine_bin_count_occupancy_exhaustive <- function() {
+  # Call-ability and return type/shape only, per this project's testing philosophy
+  # (Fortran_Coding_Guides.pdf Sec 17.1) -- numerical correctness (including the adversarial
+  # fixture proving this routine's own reason for existing) is the Fortran suite's job
+  # (mod_test_data_integration_js_comp_test.F90's own test_occupancy_exhaustive_* tests).
+  # Unlike determine_bin_count_occupancy, this routine takes shared_residual_range_low/high and
+  # n_pooled_residuals as direct inputs rather than deriving them, so literal values are enough.
+  residuals <- seq(-60, 59, by = 1) # 120 values, matches a Fortran fixture
+
+  out <- determine_bin_count_occupancy_exhaustive(residuals, n_pooled_residuals = 120L,
+                                                    shared_residual_range_low = -60.0,
+                                                    shared_residual_range_high = 60.0)
+  for (key in c("selected_n_bins", "occupancy_failed", "min_bin_occupancy", "mean_bin_occupancy",
+                "max_bin_occupancy")) {
+    assert_true(key %in% names(out), paste0("missing expected output key '", key, "'"))
+  }
+  assert_true(is.logical(out$occupancy_failed), "occupancy_failed should be logical")
+  assert_true(is.numeric(out$selected_n_bins), "selected_n_bins should be numeric")
+  assert_true(as.integer(out$selected_n_bins) > 0L, "selected_n_bins must be positive")
+  assert_true(!out$occupancy_failed, "occupancy should not fail on this dense fixture")
+
+  # The expert entry point, given the same sorting permutation, must agree.
+  residuals_perm <- order(residuals)
+  out_expert <- determine_bin_count_occupancy_exhaustive_expert(residuals, residuals_perm,
+                                                                  n_pooled_residuals = 120L,
+                                                                  shared_residual_range_low = -60.0,
+                                                                  shared_residual_range_high = 60.0)
+  assert_equal_int(as.integer(out_expert$selected_n_bins), as.integer(out$selected_n_bins),
+                    "expert entry point should agree with the plain one given the same sorted permutation")
+
+  # All-NaN pool: occupancy_failed must be TRUE (n_pooled_residuals=0, default min_residuals_per_bin=10).
+  residuals_nan <- rep(NaN, 4)
+  out_nan <- determine_bin_count_occupancy_exhaustive(residuals_nan, n_pooled_residuals = 0L,
+                                                        shared_residual_range_low = 0.0,
+                                                        shared_residual_range_high = 0.0)
+  assert_true(out_nan$occupancy_failed, "all-NaN pool must FAIL")
+  assert_equal_int(as.integer(out_nan$min_bin_occupancy), 0L, "expected min_bin_occupancy=0")
+  assert_equal_int(as.integer(out_nan$max_bin_occupancy), 0L, "expected max_bin_occupancy=0")
+}
+
 test_generate_js_comp_test_candidates <- function() {
   # ============================================================
   # Test 1 -- small-N candidate-grid collapse at its exact threshold
@@ -392,6 +432,32 @@ test_calc_js_comp_test_candidate_bounds <- function() {
   candidates <- generate_js_comp_test_candidates(8742L)
   assert_true(bounds$max_n_neighbors_candidate >= max(candidates[2, ]),
               "max_n_neighbors_candidate must be a safe upper bound on the grid's n_neighbors")
+}
+
+test_gather_pooled_neighborhood_residuals <- function() {
+  # Call-ability and return type/shape only, per this project's testing philosophy
+  # (Fortran_Coding_Guides.pdf Sec 17.1) -- numerical correctness is the Fortran suite's job
+  # (mod_test_data_integration_js_comp_test.F90's own test_gather_pooled_residuals_* tests).
+  # max_n_reps_all_studies/max_n_genes_all_studies/n_neighbors/n_studies must all auto-derive
+  # from residuals'/neighborhood_indices_point's own shapes -- not asked of the caller.
+  max_n_reps_all_studies <- 2L
+  max_n_genes_all_studies <- 3L
+  n_neighbors <- 2L
+  n_studies <- 2L
+  residuals <- array(as.double(seq_len(max_n_reps_all_studies*max_n_genes_all_studies*n_studies)),
+                      dim = c(max_n_reps_all_studies, max_n_genes_all_studies, n_studies))
+  neighborhood_indices_point <- matrix(c(1L, 2L, 3L, 1L), nrow = n_neighbors, ncol = n_studies)
+
+  pooled_residuals <- gather_pooled_neighborhood_residuals(residuals, neighborhood_indices_point)
+
+  assert_true(is.numeric(pooled_residuals), "expected a numeric vector")
+  assert_equal_int(length(pooled_residuals), max_n_reps_all_studies*n_neighbors*n_studies,
+                    "expected pooled_residuals of length max_n_reps_all_studies*n_neighbors*n_studies")
+
+  # An out-of-range gene index must raise, confirming the new bounds check is wired through.
+  bad_indices <- matrix(c(1L, 2L, max_n_genes_all_studies + 1L, 1L), nrow = n_neighbors, ncol = n_studies)
+  assert_error(gather_pooled_neighborhood_residuals(residuals, bad_indices),
+               "expected ERR_INVALID_INPUT for an out-of-range gene index", ERR_INVALID_INPUT)
 }
 
 test_calc_js_comp_test_n_top_k_jsds <- function() {

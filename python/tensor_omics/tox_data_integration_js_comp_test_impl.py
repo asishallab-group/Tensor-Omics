@@ -13,6 +13,10 @@ two admissibility gates a candidate must pass before it is bootstrapped
 :func:`tensor_omics.check_mean_pmf_min_counts`),
 and the plateau check that decides when the search has converged
 (:func:`tensor_omics.check_plateau_condition`).
+:func:`tensor_omics.determine_bin_count_occupancy_exhaustive`
+is a brute-force reference implementation of the same per-point bin-count search, exhaustively
+testing every candidate `M` instead of the fast geometric-search-then-refinement the production
+routine uses, for validating that the fast search's own result is correct.
 `calc_js_comp_test_candidate_bounds` sizes the candidate-grid work arrays for a caller that
 allocates its own. Once a candidate has passed both gates, its bootstrap confidence interval
 is resampled from the pooled consensus histogram by
@@ -45,6 +49,23 @@ _lib.calc_js_comp_test_candidate_bounds_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _CALC_JS_COMP_TEST_CANDIDATE_BOUNDS_ARGUMENTS = ("max_n_genes_all_studies", "max_n_points_candidate", "max_n_neighbors_candidate",)
+
+_lib.gather_pooled_neighborhood_residuals_c.restype = None
+_lib.gather_pooled_neighborhood_residuals_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_GATHER_POOLED_NEIGHBORHOOD_RESIDUALS_ARGUMENTS = ("residuals", "max_n_reps_all_studies", "max_n_genes_all_studies", "n_neighbors", "n_studies", "neighborhood_indices_point", "pooled_residuals", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_GATHER_POOLED_NEIGHBORHOOD_RESIDUALS_ARGUMENT_SOURCES = (None, "residuals", "residuals", "neighborhood_indices_point", "residuals", None, None, None,)
 
 _lib.calc_js_comp_test_n_top_k_jsds_c.restype = None
 _lib.calc_js_comp_test_n_top_k_jsds_c.argtypes = (
@@ -114,6 +135,102 @@ def calc_js_comp_test_candidate_bounds(
         "max_n_points_candidate": max_n_points_candidate.value,
         "max_n_neighbors_candidate": max_n_neighbors_candidate.value,
     }
+
+def gather_pooled_neighborhood_residuals(
+        residuals,
+        neighborhood_indices_point,
+):
+    r"""Pool one reference point's residuals across every neighbor and every study
+
+    Given one reference point's own per-study neighbor gene indices (one column of a larger
+    `neighborhood_indices_all_studies(n_neighbors, n_points, n_studies)`, as produced by
+    :func:`tensor_omics.construct_neighborhoods_ranged`),
+    gathers that point's residual values from every neighbor gene, across every study, into one
+    flat pooled array. This is the exact same pooling
+    :func:`tensor_omics.run_js_comp_test` and
+    :func:`tensor_omics.run_js_comp_test_parameter_search`
+    perform internally, per reference point, before handing the result to
+    :func:`tensor_omics.determine_bin_count_occupancy`'s
+    own occupancy search -- published so a caller can reconstruct that exact same input directly
+    on real data and feed it to
+    :func:`tensor_omics.determine_bin_count_occupancy_exhaustive`
+    (or to `determine_bin_count_occupancy` itself), to check whether the fast search and the
+    exhaustive reference ever actually disagree in practice, not just on a synthetic fixture.
+
+    Parameters
+    ----------
+    residuals : np.ndarray[np.float64] of shape (max_n_reps_all_studies, max_n_genes_all_studies, n_studies,), column-major (order='F')
+        Matrix of signed residuals per study, NaN explicitly allowed for missing values
+    neighborhood_indices_point : np.ndarray[np.int32] of shape (n_neighbors, n_studies,), column-major (order='F')
+        Gene indices of one reference point's neighborhood, per study -- one column of a
+        larger neighborhood_indices_all_studies(n_neighbors, n_points, n_studies), as sliced
+        by the caller
+
+    Returns
+    -------
+    pooled_residuals : np.ndarray[np.float64] of shape (max_n_reps_all_studies*n_neighbors*n_studies,), read-only
+        The pooled residual values for this reference point, across every neighbor and every
+        study, laid out exactly as a (max_n_reps_all_studies, n_neighbors, n_studies) array
+        would be
+        A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_js_comp_test_impl::gather_pooled_neighborhood_residuals`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        residuals = np.asfortranarray(residuals, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'residuals' must be an array of np.float64: {error}") from None
+    if residuals.ndim != 3:
+        raise ValueError(f"'residuals' must have 3 dimensions, but has {residuals.ndim}")
+    try:
+        neighborhood_indices_point = np.asfortranarray(neighborhood_indices_point, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'neighborhood_indices_point' must be an array of np.int32: {error}") from None
+    if neighborhood_indices_point.ndim != 2:
+        raise ValueError(f"'neighborhood_indices_point' must have 2 dimensions, but has {neighborhood_indices_point.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    max_n_reps_all_studies = residuals.shape[0]
+    max_n_genes_all_studies = residuals.shape[1]
+    n_neighbors = neighborhood_indices_point.shape[0]
+    n_studies = residuals.shape[2]
+
+    # Fortran cannot check that shared extents agree; this can
+    if neighborhood_indices_point.shape[1] != n_studies:
+        raise ValueError(f"'neighborhood_indices_point' has {neighborhood_indices_point.shape[1]} along axis 1, but "
+            f"'residuals' implies n_studies == {n_studies}"
+        )
+
+    # outputs and work arrays, which the caller never sees
+    pooled_residuals = np.empty((max_n_reps_all_studies*n_neighbors*n_studies,), dtype=np.float64, order='C')
+    ierr = ctypes.c_int(0)
+
+    _lib.gather_pooled_neighborhood_residuals_c(
+        residuals,
+        ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
+        ctypes.byref(ctypes.c_int(max_n_genes_all_studies)),
+        ctypes.byref(ctypes.c_int(n_neighbors)),
+        ctypes.byref(ctypes.c_int(n_studies)),
+        neighborhood_indices_point,
+        pooled_residuals,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _GATHER_POOLED_NEIGHBORHOOD_RESIDUALS_ARGUMENTS, _GATHER_POOLED_NEIGHBORHOOD_RESIDUALS_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    pooled_residuals.flags.writeable = False
+
+    return pooled_residuals
 
 def calc_js_comp_test_n_top_k_jsds(
         n_bootstraps,

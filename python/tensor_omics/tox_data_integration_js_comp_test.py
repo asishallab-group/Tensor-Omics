@@ -13,6 +13,10 @@ two admissibility gates a candidate must pass before it is bootstrapped
 :func:`tensor_omics.check_mean_pmf_min_counts`),
 and the plateau check that decides when the search has converged
 (:func:`tensor_omics.check_plateau_condition`).
+:func:`tensor_omics.determine_bin_count_occupancy_exhaustive`
+is a brute-force reference implementation of the same per-point bin-count search, exhaustively
+testing every candidate `M` instead of the fast geometric-search-then-refinement the production
+routine uses, for validating that the fast search's own result is correct.
 `calc_js_comp_test_candidate_bounds` sizes the candidate-grid work arrays for a caller that
 allocates its own. Once a candidate has passed both gates, its bootstrap confidence interval
 is resampled from the pooled consensus histogram by
@@ -133,6 +137,53 @@ _lib.determine_bin_count_occupancy_expert_c.argtypes = (
 _DETERMINE_BIN_COUNT_OCCUPANCY_EXPERT_ARGUMENTS = ("pooled_residuals", "pooled_residuals_perm", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "selected_n_bins", "occupancy_failed", "shared_residual_range_low", "shared_residual_range_high", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "tmp_bin_counts", "m_min", "m_max", "min_residuals_per_bin", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _DETERMINE_BIN_COUNT_OCCUPANCY_EXPERT_ARGUMENT_SOURCES = (None, None, "pooled_residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+
+_lib.determine_bin_count_occupancy_exhaustive_c.restype = None
+_lib.determine_bin_count_occupancy_exhaustive_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_bool),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_ARGUMENTS = ("pooled_residuals", "n_residuals", "n_pooled_residuals", "shared_residual_range_low", "shared_residual_range_high", "selected_n_bins", "occupancy_failed", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "m_min", "m_max", "min_residuals_per_bin", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_ARGUMENT_SOURCES = (None, "pooled_residuals", None, None, None, None, None, None, None, None, None, None, None, None,)
+
+_lib.determine_bin_count_occupancy_exhaustive_expert_c.restype = None
+_lib.determine_bin_count_occupancy_exhaustive_expert_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_bool),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_EXPERT_ARGUMENTS = ("pooled_residuals", "pooled_residuals_perm", "n_residuals", "n_pooled_residuals", "shared_residual_range_low", "shared_residual_range_high", "selected_n_bins", "occupancy_failed", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "m_min", "m_max", "min_residuals_per_bin", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_EXPERT_ARGUMENT_SOURCES = (None, None, "pooled_residuals", None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.generate_js_comp_test_candidates_c.restype = None
 _lib.generate_js_comp_test_candidates_c.argtypes = (
@@ -1041,6 +1092,334 @@ def determine_bin_count_occupancy_expert(
         "max_bin_occupancy": max_bin_occupancy.value,
         "sturges_bins": sturges_bins.value,
         "fd_bins": fd_bins.value,
+    }
+
+def determine_bin_count_occupancy_exhaustive(
+        pooled_residuals,
+        n_pooled_residuals,
+        shared_residual_range_low,
+        shared_residual_range_high,
+        m_min=3,
+        m_max=120,
+        min_residuals_per_bin=10,
+):
+    r"""Exhaustive brute-force reference implementation of Issue #187's occupancy search
+
+    Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest
+    one whose pooled histogram satisfies the occupancy criterion, instead of
+    :func:`tensor_omics.determine_bin_count_occupancy`'s
+    own fast geometric-search-then-refinement. Exists purely to validate that routine's result:
+    occupancy is not guaranteed monotonic in `M` once bin boundaries are recomputed per candidate
+    (Issue #187 is explicit about this), so a search that stops at the first failure can in
+    principle miss a larger, independently-admissible `M` the geometric ladder never tries. Takes
+    `shared_residual_range_low`/`shared_residual_range_high`/`n_pooled_residuals` as direct
+    inputs, already produced by a prior
+    :func:`tensor_omics.determine_bin_count_occupancy`
+    call, rather than re-deriving them -- this isolates the comparison to just the `M`-selection
+    algorithm, uncontaminated by a second independent percentile computation.
+
+    Every candidate is independent (no early exit, no state carried between iterations, unlike
+    the production routine's own Stage 1/Stage 2), so this is a genuine `do concurrent` with
+    `reduce(max:...)`, not a sequential search: `candidate_bin_counts` is declared local to the
+    loop (an ordinary MAX_N_BINS-sized local, not a `tmp_` dummy -- precedented by
+    `run_js_comp_test_impl`'s own `candidates_n_points_n_neighbors` local) so each concurrent
+    iteration gets its own private scratch instead of racing on a shared buffer sliced by
+    `trial_m`. `reduce(max:...)` has no "argmax" form, so the winning `M`'s own
+    min/mean/max_bin_occupancy are recovered with one extra, ordinary (non-concurrent) call to
+    `histogram_bin_counts` for `best_m` alone once the reduction is done -- trivial cost next to
+    the search itself.
+
+    `n_pooled_residuals == 0` and a degenerate zero-width range need no special-case branch here:
+    `histogram_bin_counts` already guards the degenerate range internally, and an all-zero pool
+    naturally resolves to `occupancy_failed` (or a trivial pass at `min_residuals_per_bin=0`,
+    with `mean_bin_occupancy=0.0`, no divide-by-zero) -- intentional, not an oversight.
+
+    Parameters
+    ----------
+    pooled_residuals : np.ndarray[np.float64] of shape (n_residuals,)
+        Pooled signed residuals for one neighborhood, across all its neighbors and all studies
+        NaN is permitted for this value.
+    n_pooled_residuals : int
+        Count of non-NaN pooled residuals (N_j), from a prior
+        :func:`tensor_omics.determine_bin_count_occupancy`
+        call
+        The minimum valid value is `0`.
+        The maximum valid value is `n_residuals`.
+    shared_residual_range_low : float
+        Lower bound of the histogram range (R_low), from a prior
+        :func:`tensor_omics.determine_bin_count_occupancy`
+        call
+    shared_residual_range_high : float
+        Upper bound of the histogram range (R_high), from the same prior call as
+        `shared_residual_range_low`
+        The minimum valid value is `shared_residual_range_low`.
+    m_min : int, optional, default 3
+        Smallest candidate bin count tested (M_min)
+        The minimum valid value is `1`.
+        The maximum valid value is `MAX_N_BINS`.
+        The default value is `3`.
+    m_max : int, optional, default 120
+        Largest candidate bin count tested (M_max); if a caller passes `m_max < m_min`, the
+        implementation clamps it up to `m_min` internally rather than relying on an
+        unconfirmed generator capability to bound one optional argument by another
+        The minimum valid value is `1`.
+        The maximum valid value is `MAX_N_BINS`.
+        The default value is `120`.
+    min_residuals_per_bin : int, optional, default 10
+        Minimum number of pooled residuals every bin must reach for a candidate bin count to
+        be admissible (n_min)
+        The minimum valid value is `0`.
+        The default value is `10`.
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        selected_n_bins : int
+            The largest bin count in [m_min, m_max] whose pooled histogram has every bin at or
+            above min_residuals_per_bin, found by exhaustive search; m_min when occupancy_failed
+        occupancy_failed : bool
+            `True` iff no candidate bin count in [m_min, m_max] satisfies the occupancy
+            criterion (including the case where n_pooled_residuals is 0 and min_residuals_per_bin
+            is not itself 0)
+        min_bin_occupancy : int
+            Minimum bin count at selected_n_bins; 0 when occupancy_failed
+        mean_bin_occupancy : float
+            Mean bin count at selected_n_bins; 0 when occupancy_failed
+        max_bin_occupancy : int
+            Maximum bin count at selected_n_bins; 0 when occupancy_failed
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_js_comp_test::determine_bin_count_occupancy_exhaustive`, whose argument names are
+    the ones an error message reports.
+
+    This entry point seeds `pooled_residuals_perm` and sorts it by `pooled_residuals`.
+    Call `determine_bin_count_occupancy_exhaustive_expert` to do that yourself.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        pooled_residuals = np.ascontiguousarray(pooled_residuals, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'pooled_residuals' must be an array of np.float64: {error}") from None
+    if pooled_residuals.ndim != 1:
+        raise ValueError(f"'pooled_residuals' must have 1 dimension, but has {pooled_residuals.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_residuals = pooled_residuals.shape[0]
+
+    # outputs and work arrays, which the caller never sees
+    selected_n_bins = ctypes.c_int(0)
+    occupancy_failed = ctypes.c_bool(0)
+    min_bin_occupancy = ctypes.c_int(0)
+    mean_bin_occupancy = ctypes.c_double(0)
+    max_bin_occupancy = ctypes.c_int(0)
+    ierr = ctypes.c_int(0)
+
+    _lib.determine_bin_count_occupancy_exhaustive_c(
+        pooled_residuals,
+        ctypes.byref(ctypes.c_int(n_residuals)),
+        ctypes.byref(ctypes.c_int(n_pooled_residuals)),
+        ctypes.byref(ctypes.c_double(shared_residual_range_low)),
+        ctypes.byref(ctypes.c_double(shared_residual_range_high)),
+        ctypes.byref(selected_n_bins),
+        ctypes.byref(occupancy_failed),
+        ctypes.byref(min_bin_occupancy),
+        ctypes.byref(mean_bin_occupancy),
+        ctypes.byref(max_bin_occupancy),
+        ctypes.byref(ctypes.c_int(m_min)),
+        ctypes.byref(ctypes.c_int(m_max)),
+        ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_ARGUMENTS, _DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_ARGUMENT_SOURCES)
+
+    return {
+        "selected_n_bins": selected_n_bins.value,
+        "occupancy_failed": occupancy_failed.value,
+        "min_bin_occupancy": min_bin_occupancy.value,
+        "mean_bin_occupancy": mean_bin_occupancy.value,
+        "max_bin_occupancy": max_bin_occupancy.value,
+    }
+
+def determine_bin_count_occupancy_exhaustive_expert(
+        pooled_residuals,
+        pooled_residuals_perm,
+        n_pooled_residuals,
+        shared_residual_range_low,
+        shared_residual_range_high,
+        m_min=3,
+        m_max=120,
+        min_residuals_per_bin=10,
+):
+    r"""Exhaustive brute-force reference implementation of Issue #187's occupancy search
+
+    Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest
+    one whose pooled histogram satisfies the occupancy criterion, instead of
+    :func:`tensor_omics.determine_bin_count_occupancy`'s
+    own fast geometric-search-then-refinement. Exists purely to validate that routine's result:
+    occupancy is not guaranteed monotonic in `M` once bin boundaries are recomputed per candidate
+    (Issue #187 is explicit about this), so a search that stops at the first failure can in
+    principle miss a larger, independently-admissible `M` the geometric ladder never tries. Takes
+    `shared_residual_range_low`/`shared_residual_range_high`/`n_pooled_residuals` as direct
+    inputs, already produced by a prior
+    :func:`tensor_omics.determine_bin_count_occupancy`
+    call, rather than re-deriving them -- this isolates the comparison to just the `M`-selection
+    algorithm, uncontaminated by a second independent percentile computation.
+
+    Every candidate is independent (no early exit, no state carried between iterations, unlike
+    the production routine's own Stage 1/Stage 2), so this is a genuine `do concurrent` with
+    `reduce(max:...)`, not a sequential search: `candidate_bin_counts` is declared local to the
+    loop (an ordinary MAX_N_BINS-sized local, not a `tmp_` dummy -- precedented by
+    `run_js_comp_test_impl`'s own `candidates_n_points_n_neighbors` local) so each concurrent
+    iteration gets its own private scratch instead of racing on a shared buffer sliced by
+    `trial_m`. `reduce(max:...)` has no "argmax" form, so the winning `M`'s own
+    min/mean/max_bin_occupancy are recovered with one extra, ordinary (non-concurrent) call to
+    `histogram_bin_counts` for `best_m` alone once the reduction is done -- trivial cost next to
+    the search itself.
+
+    `n_pooled_residuals == 0` and a degenerate zero-width range need no special-case branch here:
+    `histogram_bin_counts` already guards the degenerate range internally, and an all-zero pool
+    naturally resolves to `occupancy_failed` (or a trivial pass at `min_residuals_per_bin=0`,
+    with `mean_bin_occupancy=0.0`, no divide-by-zero) -- intentional, not an oversight.
+
+    Parameters
+    ----------
+    pooled_residuals : np.ndarray[np.float64] of shape (n_residuals,)
+        Pooled signed residuals for one neighborhood, across all its neighbors and all studies
+        NaN is permitted for this value.
+    pooled_residuals_perm : np.ndarray[np.int32] of shape (n_residuals,)
+        Sorting permutation for `pooled_residuals`, ascending, NaN last
+        The minimum valid value is `1`.
+        The maximum valid value is `n_residuals`.
+    n_pooled_residuals : int
+        Count of non-NaN pooled residuals (N_j), from a prior
+        :func:`tensor_omics.determine_bin_count_occupancy`
+        call
+        The minimum valid value is `0`.
+        The maximum valid value is `n_residuals`.
+    shared_residual_range_low : float
+        Lower bound of the histogram range (R_low), from a prior
+        :func:`tensor_omics.determine_bin_count_occupancy`
+        call
+    shared_residual_range_high : float
+        Upper bound of the histogram range (R_high), from the same prior call as
+        `shared_residual_range_low`
+        The minimum valid value is `shared_residual_range_low`.
+    m_min : int, optional, default 3
+        Smallest candidate bin count tested (M_min)
+        The minimum valid value is `1`.
+        The maximum valid value is `MAX_N_BINS`.
+        The default value is `3`.
+    m_max : int, optional, default 120
+        Largest candidate bin count tested (M_max); if a caller passes `m_max < m_min`, the
+        implementation clamps it up to `m_min` internally rather than relying on an
+        unconfirmed generator capability to bound one optional argument by another
+        The minimum valid value is `1`.
+        The maximum valid value is `MAX_N_BINS`.
+        The default value is `120`.
+    min_residuals_per_bin : int, optional, default 10
+        Minimum number of pooled residuals every bin must reach for a candidate bin count to
+        be admissible (n_min)
+        The minimum valid value is `0`.
+        The default value is `10`.
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        selected_n_bins : int
+            The largest bin count in [m_min, m_max] whose pooled histogram has every bin at or
+            above min_residuals_per_bin, found by exhaustive search; m_min when occupancy_failed
+        occupancy_failed : bool
+            `True` iff no candidate bin count in [m_min, m_max] satisfies the occupancy
+            criterion (including the case where n_pooled_residuals is 0 and min_residuals_per_bin
+            is not itself 0)
+        min_bin_occupancy : int
+            Minimum bin count at selected_n_bins; 0 when occupancy_failed
+        mean_bin_occupancy : float
+            Mean bin count at selected_n_bins; 0 when occupancy_failed
+        max_bin_occupancy : int
+            Maximum bin count at selected_n_bins; 0 when occupancy_failed
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_js_comp_test::determine_bin_count_occupancy_exhaustive_expert`, whose argument names are
+    the ones an error message reports.
+
+    The expert entry point: you supply `pooled_residuals_perm` yourself.
+    `determine_bin_count_occupancy_exhaustive` seeds `pooled_residuals_perm` and sorts it by `pooled_residuals`.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        pooled_residuals = np.ascontiguousarray(pooled_residuals, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'pooled_residuals' must be an array of np.float64: {error}") from None
+    if pooled_residuals.ndim != 1:
+        raise ValueError(f"'pooled_residuals' must have 1 dimension, but has {pooled_residuals.ndim}")
+    try:
+        pooled_residuals_perm = np.ascontiguousarray(pooled_residuals_perm, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'pooled_residuals_perm' must be an array of np.int32: {error}") from None
+    if pooled_residuals_perm.ndim != 1:
+        raise ValueError(f"'pooled_residuals_perm' must have 1 dimension, but has {pooled_residuals_perm.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_residuals = pooled_residuals.shape[0]
+
+    # Fortran cannot check that shared extents agree; this can
+    if pooled_residuals_perm.shape[0] != n_residuals:
+        raise ValueError(f"'pooled_residuals_perm' has {pooled_residuals_perm.shape[0]} along axis 0, but "
+            f"'pooled_residuals' implies n_residuals == {n_residuals}"
+        )
+
+    # outputs and work arrays, which the caller never sees
+    selected_n_bins = ctypes.c_int(0)
+    occupancy_failed = ctypes.c_bool(0)
+    min_bin_occupancy = ctypes.c_int(0)
+    mean_bin_occupancy = ctypes.c_double(0)
+    max_bin_occupancy = ctypes.c_int(0)
+    ierr = ctypes.c_int(0)
+
+    _lib.determine_bin_count_occupancy_exhaustive_expert_c(
+        pooled_residuals,
+        pooled_residuals_perm,
+        ctypes.byref(ctypes.c_int(n_residuals)),
+        ctypes.byref(ctypes.c_int(n_pooled_residuals)),
+        ctypes.byref(ctypes.c_double(shared_residual_range_low)),
+        ctypes.byref(ctypes.c_double(shared_residual_range_high)),
+        ctypes.byref(selected_n_bins),
+        ctypes.byref(occupancy_failed),
+        ctypes.byref(min_bin_occupancy),
+        ctypes.byref(mean_bin_occupancy),
+        ctypes.byref(max_bin_occupancy),
+        ctypes.byref(ctypes.c_int(m_min)),
+        ctypes.byref(ctypes.c_int(m_max)),
+        ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_EXPERT_ARGUMENTS, _DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_EXPERT_ARGUMENT_SOURCES)
+
+    return {
+        "selected_n_bins": selected_n_bins.value,
+        "occupancy_failed": occupancy_failed.value,
+        "min_bin_occupancy": min_bin_occupancy.value,
+        "mean_bin_occupancy": mean_bin_occupancy.value,
+        "max_bin_occupancy": max_bin_occupancy.value,
     }
 
 def generate_js_comp_test_candidates(

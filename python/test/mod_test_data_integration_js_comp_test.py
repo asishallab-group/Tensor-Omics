@@ -18,6 +18,8 @@ from tensor_omics import (
     estimate_bin_count_expert,
     determine_bin_count_occupancy,
     determine_bin_count_occupancy_expert,
+    determine_bin_count_occupancy_exhaustive,
+    determine_bin_count_occupancy_exhaustive_expert,
     generate_js_comp_test_candidates,
     check_neighborhood_overlaps,
     check_mean_pmf_min_counts,
@@ -27,6 +29,7 @@ from tensor_omics import (
     bootstrap_histogram,
     calc_js_comp_test_candidate_bounds,
     calc_js_comp_test_n_top_k_jsds,
+    gather_pooled_neighborhood_residuals,
     run_js_comp_test,
     run_js_comp_test_parameter_search,
 )
@@ -141,6 +144,48 @@ def test_determine_bin_count_occupancy():
     assert result_nan["max_bin_occupancy"] == 0
     assert result_nan["shared_residual_range_low"] == 0.0
     assert result_nan["shared_residual_range_high"] == 0.0
+
+
+def test_determine_bin_count_occupancy_exhaustive():
+    # Call-ability and return type/shape only, per this project's testing philosophy
+    # (Fortran_Coding_Guides.pdf Sec 17.1) -- numerical correctness (including the adversarial
+    # fixture proving this routine's own reason for existing) is the Fortran suite's job
+    # (mod_test_data_integration_js_comp_test.F90's own test_occupancy_exhaustive_* tests).
+    # Unlike determine_bin_count_occupancy, this routine takes shared_residual_range_low/high and
+    # n_pooled_residuals as direct inputs rather than deriving them, so literal values are enough.
+    residuals = np.arange(-60, 60, dtype=np.float64)  # 120 values, matches a Fortran fixture
+
+    result = determine_bin_count_occupancy_exhaustive(residuals, n_pooled_residuals=120,
+                                                        shared_residual_range_low=-60.0,
+                                                        shared_residual_range_high=60.0)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    for key in ("selected_n_bins", "occupancy_failed", "min_bin_occupancy", "mean_bin_occupancy",
+                "max_bin_occupancy"):
+        assert key in result, f"missing expected output key '{key}'"
+    assert isinstance(result["occupancy_failed"], (bool, np.bool_)), \
+        f"expected occupancy_failed to be a bool, got {type(result['occupancy_failed'])}"
+    assert isinstance(result["selected_n_bins"], (int, np.integer)), \
+        f"expected selected_n_bins to be an int, got {type(result['selected_n_bins'])}"
+    assert result["selected_n_bins"] > 0, "selected_n_bins must be positive"
+    assert not result["occupancy_failed"]
+
+    # The expert entry point, given the same sorting permutation, must agree.
+    residuals_perm = (np.argsort(residuals, kind="mergesort") + 1).astype(np.int32)
+    result_expert = determine_bin_count_occupancy_exhaustive_expert(residuals, residuals_perm,
+                                                                      n_pooled_residuals=120,
+                                                                      shared_residual_range_low=-60.0,
+                                                                      shared_residual_range_high=60.0)
+    assert result_expert["selected_n_bins"] == result["selected_n_bins"], \
+        "expert entry point should agree with the plain one given the same sorted permutation"
+
+    # All-NaN pool: occupancy_failed must be True (n_pooled_residuals=0, default min_residuals_per_bin=10).
+    residuals_nan = np.full(4, np.nan, dtype=np.float64)
+    result_nan = determine_bin_count_occupancy_exhaustive(residuals_nan, n_pooled_residuals=0,
+                                                            shared_residual_range_low=0.0,
+                                                            shared_residual_range_high=0.0)
+    assert result_nan["occupancy_failed"]
+    assert result_nan["min_bin_occupancy"] == 0
+    assert result_nan["max_bin_occupancy"] == 0
 
 
 def test_generate_js_comp_test_candidates():
@@ -440,6 +485,31 @@ def test_calc_js_comp_test_candidate_bounds():
     candidates = generate_js_comp_test_candidates(8742)
     assert bounds["max_n_neighbors_candidate"] >= int(np.max(candidates[1, :])), \
         "max_n_neighbors_candidate must be a safe upper bound on the grid's n_neighbors"
+
+
+def test_gather_pooled_neighborhood_residuals():
+    # Call-ability and return type/shape only, per this project's testing philosophy
+    # (Fortran_Coding_Guides.pdf Sec 17.1) -- numerical correctness is the Fortran suite's job
+    # (mod_test_data_integration_js_comp_test.F90's own test_gather_pooled_residuals_* tests).
+    # max_n_reps_all_studies/max_n_genes_all_studies/n_neighbors/n_studies must all auto-derive
+    # from residuals'/neighborhood_indices_point's own shapes, per calc_work_arr_paralog_subsets_size's
+    # precedent -- not asked of the caller.
+    max_n_reps_all_studies, max_n_genes_all_studies, n_neighbors, n_studies = 2, 3, 2, 2
+    residuals = np.arange(max_n_reps_all_studies*max_n_genes_all_studies*n_studies, dtype=np.float64).reshape(
+        (max_n_reps_all_studies, max_n_genes_all_studies, n_studies), order='F')
+    neighborhood_indices_point = np.array([[1, 3], [2, 1]], dtype=np.int32)  # (n_neighbors, n_studies)
+
+    pooled_residuals = gather_pooled_neighborhood_residuals(residuals, neighborhood_indices_point)
+
+    assert isinstance(pooled_residuals, np.ndarray), f"expected an ndarray, got {type(pooled_residuals)}"
+    assert pooled_residuals.dtype == np.float64, f"expected float64, got {pooled_residuals.dtype}"
+    assert pooled_residuals.shape == (max_n_reps_all_studies*n_neighbors*n_studies,), \
+        f"expected shape ({max_n_reps_all_studies*n_neighbors*n_studies},), got {pooled_residuals.shape}"
+
+    # An out-of-range gene index must raise, confirming the new bounds check is wired through.
+    bad_indices = np.array([[1, max_n_genes_all_studies + 1], [2, 1]], dtype=np.int32)
+    assert_error(lambda: gather_pooled_neighborhood_residuals(residuals, bad_indices),
+                 "expected ERR_INVALID_INPUT for an out-of-range gene index", ERR_INVALID_INPUT)
 
 
 def test_calc_js_comp_test_n_top_k_jsds():

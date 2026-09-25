@@ -31,6 +31,48 @@ calc_js_comp_test_candidate_bounds <- function(max_n_genes_all_studies) {
     )
 }
 
+#' Pool one reference point's residuals across every neighbor and every study
+#'
+#' Given one reference point's own per-study neighbor gene indices (one column of a larger
+#' `neighborhood_indices_all_studies(n_neighbors, n_points, n_studies)`, as produced by
+#' \code{\link{construct_neighborhoods_ranged}}),
+#' gathers that point's residual values from every neighbor gene, across every study, into one
+#' flat pooled array. This is the exact same pooling
+#' \code{\link{run_js_comp_test}} and
+#' \code{\link{run_js_comp_test_parameter_search}}
+#' perform internally, per reference point, before handing the result to
+#' \code{\link{determine_bin_count_occupancy}}'s
+#' own occupancy search -- published so a caller can reconstruct that exact same input directly
+#' on real data and feed it to
+#' \code{\link{determine_bin_count_occupancy_exhaustive}}
+#' (or to `determine_bin_count_occupancy` itself), to check whether the fast search and the
+#' exhaustive reference ever actually disagree in practice, not just on a synthetic fixture.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_impl::gather_pooled_neighborhood_residuals}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param residuals a numeric array of rank 3. Matrix of signed residuals per study, NaN explicitly allowed for missing values
+#' @param neighborhood_indices_point a integer matrix. Gene indices of one reference point's neighborhood, per study -- one column of a
+#'   larger neighborhood_indices_all_studies(n_neighbors, n_points, n_studies), as sliced
+#'   by the caller
+#' @return a numeric vector. The pooled residual values for this reference point, across every neighbor and every
+#'   study, laid out exactly as a (max_n_reps_all_studies, n_neighbors, n_studies) array
+#'   would be
+#' @export
+gather_pooled_neighborhood_residuals <- function(residuals, neighborhood_indices_point) {
+    residuals <- .tox_as_double_array(residuals, "residuals", 3L)
+    neighborhood_indices_point <- .tox_as_integer_matrix(neighborhood_indices_point, "neighborhood_indices_point")
+    if (dim(neighborhood_indices_point)[2] != dim(residuals)[3])
+        .tox_shape_error("neighborhood_indices_point", dim(neighborhood_indices_point)[2], "residuals", dim(residuals)[3])
+
+    .result <- .Call("gather_pooled_neighborhood_residuals_call", residuals, neighborhood_indices_point)
+    .arguments <- c("residuals", "max_n_reps_all_studies", "max_n_genes_all_studies", "n_neighbors", "n_studies", "neighborhood_indices_point", "pooled_residuals", "ierr")
+    .sources <- c(NA_character_, "residuals", "residuals", "neighborhood_indices_point", "residuals", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    .result$pooled_residuals
+}
+
 #' Recommend the bootstrap top-/bottom-k heap size for a two-sided confidence interval
 #'
 #' Ported from 125-stabilize-jscomp's inline `n_bootstrapping_top_k_jsds` computation in

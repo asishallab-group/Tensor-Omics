@@ -104,7 +104,7 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter Search",
     "body": [
       "from tensor_omics.tox_data_integration_js_comp_test import (",
-      "    ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,generate_js_comp_test_candidates,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|},",
+      "    ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,determine_bin_count_occupancy_exhaustive,determine_bin_count_occupancy_exhaustive_expert,generate_js_comp_test_candidates,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|},",
       ")"
     ]
   },
@@ -165,6 +165,37 @@
       "    gamma_occupancy=${9:1.25},",
       "    lower_residual_range_quantile=${10:0.05},",
       "    upper_residual_range_quantile=${11:0.95},",
+      ")"
+    ]
+  },
+  "determine_bin_count_occupancy_exhaustive (call)": {
+    "prefix": "tox:determine_bin_count_occupancy_exhaustive",
+    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest",
+    "body": [
+      "${1:result} = determine_bin_count_occupancy_exhaustive(",
+      "    pooled_residuals=${2:pooled_residuals},",
+      "    n_pooled_residuals=${3:n_pooled_residuals},",
+      "    shared_residual_range_low=${4:shared_residual_range_low},",
+      "    shared_residual_range_high=${5:shared_residual_range_high},",
+      "    m_min=${6:3},",
+      "    m_max=${7:120},",
+      "    min_residuals_per_bin=${8:10},",
+      ")"
+    ]
+  },
+  "determine_bin_count_occupancy_exhaustive_expert (call)": {
+    "prefix": "tox:determine_bin_count_occupancy_exhaustive_expert",
+    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest",
+    "body": [
+      "${1:result} = determine_bin_count_occupancy_exhaustive_expert(",
+      "    pooled_residuals=${2:pooled_residuals},",
+      "    pooled_residuals_perm=${3:pooled_residuals_perm},",
+      "    n_pooled_residuals=${4:n_pooled_residuals},",
+      "    shared_residual_range_low=${5:shared_residual_range_low},",
+      "    shared_residual_range_high=${6:shared_residual_range_high},",
+      "    m_min=${7:3},",
+      "    m_max=${8:120},",
+      "    min_residuals_per_bin=${9:10},",
       ")"
     ]
   },
@@ -319,7 +350,7 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter Search",
     "body": [
       "from tensor_omics.tox_data_integration_js_comp_test_impl import (",
-      "    ${1|calc_js_comp_test_candidate_bounds,calc_js_comp_test_n_top_k_jsds|},",
+      "    ${1|calc_js_comp_test_candidate_bounds,gather_pooled_neighborhood_residuals,calc_js_comp_test_n_top_k_jsds|},",
       ")"
     ]
   },
@@ -329,6 +360,16 @@
     "body": [
       "${1:result} = calc_js_comp_test_candidate_bounds(",
       "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
+      ")"
+    ]
+  },
+  "gather_pooled_neighborhood_residuals (call)": {
+    "prefix": "tox:gather_pooled_neighborhood_residuals",
+    "description": "Given one reference point's own per-study neighbor gene indices (one column of a larger",
+    "body": [
+      "${1:result} = gather_pooled_neighborhood_residuals(",
+      "    residuals=${2:residuals},",
+      "    neighborhood_indices_point=${3:neighborhood_indices_point},",
       ")"
     ]
   },

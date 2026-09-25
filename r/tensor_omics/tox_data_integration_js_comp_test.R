@@ -386,6 +386,205 @@ determine_bin_count_occupancy_expert <- function(pooled_residuals, pooled_residu
     )
 }
 
+#' Exhaustive brute-force reference implementation of Issue #187's occupancy search
+#'
+#' Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest
+#' one whose pooled histogram satisfies the occupancy criterion, instead of
+#' \code{\link{determine_bin_count_occupancy}}'s
+#' own fast geometric-search-then-refinement. Exists purely to validate that routine's result:
+#' occupancy is not guaranteed monotonic in `M` once bin boundaries are recomputed per candidate
+#' (Issue #187 is explicit about this), so a search that stops at the first failure can in
+#' principle miss a larger, independently-admissible `M` the geometric ladder never tries. Takes
+#' `shared_residual_range_low`/`shared_residual_range_high`/`n_pooled_residuals` as direct
+#' inputs, already produced by a prior
+#' \code{\link{determine_bin_count_occupancy}}
+#' call, rather than re-deriving them -- this isolates the comparison to just the `M`-selection
+#' algorithm, uncontaminated by a second independent percentile computation.
+#'
+#' Every candidate is independent (no early exit, no state carried between iterations, unlike
+#' the production routine's own Stage 1/Stage 2), so this is a genuine `do concurrent` with
+#' `reduce(max:...)`, not a sequential search: `candidate_bin_counts` is declared local to the
+#' loop (an ordinary MAX_N_BINS-sized local, not a `tmp_` dummy -- precedented by
+#' `run_js_comp_test_impl`'s own `candidates_n_points_n_neighbors` local) so each concurrent
+#' iteration gets its own private scratch instead of racing on a shared buffer sliced by
+#' `trial_m`. `reduce(max:...)` has no "argmax" form, so the winning `M`'s own
+#' min/mean/max_bin_occupancy are recovered with one extra, ordinary (non-concurrent) call to
+#' `histogram_bin_counts` for `best_m` alone once the reduction is done -- trivial cost next to
+#' the search itself.
+#'
+#' `n_pooled_residuals == 0` and a degenerate zero-width range need no special-case branch here:
+#' `histogram_bin_counts` already guards the degenerate range internally, and an all-zero pool
+#' naturally resolves to `occupancy_failed` (or a trivial pass at `min_residuals_per_bin=0`,
+#' with `mean_bin_occupancy=0.0`, no divide-by-zero) -- intentional, not an oversight.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::determine_bin_count_occupancy_exhaustive}, whose argument names
+#' are the ones an error message reports.
+#'
+#' This entry point seeds \code{pooled_residuals_perm} and sorts it by \code{pooled_residuals}.
+#' Call \code{determine_bin_count_occupancy_exhaustive_expert} to do that yourself.
+#'
+#' @param pooled_residuals a numeric vector. Pooled signed residuals for one neighborhood, across all its neighbors and all studies
+#'   NaN is permitted for this value.
+#' @param n_pooled_residuals a integer scalar. Count of non-NaN pooled residuals (N_j), from a prior
+#'   \code{\link{determine_bin_count_occupancy}}
+#'   call
+#'   The minimum valid value is `0`.
+#'   The maximum valid value is `n_residuals`.
+#' @param shared_residual_range_low a numeric scalar. Lower bound of the histogram range (R_low), from a prior
+#'   \code{\link{determine_bin_count_occupancy}}
+#'   call
+#' @param shared_residual_range_high a numeric scalar. Upper bound of the histogram range (R_high), from the same prior call as
+#'   `shared_residual_range_low`
+#'   The minimum valid value is `shared_residual_range_low`.
+#' @param m_min a integer scalar. Smallest candidate bin count tested (M_min)
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_N_BINS`.
+#'   The default value is `3`.
+#' @param m_max a integer scalar. Largest candidate bin count tested (M_max); if a caller passes `m_max < m_min`, the
+#'   implementation clamps it up to `m_min` internally rather than relying on an
+#'   unconfirmed generator capability to bound one optional argument by another
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_N_BINS`.
+#'   The default value is `120`.
+#' @param min_residuals_per_bin a integer scalar. Minimum number of pooled residuals every bin must reach for a candidate bin count to
+#'   be admissible (n_min)
+#'   The minimum valid value is `0`.
+#'   The default value is `10`.
+#' @return a named list with elements:
+#'   \item{selected_n_bins}{a integer scalar. The largest bin count in [m_min, m_max] whose pooled histogram has every bin at or
+#'     above min_residuals_per_bin, found by exhaustive search; m_min when occupancy_failed}
+#'   \item{occupancy_failed}{a logical scalar. `TRUE` iff no candidate bin count in [m_min, m_max] satisfies the occupancy
+#'     criterion (including the case where n_pooled_residuals is 0 and min_residuals_per_bin
+#'     is not itself 0)}
+#'   \item{min_bin_occupancy}{a integer scalar. Minimum bin count at selected_n_bins; 0 when occupancy_failed}
+#'   \item{mean_bin_occupancy}{a numeric scalar. Mean bin count at selected_n_bins; 0 when occupancy_failed}
+#'   \item{max_bin_occupancy}{a integer scalar. Maximum bin count at selected_n_bins; 0 when occupancy_failed}
+#' @export
+determine_bin_count_occupancy_exhaustive <- function(pooled_residuals, n_pooled_residuals, shared_residual_range_low, shared_residual_range_high, m_min = 3L, m_max = 120L, min_residuals_per_bin = 10L) {
+    pooled_residuals <- .tox_as_double_vector(pooled_residuals, "pooled_residuals")
+    n_pooled_residuals <- .tox_as_integer_scalar(n_pooled_residuals, "n_pooled_residuals")
+    shared_residual_range_low <- .tox_as_double_scalar(shared_residual_range_low, "shared_residual_range_low")
+    shared_residual_range_high <- .tox_as_double_scalar(shared_residual_range_high, "shared_residual_range_high")
+    m_min <- .tox_as_integer_scalar(m_min, "m_min")
+    m_max <- .tox_as_integer_scalar(m_max, "m_max")
+    min_residuals_per_bin <- .tox_as_integer_scalar(min_residuals_per_bin, "min_residuals_per_bin")
+    .result <- .Call("determine_bin_count_occupancy_exhaustive_call", pooled_residuals, n_pooled_residuals, shared_residual_range_low, shared_residual_range_high, m_min, m_max, min_residuals_per_bin)
+    .arguments <- c("pooled_residuals", "n_residuals", "n_pooled_residuals", "shared_residual_range_low", "shared_residual_range_high", "selected_n_bins", "occupancy_failed", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "m_min", "m_max", "min_residuals_per_bin", "ierr")
+    .sources <- c(NA_character_, "pooled_residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        selected_n_bins = .result$selected_n_bins,
+        occupancy_failed = .result$occupancy_failed,
+        min_bin_occupancy = .result$min_bin_occupancy,
+        mean_bin_occupancy = .result$mean_bin_occupancy,
+        max_bin_occupancy = .result$max_bin_occupancy
+    )
+}
+
+#' Exhaustive brute-force reference implementation of Issue #187's occupancy search
+#'
+#' Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest
+#' one whose pooled histogram satisfies the occupancy criterion, instead of
+#' \code{\link{determine_bin_count_occupancy}}'s
+#' own fast geometric-search-then-refinement. Exists purely to validate that routine's result:
+#' occupancy is not guaranteed monotonic in `M` once bin boundaries are recomputed per candidate
+#' (Issue #187 is explicit about this), so a search that stops at the first failure can in
+#' principle miss a larger, independently-admissible `M` the geometric ladder never tries. Takes
+#' `shared_residual_range_low`/`shared_residual_range_high`/`n_pooled_residuals` as direct
+#' inputs, already produced by a prior
+#' \code{\link{determine_bin_count_occupancy}}
+#' call, rather than re-deriving them -- this isolates the comparison to just the `M`-selection
+#' algorithm, uncontaminated by a second independent percentile computation.
+#'
+#' Every candidate is independent (no early exit, no state carried between iterations, unlike
+#' the production routine's own Stage 1/Stage 2), so this is a genuine `do concurrent` with
+#' `reduce(max:...)`, not a sequential search: `candidate_bin_counts` is declared local to the
+#' loop (an ordinary MAX_N_BINS-sized local, not a `tmp_` dummy -- precedented by
+#' `run_js_comp_test_impl`'s own `candidates_n_points_n_neighbors` local) so each concurrent
+#' iteration gets its own private scratch instead of racing on a shared buffer sliced by
+#' `trial_m`. `reduce(max:...)` has no "argmax" form, so the winning `M`'s own
+#' min/mean/max_bin_occupancy are recovered with one extra, ordinary (non-concurrent) call to
+#' `histogram_bin_counts` for `best_m` alone once the reduction is done -- trivial cost next to
+#' the search itself.
+#'
+#' `n_pooled_residuals == 0` and a degenerate zero-width range need no special-case branch here:
+#' `histogram_bin_counts` already guards the degenerate range internally, and an all-zero pool
+#' naturally resolves to `occupancy_failed` (or a trivial pass at `min_residuals_per_bin=0`,
+#' with `mean_bin_occupancy=0.0`, no divide-by-zero) -- intentional, not an oversight.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::determine_bin_count_occupancy_exhaustive_expert}, whose argument names
+#' are the ones an error message reports.
+#'
+#' The expert entry point: you supply \code{pooled_residuals_perm} yourself.
+#' \code{determine_bin_count_occupancy_exhaustive} seeds \code{pooled_residuals_perm} and sorts it by \code{pooled_residuals}.
+#'
+#' @param pooled_residuals a numeric vector. Pooled signed residuals for one neighborhood, across all its neighbors and all studies
+#'   NaN is permitted for this value.
+#' @param pooled_residuals_perm a integer vector. Sorting permutation for `pooled_residuals`, ascending, NaN last
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_residuals`.
+#' @param n_pooled_residuals a integer scalar. Count of non-NaN pooled residuals (N_j), from a prior
+#'   \code{\link{determine_bin_count_occupancy}}
+#'   call
+#'   The minimum valid value is `0`.
+#'   The maximum valid value is `n_residuals`.
+#' @param shared_residual_range_low a numeric scalar. Lower bound of the histogram range (R_low), from a prior
+#'   \code{\link{determine_bin_count_occupancy}}
+#'   call
+#' @param shared_residual_range_high a numeric scalar. Upper bound of the histogram range (R_high), from the same prior call as
+#'   `shared_residual_range_low`
+#'   The minimum valid value is `shared_residual_range_low`.
+#' @param m_min a integer scalar. Smallest candidate bin count tested (M_min)
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_N_BINS`.
+#'   The default value is `3`.
+#' @param m_max a integer scalar. Largest candidate bin count tested (M_max); if a caller passes `m_max < m_min`, the
+#'   implementation clamps it up to `m_min` internally rather than relying on an
+#'   unconfirmed generator capability to bound one optional argument by another
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_N_BINS`.
+#'   The default value is `120`.
+#' @param min_residuals_per_bin a integer scalar. Minimum number of pooled residuals every bin must reach for a candidate bin count to
+#'   be admissible (n_min)
+#'   The minimum valid value is `0`.
+#'   The default value is `10`.
+#' @return a named list with elements:
+#'   \item{selected_n_bins}{a integer scalar. The largest bin count in [m_min, m_max] whose pooled histogram has every bin at or
+#'     above min_residuals_per_bin, found by exhaustive search; m_min when occupancy_failed}
+#'   \item{occupancy_failed}{a logical scalar. `TRUE` iff no candidate bin count in [m_min, m_max] satisfies the occupancy
+#'     criterion (including the case where n_pooled_residuals is 0 and min_residuals_per_bin
+#'     is not itself 0)}
+#'   \item{min_bin_occupancy}{a integer scalar. Minimum bin count at selected_n_bins; 0 when occupancy_failed}
+#'   \item{mean_bin_occupancy}{a numeric scalar. Mean bin count at selected_n_bins; 0 when occupancy_failed}
+#'   \item{max_bin_occupancy}{a integer scalar. Maximum bin count at selected_n_bins; 0 when occupancy_failed}
+#' @export
+determine_bin_count_occupancy_exhaustive_expert <- function(pooled_residuals, pooled_residuals_perm, n_pooled_residuals, shared_residual_range_low, shared_residual_range_high, m_min = 3L, m_max = 120L, min_residuals_per_bin = 10L) {
+    pooled_residuals <- .tox_as_double_vector(pooled_residuals, "pooled_residuals")
+    pooled_residuals_perm <- .tox_as_integer_vector(pooled_residuals_perm, "pooled_residuals_perm")
+    n_pooled_residuals <- .tox_as_integer_scalar(n_pooled_residuals, "n_pooled_residuals")
+    shared_residual_range_low <- .tox_as_double_scalar(shared_residual_range_low, "shared_residual_range_low")
+    shared_residual_range_high <- .tox_as_double_scalar(shared_residual_range_high, "shared_residual_range_high")
+    m_min <- .tox_as_integer_scalar(m_min, "m_min")
+    m_max <- .tox_as_integer_scalar(m_max, "m_max")
+    min_residuals_per_bin <- .tox_as_integer_scalar(min_residuals_per_bin, "min_residuals_per_bin")
+    if (length(pooled_residuals_perm) != length(pooled_residuals))
+        .tox_shape_error("pooled_residuals_perm", length(pooled_residuals_perm), "pooled_residuals", length(pooled_residuals))
+
+    .result <- .Call("determine_bin_count_occupancy_exhaustive_expert_call", pooled_residuals, pooled_residuals_perm, n_pooled_residuals, shared_residual_range_low, shared_residual_range_high, m_min, m_max, min_residuals_per_bin)
+    .arguments <- c("pooled_residuals", "pooled_residuals_perm", "n_residuals", "n_pooled_residuals", "shared_residual_range_low", "shared_residual_range_high", "selected_n_bins", "occupancy_failed", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "m_min", "m_max", "min_residuals_per_bin", "ierr")
+    .sources <- c(NA_character_, NA_character_, "pooled_residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        selected_n_bins = .result$selected_n_bins,
+        occupancy_failed = .result$occupancy_failed,
+        min_bin_occupancy = .result$min_bin_occupancy,
+        mean_bin_occupancy = .result$mean_bin_occupancy,
+        max_bin_occupancy = .result$max_bin_occupancy
+    )
+}
+
 #' Generate the GAMMA-decay (n_points, n_neighbors) candidate grid
 #'
 #' Ported from the grid-building half of 125-stabilize-jscomp's

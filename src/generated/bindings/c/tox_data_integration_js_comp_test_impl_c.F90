@@ -15,6 +15,10 @@
 !| [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]),
 !| and the plateau check that decides when the search has converged
 !| ([[tox_data_integration_js_comp_test_impl(module):check_plateau_condition_impl(interface)]]).
+!| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_exhaustive_impl(interface)]]
+!| is a brute-force reference implementation of the same per-point bin-count search, exhaustively
+!| testing every candidate `M` instead of the fast geometric-search-then-refinement the production
+!| routine uses, for validating that the fast search's own result is correct.
 !| `calc_js_comp_test_candidate_bounds` sizes the candidate-grid work arrays for a caller that
 !| allocates its own. Once a candidate has passed both gates, its bootstrap confidence interval
 !| is resampled from the pooled consensus histogram by
@@ -31,6 +35,7 @@ module tox_data_integration_js_comp_test_impl_c
     private
 
     public :: calc_js_comp_test_candidate_bounds_c
+    public :: gather_pooled_neighborhood_residuals_c
     public :: calc_js_comp_test_n_top_k_jsds_c
 
 contains
@@ -73,6 +78,76 @@ contains
             max_n_neighbors_candidate = max_n_neighbors_candidate&
         )
     end subroutine calc_js_comp_test_candidate_bounds_c
+
+    !> summary: C-wrapper for [[tox_data_integration_js_comp_test_impl(module):gather_pooled_neighborhood_residuals(subroutine)]]
+    !| Given one reference point's own per-study neighbor gene indices (one column of a larger
+    !| `neighborhood_indices_all_studies(n_neighbors, n_points, n_studies)`, as produced by
+    !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_ranged_impl(interface)]]),
+    !| gathers that point's residual values from every neighbor gene, across every study, into one
+    !| flat pooled array. This is the exact same pooling
+    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_impl(interface)]] and
+    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
+    !| perform internally, per reference point, before handing the result to
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+    !| own occupancy search -- published so a caller can reconstruct that exact same input directly
+    !| on real data and feed it to
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_exhaustive_impl(interface)]]
+    !| (or to `determine_bin_count_occupancy` itself), to check whether the fast search and the
+    !| exhaustive reference ever actually disagree in practice, not just on a synthetic fixture.
+    subroutine gather_pooled_neighborhood_residuals_c(&
+            residuals,&
+            max_n_reps_all_studies,&
+            max_n_genes_all_studies,&
+            n_neighbors,&
+            n_studies,&
+            neighborhood_indices_point,&
+            pooled_residuals,&
+            ierr&
+        ) bind(C, name="gather_pooled_neighborhood_residuals_c")
+        use tox_data_integration_js_comp_test_impl, only: gather_pooled_neighborhood_residuals
+
+        integer(c_int), intent(in), target :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        integer(c_int), intent(in), target :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+        integer(c_int), intent(in), target :: n_neighbors
+            !! Number of neighbors per neighborhood
+        integer(c_int), intent(in), target :: n_studies
+            !! Number of studies
+        real(c_double), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in), target :: residuals
+            !! Matrix of signed residuals per study, NaN explicitly allowed for missing values
+        integer(c_int), dimension(n_neighbors, n_studies), intent(in), target :: neighborhood_indices_point
+            !! Gene indices of one reference point's neighborhood, per study -- one column of a
+            !! larger neighborhood_indices_all_studies(n_neighbors, n_points, n_studies), as sliced
+            !! by the caller
+        real(c_double), dimension(max_n_reps_all_studies*n_neighbors*n_studies), intent(out), target :: pooled_residuals
+            !! The pooled residual values for this reference point, across every neighbor and every
+            !! study, laid out exactly as a (max_n_reps_all_studies, n_neighbors, n_studies) array
+            !! would be
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(max_n_reps_all_studies)
+        M_CHECK_NON_NULL(max_n_genes_all_studies)
+        M_CHECK_NON_NULL(n_neighbors)
+        M_CHECK_NON_NULL(n_studies)
+        M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
+        M_CHECK_ARRAY_NON_NULL(neighborhood_indices_point, n_neighbors * n_studies)
+        M_CHECK_ARRAY_NON_NULL(pooled_residuals, (max_n_reps_all_studies*n_neighbors*n_studies))
+
+        call gather_pooled_neighborhood_residuals(&
+            residuals = residuals,&
+            max_n_reps_all_studies = max_n_reps_all_studies,&
+            max_n_genes_all_studies = max_n_genes_all_studies,&
+            n_neighbors = n_neighbors,&
+            n_studies = n_studies,&
+            neighborhood_indices_point = neighborhood_indices_point,&
+            pooled_residuals = pooled_residuals,&
+            ierr = ierr&
+        )
+    end subroutine gather_pooled_neighborhood_residuals_c
 
     !> summary: C-wrapper for [[tox_data_integration_js_comp_test_impl(module):calc_js_comp_test_n_top_k_jsds(subroutine)]]
     !| Ported from 125-stabilize-jscomp's inline `n_bootstrapping_top_k_jsds` computation in

@@ -77,6 +77,8 @@ SEXP estimate_bin_count_call(SEXP, SEXP, SEXP, SEXP);
 SEXP estimate_bin_count_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP determine_bin_count_occupancy_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP determine_bin_count_occupancy_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP determine_bin_count_occupancy_exhaustive_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP determine_bin_count_occupancy_exhaustive_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP generate_js_comp_test_candidates_call(SEXP);
 SEXP check_neighborhood_overlaps_call(SEXP, SEXP);
 SEXP check_mean_pmf_min_counts_call(SEXP, SEXP, SEXP);
@@ -88,6 +90,7 @@ SEXP bootstrap_histogram_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP run_js_comp_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP run_js_comp_test_parameter_search_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_js_comp_test_candidate_bounds_call(SEXP);
+SEXP gather_pooled_neighborhood_residuals_call(SEXP, SEXP);
 SEXP calc_js_comp_test_n_top_k_jsds_call(SEXP, SEXP);
 SEXP determine_shared_residual_range_call(SEXP, SEXP);
 SEXP determine_shared_residual_range_expert_call(SEXP, SEXP, SEXP);
@@ -207,6 +210,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"estimate_bin_count_expert_call", (DL_FUNC) &estimate_bin_count_expert_call, 5},
     {"determine_bin_count_occupancy_call", (DL_FUNC) &determine_bin_count_occupancy_call, 9},
     {"determine_bin_count_occupancy_expert_call", (DL_FUNC) &determine_bin_count_occupancy_expert_call, 10},
+    {"determine_bin_count_occupancy_exhaustive_call", (DL_FUNC) &determine_bin_count_occupancy_exhaustive_call, 7},
+    {"determine_bin_count_occupancy_exhaustive_expert_call", (DL_FUNC) &determine_bin_count_occupancy_exhaustive_expert_call, 8},
     {"generate_js_comp_test_candidates_call", (DL_FUNC) &generate_js_comp_test_candidates_call, 1},
     {"check_neighborhood_overlaps_call", (DL_FUNC) &check_neighborhood_overlaps_call, 2},
     {"check_mean_pmf_min_counts_call", (DL_FUNC) &check_mean_pmf_min_counts_call, 3},
@@ -218,6 +223,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"run_js_comp_test_call", (DL_FUNC) &run_js_comp_test_call, 13},
     {"run_js_comp_test_parameter_search_call", (DL_FUNC) &run_js_comp_test_parameter_search_call, 21},
     {"calc_js_comp_test_candidate_bounds_call", (DL_FUNC) &calc_js_comp_test_candidate_bounds_call, 1},
+    {"gather_pooled_neighborhood_residuals_call", (DL_FUNC) &gather_pooled_neighborhood_residuals_call, 2},
     {"calc_js_comp_test_n_top_k_jsds_call", (DL_FUNC) &calc_js_comp_test_n_top_k_jsds_call, 2},
     {"determine_shared_residual_range_call", (DL_FUNC) &determine_shared_residual_range_call, 2},
     {"determine_shared_residual_range_expert_call", (DL_FUNC) &determine_shared_residual_range_expert_call, 3},

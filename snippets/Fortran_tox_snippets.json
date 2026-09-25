@@ -276,7 +276,7 @@
     "prefix": "tox:data_integration_js_comp_test.use",
     "description": "use tox_data_integration_js_comp_test, only: ...",
     "body": [
-      "use tox_data_integration_js_comp_test, only: ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,generate_js_comp_test_candidates,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|}"
+      "use tox_data_integration_js_comp_test, only: ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,determine_bin_count_occupancy_exhaustive,determine_bin_count_occupancy_exhaustive_expert,generate_js_comp_test_candidates,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|}"
     ]
   },
   "estimate_bin_count (call)": {
@@ -462,6 +462,94 @@
       "    lower_residual_range_quantile=${21:lower_residual_range_quantile}, &",
       "    upper_residual_range_quantile=${22:upper_residual_range_quantile}, &",
       "    ierr=${23:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "determine_bin_count_occupancy_exhaustive (call)": {
+    "prefix": "tox:determine_bin_count_occupancy_exhaustive",
+    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest",
+    "body": [
+      "call determine_bin_count_occupancy_exhaustive( &",
+      "    pooled_residuals=${1:pooled_residuals}, &",
+      "    n_residuals=${2:n_residuals}, &",
+      "    n_pooled_residuals=${3:n_pooled_residuals}, &",
+      "    shared_residual_range_low=${4:shared_residual_range_low}, &",
+      "    shared_residual_range_high=${5:shared_residual_range_high}, &",
+      "    selected_n_bins=${6:selected_n_bins}, &",
+      "    occupancy_failed=${7:occupancy_failed}, &",
+      "    min_bin_occupancy=${8:min_bin_occupancy}, &",
+      "    mean_bin_occupancy=${9:mean_bin_occupancy}, &",
+      "    max_bin_occupancy=${10:max_bin_occupancy}, &",
+      "    m_min=${11:m_min}, &",
+      "    m_max=${12:m_max}, &",
+      "    min_residuals_per_bin=${13:min_residuals_per_bin}, &",
+      "    ierr=${14:ierr})"
+    ]
+  },
+  "determine_bin_count_occupancy_exhaustive (call, checked)": {
+    "prefix": "tox:determine_bin_count_occupancy_exhaustive.checked",
+    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest (with error check)",
+    "body": [
+      "call determine_bin_count_occupancy_exhaustive( &",
+      "    pooled_residuals=${1:pooled_residuals}, &",
+      "    n_residuals=${2:n_residuals}, &",
+      "    n_pooled_residuals=${3:n_pooled_residuals}, &",
+      "    shared_residual_range_low=${4:shared_residual_range_low}, &",
+      "    shared_residual_range_high=${5:shared_residual_range_high}, &",
+      "    selected_n_bins=${6:selected_n_bins}, &",
+      "    occupancy_failed=${7:occupancy_failed}, &",
+      "    min_bin_occupancy=${8:min_bin_occupancy}, &",
+      "    mean_bin_occupancy=${9:mean_bin_occupancy}, &",
+      "    max_bin_occupancy=${10:max_bin_occupancy}, &",
+      "    m_min=${11:m_min}, &",
+      "    m_max=${12:m_max}, &",
+      "    min_residuals_per_bin=${13:min_residuals_per_bin}, &",
+      "    ierr=${14:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "determine_bin_count_occupancy_exhaustive_expert (call)": {
+    "prefix": "tox:determine_bin_count_occupancy_exhaustive_expert",
+    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest",
+    "body": [
+      "call determine_bin_count_occupancy_exhaustive_expert( &",
+      "    pooled_residuals=${1:pooled_residuals}, &",
+      "    pooled_residuals_perm=${2:pooled_residuals_perm}, &",
+      "    n_residuals=${3:n_residuals}, &",
+      "    n_pooled_residuals=${4:n_pooled_residuals}, &",
+      "    shared_residual_range_low=${5:shared_residual_range_low}, &",
+      "    shared_residual_range_high=${6:shared_residual_range_high}, &",
+      "    selected_n_bins=${7:selected_n_bins}, &",
+      "    occupancy_failed=${8:occupancy_failed}, &",
+      "    min_bin_occupancy=${9:min_bin_occupancy}, &",
+      "    mean_bin_occupancy=${10:mean_bin_occupancy}, &",
+      "    max_bin_occupancy=${11:max_bin_occupancy}, &",
+      "    m_min=${12:m_min}, &",
+      "    m_max=${13:m_max}, &",
+      "    min_residuals_per_bin=${14:min_residuals_per_bin}, &",
+      "    ierr=${15:ierr})"
+    ]
+  },
+  "determine_bin_count_occupancy_exhaustive_expert (call, checked)": {
+    "prefix": "tox:determine_bin_count_occupancy_exhaustive_expert.checked",
+    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest (with error check)",
+    "body": [
+      "call determine_bin_count_occupancy_exhaustive_expert( &",
+      "    pooled_residuals=${1:pooled_residuals}, &",
+      "    pooled_residuals_perm=${2:pooled_residuals_perm}, &",
+      "    n_residuals=${3:n_residuals}, &",
+      "    n_pooled_residuals=${4:n_pooled_residuals}, &",
+      "    shared_residual_range_low=${5:shared_residual_range_low}, &",
+      "    shared_residual_range_high=${6:shared_residual_range_high}, &",
+      "    selected_n_bins=${7:selected_n_bins}, &",
+      "    occupancy_failed=${8:occupancy_failed}, &",
+      "    min_bin_occupancy=${9:min_bin_occupancy}, &",
+      "    mean_bin_occupancy=${10:mean_bin_occupancy}, &",
+      "    max_bin_occupancy=${11:max_bin_occupancy}, &",
+      "    m_min=${12:m_min}, &",
+      "    m_max=${13:m_max}, &",
+      "    min_residuals_per_bin=${14:min_residuals_per_bin}, &",
+      "    ierr=${15:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -941,7 +1029,7 @@
     "prefix": "tox:data_integration_js_comp_test_impl.use",
     "description": "use tox_data_integration_js_comp_test_impl, only: ...",
     "body": [
-      "use tox_data_integration_js_comp_test_impl, only: ${1|calc_js_comp_test_candidate_bounds,calc_js_comp_test_n_top_k_jsds|}"
+      "use tox_data_integration_js_comp_test_impl, only: ${1|calc_js_comp_test_candidate_bounds,gather_pooled_neighborhood_residuals,calc_js_comp_test_n_top_k_jsds|}"
     ]
   },
   "calc_js_comp_test_candidate_bounds (call)": {
@@ -952,6 +1040,37 @@
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
       "    max_n_points_candidate=${2:max_n_points_candidate}, &",
       "    max_n_neighbors_candidate=${3:max_n_neighbors_candidate})"
+    ]
+  },
+  "gather_pooled_neighborhood_residuals (call)": {
+    "prefix": "tox:gather_pooled_neighborhood_residuals",
+    "description": "Given one reference point's own per-study neighbor gene indices (one column of a larger",
+    "body": [
+      "call gather_pooled_neighborhood_residuals( &",
+      "    residuals=${1:residuals}, &",
+      "    max_n_reps_all_studies=${2:max_n_reps_all_studies}, &",
+      "    max_n_genes_all_studies=${3:max_n_genes_all_studies}, &",
+      "    n_neighbors=${4:n_neighbors}, &",
+      "    n_studies=${5:n_studies}, &",
+      "    neighborhood_indices_point=${6:neighborhood_indices_point}, &",
+      "    pooled_residuals=${7:pooled_residuals}, &",
+      "    ierr=${8:ierr})"
+    ]
+  },
+  "gather_pooled_neighborhood_residuals (call, checked)": {
+    "prefix": "tox:gather_pooled_neighborhood_residuals.checked",
+    "description": "Given one reference point's own per-study neighbor gene indices (one column of a larger (with error check)",
+    "body": [
+      "call gather_pooled_neighborhood_residuals( &",
+      "    residuals=${1:residuals}, &",
+      "    max_n_reps_all_studies=${2:max_n_reps_all_studies}, &",
+      "    max_n_genes_all_studies=${3:max_n_genes_all_studies}, &",
+      "    n_neighbors=${4:n_neighbors}, &",
+      "    n_studies=${5:n_studies}, &",
+      "    neighborhood_indices_point=${6:neighborhood_indices_point}, &",
+      "    pooled_residuals=${7:pooled_residuals}, &",
+      "    ierr=${8:ierr})",
+      "if (is_err(ierr)) return"
     ]
   },
   "calc_js_comp_test_n_top_k_jsds (call)": {

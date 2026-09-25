@@ -15,6 +15,10 @@
 !| [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]),
 !| and the plateau check that decides when the search has converged
 !| ([[tox_data_integration_js_comp_test_impl(module):check_plateau_condition_impl(interface)]]).
+!| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_exhaustive_impl(interface)]]
+!| is a brute-force reference implementation of the same per-point bin-count search, exhaustively
+!| testing every candidate `M` instead of the fast geometric-search-then-refinement the production
+!| routine uses, for validating that the fast search's own result is correct.
 !| `calc_js_comp_test_candidate_bounds` sizes the candidate-grid work arrays for a caller that
 !| allocates its own. Once a candidate has passed both gates, its bootstrap confidence interval
 !| is resampled from the pooled consensus histogram by
@@ -35,6 +39,8 @@ module tox_data_integration_js_comp_test_c
     public :: estimate_bin_count_expert_c
     public :: determine_bin_count_occupancy_c
     public :: determine_bin_count_occupancy_expert_c
+    public :: determine_bin_count_occupancy_exhaustive_c
+    public :: determine_bin_count_occupancy_exhaustive_expert_c
     public :: generate_js_comp_test_candidates_c
     public :: check_neighborhood_overlaps_c
     public :: check_mean_pmf_min_counts_c
@@ -604,6 +610,279 @@ contains
             ierr = ierr&
         )
     end subroutine determine_bin_count_occupancy_expert_c
+
+    !> summary: C-wrapper for [[tox_data_integration_js_comp_test(module):determine_bin_count_occupancy_exhaustive(subroutine)]]
+    !| Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest
+    !| one whose pooled histogram satisfies the occupancy criterion, instead of
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+    !| own fast geometric-search-then-refinement. Exists purely to validate that routine's result:
+    !| occupancy is not guaranteed monotonic in `M` once bin boundaries are recomputed per candidate
+    !| (Issue #187 is explicit about this), so a search that stops at the first failure can in
+    !| principle miss a larger, independently-admissible `M` the geometric ladder never tries. Takes
+    !| `shared_residual_range_low`/`shared_residual_range_high`/`n_pooled_residuals` as direct
+    !| inputs, already produced by a prior
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
+    !| call, rather than re-deriving them -- this isolates the comparison to just the `M`-selection
+    !| algorithm, uncontaminated by a second independent percentile computation.
+    !|
+    !| Every candidate is independent (no early exit, no state carried between iterations, unlike
+    !| the production routine's own Stage 1/Stage 2), so this is a genuine `do concurrent` with
+    !| `reduce(max:...)`, not a sequential search: `candidate_bin_counts` is declared local to the
+    !| loop (an ordinary MAX_N_BINS-sized local, not a `tmp_` dummy -- precedented by
+    !| `run_js_comp_test_impl`'s own `candidates_n_points_n_neighbors` local) so each concurrent
+    !| iteration gets its own private scratch instead of racing on a shared buffer sliced by
+    !| `trial_m`. `reduce(max:...)` has no "argmax" form, so the winning `M`'s own
+    !| min/mean/max_bin_occupancy are recovered with one extra, ordinary (non-concurrent) call to
+    !| `histogram_bin_counts` for `best_m` alone once the reduction is done -- trivial cost next to
+    !| the search itself.
+    !|
+    !| `n_pooled_residuals == 0` and a degenerate zero-width range need no special-case branch here:
+    !| `histogram_bin_counts` already guards the degenerate range internally, and an all-zero pool
+    !| naturally resolves to `occupancy_failed` (or a trivial pass at `min_residuals_per_bin=0`,
+    !| with `mean_bin_occupancy=0.0`, no divide-by-zero) -- intentional, not an oversight.
+    subroutine determine_bin_count_occupancy_exhaustive_c(&
+            pooled_residuals,&
+            n_residuals,&
+            n_pooled_residuals,&
+            shared_residual_range_low,&
+            shared_residual_range_high,&
+            selected_n_bins,&
+            occupancy_failed,&
+            min_bin_occupancy,&
+            mean_bin_occupancy,&
+            max_bin_occupancy,&
+            m_min,&
+            m_max,&
+            min_residuals_per_bin,&
+            ierr&
+        ) bind(C, name="determine_bin_count_occupancy_exhaustive_c")
+        use tox_data_integration_js_comp_test, only: determine_bin_count_occupancy_exhaustive
+
+        integer(c_int), intent(in), target :: n_residuals
+            !! Number of pooled residuals
+        real(c_double), dimension(n_residuals), intent(in), target :: pooled_residuals
+            !! Pooled signed residuals for one neighborhood, across all its neighbors and all studies
+            !! NaN is permitted for this value.
+        integer(c_int), intent(in), target :: n_pooled_residuals
+            !! Count of non-NaN pooled residuals (N_j), from a prior
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
+            !! call
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `n_residuals`.
+        real(c_double), intent(in), target :: shared_residual_range_low
+            !! Lower bound of the histogram range (R_low), from a prior
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
+            !! call
+        real(c_double), intent(in), target :: shared_residual_range_high
+            !! Upper bound of the histogram range (R_high), from the same prior call as
+            !! `shared_residual_range_low`
+            !! The minimum valid value is `shared_residual_range_low`.
+        integer(c_int), intent(out), target :: selected_n_bins
+            !! The largest bin count in [m_min, m_max] whose pooled histogram has every bin at or
+            !! above min_residuals_per_bin, found by exhaustive search; m_min when occupancy_failed
+        logical(c_bool), intent(out), target :: occupancy_failed
+            !! `.true.` iff no candidate bin count in [m_min, m_max] satisfies the occupancy
+            !! criterion (including the case where n_pooled_residuals is 0 and min_residuals_per_bin
+            !! is not itself 0)
+        integer(c_int), intent(out), target :: min_bin_occupancy
+            !! Minimum bin count at selected_n_bins; 0 when occupancy_failed
+        real(c_double), intent(out), target :: mean_bin_occupancy
+            !! Mean bin count at selected_n_bins; 0 when occupancy_failed
+        integer(c_int), intent(out), target :: max_bin_occupancy
+            !! Maximum bin count at selected_n_bins; 0 when occupancy_failed
+        integer(c_int), intent(in), target :: m_min
+            !! Smallest candidate bin count tested (M_min)
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_N_BINS`.
+            !! The default value is `3_int32`.
+        integer(c_int), intent(in), target :: m_max
+            !! Largest candidate bin count tested (M_max); if a caller passes `m_max < m_min`, the
+            !! implementation clamps it up to `m_min` internally rather than relying on an
+            !! unconfirmed generator capability to bound one optional argument by another
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_N_BINS`.
+            !! The default value is `120_int32`.
+        integer(c_int), intent(in), target :: min_residuals_per_bin
+            !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
+            !! be admissible (n_min)
+            !! The minimum valid value is `0_int32`.
+            !! The default value is `10_int32`.
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_residuals)
+        M_CHECK_NON_NULL(n_pooled_residuals)
+        M_CHECK_NON_NULL(shared_residual_range_low)
+        M_CHECK_NON_NULL(shared_residual_range_high)
+        M_CHECK_NON_NULL(selected_n_bins)
+        M_CHECK_NON_NULL(occupancy_failed)
+        M_CHECK_NON_NULL(min_bin_occupancy)
+        M_CHECK_NON_NULL(mean_bin_occupancy)
+        M_CHECK_NON_NULL(max_bin_occupancy)
+        M_CHECK_NON_NULL(m_min)
+        M_CHECK_NON_NULL(m_max)
+        M_CHECK_NON_NULL(min_residuals_per_bin)
+        M_CHECK_ARRAY_NON_NULL(pooled_residuals, n_residuals)
+
+        call determine_bin_count_occupancy_exhaustive(&
+            pooled_residuals = pooled_residuals,&
+            n_residuals = n_residuals,&
+            n_pooled_residuals = n_pooled_residuals,&
+            shared_residual_range_low = shared_residual_range_low,&
+            shared_residual_range_high = shared_residual_range_high,&
+            selected_n_bins = selected_n_bins,&
+            occupancy_failed = occupancy_failed,&
+            min_bin_occupancy = min_bin_occupancy,&
+            mean_bin_occupancy = mean_bin_occupancy,&
+            max_bin_occupancy = max_bin_occupancy,&
+            m_min = m_min,&
+            m_max = m_max,&
+            min_residuals_per_bin = min_residuals_per_bin,&
+            ierr = ierr&
+        )
+    end subroutine determine_bin_count_occupancy_exhaustive_c
+
+    !> summary: C-wrapper for [[tox_data_integration_js_comp_test(module):determine_bin_count_occupancy_exhaustive_expert(subroutine)]]
+    !| Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest
+    !| one whose pooled histogram satisfies the occupancy criterion, instead of
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+    !| own fast geometric-search-then-refinement. Exists purely to validate that routine's result:
+    !| occupancy is not guaranteed monotonic in `M` once bin boundaries are recomputed per candidate
+    !| (Issue #187 is explicit about this), so a search that stops at the first failure can in
+    !| principle miss a larger, independently-admissible `M` the geometric ladder never tries. Takes
+    !| `shared_residual_range_low`/`shared_residual_range_high`/`n_pooled_residuals` as direct
+    !| inputs, already produced by a prior
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
+    !| call, rather than re-deriving them -- this isolates the comparison to just the `M`-selection
+    !| algorithm, uncontaminated by a second independent percentile computation.
+    !|
+    !| Every candidate is independent (no early exit, no state carried between iterations, unlike
+    !| the production routine's own Stage 1/Stage 2), so this is a genuine `do concurrent` with
+    !| `reduce(max:...)`, not a sequential search: `candidate_bin_counts` is declared local to the
+    !| loop (an ordinary MAX_N_BINS-sized local, not a `tmp_` dummy -- precedented by
+    !| `run_js_comp_test_impl`'s own `candidates_n_points_n_neighbors` local) so each concurrent
+    !| iteration gets its own private scratch instead of racing on a shared buffer sliced by
+    !| `trial_m`. `reduce(max:...)` has no "argmax" form, so the winning `M`'s own
+    !| min/mean/max_bin_occupancy are recovered with one extra, ordinary (non-concurrent) call to
+    !| `histogram_bin_counts` for `best_m` alone once the reduction is done -- trivial cost next to
+    !| the search itself.
+    !|
+    !| `n_pooled_residuals == 0` and a degenerate zero-width range need no special-case branch here:
+    !| `histogram_bin_counts` already guards the degenerate range internally, and an all-zero pool
+    !| naturally resolves to `occupancy_failed` (or a trivial pass at `min_residuals_per_bin=0`,
+    !| with `mean_bin_occupancy=0.0`, no divide-by-zero) -- intentional, not an oversight.
+    subroutine determine_bin_count_occupancy_exhaustive_expert_c(&
+            pooled_residuals,&
+            pooled_residuals_perm,&
+            n_residuals,&
+            n_pooled_residuals,&
+            shared_residual_range_low,&
+            shared_residual_range_high,&
+            selected_n_bins,&
+            occupancy_failed,&
+            min_bin_occupancy,&
+            mean_bin_occupancy,&
+            max_bin_occupancy,&
+            m_min,&
+            m_max,&
+            min_residuals_per_bin,&
+            ierr&
+        ) bind(C, name="determine_bin_count_occupancy_exhaustive_expert_c")
+        use tox_data_integration_js_comp_test, only: determine_bin_count_occupancy_exhaustive_expert
+
+        integer(c_int), intent(in), target :: n_residuals
+            !! Number of pooled residuals
+        real(c_double), dimension(n_residuals), intent(in), target :: pooled_residuals
+            !! Pooled signed residuals for one neighborhood, across all its neighbors and all studies
+            !! NaN is permitted for this value.
+        integer(c_int), dimension(n_residuals), intent(in), target :: pooled_residuals_perm
+            !! Sorting permutation for `pooled_residuals`, ascending, NaN last
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_residuals`.
+        integer(c_int), intent(in), target :: n_pooled_residuals
+            !! Count of non-NaN pooled residuals (N_j), from a prior
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
+            !! call
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `n_residuals`.
+        real(c_double), intent(in), target :: shared_residual_range_low
+            !! Lower bound of the histogram range (R_low), from a prior
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
+            !! call
+        real(c_double), intent(in), target :: shared_residual_range_high
+            !! Upper bound of the histogram range (R_high), from the same prior call as
+            !! `shared_residual_range_low`
+            !! The minimum valid value is `shared_residual_range_low`.
+        integer(c_int), intent(out), target :: selected_n_bins
+            !! The largest bin count in [m_min, m_max] whose pooled histogram has every bin at or
+            !! above min_residuals_per_bin, found by exhaustive search; m_min when occupancy_failed
+        logical(c_bool), intent(out), target :: occupancy_failed
+            !! `.true.` iff no candidate bin count in [m_min, m_max] satisfies the occupancy
+            !! criterion (including the case where n_pooled_residuals is 0 and min_residuals_per_bin
+            !! is not itself 0)
+        integer(c_int), intent(out), target :: min_bin_occupancy
+            !! Minimum bin count at selected_n_bins; 0 when occupancy_failed
+        real(c_double), intent(out), target :: mean_bin_occupancy
+            !! Mean bin count at selected_n_bins; 0 when occupancy_failed
+        integer(c_int), intent(out), target :: max_bin_occupancy
+            !! Maximum bin count at selected_n_bins; 0 when occupancy_failed
+        integer(c_int), intent(in), target :: m_min
+            !! Smallest candidate bin count tested (M_min)
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_N_BINS`.
+            !! The default value is `3_int32`.
+        integer(c_int), intent(in), target :: m_max
+            !! Largest candidate bin count tested (M_max); if a caller passes `m_max < m_min`, the
+            !! implementation clamps it up to `m_min` internally rather than relying on an
+            !! unconfirmed generator capability to bound one optional argument by another
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_N_BINS`.
+            !! The default value is `120_int32`.
+        integer(c_int), intent(in), target :: min_residuals_per_bin
+            !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
+            !! be admissible (n_min)
+            !! The minimum valid value is `0_int32`.
+            !! The default value is `10_int32`.
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_residuals)
+        M_CHECK_NON_NULL(n_pooled_residuals)
+        M_CHECK_NON_NULL(shared_residual_range_low)
+        M_CHECK_NON_NULL(shared_residual_range_high)
+        M_CHECK_NON_NULL(selected_n_bins)
+        M_CHECK_NON_NULL(occupancy_failed)
+        M_CHECK_NON_NULL(min_bin_occupancy)
+        M_CHECK_NON_NULL(mean_bin_occupancy)
+        M_CHECK_NON_NULL(max_bin_occupancy)
+        M_CHECK_NON_NULL(m_min)
+        M_CHECK_NON_NULL(m_max)
+        M_CHECK_NON_NULL(min_residuals_per_bin)
+        M_CHECK_ARRAY_NON_NULL(pooled_residuals, n_residuals)
+        M_CHECK_ARRAY_NON_NULL(pooled_residuals_perm, n_residuals)
+
+        call determine_bin_count_occupancy_exhaustive_expert(&
+            pooled_residuals = pooled_residuals,&
+            pooled_residuals_perm = pooled_residuals_perm,&
+            n_residuals = n_residuals,&
+            n_pooled_residuals = n_pooled_residuals,&
+            shared_residual_range_low = shared_residual_range_low,&
+            shared_residual_range_high = shared_residual_range_high,&
+            selected_n_bins = selected_n_bins,&
+            occupancy_failed = occupancy_failed,&
+            min_bin_occupancy = min_bin_occupancy,&
+            mean_bin_occupancy = mean_bin_occupancy,&
+            max_bin_occupancy = max_bin_occupancy,&
+            m_min = m_min,&
+            m_max = m_max,&
+            min_residuals_per_bin = min_residuals_per_bin,&
+            ierr = ierr&
+        )
+    end subroutine determine_bin_count_occupancy_exhaustive_expert_c
 
     !> summary: C-wrapper for [[tox_data_integration_js_comp_test(module):generate_js_comp_test_candidates(subroutine)]]
     !| Ported from the grid-building half of 125-stabilize-jscomp's

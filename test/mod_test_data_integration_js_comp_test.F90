@@ -12,6 +12,7 @@ module mod_test_data_integration_js_comp_test
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use tox_data_integration
     use tox_data_integration_js_comp_test, only: estimate_bin_count, determine_bin_count_occupancy, &
+                                                  determine_bin_count_occupancy_exhaustive, &
                                                   generate_js_comp_test_candidates, check_neighborhood_overlaps, &
                                                   check_mean_pmf_min_counts, check_plateau_condition, &
                                                   check_effect_size_plateau_condition, create_mean_pmf, &
@@ -20,7 +21,8 @@ module mod_test_data_integration_js_comp_test
     use tox_data_integration_js_comp_test_impl, only: METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, &
                                                        MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, &
                                                        MODE_PLATEAU_BOTH, calc_js_comp_test_n_top_k_jsds, &
-                                                       calc_js_comp_test_candidate_bounds
+                                                       calc_js_comp_test_candidate_bounds, &
+                                                       gather_pooled_neighborhood_residuals
     use tox_errors
     use test_suite, only: test_case
 
@@ -33,7 +35,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(72))
+        allocate (all_tests(78))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -188,6 +190,18 @@ contains
                                   test_occupancy_range_asymmetric_skewed_residuals)
         all_tests(72) = test_case("test_occupancy_range_hand_computed_percentile", &
                                   test_occupancy_range_hand_computed_percentile)
+        all_tests(73) = test_case("test_occupancy_exhaustive_matches_production_on_all_fixtures", &
+                                  test_occupancy_exhaustive_matches_production_on_all_fixtures)
+        all_tests(74) = test_case("test_occupancy_exhaustive_diverges_on_adversarial_fixture", &
+                                  test_occupancy_exhaustive_diverges_on_adversarial_fixture)
+        all_tests(75) = test_case("test_occupancy_exhaustive_hand_computed_own_correctness", &
+                                  test_occupancy_exhaustive_hand_computed_own_correctness)
+        all_tests(76) = test_case("test_gather_pooled_residuals_hand_computed", &
+                                  test_gather_pooled_residuals_hand_computed)
+        all_tests(77) = test_case("test_gather_pooled_residuals_rejects_empty_dimension", &
+                                  test_gather_pooled_residuals_rejects_empty_dimension)
+        all_tests(78) = test_case("test_gather_pooled_residuals_rejects_gene_index_oob", &
+                                  test_gather_pooled_residuals_rejects_gene_index_oob)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -3954,5 +3968,388 @@ contains
                                "test_occupancy_range_hand_computed_percentile: "// &
                                "shared_residual_range_high == calc_percentile_impl(0.95) nearest-rank interpolation")
     end subroutine test_occupancy_range_hand_computed_percentile
+
+    !> Step 3's last missing piece: `determine_bin_count_occupancy_exhaustive` is a brute-force
+    !| reference implementation of the same per-point bin-count search, testing every candidate `M`
+    !| in `[m_min, m_max]` independently instead of stopping at the production routine's first
+    !| occupancy failure. On "ordinary" data the two should agree: reuses 11 of the 12 existing
+    !| `test_occupancy_*` fixtures' own residual data and non-default optional arguments verbatim
+    !| (`test_occupancy_diagnostics_hand_computed` is skipped -- its residuals and range are
+    !| numerically identical to `test_occupancy_finds_valid_below_m_max`'s own fixture, since
+    !| `max_n_reps_all_studies`/`n_neighbors` never enter the occupancy search itself, only
+    !| `estimate_bin_count_impl`'s diagnostic Sturges/FD calculation, so it would just repeat that
+    !| same comparison). For each fixture: call `determine_bin_count_occupancy` first (as the
+    !| original test already does) to get its own `R_low`/`R_high`/`n_pooled_residuals`, then feed
+    !| those captured values directly into `determine_bin_count_occupancy_exhaustive` with the same
+    !| `m_min`/`m_max`/`min_residuals_per_bin` (the exhaustive routine has no `gamma_occupancy`, so
+    !| that one optional never carries over), and assert `selected_n_bins`/`occupancy_failed` agree.
+    !| Independently re-verified via a Python port of both algorithms before writing the assertions
+    !| below (not merely assumed from the production routine's own tests), since the production
+    !| routine's own Stage 2 refinement window only ever tests integers strictly between `m_valid`
+    !| and the first-found `m_invalid` -- it never looks past `m_invalid` at all, so agreement here
+    !| is a genuine property of these fixtures, not a logical certainty.
+    subroutine test_occupancy_exhaustive_matches_production_on_all_fixtures()
+        real(real64) :: r_a(120), r_b(2400), r_c(5), r_d(244), r_e(96), r_f(4), r_g(20), r_h(12), r_i(8)
+        integer(int32) :: i, idx
+        integer(int32) :: prod_n_bins, exh_n_bins, n_pooled, ierr1, ierr2
+        integer(int32) :: min_occ, max_occ, sturges_bins, fd_bins
+        real(real64) :: r_low, r_high, mean_occ
+        logical(c_bool) :: prod_failed, exh_failed
+
+        do i = 1, 120
+            r_a(i) = real(i - 61, real64) ! -60, -59, ..., 59
+        end do
+        do i = 1, 2400
+            r_b(i) = real(i - 1201, real64) ! -1200, -1199, ..., 1199
+        end do
+        r_c = [-9.0_real64, -5.0_real64, 0.0_real64, 5.0_real64, 9.0_real64]
+        idx = 0
+        do i = -130, 129
+            if (i < 51 .or. i >= 67) then
+                idx = idx + 1
+                r_d(idx) = real(i, real64)
+            end if
+        end do
+        do i = 1, 96
+            r_e(i) = real(i - 49, real64) ! -48, -47, ..., 47
+        end do
+        r_f = ieee_value(1.0_real64, ieee_quiet_nan)
+        do i = 1, 20
+            r_g(i) = real(i - 11, real64) ! -10, -9, ..., 9
+        end do
+        r_h = [-5.0_real64, -4.0_real64, -3.0_real64, -2.0_real64, -1.0_real64, 0.0_real64, &
+              1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64, 50.0_real64]
+        r_i = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64, 6.0_real64, 7.0_real64, 8.0_real64]
+
+        ! 1. test_occupancy_finds_valid_below_m_max's own fixture, default args.
+        call determine_bin_count_occupancy(r_a, 120_int32, 1_int32, 1_int32, prod_n_bins, prod_failed, &
+                                           r_low, r_high, n_pooled, min_occ, mean_occ, max_occ, sturges_bins, fd_bins, ierr=ierr1)
+        call determine_bin_count_occupancy_exhaustive(r_a, 120_int32, n_pooled, r_low, r_high, exh_n_bins, &
+                                                       exh_failed, min_occ, mean_occ, max_occ, ierr=ierr2)
+        call assert_equal_int(get_err_code(ierr1), ERR_OK, "test_occupancy_exhaustive_matches_production: 1 prod ierr")
+        call assert_equal_int(get_err_code(ierr2), ERR_OK, "test_occupancy_exhaustive_matches_production: 1 exh ierr")
+        call assert_true(prod_failed .eqv. exh_failed, "test_occupancy_exhaustive_matches_production: 1 occupancy_failed agrees")
+        call assert_equal_int(exh_n_bins, prod_n_bins, "test_occupancy_exhaustive_matches_production: 1 selected_n_bins agrees")
+
+        ! 2. test_occupancy_reaches_m_max_validly's own fixture, default args.
+        call determine_bin_count_occupancy(r_b, 2400_int32, 1_int32, 1_int32, prod_n_bins, prod_failed, &
+                                           r_low, r_high, n_pooled, min_occ, mean_occ, max_occ, sturges_bins, fd_bins, ierr=ierr1)
+        call determine_bin_count_occupancy_exhaustive(r_b, 2400_int32, n_pooled, r_low, r_high, exh_n_bins, &
+                                                       exh_failed, min_occ, mean_occ, max_occ, ierr=ierr2)
+        call assert_equal_int(get_err_code(ierr1), ERR_OK, "test_occupancy_exhaustive_matches_production: 2 prod ierr")
+        call assert_equal_int(get_err_code(ierr2), ERR_OK, "test_occupancy_exhaustive_matches_production: 2 exh ierr")
+        call assert_true(prod_failed .eqv. exh_failed, "test_occupancy_exhaustive_matches_production: 2 occupancy_failed agrees")
+        call assert_equal_int(exh_n_bins, prod_n_bins, "test_occupancy_exhaustive_matches_production: 2 selected_n_bins agrees")
+
+        ! 3. test_occupancy_m_min_itself_invalid_failure's own fixture, default args.
+        call determine_bin_count_occupancy(r_c, 5_int32, 1_int32, 1_int32, prod_n_bins, prod_failed, &
+                                           r_low, r_high, n_pooled, min_occ, mean_occ, max_occ, sturges_bins, fd_bins, ierr=ierr1)
+        call determine_bin_count_occupancy_exhaustive(r_c, 5_int32, n_pooled, r_low, r_high, exh_n_bins, &
+                                                       exh_failed, min_occ, mean_occ, max_occ, ierr=ierr2)
+        call assert_equal_int(get_err_code(ierr1), ERR_OK, "test_occupancy_exhaustive_matches_production: 3 prod ierr")
+        call assert_equal_int(get_err_code(ierr2), ERR_OK, "test_occupancy_exhaustive_matches_production: 3 exh ierr")
+        call assert_true(prod_failed .eqv. exh_failed, "test_occupancy_exhaustive_matches_production: 3 occupancy_failed agrees")
+        call assert_equal_int(exh_n_bins, prod_n_bins, "test_occupancy_exhaustive_matches_production: 3 selected_n_bins agrees")
+
+        ! 4. test_occupancy_min_residuals_per_bin_zero_accepted's own fixture (same as 3),
+        !    min_residuals_per_bin=0, m_max=3.
+        call determine_bin_count_occupancy(r_c, 5_int32, 1_int32, 1_int32, prod_n_bins, prod_failed, &
+                                           r_low, r_high, n_pooled, min_occ, mean_occ, max_occ, sturges_bins, fd_bins, ierr=ierr1, &
+                                           min_residuals_per_bin=0_int32, m_max=3_int32)
+        call determine_bin_count_occupancy_exhaustive(r_c, 5_int32, n_pooled, r_low, r_high, exh_n_bins, &
+                                                       exh_failed, min_occ, mean_occ, max_occ, ierr=ierr2, &
+                                                       min_residuals_per_bin=0_int32, m_max=3_int32)
+        call assert_equal_int(get_err_code(ierr1), ERR_OK, "test_occupancy_exhaustive_matches_production: 4 prod ierr")
+        call assert_equal_int(get_err_code(ierr2), ERR_OK, "test_occupancy_exhaustive_matches_production: 4 exh ierr")
+        call assert_true(prod_failed .eqv. exh_failed, "test_occupancy_exhaustive_matches_production: 4 occupancy_failed agrees")
+        call assert_equal_int(exh_n_bins, prod_n_bins, "test_occupancy_exhaustive_matches_production: 4 selected_n_bins agrees")
+
+        ! 5. test_occupancy_refinement_picks_above_m_valid's own fixture, min_residuals_per_bin=1.
+        call determine_bin_count_occupancy(r_d, 244_int32, 1_int32, 1_int32, prod_n_bins, prod_failed, &
+                                           r_low, r_high, n_pooled, min_occ, mean_occ, max_occ, sturges_bins, fd_bins, ierr=ierr1, &
+                                           min_residuals_per_bin=1_int32)
+        call determine_bin_count_occupancy_exhaustive(r_d, 244_int32, n_pooled, r_low, r_high, exh_n_bins, &
+                                                       exh_failed, min_occ, mean_occ, max_occ, ierr=ierr2, &
+                                                       min_residuals_per_bin=1_int32)
+        call assert_equal_int(get_err_code(ierr1), ERR_OK, "test_occupancy_exhaustive_matches_production: 5 prod ierr")
+        call assert_equal_int(get_err_code(ierr2), ERR_OK, "test_occupancy_exhaustive_matches_production: 5 exh ierr")
+        call assert_true(prod_failed .eqv. exh_failed, "test_occupancy_exhaustive_matches_production: 5 occupancy_failed agrees")
+        call assert_equal_int(exh_n_bins, prod_n_bins, "test_occupancy_exhaustive_matches_production: 5 selected_n_bins agrees")
+
+        ! 6. test_occupancy_refinement_finds_nothing_above_m_valid's own fixture, min_residuals_per_bin=9.
+        call determine_bin_count_occupancy(r_e, 96_int32, 1_int32, 1_int32, prod_n_bins, prod_failed, &
+                                           r_low, r_high, n_pooled, min_occ, mean_occ, max_occ, sturges_bins, fd_bins, ierr=ierr1, &
+                                           min_residuals_per_bin=9_int32)
+        call determine_bin_count_occupancy_exhaustive(r_e, 96_int32, n_pooled, r_low, r_high, exh_n_bins, &
+                                                       exh_failed, min_occ, mean_occ, max_occ, ierr=ierr2, &
+                                                       min_residuals_per_bin=9_int32)
+        call assert_equal_int(get_err_code(ierr1), ERR_OK, "test_occupancy_exhaustive_matches_production: 6 prod ierr")
+        call assert_equal_int(get_err_code(ierr2), ERR_OK, "test_occupancy_exhaustive_matches_production: 6 exh ierr")
+        call assert_true(prod_failed .eqv. exh_failed, "test_occupancy_exhaustive_matches_production: 6 occupancy_failed agrees")
+        call assert_equal_int(exh_n_bins, prod_n_bins, "test_occupancy_exhaustive_matches_production: 6 selected_n_bins agrees")
+
+        ! 7. test_occupancy_all_residuals_nan's own fixture, default args -- both routines must
+        !    agree on the degenerate n_pooled_residuals=0 FAILURE path.
+        call determine_bin_count_occupancy(r_f, 4_int32, 1_int32, 1_int32, prod_n_bins, prod_failed, &
+                                           r_low, r_high, n_pooled, min_occ, mean_occ, max_occ, sturges_bins, fd_bins, ierr=ierr1)
+        call determine_bin_count_occupancy_exhaustive(r_f, 4_int32, n_pooled, r_low, r_high, exh_n_bins, &
+                                                       exh_failed, min_occ, mean_occ, max_occ, ierr=ierr2)
+        call assert_equal_int(get_err_code(ierr1), ERR_OK, "test_occupancy_exhaustive_matches_production: 7 prod ierr")
+        call assert_equal_int(get_err_code(ierr2), ERR_OK, "test_occupancy_exhaustive_matches_production: 7 exh ierr")
+        call assert_true(prod_failed .eqv. exh_failed, "test_occupancy_exhaustive_matches_production: 7 occupancy_failed agrees")
+        call assert_equal_int(exh_n_bins, prod_n_bins, "test_occupancy_exhaustive_matches_production: 7 selected_n_bins agrees")
+
+        ! 8. test_occupancy_geometric_step_guarantees_progress reuses fixture 2's own residuals with
+        !    gamma_occupancy=1.01 -- gamma has no counterpart on the exhaustive routine (it tests
+        !    every M regardless of any growth factor), so only m_min/m_max/min_residuals_per_bin
+        !    (all default here) carry over.
+        call determine_bin_count_occupancy(r_b, 2400_int32, 1_int32, 1_int32, prod_n_bins, prod_failed, &
+                                           r_low, r_high, n_pooled, min_occ, mean_occ, max_occ, sturges_bins, fd_bins, ierr=ierr1, &
+                                           gamma_occupancy=1.01_real64)
+        call determine_bin_count_occupancy_exhaustive(r_b, 2400_int32, n_pooled, r_low, r_high, exh_n_bins, &
+                                                       exh_failed, min_occ, mean_occ, max_occ, ierr=ierr2)
+        call assert_equal_int(get_err_code(ierr1), ERR_OK, "test_occupancy_exhaustive_matches_production: 8 prod ierr")
+        call assert_equal_int(get_err_code(ierr2), ERR_OK, "test_occupancy_exhaustive_matches_production: 8 exh ierr")
+        call assert_true(prod_failed .eqv. exh_failed, "test_occupancy_exhaustive_matches_production: 8 occupancy_failed agrees")
+        call assert_equal_int(exh_n_bins, prod_n_bins, "test_occupancy_exhaustive_matches_production: 8 selected_n_bins agrees")
+
+        ! (test_occupancy_diagnostics_hand_computed skipped -- see doc block above for why.)
+
+        ! 9. test_occupancy_defaults_match_issue_suggestions's own sub-case (A) fixture, with the
+        !    explicit min_residuals_per_bin=5 override (its second, passing call).
+        call determine_bin_count_occupancy(r_g, 20_int32, 1_int32, 1_int32, prod_n_bins, prod_failed, &
+                                           r_low, r_high, n_pooled, min_occ, mean_occ, max_occ, sturges_bins, fd_bins, ierr=ierr1, &
+                                           min_residuals_per_bin=5_int32)
+        call determine_bin_count_occupancy_exhaustive(r_g, 20_int32, n_pooled, r_low, r_high, exh_n_bins, &
+                                                       exh_failed, min_occ, mean_occ, max_occ, ierr=ierr2, &
+                                                       min_residuals_per_bin=5_int32)
+        call assert_equal_int(get_err_code(ierr1), ERR_OK, "test_occupancy_exhaustive_matches_production: 9 prod ierr")
+        call assert_equal_int(get_err_code(ierr2), ERR_OK, "test_occupancy_exhaustive_matches_production: 9 exh ierr")
+        call assert_true(prod_failed .eqv. exh_failed, "test_occupancy_exhaustive_matches_production: 9 occupancy_failed agrees")
+        call assert_equal_int(exh_n_bins, prod_n_bins, "test_occupancy_exhaustive_matches_production: 9 selected_n_bins agrees")
+
+        ! 10. test_occupancy_range_asymmetric_skewed_residuals's own fixture, min_residuals_per_bin=1.
+        call determine_bin_count_occupancy(r_h, 12_int32, 1_int32, 1_int32, prod_n_bins, prod_failed, &
+                                           r_low, r_high, n_pooled, min_occ, mean_occ, max_occ, sturges_bins, fd_bins, ierr=ierr1, &
+                                           min_residuals_per_bin=1_int32)
+        call determine_bin_count_occupancy_exhaustive(r_h, 12_int32, n_pooled, r_low, r_high, exh_n_bins, &
+                                                       exh_failed, min_occ, mean_occ, max_occ, ierr=ierr2, &
+                                                       min_residuals_per_bin=1_int32)
+        call assert_equal_int(get_err_code(ierr1), ERR_OK, "test_occupancy_exhaustive_matches_production: 10 prod ierr")
+        call assert_equal_int(get_err_code(ierr2), ERR_OK, "test_occupancy_exhaustive_matches_production: 10 exh ierr")
+        call assert_true(prod_failed .eqv. exh_failed, "test_occupancy_exhaustive_matches_production: 10 occupancy_failed agrees")
+        call assert_equal_int(exh_n_bins, prod_n_bins, "test_occupancy_exhaustive_matches_production: 10 selected_n_bins agrees")
+
+        ! 11. test_occupancy_range_hand_computed_percentile's own fixture, min_residuals_per_bin=1.
+        call determine_bin_count_occupancy(r_i, 8_int32, 1_int32, 1_int32, prod_n_bins, prod_failed, &
+                                           r_low, r_high, n_pooled, min_occ, mean_occ, max_occ, sturges_bins, fd_bins, ierr=ierr1, &
+                                           min_residuals_per_bin=1_int32)
+        call determine_bin_count_occupancy_exhaustive(r_i, 8_int32, n_pooled, r_low, r_high, exh_n_bins, &
+                                                       exh_failed, min_occ, mean_occ, max_occ, ierr=ierr2, &
+                                                       min_residuals_per_bin=1_int32)
+        call assert_equal_int(get_err_code(ierr1), ERR_OK, "test_occupancy_exhaustive_matches_production: 11 prod ierr")
+        call assert_equal_int(get_err_code(ierr2), ERR_OK, "test_occupancy_exhaustive_matches_production: 11 exh ierr")
+        call assert_true(prod_failed .eqv. exh_failed, "test_occupancy_exhaustive_matches_production: 11 occupancy_failed agrees")
+        call assert_equal_int(exh_n_bins, prod_n_bins, "test_occupancy_exhaustive_matches_production: 11 selected_n_bins agrees")
+    end subroutine test_occupancy_exhaustive_matches_production_on_all_fixtures
+
+    !> The actual point of this routine's existence, demonstrated rather than just claimed: a
+    !| hand-verified adversarial fixture where the production routine's geometric-search-then-
+    !| refinement algorithm provably misses a larger admissible `M` its own ladder never reaches.
+    !| Residuals `{0,5,10,16,22,28,29,40,46,52,56,60}` (12 values), range pinned to the data's exact
+    !| min/max via `lower_residual_range_quantile=0.0`/`upper_residual_range_quantile=1.0` (so
+    !| `R_low=0`, `R_high=60` exactly, not an interpolated percentile), `m_min=3`, `m_max=6`,
+    !| `min_residuals_per_bin=2`.
+    !|
+    !| Direct enumeration (bin_width = 60/M): `M=3` -> counts `[4,3,5]`, `min_occ=3>=2` admissible.
+    !| `M=4` (the production ladder's next rung, `ceil(1.25*3)=3.75->4`) -> counts `[3,4,1,4]`,
+    !| `min_occ=1<2` -- FIRST FAILURE, so the production routine stops here: `m_valid=3`,
+    !| `m_invalid=4`, the refinement interval strictly between them is empty, `selected_n_bins=3`.
+    !| It never tries `M=5` or `M=6` at all. But `M=5` -> counts `[3,2,2,2,3]`, `min_occ=2>=2` --
+    !| independently admissible, and LARGER than what production returned. (`M=6` -> counts
+    !| `[2,2,3,0,2,3]`, `min_occ=0`, correctly inadmissible, so `5` is genuinely the exhaustive
+    !| maximum, not just "a" larger admissible value found by luck.) The exhaustive search, which
+    !| never stops early, correctly finds `5`.
+    subroutine test_occupancy_exhaustive_diverges_on_adversarial_fixture()
+        integer(int32), parameter :: n_residuals = 12
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: prod_n_bins, exh_n_bins, n_pooled, ierr1, ierr2
+        integer(int32) :: min_occ, max_occ, sturges_bins, fd_bins
+        real(real64) :: r_low, r_high, mean_occ
+        logical(c_bool) :: prod_failed, exh_failed
+
+        residuals = [0.0_real64, 5.0_real64, 10.0_real64, 16.0_real64, 22.0_real64, 28.0_real64, &
+                    29.0_real64, 40.0_real64, 46.0_real64, 52.0_real64, 56.0_real64, 60.0_real64]
+
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, prod_n_bins, prod_failed, &
+                                           r_low, r_high, n_pooled, min_occ, mean_occ, max_occ, sturges_bins, fd_bins, &
+                                           ierr=ierr1, m_min=3_int32, m_max=6_int32, min_residuals_per_bin=2_int32, &
+                                           lower_residual_range_quantile=0.0_real64, upper_residual_range_quantile=1.0_real64)
+
+        call assert_equal_int(get_err_code(ierr1), ERR_OK, &
+                              "test_occupancy_exhaustive_diverges_on_adversarial_fixture: prod ierr")
+        call assert_equal_real(r_low, 0.0_real64, TOL, &
+                               "test_occupancy_exhaustive_diverges_on_adversarial_fixture: "// &
+                               "R_low pinned to the data's exact min")
+        call assert_equal_real(r_high, 60.0_real64, TOL, &
+                               "test_occupancy_exhaustive_diverges_on_adversarial_fixture: "// &
+                               "R_high pinned to the data's exact max")
+        call assert_equal_int(n_pooled, 12_int32, &
+                              "test_occupancy_exhaustive_diverges_on_adversarial_fixture: n_pooled_residuals")
+        call assert_false(prod_failed, &
+                          "test_occupancy_exhaustive_diverges_on_adversarial_fixture: "// &
+                          "production finds SOME admissible M (just not the largest)")
+        call assert_equal_int(prod_n_bins, 3_int32, &
+                              "test_occupancy_exhaustive_diverges_on_adversarial_fixture: "// &
+                              "production stops at M=3, blind to M=5's own admissibility")
+
+        call determine_bin_count_occupancy_exhaustive(residuals, n_residuals, n_pooled, r_low, r_high, exh_n_bins, &
+                                                       exh_failed, min_occ, mean_occ, max_occ, ierr=ierr2, &
+                                                       m_min=3_int32, m_max=6_int32, min_residuals_per_bin=2_int32)
+
+        call assert_equal_int(get_err_code(ierr2), ERR_OK, &
+                              "test_occupancy_exhaustive_diverges_on_adversarial_fixture: exh ierr")
+        call assert_false(exh_failed, &
+                          "test_occupancy_exhaustive_diverges_on_adversarial_fixture: "// &
+                          "exhaustive search finds M=5 admissible")
+        call assert_equal_int(exh_n_bins, 5_int32, &
+                              "test_occupancy_exhaustive_diverges_on_adversarial_fixture: "// &
+                              "exhaustive correctly finds the true maximum, M=5")
+        call assert_equal_int(min_occ, 2_int32, &
+                              "test_occupancy_exhaustive_diverges_on_adversarial_fixture: "// &
+                              "min_bin_occupancy at M=5")
+        call assert_equal_int(max_occ, 3_int32, &
+                              "test_occupancy_exhaustive_diverges_on_adversarial_fixture: "// &
+                              "max_bin_occupancy at M=5")
+
+        call assert_not_equal_int(exh_n_bins, prod_n_bins, &
+                                  "test_occupancy_exhaustive_diverges_on_adversarial_fixture: "// &
+                                  "this IS the intentional divergence this routine exists to catch, not a bug")
+    end subroutine test_occupancy_exhaustive_diverges_on_adversarial_fixture
+
+    !> A fresh, non-reused fixture exercising `determine_bin_count_occupancy_exhaustive` directly,
+    !| with no dependence on `determine_bin_count_occupancy` at all: `R_low`/`R_high`/
+    !| `n_pooled_residuals` are literal, hand-picked values, not derived from any prior call.
+    !| 10 residuals `0.5, 1.5, ..., 9.5`, `R_low=0`, `R_high=10` (bin_width = 10/M), `m_min=2`,
+    !| `m_max=5`, `min_residuals_per_bin=3`.
+    !|
+    !| Direct enumeration: `M=2` -> counts `[5,5]`, `min_occ=5` -- admissible, but this is the
+    !| SMALLEST candidate tested, not the answer. `M=3` -> counts `[3,4,3]`, `min_occ=3>=3` --
+    !| admissible. `M=4` -> counts `[2,3,2,3]`, `min_occ=2<3` -- inadmissible. `M=5` -> counts
+    !| `[2,2,2,2,2]`, `min_occ=2<3` -- inadmissible, and this is the LARGEST candidate tested, not
+    !| the answer either. The true answer is `M=3`: the largest bin count that is actually
+    !| admissible, distinct from both "smallest passing" and "largest tested regardless of
+    !| admissibility" -- specifically catches a candidate/scratch-array mixup bug class (e.g.
+    !| accidentally reducing over the wrong loop variable, or reusing a stale `candidate_bin_counts`
+    !| from a different `trial_m`), independent of whether `do concurrent` or a plain `do` was
+    !| chosen for the search itself.
+    subroutine test_occupancy_exhaustive_hand_computed_own_correctness()
+        integer(int32), parameter :: n_residuals = 10
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: selected_n_bins, min_bin_occupancy, max_bin_occupancy, ierr
+        real(real64) :: mean_bin_occupancy
+        logical(c_bool) :: occupancy_failed
+
+        residuals = [0.5_real64, 1.5_real64, 2.5_real64, 3.5_real64, 4.5_real64, 5.5_real64, &
+                    6.5_real64, 7.5_real64, 8.5_real64, 9.5_real64]
+
+        call determine_bin_count_occupancy_exhaustive(residuals, n_residuals, n_residuals, 0.0_real64, 10.0_real64, &
+                                                       selected_n_bins, occupancy_failed, min_bin_occupancy, &
+                                                       mean_bin_occupancy, max_bin_occupancy, ierr=ierr, &
+                                                       m_min=2_int32, m_max=5_int32, min_residuals_per_bin=3_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_occupancy_exhaustive_hand_computed_own_correctness: ierr should be OK")
+        call assert_false(occupancy_failed, &
+                          "test_occupancy_exhaustive_hand_computed_own_correctness: M=2 and M=3 are both admissible")
+        call assert_equal_int(selected_n_bins, 3_int32, &
+                              "test_occupancy_exhaustive_hand_computed_own_correctness: "// &
+                              "true answer M=3 -- neither smallest-passing (2) nor largest-tested (5)")
+        call assert_equal_int(min_bin_occupancy, 3_int32, &
+                              "test_occupancy_exhaustive_hand_computed_own_correctness: min_bin_occupancy at M=3")
+        call assert_equal_int(max_bin_occupancy, 4_int32, &
+                              "test_occupancy_exhaustive_hand_computed_own_correctness: max_bin_occupancy at M=3")
+        call assert_equal_real(mean_bin_occupancy, 10.0_real64/3.0_real64, TOL, &
+                               "test_occupancy_exhaustive_hand_computed_own_correctness: mean_bin_occupancy == 10/3")
+    end subroutine test_occupancy_exhaustive_hand_computed_own_correctness
+
+    !> `gather_pooled_neighborhood_residuals` is the exact per-point pooling step
+    !| `run_js_comp_test`/`run_js_comp_test_parameter_search` perform internally, now exported so a
+    !| caller can reconstruct that same input on real data. 2 reps, 3 genes, 2 neighbors, 2 studies,
+    !| every residual value distinct so a layout bug (wrong stride/order) cannot hide.
+    !|
+    !| `residuals(:, :, 1)` (study 1): gene 1 -> [1,2], gene 2 -> [3,4], gene 3 -> [5,6].
+    !| `residuals(:, :, 2)` (study 2): gene 1 -> [10,20], gene 2 -> [30,40], gene 3 -> [50,60].
+    !| `neighborhood_indices_point`: study 1 neighbors = genes [1, 3]; study 2 neighbors = genes
+    !| [2, 1].
+    !|
+    !| Hand layout, per `n_predecessors = ((i_study-1)*n_neighbors + (i_neighbor-1))*max_n_reps`:
+    !| study 1/neighbor 1 (gene 1) -> pooled(1:2) = [1, 2]; study 1/neighbor 2 (gene 3) ->
+    !| pooled(3:4) = [5, 6]; study 2/neighbor 1 (gene 2) -> pooled(5:6) = [30, 40]; study
+    !| 2/neighbor 2 (gene 1) -> pooled(7:8) = [10, 20].
+    subroutine test_gather_pooled_residuals_hand_computed()
+        integer(int32), parameter :: max_n_reps = 2, max_n_genes = 3, n_neighbors = 2, n_studies = 2
+        real(real64) :: residuals(max_n_reps, max_n_genes, n_studies)
+        integer(int32) :: neighborhood_indices_point(n_neighbors, n_studies)
+        real(real64) :: pooled_residuals(max_n_reps*n_neighbors*n_studies)
+        integer(int32) :: ierr
+
+        residuals(:, :, 1) = reshape([1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64, 6.0_real64], [2, 3])
+        residuals(:, :, 2) = reshape([10.0_real64, 20.0_real64, 30.0_real64, 40.0_real64, 50.0_real64, 60.0_real64], &
+                                     [2, 3])
+        neighborhood_indices_point = reshape([1_int32, 3_int32, 2_int32, 1_int32], [2, 2])
+
+        call gather_pooled_neighborhood_residuals(residuals, max_n_reps, max_n_genes, n_neighbors, n_studies, &
+                                                   neighborhood_indices_point, pooled_residuals, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_gather_pooled_residuals_hand_computed: ierr should be OK")
+        call assert_equal_array_real(pooled_residuals, &
+                                     [1.0_real64, 2.0_real64, 5.0_real64, 6.0_real64, &
+                                      30.0_real64, 40.0_real64, 10.0_real64, 20.0_real64], &
+                                     max_n_reps*n_neighbors*n_studies, TOL, &
+                                     "test_gather_pooled_residuals_hand_computed: pooled layout")
+    end subroutine test_gather_pooled_residuals_hand_computed
+
+    !> `n_studies=0` must be rejected by the shared `validate_dimension_size` check at `arg_pos=5`,
+    !| before the gather body ever runs (the array contents below are irrelevant to this test).
+    subroutine test_gather_pooled_residuals_rejects_empty_dimension()
+        integer(int32), parameter :: max_n_reps = 2, max_n_genes = 3, n_neighbors = 2, n_studies = 2
+        real(real64) :: residuals(max_n_reps, max_n_genes, n_studies)
+        integer(int32) :: neighborhood_indices_point(n_neighbors, n_studies)
+        real(real64) :: pooled_residuals(max_n_reps*n_neighbors*n_studies)
+        integer(int32) :: ierr
+
+        residuals = 0.0_real64
+        neighborhood_indices_point = 1_int32
+
+        call gather_pooled_neighborhood_residuals(residuals, max_n_reps, max_n_genes, n_neighbors, 0_int32, &
+                                                   neighborhood_indices_point, pooled_residuals, ierr)
+
+        call assert_err(ierr, ERR_EMPTY_INPUT, &
+                        "test_gather_pooled_residuals_rejects_empty_dimension: n_studies=0 rejected", &
+                        arg_pos=5_int32)
+    end subroutine test_gather_pooled_residuals_rejects_empty_dimension
+
+    !> A gene index of `max_n_genes_all_studies + 1` in `neighborhood_indices_point` is out of
+    !| bounds for `residuals`'s own gene extent and must be rejected with `ERR_INVALID_INPUT` at
+    !| `arg_pos=6`, not silently read out-of-bounds.
+    subroutine test_gather_pooled_residuals_rejects_gene_index_oob()
+        integer(int32), parameter :: max_n_reps = 2, max_n_genes = 3, n_neighbors = 2, n_studies = 2
+        real(real64) :: residuals(max_n_reps, max_n_genes, n_studies)
+        integer(int32) :: neighborhood_indices_point(n_neighbors, n_studies)
+        real(real64) :: pooled_residuals(max_n_reps*n_neighbors*n_studies)
+        integer(int32) :: ierr
+
+        residuals = 0.0_real64
+        neighborhood_indices_point = reshape([1_int32, max_n_genes + 1_int32, 2_int32, 1_int32], [2, 2])
+
+        call gather_pooled_neighborhood_residuals(residuals, max_n_reps, max_n_genes, n_neighbors, n_studies, &
+                                                   neighborhood_indices_point, pooled_residuals, ierr)
+
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_gather_pooled_residuals_rejects_gene_index_oob: "// &
+                        "gene index max_n_genes+1 rejected", arg_pos=6_int32)
+    end subroutine test_gather_pooled_residuals_rejects_gene_index_oob
 
 end module mod_test_data_integration_js_comp_test

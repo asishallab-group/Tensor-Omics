@@ -141,6 +141,37 @@
       ")"
     ]
   },
+  "determine_bin_count_occupancy_exhaustive (call)": {
+    "prefix": "tox:determine_bin_count_occupancy_exhaustive",
+    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest",
+    "body": [
+      "${1:result} <- determine_bin_count_occupancy_exhaustive(",
+      "  pooled_residuals = ${2:pooled_residuals},",
+      "  n_pooled_residuals = ${3:n_pooled_residuals},",
+      "  shared_residual_range_low = ${4:shared_residual_range_low},",
+      "  shared_residual_range_high = ${5:shared_residual_range_high},",
+      "  m_min = ${6:3L},",
+      "  m_max = ${7:120L},",
+      "  min_residuals_per_bin = ${8:10L}",
+      ")"
+    ]
+  },
+  "determine_bin_count_occupancy_exhaustive_expert (call)": {
+    "prefix": "tox:determine_bin_count_occupancy_exhaustive_expert",
+    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest",
+    "body": [
+      "${1:result} <- determine_bin_count_occupancy_exhaustive_expert(",
+      "  pooled_residuals = ${2:pooled_residuals},",
+      "  pooled_residuals_perm = ${3:pooled_residuals_perm},",
+      "  n_pooled_residuals = ${4:n_pooled_residuals},",
+      "  shared_residual_range_low = ${5:shared_residual_range_low},",
+      "  shared_residual_range_high = ${6:shared_residual_range_high},",
+      "  m_min = ${7:3L},",
+      "  m_max = ${8:120L},",
+      "  min_residuals_per_bin = ${9:10L}",
+      ")"
+    ]
+  },
   "generate_js_comp_test_candidates (call)": {
     "prefix": "tox:generate_js_comp_test_candidates",
     "description": "Ported from the grid-building half of 125-stabilize-jscomp's",
@@ -293,6 +324,16 @@
     "body": [
       "${1:result} <- calc_js_comp_test_candidate_bounds(",
       "  max_n_genes_all_studies = ${2:max_n_genes_all_studies}",
+      ")"
+    ]
+  },
+  "gather_pooled_neighborhood_residuals (call)": {
+    "prefix": "tox:gather_pooled_neighborhood_residuals",
+    "description": "Given one reference point's own per-study neighbor gene indices (one column of a larger",
+    "body": [
+      "${1:result} <- gather_pooled_neighborhood_residuals(",
+      "  residuals = ${2:residuals},",
+      "  neighborhood_indices_point = ${3:neighborhood_indices_point}",
       ")"
     ]
   },

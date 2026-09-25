@@ -77,6 +77,8 @@ from .tox_data_integration_js_comp_test import (
     estimate_bin_count_expert,
     determine_bin_count_occupancy,
     determine_bin_count_occupancy_expert,
+    determine_bin_count_occupancy_exhaustive,
+    determine_bin_count_occupancy_exhaustive_expert,
     generate_js_comp_test_candidates,
     check_neighborhood_overlaps,
     check_mean_pmf_min_counts,
@@ -90,6 +92,7 @@ from .tox_data_integration_js_comp_test import (
 )
 from .tox_data_integration_js_comp_test_impl import (
     calc_js_comp_test_candidate_bounds,
+    gather_pooled_neighborhood_residuals,
     calc_js_comp_test_n_top_k_jsds,
 )
 from .tox_data_integration_jsd import (
@@ -278,6 +281,8 @@ __all__ = [
     "detect_outliers",
     "detect_subfunctionalization",
     "determine_bin_count_occupancy",
+    "determine_bin_count_occupancy_exhaustive",
+    "determine_bin_count_occupancy_exhaustive_expert",
     "determine_bin_count_occupancy_expert",
     "determine_shared_residual_range",
     "determine_shared_residual_range_expert",
@@ -291,6 +296,7 @@ __all__ = [
     "fjct_compute_contribution_scores",
     "fjct_compute_jsd",
     "fjct_compute_masked_jsd",
+    "gather_pooled_neighborhood_residuals",
     "generate_js_comp_test_candidates",
     "get_array_metadata",
     "get_tox_data_dims",
