@@ -9,7 +9,7 @@ module mod_test_data_integration_js_comp_test
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
-    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_is_nan
     use tox_data_integration
     use tox_data_integration_js_comp_test, only: estimate_bin_count, determine_bin_count_occupancy, &
                                                   determine_bin_count_occupancy_exhaustive, &
@@ -22,7 +22,8 @@ module mod_test_data_integration_js_comp_test
                                                        MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, &
                                                        MODE_PLATEAU_BOTH, calc_js_comp_test_n_top_k_jsds, &
                                                        calc_js_comp_test_candidate_bounds, &
-                                                       gather_pooled_neighborhood_residuals
+                                                       gather_pooled_neighborhood_residuals, &
+                                                       determine_point_bin_count, build_point_study_histogram
     use tox_errors
     use test_suite, only: test_case
 
@@ -35,7 +36,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(78))
+        allocate (all_tests(86))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -202,6 +203,22 @@ contains
                                   test_gather_pooled_residuals_rejects_empty_dimension)
         all_tests(78) = test_case("test_gather_pooled_residuals_rejects_gene_index_oob", &
                                   test_gather_pooled_residuals_rejects_gene_index_oob)
+        all_tests(79) = test_case("test_run_js_comp_test_golden_regression", &
+                                  test_run_js_comp_test_golden_regression)
+        all_tests(80) = test_case("test_point_bin_count_uniform_matches_multi_study_gather", &
+                                  test_point_bin_count_uniform_matches_multi_study_gather)
+        all_tests(81) = test_case("test_point_bin_count_ragged_matches_hand_built_pool", &
+                                  test_point_bin_count_ragged_matches_hand_built_pool)
+        all_tests(82) = test_case("test_point_bin_count_out_of_range_index_sets_ierr", &
+                                  test_point_bin_count_out_of_range_index_sets_ierr)
+        all_tests(83) = test_case("test_point_bin_count_rounded_mean_diagnostic_count", &
+                                  test_point_bin_count_rounded_mean_diagnostic_count)
+        all_tests(84) = test_case("test_point_study_histogram_matches_multi_point_builder", &
+                                  test_point_study_histogram_matches_multi_point_builder)
+        all_tests(85) = test_case("test_point_study_histogram_excludes_nan_residuals", &
+                                  test_point_study_histogram_excludes_nan_residuals)
+        all_tests(86) = test_case("test_run_js_comp_test_too_many_neighbors_sets_ierr", &
+                                  test_run_js_comp_test_too_many_neighbors_sets_ierr)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -4359,5 +4376,540 @@ contains
                         "test_gather_pooled_residuals_rejects_gene_index_oob: "// &
                         "gene index max_n_genes+1 rejected", arg_pos=6_int32)
     end subroutine test_gather_pooled_residuals_rejects_gene_index_oob
+
+    !> Shared fixture for the run_js_comp_test golden regression (and the determine_point_bin_count
+    !| uniform-layout test): 3 studies x 10 genes x 4 replicate slots with uneven real replicate
+    !| counts (study 1 has 4, study 2 has 3, study 3 has 2 -- the rest NaN), one gene per study 2/3
+    !| with a NaN mean and all-NaN residuals, and two scattered NaN residuals. Literal 2-decimal
+    !| values (generated once, offline, from a seeded normal draw) rather than a formula, so the
+    !| fixture itself cannot drift with a libm change. `gene_means_perms` is the hand-sorted
+    !| ascending, NaN-last permutation of each study's means.
+    subroutine build_run_js_comp_test_golden_fixture(gene_means, gene_means_perms, residuals, x_star)
+        real(real64), intent(out) :: gene_means(10, 3)
+        integer(int32), intent(out) :: gene_means_perms(10, 3)
+        real(real64), intent(out) :: residuals(4, 10, 3)
+        real(real64), intent(out) :: x_star(3)
+        real(real64) :: nan_val
+
+        nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
+
+        gene_means(:, 1) = [1.59_real64, 4.24_real64, 1.74_real64, 0.10_real64, 2.82_real64, 0.66_real64, &
+                            0.56_real64, 9.52_real64, 3.49_real64, 0.50_real64]
+        gene_means(:, 2) = [1.95_real64, 5.10_real64, 9.29_real64, 4.56_real64, 2.09_real64, 8.59_real64, &
+                            7.01_real64, 7.75_real64, 4.70_real64, nan_val]
+        gene_means(:, 3) = [4.73_real64, 3.27_real64, 4.54_real64, 2.59_real64, 1.91_real64, 6.39_real64, &
+                            5.93_real64, 7.12_real64, nan_val, 7.93_real64]
+        gene_means_perms(:, 1) = [4, 10, 7, 6, 1, 3, 5, 9, 2, 8]
+        gene_means_perms(:, 2) = [1, 5, 4, 9, 2, 7, 8, 6, 3, 10]
+        gene_means_perms(:, 3) = [5, 4, 2, 3, 1, 7, 6, 8, 10, 9]
+
+        residuals(:, 1, 1) = [-1.06_real64, 1.33_real64, 0.60_real64, -0.13_real64]
+        residuals(:, 2, 1) = [-1.02_real64, 1.59_real64, -0.01_real64, 2.05_real64]
+        residuals(:, 3, 1) = [0.35_real64, 2.96_real64, 0.79_real64, -0.77_real64]
+        residuals(:, 4, 1) = [0.31_real64, 0.42_real64, 0.81_real64, 0.18_real64]
+        residuals(:, 5, 1) = [0.66_real64, -0.68_real64, -0.33_real64, -0.51_real64]
+        residuals(:, 6, 1) = [1.46_real64, -0.92_real64, -0.88_real64, -0.34_real64]
+        residuals(:, 7, 1) = [0.46_real64, nan_val, -0.38_real64, -0.55_real64]
+        residuals(:, 8, 1) = [-1.07_real64, -0.15_real64, 0.32_real64, 0.28_real64]
+        residuals(:, 9, 1) = [-0.01_real64, 0.73_real64, 0.62_real64, 0.03_real64]
+        residuals(:, 10, 1) = [0.51_real64, 0.92_real64, 0.65_real64, -0.15_real64]
+
+        residuals(:, 1, 2) = [0.44_real64, -0.33_real64, -2.28_real64, nan_val]
+        residuals(:, 2, 2) = [nan_val, 0.24_real64, 0.33_real64, nan_val]
+        residuals(:, 3, 2) = [-1.38_real64, 1.82_real64, 0.51_real64, nan_val]
+        residuals(:, 4, 2) = [1.35_real64, 2.54_real64, -0.49_real64, nan_val]
+        residuals(:, 5, 2) = [-2.09_real64, 0.65_real64, 2.20_real64, nan_val]
+        residuals(:, 6, 2) = [0.87_real64, -0.95_real64, 1.48_real64, nan_val]
+        residuals(:, 7, 2) = [3.34_real64, -0.19_real64, -0.68_real64, nan_val]
+        residuals(:, 8, 2) = [-0.21_real64, -0.96_real64, 0.18_real64, nan_val]
+        residuals(:, 9, 2) = [-2.46_real64, -0.68_real64, 1.84_real64, nan_val]
+        residuals(:, 10, 2) = [nan_val, nan_val, nan_val, nan_val]
+
+        residuals(:, 1, 3) = [-0.76_real64, 0.23_real64, nan_val, nan_val]
+        residuals(:, 2, 3) = [-0.45_real64, -0.02_real64, nan_val, nan_val]
+        residuals(:, 3, 3) = [-0.04_real64, -0.92_real64, nan_val, nan_val]
+        residuals(:, 4, 3) = [-0.08_real64, -0.19_real64, nan_val, nan_val]
+        residuals(:, 5, 3) = [0.15_real64, -1.06_real64, nan_val, nan_val]
+        residuals(:, 6, 3) = [-0.24_real64, -0.17_real64, nan_val, nan_val]
+        residuals(:, 7, 3) = [-0.29_real64, 0.77_real64, nan_val, nan_val]
+        residuals(:, 8, 3) = [-0.56_real64, -0.81_real64, nan_val, nan_val]
+        residuals(:, 9, 3) = [nan_val, nan_val, nan_val, nan_val]
+        residuals(:, 10, 3) = [0.95_real64, 0.74_real64, nan_val, nan_val]
+
+        x_star = [1.0_real64, 3.0_real64, 5.5_real64]
+    end subroutine build_run_js_comp_test_golden_fixture
+
+    !> Characterization (golden) test for run_js_comp_test, written against the pre-refactor code
+    !| before its Pass B/C loops moved onto the per-point helpers (determine_point_bin_count,
+    !| build_point_study_histogram): every expected value below was captured from that code's own
+    !| output, printed at full precision (es25.17), and is compared EXACTLY (tolerance 0). This is
+    !| deliberately not a hand-derived test -- it exists purely to prove the refactor is
+    !| bit-for-bit behavior-preserving. Fixture: build_run_js_comp_test_golden_fixture (3 studies,
+    !| uneven replicate counts, NaN means and residuals), 3 reference points, 4 neighbors,
+    !| `m_min=2`, `m_max=12`, `min_residuals_per_bin=3` (so the points pick different bin counts,
+    !| 6/5/3, exercising the zero padding up to `max_n_bins_per_point`),
+    !| 300 permutations with `random_seed=7`.
+    subroutine test_run_js_comp_test_golden_regression()
+        integer(int32), parameter :: n_studies = 3, max_n_genes_all_studies = 10, max_n_reps_all_studies = 4
+        integer(int32), parameter :: n_points = 3, n_neighbors = 4
+        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
+        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
+        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+        real(real64) :: x_star(n_points)
+        integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
+        integer(int32) :: neighborhood_range(2, n_points, n_studies)
+        integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
+        real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
+        logical(c_bool) :: occupancy_failed(n_points)
+        integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
+        real(real64) :: mean_bin_occupancy(n_points)
+        integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
+        real(real64) :: pmfs(256, n_points, n_studies)
+        integer(int32) :: counts(256, n_points, n_studies)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: mean_pmf(256, n_points)
+        integer(int32) :: mean_pmf_counts(256, n_points)
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
+        real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
+        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
+        integer(int32) :: ierr
+        character(len=*), parameter :: name = "test_run_js_comp_test_golden_regression: "
+
+        call build_run_js_comp_test_golden_fixture(gene_means, gene_means_perms, residuals, x_star)
+
+        call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
+                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                              max_n_bins_per_point, occupancy_failed, &
+                              n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
+                              sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
+                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
+                              ierr=ierr, n_permutations=300_int32, random_seed=7_int32, m_min=2_int32, &
+                              m_max=12_int32, min_residuals_per_bin=3_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_equal_int(max_n_bins_per_point, 6_int32, name//"max_n_bins_per_point")
+        call assert_equal_array_int(n_bins_per_point, [6, 5, 3], n_points, name//"n_bins_per_point")
+        call assert_equal_array_int(n_pooled_residuals, [35, 36, 35], n_points, name//"n_pooled_residuals")
+        call assert_equal_array_int(min_bin_occupancy, [3, 3, 6], n_points, name//"min_bin_occupancy")
+        call assert_equal_array_int(max_bin_occupancy, [10, 12, 21], n_points, name//"max_bin_occupancy")
+        call assert_equal_array_int(sturges_bins, [5, 5, 5], n_points, name//"sturges_bins")
+        call assert_equal_array_int(fd_bins, [4, 5, 4], n_points, name//"fd_bins")
+        call assert_equal_array_int(mean_pmf_included_n_reps, [35, 36, 35], n_points, name//"mean_pmf_included_n_reps")
+        call assert_equal_array_int(included_n_reps, [15, 16, 16, 12, 12, 11, 8, 8, 8], n_points*n_studies, &
+                                    name//"included_n_reps", n_rows=n_points)
+        call assert_equal_array_int(neighborhood_indices, [6, 7, 10, 1, 5, 9, 2, 3, 2, 9, 5, 3, 1, 5, 4, 9, 5, 1, &
+                                    4, 9, 2, 9, 4, 7, 5, 4, 2, 3, 2, 4, 5, 3, 7, 1, 6, 3], &
+                                    n_neighbors*n_points*n_studies, name//"neighborhood_indices", n_rows=n_neighbors)
+        call assert_equal_array_int(neighborhood_range, [2, 5, 6, 9, 6, 9, 1, 4, 1, 4, 3, 6, 1, 4, 1, 4, 4, 7], &
+                                    2*n_points*n_studies, name//"neighborhood_range", n_rows=2_int32)
+        call assert_false(any(occupancy_failed), name//"no point fails occupancy")
+        call assert_equal_array_real(mean_bin_occupancy, [5.83333333333333304e+00_real64, 7.20000000000000018e+00_real64, &
+                1.16666666666666661e+01_real64], n_points, 0.0_real64, name//"mean_bin_occupancy")
+        call assert_equal_array_real(shared_residual_range_low, [-2.14699999999999980e+00_real64, -2.13749999999999973e+00_real64, &
+                -9.49999999999999956e-01_real64], n_points, 0.0_real64, name//"shared_residual_range_low")
+        call assert_equal_array_real(shared_residual_range_high, [1.94799999999999907e+00_real64, 2.28500000000000014e+00_real64, &
+                2.66599999999999859e+00_real64], n_points, 0.0_real64, name//"shared_residual_range_high")
+        call assert_equal_array_real(js_divergences, [7.15954711919930820e-02_real64, 5.69340969660712404e-02_real64, &
+                1.53345794194357406e-02_real64, 1.59340812730354997e-01_real64, &
+                7.83994812628129034e-02_real64, 1.55068230944686806e-02_real64, &
+                2.10317408393713295e-01_real64, 2.15286223168920043e-01_real64, &
+                9.71785165582409738e-02_real64], n_points*n_studies, 0.0_real64, &
+                                     name//"js_divergences", n_rows=n_points)
+        call assert_equal_array_real(weights, [3.26797385620915037e-01_real64, 3.39869281045751648e-01_real64, &
+                3.33333333333333315e-01_real64, 3.33333333333333315e-01_real64, &
+                3.40425531914893609e-01_real64, 3.26241134751773076e-01_real64, &
+                3.30769230769230760e-01_real64, 3.38461538461538480e-01_real64, &
+                3.30769230769230760e-01_real64], n_points*n_studies, 0.0_real64, &
+                                     name//"weights", n_rows=n_points)
+        call assert_equal_array_real(global_js_divergence, [4.78588898838338689e-02_real64, 8.48617529169309465e-02_real64, &
+                1.74576296864357827e-01_real64], n_studies, 0.0_real64, name//"global_js_divergence")
+        call assert_equal_array_real(p_values, [1.39534883720930231e-01_real64, 1.32890365448504993e-01_real64, &
+                7.97342192691029850e-02_real64], n_studies, 0.0_real64, name//"p_values")
+        ! counts per (point, study), rows 1:max_n_bins_per_point -- rows beyond the point's own
+        ! n_bins_per_point are the zero padding build_residual_histograms_impl guarantees
+        call assert_equal_array_int(counts(1:6, 1, 1), [0, 3, 5, 2, 3, 2], 6_int32, name//"counts(1,1)")
+        call assert_equal_array_int(counts(1:6, 2, 1), [0, 4, 5, 4, 3, 0], 6_int32, name//"counts(2,1)")
+        call assert_equal_array_int(counts(1:6, 3, 1), [8, 5, 3, 0, 0, 0], 6_int32, name//"counts(3,1)")
+        call assert_equal_array_int(counts(1:6, 1, 2), [3, 0, 3, 1, 1, 4], 6_int32, name//"counts(1,2)")
+        call assert_equal_array_int(counts(1:6, 2, 2), [3, 2, 2, 2, 3, 0], 6_int32, name//"counts(2,2)")
+        call assert_equal_array_int(counts(1:6, 3, 2), [6, 2, 3, 0, 0, 0], 6_int32, name//"counts(3,2)")
+        call assert_equal_array_int(counts(1:6, 1, 3), [0, 2, 2, 4, 0, 0], 6_int32, name//"counts(1,3)")
+        call assert_equal_array_int(counts(1:6, 2, 3), [0, 3, 5, 0, 0, 0], 6_int32, name//"counts(2,3)")
+        call assert_equal_array_int(counts(1:6, 3, 3), [7, 1, 0, 0, 0, 0], 6_int32, name//"counts(3,3)")
+        call assert_equal_array_int(mean_pmf_counts(1:6, 1), [3, 5, 10, 7, 4, 6], 6_int32, name//"mean_pmf_counts(1)")
+        call assert_equal_array_int(mean_pmf_counts(1:6, 2), [3, 9, 12, 6, 6, 0], 6_int32, name//"mean_pmf_counts(2)")
+        call assert_equal_array_int(mean_pmf_counts(1:6, 3), [21, 8, 6, 0, 0, 0], 6_int32, name//"mean_pmf_counts(3)")
+    end subroutine test_run_js_comp_test_golden_regression
+
+    !> Exact comparison of two real arrays that may hold NaN: the NaN positions must coincide and
+    !| every other element must be exactly equal. assert_equal_array_real alone cannot check this,
+    !| because `abs(NaN - x) > tol` is false for any `x`.
+    subroutine assert_equal_array_real_nan_exact(a, b, n, msg)
+        integer(int32), intent(in) :: n
+        real(real64), intent(in) :: a(n), b(n)
+        character(*), intent(in) :: msg
+
+        call assert_equal_array_logical(logical(ieee_is_nan(a), c_bool), logical(ieee_is_nan(b), c_bool), n, &
+                                        msg//" (NaN positions)")
+        call assert_true(all(ieee_is_nan(a) .or. a == b), msg//" (non-NaN values)")
+    end subroutine assert_equal_array_real_nan_exact
+
+    !> determine_point_bin_count with the same neighbor count for every study must give exactly
+    !| what the pre-refactor Pass B did: one multi-study gather_pooled_neighborhood_residuals call,
+    !| then the plain determine_bin_count_occupancy wrapper (which seeds and heapsorts the
+    !| permutation itself, exactly as the helper does). Fixture: the golden fixture's third
+    !| reference point, whose per-study neighbor genes (captured from Pass A) are study 1
+    !| `[2,9,5,3]`, study 2 `[2,9,4,7]`, study 3 `[7,1,6,3]`, with the golden test's occupancy
+    !| options. Every output and the pooled buffer itself must match exactly.
+    subroutine test_point_bin_count_uniform_matches_multi_study_gather()
+        integer(int32), parameter :: n_studies = 3, n_genes = 10, n_reps = 4, k = 4, n_pool = n_reps*k*n_studies
+        real(real64) :: gene_means(n_genes, n_studies), residuals(n_reps, n_genes, n_studies), x_star(3)
+        integer(int32) :: gene_means_perms(n_genes, n_studies)
+        integer(int32) :: point_indices(k, n_studies), point_n_neighbors(n_studies)
+        real(real64) :: tmp_pooled(n_pool), reference_pool(n_pool)
+        integer(int32) :: tmp_perm(n_pool), tmp_bin_counts(256)
+        integer(int32) :: n_bins, n_pooled, min_occ, max_occ, sturges, fd, ierr
+        integer(int32) :: ref_n_bins, ref_n_pooled, ref_min_occ, ref_max_occ, ref_sturges, ref_fd, ref_ierr
+        real(real64) :: low, high, mean_occ, ref_low, ref_high, ref_mean_occ
+        logical(c_bool) :: failed, ref_failed
+        character(len=*), parameter :: name = "test_point_bin_count_uniform_matches_multi_study_gather: "
+
+        call build_run_js_comp_test_golden_fixture(gene_means, gene_means_perms, residuals, x_star)
+        point_indices = reshape([2, 9, 5, 3, 2, 9, 4, 7, 7, 1, 6, 3], [k, n_studies])
+        point_n_neighbors = k
+
+        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, k, point_indices, point_n_neighbors, &
+                                       n_bins, failed, low, high, n_pooled, min_occ, mean_occ, max_occ, sturges, fd, &
+                                       tmp_pooled, tmp_perm, tmp_bin_counts, ierr, m_min=2_int32, m_max=12_int32, &
+                                       min_residuals_per_bin=3_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+
+        call gather_pooled_neighborhood_residuals(residuals, n_reps, n_genes, k, n_studies, point_indices, &
+                                                   reference_pool, ref_ierr)
+        call assert_equal_int(get_err_code(ref_ierr), ERR_OK, name//"reference gather ierr")
+        call determine_bin_count_occupancy(reference_pool, n_pool, n_reps, k, ref_n_bins, ref_failed, ref_low, ref_high, &
+                                           ref_n_pooled, ref_min_occ, ref_mean_occ, ref_max_occ, ref_sturges, ref_fd, &
+                                           m_min=2_int32, m_max=12_int32, min_residuals_per_bin=3_int32, ierr=ref_ierr)
+        call assert_equal_int(get_err_code(ref_ierr), ERR_OK, name//"reference occupancy ierr")
+
+        call assert_equal_array_real_nan_exact(tmp_pooled, reference_pool, n_pool, name//"pooled layout")
+        call assert_equal_int(n_bins, ref_n_bins, name//"selected_n_bins")
+        call assert_true(failed .eqv. ref_failed, name//"occupancy_failed")
+        call assert_equal_real(low, ref_low, 0.0_real64, name//"shared_residual_range_low")
+        call assert_equal_real(high, ref_high, 0.0_real64, name//"shared_residual_range_high")
+        call assert_equal_int(n_pooled, ref_n_pooled, name//"n_pooled_residuals")
+        call assert_equal_int(min_occ, ref_min_occ, name//"min_bin_occupancy")
+        call assert_equal_real(mean_occ, ref_mean_occ, 0.0_real64, name//"mean_bin_occupancy")
+        call assert_equal_int(max_occ, ref_max_occ, name//"max_bin_occupancy")
+        call assert_equal_int(sturges, ref_sturges, name//"sturges_bins")
+        call assert_equal_int(fd, ref_fd, name//"fd_bins")
+    end subroutine test_point_bin_count_uniform_matches_multi_study_gather
+
+    !> Ragged per-study neighbor counts `(2, 1, 3)`, 2 replicates, 4 genes. The per-study gene lists
+    !| are study 1 `[3, 1]`, study 2 `[2]`, study 3 `[4, 2, 1]`; every unused slot of
+    !| `point_neighborhood_indices` holds the out-of-range gene `999`, so reading one would raise
+    !| ERR_INVALID_INPUT. Built by hand, the pool is study 1's gene 3 `[-0.5, 0.6]` and gene 1
+    !| `[0.1, -0.2]`, then study 2's gene 2 `[-1.3, NaN]`, then study 3's genes 4 `[NaN, 2.8]`,
+    !| 2 `[2.3, -2.4]` and 1 `[-2.1, 2.2]`: 12 slots, 10 of them non-NaN. The helper must write
+    !| exactly that into `tmp_pooled_residuals(1:12)`, and its outputs must match the plain
+    !| determine_bin_count_occupancy wrapper run on the hand-built pool, with the diagnostic
+    !| neighbor count `(2+1+3 + 3/2)/3 = 7/3 = 2`.
+    subroutine test_point_bin_count_ragged_matches_hand_built_pool()
+        integer(int32), parameter :: n_studies = 3, n_genes = 4, n_reps = 2, max_k = 3
+        real(real64) :: residuals(n_reps, n_genes, n_studies), hand_pool(12)
+        integer(int32) :: point_indices(max_k, n_studies), point_n_neighbors(n_studies)
+        real(real64) :: tmp_pooled(n_reps*max_k*n_studies)
+        integer(int32) :: tmp_perm(n_reps*max_k*n_studies), tmp_bin_counts(256)
+        integer(int32) :: n_bins, n_pooled, min_occ, max_occ, sturges, fd, ierr
+        integer(int32) :: ref_n_bins, ref_n_pooled, ref_min_occ, ref_max_occ, ref_sturges, ref_fd, ref_ierr
+        real(real64) :: low, high, mean_occ, ref_low, ref_high, ref_mean_occ, nan_val
+        logical(c_bool) :: failed, ref_failed
+        character(len=*), parameter :: name = "test_point_bin_count_ragged_matches_hand_built_pool: "
+
+        nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
+        residuals(:, 1, 1) = [0.1_real64, -0.2_real64]
+        residuals(:, 2, 1) = [0.3_real64, 0.4_real64]
+        residuals(:, 3, 1) = [-0.5_real64, 0.6_real64]
+        residuals(:, 4, 1) = [0.7_real64, -0.8_real64]
+        residuals(:, 1, 2) = [1.1_real64, 1.2_real64]
+        residuals(:, 2, 2) = [-1.3_real64, nan_val]
+        residuals(:, 3, 2) = [1.5_real64, 1.6_real64]
+        residuals(:, 4, 2) = [1.7_real64, 1.8_real64]
+        residuals(:, 1, 3) = [-2.1_real64, 2.2_real64]
+        residuals(:, 2, 3) = [2.3_real64, -2.4_real64]
+        residuals(:, 3, 3) = [2.5_real64, 2.6_real64]
+        residuals(:, 4, 3) = [nan_val, 2.8_real64]
+
+        point_indices = reshape([3, 1, 999, 2, 999, 999, 4, 2, 1], [max_k, n_studies])
+        point_n_neighbors = [2, 1, 3]
+        hand_pool = [-0.5_real64, 0.6_real64, 0.1_real64, -0.2_real64, -1.3_real64, nan_val, &
+                     nan_val, 2.8_real64, 2.3_real64, -2.4_real64, -2.1_real64, 2.2_real64]
+
+        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, max_k, point_indices, point_n_neighbors, &
+                                       n_bins, failed, low, high, n_pooled, min_occ, mean_occ, max_occ, sturges, fd, &
+                                       tmp_pooled, tmp_perm, tmp_bin_counts, ierr, m_min=2_int32, m_max=8_int32, &
+                                       min_residuals_per_bin=1_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr (padding slots never read)")
+        call assert_equal_array_real_nan_exact(tmp_pooled(1:12), hand_pool, 12_int32, name//"pooled layout")
+        call assert_equal_int(n_pooled, 10_int32, name//"n_pooled_residuals: 12 slots minus 2 NaN")
+
+        call determine_bin_count_occupancy(hand_pool, 12_int32, n_reps, 2_int32, ref_n_bins, ref_failed, ref_low, ref_high, &
+                                           ref_n_pooled, ref_min_occ, ref_mean_occ, ref_max_occ, ref_sturges, ref_fd, &
+                                           m_min=2_int32, m_max=8_int32, min_residuals_per_bin=1_int32, ierr=ref_ierr)
+        call assert_equal_int(get_err_code(ref_ierr), ERR_OK, name//"reference occupancy ierr")
+
+        call assert_equal_int(n_bins, ref_n_bins, name//"selected_n_bins")
+        call assert_true(failed .eqv. ref_failed, name//"occupancy_failed")
+        call assert_equal_real(low, ref_low, 0.0_real64, name//"shared_residual_range_low")
+        call assert_equal_real(high, ref_high, 0.0_real64, name//"shared_residual_range_high")
+        call assert_equal_int(n_pooled, ref_n_pooled, name//"n_pooled_residuals vs reference")
+        call assert_equal_int(min_occ, ref_min_occ, name//"min_bin_occupancy")
+        call assert_equal_real(mean_occ, ref_mean_occ, 0.0_real64, name//"mean_bin_occupancy")
+        call assert_equal_int(max_occ, ref_max_occ, name//"max_bin_occupancy")
+        call assert_equal_int(sturges, ref_sturges, name//"sturges_bins")
+        call assert_equal_int(fd, ref_fd, name//"fd_bins")
+    end subroutine test_point_bin_count_ragged_matches_hand_built_pool
+
+    !> A gene index outside `[1, max_n_genes_all_studies]` in study 2's column (gene 0) must be
+    !| reported as ERR_INVALID_INPUT, with no argument position: the position
+    !| gather_pooled_neighborhood_residuals reports numbers its own arguments, not this helper's.
+    !| Study 1 is valid, so this also covers an error after a successful first study.
+    subroutine test_point_bin_count_out_of_range_index_sets_ierr()
+        integer(int32), parameter :: n_studies = 2, n_genes = 3, n_reps = 2, max_k = 2
+        real(real64) :: residuals(n_reps, n_genes, n_studies)
+        integer(int32) :: point_indices(max_k, n_studies), point_n_neighbors(n_studies)
+        real(real64) :: tmp_pooled(n_reps*max_k*n_studies)
+        integer(int32) :: tmp_perm(n_reps*max_k*n_studies), tmp_bin_counts(256)
+        integer(int32) :: n_bins, n_pooled, min_occ, max_occ, sturges, fd, ierr
+        real(real64) :: low, high, mean_occ
+        logical(c_bool) :: failed
+
+        residuals = 0.5_real64
+        point_indices = reshape([1, 2, 3, 0], [max_k, n_studies])
+        point_n_neighbors = [2, 2]
+
+        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, max_k, point_indices, point_n_neighbors, &
+                                       n_bins, failed, low, high, n_pooled, min_occ, mean_occ, max_occ, sturges, fd, &
+                                       tmp_pooled, tmp_perm, tmp_bin_counts, ierr)
+
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_point_bin_count_out_of_range_index_sets_ierr: gene index 0 rejected", &
+                        arg_pos=0_int32)
+    end subroutine test_point_bin_count_out_of_range_index_sets_ierr
+
+    !> The Sturges diagnostic uses the rounded mean per-study neighbor count
+    !| `(sum(point_n_neighbors) + n_studies/2)/n_studies`, not a truncated or a rounded-up one.
+    !| 4 replicates, 3 studies, all residuals finite, Sturges = `1 + nint(log2(4*n))`:
+    !|   counts (2,1,2): sum 5, rounded mean `(5+1)/3 = 2` (truncation would give 1)
+    !|     -> `4*2 = 8`, `log2 8 = 3`, Sturges = 4 (truncation: `log2 4 = 2`, Sturges 3)
+    !|   counts (2,1,1): sum 4, rounded mean `(4+1)/3 = 1` (rounding up would give 2)
+    !|     -> `4*1 = 4`, `log2 4 = 2`, Sturges = 3 (rounding up: Sturges 4)
+    subroutine test_point_bin_count_rounded_mean_diagnostic_count()
+        integer(int32), parameter :: n_studies = 3, n_genes = 2, n_reps = 4, max_k = 2
+        real(real64) :: residuals(n_reps, n_genes, n_studies)
+        integer(int32) :: point_indices(max_k, n_studies)
+        real(real64) :: tmp_pooled(n_reps*max_k*n_studies)
+        integer(int32) :: tmp_perm(n_reps*max_k*n_studies), tmp_bin_counts(256)
+        integer(int32) :: n_bins, n_pooled, min_occ, max_occ, sturges, fd, ierr, i_rep, i_gene, i_study
+        real(real64) :: low, high, mean_occ
+        logical(c_bool) :: failed
+        character(len=*), parameter :: name = "test_point_bin_count_rounded_mean_diagnostic_count: "
+
+        do i_study = 1, n_studies
+            do i_gene = 1, n_genes
+                do i_rep = 1, n_reps
+                    residuals(i_rep, i_gene, i_study) = real(i_rep + 4*i_gene + 10*i_study, real64)/10.0_real64
+                end do
+            end do
+        end do
+        point_indices = reshape([1, 2, 1, 2, 2, 1], [max_k, n_studies])
+
+        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, max_k, point_indices, [2, 1, 2], &
+                                       n_bins, failed, low, high, n_pooled, min_occ, mean_occ, max_occ, sturges, fd, &
+                                       tmp_pooled, tmp_perm, tmp_bin_counts, ierr, min_residuals_per_bin=1_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"(2,1,2) ierr")
+        call assert_equal_int(n_pooled, 20_int32, name//"(2,1,2) n_pooled_residuals = 4*5")
+        call assert_equal_int(sturges, 4_int32, name//"(2,1,2) Sturges from rounded mean 2")
+
+        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, max_k, point_indices, [2, 1, 1], &
+                                       n_bins, failed, low, high, n_pooled, min_occ, mean_occ, max_occ, sturges, fd, &
+                                       tmp_pooled, tmp_perm, tmp_bin_counts, ierr, min_residuals_per_bin=1_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"(2,1,1) ierr")
+        call assert_equal_int(n_pooled, 16_int32, name//"(2,1,1) n_pooled_residuals = 4*4")
+        call assert_equal_int(sturges, 3_int32, name//"(2,1,1) Sturges from rounded mean 1")
+    end subroutine test_point_bin_count_rounded_mean_diagnostic_count
+
+    !> build_point_study_histogram must return exactly the matching row of one multi-point
+    !| build_residual_histograms call, including the zero padding up to `max_n_bins = 6`. One
+    !| study, 3 replicates, 5 genes, 2 reference points with 2 neighbors each.
+    !|   Point 1: genes `[2, 4]`, range `[-1, 1]`, 4 bins of width 0.5. Values -0.9, 0.1, 0.6,
+    !|     0.95, -0.2 (plus one NaN) land in bins 1, 3, 4, 4, 2 -> counts `[1, 1, 1, 2, 0, 0]`, 5
+    !|     included.
+    !|   Point 2: genes `[1, 5]`, range `[-2, 3]`, 6 bins of width 5/6. Values 0.0, 2.9, -1.5,
+    !|     5.0 (clamped to 3 -> last bin), -3.0 (clamped to -2 -> bin 1), 1.0 land in bins 3, 6, 1,
+    !|     6, 1, 4 -> counts `[2, 0, 1, 1, 0, 2]`, 6 included.
+    !| (Both hand-binned, and re-checked with a small Python script using the same formula.)
+    subroutine test_point_study_histogram_matches_multi_point_builder()
+        integer(int32), parameter :: n_reps = 3, n_genes = 5, k = 2, n_points = 2, max_n_bins = 6
+        real(real64) :: residuals_study(n_reps, n_genes), gathered(n_reps, k, n_points)
+        integer(int32) :: neighbor_indices(k, n_points), n_bins_per_point(n_points)
+        real(real64) :: range_low(n_points), range_high(n_points)
+        integer(int32) :: multi_counts(n_points, max_n_bins), multi_included(n_points)
+        real(real64) :: multi_pmf(n_points, max_n_bins)
+        integer(int32) :: counts(max_n_bins), included, ierr, i_point, i_neighbor
+        real(real64) :: pmf(max_n_bins), tmp_neighbor_residuals(n_reps, k), nan_val
+        integer(int32) :: expected_counts(max_n_bins, n_points), expected_included(n_points)
+        character(len=*), parameter :: name = "test_point_study_histogram_matches_multi_point_builder: "
+
+        nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
+        residuals_study(:, 1) = [0.0_real64, 2.9_real64, -1.5_real64]
+        residuals_study(:, 2) = [-0.9_real64, 0.1_real64, 0.6_real64]
+        residuals_study(:, 3) = [7.0_real64, 7.0_real64, 7.0_real64]
+        residuals_study(:, 4) = [0.95_real64, -0.2_real64, nan_val]
+        residuals_study(:, 5) = [5.0_real64, -3.0_real64, 1.0_real64]
+        neighbor_indices = reshape([2, 4, 1, 5], [k, n_points])
+        n_bins_per_point = [4, 6]
+        range_low = [-1.0_real64, -2.0_real64]
+        range_high = [1.0_real64, 3.0_real64]
+        expected_counts = reshape([1, 1, 1, 2, 0, 0, 2, 0, 1, 1, 0, 2], [max_n_bins, n_points])
+        expected_included = [5, 6]
+
+        do i_point = 1, n_points
+            do i_neighbor = 1, k
+                gathered(:, i_neighbor, i_point) = residuals_study(:, neighbor_indices(i_neighbor, i_point))
+            end do
+        end do
+        call build_residual_histograms(gathered, n_reps, k, n_points, range_low, range_high, max_n_bins, &
+                                       n_bins_per_point, multi_counts, multi_pmf, multi_included, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"multi-point builder ierr")
+
+        do i_point = 1, n_points
+            call build_point_study_histogram(residuals_study, n_reps, n_genes, k, neighbor_indices(:, i_point), &
+                                             range_low(i_point), range_high(i_point), n_bins_per_point(i_point), &
+                                             max_n_bins, counts, pmf, included, tmp_neighbor_residuals)
+            call assert_equal_array_int(counts, expected_counts(:, i_point), max_n_bins, &
+                                        name//"counts equal the hand-binned values")
+            call assert_equal_int(included, expected_included(i_point), name//"included_n_reps by hand")
+            call assert_equal_array_int(counts, multi_counts(i_point, :), max_n_bins, &
+                                        name//"counts equal the multi-point builder's row")
+            call assert_equal_array_real(pmf, multi_pmf(i_point, :), max_n_bins, 0.0_real64, &
+                                         name//"pmf equals the multi-point builder's row")
+            call assert_equal_int(included, multi_included(i_point), name//"included_n_reps vs multi-point")
+        end do
+    end subroutine test_point_study_histogram_matches_multi_point_builder
+
+    !> NaN residuals are neither binned nor counted in `included_n_reps`. Range `[-1, 1]`, 2 bins
+    !| of width 1, `max_n_bins = 3`, 3 replicates. Neighbors: gene 1 `[NaN, 0.3, NaN]`, gene 2
+    !| all NaN, gene 3 `[-0.4, 0.8, 0.1]`. Only -0.4 (bin 1), 0.3, 0.8 and 0.1 (bin 2) count, so
+    !| counts `[1, 3, 0]`, `included_n_reps = 4`, pmf `[0.25, 0.75, 0]`. With gene 2 as the only
+    !| neighbor nothing is included at all: counts and pmf are all zero.
+    subroutine test_point_study_histogram_excludes_nan_residuals()
+        integer(int32), parameter :: n_reps = 3, n_genes = 3, max_n_bins = 3
+        real(real64) :: residuals_study(n_reps, n_genes), nan_val
+        real(real64) :: tmp3(n_reps, 3), tmp1(n_reps, 1), pmf(max_n_bins)
+        integer(int32) :: counts(max_n_bins), included
+        character(len=*), parameter :: name = "test_point_study_histogram_excludes_nan_residuals: "
+
+        nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
+        residuals_study(:, 1) = [nan_val, 0.3_real64, nan_val]
+        residuals_study(:, 2) = [nan_val, nan_val, nan_val]
+        residuals_study(:, 3) = [-0.4_real64, 0.8_real64, 0.1_real64]
+
+        call build_point_study_histogram(residuals_study, n_reps, n_genes, 3_int32, [1, 2, 3], -1.0_real64, 1.0_real64, &
+                                         2_int32, max_n_bins, counts, pmf, included, tmp3)
+        call assert_equal_int(included, 4_int32, name//"included_n_reps counts only the 4 finite residuals")
+        call assert_equal_array_int(counts, [1, 3, 0], max_n_bins, name//"counts")
+        call assert_equal_array_real(pmf, [0.25_real64, 0.75_real64, 0.0_real64], max_n_bins, TOL, name//"pmf")
+
+        call build_point_study_histogram(residuals_study, n_reps, n_genes, 1_int32, [2], -1.0_real64, 1.0_real64, &
+                                         2_int32, max_n_bins, counts, pmf, included, tmp1)
+        call assert_equal_int(included, 0_int32, name//"all-NaN neighborhood: included_n_reps")
+        call assert_equal_array_int(counts, [0, 0, 0], max_n_bins, name//"all-NaN neighborhood: counts")
+        call assert_equal_array_real(pmf, [0.0_real64, 0.0_real64, 0.0_real64], max_n_bins, 0.0_real64, &
+                                     name//"all-NaN neighborhood: pmf")
+    end subroutine test_point_study_histogram_excludes_nan_residuals
+
+    !> With `n_neighbors = 3` but only 2 genes, Pass A (construct_neighborhoods_ranged_impl) fills
+    !| the third neighbor slot with gene index 3, which is outside `residuals`' gene extent.
+    !| run_js_comp_test must report ERR_INVALID_INPUT from Pass B and return there. Before the
+    !| per-point refactor it recorded the same error but kept going, and Pass C then read
+    !| `residuals(:, 3, :)` out of bounds. The error code alone cannot tell the two apart, so every
+    !| output Pass C and the tail would write (`counts`, `pmfs`, `included_n_reps`, `mean_pmf`,
+    !| `mean_pmf_counts`, `mean_pmf_included_n_reps`, `js_divergences`, `weights`,
+    !| `global_js_divergence`, `p_values`) is pre-filled with the sentinel -7 and must come back
+    !| untouched, proving the routine returned before Pass C.
+    subroutine test_run_js_comp_test_too_many_neighbors_sets_ierr()
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
+        integer(int32), parameter :: n_points = 1, n_neighbors = 3
+        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
+        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
+        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+        real(real64) :: x_star(n_points)
+        integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
+        integer(int32) :: neighborhood_range(2, n_points, n_studies)
+        integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
+        real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
+        logical(c_bool) :: occupancy_failed(n_points)
+        integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
+        real(real64) :: mean_bin_occupancy(n_points)
+        integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
+        real(real64) :: pmfs(256, n_points, n_studies)
+        integer(int32) :: counts(256, n_points, n_studies)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: mean_pmf(256, n_points)
+        integer(int32) :: mean_pmf_counts(256, n_points)
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
+        real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
+        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
+        integer(int32) :: ierr
+
+        gene_means = reshape([1.0_real64, 2.0_real64, 1.0_real64, 2.0_real64], [2, 2])
+        gene_means_perms = reshape([1, 2, 1, 2], [2, 2])
+        residuals = 0.5_real64
+        x_star = [1.5_real64]
+
+        counts = -7_int32
+        pmfs = -7.0_real64
+        included_n_reps = -7_int32
+        mean_pmf = -7.0_real64
+        mean_pmf_counts = -7_int32
+        mean_pmf_included_n_reps = -7_int32
+        js_divergences = -7.0_real64
+        weights = -7.0_real64
+        global_js_divergence = -7.0_real64
+        p_values = -7.0_real64
+
+        call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
+                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                              max_n_bins_per_point, occupancy_failed, &
+                              n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
+                              sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
+                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
+                              ierr=ierr, n_permutations=10_int32)
+
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_run_js_comp_test_too_many_neighbors_sets_ierr: out-of-range neighbor gene index")
+        call assert_true(all(counts == -7_int32), &
+                         "test_run_js_comp_test_too_many_neighbors_sets_ierr: counts untouched (no Pass C)")
+        call assert_true(all(pmfs == -7.0_real64), &
+                         "test_run_js_comp_test_too_many_neighbors_sets_ierr: pmfs untouched (no Pass C)")
+        call assert_true(all(included_n_reps == -7_int32), &
+                         "test_run_js_comp_test_too_many_neighbors_sets_ierr: included_n_reps untouched (no Pass C)")
+        call assert_true(all(mean_pmf == -7.0_real64), &
+                         "test_run_js_comp_test_too_many_neighbors_sets_ierr: mean_pmf untouched")
+        call assert_true(all(mean_pmf_counts == -7_int32), &
+                         "test_run_js_comp_test_too_many_neighbors_sets_ierr: mean_pmf_counts untouched")
+        call assert_true(all(mean_pmf_included_n_reps == -7_int32), &
+                         "test_run_js_comp_test_too_many_neighbors_sets_ierr: mean_pmf_included_n_reps untouched")
+        call assert_true(all(js_divergences == -7.0_real64), &
+                         "test_run_js_comp_test_too_many_neighbors_sets_ierr: js_divergences untouched")
+        call assert_true(all(weights == -7.0_real64), &
+                         "test_run_js_comp_test_too_many_neighbors_sets_ierr: weights untouched")
+        call assert_true(all(global_js_divergence == -7.0_real64), &
+                         "test_run_js_comp_test_too_many_neighbors_sets_ierr: global_js_divergence untouched")
+        call assert_true(all(p_values == -7.0_real64), &
+                         "test_run_js_comp_test_too_many_neighbors_sets_ierr: p_values untouched")
+    end subroutine test_run_js_comp_test_too_many_neighbors_sets_ierr
 
 end module mod_test_data_integration_js_comp_test

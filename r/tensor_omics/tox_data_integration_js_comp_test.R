@@ -1063,6 +1063,10 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #' A already computed, then builds its residual histograms at the real per-point bin counts
 #' (\code{\link{build_residual_histograms}}).
 #'
+#' A neighbor gene index outside `[1, max_n_genes_all_studies]` -- which Pass A produces when
+#' `n_neighbors` exceeds a study's gene count -- is reported by Pass B as `ERR_INVALID_INPUT`,
+#' and the routine returns right there, before Pass C would read `residuals` out of bounds.
+#'
 #' After Pass C, the pipeline continues exactly as before: pools the per-study pmfs into the
 #' consensus pmf
 #' (\code{\link{create_mean_pmf}}), computes
@@ -1122,17 +1126,21 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #' values (unlike its distance-sort sibling
 #' \code{\link{construct_neighborhoods}}),
 #' so Pass C gathers each neighbor's actual residual values from `residuals` itself
-#' (`tmp_neighborhood_residuals_gathered`, a per-study scratch buffer) before calling
-#' `build_residual_histograms_impl`. `build_residual_histograms_impl`/`calc_pmf_impl` are
-#' POINT-major (`(n_points, max_n_bins_per_point)`), while `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts`
+#' (one slice of `tmp_neighborhood_residuals_gathered` per reference point, reused for every
+#' study) before building that point's histogram with `build_residual_histograms_impl` for
+#' that single point, whose bins are copied straight into the matching column of
+#' `counts`/`pmfs` -- no transpose is needed there. `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts`
 #' here are BIN-major (`(256, n_points, n_studies)`) to match
 #' \code{\link{create_mean_pmf}}'s own
-#' convention -- every call across that boundary bridges with an explicit `transpose`, exactly
-#' as \code{\link{bootstrap_histogram}} and
+#' convention, while `compute_divergence_per_reference_point_impl` and `calc_pmf_impl` are
+#' POINT-major (`(n_points, max_n_bins_per_point)`): the calls to those two after Pass C bridge
+#' with an explicit `transpose`, exactly as
+#' \code{\link{bootstrap_histogram}} and
 #' \code{\link{gjct_permutation_test}} already do.
 #'
-#' Impure: calls the impure `gjct_permutation_test_impl`. A GSL failure it reports is folded
-#' into `ierr` (first failure only), matching that routine's own tolerant precedent.
+#' Impure: calls the impure `gjct_permutation_test_impl`. A GSL failure it reports is returned
+#' in `ierr`, and the routine returns right there: `pmfs`, `js_divergences`, `weights` and
+#' `global_js_divergence` then hold the pre-permutation values, not the final re-derived ones.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::run_js_comp_test}, whose argument names
 #' are the ones an error message reports.
@@ -1199,8 +1207,8 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #'     different, asymmetric range (Step 3)}
 #'   \item{max_n_bins_per_point}{a integer scalar. The widest `n_bins_per_point` value across all `n_points` reference points
 #'     (`maxval(n_bins_per_point(1:n_points))`), derived once after Pass B. The number of
-#'     leading, meaningful bins/rows in `pmfs`, `counts`, `mean_pmf`, `mean_pmf_counts`,
-#'     `tmp_counts_point_major` and `tmp_pmf_point_major` below -- those are all declared
+#'     leading, meaningful bins/rows in `pmfs`, `counts`, `mean_pmf` and `mean_pmf_counts`
+#'     below (and of the bin-sized work arrays) -- those are all declared
 #'     with a fixed 256-bin ceiling (MAX_N_BINS) rather than a caller-supplied bin count,
 #'     since `n_bins_per_point` can no longer be known by a caller in advance. A Python/R
 #'     caller must slice `[:max_n_bins_per_point, ...]` themselves: the generator's own result-size

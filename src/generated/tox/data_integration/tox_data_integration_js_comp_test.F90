@@ -1820,6 +1820,10 @@ contains
     !| A already computed, then builds its residual histograms at the real per-point bin counts
     !| ([[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]).
     !|
+    !| A neighbor gene index outside `[1, max_n_genes_all_studies]` -- which Pass A produces when
+    !| `n_neighbors` exceeds a study's gene count -- is reported by Pass B as `ERR_INVALID_INPUT`,
+    !| and the routine returns right there, before Pass C would read `residuals` out of bounds.
+    !|
     !| After Pass C, the pipeline continues exactly as before: pools the per-study pmfs into the
     !| consensus pmf
     !| ([[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]), computes
@@ -1879,17 +1883,21 @@ contains
     !| values (unlike its distance-sort sibling
     !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_impl(interface)]]),
     !| so Pass C gathers each neighbor's actual residual values from `residuals` itself
-    !| (`tmp_neighborhood_residuals_gathered`, a per-study scratch buffer) before calling
-    !| `build_residual_histograms_impl`. `build_residual_histograms_impl`/`calc_pmf_impl` are
-    !| POINT-major (`(n_points, max_n_bins_per_point)`), while `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts`
+    !| (one slice of `tmp_neighborhood_residuals_gathered` per reference point, reused for every
+    !| study) before building that point's histogram with `build_residual_histograms_impl` for
+    !| that single point, whose bins are copied straight into the matching column of
+    !| `counts`/`pmfs` -- no transpose is needed there. `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts`
     !| here are BIN-major (`(256, n_points, n_studies)`) to match
     !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]'s own
-    !| convention -- every call across that boundary bridges with an explicit `transpose`, exactly
-    !| as [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]] and
+    !| convention, while `compute_divergence_per_reference_point_impl` and `calc_pmf_impl` are
+    !| POINT-major (`(n_points, max_n_bins_per_point)`): the calls to those two after Pass C bridge
+    !| with an explicit `transpose`, exactly as
+    !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]] and
     !| [[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]] already do.
     !|
-    !| Impure: calls the impure `gjct_permutation_test_impl`. A GSL failure it reports is folded
-    !| into `ierr` (first failure only), matching that routine's own tolerant precedent.
+    !| Impure: calls the impure `gjct_permutation_test_impl`. A GSL failure it reports is returned
+    !| in `ierr`, and the routine returns right there: `pmfs`, `js_divergences`, `weights` and
+    !| `global_js_divergence` then hold the pre-permutation values, not the final re-derived ones.
     subroutine run_js_comp_test(&
             n_studies,&
             max_n_genes_all_studies,&
@@ -1981,8 +1989,8 @@ contains
         integer(int32), intent(out) :: max_n_bins_per_point
             !! The widest `n_bins_per_point` value across all `n_points` reference points
             !! (`maxval(n_bins_per_point(1:n_points))`), derived once after Pass B. The number of
-            !! leading, meaningful bins/rows in `pmfs`, `counts`, `mean_pmf`, `mean_pmf_counts`,
-            !! `tmp_counts_point_major` and `tmp_pmf_point_major` below -- those are all declared
+            !! leading, meaningful bins/rows in `pmfs`, `counts`, `mean_pmf` and `mean_pmf_counts`
+            !! below (and of the bin-sized work arrays) -- those are all declared
             !! with a fixed 256-bin ceiling (MAX_N_BINS) rather than a caller-supplied bin count,
             !! since `n_bins_per_point` can no longer be known by a caller in advance. A Python/R
             !! caller must slice `[:max_n_bins_per_point, ...]` themselves: the generator's own result-size
@@ -2086,14 +2094,16 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
-            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator for
-            !! the permutation test
+            !! Error code; ERR_INVALID_INPUT if a neighbor gene index is out of range (see above),
+            !! ERR_ALLOC_FAIL if GSL could not allocate the random number generator for the
+            !! permutation test
         real(real64), dimension(:, :, :), allocatable :: tmp_neighborhood_residuals_gathered
         integer(int32), dimension(:, :), allocatable :: tmp_counts_point_major
         real(real64), dimension(:, :), allocatable :: tmp_pmf_point_major
         real(real64), dimension(:), allocatable :: tmp_pooled_residuals
         integer(int32), dimension(:), allocatable :: tmp_pooled_residuals_perm
         integer(int32), dimension(:), allocatable :: tmp_bin_counts_search
+        integer(int32), dimension(:), allocatable :: tmp_point_n_neighbors
         integer(int32), dimension(:, :), allocatable :: tmp_permutation_mean_pmf_counts
         integer(int32), dimension(:, :), allocatable :: tmp_permutation_counts
         real(real64), dimension(:, :, :), allocatable :: tmp_permutation_pmfs
@@ -2128,6 +2138,7 @@ contains
         M_ALLOCATE(tmp_pooled_residuals(max_n_reps_all_studies*n_neighbors*n_studies))
         M_ALLOCATE(tmp_pooled_residuals_perm(max_n_reps_all_studies*n_neighbors*n_studies))
         M_ALLOCATE(tmp_bin_counts_search(256))
+        M_ALLOCATE(tmp_point_n_neighbors(n_studies))
         M_ALLOCATE(tmp_permutation_mean_pmf_counts(256, n_points))
         M_ALLOCATE(tmp_permutation_counts(256, n_points))
         M_ALLOCATE(tmp_permutation_pmfs(256, n_points, n_studies))
@@ -2174,6 +2185,7 @@ contains
             tmp_pooled_residuals = tmp_pooled_residuals,&
             tmp_pooled_residuals_perm = tmp_pooled_residuals_perm,&
             tmp_bin_counts_search = tmp_bin_counts_search,&
+            tmp_point_n_neighbors = tmp_point_n_neighbors,&
             tmp_permutation_mean_pmf_counts = tmp_permutation_mean_pmf_counts,&
             tmp_permutation_counts = tmp_permutation_counts,&
             tmp_permutation_pmfs = tmp_permutation_pmfs,&
@@ -2220,6 +2232,10 @@ contains
     !| - Pass C (per study): re-gathers this study's residual values from the neighbor indices Pass
     !| A already computed, then builds its residual histograms at the real per-point bin counts
     !| ([[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]).
+    !|
+    !| A neighbor gene index outside `[1, max_n_genes_all_studies]` -- which Pass A produces when
+    !| `n_neighbors` exceeds a study's gene count -- is reported by Pass B as `ERR_INVALID_INPUT`,
+    !| and the routine returns right there, before Pass C would read `residuals` out of bounds.
     !|
     !| After Pass C, the pipeline continues exactly as before: pools the per-study pmfs into the
     !| consensus pmf
@@ -2280,17 +2296,21 @@ contains
     !| values (unlike its distance-sort sibling
     !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_impl(interface)]]),
     !| so Pass C gathers each neighbor's actual residual values from `residuals` itself
-    !| (`tmp_neighborhood_residuals_gathered`, a per-study scratch buffer) before calling
-    !| `build_residual_histograms_impl`. `build_residual_histograms_impl`/`calc_pmf_impl` are
-    !| POINT-major (`(n_points, max_n_bins_per_point)`), while `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts`
+    !| (one slice of `tmp_neighborhood_residuals_gathered` per reference point, reused for every
+    !| study) before building that point's histogram with `build_residual_histograms_impl` for
+    !| that single point, whose bins are copied straight into the matching column of
+    !| `counts`/`pmfs` -- no transpose is needed there. `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts`
     !| here are BIN-major (`(256, n_points, n_studies)`) to match
     !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]'s own
-    !| convention -- every call across that boundary bridges with an explicit `transpose`, exactly
-    !| as [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]] and
+    !| convention, while `compute_divergence_per_reference_point_impl` and `calc_pmf_impl` are
+    !| POINT-major (`(n_points, max_n_bins_per_point)`): the calls to those two after Pass C bridge
+    !| with an explicit `transpose`, exactly as
+    !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]] and
     !| [[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]] already do.
     !|
-    !| Impure: calls the impure `gjct_permutation_test_impl`. A GSL failure it reports is folded
-    !| into `ierr` (first failure only), matching that routine's own tolerant precedent.
+    !| Impure: calls the impure `gjct_permutation_test_impl`. A GSL failure it reports is returned
+    !| in `ierr`, and the routine returns right there: `pmfs`, `js_divergences`, `weights` and
+    !| `global_js_divergence` then hold the pre-permutation values, not the final re-derived ones.
     subroutine run_js_comp_test_expert(&
             n_studies,&
             max_n_genes_all_studies,&
@@ -2330,6 +2350,7 @@ contains
             tmp_pooled_residuals,&
             tmp_pooled_residuals_perm,&
             tmp_bin_counts_search,&
+            tmp_point_n_neighbors,&
             tmp_permutation_mean_pmf_counts,&
             tmp_permutation_counts,&
             tmp_permutation_pmfs,&
@@ -2394,8 +2415,8 @@ contains
         integer(int32), intent(out) :: max_n_bins_per_point
             !! The widest `n_bins_per_point` value across all `n_points` reference points
             !! (`maxval(n_bins_per_point(1:n_points))`), derived once after Pass B. The number of
-            !! leading, meaningful bins/rows in `pmfs`, `counts`, `mean_pmf`, `mean_pmf_counts`,
-            !! `tmp_counts_point_major` and `tmp_pmf_point_major` below -- those are all declared
+            !! leading, meaningful bins/rows in `pmfs`, `counts`, `mean_pmf` and `mean_pmf_counts`
+            !! below (and of the bin-sized work arrays) -- those are all declared
             !! with a fixed 256-bin ceiling (MAX_N_BINS) rather than a caller-supplied bin count,
             !! since `n_bins_per_point` can no longer be known by a caller in advance. A Python/R
             !! caller must slice `[:max_n_bins_per_point, ...]` themselves: the generator's own result-size
@@ -2455,16 +2476,16 @@ contains
         real(real64), dimension(n_studies), intent(out) :: p_values
             !! Empirical p-value per study from gjct_permutation_test_impl
         real(real64), dimension(max_n_reps_all_studies, n_neighbors, n_points), intent(out) :: tmp_neighborhood_residuals_gathered
-            !! Working array: one study's gathered neighborhood residual values, reused per study
-            !! (Pass C)
+            !! Working array: gathered neighborhood residual values, one slice per reference
+            !! point, reused for every study (Pass C)
         integer(int32), dimension(n_points, 256), intent(out) :: tmp_counts_point_major
-            !! Working array: one study's point-major histogram counts from
-            !! build_residual_histograms_impl. `256` = MAX_N_BINS, written as a literal because a
-            !! generated wrapper's dummy dimension cannot reference a module parameter
+            !! Working array forwarded to gjct_permutation_test_impl's own point-major counts
+            !! scratch. `256` = MAX_N_BINS, written as a literal because a generated wrapper's
+            !! dummy dimension cannot reference a module parameter
         real(real64), dimension(n_points, 256), intent(out) :: tmp_pmf_point_major
-            !! Working array: one study's point-major pmf, reused both for
-            !! build_residual_histograms_impl's output and for calc_pmf_impl's re-derived pmf.
-            !! `256` = MAX_N_BINS, see tmp_counts_point_major above
+            !! Working array: forwarded to gjct_permutation_test_impl's own point-major pmf
+            !! scratch, then reused for calc_pmf_impl's re-derived per-study pmf. `256` =
+            !! MAX_N_BINS, see tmp_counts_point_major above
         real(real64), dimension(max_n_reps_all_studies*n_neighbors*n_studies), intent(out) :: tmp_pooled_residuals
             !! Working array: one reference point's pooled residuals across every neighbor and
             !! every study (Pass B), reused per point -- one small buffer, not one per point, since
@@ -2476,6 +2497,9 @@ contains
             !! search scratch, reused per point. `256` = MAX_N_BINS, matching
             !! determine_bin_count_occupancy_impl's own tmp_bin_counts dummy -- written as a literal
             !! because a generated wrapper's dummy dimension cannot reference a module parameter
+        integer(int32), dimension(n_studies), intent(out) :: tmp_point_n_neighbors
+            !! Working array: every study's neighbor count for the reference point in Pass B --
+            !! `n_neighbors` for every study, since this routine uses one neighbor count throughout
         integer(int32), dimension(256, n_points), intent(out) :: tmp_permutation_mean_pmf_counts
             !! Working array forwarded to gjct_permutation_test_impl's own resampling pool. `256` =
             !! MAX_N_BINS, see tmp_counts_point_major above
@@ -2536,8 +2560,9 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
-            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator for
-            !! the permutation test
+            !! Error code; ERR_INVALID_INPUT if a neighbor gene index is out of range (see above),
+            !! ERR_ALLOC_FAIL if GSL could not allocate the random number generator for the
+            !! permutation test
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -2546,13 +2571,13 @@ contains
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_points, ierr, arg_pos=4_int32, min=1_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
-        call validate_in_range_int(n_permutations, ierr, arg_pos=45_int32, min=0_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=47_int32, min=0_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=48_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=49_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=50_int32, min=above(1.0_real64))
-        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=51_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=52_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_int(n_permutations, ierr, arg_pos=46_int32, min=0_int32)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=48_int32, min=0_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=49_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=50_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=51_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=52_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=53_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(gene_means_perms, max_n_genes_all_studies * n_studies, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, allow_nan=.true._c_bool)
@@ -2599,6 +2624,7 @@ contains
             tmp_pooled_residuals = tmp_pooled_residuals,&
             tmp_pooled_residuals_perm = tmp_pooled_residuals_perm,&
             tmp_bin_counts_search = tmp_bin_counts_search,&
+            tmp_point_n_neighbors = tmp_point_n_neighbors,&
             tmp_permutation_mean_pmf_counts = tmp_permutation_mean_pmf_counts,&
             tmp_permutation_counts = tmp_permutation_counts,&
             tmp_permutation_pmfs = tmp_permutation_pmfs,&
