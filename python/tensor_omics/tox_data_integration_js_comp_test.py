@@ -3022,12 +3022,11 @@ def run_js_comp_test_parameter_search(
             `plateau_mode` selected) or the candidate grid never had more than one candidate to
             begin with. `False` when the search exhausted every admissible candidate
             without ever finding one -- Issue #178's own "report that parameter stability could
-            not be established". When `False` and `plateau_mode` is
-            `MODE_PLATEAU_CI_OVERLAP` and at least one candidate was admissible, the routine
-            still returns a real (non-`-1.0`) candidate and confidence interval: the admissible
-            candidate with the smallest bootstrapped uncertainty, per the issue's own fallback
-            recommendation -- `plateau_established` is what distinguishes that case from an
-            actual plateau, not the confidence interval's sentinel value
+            not be established". When `False` and at least one candidate was admissible, the
+            routine still returns a real (non-`-1.0`) candidate and confidence interval: the
+            admissible candidate with the smallest bootstrapped uncertainty, per the issue's own
+            fallback recommendation -- `plateau_established` is what distinguishes that case from
+            an actual plateau, not the confidence interval's sentinel value
         trace_n_points : np.ndarray[np.int32] of shape (16,), read-only
             Per-admissible-candidate `n_points`, one entry per column of the other `trace_*`
             arrays. `16` = MAX_CANDIDATE_PAIRS, written as a literal for the same reason

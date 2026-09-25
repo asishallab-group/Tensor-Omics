@@ -2872,12 +2872,11 @@ contains
             !! `plateau_mode` selected) or the candidate grid never had more than one candidate to
             !! begin with. `.false.` when the search exhausted every admissible candidate
             !! without ever finding one -- Issue #178's own "report that parameter stability could
-            !! not be established". When `.false.` and `plateau_mode` is
-            !! `MODE_PLATEAU_CI_OVERLAP` and at least one candidate was admissible, the routine
-            !! still returns a real (non-`-1.0`) candidate and confidence interval: the admissible
-            !! candidate with the smallest bootstrapped uncertainty, per the issue's own fallback
-            !! recommendation -- `plateau_established` is what distinguishes that case from an
-            !! actual plateau, not the confidence interval's sentinel value
+            !! not be established". When `.false.` and at least one candidate was admissible, the
+            !! routine still returns a real (non-`-1.0`) candidate and confidence interval: the
+            !! admissible candidate with the smallest bootstrapped uncertainty, per the issue's own
+            !! fallback recommendation -- `plateau_established` is what distinguishes that case from
+            !! an actual plateau, not the confidence interval's sentinel value
         integer(c_int), intent(out), target :: n_admissible_evaluated
             !! Number of candidates that passed both admissibility gates and got a JSD/confidence
             !! interval computed before the search stopped (by plateau or grid exhaustion) -- the
@@ -3490,12 +3489,11 @@ contains
             !! `plateau_mode` selected) or the candidate grid never had more than one candidate to
             !! begin with. `.false.` when the search exhausted every admissible candidate
             !! without ever finding one -- Issue #178's own "report that parameter stability could
-            !! not be established". When `.false.` and `plateau_mode` is
-            !! `MODE_PLATEAU_CI_OVERLAP` and at least one candidate was admissible, the routine
-            !! still returns a real (non-`-1.0`) candidate and confidence interval: the admissible
-            !! candidate with the smallest bootstrapped uncertainty, per the issue's own fallback
-            !! recommendation -- `plateau_established` is what distinguishes that case from an
-            !! actual plateau, not the confidence interval's sentinel value
+            !! not be established". When `.false.` and at least one candidate was admissible, the
+            !! routine still returns a real (non-`-1.0`) candidate and confidence interval: the
+            !! admissible candidate with the smallest bootstrapped uncertainty, per the issue's own
+            !! fallback recommendation -- `plateau_established` is what distinguishes that case from
+            !! an actual plateau, not the confidence interval's sentinel value
         integer(c_int), intent(out), target :: n_admissible_evaluated
             !! Number of candidates that passed both admissibility gates and got a JSD/confidence
             !! interval computed before the search stopped (by plateau or grid exhaustion) -- the

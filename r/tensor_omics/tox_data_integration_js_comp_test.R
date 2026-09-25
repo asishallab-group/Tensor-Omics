@@ -1490,12 +1490,11 @@ run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residual
 #'     `plateau_mode` selected) or the candidate grid never had more than one candidate to
 #'     begin with. `FALSE` when the search exhausted every admissible candidate
 #'     without ever finding one -- Issue #178's own "report that parameter stability could
-#'     not be established". When `FALSE` and `plateau_mode` is
-#'     `MODE_PLATEAU_CI_OVERLAP` and at least one candidate was admissible, the routine
-#'     still returns a real (non-`-1.0`) candidate and confidence interval: the admissible
-#'     candidate with the smallest bootstrapped uncertainty, per the issue's own fallback
-#'     recommendation -- `plateau_established` is what distinguishes that case from an
-#'     actual plateau, not the confidence interval's sentinel value}
+#'     not be established". When `FALSE` and at least one candidate was admissible, the
+#'     routine still returns a real (non-`-1.0`) candidate and confidence interval: the
+#'     admissible candidate with the smallest bootstrapped uncertainty, per the issue's own
+#'     fallback recommendation -- `plateau_established` is what distinguishes that case from
+#'     an actual plateau, not the confidence interval's sentinel value}
 #'   \item{trace_n_points}{a integer vector. Per-admissible-candidate `n_points`, one entry per column of the other `trace_*`
 #'     arrays. `16` = MAX_CANDIDATE_PAIRS, written as a literal for the same reason
 #'     candidates_n_points_n_neighbors is in generate_js_comp_test_candidates_impl

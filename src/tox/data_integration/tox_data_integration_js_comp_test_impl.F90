@@ -2227,12 +2227,11 @@ contains
             !! `plateau_mode` selected) or the candidate grid never had more than one candidate to
             !! begin with. `.false.` when the search exhausted every admissible candidate
             !! without ever finding one -- Issue #178's own "report that parameter stability could
-            !! not be established". When `.false.` and `plateau_mode` is
-            !! `MODE_PLATEAU_CI_OVERLAP` and at least one candidate was admissible, the routine
-            !! still returns a real (non-`-1.0`) candidate and confidence interval: the admissible
-            !! candidate with the smallest bootstrapped uncertainty, per the issue's own fallback
-            !! recommendation -- `plateau_established` is what distinguishes that case from an
-            !! actual plateau, not the confidence interval's sentinel value
+            !! not be established". When `.false.` and at least one candidate was admissible, the
+            !! routine still returns a real (non-`-1.0`) candidate and confidence interval: the
+            !! admissible candidate with the smallest bootstrapped uncertainty, per the issue's own
+            !! fallback recommendation -- `plateau_established` is what distinguishes that case from
+            !! an actual plateau, not the confidence interval's sentinel value
         integer(int32), intent(out) :: n_admissible_evaluated
             !! Number of candidates that passed both admissibility gates and got a JSD/confidence
             !! interval computed before the search stopped (by plateau or grid exhaustion) -- the
@@ -2866,18 +2865,19 @@ contains
         ! 1. A plateau was reached, or the grid never had more than one candidate to begin with (the
         !    single-candidate/collapsed-grid path bypasses the plateau machinery entirely, exactly
         !    as 125 does): use the best candidate found, plateau_established = .true.
-        ! 2. No plateau, plateau_mode is CI-overlap-only, and at least one candidate was ever
-        !    admissible: Issue #178's own fallback -- the admissible candidate with the smallest
-        !    bootstrapped uncertainty, a real (non--1.0) confidence interval, plateau_established =
-        !    .false. Not extended to the effect-size/both modes yet: CI-overlap is the only mode
-        !    whose search+fallback combination has been validated end-to-end against a real
-        !    known-correct baseline so far.
-        ! 3. No plateau, and either plateau_mode isn't CI-overlap-only or zero candidates were ever
-        !    admissible (n_candidates counts the raw grid including gate-failed candidates, so this
-        !    is distinct from case 2's "at least one admissible" -- nothing exists for case 2 to
-        !    select from here): fall back to the finest-resolution (first) candidate and reset the
-        !    confidence interval to -1.0, exactly as before this change, plateau_established =
-        !    .false.
+        ! 2. No plateau, and at least one candidate was ever admissible: Issue #178's own fallback --
+        !    the admissible candidate with the smallest bootstrapped uncertainty, a real (non--1.0)
+        !    confidence interval, plateau_established = .false. Applies to every plateau_mode -- the
+        !    ranking computation itself doesn't depend on which plateau criterion was selected (see
+        !    the comment where it's computed, a few dozen lines above the loop's own exit), only
+        !    which mode's own plateau-detection condition it was gated behind, and that gate is gone
+        !    now that every mode has been validated end-to-end against real Kidney data (Step 3's
+        !    own m_max sweep, all 3 modes).
+        ! 3. No plateau, and zero candidates were ever admissible (n_candidates counts the raw grid
+        !    including gate-failed candidates, so this is distinct from case 2's "at least one
+        !    admissible" -- nothing exists for case 2 to select from here): fall back to the
+        !    finest-resolution (first) candidate and reset the confidence interval to -1.0, exactly
+        !    as before this change, plateau_established = .false.
         if (plateau_found .or. n_candidates < 2_int32) then
             n_points = candidates_n_points_n_neighbors(1, best_candidate_index)
             n_neighbors = candidates_n_points_n_neighbors(2, best_candidate_index)
@@ -2904,7 +2904,7 @@ contains
                 shared_residual_range_high(1:n_points) = 0.0_real64
             end if
             plateau_established = logical(.true., kind=c_bool)
-        else if (actual_plateau_mode == MODE_PLATEAU_CI_OVERLAP .and. n_admissible_evaluated >= 1_int32) then
+        else if (n_admissible_evaluated >= 1_int32) then
             n_points = candidates_n_points_n_neighbors(1, best_uncertainty_candidate_index)
             n_neighbors = candidates_n_points_n_neighbors(2, best_uncertainty_candidate_index)
             ! This branch's own condition already guarantees n_admissible_evaluated >= 1, so

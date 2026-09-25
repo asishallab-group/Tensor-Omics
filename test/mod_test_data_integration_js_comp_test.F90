@@ -140,10 +140,10 @@ contains
                                   test_param_search_both_mode_uses_earlier_trigger)
         all_tests(49) = test_case("test_param_search_no_plateau_uses_smallest_uncertainty", &
                                   test_param_search_no_plateau_uses_smallest_uncertainty)
-        all_tests(50) = test_case("test_param_search_no_plateau_effect_size_falls_back", &
-                                  test_param_search_no_plateau_effect_size_falls_back)
-        all_tests(51) = test_case("test_param_search_no_plateau_both_falls_back", &
-                                  test_param_search_no_plateau_both_falls_back)
+        all_tests(50) = test_case("test_param_search_no_plateau_effect_size_smallest_uncertainty", &
+                                  test_param_search_no_plateau_effect_size_smallest_uncertainty)
+        all_tests(51) = test_case("test_param_search_no_plateau_both_uses_smallest_uncertainty", &
+                                  test_param_search_no_plateau_both_uses_smallest_uncertainty)
 
         all_tests(52) = test_case("test_estimate_bin_count_sturges_wins_when_greater_than_fd", &
                                   test_estimate_bin_count_sturges_wins_when_greater_than_fd)
@@ -2660,13 +2660,15 @@ contains
 
     !> Same LCG-residual fixture as `test_param_search_no_plateau_uses_smallest_uncertainty`
     !| (guaranteed no CI-overlap plateau across all 6 candidates), but with
-    !| `plateau_mode=MODE_PLATEAU_EFFECT_SIZE` -- verifying the smallest-bootstrap-uncertainty
-    !| fallback is genuinely gated to `MODE_PLATEAU_CI_OVERLAP` (per the Issue #178 fallback plan's
-    !| explicit scope decision), not applied under this mode. If effect size also never plateaus on
-    !| this fixture, the routine must fall back to the OLD behavior: candidate 1 (finest,
-    !| `(566, 141)`), CI reset to `-1.0`, `plateau_established = .false.` -- not candidate 5's
-    !| smallest-uncertainty result.
-    subroutine test_param_search_no_plateau_effect_size_falls_back()
+    !| `plateau_mode=MODE_PLATEAU_EFFECT_SIZE` -- confirming Issue #178's own fallback ("retain the
+    !| previously defined fallback of selecting the admissible parameter setting with the smallest
+    !| bootstrap uncertainty") now applies to effect-size mode too, not just CI-overlap. Since
+    !| effect size also never plateaus on this fixture, the routine must land on the exact same
+    !| smallest-uncertainty candidate (candidate 5, `(362, 220)`) and the exact same bootstrapped CI
+    !| values as `test_param_search_no_plateau_uses_smallest_uncertainty` -- the ranking computation
+    !| doesn't depend on which plateau criterion selected the no-plateau branch, only the gate that
+    !| used to restrict its use to CI-overlap, which is now gone.
+    subroutine test_param_search_no_plateau_effect_size_smallest_uncertainty()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 20000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
@@ -2729,33 +2731,36 @@ contains
                                                plateau_mode=MODE_PLATEAU_EFFECT_SIZE, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_param_search_no_plateau_effect_size_falls_back: ierr should be OK")
+                              "test_param_search_no_plateau_effect_size_smallest_uncertainty: ierr should be OK")
         call assert_false(plateau_established, &
-                          "test_param_search_no_plateau_effect_size_falls_back: "// &
+                          "test_param_search_no_plateau_effect_size_smallest_uncertainty: "// &
                           "no candidate ever plateaus under effect-size mode on this fixture")
-        call assert_equal_int(n_points, 566_int32, &
-                              "test_param_search_no_plateau_effect_size_falls_back: "// &
-                              "falls back to the finest-resolution n_points, NOT candidate 5's smallest-uncertainty n_points")
-        call assert_equal_int(n_neighbors, 141_int32, &
-                              "test_param_search_no_plateau_effect_size_falls_back: "// &
-                              "falls back to the finest-resolution n_neighbors")
-        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), [-1.0_real64, -1.0_real64], 2_int32, TOL, &
-                                     "test_param_search_no_plateau_effect_size_falls_back: "// &
-                                     "study 1 CI reset to -1.0, NOT a real bootstrapped CI")
-        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 2), [-1.0_real64, -1.0_real64], 2_int32, TOL, &
-                                     "test_param_search_no_plateau_effect_size_falls_back: "// &
-                                     "study 2 CI reset to -1.0")
-    end subroutine test_param_search_no_plateau_effect_size_falls_back
+        call assert_equal_int(n_points, 362_int32, &
+                              "test_param_search_no_plateau_effect_size_smallest_uncertainty: "// &
+                              "smallest-uncertainty candidate's n_points, same as CI-overlap mode's own fallback")
+        call assert_equal_int(n_neighbors, 220_int32, &
+                              "test_param_search_no_plateau_effect_size_smallest_uncertainty: "// &
+                              "smallest-uncertainty candidate's n_neighbors")
+        call assert_true(all(best_candidate_pair_confidence_interval /= -1.0_real64), &
+                         "test_param_search_no_plateau_effect_size_smallest_uncertainty: "// &
+                         "a real confidence interval is returned, not the -1.0 sentinel")
+        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), &
+                                     [9.3534521490265630e-04_real64, 1.8753358853084691e-02_real64], 2_int32, TOL, &
+                                     "test_param_search_no_plateau_effect_size_smallest_uncertainty: study 1 CI")
+        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 2), &
+                                     [9.3509303187972945e-04_real64, 1.8663009912309732e-02_real64], 2_int32, TOL, &
+                                     "test_param_search_no_plateau_effect_size_smallest_uncertainty: study 2 CI")
+    end subroutine test_param_search_no_plateau_effect_size_smallest_uncertainty
 
     !> Same fixture again, `plateau_mode=MODE_PLATEAU_BOTH`. Since CI overlap never plateaus here
     !| (confirmed by `test_param_search_no_plateau_uses_smallest_uncertainty`) and effect size never
     !| plateaus here either (confirmed by
-    !| `test_param_search_no_plateau_effect_size_falls_back`), BOTH mode's
+    !| `test_param_search_no_plateau_effect_size_smallest_uncertainty`), BOTH mode's
     !| `ci_plateau_found .or. effect_size_plateau_found` is false for every candidate too -- so this
-    !| must land on the exact same old-fallback branch (candidate 1, CI reset to -1.0), not the new
-    !| smallest-uncertainty selection, confirming the gate checks `plateau_mode ==
-    !| MODE_PLATEAU_CI_OVERLAP` specifically rather than merely `/= MODE_PLATEAU_EFFECT_SIZE`.
-    subroutine test_param_search_no_plateau_both_falls_back()
+    !| must land on Issue #178's own smallest-uncertainty fallback exactly like the other two modes
+    !| now do, not the old finest-resolution/-1.0 sentinel: the fallback no longer depends on
+    !| `plateau_mode` at all, only on whether at least one candidate was ever admissible.
+    subroutine test_param_search_no_plateau_both_uses_smallest_uncertainty()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 20000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
@@ -2818,23 +2823,26 @@ contains
                                                plateau_mode=MODE_PLATEAU_BOTH, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_param_search_no_plateau_both_falls_back: ierr should be OK")
+                              "test_param_search_no_plateau_both_uses_smallest_uncertainty: ierr should be OK")
         call assert_false(plateau_established, &
-                          "test_param_search_no_plateau_both_falls_back: "// &
+                          "test_param_search_no_plateau_both_uses_smallest_uncertainty: "// &
                           "neither criterion ever plateaus under this fixture")
-        call assert_equal_int(n_points, 566_int32, &
-                              "test_param_search_no_plateau_both_falls_back: "// &
-                              "falls back to the finest-resolution n_points, NOT candidate 5's smallest-uncertainty n_points")
-        call assert_equal_int(n_neighbors, 141_int32, &
-                              "test_param_search_no_plateau_both_falls_back: "// &
-                              "falls back to the finest-resolution n_neighbors")
-        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), [-1.0_real64, -1.0_real64], 2_int32, TOL, &
-                                     "test_param_search_no_plateau_both_falls_back: "// &
-                                     "study 1 CI reset to -1.0, NOT a real bootstrapped CI")
-        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 2), [-1.0_real64, -1.0_real64], 2_int32, TOL, &
-                                     "test_param_search_no_plateau_both_falls_back: "// &
-                                     "study 2 CI reset to -1.0")
-    end subroutine test_param_search_no_plateau_both_falls_back
+        call assert_equal_int(n_points, 362_int32, &
+                              "test_param_search_no_plateau_both_uses_smallest_uncertainty: "// &
+                              "smallest-uncertainty candidate's n_points, same as the other 2 modes' own fallback")
+        call assert_equal_int(n_neighbors, 220_int32, &
+                              "test_param_search_no_plateau_both_uses_smallest_uncertainty: "// &
+                              "smallest-uncertainty candidate's n_neighbors")
+        call assert_true(all(best_candidate_pair_confidence_interval /= -1.0_real64), &
+                         "test_param_search_no_plateau_both_uses_smallest_uncertainty: "// &
+                         "a real confidence interval is returned, not the -1.0 sentinel")
+        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), &
+                                     [9.3534521490265630e-04_real64, 1.8753358853084691e-02_real64], 2_int32, TOL, &
+                                     "test_param_search_no_plateau_both_uses_smallest_uncertainty: study 1 CI")
+        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 2), &
+                                     [9.3509303187972945e-04_real64, 1.8663009912309732e-02_real64], 2_int32, TOL, &
+                                     "test_param_search_no_plateau_both_uses_smallest_uncertainty: study 2 CI")
+    end subroutine test_param_search_no_plateau_both_uses_smallest_uncertainty
 
     !> Issue #187's occupancy FAILURE policy, end to end through the parameter search: a genuinely
     !| degenerate neighborhood (not merely an artificially huge `min_residuals_per_bin`, contrast
