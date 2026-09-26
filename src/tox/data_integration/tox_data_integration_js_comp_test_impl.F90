@@ -33,10 +33,10 @@ module tox_data_integration_js_comp_test_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, int64, real64
     use, intrinsic :: iso_c_binding, only: c_bool
-    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
     use f42_math_impl, only: clamp, is_close, LOG_2
     use f42_stats_impl, only: calc_percentile_impl
-    use f42_sort_impl, only: init_perm, sort_array_heapsort, sort_real_heapsort_expl_size
+    use f42_sort_impl, only: init_perm, sort_array_heapsort, sort_real_heapsort_expl_size, binary_search_insertion
     use f42_random_gsl, only: rng_t, create_rng, destroy_rng, random_multinomial
     use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, validate_dimension_size, &
                           validate_in_range_int, ERR_INVALID_INPUT
@@ -60,7 +60,11 @@ module tox_data_integration_js_comp_test_impl
              GAMMA, MAX_POINT_CANDIDATES, MAX_CANDIDATE_PAIRS, MAX_N_BINS, &
              generate_adaptive_js_comp_test_candidates_impl, calc_adaptive_js_comp_test_bounds, &
              ADAPTIVE_START_FRACTION, ADAPTIVE_GAMMA, ADAPTIVE_K_STEP_FRACTION, ADAPTIVE_K_MAX_FACTOR, &
-             ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_POINT_CAPACITY_FACTOR
+             ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_POINT_CAPACITY_FACTOR, &
+             calc_sorted_slice_mad, construct_adaptive_neighborhoods_impl, ADAPTIVE_MIN_VALID_RESIDUALS, &
+             ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_K_MAX, ADAPTIVE_STOP_RESIDUAL_CAP, ADAPTIVE_STOP_EXHAUSTED, &
+             ADAPTIVE_STOP_ZERO_DISPERSION, ADAPTIVE_STOP_TOO_FEW_RESIDUALS, ADAPTIVE_STATUS_OK, &
+             ADAPTIVE_STATUS_TOO_FEW_MEANS, ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD, ADAPTIVE_STATUS_TOO_FEW_RESIDUALS
 
     ! `join_method`'s mode table (see check_plateau_condition_impl below). The generator derives
     ! a mode argument's required parameter prefix from the argument's own name -- `join_method`
@@ -128,6 +132,55 @@ module tox_data_integration_js_comp_test_impl
     real(real64), parameter :: ADAPTIVE_POINT_CAPACITY_FACTOR = 2.0_real64
         !! Safety factor of the practical reference-point capacity over the naive estimate
         !! `N / k_start`, in calc_adaptive_js_comp_test_bounds
+
+    ! Issue #217: the adaptive neighborhood construction itself
+    ! (construct_adaptive_neighborhoods_impl below). ADAPTIVE_MIN_VALID_RESIDUALS is Aaron
+    ! Schroeder's literal 10 from his noise model's `gather_residuals_helper`. The stop reasons and
+    ! construction statuses are output codes, not mode arguments, so they are plain parameters
+    ! documented in prose on the routine rather than in a mode table. Each value is a CM_ macro
+    ! first, so that the parameter and the documentation that quotes it share one literal.
+#define CM_ADAPTIVE_MIN_VALID_RESIDUALS 10_int32
+#define CM_ADAPTIVE_STOP_TAU 1_int32
+#define CM_ADAPTIVE_STOP_K_MAX 2_int32
+#define CM_ADAPTIVE_STOP_RESIDUAL_CAP 3_int32
+#define CM_ADAPTIVE_STOP_EXHAUSTED 4_int32
+#define CM_ADAPTIVE_STOP_ZERO_DISPERSION 5_int32
+#define CM_ADAPTIVE_STOP_TOO_FEW_RESIDUALS 6_int32
+#define CM_ADAPTIVE_STATUS_OK 0_int32
+#define CM_ADAPTIVE_STATUS_TOO_FEW_MEANS 1_int32
+#define CM_ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD 2_int32
+#define CM_ADAPTIVE_STATUS_TOO_FEW_RESIDUALS 3_int32
+    integer(int32), parameter :: ADAPTIVE_MIN_VALID_RESIDUALS = CM_ADAPTIVE_MIN_VALID_RESIDUALS
+        !! Minimum number of non-NaN residuals a neighborhood must pool after its unconditional
+        !! `k_start` phase for its dispersion-controlled growth to run
+    integer(int32), parameter :: ADAPTIVE_STOP_TAU = CM_ADAPTIVE_STOP_TAU
+        !! Stop reason: the next round would have raised the dispersion by more than `tau`
+    integer(int32), parameter :: ADAPTIVE_STOP_K_MAX = CM_ADAPTIVE_STOP_K_MAX
+        !! Stop reason: the neighborhood reached `k_max` pooled entries
+    integer(int32), parameter :: ADAPTIVE_STOP_RESIDUAL_CAP = CM_ADAPTIVE_STOP_RESIDUAL_CAP
+        !! Stop reason: the next entry would have pushed the pooled residuals past `max_pooled_residuals`
+    integer(int32), parameter :: ADAPTIVE_STOP_EXHAUSTED = CM_ADAPTIVE_STOP_EXHAUSTED
+        !! Stop reason: no pooled entry is left on either side of the neighborhood
+    integer(int32), parameter :: ADAPTIVE_STOP_ZERO_DISPERSION = CM_ADAPTIVE_STOP_ZERO_DISPERSION
+        !! Stop reason: the `k_start` entries' residuals are all zero, so no relative change is defined
+    integer(int32), parameter :: ADAPTIVE_STOP_TOO_FEW_RESIDUALS = CM_ADAPTIVE_STOP_TOO_FEW_RESIDUALS
+        !! Stop reason: fewer than ADAPTIVE_MIN_VALID_RESIDUALS non-NaN residuals after the
+        !! `k_start` phase, so the adaptive phase never ran
+    integer(int32), parameter :: ADAPTIVE_STATUS_OK = CM_ADAPTIVE_STATUS_OK
+        !! Construction status: every neighborhood was built without a failure
+    integer(int32), parameter :: ADAPTIVE_STATUS_TOO_FEW_MEANS = CM_ADAPTIVE_STATUS_TOO_FEW_MEANS
+        !! Construction status: fewer non-NaN pooled means than `k_start`; no neighborhood was built
+    integer(int32), parameter :: ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD = CM_ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD
+        !! Construction status: some neighborhood has fewer than `min_study_neighbors` entries of some study
+    integer(int32), parameter :: ADAPTIVE_STATUS_TOO_FEW_RESIDUALS = CM_ADAPTIVE_STATUS_TOO_FEW_RESIDUALS
+        !! Construction status: some neighborhood stopped with ADAPTIVE_STOP_TOO_FEW_RESIDUALS
+
+    ! Defaults of construct_adaptive_neighborhoods_impl's optional knobs, as CM_ macros so that
+    ! DM_DEFAULT and M_DEFAULT_VAL share one literal each.
+#define CM_ADAPTIVE_TAU_DEFAULT 0.1_real64
+#define CM_ADAPTIVE_MAD_DISTANCE_FACTOR_DEFAULT 1.0_real64
+#define CM_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT 0_int32
+#define CM_ADAPTIVE_MIN_STUDY_NEIGHBORS_DEFAULT 1_int32
 
     ! `plateau_mode`'s mode table (see run_js_comp_test_parameter_search_impl below). Issue #178:
     ! CI overlap can be too strict a plateau criterion once bootstrap confidence intervals are very
@@ -237,6 +290,9 @@ contains
     !| must not exceed `huge(1_int32)/4 = 536870911`, so that its `k_max = 4*k_start_1` fits a
     !| 32-bit integer; otherwise this routine reports invalid input. The bound is joint in both
     !| arguments, so the error names neither.
+    !|
+    !| Rejects a `max_n_genes_all_studies` or `n_studies` below 1, or a pair beyond that
+    !| representability bound, with invalid input; the output is then left undefined.
     pure subroutine calc_adaptive_js_comp_test_bounds(max_n_genes_all_studies, n_studies, max_n_points_candidate, ierr)
         integer(int32), intent(in) :: max_n_genes_all_studies
             !! Maximum number of genes across all studies
@@ -1318,6 +1374,595 @@ contains
         n_pool = int(max_n_genes_all_studies, int64)*int(n_studies, int64)
         k_start_1 = max(adaptive_floor_k(n_studies), ceiling(ADAPTIVE_START_FRACTION*real(n_pool, real64), kind=int64))
     end function adaptive_k_start_1
+
+    !> summary: Median and raw median absolute deviation of an already-sorted slice, in O(k)
+    !| AUTHOR_LASZLO_LANG
+    !| Computes the median and the raw (unscaled) median absolute deviation (MAD) of the `k =
+    !| last_pos - first_pos + 1` values `values(perm(first_pos:last_pos))`, which `perm` already
+    !| orders ascending, with no work buffer and no sort. Both medians follow
+    !| [[f42_stats_impl(module):calc_percentile_impl(interface)]]'s convention: the value at rank
+    !| `0.5*(k-1) + 1`, linearly interpolated between its two neighbors (so the median of an even
+    !| count is the mean of the middle pair). The absolute deviations are never stored: those of
+    !| the entries up to the median's lower rank grow leftward and those after it grow rightward,
+    !| so merging the two runs outward from the median (two pointers, ties to the left) visits them
+    !| in ascending order, and the merge stops at the rank it needs. A single value has itself as
+    !| median and a MAD of 0.
+    !|
+    !| Used by
+    !| [[tox_data_integration_js_comp_test_impl(module):construct_adaptive_neighborhoods_impl(interface)]]
+    !| on a neighborhood's pooled means. Precondition, not checked: `1 <= first_pos <= last_pos <=
+    !| n_values`, and the slice contains no NaN.
+    pure subroutine calc_sorted_slice_mad(values, n_values, perm, first_pos, last_pos, median, mad)
+        integer(int32), intent(in) :: n_values
+            !! Number of elements in `values`
+        real(real64), intent(in) :: values(n_values)
+            !! Values the slice is taken from
+        integer(int32), intent(in) :: perm(n_values)
+            !! Permutation ordering `values` ascending at least over `first_pos:last_pos`
+        integer(int32), intent(in) :: first_pos
+            !! First position of the slice in `perm`
+        integer(int32), intent(in) :: last_pos
+            !! Last position of the slice in `perm`
+        real(real64), intent(out) :: median
+            !! Median of the slice
+        real(real64), intent(out) :: mad
+            !! Raw median absolute deviation of the slice from `median`
+
+        integer(int32) :: n_slice, lower_rank, left_pos, right_pos, i_rank
+        real(real64) :: rank, fraction, left_dev, right_dev, dev, lower_dev
+
+        n_slice = last_pos - first_pos + 1
+        if (n_slice == 1_int32) then
+            median = values(perm(first_pos))
+            mad = 0.0_real64
+            return
+        end if
+
+        ! calc_percentile_impl's rank at percentile 0.5. For n_slice >= 2 it is below n_slice,
+        ! so both interpolation neighbors lie inside the slice.
+        rank = 0.5_real64*real(n_slice - 1_int32, real64) + 1.0_real64
+        lower_rank = floor(rank, kind=int32)
+        fraction = rank - real(lower_rank, real64)
+        left_pos = first_pos + lower_rank - 1_int32
+        right_pos = left_pos + 1_int32
+        median = values(perm(left_pos)) + fraction*(values(perm(right_pos)) - values(perm(left_pos)))
+
+        ! Sequential two-pointer merge: each step depends on which side the previous one took.
+        ! The deviations at ranks lower_rank and lower_rank + 1 are interpolated like the median.
+        lower_dev = 0.0_real64
+        dev = 0.0_real64
+        do i_rank = 1_int32, lower_rank + 1_int32
+            if (left_pos >= first_pos .and. right_pos <= last_pos) then
+                left_dev = abs(values(perm(left_pos)) - median)
+                right_dev = abs(values(perm(right_pos)) - median)
+                if (left_dev <= right_dev) then
+                    dev = left_dev
+                    left_pos = left_pos - 1_int32
+                else
+                    dev = right_dev
+                    right_pos = right_pos + 1_int32
+                end if
+            else if (left_pos >= first_pos) then
+                dev = abs(values(perm(left_pos)) - median)
+                left_pos = left_pos - 1_int32
+            else
+                dev = abs(values(perm(right_pos)) - median)
+                right_pos = right_pos + 1_int32
+            end if
+            if (i_rank == lower_rank) lower_dev = dev
+        end do
+        mad = lower_dev + fraction*(dev - lower_dev)
+    end subroutine calc_sorted_slice_mad
+
+    !> summary: Grow Issue #217's adaptive neighborhoods over an already-sorted pool of gene means
+    !| AUTHOR_LASZLO_LANG
+    !| The construction of
+    !| [[tox_data_integration_js_comp_test_impl(module):construct_adaptive_neighborhoods_impl(interface)]],
+    !| documented there, on a permutation the caller has already sorted ascending with NaN last.
+    !| Kept separate so the adaptive parameter search can grow every candidate on one shared sort.
+    !| `pooled_means` and `pooled_residuals` are `gene_means(G, S)` and `residuals(R, G, S)` seen
+    !| through sequence association as `G*S` flat entries, entry `(s - 1)*G + g` being gene `g` of
+    !| study `s`.
+    pure subroutine grow_adaptive_neighborhoods(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, &
+                                                pooled_means, pooled_residuals, pooled_means_perm, k_start, k_step, &
+                                                k_max, tau, mad_distance_factor, max_pooled_residuals, &
+                                                min_study_neighbors, n_points, x_star, pooled_neighborhood_range, &
+                                                n_neighbors_per_point, stop_reason, neighborhood_dispersion, &
+                                                neighborhood_mad, max_n_neighbors, construction_status)
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        real(real64), intent(in) :: pooled_means(max_n_genes_all_studies*n_studies)
+            !! Every study's gene means, flattened, NaN allowed
+        real(real64), intent(in) :: pooled_residuals(max_n_reps_all_studies, max_n_genes_all_studies*n_studies)
+            !! Every study's residuals, one column per flat entry of `pooled_means`, NaN allowed
+        integer(int32), intent(in) :: pooled_means_perm(max_n_genes_all_studies*n_studies)
+            !! Permutation sorting `pooled_means` ascending, NaN last
+        integer(int32), intent(in) :: k_start
+            !! Entries every neighborhood takes unconditionally, at least 1
+        integer(int32), intent(in) :: k_step
+            !! Entries staged per adaptive round, at least 1
+        integer(int32), intent(in) :: k_max
+            !! Largest neighborhood, at least `k_start`
+        real(real64), intent(in) :: tau
+            !! Largest accepted relative dispersion increase per round, at least 0
+        real(real64), intent(in) :: mad_distance_factor
+            !! Multiple of a neighborhood's MAD the next target lies beyond it, at least 0
+        integer(int32), intent(in) :: max_pooled_residuals
+            !! Cap on a neighborhood's non-NaN residuals, 0 for none
+        integer(int32), intent(in) :: min_study_neighbors
+            !! Fewest entries of any one study a neighborhood may have, at least 1
+        integer(int32), intent(out) :: n_points
+            !! Number of neighborhoods built
+        real(real64), intent(out) :: x_star(max_n_genes_all_studies*n_studies)
+            !! Reference point of each neighborhood
+        integer(int32), intent(out) :: pooled_neighborhood_range(2, max_n_genes_all_studies*n_studies)
+            !! `[first, last]` sorted pooled position of each neighborhood
+        integer(int32), intent(out) :: n_neighbors_per_point(n_studies, max_n_genes_all_studies*n_studies)
+            !! Entries of each study in each neighborhood
+        integer(int32), intent(out) :: stop_reason(max_n_genes_all_studies*n_studies)
+            !! Why each neighborhood stopped growing
+        real(real64), intent(out) :: neighborhood_dispersion(max_n_genes_all_studies*n_studies)
+            !! Mean absolute residual of each final neighborhood, NaN without a non-NaN residual
+        real(real64), intent(out) :: neighborhood_mad(max_n_genes_all_studies*n_studies)
+            !! Raw MAD of each final neighborhood's pooled means
+        integer(int32), intent(out) :: max_n_neighbors
+            !! Largest entry count of one study in one neighborhood, 0 without a neighborhood
+        integer(int32), intent(out) :: construction_status
+            !! Overall outcome of the construction
+
+        integer(int32) :: pool_size, n_valid_means, i_pos, seed_pos, first_pos, last_pos, left_pos, right_pos
+        integer(int32) :: n_entries, n_valid, entry_pos, entry_n_valid, n_planned, n_staged, round_n_valid
+        integer(int32) :: stage_left, stage_right, stage_first, stage_last, stop_code, target_pos, study_idx
+        real(real64) :: x_star_val, sum_abs, entry_sum_abs, round_sum_abs, s_old, s_new, median, mad, target
+        logical(c_bool) :: capped, has_too_few_residuals, has_empty_study
+
+        pool_size = max_n_genes_all_studies*n_studies
+
+        ! NaN sorts last: every position after n_valid_means holds a NaN mean.
+        n_valid_means = pool_size
+        do i_pos = pool_size, 1_int32, -1_int32
+            if (ieee_is_nan(pooled_means(pooled_means_perm(i_pos)))) then
+                n_valid_means = n_valid_means - 1_int32
+            else
+                exit
+            end if
+        end do
+
+        n_points = 0_int32
+        max_n_neighbors = 0_int32
+        if (n_valid_means < k_start) then
+            construction_status = ADAPTIVE_STATUS_TOO_FEW_MEANS
+            return
+        end if
+
+        has_too_few_residuals = .false.
+        has_empty_study = .false.
+        seed_pos = 1_int32
+        ! Sequential by construction: every seed is placed beyond the previous neighborhood.
+        do
+            n_points = n_points + 1_int32
+            x_star_val = pooled_means(pooled_means_perm(seed_pos))
+            first_pos = seed_pos
+            last_pos = seed_pos
+            left_pos = seed_pos - 1_int32
+            right_pos = seed_pos + 1_int32
+            n_entries = 1_int32
+            call pooled_entry_residual_stats(max_n_reps_all_studies, pool_size, pooled_residuals, &
+                                             pooled_means_perm(seed_pos), sum_abs, n_valid)
+
+            ! Phase 1: the first k_start entries, nearest first, unconditionally. k_start <=
+            ! n_valid_means, so a frontier is always left while this loop runs.
+            do while (n_entries < k_start)
+                entry_pos = nearest_pooled_position(pooled_means, pool_size, pooled_means_perm, n_valid_means, &
+                                                    x_star_val, left_pos, right_pos)
+                if (entry_pos == left_pos) then
+                    left_pos = left_pos - 1_int32
+                    first_pos = entry_pos
+                else
+                    right_pos = right_pos + 1_int32
+                    last_pos = entry_pos
+                end if
+                call pooled_entry_residual_stats(max_n_reps_all_studies, pool_size, pooled_residuals, &
+                                                 pooled_means_perm(entry_pos), entry_sum_abs, entry_n_valid)
+                sum_abs = sum_abs + entry_sum_abs
+                n_valid = n_valid + entry_n_valid
+                n_entries = n_entries + 1_int32
+            end do
+
+            if (n_valid < ADAPTIVE_MIN_VALID_RESIDUALS) then
+                stop_code = ADAPTIVE_STOP_TOO_FEW_RESIDUALS
+                has_too_few_residuals = .true.
+            else if (sum_abs == 0.0_real64) then
+                stop_code = ADAPTIVE_STOP_ZERO_DISPERSION
+            else
+                ! Phase 2: rounds of up to k_step entries, each judged against the previous
+                ! committed round's dispersion. n_valid >= ADAPTIVE_MIN_VALID_RESIDUALS >= 1 and
+                ! sum_abs > 0 here, and a committed round never lowers sum_abs, so s_old > 0.
+                s_old = sum_abs/real(n_valid, real64)
+                do
+                    if (n_entries == k_max) then
+                        stop_code = ADAPTIVE_STOP_K_MAX
+                        exit
+                    end if
+                    if (left_pos < 1_int32 .and. right_pos > n_valid_means) then
+                        stop_code = ADAPTIVE_STOP_EXHAUSTED
+                        exit
+                    end if
+
+                    n_planned = min(k_step, k_max - n_entries)
+                    stage_left = left_pos
+                    stage_right = right_pos
+                    stage_first = first_pos
+                    stage_last = last_pos
+                    round_sum_abs = 0.0_real64
+                    round_n_valid = 0_int32
+                    n_staged = 0_int32
+                    capped = .false.
+                    do while (n_staged < n_planned)
+                        if (stage_left < 1_int32 .and. stage_right > n_valid_means) exit
+                        entry_pos = nearest_pooled_position(pooled_means, pool_size, pooled_means_perm, n_valid_means, &
+                                                            x_star_val, stage_left, stage_right)
+                        call pooled_entry_residual_stats(max_n_reps_all_studies, pool_size, pooled_residuals, &
+                                                         pooled_means_perm(entry_pos), entry_sum_abs, entry_n_valid)
+                        ! Whole entries only: one whose residuals would overflow the cap ends the
+                        ! round before it, because nearest-first order may not skip it.
+                        if (max_pooled_residuals > 0_int32) then
+                            if (n_valid + round_n_valid + entry_n_valid > max_pooled_residuals) then
+                                capped = .true.
+                                exit
+                            end if
+                        end if
+                        if (entry_pos == stage_left) then
+                            stage_left = stage_left - 1_int32
+                            stage_first = entry_pos
+                        else
+                            stage_right = stage_right + 1_int32
+                            stage_last = entry_pos
+                        end if
+                        round_sum_abs = round_sum_abs + entry_sum_abs
+                        round_n_valid = round_n_valid + entry_n_valid
+                        n_staged = n_staged + 1_int32
+                    end do
+
+                    ! A frontier was left at the top of this round, so an empty round can only
+                    ! come from the cap.
+                    if (n_staged == 0_int32) then
+                        stop_code = ADAPTIVE_STOP_RESIDUAL_CAP
+                        exit
+                    end if
+
+                    ! A round without a non-NaN residual gives exactly s_old back, and commits.
+                    s_new = (sum_abs + round_sum_abs)/real(n_valid + round_n_valid, real64)
+                    if ((s_new - s_old)/s_old > tau) then
+                        stop_code = ADAPTIVE_STOP_TAU
+                        exit
+                    end if
+
+                    left_pos = stage_left
+                    right_pos = stage_right
+                    first_pos = stage_first
+                    last_pos = stage_last
+                    sum_abs = sum_abs + round_sum_abs
+                    n_valid = n_valid + round_n_valid
+                    n_entries = n_entries + n_staged
+                    s_old = s_new
+                    if (capped) then
+                        stop_code = ADAPTIVE_STOP_RESIDUAL_CAP
+                        exit
+                    end if
+                end do
+            end if
+
+            x_star(n_points) = x_star_val
+            stop_reason(n_points) = stop_code
+            pooled_neighborhood_range(1, n_points) = first_pos
+            pooled_neighborhood_range(2, n_points) = last_pos
+
+            ! Decode each pooled position to its study; the studies partition the neighborhood.
+            n_neighbors_per_point(:, n_points) = 0_int32
+            do i_pos = first_pos, last_pos
+                study_idx = (pooled_means_perm(i_pos) - 1_int32)/max_n_genes_all_studies + 1_int32
+                n_neighbors_per_point(study_idx, n_points) = n_neighbors_per_point(study_idx, n_points) + 1_int32
+            end do
+            if (any(n_neighbors_per_point(:, n_points) < min_study_neighbors)) has_empty_study = .true.
+            max_n_neighbors = max(max_n_neighbors, maxval(n_neighbors_per_point(:, n_points)))
+
+            if (n_valid > 0_int32) then
+                neighborhood_dispersion(n_points) = sum_abs/real(n_valid, real64)
+            else
+                neighborhood_dispersion(n_points) = M_NAN
+            end if
+            call calc_sorted_slice_mad(pooled_means, pool_size, pooled_means_perm, first_pos, last_pos, median, mad)
+            neighborhood_mad(n_points) = mad
+
+            if (last_pos == n_valid_means) exit
+
+            ! Next seed: the first position after last_pos whose mean is nearest the target, ties
+            ! to the lower mean; every branch takes the first position of a run of equal means. Seeds strictly advance, so there are at most n_valid_means points.
+            target = pooled_means(pooled_means_perm(last_pos)) + mad_distance_factor*mad
+            target_pos = binary_search_insertion(pooled_means, pooled_means_perm, target, &
+                                                 lower_idx=last_pos + 1_int32, upper_idx=n_valid_means)
+            if (target_pos > n_valid_means) then
+                ! Beyond the largest mean: the first position of the largest mean's run.
+                seed_pos = binary_search_insertion(pooled_means, pooled_means_perm, &
+                                                   pooled_means(pooled_means_perm(n_valid_means)), &
+                                                   lower_idx=last_pos + 1_int32, upper_idx=n_valid_means)
+            else if (target_pos == last_pos + 1_int32) then
+                seed_pos = target_pos
+            else if (pooled_means(pooled_means_perm(target_pos)) - target < &
+                     target - pooled_means(pooled_means_perm(target_pos - 1_int32))) then
+                seed_pos = target_pos
+            else
+                ! The lower candidate wins: take the first position of its run of equal means,
+                ! the lowest position at that distance.
+                seed_pos = binary_search_insertion(pooled_means, pooled_means_perm, &
+                                                   pooled_means(pooled_means_perm(target_pos - 1_int32)), &
+                                                   lower_idx=last_pos + 1_int32, upper_idx=target_pos - 1_int32)
+            end if
+        end do
+
+        ! Fixed priority, independent of which neighborhood failed first: too few residuals means
+        ! growth itself ran without its dispersion rule, an empty study only affects membership.
+        if (has_too_few_residuals) then
+            construction_status = ADAPTIVE_STATUS_TOO_FEW_RESIDUALS
+        else if (has_empty_study) then
+            construction_status = ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD
+        else
+            construction_status = ADAPTIVE_STATUS_OK
+        end if
+    end subroutine grow_adaptive_neighborhoods
+
+    !> summary: The unvisited pooled position nearest a reference point, ties to the lower mean
+    !| AUTHOR_LASZLO_LANG
+    !| Chooses between the two frontiers `left_pos` and `right_pos` of a neighborhood growing
+    !| around `x_star_val` (a frontier is gone once `left_pos < 1` or `right_pos > n_valid_means`).
+    !| Does not move either frontier; the caller advances the one returned. Precondition, not
+    !| checked: at least one frontier is left.
+    pure integer(int32) function nearest_pooled_position(pooled_means, pool_size, pooled_means_perm, n_valid_means, &
+                                                         x_star_val, left_pos, right_pos) result(entry_pos)
+        integer(int32), intent(in) :: pool_size
+            !! Number of pooled entries
+        real(real64), intent(in) :: pooled_means(pool_size)
+            !! Pooled gene means
+        integer(int32), intent(in) :: pooled_means_perm(pool_size)
+            !! Permutation sorting `pooled_means` ascending, NaN last
+        integer(int32), intent(in) :: n_valid_means
+            !! Number of non-NaN pooled means
+        real(real64), intent(in) :: x_star_val
+            !! Reference point the neighborhood grows around
+        integer(int32), intent(in) :: left_pos
+            !! Next candidate position below the neighborhood
+        integer(int32), intent(in) :: right_pos
+            !! Next candidate position above the neighborhood
+
+        if (left_pos >= 1_int32 .and. right_pos <= n_valid_means) then
+            if (abs(pooled_means(pooled_means_perm(left_pos)) - x_star_val) <= &
+                abs(pooled_means(pooled_means_perm(right_pos)) - x_star_val)) then
+                entry_pos = left_pos
+            else
+                entry_pos = right_pos
+            end if
+        else if (left_pos >= 1_int32) then
+            entry_pos = left_pos
+        else
+            entry_pos = right_pos
+        end if
+    end function nearest_pooled_position
+
+    !> summary: Sum of absolute values and count of one pooled entry's non-NaN residuals
+    !| AUTHOR_LASZLO_LANG
+    pure subroutine pooled_entry_residual_stats(max_n_reps_all_studies, pool_size, pooled_residuals, flat_idx, &
+                                                entry_sum_abs, entry_n_valid)
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        integer(int32), intent(in) :: pool_size
+            !! Number of pooled entries
+        real(real64), intent(in) :: pooled_residuals(max_n_reps_all_studies, pool_size)
+            !! Residuals, one column per pooled entry, NaN allowed
+        integer(int32), intent(in) :: flat_idx
+            !! Flat entry whose residuals are summarized
+        real(real64), intent(out) :: entry_sum_abs
+            !! Sum of the absolute non-NaN residuals
+        integer(int32), intent(out) :: entry_n_valid
+            !! Number of non-NaN residuals
+
+        integer(int32) :: i_rep
+        real(real64) :: residual
+
+        entry_sum_abs = 0.0_real64
+        entry_n_valid = 0_int32
+        ! Plain `do`: the summation order is fixed so the construction is bit-reproducible
+        ! (nvfortran -stdpar/-Mconcur or ifx fast-fp would reorder a do concurrent reduction).
+        do i_rep = 1, max_n_reps_all_studies
+            residual = pooled_residuals(i_rep, flat_idx)
+            if (.not. ieee_is_nan(residual)) then
+                entry_sum_abs = entry_sum_abs + abs(residual)
+                entry_n_valid = entry_n_valid + 1_int32
+            end if
+        end do
+    end subroutine pooled_entry_residual_stats
+
+    !> summary: Grow adaptive, dispersion-controlled neighborhoods over all studies' pooled gene means (Issue #217)
+    !| AUTHOR_LASZLO_LANG
+    !| The heteroscedastic neighborhood construction of Issue #217, after Aaron Schroeder's
+    !| noise-model growth: instead of one fixed neighbor count, each neighborhood grows while the
+    !| mean absolute residual of its pool stays stable, and the next reference point is placed
+    !| beyond it. The number of reference points emerges from the growth knobs `k_start`, `k_step`
+    !| and `k_max`, all counted in pooled entries (one entry is one gene of one study).
+    !|
+    !| **Pooling.** All studies' gene means are pooled into `N = max_n_genes_all_studies *
+    !| n_studies` flat entries (entry `(s - 1)*G + g` is gene `g` of study `s`) and sorted
+    !| ascending; NaN means sort last and take no part. A neighborhood is a contiguous run
+    !| `a..b` of that sorted order, returned as `pooled_neighborhood_range`, so its per-study
+    !| membership follows by decoding every position back to its study, and the studies' counts
+    !| `n_neighbors_per_point` add up to `b - a + 1` exactly. These ranges are what
+    !| [[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]]
+    !| takes; unlike the fixed-k ranges they are not extended over tied means, because a range is
+    !| the exact membership here.
+    !|
+    !| **Growth of one neighborhood** around its reference point `x_star`, the mean at its seed
+    !| position. Entries join nearest first by `|mean - x_star|`, a tie going to the lower mean.
+    !| The dispersion `S` is the mean absolute value of every non-NaN residual of every entry in
+    !| the pool.
+    !|
+    !| 1. The first `k_start` entries join unconditionally.
+    !| 2. If they hold fewer than
+    !|    [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_MIN_VALID_RESIDUALS(variable)]]
+    !|    (`CM_ADAPTIVE_MIN_VALID_RESIDUALS`) non-NaN residuals, the neighborhood stops there with stop reason
+    !|    [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_STOP_TOO_FEW_RESIDUALS(variable)]]
+    !|    (`CM_ADAPTIVE_STOP_TOO_FEW_RESIDUALS`). If their residuals are all zero, it stops with
+    !|    [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_STOP_ZERO_DISPERSION(variable)]]
+    !|    (`CM_ADAPTIVE_STOP_ZERO_DISPERSION`), since no relative change is defined.
+    !| 3. Otherwise it grows in rounds: the next `min(k_step, k_max - count)` nearest entries are
+    !|    staged and `S_new` of the pool with them is compared with the previous round's `S_old`.
+    !|    If `(S_new - S_old) / S_old > tau` the round is discarded and growth stops
+    !|    ([[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_STOP_TAU(variable)]], `CM_ADAPTIVE_STOP_TAU`);
+    !|    otherwise the round is committed and `S_old = S_new`. A round without any non-NaN
+    !|    residual leaves `S` unchanged and is committed.
+    !| 4. Growth also stops once the neighborhood holds `k_max` entries
+    !|    ([[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_STOP_K_MAX(variable)]], `CM_ADAPTIVE_STOP_K_MAX`),
+    !|    or once no entry is left on either side
+    !|    ([[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_STOP_EXHAUSTED(variable)]], `CM_ADAPTIVE_STOP_EXHAUSTED`);
+    !|    `k_max` is checked first. A round cut short by the pool's end is still evaluated.
+    !| 5. With `max_pooled_residuals > 0`, an adaptive round stages whole entries only while the
+    !|    pool's non-NaN residuals stay at or below that cap; NaN residuals do not count toward
+    !|    it, and the `k_start` phase is not capped. A round cut short by the cap is evaluated as
+    !|    usual and, if committed, ends growth; a round that could stage nothing ends it at once.
+    !|    Both stop with
+    !|    [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_STOP_RESIDUAL_CAP(variable)]] (`CM_ADAPTIVE_STOP_RESIDUAL_CAP`).
+    !|
+    !| **Reference points.** The first seed is the smallest pooled mean. After neighborhood `i`
+    !| ends at sorted position `b_i`, the next target is `mean(b_i) + mad_distance_factor *
+    !| MAD_i`, `MAD_i` being the raw median absolute deviation of neighborhood `i`'s pooled means
+    !| (see [[tox_data_integration_js_comp_test_impl(module):calc_sorted_slice_mad(subroutine)]]),
+    !| and the next seed is the position after `b_i` whose mean is nearest that target (a tie
+    !| going to the lower mean; the largest pooled mean if the target lies beyond it); where
+    !| several positions share that mean, the seed is the first of them. Seeds therefore
+    !| strictly advance, which bounds the number of reference points by `N`; the
+    !| construction ends with the neighborhood that reaches the largest pooled mean.
+    !|
+    !| **Construction status.**
+    !| [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_STATUS_TOO_FEW_MEANS(variable)]]
+    !| (`CM_ADAPTIVE_STATUS_TOO_FEW_MEANS`) when fewer than `k_start` pooled means are non-NaN (all-NaN means included): no
+    !| neighborhood is built, `n_points` and `max_n_neighbors` are 0. Otherwise the construction
+    !| always completes, so that it can be inspected, and the status reports
+    !| [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_STATUS_TOO_FEW_RESIDUALS(variable)]]
+    !| (`CM_ADAPTIVE_STATUS_TOO_FEW_RESIDUALS`) if any neighborhood stopped with too few residuals, else
+    !| [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD(variable)]]
+    !| (`CM_ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD`) if any neighborhood has fewer than `min_study_neighbors` entries of some study, else
+    !| [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_STATUS_OK(variable)]] (`CM_ADAPTIVE_STATUS_OK`). This
+    !| priority is fixed, whichever neighborhood failed first.
+    !|
+    !| All outputs sized by `N` are filled only for their first `n_points` reference points.
+    pure subroutine construct_adaptive_neighborhoods_impl(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, &
+                                                          gene_means, residuals, k_start, k_step, k_max, n_points, &
+                                                          x_star, pooled_neighborhood_range, n_neighbors_per_point, &
+                                                          stop_reason, neighborhood_dispersion, neighborhood_mad, &
+                                                          max_n_neighbors, construction_status, &
+                                                          tmp_gene_means_perm_all, tau, mad_distance_factor, &
+                                                          max_pooled_residuals, min_study_neighbors)
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+            !! DM_MIN(1_int32)
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+            !! DM_MIN(1_int32)
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+            !! DM_MIN(1_int32)
+        real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
+            !! Mean expression of every gene in every study, NaN for a missing gene
+            !! DM_ALLOW_NAN
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
+            !! Signed residuals of every replicate of every gene in every study, NaN for a missing value
+            !! DM_ALLOW_NAN
+        integer(int32), intent(in) :: k_start
+            !! Pooled entries every neighborhood takes unconditionally
+            !! DM_MIN(1_int32)
+        integer(int32), intent(in) :: k_step
+            !! Pooled entries staged per adaptive growth round
+            !! DM_MIN(1_int32)
+        integer(int32), intent(in) :: k_max
+            !! Largest number of pooled entries in one neighborhood
+            !! DM_MIN(k_start)
+        integer(int32), intent(out) :: n_points
+            !! Number of reference points (neighborhoods) built; 0 when the status is too few means
+        real(real64), dimension(max_n_genes_all_studies*n_studies), intent(out) :: x_star
+            !! Reference point of each neighborhood: the pooled mean at its seed position
+            !! DM_RESULT_SIZE_IS(n_points)
+        integer(int32), dimension(2, max_n_genes_all_studies*n_studies), intent(out) :: pooled_neighborhood_range
+            !! For each neighborhood, its first and last position in the ascending order of the
+            !! pooled means
+            !! DM_RESULT_SIZE_IS(n_points)
+        integer(int32), dimension(n_studies, max_n_genes_all_studies*n_studies), intent(out) :: n_neighbors_per_point
+            !! For each neighborhood, how many of its pooled entries belong to each study
+            !! DM_RESULT_SIZE_IS(n_points)
+        integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: stop_reason
+            !! Why each neighborhood stopped growing: `CM_ADAPTIVE_STOP_TAU` tau exceeded,
+            !! `CM_ADAPTIVE_STOP_K_MAX` `k_max` reached, `CM_ADAPTIVE_STOP_RESIDUAL_CAP` residual cap
+            !! reached, `CM_ADAPTIVE_STOP_EXHAUSTED` pool exhausted, `CM_ADAPTIVE_STOP_ZERO_DISPERSION`
+            !! zero dispersion, `CM_ADAPTIVE_STOP_TOO_FEW_RESIDUALS` too few residuals
+            !! DM_RESULT_SIZE_IS(n_points)
+        real(real64), dimension(max_n_genes_all_studies*n_studies), intent(out) :: neighborhood_dispersion
+            !! Mean absolute non-NaN residual of each final neighborhood (the last committed
+            !! dispersion); NaN when the neighborhood holds no non-NaN residual at all
+            !! DM_RESULT_SIZE_IS(n_points)
+        real(real64), dimension(max_n_genes_all_studies*n_studies), intent(out) :: neighborhood_mad
+            !! Raw median absolute deviation of each final neighborhood's pooled means
+            !! DM_RESULT_SIZE_IS(n_points)
+        integer(int32), intent(out) :: max_n_neighbors
+            !! Largest number of entries one study has in one neighborhood; 0 without a neighborhood
+        integer(int32), intent(out) :: construction_status
+            !! Overall outcome: `CM_ADAPTIVE_STATUS_OK` ok, `CM_ADAPTIVE_STATUS_TOO_FEW_MEANS` too few
+            !! means, `CM_ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD` a study neighborhood below
+            !! `min_study_neighbors`, `CM_ADAPTIVE_STATUS_TOO_FEW_RESIDUALS` a neighborhood with too
+            !! few residuals
+        integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_gene_means_perm_all
+            !! Working array: sorting permutation of the pooled `gene_means`, seeded and sorted here
+        real(real64), intent(in), optional :: tau
+            !! Largest relative increase of the dispersion an adaptive round may cause and still
+            !! be committed
+            !! DM_MIN(0.0_real64)
+            !! DM_DEFAULT(CM_ADAPTIVE_TAU_DEFAULT)
+        real(real64), intent(in), optional :: mad_distance_factor
+            !! Multiple of a neighborhood's median absolute deviation that the next reference
+            !! point's target lies beyond the neighborhood's largest mean
+            !! DM_MIN(0.0_real64)
+            !! DM_DEFAULT(CM_ADAPTIVE_MAD_DISTANCE_FACTOR_DEFAULT)
+        integer(int32), intent(in), optional :: max_pooled_residuals
+            !! Cap on the non-NaN residuals adaptive rounds may grow a neighborhood's pool to; 0
+            !! for no cap
+            !! DM_MIN(0_int32)
+            !! DM_DEFAULT(CM_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT)
+        integer(int32), intent(in), optional :: min_study_neighbors
+            !! Fewest entries of each study every neighborhood must have for the construction
+            !! status to stay ok
+            !! DM_MIN(1_int32)
+            !! DM_DEFAULT(CM_ADAPTIVE_MIN_STUDY_NEIGHBORS_DEFAULT)
+
+        real(real64) :: actual_tau, actual_mad_distance_factor
+        integer(int32) :: actual_max_pooled_residuals, actual_min_study_neighbors
+
+        M_DEFAULT_VAL(tau, actual_tau, CM_ADAPTIVE_TAU_DEFAULT)
+        M_DEFAULT_VAL(mad_distance_factor, actual_mad_distance_factor, CM_ADAPTIVE_MAD_DISTANCE_FACTOR_DEFAULT)
+        M_DEFAULT_VAL(max_pooled_residuals, actual_max_pooled_residuals, CM_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT)
+        M_DEFAULT_VAL(min_study_neighbors, actual_min_study_neighbors, CM_ADAPTIVE_MIN_STUDY_NEIGHBORS_DEFAULT)
+
+        ! The same pooled sort as the fixed-k search, so an adaptive search can share this order.
+        call init_perm(tmp_gene_means_perm_all)
+        call sort_real_heapsort_expl_size(gene_means, tmp_gene_means_perm_all, max_n_genes_all_studies*n_studies)
+
+        call grow_adaptive_neighborhoods(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
+                                         residuals, tmp_gene_means_perm_all, k_start, k_step, k_max, actual_tau, &
+                                         actual_mad_distance_factor, actual_max_pooled_residuals, &
+                                         actual_min_study_neighbors, n_points, x_star, pooled_neighborhood_range, &
+                                         n_neighbors_per_point, stop_reason, neighborhood_dispersion, &
+                                         neighborhood_mad, max_n_neighbors, construction_status)
+    end subroutine construct_adaptive_neighborhoods_impl
 
     !> summary: Test whether every pair of consecutive neighborhoods overlaps by at least a minimum fraction
     !| AUTHOR_LASZLO_LANG

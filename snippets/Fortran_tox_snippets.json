@@ -276,7 +276,7 @@
     "prefix": "tox:data_integration_js_comp_test.use",
     "description": "use tox_data_integration_js_comp_test, only: ...",
     "body": [
-      "use tox_data_integration_js_comp_test, only: ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,determine_bin_count_occupancy_exhaustive,determine_bin_count_occupancy_exhaustive_expert,generate_js_comp_test_candidates,generate_adaptive_js_comp_test_candidates,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|}"
+      "use tox_data_integration_js_comp_test, only: ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,determine_bin_count_occupancy_exhaustive,determine_bin_count_occupancy_exhaustive_expert,generate_js_comp_test_candidates,generate_adaptive_js_comp_test_candidates,construct_adaptive_neighborhoods,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|}"
     ]
   },
   "estimate_bin_count (call)": {
@@ -598,6 +598,65 @@
       "    candidates_k_start_k_step_k_max=${3:candidates_k_start_k_step_k_max}, &",
       "    n_candidates=${4:n_candidates}, &",
       "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "construct_adaptive_neighborhoods (call)": {
+    "prefix": "tox:construct_adaptive_neighborhoods",
+    "description": "The heteroscedastic neighborhood construction of Issue #217, after Aaron Schroeder's",
+    "body": [
+      "call construct_adaptive_neighborhoods( &",
+      "    n_studies=${1:n_studies}, &",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies}, &",
+      "    max_n_reps_all_studies=${3:max_n_reps_all_studies}, &",
+      "    gene_means=${4:gene_means}, &",
+      "    residuals=${5:residuals}, &",
+      "    k_start=${6:k_start}, &",
+      "    k_step=${7:k_step}, &",
+      "    k_max=${8:k_max}, &",
+      "    n_points=${9:n_points}, &",
+      "    x_star=${10:x_star}, &",
+      "    pooled_neighborhood_range=${11:pooled_neighborhood_range}, &",
+      "    n_neighbors_per_point=${12:n_neighbors_per_point}, &",
+      "    stop_reason=${13:stop_reason}, &",
+      "    neighborhood_dispersion=${14:neighborhood_dispersion}, &",
+      "    neighborhood_mad=${15:neighborhood_mad}, &",
+      "    max_n_neighbors=${16:max_n_neighbors}, &",
+      "    construction_status=${17:construction_status}, &",
+      "    tau=${18:tau}, &",
+      "    mad_distance_factor=${19:mad_distance_factor}, &",
+      "    max_pooled_residuals=${20:max_pooled_residuals}, &",
+      "    min_study_neighbors=${21:min_study_neighbors}, &",
+      "    ierr=${22:ierr})"
+    ]
+  },
+  "construct_adaptive_neighborhoods (call, checked)": {
+    "prefix": "tox:construct_adaptive_neighborhoods.checked",
+    "description": "The heteroscedastic neighborhood construction of Issue #217, after Aaron Schroeder's (with error check)",
+    "body": [
+      "call construct_adaptive_neighborhoods( &",
+      "    n_studies=${1:n_studies}, &",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies}, &",
+      "    max_n_reps_all_studies=${3:max_n_reps_all_studies}, &",
+      "    gene_means=${4:gene_means}, &",
+      "    residuals=${5:residuals}, &",
+      "    k_start=${6:k_start}, &",
+      "    k_step=${7:k_step}, &",
+      "    k_max=${8:k_max}, &",
+      "    n_points=${9:n_points}, &",
+      "    x_star=${10:x_star}, &",
+      "    pooled_neighborhood_range=${11:pooled_neighborhood_range}, &",
+      "    n_neighbors_per_point=${12:n_neighbors_per_point}, &",
+      "    stop_reason=${13:stop_reason}, &",
+      "    neighborhood_dispersion=${14:neighborhood_dispersion}, &",
+      "    neighborhood_mad=${15:neighborhood_mad}, &",
+      "    max_n_neighbors=${16:max_n_neighbors}, &",
+      "    construction_status=${17:construction_status}, &",
+      "    tau=${18:tau}, &",
+      "    mad_distance_factor=${19:mad_distance_factor}, &",
+      "    max_pooled_residuals=${20:max_pooled_residuals}, &",
+      "    min_study_neighbors=${21:min_study_neighbors}, &",
+      "    ierr=${22:ierr})",
       "if (is_err(ierr)) return"
     ]
   },

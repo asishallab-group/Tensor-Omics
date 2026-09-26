@@ -695,6 +695,164 @@ generate_adaptive_js_comp_test_candidates <- function(max_n_genes_all_studies, n
     .result$candidates_k_start_k_step_k_max[, seq_len(.result$n_candidates), drop = FALSE]
 }
 
+#' Grow adaptive, dispersion-controlled neighborhoods over all studies' pooled gene means (Issue #217)
+#'
+#' The heteroscedastic neighborhood construction of Issue #217, after Aaron Schroeder's
+#' noise-model growth: instead of one fixed neighbor count, each neighborhood grows while the
+#' mean absolute residual of its pool stays stable, and the next reference point is placed
+#' beyond it. The number of reference points emerges from the growth knobs `k_start`, `k_step`
+#' and `k_max`, all counted in pooled entries (one entry is one gene of one study).
+#'
+#' **Pooling.** All studies' gene means are pooled into `N = max_n_genes_all_studies *
+#' n_studies` flat entries (entry `(s - 1)*G + g` is gene `g` of study `s`) and sorted
+#' ascending; NaN means sort last and take no part. A neighborhood is a contiguous run
+#' `a..b` of that sorted order, returned as `pooled_neighborhood_range`, so its per-study
+#' membership follows by decoding every position back to its study, and the studies' counts
+#' `n_neighbors_per_point` add up to `b - a + 1` exactly. These ranges are what
+#' \code{\link{check_neighborhood_overlaps}}
+#' takes; unlike the fixed-k ranges they are not extended over tied means, because a range is
+#' the exact membership here.
+#'
+#' **Growth of one neighborhood** around its reference point `x_star`, the mean at its seed
+#' position. Entries join nearest first by `|mean - x_star|`, a tie going to the lower mean.
+#' The dispersion `S` is the mean absolute value of every non-NaN residual of every entry in
+#' the pool.
+#'
+#' 1. The first `k_start` entries join unconditionally.
+#' 2. If they hold fewer than
+#' \code{ADAPTIVE_MIN_VALID_RESIDUALS}
+#' (`10`) non-NaN residuals, the neighborhood stops there with stop reason
+#' \code{ADAPTIVE_STOP_TOO_FEW_RESIDUALS}
+#' (`6`). If their residuals are all zero, it stops with
+#' \code{ADAPTIVE_STOP_ZERO_DISPERSION}
+#' (`5`), since no relative change is defined.
+#' 3. Otherwise it grows in rounds: the next `min(k_step, k_max - count)` nearest entries are
+#' staged and `S_new` of the pool with them is compared with the previous round's `S_old`.
+#' If `(S_new - S_old) / S_old > tau` the round is discarded and growth stops
+#' (\code{ADAPTIVE_STOP_TAU}, `1`);
+#' otherwise the round is committed and `S_old = S_new`. A round without any non-NaN
+#' residual leaves `S` unchanged and is committed.
+#' 4. Growth also stops once the neighborhood holds `k_max` entries
+#' (\code{ADAPTIVE_STOP_K_MAX}, `2`),
+#' or once no entry is left on either side
+#' (\code{ADAPTIVE_STOP_EXHAUSTED}, `4`);
+#' `k_max` is checked first. A round cut short by the pool's end is still evaluated.
+#' 5. With `max_pooled_residuals > 0`, an adaptive round stages whole entries only while the
+#' pool's non-NaN residuals stay at or below that cap; NaN residuals do not count toward
+#' it, and the `k_start` phase is not capped. A round cut short by the cap is evaluated as
+#' usual and, if committed, ends growth; a round that could stage nothing ends it at once.
+#' Both stop with
+#' \code{ADAPTIVE_STOP_RESIDUAL_CAP} (`3`).
+#'
+#' **Reference points.** The first seed is the smallest pooled mean. After neighborhood `i`
+#' ends at sorted position `b_i`, the next target is `mean(b_i) + mad_distance_factor *
+#' MAD_i`, `MAD_i` being the raw median absolute deviation of neighborhood `i`'s pooled means
+#' (see \code{calc_sorted_slice_mad}),
+#' and the next seed is the position after `b_i` whose mean is nearest that target (a tie
+#' going to the lower mean; the largest pooled mean if the target lies beyond it); where
+#' several positions share that mean, the seed is the first of them. Seeds therefore
+#' strictly advance, which bounds the number of reference points by `N`; the
+#' construction ends with the neighborhood that reaches the largest pooled mean.
+#'
+#' **Construction status.**
+#' \code{ADAPTIVE_STATUS_TOO_FEW_MEANS}
+#' (`1`) when fewer than `k_start` pooled means are non-NaN (all-NaN means included): no
+#' neighborhood is built, `n_points` and `max_n_neighbors` are 0. Otherwise the construction
+#' always completes, so that it can be inspected, and the status reports
+#' \code{ADAPTIVE_STATUS_TOO_FEW_RESIDUALS}
+#' (`3`) if any neighborhood stopped with too few residuals, else
+#' \code{ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD}
+#' (`2`) if any neighborhood has fewer than `min_study_neighbors` entries of some study, else
+#' \code{ADAPTIVE_STATUS_OK} (`0`). This
+#' priority is fixed, whichever neighborhood failed first.
+#'
+#' All outputs sized by `N` are filled only for their first `n_points` reference points.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::construct_adaptive_neighborhoods}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param gene_means a numeric matrix. Mean expression of every gene in every study, NaN for a missing gene
+#'   NaN is permitted for this value.
+#' @param residuals a numeric array of rank 3. Signed residuals of every replicate of every gene in every study, NaN for a missing value
+#'   NaN is permitted for this value.
+#' @param k_start a integer scalar. Pooled entries every neighborhood takes unconditionally
+#'   The minimum valid value is `1`.
+#' @param k_step a integer scalar. Pooled entries staged per adaptive growth round
+#'   The minimum valid value is `1`.
+#' @param k_max a integer scalar. Largest number of pooled entries in one neighborhood
+#'   The minimum valid value is `k_start`.
+#' @param tau a numeric scalar. Largest relative increase of the dispersion an adaptive round may cause and still
+#'   be committed
+#'   The minimum valid value is `0.0`.
+#'   The default value is `0.1`.
+#' @param mad_distance_factor a numeric scalar. Multiple of a neighborhood's median absolute deviation that the next reference
+#'   point's target lies beyond the neighborhood's largest mean
+#'   The minimum valid value is `0.0`.
+#'   The default value is `1.0`.
+#' @param max_pooled_residuals a integer scalar. Cap on the non-NaN residuals adaptive rounds may grow a neighborhood's pool to; 0
+#'   for no cap
+#'   The minimum valid value is `0`.
+#'   The default value is `0`.
+#' @param min_study_neighbors a integer scalar. Fewest entries of each study every neighborhood must have for the construction
+#'   status to stay ok
+#'   The minimum valid value is `1`.
+#'   The default value is `1`.
+#' @return a named list with elements:
+#'   \item{x_star}{a numeric vector. Reference point of each neighborhood: the pooled mean at its seed position
+#'     The first `n_points` elements will hold the results.}
+#'   \item{pooled_neighborhood_range}{a integer matrix. For each neighborhood, its first and last position in the ascending order of the
+#'     pooled means
+#'     The first `n_points` elements will hold the results.}
+#'   \item{n_neighbors_per_point}{a integer matrix. For each neighborhood, how many of its pooled entries belong to each study
+#'     The first `n_points` elements will hold the results.}
+#'   \item{stop_reason}{a integer vector. Why each neighborhood stopped growing: `1` tau exceeded,
+#'     `2` `k_max` reached, `3` residual cap
+#'     reached, `4` pool exhausted, `5`
+#'     zero dispersion, `6` too few residuals
+#'     The first `n_points` elements will hold the results.}
+#'   \item{neighborhood_dispersion}{a numeric vector. Mean absolute non-NaN residual of each final neighborhood (the last committed
+#'     dispersion); NaN when the neighborhood holds no non-NaN residual at all
+#'     The first `n_points` elements will hold the results.}
+#'   \item{neighborhood_mad}{a numeric vector. Raw median absolute deviation of each final neighborhood's pooled means
+#'     The first `n_points` elements will hold the results.}
+#'   \item{max_n_neighbors}{a integer scalar. Largest number of entries one study has in one neighborhood; 0 without a neighborhood}
+#'   \item{construction_status}{a integer scalar. Overall outcome: `0` ok, `1` too few
+#'     means, `2` a study neighborhood below
+#'     `min_study_neighbors`, `3` a neighborhood with too
+#'     few residuals}
+#' @export
+construct_adaptive_neighborhoods <- function(gene_means, residuals, k_start, k_step, k_max, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L) {
+    gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
+    residuals <- .tox_as_double_array(residuals, "residuals", 3L)
+    k_start <- .tox_as_integer_scalar(k_start, "k_start")
+    k_step <- .tox_as_integer_scalar(k_step, "k_step")
+    k_max <- .tox_as_integer_scalar(k_max, "k_max")
+    tau <- .tox_as_double_scalar(tau, "tau")
+    mad_distance_factor <- .tox_as_double_scalar(mad_distance_factor, "mad_distance_factor")
+    max_pooled_residuals <- .tox_as_integer_scalar(max_pooled_residuals, "max_pooled_residuals")
+    min_study_neighbors <- .tox_as_integer_scalar(min_study_neighbors, "min_study_neighbors")
+    if (dim(residuals)[3] != dim(gene_means)[2])
+        .tox_shape_error("residuals", dim(residuals)[3], "gene_means", dim(gene_means)[2])
+    if (dim(residuals)[2] != dim(gene_means)[1])
+        .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
+
+    .result <- .Call("construct_adaptive_neighborhoods_call", gene_means, residuals, k_start, k_step, k_max, tau, mad_distance_factor, max_pooled_residuals, min_study_neighbors)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "k_start", "k_step", "k_max", "n_points", "x_star", "pooled_neighborhood_range", "n_neighbors_per_point", "stop_reason", "neighborhood_dispersion", "neighborhood_mad", "max_n_neighbors", "construction_status", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        x_star = utils::head(.result$x_star, .result$n_points),
+        pooled_neighborhood_range = .result$pooled_neighborhood_range[, seq_len(.result$n_points), drop = FALSE],
+        n_neighbors_per_point = .result$n_neighbors_per_point[, seq_len(.result$n_points), drop = FALSE],
+        stop_reason = utils::head(.result$stop_reason, .result$n_points),
+        neighborhood_dispersion = utils::head(.result$neighborhood_dispersion, .result$n_points),
+        neighborhood_mad = utils::head(.result$neighborhood_mad, .result$n_points),
+        max_n_neighbors = .result$max_n_neighbors,
+        construction_status = .result$construction_status
+    )
+}
+
 #' Test whether every pair of consecutive neighborhoods overlaps by at least a minimum fraction
 #'
 #' Ported from 125-stabilize-jscomp's `test_neighborhood_overlaps_helper`: the first

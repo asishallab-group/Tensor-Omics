@@ -104,7 +104,7 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter Search",
     "body": [
       "from tensor_omics.tox_data_integration_js_comp_test import (",
-      "    ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,determine_bin_count_occupancy_exhaustive,determine_bin_count_occupancy_exhaustive_expert,generate_js_comp_test_candidates,generate_adaptive_js_comp_test_candidates,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|},",
+      "    ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,determine_bin_count_occupancy_exhaustive,determine_bin_count_occupancy_exhaustive_expert,generate_js_comp_test_candidates,generate_adaptive_js_comp_test_candidates,construct_adaptive_neighborhoods,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|},",
       ")"
     ]
   },
@@ -215,6 +215,23 @@
       "${1:result} = generate_adaptive_js_comp_test_candidates(",
       "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
       "    n_studies=${3:n_studies},",
+      ")"
+    ]
+  },
+  "construct_adaptive_neighborhoods (call)": {
+    "prefix": "tox:construct_adaptive_neighborhoods",
+    "description": "The heteroscedastic neighborhood construction of Issue #217, after Aaron Schroeder's",
+    "body": [
+      "${1:result} = construct_adaptive_neighborhoods(",
+      "    gene_means=${2:gene_means},",
+      "    residuals=${3:residuals},",
+      "    k_start=${4:k_start},",
+      "    k_step=${5:k_step},",
+      "    k_max=${6:k_max},",
+      "    tau=${7:0.1},",
+      "    mad_distance_factor=${8:1.0},",
+      "    max_pooled_residuals=${9:0},",
+      "    min_study_neighbors=${10:1},",
       ")"
     ]
   },

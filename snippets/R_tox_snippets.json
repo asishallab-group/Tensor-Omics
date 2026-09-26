@@ -191,6 +191,23 @@
       ")"
     ]
   },
+  "construct_adaptive_neighborhoods (call)": {
+    "prefix": "tox:construct_adaptive_neighborhoods",
+    "description": "The heteroscedastic neighborhood construction of Issue #217, after Aaron Schroeder's",
+    "body": [
+      "${1:result} <- construct_adaptive_neighborhoods(",
+      "  gene_means = ${2:gene_means},",
+      "  residuals = ${3:residuals},",
+      "  k_start = ${4:k_start},",
+      "  k_step = ${5:k_step},",
+      "  k_max = ${6:k_max},",
+      "  tau = ${7:0.1},",
+      "  mad_distance_factor = ${8:1.0},",
+      "  max_pooled_residuals = ${9:0L},",
+      "  min_study_neighbors = ${10:1L}",
+      ")"
+    ]
+  },
   "check_neighborhood_overlaps (call)": {
     "prefix": "tox:check_neighborhood_overlaps",
     "description": "Ported from 125-stabilize-jscomp's `test_neighborhood_overlaps_helper`: the first",

@@ -57,6 +57,9 @@ calc_js_comp_test_candidate_bounds <- function(max_n_genes_all_studies) {
 #' 32-bit integer; otherwise this routine reports invalid input. The bound is joint in both
 #' arguments, so the error names neither.
 #'
+#' Rejects a `max_n_genes_all_studies` or `n_studies` below 1, or a pair beyond that
+#' representability bound, with invalid input; the output is then left undefined.
+#'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_impl::calc_adaptive_js_comp_test_bounds}, whose argument names
 #' are the ones an error message reports.
 #'

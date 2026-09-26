@@ -109,6 +109,9 @@ contains
     !| must not exceed `huge(1_int32)/4 = 536870911`, so that its `k_max = 4*k_start_1` fits a
     !| 32-bit integer; otherwise this routine reports invalid input. The bound is joint in both
     !| arguments, so the error names neither.
+    !|
+    !| Rejects a `max_n_genes_all_studies` or `n_studies` below 1, or a pair beyond that
+    !| representability bound, with invalid input; the output is then left undefined.
     subroutine calc_adaptive_js_comp_test_bounds_c(&
             max_n_genes_all_studies,&
             n_studies,&

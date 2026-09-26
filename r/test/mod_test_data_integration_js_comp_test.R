@@ -708,4 +708,38 @@ test_calc_adaptive_js_comp_test_bounds <- function() {
                "expected ERR_INVALID_INPUT for n_studies=0", ERR_INVALID_INPUT)
 }
 
+test_construct_adaptive_neighborhoods <- function() {
+  # Call-ability, return types/shapes and non-error only -- the hand-derived constructions are
+  # the Fortran suite's job (test_adaptive_*). Two studies of 6 genes, the second NaN-padded by
+  # one gene, 10 replicates each; every output is trimmed to the same number of points.
+  set.seed(217)
+  gene_means <- matrix(runif(12, 0, 10), nrow = 6, ncol = 2)
+  gene_means[6, 2] <- NaN
+  residuals <- array(rnorm(120), dim = c(10, 6, 2))
+  residuals[, 6, 2] <- NaN
+  result <- construct_adaptive_neighborhoods(gene_means, residuals, 2L, 1L, 4L)
+  assert_true(is.list(result), "expected a list")
+  n_points <- length(result$x_star)
+  assert_true(n_points >= 1 && n_points <= 12, "expected 1..G*S points")
+  assert_true(is.matrix(result$pooled_neighborhood_range) && all(dim(result$pooled_neighborhood_range) == c(2, n_points)),
+              "pooled_neighborhood_range must be 2 x n_points")
+  assert_true(is.matrix(result$n_neighbors_per_point) && all(dim(result$n_neighbors_per_point) == c(2, n_points)),
+              "n_neighbors_per_point must be n_studies x n_points")
+  assert_equal_int(length(result$stop_reason), n_points, "stop_reason length")
+  assert_equal_int(length(result$neighborhood_dispersion), n_points, "neighborhood_dispersion length")
+  assert_equal_int(length(result$neighborhood_mad), n_points, "neighborhood_mad length")
+  assert_true(result$construction_status >= 0 && result$construction_status <= 3, "status in 0..3")
+  assert_true(result$max_n_neighbors >= 1, "max_n_neighbors >= 1")
+  # structural: the per-study counts of a neighborhood partition its pooled range
+  lengths <- result$pooled_neighborhood_range[2, ] - result$pooled_neighborhood_range[1, ] + 1L
+  assert_true(all(colSums(result$n_neighbors_per_point) == lengths), "counts partition each range")
+
+  optional <- construct_adaptive_neighborhoods(gene_means, residuals, 2L, 1L, 4L, tau = 0.5, mad_distance_factor = 0.5,
+                                               max_pooled_residuals = 60L, min_study_neighbors = 1L)
+  assert_true(length(optional$x_star) >= 1, "optionals accepted")
+
+  assert_error(construct_adaptive_neighborhoods(gene_means, residuals, 3L, 1L, 2L),
+               "expected ERR_INVALID_INPUT for k_max < k_start", ERR_INVALID_INPUT)
+}
+
 run_all_tests()

@@ -22,6 +22,7 @@ from tensor_omics import (
     determine_bin_count_occupancy_exhaustive_expert,
     generate_js_comp_test_candidates,
     generate_adaptive_js_comp_test_candidates,
+    construct_adaptive_neighborhoods,
     check_neighborhood_overlaps,
     check_mean_pmf_min_counts,
     check_plateau_condition,
@@ -763,6 +764,38 @@ def test_calc_adaptive_js_comp_test_bounds():
                  "expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
     assert_error(lambda: calc_adaptive_js_comp_test_bounds(2000, 0),
                  "expected ERR_INVALID_INPUT for n_studies=0", ERR_INVALID_INPUT)
+
+
+def test_construct_adaptive_neighborhoods():
+    # Call-ability, return types/shapes and non-error only -- the hand-derived constructions are
+    # the Fortran suite's job (test_adaptive_*). Two studies of 6 genes, the second NaN-padded by
+    # one gene, 10 replicates each; every output is trimmed to the same number of points.
+    rng = np.random.default_rng(217)
+    gene_means = rng.uniform(0.0, 10.0, size=(6, 2))
+    gene_means[5, 1] = np.nan
+    residuals = rng.normal(0.0, 1.0, size=(10, 6, 2))
+    residuals[:, 5, 1] = np.nan
+    result = construct_adaptive_neighborhoods(gene_means, residuals, 2, 1, 4)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    n_points = result["x_star"].shape[0]
+    assert 1 <= n_points <= 12, f"expected 1..G*S points, got {n_points}"
+    assert result["pooled_neighborhood_range"].shape == (2, n_points)
+    assert result["n_neighbors_per_point"].shape == (2, n_points)
+    for key in ("stop_reason", "neighborhood_dispersion", "neighborhood_mad"):
+        assert result[key].shape == (n_points,), f"{key}: expected ({n_points},), got {result[key].shape}"
+    assert result["stop_reason"].dtype == np.int32
+    assert isinstance(result["construction_status"], int) and 0 <= result["construction_status"] <= 3
+    assert isinstance(result["max_n_neighbors"], int) and result["max_n_neighbors"] >= 1
+    # structural: the per-study counts of a neighborhood partition its pooled range
+    lengths = result["pooled_neighborhood_range"][1] - result["pooled_neighborhood_range"][0] + 1
+    np.testing.assert_array_equal(result["n_neighbors_per_point"].sum(axis=0), lengths)
+
+    optional = construct_adaptive_neighborhoods(gene_means, residuals, 2, 1, 4, tau=0.5, mad_distance_factor=0.5,
+                                                max_pooled_residuals=60, min_study_neighbors=1)
+    assert optional["x_star"].shape[0] >= 1
+
+    assert_error(lambda: construct_adaptive_neighborhoods(gene_means, residuals, 3, 1, 2),
+                 "expected ERR_INVALID_INPUT for k_max < k_start", ERR_INVALID_INPUT)
 
 
 def main():
