@@ -5,7 +5,7 @@ module mod_test_get_outliers
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: iso_c_binding, only: c_bool
   use test_suite
-  use tox_errors, only: get_err_code
+  use tox_errors, only: get_err_code, ERR_INVALID_INPUT
   implicit none
   public
 
@@ -14,7 +14,7 @@ contains
   !> @brief Get array of all available tests (as subroutine, not function).
   function get_all_tests_get_outliers() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
-    allocate(all_tests(25))
+    allocate(all_tests(27))
 
     all_tests(1) = test_case("test_scaling_basic", test_scaling_basic)
     all_tests(2) = test_case("test_rdi_basic", test_rdi_basic)
@@ -41,6 +41,8 @@ contains
     all_tests(23) = test_case("test_outliers_nan_handling", test_outliers_nan_handling)
     all_tests(24) = test_case("test_scaling_performance_benchmark",test_scaling_performance_benchmark)
     all_tests(25) = test_case("test_family_scaling_non_finite_distance", test_family_scaling_non_finite_distance)
+    all_tests(26) = test_case("test_family_scaling_fallback_returns_linear_scale", test_family_scaling_fallback_returns_linear_scale)
+    all_tests(27) = test_case("test_family_scaling_degree_bounds", test_family_scaling_degree_bounds)
 
   end function get_all_tests_get_outliers
 
@@ -1130,6 +1132,83 @@ contains
     call assert_true(quantile(1) > 0.0_real64 .and. quantile(1) <= 1.0_real64, "NaN gene quantile must be in (0,1]")
   end subroutine test_outliers_nan_handling
 
+
+  !> The constant-fallback exit must return loess_x / loess_y on the linear scale, like the normal exit.
+  !| Five families with identical distances 2, 3, 4 all have mean 3 and standard deviation 1, so every
+  !| retained LOESS point has the same x and the routine takes the constant fallback instead of fitting.
+  !| The fit works in log2 space, so a fallback that returns before converting back would report
+  !| log2(3 + eps_mean) = log2(6) ~ 2.585 and log2(1 + eps_sd) ~ 0 here instead of 3 and 1.
+  subroutine test_family_scaling_fallback_returns_linear_scale()
+    use, intrinsic :: iso_fortran_env, only: int32, real64
+    implicit none
+
+    integer(int32), parameter :: n_families = 5_int32
+    integer(int32), parameter :: genes_per_family = 3_int32
+    integer(int32), parameter :: n_genes = n_families*genes_per_family
+    real(real64), parameter :: family_distances(genes_per_family) = [2.0_real64, 3.0_real64, 4.0_real64]
+
+    real(real64)   :: distances(n_genes)
+    integer(int32) :: gene_to_fam(n_genes)
+    real(real64)   :: dscale(n_families)
+    real(real64)   :: loess_x(n_families), loess_y(n_families)
+    integer(int32) :: indices_used(n_families)
+    real(real64)   :: low_sd_cutoff
+    integer(int32) :: excluded_low_sd(n_families)
+    integer(int32) :: ierr, i_family
+    integer(int32) :: expected_indices(n_families)
+    real(real64)   :: expected_mean(n_families), expected_stddev(n_families)
+
+    expected_mean = 3.0_real64
+    expected_stddev = 1.0_real64
+    do i_family = 1, n_families
+      expected_indices(i_family) = i_family
+      distances((i_family - 1)*genes_per_family + 1:i_family*genes_per_family) = family_distances
+      gene_to_fam((i_family - 1)*genes_per_family + 1:i_family*genes_per_family) = i_family
+    end do
+
+    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
+                                loess_x, loess_y, indices_used, low_sd_cutoff=low_sd_cutoff, &
+                                excluded_low_sd=excluded_low_sd, ierr=ierr)
+
+    call assert_equal_int(get_err_code(ierr), 0, 'fallback: no error')
+    call assert_true(all(indices_used == expected_indices), 'fallback: every family is a LOESS point')
+    call assert_equal_array_real(loess_x, expected_mean, n_families, 1e-12_real64, &
+                                 'fallback: loess_x holds the family mean distance, not its log2')
+    call assert_equal_array_real(loess_y, expected_stddev, n_families, 1e-12_real64, &
+                                 'fallback: loess_y holds the standard deviation, not its log2')
+    call assert_equal_array_real(dscale, expected_stddev, n_families, 1e-12_real64, &
+                                 'fallback: dscale is the median standard deviation')
+  end subroutine test_family_scaling_fallback_returns_linear_scale
+
+  !> The LOESS degree must be 0, 1 or 2, the local models LOESS knows; -1 and 3 are
+  !| ERR_INVALID_INPUT. Unchecked, they reached netlib's ehg182, which stops the whole program --
+  !| the caller's Python or R session with it.
+  subroutine test_family_scaling_degree_bounds()
+    use, intrinsic :: iso_fortran_env, only: int32, real64
+    integer(int32), parameter :: n_families = 8, genes_per_fam = 3, n_genes = n_families*genes_per_fam
+    integer(int32), parameter :: invalid(2) = [-1, 3]
+    real(real64) :: distances(n_genes), dscale(n_families), loess_x(n_families), loess_y(n_families)
+    real(real64) :: low_sd_cutoff
+    integer(int32) :: gene_to_fam(n_genes), indices_used(n_families), excluded_low_sd(n_families)
+    integer(int32) :: ierr, i_family, i_member, i_gene, i_degree
+
+    i_gene = 0
+    do i_family = 1, n_families
+      do i_member = 1, genes_per_fam
+        i_gene = i_gene + 1
+        gene_to_fam(i_gene) = i_family
+        distances(i_gene) = real(i_family, real64) + 0.1_real64*real(i_member, real64)
+      end do
+    end do
+
+    do i_degree = 1, size(invalid)
+      call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, &
+                                  degree=invalid(i_degree), low_sd_cutoff=low_sd_cutoff, &
+                                  excluded_low_sd=excluded_low_sd, ierr=ierr)
+      call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, &
+                            "test_family_scaling_degree_bounds: degrees -1 and 3 are invalid")
+    end do
+  end subroutine test_family_scaling_degree_bounds
 
 end module mod_test_get_outliers
 
