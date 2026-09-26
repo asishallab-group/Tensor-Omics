@@ -1776,9 +1776,8 @@ contains
 
         entry_sum_abs = 0.0_real64
         entry_n_valid = 0_int32
-        ! Plain `do`: the summation order is fixed so the construction is bit-reproducible
-        ! (nvfortran -stdpar/-Mconcur or ifx fast-fp would reorder a do concurrent reduction).
-        do i_rep = 1, max_n_reps_all_studies
+        do concurrent(i_rep=1:max_n_reps_all_studies) local(residual) shared(pooled_residuals, flat_idx) &
+            reduce(+:entry_sum_abs, entry_n_valid)
             residual = pooled_residuals(i_rep, flat_idx)
             if (.not. ieee_is_nan(residual)) then
                 entry_sum_abs = entry_sum_abs + abs(residual)
