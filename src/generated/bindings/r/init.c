@@ -47,6 +47,8 @@ SEXP bst_range_query_call(SEXP, SEXP, SEXP);
 SEXP bst_range_query_expert_call(SEXP, SEXP, SEXP, SEXP);
 SEXP build_kd_index_call(SEXP, SEXP);
 SEXP build_spherical_kd_call(SEXP, SEXP);
+SEXP vicinity_vectors_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP vicinity_vectors_count_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP deserialize_char_helper_call(SEXP, SEXP, SEXP);
 SEXP deserialize_complex_helper_call(SEXP, SEXP);
 SEXP deserialize_int_helper_call(SEXP, SEXP);
@@ -157,6 +159,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"bst_range_query_expert_call", (DL_FUNC) &bst_range_query_expert_call, 4},
     {"build_kd_index_call", (DL_FUNC) &build_kd_index_call, 2},
     {"build_spherical_kd_call", (DL_FUNC) &build_spherical_kd_call, 2},
+    {"vicinity_vectors_call", (DL_FUNC) &vicinity_vectors_call, 5},
+    {"vicinity_vectors_count_call", (DL_FUNC) &vicinity_vectors_count_call, 5},
     {"deserialize_char_helper_call", (DL_FUNC) &deserialize_char_helper_call, 3},
     {"deserialize_complex_helper_call", (DL_FUNC) &deserialize_complex_helper_call, 2},
     {"deserialize_int_helper_call", (DL_FUNC) &deserialize_int_helper_call, 2},

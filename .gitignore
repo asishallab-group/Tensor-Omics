@@ -62,9 +62,9 @@
 !/r/*.R
 
 # misc
-# Whitelisted wholesale, and blacklisted from within by misc/.gitignore.
-!/misc
-!/misc/**/*
+!misc
+!misc/**/*
+misc/STC-experiments/**/*
 
 # material
 !/material
@@ -103,8 +103,16 @@
 !/external/loess_netlib/drotg/src/drotg.f90
 
 # .github
+<<<<<<< HEAD
+!.github
+!.github/actions
+!.github/actions/*/
+!.github/workflows
+!.github/**/*.yml
+=======
 !/.github
 !/.github/actions
 !/.github/actions/*/
 !/.github/workflows
 !/.github/**/*.yml
+>>>>>>> tox_github
