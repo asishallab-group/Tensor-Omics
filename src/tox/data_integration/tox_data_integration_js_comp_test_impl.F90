@@ -25,13 +25,19 @@
 !| per-point arrays are sized by;
 !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_adaptive_parameter_search_impl(interface)]]
 !| is that search, the adaptive counterpart of the fixed-k parameter search, with the same
-!| plateau criteria. Once a candidate has passed both gates, its bootstrap confidence interval
+!| plateau criteria. For the selected knobs,
+!| [[tox_data_integration_js_comp_test_impl(module):construct_adaptive_neighborhoods_impl(interface)]]
+!| rebuilds the reference points and their neighborhoods, pooled across all studies, and
+!| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_adaptive_impl(interface)]]
+!| runs the final test on them. Together they reproduce exactly what the search traced for that
+!| candidate. Once a candidate has passed both gates, its bootstrap confidence interval
 !| is resampled from the pooled consensus histogram by
 !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]] (heap
 !| size recommended by
 !| [[tox_data_integration_js_comp_test_impl(module):calc_js_comp_test_n_top_k_jsds(interface)]]).
-!| Later stages of the port add the K-study permutation test and the top-level orchestrator that
-!| wire these building blocks together.
+!| For fixed-k neighborhoods, the final test itself (histograms, JSDs, weighting and the K-study
+!| permutation test) is
+!| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_impl(interface)]].
 module tox_data_integration_js_comp_test_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, int64, real64

@@ -25,13 +25,19 @@ generates the ascending `(k_start, k_step, k_max)` growth-knob candidates instea
 per-point arrays are sized by;
 :func:`tensor_omics.run_js_comp_test_adaptive_parameter_search`
 is that search, the adaptive counterpart of the fixed-k parameter search, with the same
-plateau criteria. Once a candidate has passed both gates, its bootstrap confidence interval
+plateau criteria. For the selected knobs,
+:func:`tensor_omics.construct_adaptive_neighborhoods`
+rebuilds the reference points and their neighborhoods, pooled across all studies, and
+:func:`tensor_omics.run_js_comp_test_adaptive`
+runs the final test on them. Together they reproduce exactly what the search traced for that
+candidate. Once a candidate has passed both gates, its bootstrap confidence interval
 is resampled from the pooled consensus histogram by
 :func:`tensor_omics.bootstrap_histogram` (heap
 size recommended by
 :func:`tensor_omics.calc_js_comp_test_n_top_k_jsds`).
-Later stages of the port add the K-study permutation test and the top-level orchestrator that
-wire these building blocks together.
+For fixed-k neighborhoods, the final test itself (histograms, JSDs, weighting and the K-study
+permutation test) is
+:func:`tensor_omics.run_js_comp_test`.
 
 Python binding, generated from tox_data_integration_js_comp_test. Do not edit.
 """
