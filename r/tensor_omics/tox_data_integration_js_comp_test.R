@@ -1534,6 +1534,185 @@ run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residual
     )
 }
 
+#' Run the JSD-Comp-Test pipeline on adaptive (Issue #217) neighborhoods
+#'
+#' The adaptive counterpart of
+#' \code{\link{run_js_comp_test}}: the
+#' same pipeline and the same outputs, on neighborhoods whose size varies per reference point
+#' and per study. Call
+#' \code{\link{construct_adaptive_neighborhoods}}
+#' first, then pass its `pooled_neighborhood_range` (trimmed to its `n_points` reference
+#' points) here together with the same `gene_means` and `residuals`.
+#'
+#' **Membership.** The pooled gene means are sorted again exactly as the construction sorts them
+#' (the same routine on the same input), so a pooled position means the same entry here as it
+#' did there. Every range `a..b` is decoded back to per-study gene lists by
+#' \code{materialize_pooled_neighborhood};
+#' the per-study counts are returned as `n_neighbors_per_point`, in the construction's own
+#' `(n_studies, n_points)` orientation, and add up to `b - a + 1`.
+#'
+#' **Pipeline, per reference point.** Pass B pools the point's residuals across all its genes
+#' of all studies and picks its bin count and residual range with Issue #187's occupancy
+#' search
+#' (\code{\link{determine_bin_count_occupancy}}),
+#' its Sturges/Freedman-Diaconis diagnostics computed with the rounded mean per-study neighbor
+#' count. Pass C builds each study's histogram from that study's own genes of the point. Then,
+#' exactly as in `run_js_comp_test_impl`: the consensus pmf
+#' (\code{\link{create_mean_pmf}}), each
+#' study's JSD against it and the weighted global JSD, the permutation test
+#' (\code{\link{gjct_permutation_test}}) and the
+#' final re-derivation from the untouched `counts`. Neighborhoods that decode to the same gene
+#' sets as a fixed-k run's therefore give bit-identical results. Every point is weighted by its
+#' non-NaN residual count, which under adaptive growth genuinely differs between points.
+#' Like `run_js_comp_test_impl`, there is no admissibility gate: overlap and occupancy are the
+#' parameter search's concern.
+#'
+#' **Runtime errors.** Before any histogram work, every range is checked in point order; the
+#' first failing one sets `ERR_INVALID_INPUT` and the routine returns at once, every output
+#' undefined. For each point, in this order: its first position lies after its last; its last
+#' position lies beyond the non-NaN pooled means (the entries a construction can ever use); a
+#' study has no gene in it, which would leave that study's pmf empty and the consensus pmf, an
+#' average over all studies, meaningless. A range a construction produced passes the first two
+#' checks by construction, and the third whenever its status was not an empty-study one.
+#'
+#' **Memory.** The work arrays are sized by the per-study gene bound `max_n_genes_all_studies`,
+#' the largest number of genes one study can have in one neighborhood, not by a caller-supplied
+#' neighbor count. The pooling buffers `tmp_pooled_residuals`/`tmp_pooled_residuals_perm`
+#' therefore hold `max_n_reps_all_studies * max_n_genes_all_studies * n_studies` values each,
+#' the size of `residuals` itself; Pass B and Pass C are sequential over points so one such
+#' buffer serves every point.
+#'
+#' The bin-sized arrays have the same fixed 256-bin
+#' (\code{MAX_N_BINS}) leading extent as in
+#' `run_js_comp_test_impl`, of which only the first `max_n_bins_per_point` rows are
+#' meaningful; a Python/R caller slices `[:max_n_bins_per_point, ...]` themselves.
+#'
+#' Impure: calls the impure `gjct_permutation_test_impl`. A GSL failure it reports is returned
+#' in `ierr`, and the routine returns right there: `pmfs`, `js_divergences`, `weights` and
+#' `global_js_divergence` then hold the pre-permutation values, not the final re-derived ones.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::run_js_comp_test_adaptive}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param gene_means a numeric matrix. Mean expression of every gene in every study, NaN for a missing gene; the same
+#'   array the neighborhoods were constructed from
+#'   NaN is permitted for this value.
+#' @param residuals a numeric array of rank 3. Signed residuals of every replicate of every gene in every study, NaN for a missing value
+#'   NaN is permitted for this value.
+#' @param pooled_neighborhood_range a integer matrix. For each neighborhood, its first and last position in the ascending order of the
+#'   pooled means, as returned by construct_adaptive_neighborhoods
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `max_n_genes_all_studies*n_studies`.
+#' @param n_permutations a integer scalar. Number of permutations, forwarded to gjct_permutation_test_impl
+#'   The minimum valid value is `0`.
+#'   The default value is `1000`.
+#' @param random_seed a integer scalar. Seed for the GSL random number generator
+#'   The default value is `42`.
+#' @param min_residuals_per_bin a integer scalar. Minimum number of pooled residuals every bin must reach for a candidate bin count to
+#'   be admissible in the occupancy search
+#'   The minimum valid value is `0`.
+#'   The default value is `10`.
+#' @param m_min a integer scalar. Smallest candidate bin count the occupancy search tests (M_min)
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_N_BINS`.
+#'   The default value is `3`.
+#' @param m_max a integer scalar. Largest candidate bin count the occupancy search tests (M_max); raised to `m_min`
+#'   when smaller
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_N_BINS`.
+#'   The default value is `120`.
+#' @param gamma_occupancy a numeric scalar. Geometric growth factor of the occupancy search's coarse stage
+#'   The minimum valid value is `above(1.0)`.
+#'   The default value is `1.25`.
+#' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's lower residual-range bound
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.05`.
+#' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's upper residual-range bound
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.95`.
+#' @return a named list with elements:
+#'   \item{n_neighbors_per_point}{a integer matrix. For each neighborhood, how many of its genes belong to each study (at least 1 each)}
+#'   \item{n_bins_per_point}{a integer vector. Each reference point's selected histogram bin count, from the occupancy search}
+#'   \item{shared_residual_range_low}{a numeric vector. Each reference point's lower residual-range bound (R_low), from the occupancy search}
+#'   \item{shared_residual_range_high}{a numeric vector. Each reference point's upper residual-range bound (R_high), from the occupancy search}
+#'   \item{max_n_bins_per_point}{a integer scalar. The widest `n_bins_per_point` value, `maxval(n_bins_per_point)`: the number of leading,
+#'     meaningful rows of `pmfs`, `counts`, `mean_pmf` and `mean_pmf_counts`}
+#'   \item{occupancy_failed}{a logical vector. `TRUE` iff even `m_min` bins could not satisfy the occupancy criterion for this
+#'     reference point; such a point still gets a histogram at `m_min` bins and still
+#'     contributes to `global_js_divergence`}
+#'   \item{n_pooled_residuals}{a integer vector. Each reference point's pooled non-NaN residual count (N_j), across all its genes of
+#'     all studies}
+#'   \item{min_bin_occupancy}{a integer vector. Each reference point's minimum bin occupancy at `n_bins_per_point`}
+#'   \item{mean_bin_occupancy}{a numeric vector. Each reference point's mean bin occupancy at `n_bins_per_point`}
+#'   \item{max_bin_occupancy}{a integer vector. Each reference point's maximum bin occupancy at `n_bins_per_point`}
+#'   \item{sturges_bins}{a integer vector. Each reference point's Sturges' rule diagnostic, with the rounded mean per-study
+#'     neighbor count; never part of the occupancy search's decision}
+#'   \item{fd_bins}{a integer vector. Each reference point's Freedman-Diaconis rule diagnostic, with the rounded mean
+#'     per-study neighbor count; never part of the occupancy search's decision}
+#'   \item{pmfs}{a numeric array of rank 3. `counts` normalized per reference point and study. `256` = MAX_N_BINS; only rows
+#'     `1:max_n_bins_per_point` are meaningful}
+#'   \item{counts}{a integer array of rank 3. Absolute counts of a residual per bin for `pmfs`. `256` = MAX_N_BINS; only rows
+#'     `1:max_n_bins_per_point` are meaningful}
+#'   \item{included_n_reps}{a integer matrix. Count of non-NaN residuals binned per reference point, per study}
+#'   \item{mean_pmf}{a numeric matrix. The consensus pmf. `256` = MAX_N_BINS; only rows `1:max_n_bins_per_point` are meaningful}
+#'   \item{mean_pmf_counts}{a integer matrix. Absolute counts of a residual per bin for the consensus pmf. `256` = MAX_N_BINS; only
+#'     rows `1:max_n_bins_per_point` are meaningful}
+#'   \item{mean_pmf_included_n_reps}{a integer vector. Count of non-NaN residuals per reference point for the consensus pmf}
+#'   \item{js_divergences}{a numeric matrix. Per-reference-point JSD of each study against the consensus pmf}
+#'   \item{weights}{a numeric matrix. Per-reference-point weights for `global_js_divergence`}
+#'   \item{global_js_divergence}{a numeric vector. Weighted global JSD of each study against the consensus pmf}
+#'   \item{p_values}{a numeric vector. Empirical p-value per study from the permutation test}
+#' @export
+run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood_range, n_permutations = 1000L, random_seed = 42L, min_residuals_per_bin = 10L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95) {
+    gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
+    residuals <- .tox_as_double_array(residuals, "residuals", 3L)
+    pooled_neighborhood_range <- .tox_as_integer_matrix(pooled_neighborhood_range, "pooled_neighborhood_range")
+    n_permutations <- .tox_as_integer_scalar(n_permutations, "n_permutations")
+    random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
+    min_residuals_per_bin <- .tox_as_integer_scalar(min_residuals_per_bin, "min_residuals_per_bin")
+    m_min <- .tox_as_integer_scalar(m_min, "m_min")
+    m_max <- .tox_as_integer_scalar(m_max, "m_max")
+    gamma_occupancy <- .tox_as_double_scalar(gamma_occupancy, "gamma_occupancy")
+    lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
+    upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
+    if (dim(residuals)[3] != dim(gene_means)[2])
+        .tox_shape_error("residuals", dim(residuals)[3], "gene_means", dim(gene_means)[2])
+    if (dim(residuals)[2] != dim(gene_means)[1])
+        .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
+
+    .result <- .Call("run_js_comp_test_adaptive_call", gene_means, residuals, pooled_neighborhood_range, n_permutations, random_seed, min_residuals_per_bin, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "gene_means", "residuals", "pooled_neighborhood_range", "n_neighbors_per_point", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", "pooled_neighborhood_range", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        n_neighbors_per_point = .result$n_neighbors_per_point,
+        n_bins_per_point = .result$n_bins_per_point,
+        shared_residual_range_low = .result$shared_residual_range_low,
+        shared_residual_range_high = .result$shared_residual_range_high,
+        max_n_bins_per_point = .result$max_n_bins_per_point,
+        occupancy_failed = .result$occupancy_failed,
+        n_pooled_residuals = .result$n_pooled_residuals,
+        min_bin_occupancy = .result$min_bin_occupancy,
+        mean_bin_occupancy = .result$mean_bin_occupancy,
+        max_bin_occupancy = .result$max_bin_occupancy,
+        sturges_bins = .result$sturges_bins,
+        fd_bins = .result$fd_bins,
+        pmfs = .result$pmfs,
+        counts = .result$counts,
+        included_n_reps = .result$included_n_reps,
+        mean_pmf = .result$mean_pmf,
+        mean_pmf_counts = .result$mean_pmf_counts,
+        mean_pmf_included_n_reps = .result$mean_pmf_included_n_reps,
+        js_divergences = .result$js_divergences,
+        weights = .result$weights,
+        global_js_divergence = .result$global_js_divergence,
+        p_values = .result$p_values
+    )
+}
+
 #' Search a GAMMA-decay (n_points, n_neighbors) candidate grid for a stable JSD parameter setting
 #'
 #' Ported from 125-stabilize-jscomp's `determine_js_comp_test_n_points_n_neighbors_helper` and

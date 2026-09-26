@@ -20,7 +20,7 @@ module mod_test_data_integration_js_comp_test
                                                   create_mean_pmf_only, bootstrap_histogram, run_js_comp_test, &
                                                   run_js_comp_test_parameter_search, &
                                                   generate_adaptive_js_comp_test_candidates, &
-                                                  construct_adaptive_neighborhoods
+                                                  construct_adaptive_neighborhoods, run_js_comp_test_adaptive
     use tox_data_integration_js_comp_test_impl, only: METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, &
                                                        MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, &
                                                        MODE_PLATEAU_BOTH, calc_js_comp_test_n_top_k_jsds, &
@@ -35,7 +35,8 @@ module mod_test_data_integration_js_comp_test
                                                        ADAPTIVE_STOP_ZERO_DISPERSION, ADAPTIVE_STOP_TOO_FEW_RESIDUALS, &
                                                        ADAPTIVE_STATUS_OK, ADAPTIVE_STATUS_TOO_FEW_MEANS, &
                                                        ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD, &
-                                                       ADAPTIVE_STATUS_TOO_FEW_RESIDUALS
+                                                       ADAPTIVE_STATUS_TOO_FEW_RESIDUALS, &
+                                                       materialize_pooled_neighborhood
     use tox_errors
     use test_suite, only: test_case
 
@@ -43,12 +44,23 @@ module mod_test_data_integration_js_comp_test
 
     real(real64), parameter :: TOL = 1d-12
 
+    !> Test helper type: every output of run_js_comp_test_adaptive, sized by run_adaptive_final.
+    type :: adaptive_run_outputs
+        integer(int32), allocatable :: n_per_point(:, :), n_bins(:), n_pooled(:), min_occ(:), max_occ(:)
+        integer(int32), allocatable :: sturges(:), fd(:), counts(:, :, :), included(:, :), mean_pmf_counts(:, :)
+        integer(int32), allocatable :: mean_included(:)
+        integer(int32) :: max_n_bins
+        logical(c_bool), allocatable :: occ_failed(:)
+        real(real64), allocatable :: range_low(:), range_high(:), mean_occ(:), pmfs(:, :, :), mean_pmf(:, :)
+        real(real64), allocatable :: js(:, :), weights(:, :), global_jsd(:), p_values(:)
+    end type adaptive_run_outputs
+
 contains
 
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(133))
+        allocate (all_tests(141))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -325,6 +337,22 @@ contains
                                   test_adaptive_seed_tie_run_takes_first_position)
         all_tests(133) = test_case("test_adaptive_seed_beyond_tie_run_takes_first", &
                                   test_adaptive_seed_beyond_tie_run_takes_first)
+        all_tests(134) = test_case("test_materialize_pooled_neighborhood_decode", &
+                                  test_materialize_pooled_neighborhood_decode)
+        all_tests(135) = test_case("test_run_adaptive_matches_fixed_k_exactly", &
+                                  test_run_adaptive_matches_fixed_k_exactly)
+        all_tests(136) = test_case("test_run_adaptive_ragged_hand_traceable", &
+                                  test_run_adaptive_ragged_hand_traceable)
+        all_tests(137) = test_case("test_run_adaptive_reversed_range_sets_ierr", &
+                                  test_run_adaptive_reversed_range_sets_ierr)
+        all_tests(138) = test_case("test_run_adaptive_range_beyond_valid_pool_sets_ierr", &
+                                  test_run_adaptive_range_beyond_valid_pool_sets_ierr)
+        all_tests(139) = test_case("test_run_adaptive_empty_study_sets_ierr", &
+                                  test_run_adaptive_empty_study_sets_ierr)
+        all_tests(140) = test_case("test_run_adaptive_end_to_end_after_construction", &
+                                  test_run_adaptive_end_to_end_after_construction)
+        all_tests(141) = test_case("test_run_adaptive_wrapper_validation", &
+                                  test_run_adaptive_wrapper_validation)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -6364,5 +6392,450 @@ contains
                                     [(ADAPTIVE_STOP_K_MAX, i_gene=1, 3)], [(1.0_real64, i_gene=1, 3)], &
                                     [2.0_real64, 0.0_real64, 0.0_real64])
     end subroutine test_adaptive_seed_beyond_tie_run_takes_first
+
+    ! ---------------------------------------------------------------------------------------------
+    ! Issue #217, Checkpoint D: run_js_comp_test_adaptive, the final run on a construction's
+    ! pooled ranges. Expected values are derived by hand (closed forms in the doc blocks) or, in
+    ! the equivalence test, taken from run_js_comp_test on the same gene sets.
+    ! ---------------------------------------------------------------------------------------------
+
+    !> Test helper: call the generated run_js_comp_test_adaptive wrapper, sizes taken from the
+    !| arrays. Every output is pre-filled with the sentinel -7 first, so a test can see which
+    !| outputs an early error return left untouched.
+    subroutine run_adaptive_final(gene_means, residuals, ranges, out, ierr, n_permutations, random_seed, m_min, &
+                                  m_max, min_residuals_per_bin, n_points)
+        real(real64), intent(in) :: gene_means(:, :), residuals(:, :, :)
+        integer(int32), intent(in) :: ranges(:, :)
+        type(adaptive_run_outputs), intent(out) :: out
+        integer(int32), intent(out) :: ierr
+        integer(int32), intent(in), optional :: n_permutations, random_seed, m_min, m_max, min_residuals_per_bin
+        integer(int32), intent(in), optional :: n_points
+            !! Overrides the reference-point count passed on, for the wrapper validation test
+        integer(int32) :: n_studies, n_genes, n_reps, n_pts, n_passed
+
+        n_genes = size(gene_means, 1, kind=int32)
+        n_studies = size(gene_means, 2, kind=int32)
+        n_reps = size(residuals, 1, kind=int32)
+        n_pts = size(ranges, 2, kind=int32)
+        n_passed = n_pts
+        if (present(n_points)) n_passed = n_points
+
+        allocate (out%n_per_point(n_studies, n_pts), out%n_bins(n_pts), out%n_pooled(n_pts), out%min_occ(n_pts), &
+                  out%max_occ(n_pts), out%sturges(n_pts), out%fd(n_pts), out%counts(256, n_pts, n_studies), &
+                  out%included(n_pts, n_studies), out%mean_pmf_counts(256, n_pts), out%mean_included(n_pts), &
+                  out%occ_failed(n_pts), out%range_low(n_pts), out%range_high(n_pts), out%mean_occ(n_pts), &
+                  out%pmfs(256, n_pts, n_studies), out%mean_pmf(256, n_pts), out%js(n_pts, n_studies), &
+                  out%weights(n_pts, n_studies), out%global_jsd(n_studies), out%p_values(n_studies))
+        out%n_per_point = -7_int32
+        out%n_bins = -7_int32
+        out%n_pooled = -7_int32
+        out%min_occ = -7_int32
+        out%max_occ = -7_int32
+        out%sturges = -7_int32
+        out%fd = -7_int32
+        out%counts = -7_int32
+        out%included = -7_int32
+        out%mean_pmf_counts = -7_int32
+        out%mean_included = -7_int32
+        out%max_n_bins = -7_int32
+        out%occ_failed = .false._c_bool
+        out%range_low = -7.0_real64
+        out%range_high = -7.0_real64
+        out%mean_occ = -7.0_real64
+        out%pmfs = -7.0_real64
+        out%mean_pmf = -7.0_real64
+        out%js = -7.0_real64
+        out%weights = -7.0_real64
+        out%global_jsd = -7.0_real64
+        out%p_values = -7.0_real64
+
+        call run_js_comp_test_adaptive(n_studies, n_genes, n_reps, n_passed, gene_means, residuals, ranges, &
+                                       out%n_per_point, out%n_bins, out%range_low, out%range_high, out%max_n_bins, &
+                                       out%occ_failed, out%n_pooled, out%min_occ, out%mean_occ, out%max_occ, &
+                                       out%sturges, out%fd, out%pmfs, out%counts, out%included, out%mean_pmf, &
+                                       out%mean_pmf_counts, out%mean_included, out%js, out%weights, out%global_jsd, &
+                                       out%p_values, n_permutations=n_permutations, random_seed=random_seed, &
+                                       min_residuals_per_bin=min_residuals_per_bin, m_min=m_min, m_max=m_max, &
+                                       ierr=ierr)
+    end subroutine run_adaptive_final
+
+    !> Test helper: the fixture shared by the error tests. G = 3, two studies, 2 replicates: study
+    !| 1 means [0, 2, 4], study 2 means [1, 3, NaN] (its third gene is padding). Flat entries
+    !| s1g1..s1g3 = 1..3, s2g1..s2g3 = 4..6, so the sorted pool is 0 (flat 1), 1 (4), 2 (2),
+    !| 3 (5), 4 (3), then the NaN entry 6: five non-NaN positions. Residuals: s1g1 [-1, 1],
+    !| s1g2 [0.5, NaN], s1g3 [-0.5, 0.5], s2g1 [-2, 2], s2g2 [-1.5, 1.5], s2g3 NaN.
+    subroutine build_adaptive_final_fixture(gene_means, residuals)
+        real(real64), intent(out) :: gene_means(3, 2), residuals(2, 3, 2)
+        real(real64) :: nan_val
+
+        nan_val = ieee_value(0.0_real64, ieee_quiet_nan)
+        gene_means(:, 1) = [0.0_real64, 2.0_real64, 4.0_real64]
+        gene_means(:, 2) = [1.0_real64, 3.0_real64, nan_val]
+        residuals(:, 1, 1) = [-1.0_real64, 1.0_real64]
+        residuals(:, 2, 1) = [0.5_real64, nan_val]
+        residuals(:, 3, 1) = [-0.5_real64, 0.5_real64]
+        residuals(:, 1, 2) = [-2.0_real64, 2.0_real64]
+        residuals(:, 2, 2) = [-1.5_real64, 1.5_real64]
+        residuals(:, 3, 2) = nan_val
+    end subroutine build_adaptive_final_fixture
+
+    !> Issue #217 (D1): decoding pooled positions, by hand. G = 3, two studies; the sorted order
+    !| perm_all = [1, 4, 2, 5, 3, 6] is the one of build_adaptive_final_fixture's means, flat 6
+    !| being study 2's NaN-padded third gene. flat -> (gene, study) is 1 -> (1,1), 2 -> (2,1),
+    !| 3 -> (3,1), 4 -> (1,2), 5 -> (2,2), 6 -> (3,2).
+    !| - [2,5]: flats 4, 2, 5, 3 -> study 1 genes [2, 3], study 2 genes [1, 2] (pooled order).
+    !| - [1,1]: flat 1 -> study 1 [1], study 2 none (count 0).
+    !| - [5,6]: flats 3, 6 -> study 1 [3], study 2 [3], the padding decodes like any entry.
+    !| Every count vector sums to the range length.
+    subroutine test_materialize_pooled_neighborhood_decode()
+        integer(int32), parameter :: perm_all(6) = [1, 4, 2, 5, 3, 6]
+        integer(int32) :: indices(3, 2), n_per_study(2)
+        character(len=*), parameter :: name = "test_materialize_pooled_neighborhood_decode: "
+
+        call materialize_pooled_neighborhood(perm_all, 3_int32, 2_int32, 2_int32, 5_int32, 3_int32, indices, n_per_study)
+        call assert_equal_array_int(n_per_study, [2, 2], 2_int32, name//"[2,5] counts")
+        call assert_equal_array_int(indices(1:2, 1), [2, 3], 2_int32, name//"[2,5] study 1 genes")
+        call assert_equal_array_int(indices(1:2, 2), [1, 2], 2_int32, name//"[2,5] study 2 genes")
+
+        call materialize_pooled_neighborhood(perm_all, 3_int32, 2_int32, 1_int32, 1_int32, 3_int32, indices, n_per_study)
+        call assert_equal_array_int(n_per_study, [1, 0], 2_int32, name//"[1,1] counts, study 2 empty")
+        call assert_equal_int(indices(1, 1), 1_int32, name//"[1,1] study 1 gene")
+
+        call materialize_pooled_neighborhood(perm_all, 3_int32, 2_int32, 5_int32, 6_int32, 3_int32, indices, n_per_study)
+        call assert_equal_array_int(n_per_study, [1, 1], 2_int32, name//"[5,6] counts")
+        call assert_equal_int(indices(1, 1), 3_int32, name//"[5,6] study 1 gene")
+        call assert_equal_int(indices(1, 2), 3_int32, name//"[5,6] study 2 padded gene")
+    end subroutine test_materialize_pooled_neighborhood_decode
+
+    !> Issue #217 (D2), equivalence: pooled ranges that decode to exactly the gene sets a fixed-k
+    !| run picks give every shared output bit-identical to run_js_comp_test with the same seed.
+    !| Two studies with IDENTICAL means 1..8 (G = 8, 4 replicates, study 2's fourth replicate and
+    !| one study 1 residual NaN), so every mean appears twice in the pool and the heapsort may
+    !| order each tied pair either way: positions 2g-1 and 2g always hold gene g of both studies.
+    !| Fixed-k with n_neighbors = 3 at x* = [1.9, 4.2, 6.9] picks genes {1,2,3}, {3,4,5},
+    !| {6,7,8} in each study (distances 0.1/0.9/1.1, 0.2/0.8/1.2, 0.1/0.9/1.1, no ties), which
+    !| are the pooled ranges [1,6], [5,10], [11,16]. The genes reach the pools in a different
+    !| order (nearest first against ascending mean), which cannot matter: the pool is sorted
+    !| before the occupancy search, and histogram counts are order-free. The occupancy knobs make
+    !| the points pick different bin counts, so the zero padding up to max_n_bins_per_point is
+    !| compared too.
+    subroutine test_run_adaptive_matches_fixed_k_exactly()
+        integer(int32), parameter :: n_studies = 2, n_genes = 8, n_reps = 4, n_points = 3, n_neighbors = 3
+        real(real64) :: gene_means(n_genes, n_studies), residuals(n_reps, n_genes, n_studies), x_star(n_points)
+        integer(int32) :: gene_means_perms(n_genes, n_studies), ranges(2, n_points)
+        integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies), neighborhood_range(2, n_points, n_studies)
+        integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point, n_pooled_residuals(n_points)
+        integer(int32) :: min_bin_occupancy(n_points), max_bin_occupancy(n_points), sturges_bins(n_points)
+        integer(int32) :: fd_bins(n_points), counts(256, n_points, n_studies), included_n_reps(n_points, n_studies)
+        integer(int32) :: mean_pmf_counts(256, n_points), mean_pmf_included_n_reps(n_points)
+        real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
+        real(real64) :: mean_bin_occupancy(n_points), pmfs(256, n_points, n_studies), mean_pmf(256, n_points)
+        real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
+        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
+        logical(c_bool) :: occupancy_failed(n_points)
+        type(adaptive_run_outputs) :: out
+        integer(int32) :: ierr, i_gene, i_study, i_rep, i_point, n_bins
+        character(len=*), parameter :: name = "test_run_adaptive_matches_fixed_k_exactly: "
+
+        do i_study = 1, n_studies
+            do i_gene = 1, n_genes
+                gene_means(i_gene, i_study) = real(i_gene, real64)
+                gene_means_perms(i_gene, i_study) = i_gene
+                do i_rep = 1, n_reps
+                    residuals(i_rep, i_gene, i_study) = (1.0_real64 + 0.2_real64*real(i_gene, real64))* &
+                                                        sin(1.3_real64*real(i_rep, real64) + 0.7_real64*real(i_gene, real64) + &
+                                                            2.1_real64*real(i_study, real64))
+                end do
+            end do
+        end do
+        residuals(4, :, 2) = ieee_value(0.0_real64, ieee_quiet_nan)
+        residuals(2, 5, 1) = ieee_value(0.0_real64, ieee_quiet_nan)
+        x_star = [1.9_real64, 4.2_real64, 6.9_real64]
+        ranges = reshape([1, 6, 5, 10, 11, 16], [2, n_points])
+
+        call run_js_comp_test(n_studies, n_genes, n_reps, n_points, n_neighbors, gene_means, gene_means_perms, residuals, &
+                              x_star, neighborhood_indices, neighborhood_range, n_bins_per_point, &
+                              shared_residual_range_low, shared_residual_range_high, max_n_bins_per_point, &
+                              occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                              max_bin_occupancy, sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, &
+                              mean_pmf_counts, mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, &
+                              p_values, ierr=ierr, n_permutations=200_int32, random_seed=5_int32, m_min=2_int32, &
+                              m_max=12_int32, min_residuals_per_bin=2_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"fixed-k ierr")
+        ! the fixed-k gene sets really are {1,2,3}, {3,4,5}, {6,7,8} in both studies
+        do i_study = 1, n_studies
+            do i_point = 1, n_points
+                call assert_equal_int(maxval(neighborhood_indices(:, i_point, i_study)) - &
+                                      minval(neighborhood_indices(:, i_point, i_study)), 2_int32, name//"fixed-k set span")
+            end do
+            call assert_equal_array_int(minval(neighborhood_indices(:, :, i_study), dim=1), [1, 3, 6], n_points, &
+                                        name//"fixed-k set start")
+        end do
+
+        call run_adaptive_final(gene_means, residuals, ranges, out, ierr, n_permutations=200_int32, &
+                                random_seed=5_int32, m_min=2_int32, m_max=12_int32, min_residuals_per_bin=2_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"adaptive ierr")
+        call assert_equal_array_int(out%n_per_point, [(3, i_gene=1, n_studies*n_points)], n_studies*n_points, &
+                                    name//"three genes per study and point", n_rows=n_studies)
+        ! the fixture does exercise the zero padding: the points do not all share one bin count
+        call assert_true(minval(n_bins_per_point) < max_n_bins_per_point, name//"bin counts differ between points")
+
+        n_bins = max_n_bins_per_point
+        call assert_equal_int(out%max_n_bins, n_bins, name//"max_n_bins_per_point")
+        call assert_equal_array_int(out%n_bins, n_bins_per_point, n_points, name//"n_bins_per_point")
+        call assert_equal_array_int(out%n_pooled, n_pooled_residuals, n_points, name//"n_pooled_residuals")
+        call assert_equal_array_int(out%min_occ, min_bin_occupancy, n_points, name//"min_bin_occupancy")
+        call assert_equal_array_int(out%max_occ, max_bin_occupancy, n_points, name//"max_bin_occupancy")
+        call assert_equal_array_int(out%sturges, sturges_bins, n_points, name//"sturges_bins")
+        call assert_equal_array_int(out%fd, fd_bins, n_points, name//"fd_bins")
+        call assert_true(all(out%occ_failed .eqv. occupancy_failed), name//"occupancy_failed")
+        call assert_equal_array_real(out%range_low, shared_residual_range_low, n_points, 0.0_real64, &
+                                     name//"shared_residual_range_low")
+        call assert_equal_array_real(out%range_high, shared_residual_range_high, n_points, 0.0_real64, &
+                                     name//"shared_residual_range_high")
+        call assert_equal_array_real(out%mean_occ, mean_bin_occupancy, n_points, 0.0_real64, name//"mean_bin_occupancy")
+        call assert_equal_array_int(out%counts(1:n_bins, :, :), counts(1:n_bins, :, :), n_bins*n_points*n_studies, &
+                                    name//"counts", n_rows=n_bins)
+        call assert_equal_array_real(out%pmfs(1:n_bins, :, :), pmfs(1:n_bins, :, :), n_bins*n_points*n_studies, &
+                                     0.0_real64, name//"pmfs", n_rows=n_bins)
+        call assert_equal_array_int(out%included, included_n_reps, n_points*n_studies, name//"included_n_reps", &
+                                    n_rows=n_points)
+        call assert_equal_array_int(out%mean_pmf_counts(1:n_bins, :), mean_pmf_counts(1:n_bins, :), n_bins*n_points, &
+                                    name//"mean_pmf_counts", n_rows=n_bins)
+        call assert_equal_array_real(out%mean_pmf(1:n_bins, :), mean_pmf(1:n_bins, :), n_bins*n_points, 0.0_real64, &
+                                     name//"mean_pmf", n_rows=n_bins)
+        call assert_equal_array_int(out%mean_included, mean_pmf_included_n_reps, n_points, name//"mean_pmf_included_n_reps")
+        call assert_equal_array_real(out%js, js_divergences, n_points*n_studies, 0.0_real64, name//"js_divergences", &
+                                     n_rows=n_points)
+        call assert_equal_array_real(out%weights, weights, n_points*n_studies, 0.0_real64, name//"weights", &
+                                     n_rows=n_points)
+        call assert_equal_array_real(out%global_jsd, global_js_divergence, n_studies, 0.0_real64, &
+                                     name//"global_js_divergence")
+        call assert_equal_array_real(out%p_values, p_values, n_studies, 0.0_real64, name//"p_values")
+    end subroutine test_run_adaptive_matches_fixed_k_exactly
+
+    !> Issue #217 (D3), a ragged point traced by hand on build_adaptive_final_fixture: the pooled
+    !| range [1,3] is flats 1, 4, 2 -> study 1 genes {1, 2} (2 genes), study 2 gene {1} (1 gene).
+    !| - Pool: s1g1 [-1, 1], s1g2 [0.5, NaN], s2g1 [-2, 2] -> n_pooled_residuals = R*sum(k) -
+    !|   NaNs = 2*3 - 1 = 5, sorted [-2, -1, 0.5, 1, 2].
+    !| - Range: 5th percentile at rank 0.05*4+1 = 1.2 -> -2 + 0.2 = -1.8; 95th at rank 4.8 ->
+    !|   1 + 0.8 = 1.8.
+    !| - Occupancy (m_min 2, m_max 4, min 1 per bin, gamma 1.25 -> trials 2, 3, 4): M=2 (width
+    !|   1.8) counts [2, 3]; M=3 (width 1.2) [2, 1, 2]; M=4 (width 0.9) [2, 0, 1, 2] fails.
+    !|   Selected 3, min 1, max 2, mean 5/3.
+    !| - Diagnostics with the rounded mean per-study count (3 + 1)/2 = 2, i.e. R*2 = 4 residuals:
+    !|   Sturges 1 + nint(log2 4) = 3; FD: IQR = 1 - (-1) = 2, half width 2/4^(1/3) = 1.26,
+    !|   half span 1.8 -> nint(1.43) = 1. (The plain sum 3 would give Sturges 1 + nint(log2 6) = 4.)
+    !| - Study 1 residuals [-1, 1, 0.5] -> bins 1, 3, 2 -> counts [1, 1, 1], P1 = [1/3, 1/3, 1/3];
+    !|   study 2 [-2, 2] clamp to the ends -> [1, 0, 1], P2 = [1/2, 0, 1/2]; consensus M =
+    !|   [5/12, 1/6, 5/12], counts [2, 1, 2], 5 residuals.
+    !| - JSD(P, M) = (sum_i P_i ln(P_i/m_i) + sum_i M_i ln(M_i/m_i))/(2 ln 2), m = (P + M)/2:
+    !|   study 1, m = [3/8, 1/4, 3/8]: (2/3) ln(8/9) + (1/3) ln(4/3) + (5/6) ln(10/9) + (1/6) ln(2/3);
+    !|   study 2, m = [11/24, 1/12, 11/24]: ln(12/11) + (5/6) ln(10/11) + (1/6) ln 2.
+    !| - One point: weight 1 each, global JSD = the point's JSD; n_permutations 0 leaves p = 0.
+    subroutine test_run_adaptive_ragged_hand_traceable()
+        real(real64) :: gene_means(3, 2), residuals(2, 3, 2), expected_js(2)
+        integer(int32) :: ierr, i_bin
+        type(adaptive_run_outputs) :: out
+        character(len=*), parameter :: name = "test_run_adaptive_ragged_hand_traceable: "
+
+        call build_adaptive_final_fixture(gene_means, residuals)
+        call run_adaptive_final(gene_means, residuals, reshape([1, 3], [2, 1]), out, ierr, n_permutations=0_int32, &
+                                m_min=2_int32, m_max=4_int32, min_residuals_per_bin=1_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+
+        expected_js(1) = ((2.0_real64/3.0_real64)*log(8.0_real64/9.0_real64) + (1.0_real64/3.0_real64)*log(4.0_real64/3.0_real64) &
+                          + (5.0_real64/6.0_real64)*log(10.0_real64/9.0_real64) &
+                          + (1.0_real64/6.0_real64)*log(2.0_real64/3.0_real64))/(2.0_real64*log(2.0_real64))
+        expected_js(2) = (log(12.0_real64/11.0_real64) + (5.0_real64/6.0_real64)*log(10.0_real64/11.0_real64) &
+                          + (1.0_real64/6.0_real64)*log(2.0_real64))/(2.0_real64*log(2.0_real64))
+
+        call assert_equal_array_int(out%n_per_point(:, 1), [2, 1], 2_int32, name//"ragged counts [2, 1]")
+        call assert_equal_int(out%n_pooled(1), 5_int32, name//"n_pooled_residuals = 2*3 - 1 NaN")
+        call assert_equal_real(out%range_low(1), -1.8_real64, TOL, name//"R_low")
+        call assert_equal_real(out%range_high(1), 1.8_real64, TOL, name//"R_high")
+        call assert_equal_int(out%n_bins(1), 3_int32, name//"n_bins")
+        call assert_equal_int(out%max_n_bins, 3_int32, name//"max_n_bins_per_point")
+        call assert_false(out%occ_failed(1), name//"occupancy succeeds")
+        call assert_equal_int(out%min_occ(1), 1_int32, name//"min_bin_occupancy")
+        call assert_equal_int(out%max_occ(1), 2_int32, name//"max_bin_occupancy")
+        call assert_equal_real(out%mean_occ(1), 5.0_real64/3.0_real64, TOL, name//"mean_bin_occupancy")
+        call assert_equal_int(out%sturges(1), 3_int32, name//"sturges_bins with the rounded mean count 2")
+        call assert_equal_int(out%fd(1), 1_int32, name//"fd_bins")
+        call assert_equal_array_int(out%counts(1:3, 1, 1), [1, 1, 1], 3_int32, name//"study 1 counts")
+        call assert_equal_array_int(out%counts(1:3, 1, 2), [1, 0, 1], 3_int32, name//"study 2 counts")
+        call assert_equal_array_int(out%included(1, :), [3, 2], 2_int32, name//"included_n_reps")
+        call assert_equal_array_real(out%pmfs(1:3, 1, 1), [(1.0_real64/3.0_real64, i_bin=1, 3)], 3_int32, TOL, &
+                                     name//"study 1 pmf")
+        call assert_equal_array_real(out%pmfs(1:3, 1, 2), [0.5_real64, 0.0_real64, 0.5_real64], 3_int32, TOL, &
+                                     name//"study 2 pmf")
+        call assert_equal_array_real(out%mean_pmf(1:3, 1), [5.0_real64/12.0_real64, 1.0_real64/6.0_real64, &
+                                     5.0_real64/12.0_real64], 3_int32, TOL, name//"consensus pmf")
+        call assert_equal_array_int(out%mean_pmf_counts(1:3, 1), [2, 1, 2], 3_int32, name//"consensus counts")
+        call assert_equal_int(out%mean_included(1), 5_int32, name//"consensus included_n_reps")
+        call assert_equal_array_real(out%js(1, :), expected_js, 2_int32, TOL, name//"js_divergences")
+        call assert_equal_array_real(out%global_jsd, expected_js, 2_int32, TOL, name//"global_js_divergence")
+        call assert_equal_array_real(out%weights(1, :), [1.0_real64, 1.0_real64], 2_int32, TOL, name//"weights")
+        call assert_equal_array_real(out%p_values, [0.0_real64, 0.0_real64], 2_int32, TOL, name//"p_values")
+    end subroutine test_run_adaptive_ragged_hand_traceable
+
+    !> Issue #217 (D4): a reversed range is a runtime error. build_adaptive_final_fixture with the
+    !| ranges [1,3] (valid) and [3,2]: the second point stops the checks with ERR_INVALID_INPUT,
+    !| its position cleared by the wrapper (a runtime error, not a wrapper validation), and the
+    !| routine returns before Pass B: the bin counts and p-values keep their sentinels.
+    subroutine test_run_adaptive_reversed_range_sets_ierr()
+        real(real64) :: gene_means(3, 2), residuals(2, 3, 2)
+        integer(int32) :: ierr
+        type(adaptive_run_outputs) :: out
+        character(len=*), parameter :: name = "test_run_adaptive_reversed_range_sets_ierr: "
+
+        call build_adaptive_final_fixture(gene_means, residuals)
+        call run_adaptive_final(gene_means, residuals, reshape([1, 3, 3, 2], [2, 2]), out, ierr, &
+                                min_residuals_per_bin=1_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"first > last", arg_pos=0_int32)
+        call assert_equal_array_int(out%n_bins, [-7, -7], 2_int32, name//"Pass B never ran")
+        call assert_equal_array_real(out%p_values, [-7.0_real64, -7.0_real64], 2_int32, 0.0_real64, &
+                                     name//"permutation test never ran")
+    end subroutine test_run_adaptive_reversed_range_sets_ierr
+
+    !> Issue #217 (D4b): a range reaching past the non-NaN pooled means is a runtime error.
+    !| build_adaptive_final_fixture has 5 non-NaN means of G*S = 6 entries, so [4,6] passes the
+    !| wrapper's bound (6 <= G*S) but its position 6 is study 2's NaN-padded gene:
+    !| ERR_INVALID_INPUT with no argument position, and no Pass B.
+    subroutine test_run_adaptive_range_beyond_valid_pool_sets_ierr()
+        real(real64) :: gene_means(3, 2), residuals(2, 3, 2)
+        integer(int32) :: ierr
+        type(adaptive_run_outputs) :: out
+        character(len=*), parameter :: name = "test_run_adaptive_range_beyond_valid_pool_sets_ierr: "
+
+        call build_adaptive_final_fixture(gene_means, residuals)
+        call run_adaptive_final(gene_means, residuals, reshape([1, 3, 4, 6], [2, 2]), out, ierr, &
+                                min_residuals_per_bin=1_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"last beyond the non-NaN means", arg_pos=0_int32)
+        call assert_equal_array_int(out%n_bins, [-7, -7], 2_int32, name//"Pass B never ran")
+
+        ! the same point ending at the last non-NaN position 5 is accepted
+        call run_adaptive_final(gene_means, residuals, reshape([1, 3, 4, 5], [2, 2]), out, ierr, &
+                                n_permutations=0_int32, min_residuals_per_bin=1_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"[4,5] accepted")
+        call assert_equal_array_int(out%n_per_point(:, 2), [1, 1], 2_int32, name//"[4,5] = s2g2, s1g3")
+    end subroutine test_run_adaptive_range_beyond_valid_pool_sets_ierr
+
+    !> Issue #217 (D5): a (point, study) pair without a gene is a runtime error, since the
+    !| consensus pmf averages over every study. build_adaptive_final_fixture with [1,3] and [5,5]:
+    !| position 5 is flat 3, study 1's gene 3 alone, so study 2 has none -> ERR_INVALID_INPUT
+    !| without an argument position, no Pass B; the checks have already decoded both points.
+    subroutine test_run_adaptive_empty_study_sets_ierr()
+        real(real64) :: gene_means(3, 2), residuals(2, 3, 2)
+        integer(int32) :: ierr
+        type(adaptive_run_outputs) :: out
+        character(len=*), parameter :: name = "test_run_adaptive_empty_study_sets_ierr: "
+
+        call build_adaptive_final_fixture(gene_means, residuals)
+        call run_adaptive_final(gene_means, residuals, reshape([1, 3, 5, 5], [2, 2]), out, ierr, &
+                                min_residuals_per_bin=1_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"study 2 has no gene", arg_pos=0_int32)
+        call assert_equal_array_int(out%n_per_point, [2, 1, 1, 0], 4_int32, name//"decoded counts", n_rows=2_int32)
+        call assert_equal_array_int(out%n_bins, [-7, -7], 2_int32, name//"Pass B never ran")
+    end subroutine test_run_adaptive_empty_study_sets_ierr
+
+    !> Issue #217 (D6), end to end: construct_adaptive_neighborhoods, then
+    !| run_js_comp_test_adaptive on its trimmed ranges. Three studies of 12 genes with 5
+    !| replicates: means g + 0.3*(s - 1) + 0.05*sin(g*s), so the studies interleave in the pool;
+    !| study 3's genes 11 and 12 are NaN padding, study 2 has 4 replicates, and one more residual
+    !| is NaN; residuals (0.5 + 0.1*g)*sin(1.7r + 0.9g + 1.3s) grow with the mean. Growth with
+    !| k_start 6, k_step 3, k_max 12. Consistency properties rather than values:
+    !| - the construction status is ok and the per-study counts equal the construction's own,
+    !|   each summing to the range length;
+    !| - a point's pooled residual count equals its consensus count and the sum over the studies'
+    !|   binned counts, and each (point, study) histogram sums to its included count;
+    !| - JSDs lie in [0, 1], each study's weights sum to 1, p-values lie in (0, 1];
+    !| - a second call with the same seed is bit-identical.
+    subroutine test_run_adaptive_end_to_end_after_construction()
+        integer(int32), parameter :: n_studies = 3, n_genes = 12, n_reps = 5, pool = n_genes*n_studies
+        real(real64) :: gene_means(n_genes, n_studies), residuals(n_reps, n_genes, n_studies)
+        real(real64) :: x_star(pool), dispersion(pool), mads(pool)
+        integer(int32) :: ranges(2, pool), n_per_point(n_studies, pool), stops(pool)
+        integer(int32) :: n_points, max_nn, status, ierr, i_gene, i_study, i_rep, i_point, n_bins
+        type(adaptive_run_outputs) :: out, again
+        character(len=*), parameter :: name = "test_run_adaptive_end_to_end_after_construction: "
+
+        do i_study = 1, n_studies
+            do i_gene = 1, n_genes
+                gene_means(i_gene, i_study) = real(i_gene, real64) + 0.3_real64*real(i_study - 1, real64) + &
+                                              0.05_real64*sin(real(i_gene*i_study, real64))
+                do i_rep = 1, n_reps
+                    residuals(i_rep, i_gene, i_study) = (0.5_real64 + 0.1_real64*real(i_gene, real64))* &
+                                                        sin(1.7_real64*real(i_rep, real64) + 0.9_real64*real(i_gene, real64) &
+                                                            + 1.3_real64*real(i_study, real64))
+                end do
+            end do
+        end do
+        gene_means(11:12, 3) = ieee_value(0.0_real64, ieee_quiet_nan)
+        residuals(:, 11:12, 3) = ieee_value(0.0_real64, ieee_quiet_nan)
+        residuals(5, :, 2) = ieee_value(0.0_real64, ieee_quiet_nan)
+        residuals(3, 4, 1) = ieee_value(0.0_real64, ieee_quiet_nan)
+
+        call run_adaptive_construction(gene_means, residuals, 6_int32, 3_int32, 12_int32, n_points, x_star, ranges, &
+                                       n_per_point, stops, dispersion, mads, max_nn, status)
+        call assert_equal_int(status, ADAPTIVE_STATUS_OK, name//"construction status")
+        call assert_true(n_points >= 2_int32, name//"several reference points")
+
+        call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_points), out, ierr, n_permutations=200_int32, &
+                                random_seed=11_int32, m_min=2_int32, m_max=10_int32, min_residuals_per_bin=2_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_equal_array_int(out%n_per_point, n_per_point(:, 1:n_points), n_studies*n_points, &
+                                    name//"counts equal the construction's", n_rows=n_studies)
+        n_bins = out%max_n_bins
+        call assert_equal_int(n_bins, maxval(out%n_bins), name//"max_n_bins_per_point")
+        do i_point = 1, n_points
+            call assert_equal_int(sum(out%n_per_point(:, i_point)), ranges(2, i_point) - ranges(1, i_point) + 1_int32, &
+                                  name//"counts partition the range")
+            call assert_equal_int(out%n_pooled(i_point), out%mean_included(i_point), name//"pooled = consensus count")
+            call assert_equal_int(out%n_pooled(i_point), sum(out%included(i_point, :)), name//"pooled = sum of studies")
+            do i_study = 1, n_studies
+                call assert_equal_int(sum(out%counts(1:n_bins, i_point, i_study)), out%included(i_point, i_study), &
+                                      name//"histogram sums to its included count")
+            end do
+        end do
+        call assert_true(all(out%js >= 0.0_real64 .and. out%js <= 1.0_real64), name//"JSDs in [0, 1]")
+        call assert_true(all(out%global_jsd >= 0.0_real64 .and. out%global_jsd <= 1.0_real64), name//"global JSD in [0, 1]")
+        do i_study = 1, n_studies
+            call assert_equal_real(sum(out%weights(:, i_study)), 1.0_real64, TOL, name//"weights sum to 1")
+        end do
+        call assert_true(all(out%p_values > 0.0_real64 .and. out%p_values <= 1.0_real64), name//"p-values in (0, 1]")
+
+        call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_points), again, ierr, n_permutations=200_int32, &
+                                random_seed=11_int32, m_min=2_int32, m_max=10_int32, min_residuals_per_bin=2_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"repeat ierr")
+        call assert_equal_array_int(again%n_bins, out%n_bins, n_points, name//"repeat n_bins_per_point")
+        call assert_equal_array_int(again%counts(1:n_bins, :, :), out%counts(1:n_bins, :, :), n_bins*n_points*n_studies, &
+                                    name//"repeat counts", n_rows=n_bins)
+        call assert_equal_array_real(again%range_low, out%range_low, n_points, 0.0_real64, name//"repeat R_low")
+        call assert_equal_array_real(again%range_high, out%range_high, n_points, 0.0_real64, name//"repeat R_high")
+        call assert_equal_array_real(again%js, out%js, n_points*n_studies, 0.0_real64, name//"repeat js", n_rows=n_points)
+        call assert_equal_array_real(again%weights, out%weights, n_points*n_studies, 0.0_real64, name//"repeat weights", &
+                                     n_rows=n_points)
+        call assert_equal_array_real(again%global_jsd, out%global_jsd, n_studies, 0.0_real64, name//"repeat global JSD")
+        call assert_equal_array_real(again%p_values, out%p_values, n_studies, 0.0_real64, name//"repeat p-values")
+    end subroutine test_run_adaptive_end_to_end_after_construction
+
+    !> Issue #217 (D7): the generated wrapper's validation, each blamed by its position: a range
+    !| entry 0 or G*S + 1 = 7 (pooled_neighborhood_range, 7), and n_points 0 (4). The upper bound
+    !| G*S itself passes the wrapper (test_run_adaptive_range_beyond_valid_pool_sets_ierr).
+    subroutine test_run_adaptive_wrapper_validation()
+        real(real64) :: gene_means(3, 2), residuals(2, 3, 2)
+        integer(int32) :: ierr
+        type(adaptive_run_outputs) :: out
+        character(len=*), parameter :: name = "test_run_adaptive_wrapper_validation: "
+
+        call build_adaptive_final_fixture(gene_means, residuals)
+        call run_adaptive_final(gene_means, residuals, reshape([0, 3], [2, 1]), out, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"range entry 0", arg_pos=7_int32)
+        call run_adaptive_final(gene_means, residuals, reshape([1, 7], [2, 1]), out, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"range entry G*S + 1", arg_pos=7_int32)
+        call run_adaptive_final(gene_means, residuals, reshape([1, 3], [2, 1]), out, ierr, n_points=0_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"n_points 0", arg_pos=4_int32)
+    end subroutine test_run_adaptive_wrapper_validation
 
 end module mod_test_data_integration_js_comp_test

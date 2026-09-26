@@ -35,6 +35,7 @@ from tensor_omics import (
     gather_pooled_neighborhood_residuals,
     run_js_comp_test,
     run_js_comp_test_parameter_search,
+    run_js_comp_test_adaptive,
 )
 from tensor_omics.error_handling import ERR_INVALID_INPUT
 
@@ -796,6 +797,48 @@ def test_construct_adaptive_neighborhoods():
 
     assert_error(lambda: construct_adaptive_neighborhoods(gene_means, residuals, 3, 1, 2),
                  "expected ERR_INVALID_INPUT for k_max < k_start", ERR_INVALID_INPUT)
+
+
+def test_run_js_comp_test_adaptive():
+    # Call-ability, return types/shapes and non-error only -- the hand-derived values and the
+    # fixed-k equivalence are the Fortran suite's job (test_run_adaptive_*). construct first, then
+    # run on its trimmed pooled ranges, as a caller does. Three interleaved studies of 8 genes,
+    # the third NaN-padded by one gene, 6 replicates each.
+    rng = np.random.default_rng(2170)
+    n_genes, n_studies = 8, 3
+    gene_means = np.array([[g + 0.3 * s for s in range(n_studies)] for g in range(n_genes)], dtype=np.float64)
+    gene_means[7, 2] = np.nan
+    residuals = rng.normal(0.0, 1.0, size=(6, n_genes, n_studies))
+    residuals[:, 7, 2] = np.nan
+    construction = construct_adaptive_neighborhoods(gene_means, residuals, 6, 3, 12)
+    assert construction["construction_status"] == 0, "expected a construction without empty studies"
+    ranges = construction["pooled_neighborhood_range"]
+    n_points = ranges.shape[1]
+
+    result = run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations=50, random_seed=3,
+                                       min_residuals_per_bin=2, m_min=2, m_max=8)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    assert result["n_neighbors_per_point"].shape == (n_studies, n_points)
+    np.testing.assert_array_equal(result["n_neighbors_per_point"], construction["n_neighbors_per_point"])
+    for key in ("n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "occupancy_failed",
+                "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy",
+                "sturges_bins", "fd_bins", "mean_pmf_included_n_reps"):
+        assert result[key].shape == (n_points,), f"{key}: expected ({n_points},), got {result[key].shape}"
+    assert isinstance(result["max_n_bins_per_point"], (int, np.integer))
+    assert result["pmfs"].shape == (256, n_points, n_studies)
+    assert result["counts"].shape == (256, n_points, n_studies)
+    assert result["mean_pmf"].shape == (256, n_points)
+    assert result["mean_pmf_counts"].shape == (256, n_points)
+    for key in ("included_n_reps", "js_divergences", "weights"):
+        assert result[key].shape == (n_points, n_studies), f"{key}: wrong shape {result[key].shape}"
+    assert result["global_js_divergence"].shape == (n_studies,)
+    assert result["p_values"].shape == (n_studies,)
+    assert np.all(np.isfinite(result["global_js_divergence"]))
+
+    reversed_ranges = ranges.copy()
+    reversed_ranges[:, 0] = [2, 1]
+    assert_error(lambda: run_js_comp_test_adaptive(gene_means, residuals, reversed_ranges, n_permutations=0),
+                 "expected ERR_INVALID_INPUT for a reversed pooled range", ERR_INVALID_INPUT)
 
 
 def main():

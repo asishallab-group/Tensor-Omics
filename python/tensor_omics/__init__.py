@@ -90,6 +90,7 @@ from .tox_data_integration_js_comp_test import (
     create_mean_pmf_only,
     bootstrap_histogram,
     run_js_comp_test,
+    run_js_comp_test_adaptive,
     run_js_comp_test_parameter_search,
 )
 from .tox_data_integration_js_comp_test_impl import (
@@ -341,6 +342,7 @@ __all__ = [
     "relative_axes_expression_from_expression_vector",
     "root_mean_sq_normalization",
     "run_js_comp_test",
+    "run_js_comp_test_adaptive",
     "run_js_comp_test_parameter_search",
     "save_tox_data",
     "serialize_char_helper",

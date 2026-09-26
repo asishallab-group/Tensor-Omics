@@ -742,4 +742,52 @@ test_construct_adaptive_neighborhoods <- function() {
                "expected ERR_INVALID_INPUT for k_max < k_start", ERR_INVALID_INPUT)
 }
 
+test_run_js_comp_test_adaptive <- function() {
+  # Call-ability, return types/shapes and non-error only -- the hand-derived values and the
+  # fixed-k equivalence are the Fortran suite's job (test_run_adaptive_*). construct first, then
+  # run on its trimmed pooled ranges, as a caller does. Three interleaved studies of 8 genes,
+  # the third NaN-padded by one gene, 6 replicates each.
+  set.seed(2170)
+  n_genes <- 8L
+  n_studies <- 3L
+  gene_means <- outer(seq_len(n_genes) - 1, 0.3 * (seq_len(n_studies) - 1), "+")
+  gene_means[8, 3] <- NaN
+  residuals <- array(rnorm(6 * n_genes * n_studies), dim = c(6, n_genes, n_studies))
+  residuals[, 8, 3] <- NaN
+  construction <- construct_adaptive_neighborhoods(gene_means, residuals, 6L, 3L, 12L)
+  assert_true(construction$construction_status == 0, "expected a construction without empty studies")
+  ranges <- construction$pooled_neighborhood_range
+  n_points <- ncol(ranges)
+
+  result <- run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations = 50L, random_seed = 3L,
+                                      min_residuals_per_bin = 2L, m_min = 2L, m_max = 8L)
+  assert_true(is.list(result), "expected a list")
+  assert_true(is.matrix(result$n_neighbors_per_point) &&
+                all(dim(result$n_neighbors_per_point) == c(n_studies, n_points)),
+              "n_neighbors_per_point must be n_studies x n_points")
+  assert_true(all(result$n_neighbors_per_point == construction$n_neighbors_per_point),
+              "per-study counts equal the construction's")
+  for (key in c("n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "occupancy_failed",
+                "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy",
+                "sturges_bins", "fd_bins", "mean_pmf_included_n_reps")) {
+    assert_equal_int(length(result[[key]]), n_points, paste(key, "length"))
+  }
+  assert_true(is.numeric(result$max_n_bins_per_point), "max_n_bins_per_point must be numeric")
+  assert_equal_int(dim(result$pmfs), c(256L, n_points, n_studies), "pmfs shape")
+  assert_equal_int(dim(result$counts), c(256L, n_points, n_studies), "counts shape")
+  assert_equal_int(dim(result$mean_pmf), c(256L, n_points), "mean_pmf shape")
+  assert_equal_int(dim(result$mean_pmf_counts), c(256L, n_points), "mean_pmf_counts shape")
+  for (key in c("included_n_reps", "js_divergences", "weights")) {
+    assert_equal_int(dim(result[[key]]), c(n_points, n_studies), paste(key, "shape"))
+  }
+  assert_equal_int(length(result$global_js_divergence), n_studies, "global_js_divergence length")
+  assert_equal_int(length(result$p_values), n_studies, "p_values length")
+  assert_true(all(is.finite(result$global_js_divergence)), "global JSD finite")
+
+  reversed_ranges <- ranges
+  reversed_ranges[, 1] <- c(2L, 1L)
+  assert_error(run_js_comp_test_adaptive(gene_means, residuals, reversed_ranges, n_permutations = 0L),
+               "expected ERR_INVALID_INPUT for a reversed pooled range", ERR_INVALID_INPUT)
+}
+
 run_all_tests()

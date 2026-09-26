@@ -104,7 +104,7 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter Search",
     "body": [
       "from tensor_omics.tox_data_integration_js_comp_test import (",
-      "    ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,determine_bin_count_occupancy_exhaustive,determine_bin_count_occupancy_exhaustive_expert,generate_js_comp_test_candidates,generate_adaptive_js_comp_test_candidates,construct_adaptive_neighborhoods,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|},",
+      "    ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,determine_bin_count_occupancy_exhaustive,determine_bin_count_occupancy_exhaustive_expert,generate_js_comp_test_candidates,generate_adaptive_js_comp_test_candidates,construct_adaptive_neighborhoods,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_adaptive,run_js_comp_test_parameter_search|},",
       ")"
     ]
   },
@@ -340,6 +340,25 @@
       "    gamma_occupancy=${12:1.25},",
       "    lower_residual_range_quantile=${13:0.05},",
       "    upper_residual_range_quantile=${14:0.95},",
+      ")"
+    ]
+  },
+  "run_js_comp_test_adaptive (call)": {
+    "prefix": "tox:run_js_comp_test_adaptive",
+    "description": "The adaptive counterpart of",
+    "body": [
+      "${1:result} = run_js_comp_test_adaptive(",
+      "    gene_means=${2:gene_means},",
+      "    residuals=${3:residuals},",
+      "    pooled_neighborhood_range=${4:pooled_neighborhood_range},",
+      "    n_permutations=${5:1000},",
+      "    random_seed=${6:42},",
+      "    min_residuals_per_bin=${7:10},",
+      "    m_min=${8:3},",
+      "    m_max=${9:120},",
+      "    gamma_occupancy=${10:1.25},",
+      "    lower_residual_range_quantile=${11:0.05},",
+      "    upper_residual_range_quantile=${12:0.95},",
       ")"
     ]
   },

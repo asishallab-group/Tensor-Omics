@@ -419,6 +419,53 @@ _RUN_JS_COMP_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_re
 #: For a derived argument, the one the caller passed it in
 _RUN_JS_COMP_TEST_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
+_lib.run_js_comp_test_adaptive_c.restype = None
+_lib.run_js_comp_test_adaptive_c.argtypes = (
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=3, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "gene_means", "residuals", "pooled_neighborhood_range", "n_neighbors_per_point", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "pooled_neighborhood_range", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+
 _lib.run_js_comp_test_parameter_search_c.restype = None
 _lib.run_js_comp_test_parameter_search_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
@@ -3163,6 +3210,370 @@ def run_js_comp_test(
     return {
         "neighborhood_indices": neighborhood_indices,
         "neighborhood_range": neighborhood_range,
+        "n_bins_per_point": n_bins_per_point,
+        "shared_residual_range_low": shared_residual_range_low,
+        "shared_residual_range_high": shared_residual_range_high,
+        "max_n_bins_per_point": max_n_bins_per_point.value,
+        "occupancy_failed": occupancy_failed,
+        "n_pooled_residuals": n_pooled_residuals,
+        "min_bin_occupancy": min_bin_occupancy,
+        "mean_bin_occupancy": mean_bin_occupancy,
+        "max_bin_occupancy": max_bin_occupancy,
+        "sturges_bins": sturges_bins,
+        "fd_bins": fd_bins,
+        "pmfs": pmfs,
+        "counts": counts,
+        "included_n_reps": included_n_reps,
+        "mean_pmf": mean_pmf,
+        "mean_pmf_counts": mean_pmf_counts,
+        "mean_pmf_included_n_reps": mean_pmf_included_n_reps,
+        "js_divergences": js_divergences,
+        "weights": weights,
+        "global_js_divergence": global_js_divergence,
+        "p_values": p_values,
+    }
+
+def run_js_comp_test_adaptive(
+        gene_means,
+        residuals,
+        pooled_neighborhood_range,
+        n_permutations=1000,
+        random_seed=42,
+        min_residuals_per_bin=10,
+        m_min=3,
+        m_max=120,
+        gamma_occupancy=1.25,
+        lower_residual_range_quantile=0.05,
+        upper_residual_range_quantile=0.95,
+):
+    r"""Run the JSD-Comp-Test pipeline on adaptive (Issue #217) neighborhoods
+
+    The adaptive counterpart of
+    :func:`tensor_omics.run_js_comp_test`: the
+    same pipeline and the same outputs, on neighborhoods whose size varies per reference point
+    and per study. Call
+    :func:`tensor_omics.construct_adaptive_neighborhoods`
+    first, then pass its `pooled_neighborhood_range` (trimmed to its `n_points` reference
+    points) here together with the same `gene_means` and `residuals`.
+
+    **Membership.** The pooled gene means are sorted again exactly as the construction sorts them
+    (the same routine on the same input), so a pooled position means the same entry here as it
+    did there. Every range `a..b` is decoded back to per-study gene lists by
+    ``materialize_pooled_neighborhood``;
+    the per-study counts are returned as `n_neighbors_per_point`, in the construction's own
+    `(n_studies, n_points)` orientation, and add up to `b - a + 1`.
+
+    **Pipeline, per reference point.** Pass B pools the point's residuals across all its genes
+    of all studies and picks its bin count and residual range with Issue #187's occupancy
+    search
+    (:func:`tensor_omics.determine_bin_count_occupancy`),
+    its Sturges/Freedman-Diaconis diagnostics computed with the rounded mean per-study neighbor
+    count. Pass C builds each study's histogram from that study's own genes of the point. Then,
+    exactly as in `run_js_comp_test_impl`: the consensus pmf
+    (:func:`tensor_omics.create_mean_pmf`), each
+    study's JSD against it and the weighted global JSD, the permutation test
+    (:func:`tensor_omics.gjct_permutation_test`) and the
+    final re-derivation from the untouched `counts`. Neighborhoods that decode to the same gene
+    sets as a fixed-k run's therefore give bit-identical results. Every point is weighted by its
+    non-NaN residual count, which under adaptive growth genuinely differs between points.
+    Like `run_js_comp_test_impl`, there is no admissibility gate: overlap and occupancy are the
+    parameter search's concern.
+
+    **Runtime errors.** Before any histogram work, every range is checked in point order; the
+    first failing one sets `ERR_INVALID_INPUT` and the routine returns at once, every output
+    undefined. For each point, in this order: its first position lies after its last; its last
+    position lies beyond the non-NaN pooled means (the entries a construction can ever use); a
+    study has no gene in it, which would leave that study's pmf empty and the consensus pmf, an
+    average over all studies, meaningless. A range a construction produced passes the first two
+    checks by construction, and the third whenever its status was not an empty-study one.
+
+    **Memory.** The work arrays are sized by the per-study gene bound `max_n_genes_all_studies`,
+    the largest number of genes one study can have in one neighborhood, not by a caller-supplied
+    neighbor count. The pooling buffers `tmp_pooled_residuals`/`tmp_pooled_residuals_perm`
+    therefore hold `max_n_reps_all_studies * max_n_genes_all_studies * n_studies` values each,
+    the size of `residuals` itself; Pass B and Pass C are sequential over points so one such
+    buffer serves every point.
+
+    The bin-sized arrays have the same fixed 256-bin
+    (``MAX_N_BINS``) leading extent as in
+    `run_js_comp_test_impl`, of which only the first `max_n_bins_per_point` rows are
+    meaningful; a Python/R caller slices `[:max_n_bins_per_point, ...]` themselves.
+
+    Impure: calls the impure `gjct_permutation_test_impl`. A GSL failure it reports is returned
+    in `ierr`, and the routine returns right there: `pmfs`, `js_divergences`, `weights` and
+    `global_js_divergence` then hold the pre-permutation values, not the final re-derived ones.
+
+    Parameters
+    ----------
+    gene_means : np.ndarray[np.float64] of shape (max_n_genes_all_studies, n_studies,), column-major (order='F')
+        Mean expression of every gene in every study, NaN for a missing gene; the same
+        array the neighborhoods were constructed from
+        NaN is permitted for this value.
+    residuals : np.ndarray[np.float64] of shape (max_n_reps_all_studies, max_n_genes_all_studies, n_studies,), column-major (order='F')
+        Signed residuals of every replicate of every gene in every study, NaN for a missing value
+        NaN is permitted for this value.
+    pooled_neighborhood_range : np.ndarray[np.int32] of shape (2, n_points,), column-major (order='F')
+        For each neighborhood, its first and last position in the ascending order of the
+        pooled means, as returned by construct_adaptive_neighborhoods
+        The minimum valid value is `1`.
+        The maximum valid value is `max_n_genes_all_studies*n_studies`.
+    n_permutations : int, optional, default 1000
+        Number of permutations, forwarded to gjct_permutation_test_impl
+        The minimum valid value is `0`.
+        The default value is `1000`.
+    random_seed : int, optional, default 42
+        Seed for the GSL random number generator
+        The default value is `42`.
+    min_residuals_per_bin : int, optional, default 10
+        Minimum number of pooled residuals every bin must reach for a candidate bin count to
+        be admissible in the occupancy search
+        The minimum valid value is `0`.
+        The default value is `10`.
+    m_min : int, optional, default 3
+        Smallest candidate bin count the occupancy search tests (M_min)
+        The minimum valid value is `1`.
+        The maximum valid value is `MAX_N_BINS`.
+        The default value is `3`.
+    m_max : int, optional, default 120
+        Largest candidate bin count the occupancy search tests (M_max); raised to `m_min`
+        when smaller
+        The minimum valid value is `1`.
+        The maximum valid value is `MAX_N_BINS`.
+        The default value is `120`.
+    gamma_occupancy : float, optional, default 1.25
+        Geometric growth factor of the occupancy search's coarse stage
+        The minimum valid value is `above(1.0)`.
+        The default value is `1.25`.
+    lower_residual_range_quantile : float, optional, default 0.05
+        Quantile in [0,1] for each reference point's lower residual-range bound
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.05`.
+    upper_residual_range_quantile : float, optional, default 0.95
+        Quantile in [0,1] for each reference point's upper residual-range bound
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.95`.
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        n_neighbors_per_point : np.ndarray[np.int32] of shape (n_studies, n_points,), column-major (order='F'), read-only
+            For each neighborhood, how many of its genes belong to each study (at least 1 each)
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        n_bins_per_point : np.ndarray[np.int32] of shape (n_points,), read-only
+            Each reference point's selected histogram bin count, from the occupancy search
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        shared_residual_range_low : np.ndarray[np.float64] of shape (n_points,), read-only
+            Each reference point's lower residual-range bound (R_low), from the occupancy search
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        shared_residual_range_high : np.ndarray[np.float64] of shape (n_points,), read-only
+            Each reference point's upper residual-range bound (R_high), from the occupancy search
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        max_n_bins_per_point : int
+            The widest `n_bins_per_point` value, `maxval(n_bins_per_point)`: the number of leading,
+            meaningful rows of `pmfs`, `counts`, `mean_pmf` and `mean_pmf_counts`
+        occupancy_failed : np.ndarray[np.bool_] of shape (n_points,), read-only
+            `True` iff even `m_min` bins could not satisfy the occupancy criterion for this
+            reference point; such a point still gets a histogram at `m_min` bins and still
+            contributes to `global_js_divergence`
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        n_pooled_residuals : np.ndarray[np.int32] of shape (n_points,), read-only
+            Each reference point's pooled non-NaN residual count (N_j), across all its genes of
+            all studies
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        min_bin_occupancy : np.ndarray[np.int32] of shape (n_points,), read-only
+            Each reference point's minimum bin occupancy at `n_bins_per_point`
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        mean_bin_occupancy : np.ndarray[np.float64] of shape (n_points,), read-only
+            Each reference point's mean bin occupancy at `n_bins_per_point`
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        max_bin_occupancy : np.ndarray[np.int32] of shape (n_points,), read-only
+            Each reference point's maximum bin occupancy at `n_bins_per_point`
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        sturges_bins : np.ndarray[np.int32] of shape (n_points,), read-only
+            Each reference point's Sturges' rule diagnostic, with the rounded mean per-study
+            neighbor count; never part of the occupancy search's decision
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        fd_bins : np.ndarray[np.int32] of shape (n_points,), read-only
+            Each reference point's Freedman-Diaconis rule diagnostic, with the rounded mean
+            per-study neighbor count; never part of the occupancy search's decision
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        pmfs : np.ndarray[np.float64] of shape (256, n_points, n_studies,), column-major (order='F'), read-only
+            `counts` normalized per reference point and study. `256` = MAX_N_BINS; only rows
+            `1:max_n_bins_per_point` are meaningful
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        counts : np.ndarray[np.int32] of shape (256, n_points, n_studies,), column-major (order='F'), read-only
+            Absolute counts of a residual per bin for `pmfs`. `256` = MAX_N_BINS; only rows
+            `1:max_n_bins_per_point` are meaningful
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        included_n_reps : np.ndarray[np.int32] of shape (n_points, n_studies,), column-major (order='F'), read-only
+            Count of non-NaN residuals binned per reference point, per study
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        mean_pmf : np.ndarray[np.float64] of shape (256, n_points,), column-major (order='F'), read-only
+            The consensus pmf. `256` = MAX_N_BINS; only rows `1:max_n_bins_per_point` are meaningful
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        mean_pmf_counts : np.ndarray[np.int32] of shape (256, n_points,), column-major (order='F'), read-only
+            Absolute counts of a residual per bin for the consensus pmf. `256` = MAX_N_BINS; only
+            rows `1:max_n_bins_per_point` are meaningful
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        mean_pmf_included_n_reps : np.ndarray[np.int32] of shape (n_points,), read-only
+            Count of non-NaN residuals per reference point for the consensus pmf
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        js_divergences : np.ndarray[np.float64] of shape (n_points, n_studies,), column-major (order='F'), read-only
+            Per-reference-point JSD of each study against the consensus pmf
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        weights : np.ndarray[np.float64] of shape (n_points, n_studies,), column-major (order='F'), read-only
+            Per-reference-point weights for `global_js_divergence`
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        global_js_divergence : np.ndarray[np.float64] of shape (n_studies,), read-only
+            Weighted global JSD of each study against the consensus pmf
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        p_values : np.ndarray[np.float64] of shape (n_studies,), read-only
+            Empirical p-value per study from the permutation test
+            A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_js_comp_test::run_js_comp_test_adaptive`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        gene_means = np.asfortranarray(gene_means, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'gene_means' must be an array of np.float64: {error}") from None
+    if gene_means.ndim != 2:
+        raise ValueError(f"'gene_means' must have 2 dimensions, but has {gene_means.ndim}")
+    try:
+        residuals = np.asfortranarray(residuals, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'residuals' must be an array of np.float64: {error}") from None
+    if residuals.ndim != 3:
+        raise ValueError(f"'residuals' must have 3 dimensions, but has {residuals.ndim}")
+    try:
+        pooled_neighborhood_range = np.asfortranarray(pooled_neighborhood_range, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'pooled_neighborhood_range' must be an array of np.int32: {error}") from None
+    if pooled_neighborhood_range.ndim != 2:
+        raise ValueError(f"'pooled_neighborhood_range' must have 2 dimensions, but has {pooled_neighborhood_range.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_studies = gene_means.shape[1]
+    max_n_genes_all_studies = gene_means.shape[0]
+    max_n_reps_all_studies = residuals.shape[0]
+    n_points = pooled_neighborhood_range.shape[1]
+
+    # Fortran cannot check that shared extents agree; this can
+    if residuals.shape[2] != n_studies:
+        raise ValueError(f"'residuals' has {residuals.shape[2]} along axis 2, but "
+            f"'gene_means' implies n_studies == {n_studies}"
+        )
+    if residuals.shape[1] != max_n_genes_all_studies:
+        raise ValueError(f"'residuals' has {residuals.shape[1]} along axis 1, but "
+            f"'gene_means' implies max_n_genes_all_studies == {max_n_genes_all_studies}"
+        )
+
+    # outputs and work arrays, which the caller never sees
+    n_neighbors_per_point = np.empty((n_studies, n_points,), dtype=np.int32, order='F')
+    n_bins_per_point = np.empty((n_points,), dtype=np.int32, order='C')
+    shared_residual_range_low = np.empty((n_points,), dtype=np.float64, order='C')
+    shared_residual_range_high = np.empty((n_points,), dtype=np.float64, order='C')
+    max_n_bins_per_point = ctypes.c_int(0)
+    occupancy_failed = np.empty((n_points,), dtype=np.bool_, order='C')
+    n_pooled_residuals = np.empty((n_points,), dtype=np.int32, order='C')
+    min_bin_occupancy = np.empty((n_points,), dtype=np.int32, order='C')
+    mean_bin_occupancy = np.empty((n_points,), dtype=np.float64, order='C')
+    max_bin_occupancy = np.empty((n_points,), dtype=np.int32, order='C')
+    sturges_bins = np.empty((n_points,), dtype=np.int32, order='C')
+    fd_bins = np.empty((n_points,), dtype=np.int32, order='C')
+    pmfs = np.empty((256, n_points, n_studies,), dtype=np.float64, order='F')
+    counts = np.empty((256, n_points, n_studies,), dtype=np.int32, order='F')
+    included_n_reps = np.empty((n_points, n_studies,), dtype=np.int32, order='F')
+    mean_pmf = np.empty((256, n_points,), dtype=np.float64, order='F')
+    mean_pmf_counts = np.empty((256, n_points,), dtype=np.int32, order='F')
+    mean_pmf_included_n_reps = np.empty((n_points,), dtype=np.int32, order='C')
+    js_divergences = np.empty((n_points, n_studies,), dtype=np.float64, order='F')
+    weights = np.empty((n_points, n_studies,), dtype=np.float64, order='F')
+    global_js_divergence = np.empty((n_studies,), dtype=np.float64, order='C')
+    p_values = np.empty((n_studies,), dtype=np.float64, order='C')
+    ierr = ctypes.c_int(0)
+
+    _lib.run_js_comp_test_adaptive_c(
+        ctypes.byref(ctypes.c_int(n_studies)),
+        ctypes.byref(ctypes.c_int(max_n_genes_all_studies)),
+        ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
+        ctypes.byref(ctypes.c_int(n_points)),
+        gene_means,
+        residuals,
+        pooled_neighborhood_range,
+        n_neighbors_per_point,
+        n_bins_per_point,
+        shared_residual_range_low,
+        shared_residual_range_high,
+        ctypes.byref(max_n_bins_per_point),
+        occupancy_failed,
+        n_pooled_residuals,
+        min_bin_occupancy,
+        mean_bin_occupancy,
+        max_bin_occupancy,
+        sturges_bins,
+        fd_bins,
+        pmfs,
+        counts,
+        included_n_reps,
+        mean_pmf,
+        mean_pmf_counts,
+        mean_pmf_included_n_reps,
+        js_divergences,
+        weights,
+        global_js_divergence,
+        p_values,
+        ctypes.byref(ctypes.c_int(n_permutations)),
+        ctypes.byref(ctypes.c_int(random_seed)),
+        ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
+        ctypes.byref(ctypes.c_int(m_min)),
+        ctypes.byref(ctypes.c_int(m_max)),
+        ctypes.byref(ctypes.c_double(gamma_occupancy)),
+        ctypes.byref(ctypes.c_double(lower_residual_range_quantile)),
+        ctypes.byref(ctypes.c_double(upper_residual_range_quantile)),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENTS, _RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    n_neighbors_per_point.flags.writeable = False
+    n_bins_per_point.flags.writeable = False
+    shared_residual_range_low.flags.writeable = False
+    shared_residual_range_high.flags.writeable = False
+    occupancy_failed.flags.writeable = False
+    n_pooled_residuals.flags.writeable = False
+    min_bin_occupancy.flags.writeable = False
+    mean_bin_occupancy.flags.writeable = False
+    max_bin_occupancy.flags.writeable = False
+    sturges_bins.flags.writeable = False
+    fd_bins.flags.writeable = False
+    pmfs.flags.writeable = False
+    counts.flags.writeable = False
+    included_n_reps.flags.writeable = False
+    mean_pmf.flags.writeable = False
+    mean_pmf_counts.flags.writeable = False
+    mean_pmf_included_n_reps.flags.writeable = False
+    js_divergences.flags.writeable = False
+    weights.flags.writeable = False
+    global_js_divergence.flags.writeable = False
+    p_values.flags.writeable = False
+
+    return {
+        "n_neighbors_per_point": n_neighbors_per_point,
         "n_bins_per_point": n_bins_per_point,
         "shared_residual_range_low": shared_residual_range_low,
         "shared_residual_range_high": shared_residual_range_high,

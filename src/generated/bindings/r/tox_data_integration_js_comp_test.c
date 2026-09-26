@@ -23,6 +23,7 @@ void create_mean_pmf_c(const double*, const int*, const int*, const int*, const 
 void create_mean_pmf_only_c(const double*, const int*, const int*, const int*, double*, int*);
 void bootstrap_histogram_c(const int*, const int*, const int*, const int*, const int*, const int*, const int*, double*, const double*, const int*, int*);
 void run_js_comp_test_c(const int*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, int*);
+void run_js_comp_test_adaptive_c(const int*, const int*, const int*, const int*, const double*, const double*, const int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, int*);
 void run_js_comp_test_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, const int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, int*);
 
 SEXP estimate_bin_count_call(SEXP residuals, SEXP max_n_reps_all_studies, SEXP n_neighbors, SEXP shared_residual_range) {
@@ -979,6 +980,154 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_means_pe
     SET_STRING_ELT(_nms, 21, Rf_mkChar("global_js_divergence"));
     SET_STRING_ELT(_nms, 22, Rf_mkChar("p_values"));
     SET_STRING_ELT(_nms, 23, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled_neighborhood_range, SEXP n_permutations, SEXP random_seed, SEXP min_residuals_per_bin, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile) {
+    int nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_studies = INTEGER(Rf_getAttrib(gene_means, R_DimSymbol))[1];
+    int max_n_genes_all_studies = INTEGER(Rf_getAttrib(gene_means, R_DimSymbol))[0];
+    int max_n_reps_all_studies = INTEGER(Rf_getAttrib(residuals, R_DimSymbol))[0];
+    int n_points = INTEGER(Rf_getAttrib(pooled_neighborhood_range, R_DimSymbol))[1];
+
+    // scalar inputs, pulled from their length-1 vectors
+    int n_permutations_v = Rf_asInteger(n_permutations);
+    int random_seed_v = Rf_asInteger(random_seed);
+    int min_residuals_per_bin_v = Rf_asInteger(min_residuals_per_bin);
+    int m_min_v = Rf_asInteger(m_min);
+    int m_max_v = Rf_asInteger(m_max);
+    double gamma_occupancy_v = Rf_asReal(gamma_occupancy);
+    double lower_residual_range_quantile_v = Rf_asReal(lower_residual_range_quantile);
+    double upper_residual_range_quantile_v = Rf_asReal(upper_residual_range_quantile);
+
+    // outputs and work space
+    SEXP n_neighbors_per_point = PROTECT(Rf_allocVector(INTSXP, n_studies * n_points)); nprot++;
+    { SEXP n_neighbors_per_point_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(n_neighbors_per_point_dim)[0] = n_studies; INTEGER(n_neighbors_per_point_dim)[1] = n_points; Rf_setAttrib(n_neighbors_per_point, R_DimSymbol, n_neighbors_per_point_dim); UNPROTECT(1); }
+    SEXP n_bins_per_point = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
+    SEXP shared_residual_range_low = PROTECT(Rf_allocVector(REALSXP, n_points)); nprot++;
+    SEXP shared_residual_range_high = PROTECT(Rf_allocVector(REALSXP, n_points)); nprot++;
+    int max_n_bins_per_point = 0;
+    unsigned char* occupancy_failed_c = tox_bool_alloc(n_points);
+    SEXP n_pooled_residuals = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
+    SEXP min_bin_occupancy = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
+    SEXP mean_bin_occupancy = PROTECT(Rf_allocVector(REALSXP, n_points)); nprot++;
+    SEXP max_bin_occupancy = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
+    SEXP sturges_bins = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
+    SEXP fd_bins = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
+    SEXP pmfs = PROTECT(Rf_allocVector(REALSXP, 256 * n_points * n_studies)); nprot++;
+    { SEXP pmfs_dim = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(pmfs_dim)[0] = 256; INTEGER(pmfs_dim)[1] = n_points; INTEGER(pmfs_dim)[2] = n_studies; Rf_setAttrib(pmfs, R_DimSymbol, pmfs_dim); UNPROTECT(1); }
+    SEXP counts = PROTECT(Rf_allocVector(INTSXP, 256 * n_points * n_studies)); nprot++;
+    { SEXP counts_dim = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(counts_dim)[0] = 256; INTEGER(counts_dim)[1] = n_points; INTEGER(counts_dim)[2] = n_studies; Rf_setAttrib(counts, R_DimSymbol, counts_dim); UNPROTECT(1); }
+    SEXP included_n_reps = PROTECT(Rf_allocVector(INTSXP, n_points * n_studies)); nprot++;
+    { SEXP included_n_reps_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(included_n_reps_dim)[0] = n_points; INTEGER(included_n_reps_dim)[1] = n_studies; Rf_setAttrib(included_n_reps, R_DimSymbol, included_n_reps_dim); UNPROTECT(1); }
+    SEXP mean_pmf = PROTECT(Rf_allocVector(REALSXP, 256 * n_points)); nprot++;
+    { SEXP mean_pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_dim)[0] = 256; INTEGER(mean_pmf_dim)[1] = n_points; Rf_setAttrib(mean_pmf, R_DimSymbol, mean_pmf_dim); UNPROTECT(1); }
+    SEXP mean_pmf_counts = PROTECT(Rf_allocVector(INTSXP, 256 * n_points)); nprot++;
+    { SEXP mean_pmf_counts_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_counts_dim)[0] = 256; INTEGER(mean_pmf_counts_dim)[1] = n_points; Rf_setAttrib(mean_pmf_counts, R_DimSymbol, mean_pmf_counts_dim); UNPROTECT(1); }
+    SEXP mean_pmf_included_n_reps = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
+    SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, n_points * n_studies)); nprot++;
+    { SEXP js_divergences_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(js_divergences_dim)[0] = n_points; INTEGER(js_divergences_dim)[1] = n_studies; Rf_setAttrib(js_divergences, R_DimSymbol, js_divergences_dim); UNPROTECT(1); }
+    SEXP weights = PROTECT(Rf_allocVector(REALSXP, n_points * n_studies)); nprot++;
+    { SEXP weights_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(weights_dim)[0] = n_points; INTEGER(weights_dim)[1] = n_studies; Rf_setAttrib(weights, R_DimSymbol, weights_dim); UNPROTECT(1); }
+    SEXP global_js_divergence = PROTECT(Rf_allocVector(REALSXP, n_studies)); nprot++;
+    SEXP p_values = PROTECT(Rf_allocVector(REALSXP, n_studies)); nprot++;
+    int ierr = 0;
+
+    run_js_comp_test_adaptive_c(
+        &n_studies,
+        &max_n_genes_all_studies,
+        &max_n_reps_all_studies,
+        &n_points,
+        REAL(gene_means),
+        REAL(residuals),
+        INTEGER(pooled_neighborhood_range),
+        INTEGER(n_neighbors_per_point),
+        INTEGER(n_bins_per_point),
+        REAL(shared_residual_range_low),
+        REAL(shared_residual_range_high),
+        &max_n_bins_per_point,
+        occupancy_failed_c,
+        INTEGER(n_pooled_residuals),
+        INTEGER(min_bin_occupancy),
+        REAL(mean_bin_occupancy),
+        INTEGER(max_bin_occupancy),
+        INTEGER(sturges_bins),
+        INTEGER(fd_bins),
+        REAL(pmfs),
+        INTEGER(counts),
+        INTEGER(included_n_reps),
+        REAL(mean_pmf),
+        INTEGER(mean_pmf_counts),
+        INTEGER(mean_pmf_included_n_reps),
+        REAL(js_divergences),
+        REAL(weights),
+        REAL(global_js_divergence),
+        REAL(p_values),
+        &n_permutations_v,
+        &random_seed_v,
+        &min_residuals_per_bin_v,
+        &m_min_v,
+        &m_max_v,
+        &gamma_occupancy_v,
+        &lower_residual_range_quantile_v,
+        &upper_residual_range_quantile_v,
+        &ierr
+    );
+
+    // convert the outputs back
+    SEXP occupancy_failed = PROTECT(tox_bool_out(occupancy_failed_c, n_points)); nprot++;
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 23)); nprot++;
+    SET_VECTOR_ELT(_out, 0, n_neighbors_per_point);
+    SET_VECTOR_ELT(_out, 1, n_bins_per_point);
+    SET_VECTOR_ELT(_out, 2, shared_residual_range_low);
+    SET_VECTOR_ELT(_out, 3, shared_residual_range_high);
+    SET_VECTOR_ELT(_out, 4, Rf_ScalarInteger(max_n_bins_per_point));
+    SET_VECTOR_ELT(_out, 5, occupancy_failed);
+    SET_VECTOR_ELT(_out, 6, n_pooled_residuals);
+    SET_VECTOR_ELT(_out, 7, min_bin_occupancy);
+    SET_VECTOR_ELT(_out, 8, mean_bin_occupancy);
+    SET_VECTOR_ELT(_out, 9, max_bin_occupancy);
+    SET_VECTOR_ELT(_out, 10, sturges_bins);
+    SET_VECTOR_ELT(_out, 11, fd_bins);
+    SET_VECTOR_ELT(_out, 12, pmfs);
+    SET_VECTOR_ELT(_out, 13, counts);
+    SET_VECTOR_ELT(_out, 14, included_n_reps);
+    SET_VECTOR_ELT(_out, 15, mean_pmf);
+    SET_VECTOR_ELT(_out, 16, mean_pmf_counts);
+    SET_VECTOR_ELT(_out, 17, mean_pmf_included_n_reps);
+    SET_VECTOR_ELT(_out, 18, js_divergences);
+    SET_VECTOR_ELT(_out, 19, weights);
+    SET_VECTOR_ELT(_out, 20, global_js_divergence);
+    SET_VECTOR_ELT(_out, 21, p_values);
+    SET_VECTOR_ELT(_out, 22, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 23)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("n_neighbors_per_point"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("n_bins_per_point"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("shared_residual_range_low"));
+    SET_STRING_ELT(_nms, 3, Rf_mkChar("shared_residual_range_high"));
+    SET_STRING_ELT(_nms, 4, Rf_mkChar("max_n_bins_per_point"));
+    SET_STRING_ELT(_nms, 5, Rf_mkChar("occupancy_failed"));
+    SET_STRING_ELT(_nms, 6, Rf_mkChar("n_pooled_residuals"));
+    SET_STRING_ELT(_nms, 7, Rf_mkChar("min_bin_occupancy"));
+    SET_STRING_ELT(_nms, 8, Rf_mkChar("mean_bin_occupancy"));
+    SET_STRING_ELT(_nms, 9, Rf_mkChar("max_bin_occupancy"));
+    SET_STRING_ELT(_nms, 10, Rf_mkChar("sturges_bins"));
+    SET_STRING_ELT(_nms, 11, Rf_mkChar("fd_bins"));
+    SET_STRING_ELT(_nms, 12, Rf_mkChar("pmfs"));
+    SET_STRING_ELT(_nms, 13, Rf_mkChar("counts"));
+    SET_STRING_ELT(_nms, 14, Rf_mkChar("included_n_reps"));
+    SET_STRING_ELT(_nms, 15, Rf_mkChar("mean_pmf"));
+    SET_STRING_ELT(_nms, 16, Rf_mkChar("mean_pmf_counts"));
+    SET_STRING_ELT(_nms, 17, Rf_mkChar("mean_pmf_included_n_reps"));
+    SET_STRING_ELT(_nms, 18, Rf_mkChar("js_divergences"));
+    SET_STRING_ELT(_nms, 19, Rf_mkChar("weights"));
+    SET_STRING_ELT(_nms, 20, Rf_mkChar("global_js_divergence"));
+    SET_STRING_ELT(_nms, 21, Rf_mkChar("p_values"));
+    SET_STRING_ELT(_nms, 22, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;

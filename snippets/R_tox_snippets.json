@@ -316,6 +316,25 @@
       ")"
     ]
   },
+  "run_js_comp_test_adaptive (call)": {
+    "prefix": "tox:run_js_comp_test_adaptive",
+    "description": "The adaptive counterpart of",
+    "body": [
+      "${1:result} <- run_js_comp_test_adaptive(",
+      "  gene_means = ${2:gene_means},",
+      "  residuals = ${3:residuals},",
+      "  pooled_neighborhood_range = ${4:pooled_neighborhood_range},",
+      "  n_permutations = ${5:1000L},",
+      "  random_seed = ${6:42L},",
+      "  min_residuals_per_bin = ${7:10L},",
+      "  m_min = ${8:3L},",
+      "  m_max = ${9:120L},",
+      "  gamma_occupancy = ${10:1.25},",
+      "  lower_residual_range_quantile = ${11:0.05},",
+      "  upper_residual_range_quantile = ${12:0.95}",
+      ")"
+    ]
+  },
   "run_js_comp_test_parameter_search (call)": {
     "prefix": "tox:run_js_comp_test_parameter_search",
     "description": "Ported from 125-stabilize-jscomp's `determine_js_comp_test_n_points_n_neighbors_helper` and",
