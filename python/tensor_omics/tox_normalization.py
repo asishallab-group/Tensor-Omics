@@ -638,6 +638,10 @@ def calc_fchange(
     by subtracting the expression value in the control group from the corresponding
     value in the condition group, for all genes.
 
+    That subtraction is a `log2 fold change` only because `expr` is already on a
+    `log2` scale. Passing tissue averages that have not been log-transformed yields a
+    plain difference of expression levels instead, which is not a fold change.
+
     Parameters
     ----------
     control_tissues : np.ndarray[np.int32] of shape (n_pairs,)
@@ -649,7 +653,9 @@ def calc_fchange(
         The minimum valid value is `1`.
         The maximum valid value is `n_tissues`.
     expr : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F')
-        Gene Expression matrix, from :func:`tensor_omics.calc_tiss_avg`
+        Gene Expression matrix on a `log2` scale, i.e. the result of
+        :func:`tensor_omics.normalization_pipeline` or of
+        :func:`tensor_omics.log2_transformation`
         NaN is permitted for this value.
         Infinite values are permitted for this value.
 

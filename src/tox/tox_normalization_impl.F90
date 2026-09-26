@@ -696,6 +696,10 @@ contains
     !| For each control-condition pair, this subroutine computes the `log2 fold change`
     !| by subtracting the expression value in the control group from the corresponding
     !| value in the condition group, for all genes.
+    !|
+    !| That subtraction is a `log2 fold change` only because `expr` is already on a
+    !| `log2` scale. Passing tissue averages that have not been log-transformed yields a
+    !| plain difference of expression levels instead, which is not a fold change.
     pure subroutine calc_fchange_impl(n_genes, n_tissues, n_pairs, control_tissues, condition_tissues, expr, fold_changes)
         ! === Arguments ===
         integer(int32), intent(in) :: n_genes
@@ -713,7 +717,9 @@ contains
             !! DM_MIN(1_int32)
             !! DM_MAX(n_tissues)
         real(real64), dimension(n_tissues, n_genes), intent(in) :: expr
-            !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+            !! Gene Expression matrix on a `log2` scale, i.e. the result of
+            !! [[tox_normalization(module):normalization_pipeline(subroutine)]] or of
+            !! [[tox_normalization(module):log2_transformation(subroutine)]]
             !! DM_ALLOW_NAN
             !! DM_ALLOW_INFINITE
         real(real64), dimension(n_pairs, n_genes), intent(out) :: fold_changes

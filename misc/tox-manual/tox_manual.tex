@@ -22,6 +22,8 @@
 % Top-level, end-to-end analyses a user runs to answer a biological question.
 % ===========================================================================
 
+\input{recipes/outlier_detection}
+\input{recipes/trajectory_contributions}
 \input{recipes/snd_detection}
 
 % ===========================================================================
@@ -30,6 +32,10 @@
 % Document each shared step once here; link to it with \dependson.
 % ===========================================================================
 
+\input{shared/tox_dataset}
+\input{shared/normalization}
 \input{shared/gene_family_detection}
+\input{shared/family_centroids}
+\input{shared/clustering}
 
 \end{document}
