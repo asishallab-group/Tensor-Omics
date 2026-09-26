@@ -13,13 +13,13 @@ void build_residual_histograms_c(const double*, const int*, const int*, const in
 void compute_divergence_per_reference_point_c(const double*, const double*, const int*, const int*, double*, int*);
 void compute_weighted_global_divergence_c(const double*, const int*, const int*, const int*, double*, double*, int*);
 
-SEXP determine_shared_residual_range_call(SEXP abs_residual_pool, SEXP residual_range_quantile) {
+SEXP determine_shared_residual_range_call(SEXP abs_residual_pool, SEXP residual_range_quantile_level) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int pool_size = (int) Rf_length(abs_residual_pool);
 
     // scalar inputs, pulled from their length-1 vectors
-    double residual_range_quantile_v = Rf_asReal(residual_range_quantile);
+    double residual_range_quantile_level_v = Rf_asReal(residual_range_quantile_level);
 
     // outputs and work space
     double shared_residual_range = 0;
@@ -29,7 +29,7 @@ SEXP determine_shared_residual_range_call(SEXP abs_residual_pool, SEXP residual_
         REAL(abs_residual_pool),
         &pool_size,
         &shared_residual_range,
-        &residual_range_quantile_v,
+        &residual_range_quantile_level_v,
         &ierr
     );
 
@@ -44,13 +44,13 @@ SEXP determine_shared_residual_range_call(SEXP abs_residual_pool, SEXP residual_
     return _out;
 }
 
-SEXP determine_shared_residual_range_expert_call(SEXP abs_residual_pool, SEXP abs_residual_pool_perm, SEXP residual_range_quantile) {
+SEXP determine_shared_residual_range_expert_call(SEXP abs_residual_pool, SEXP abs_residual_pool_perm, SEXP residual_range_quantile_level) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int pool_size = (int) Rf_length(abs_residual_pool);
 
     // scalar inputs, pulled from their length-1 vectors
-    double residual_range_quantile_v = Rf_asReal(residual_range_quantile);
+    double residual_range_quantile_level_v = Rf_asReal(residual_range_quantile_level);
 
     // outputs and work space
     double shared_residual_range = 0;
@@ -61,7 +61,7 @@ SEXP determine_shared_residual_range_expert_call(SEXP abs_residual_pool, SEXP ab
         INTEGER(abs_residual_pool_perm),
         &pool_size,
         &shared_residual_range,
-        &residual_range_quantile_v,
+        &residual_range_quantile_level_v,
         &ierr
     );
 
@@ -76,7 +76,7 @@ SEXP determine_shared_residual_range_expert_call(SEXP abs_residual_pool, SEXP ab
     return _out;
 }
 
-SEXP determine_study_shared_residual_range_call(SEXP neighborhood_residuals_S1, SEXP neighborhood_residuals_S2, SEXP residual_range_quantile) {
+SEXP determine_study_shared_residual_range_call(SEXP neighborhood_residuals_S1, SEXP neighborhood_residuals_S2, SEXP residual_range_quantile_level) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_reps_S1 = INTEGER(Rf_getAttrib(neighborhood_residuals_S1, R_DimSymbol))[0];
@@ -85,7 +85,7 @@ SEXP determine_study_shared_residual_range_call(SEXP neighborhood_residuals_S1, 
     int n_points = INTEGER(Rf_getAttrib(neighborhood_residuals_S1, R_DimSymbol))[2];
 
     // scalar inputs, pulled from their length-1 vectors
-    double residual_range_quantile_v = Rf_asReal(residual_range_quantile);
+    double residual_range_quantile_level_v = Rf_asReal(residual_range_quantile_level);
 
     // outputs and work space
     double shared_residual_range = 0;
@@ -99,7 +99,7 @@ SEXP determine_study_shared_residual_range_call(SEXP neighborhood_residuals_S1, 
         &n_neighbors,
         &n_points,
         &shared_residual_range,
-        &residual_range_quantile_v,
+        &residual_range_quantile_level_v,
         &ierr
     );
 
