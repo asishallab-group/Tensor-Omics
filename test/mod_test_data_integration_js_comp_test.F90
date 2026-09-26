@@ -4724,8 +4724,13 @@ contains
     !| because `abs(NaN - x) > tol` is false for any `x`.
     subroutine assert_equal_array_real_nan_exact(a, b, n, msg)
         integer(int32), intent(in) :: n
-        real(real64), intent(in) :: a(n), b(n)
+            !! Number of elements in `a` and `b`
+        real(real64), intent(in) :: a(n)
+            !! Actual array, possibly containing NaN
+        real(real64), intent(in) :: b(n)
+            !! Expected array, possibly containing NaN
         character(*), intent(in) :: msg
+            !! Assertion message prefix
 
         call assert_equal_array_logical(logical(ieee_is_nan(a), c_bool), logical(ieee_is_nan(b), c_bool), n, &
                                         msg//" (NaN positions)")
@@ -5370,13 +5375,42 @@ contains
     subroutine run_adaptive_construction(gene_means, residuals, k_start, k_step, k_max, n_points, x_star, ranges, &
                                          n_per_point, stops, dispersion, mads, max_nn, status, tau, factor, cap, &
                                          min_study)
-        real(real64), intent(in) :: gene_means(:, :), residuals(:, :, :)
-        integer(int32), intent(in) :: k_start, k_step, k_max
-        integer(int32), intent(out) :: n_points, max_nn, status
-        real(real64), intent(out) :: x_star(:), dispersion(:), mads(:)
-        integer(int32), intent(out) :: ranges(:, :), n_per_point(:, :), stops(:)
-        real(real64), intent(in), optional :: tau, factor
-        integer(int32), intent(in), optional :: cap, min_study
+        real(real64), intent(in) :: gene_means(:, :)
+            !! Mean expression of every gene in every study, NaN for a missing gene
+        real(real64), intent(in) :: residuals(:, :, :)
+            !! Signed residuals of every replicate of every gene in every study, NaN for a missing value
+        integer(int32), intent(in) :: k_start
+            !! Pooled entries every neighborhood takes unconditionally
+        integer(int32), intent(in) :: k_step
+            !! Pooled entries staged per adaptive growth round
+        integer(int32), intent(in) :: k_max
+            !! Largest number of pooled entries in one neighborhood
+        integer(int32), intent(out) :: n_points
+            !! Number of reference points (neighborhoods) built
+        integer(int32), intent(out) :: max_nn
+            !! Largest number of entries one study has in one neighborhood
+        integer(int32), intent(out) :: status
+            !! Overall construction outcome (ADAPTIVE_STATUS_* code)
+        real(real64), intent(out) :: x_star(:)
+            !! Reference point of each neighborhood: the pooled mean at its seed position
+        real(real64), intent(out) :: dispersion(:)
+            !! Mean absolute non-NaN residual of each final neighborhood
+        real(real64), intent(out) :: mads(:)
+            !! Raw median absolute deviation of each final neighborhood's pooled means
+        integer(int32), intent(out) :: ranges(:, :)
+            !! For each neighborhood, its first and last position in the pooled ascending order
+        integer(int32), intent(out) :: n_per_point(:, :)
+            !! For each neighborhood, how many of its pooled entries belong to each study
+        integer(int32), intent(out) :: stops(:)
+            !! Why each neighborhood stopped growing (ADAPTIVE_STOP_* code)
+        real(real64), intent(in), optional :: tau
+            !! Largest relative dispersion increase an adaptive round may cause and still be committed
+        real(real64), intent(in), optional :: factor
+            !! Multiple of a neighborhood's MAD that the next reference point's target lies beyond it
+        integer(int32), intent(in), optional :: cap
+            !! Cap on the non-NaN residuals adaptive rounds may grow a neighborhood's pool to
+        integer(int32), intent(in), optional :: min_study
+            !! Fewest entries of each study every neighborhood must have for the status to stay ok
         integer(int32) :: ierr
 
         call construct_adaptive_neighborhoods(size(gene_means, 2, kind=int32), size(gene_means, 1, kind=int32), &
@@ -5391,11 +5425,33 @@ contains
     subroutine assert_adaptive_points(label, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, &
                                       exp_x_star, exp_ranges, exp_n_per_point, exp_stops, exp_dispersion, exp_mads)
         character(*), intent(in) :: label
+            !! Prefix for every assertion message this helper makes
         integer(int32), intent(in) :: n_points
-        real(real64), intent(in) :: x_star(:), dispersion(:), mads(:)
-        integer(int32), intent(in) :: ranges(:, :), n_per_point(:, :), stops(:)
-        real(real64), intent(in) :: exp_x_star(:), exp_dispersion(:), exp_mads(:)
-        integer(int32), intent(in) :: exp_ranges(:, :), exp_n_per_point(:, :), exp_stops(:)
+            !! Number of leading reference points to compare
+        real(real64), intent(in) :: x_star(:)
+            !! Actual reference points, from the construction under test
+        real(real64), intent(in) :: dispersion(:)
+            !! Actual per-neighborhood dispersion, from the construction under test
+        real(real64), intent(in) :: mads(:)
+            !! Actual per-neighborhood MAD, from the construction under test
+        integer(int32), intent(in) :: ranges(:, :)
+            !! Actual per-neighborhood pooled-position ranges, from the construction under test
+        integer(int32), intent(in) :: n_per_point(:, :)
+            !! Actual per-neighborhood, per-study entry counts, from the construction under test
+        integer(int32), intent(in) :: stops(:)
+            !! Actual per-neighborhood stop reasons, from the construction under test
+        real(real64), intent(in) :: exp_x_star(:)
+            !! Expected reference points
+        real(real64), intent(in) :: exp_dispersion(:)
+            !! Expected per-neighborhood dispersion
+        real(real64), intent(in) :: exp_mads(:)
+            !! Expected per-neighborhood MAD
+        integer(int32), intent(in) :: exp_ranges(:, :)
+            !! Expected per-neighborhood pooled-position ranges
+        integer(int32), intent(in) :: exp_n_per_point(:, :)
+            !! Expected per-neighborhood, per-study entry counts
+        integer(int32), intent(in) :: exp_stops(:)
+            !! Expected per-neighborhood stop reasons
         integer(int32) :: n_exp, n_studies
 
         n_exp = size(exp_x_star, kind=int32)
@@ -6404,11 +6460,27 @@ contains
     !| outputs an early error return left untouched.
     subroutine run_adaptive_final(gene_means, residuals, ranges, out, ierr, n_permutations, random_seed, m_min, &
                                   m_max, min_residuals_per_bin, n_points)
-        real(real64), intent(in) :: gene_means(:, :), residuals(:, :, :)
+        real(real64), intent(in) :: gene_means(:, :)
+            !! Mean expression of every gene in every study, NaN for a missing gene
+        real(real64), intent(in) :: residuals(:, :, :)
+            !! Signed residuals of every replicate of every gene in every study, NaN for a missing value
         integer(int32), intent(in) :: ranges(:, :)
+            !! Per-neighborhood pooled-position ranges, as returned by construct_adaptive_neighborhoods
         type(adaptive_run_outputs), intent(out) :: out
+            !! Every output of run_js_comp_test_adaptive, pre-filled with the sentinel -7
         integer(int32), intent(out) :: ierr
-        integer(int32), intent(in), optional :: n_permutations, random_seed, m_min, m_max, min_residuals_per_bin
+            !! Error code; zero on success, non-zero on failure
+        integer(int32), intent(in), optional :: n_permutations
+            !! Number of permutations, forwarded to run_js_comp_test_adaptive
+        integer(int32), intent(in), optional :: random_seed
+            !! Seed for the GSL random number generator
+        integer(int32), intent(in), optional :: m_min
+            !! Smallest candidate bin count the occupancy search tests
+        integer(int32), intent(in), optional :: m_max
+            !! Largest candidate bin count the occupancy search tests
+        integer(int32), intent(in), optional :: min_residuals_per_bin
+            !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
+            !! be admissible in the occupancy search
         integer(int32), intent(in), optional :: n_points
             !! Overrides the reference-point count passed on, for the wrapper validation test
         integer(int32) :: n_studies, n_genes, n_reps, n_pts, n_passed
@@ -6465,7 +6537,10 @@ contains
     !| 3 (5), 4 (3), then the NaN entry 6: five non-NaN positions. Residuals: s1g1 [-1, 1],
     !| s1g2 [0.5, NaN], s1g3 [-0.5, 0.5], s2g1 [-2, 2], s2g2 [-1.5, 1.5], s2g3 NaN.
     subroutine build_adaptive_final_fixture(gene_means, residuals)
-        real(real64), intent(out) :: gene_means(3, 2), residuals(2, 3, 2)
+        real(real64), intent(out) :: gene_means(3, 2)
+            !! Fixture mean expression: 3 genes, 2 studies (see doc block above)
+        real(real64), intent(out) :: residuals(2, 3, 2)
+            !! Fixture residuals: 2 replicates, 3 genes, 2 studies (see doc block above)
         real(real64) :: nan_val
 
         nan_val = ieee_value(0.0_real64, ieee_quiet_nan)
