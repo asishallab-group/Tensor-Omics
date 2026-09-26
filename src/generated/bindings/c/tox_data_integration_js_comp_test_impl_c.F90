@@ -24,7 +24,10 @@
 !| [[tox_data_integration_js_comp_test_impl(module):generate_adaptive_js_comp_test_candidates_impl(interface)]]
 !| generates the ascending `(k_start, k_step, k_max)` growth-knob candidates instead, and
 !| `calc_adaptive_js_comp_test_bounds` recommends the reference-point capacity their search's
-!| per-point arrays are sized by. Once a candidate has passed both gates, its bootstrap confidence interval
+!| per-point arrays are sized by;
+!| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_adaptive_parameter_search_impl(interface)]]
+!| is that search, the adaptive counterpart of the fixed-k parameter search, with the same
+!| plateau criteria. Once a candidate has passed both gates, its bootstrap confidence interval
 !| is resampled from the pooled consensus histogram by
 !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]] (heap
 !| size recommended by

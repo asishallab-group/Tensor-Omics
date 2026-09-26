@@ -790,4 +790,58 @@ test_run_js_comp_test_adaptive <- function() {
                "expected ERR_INVALID_INPUT for a reversed pooled range", ERR_INVALID_INPUT)
 }
 
+test_run_js_comp_test_adaptive_parameter_search <- function() {
+  # Call-ability, return types/shapes and non-error only -- plateau selection, fallbacks,
+  # candidate statuses and the construct + run round trip are the Fortran suite's job
+  # (test_adaptive_search_*). Two interleaved studies of 500 genes, 3 replicates, so the adaptive
+  # sequence has several candidates; gates relaxed so candidates get evaluated.
+  set.seed(2171)
+  n_genes <- 500L
+  n_studies <- 2L
+  gene_means <- outer(seq_len(n_genes), 0.5 * (seq_len(n_studies) - 1), "+")
+  residuals <- array(rnorm(3 * n_genes * n_studies), dim = c(3, n_genes, n_studies))
+  capacity <- calc_adaptive_js_comp_test_bounds(n_genes, n_studies)
+
+  result <- run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps = 10L,
+                                                       join_method = "join_min", max_n_points_candidate = capacity,
+                                                       min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
+                                                       plateau_mode = "plateau_both", tau = 0.1,
+                                                       mad_distance_factor = 1.0, max_pooled_residuals = 0L,
+                                                       min_study_neighbors = 1L, random_seed = 1L)
+  assert_true(is.list(result), "expected a list")
+  for (key in c("k_start", "k_step", "k_max", "n_points")) {
+    assert_true(is.numeric(result[[key]]) && length(result[[key]]) == 1, paste(key, "must be a single number"))
+  }
+  assert_true(result$n_points >= 1 && result$n_points <= capacity, "n_points within the capacity")
+  assert_true(result$k_start <= result$k_max, "k_start <= k_max")
+  assert_true(is.logical(result$plateau_established), "plateau_established must be logical")
+  assert_equal_int(length(result$n_bins_per_point), capacity, "n_bins_per_point length")
+  assert_equal_int(dim(result$best_candidate_confidence_interval), c(2L, n_studies), "CI shape")
+
+  # Two independent DM_RESULT_SIZE_IS counters: traces trimmed to the admissible candidates, the
+  # candidate log to the candidates tried; both counters are dropped.
+  assert_true(is.null(result$n_admissible_evaluated) && is.null(result$n_candidates_tried), "counters dropped")
+  n_admissible <- length(result$trace_k_start)
+  n_tried <- length(result$candidate_status)
+  assert_true(n_admissible >= 1 && n_admissible <= n_tried && n_tried <= 16, "1 <= admissible <= tried <= 16")
+  for (key in c("trace_k_step", "trace_k_max", "trace_n_points", "trace_delta_median", "trace_delta_max")) {
+    assert_equal_int(length(result[[key]]), n_admissible, paste(key, "length"))
+  }
+  for (key in c("trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width",
+                "trace_ci_width_relative", "trace_delta")) {
+    assert_equal_int(dim(result[[key]]), c(n_studies, n_admissible), paste(key, "shape"))
+  }
+  for (key in c("trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals",
+                "trace_shared_residual_range_low", "trace_shared_residual_range_high")) {
+    assert_equal_int(dim(result[[key]]), c(capacity, n_admissible), paste(key, "shape"))
+  }
+  assert_equal_int(length(result$candidate_k_start), n_tried, "candidate_k_start length")
+  assert_equal_int(length(result$candidate_n_points), n_tried, "candidate_n_points length")
+  assert_true(all(result$candidate_status >= 0 & result$candidate_status <= 5), "status codes in 0..5")
+
+  assert_error(run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps = 10L,
+                                                          join_method = "join_min", max_n_points_candidate = 0L),
+               "expected ERR_INVALID_INPUT for max_n_points_candidate=0", ERR_INVALID_INPUT)
+}
+
 run_all_tests()

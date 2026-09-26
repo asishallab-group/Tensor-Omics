@@ -36,6 +36,7 @@ from tensor_omics import (
     run_js_comp_test,
     run_js_comp_test_parameter_search,
     run_js_comp_test_adaptive,
+    run_js_comp_test_adaptive_parameter_search,
 )
 from tensor_omics.error_handling import ERR_INVALID_INPUT
 
@@ -839,6 +840,56 @@ def test_run_js_comp_test_adaptive():
     reversed_ranges[:, 0] = [2, 1]
     assert_error(lambda: run_js_comp_test_adaptive(gene_means, residuals, reversed_ranges, n_permutations=0),
                  "expected ERR_INVALID_INPUT for a reversed pooled range", ERR_INVALID_INPUT)
+
+
+def test_run_js_comp_test_adaptive_parameter_search():
+    # Call-ability, return types/shapes and non-error only -- plateau selection, fallbacks,
+    # candidate statuses and the construct + run round trip are the Fortran suite's job
+    # (test_adaptive_search_*). Two interleaved studies of 500 genes, 3 replicates, so the adaptive
+    # sequence has several candidates; gates relaxed so candidates get evaluated.
+    rng = np.random.default_rng(2171)
+    n_genes, n_studies = 500, 2
+    gene_means = np.array([[g + 0.5 * s for s in range(n_studies)] for g in range(1, n_genes + 1)], dtype=np.float64)
+    residuals = rng.normal(0.0, 1.0, size=(3, n_genes, n_studies))
+    capacity = calc_adaptive_js_comp_test_bounds(n_genes, n_studies)
+
+    result = run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps=10, join_method='join_min',
+                                                        max_n_points_candidate=capacity, min_residuals_per_bin=0,
+                                                        min_neighbor_overlap=0.0, plateau_mode='plateau_both',
+                                                        tau=0.1, mad_distance_factor=1.0, max_pooled_residuals=0,
+                                                        min_study_neighbors=1, random_seed=1)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    for key in ("k_start", "k_step", "k_max", "n_points"):
+        assert isinstance(result[key], (int, np.integer)), f"{key}: expected an int, got {type(result[key])}"
+    assert 1 <= result["n_points"] <= capacity
+    assert result["k_start"] <= result["k_max"]
+    assert isinstance(result["plateau_established"], (bool, np.bool_))
+    assert result["n_bins_per_point"].shape == (capacity,)
+    assert result["shared_residual_range_low"].shape == (capacity,)
+    assert result["best_candidate_confidence_interval"].shape == (2, n_studies)
+
+    # Two independent DM_RESULT_SIZE_IS counters: the traces are trimmed to the admissible
+    # candidates, the candidate log to the candidates tried; both counters are dropped.
+    assert "n_admissible_evaluated" not in result and "n_candidates_tried" not in result
+    n_admissible = result["trace_k_start"].shape[-1]
+    n_tried = result["candidate_status"].shape[-1]
+    assert 1 <= n_admissible <= n_tried <= 16, f"expected 1 <= {n_admissible} <= {n_tried} <= 16"
+    for key in ("trace_k_step", "trace_k_max", "trace_n_points", "trace_delta_median", "trace_delta_max"):
+        assert result[key].shape == (n_admissible,), f"{key}: wrong shape {result[key].shape}"
+    for key in ("trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width",
+                "trace_ci_width_relative", "trace_delta"):
+        assert result[key].shape == (n_studies, n_admissible), f"{key}: wrong shape {result[key].shape}"
+    for key in ("trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals",
+                "trace_shared_residual_range_low", "trace_shared_residual_range_high"):
+        assert result[key].shape == (capacity, n_admissible), f"{key}: wrong shape {result[key].shape}"
+    for key in ("candidate_k_start", "candidate_n_points"):
+        assert result[key].shape == (n_tried,), f"{key}: wrong shape {result[key].shape}"
+    assert result["candidate_status"].dtype == np.int32
+    assert np.all((result["candidate_status"] >= 0) & (result["candidate_status"] <= 5))
+
+    assert_error(lambda: run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps=10,
+                                                                    join_method='join_min', max_n_points_candidate=0),
+                 "expected ERR_INVALID_INPUT for max_n_points_candidate=0", ERR_INVALID_INPUT)
 
 
 def main():

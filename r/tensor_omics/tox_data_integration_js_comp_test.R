@@ -2069,3 +2069,350 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstrap
         trace_shared_residual_range_high = .result$trace_shared_residual_range_high[, seq_len(.result$n_admissible_evaluated), drop = FALSE]
     )
 }
+
+#' Search the ascending adaptive (k_start, k_step, k_max) candidate sequence for a stable JSD parameter setting (Issue #217)
+#'
+#' The adaptive-neighborhood counterpart of
+#' \code{\link{run_js_comp_test_parameter_search}}.
+#' Instead of a fixed `(n_points, n_neighbors)` grid, it walks the growth-knob candidates of
+#' \code{\link{generate_adaptive_js_comp_test_candidates}}
+#' in order. Their `k_start` shrinks, so the number of reference points that emerges ascends.
+#' The plateau criteria, `plateau_mode` and the fallbacks are exactly the fixed-k search's.
+#'
+#' **Per candidate**, in order:
+#'
+#' 1. Grow its neighborhoods over the pooled, sorted gene means. The pooled means are sorted
+#' once for the whole search, with the same routine on the same input as
+#' \code{\link{construct_adaptive_neighborhoods}},
+#' and the growth is that routine's own, with the same `tau`, `mad_distance_factor`,
+#' `max_pooled_residuals` and `min_study_neighbors`. So a candidate's neighborhoods are
+#' exactly what `construct_adaptive_neighborhoods` returns for its knobs.
+#' 2. Reject it if the construction status is not ok, or if more than `max_n_points_candidate`
+#' reference points emerged.
+#' 3. First admissibility gate:
+#' \code{\link{check_neighborhood_overlaps}}
+#' on the pooled ranges `[a_i, b_i]`.
+#' 4. Per point, decode the range into per-study gene lists and run Issue #187's occupancy
+#' search on the pooled residuals (Pass B). Then build each study's histogram per point
+#' (Pass C), the consensus pmf, and apply the second gate,
+#' \code{\link{check_mean_pmf_min_counts}}.
+#' This is the pipeline of
+#' \code{\link{run_js_comp_test_adaptive}}.
+#' 5. From here on everything is the fixed-k search's post-gate bookkeeping, keyed on the
+#' candidate index: the observed JSD and the traces, the effect-size check (before the
+#' bootstrap, which reuses the observed-JSD buffer as scratch), the bootstrap, the
+#' smallest-uncertainty tracking, the CI-overlap check, the `plateau_mode` selection, the
+#' effect-size override, and the stop at the first plateau.
+#'
+#' **Candidate log.** Every candidate tried gets an entry in `candidate_k_start`,
+#' `candidate_n_points` and `candidate_status`, in order, until the search stops. The status is
+#'
+#' - \code{ADAPTIVE_CANDIDATE_EVALUATED}
+#' (`0`): passed both gates and has a trace column;
+#' - \code{ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED}
+#' (`1`): construction status too few means or too
+#' few residuals, so the growth could not run as specified;
+#' - \code{ADAPTIVE_CANDIDATE_EMPTY_STUDY}
+#' (`2`): construction status empty study neighborhood;
+#' - \code{ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED}
+#' (`3`): more than `max_n_points_candidate` points;
+#' - \code{ADAPTIVE_CANDIDATE_OVERLAP_FAILED}
+#' (`4`): the first gate failed;
+#' - \code{ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED}
+#' (`5`): the second gate failed.
+#'
+#' The checks run in that order and the first failing one is logged. `candidate_n_points` is the
+#' number of reference points the construction produced (0 for too few means), whatever the
+#' status.
+#'
+#' **Result**, one of three cases, as in the fixed-k search:
+#'
+#' 1. A plateau was found, or the sequence had a single candidate: that candidate's knobs,
+#' `plateau_established = TRUE`.
+#' 2. No plateau but at least one admissible candidate: the admissible candidate with the
+#' smallest median confidence-interval width, `plateau_established = FALSE`.
+#' 3. Nothing admissible: candidate 1's knobs, confidence interval `-1.0`,
+#' `plateau_established = FALSE`.
+#'
+#' `n_points` is the selected candidate's own logged point count. Where no admissible candidate
+#' backs the result (case 3, or case 1 with a single, rejected candidate), every
+#' `n_bins_per_point` entry up to `min(n_points, max_n_points_candidate)` is `m_min` and both
+#' ranges are `0.0`, as in the fixed-k search. To rebuild the selected neighborhoods, call
+#' `construct_adaptive_neighborhoods` with the returned knobs and the same construction
+#' options, then `run_js_comp_test_adaptive` with the same occupancy options: its
+#' `global_js_divergence` equals the selected candidate's `trace_global_js_divergence` column.
+#'
+#' **Traces** are the fixed-k search's, with `trace_k_start`/`trace_k_step`/`trace_k_max` in
+#' place of `trace_n_neighbors`. The per-point traces are jagged per column exactly as there.
+#'
+#' **Memory.** Beyond the fixed-k search's per-point arrays, which are sized by
+#' `max_n_points_candidate` (practical capacity from
+#' \code{\link{calc_adaptive_js_comp_test_bounds}}),
+#' the construction needs buffers over all `N = max_n_genes_all_studies * n_studies` pooled
+#' entries, the largest being `tmp_n_neighbors_per_point` with `n_studies * N` integers. The
+#' pooling buffers `tmp_pooled_residuals`/`tmp_pooled_residuals_perm` hold
+#' `max_n_reps_all_studies * N` values each, the size of `residuals`, because one study may
+#' have all its genes in one neighborhood. The histogram buffers hold `256 * max_n_points_candidate
+#' * n_studies` values each.
+#'
+#' Impure: calls the impure
+#' \code{\link{bootstrap_histogram}}. A GSL
+#' failure it reports is folded into `ierr` (first failure only) without aborting the search,
+#' as in the fixed-k search.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::run_js_comp_test_adaptive_parameter_search}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param gene_means a numeric matrix. Mean expression of every gene in every study, NaN for a missing gene
+#'   NaN is permitted for this value.
+#' @param residuals a numeric array of rank 3. Signed residuals of every replicate of every gene in every study, NaN for a missing value
+#'   NaN is permitted for this value.
+#' @param n_bootstraps a integer scalar. Number of bootstraps to perform for a candidate
+#'   The minimum valid value is `1`.
+#' @param join_method a string, one of "join_min", "join_max", "join_median". The way to evaluate all studies' confidence-interval overlaps for the plateau
+#'   condition, forwarded to check_plateau_condition_impl
+#' @param max_n_points_candidate a integer scalar. Most reference points a candidate may emerge with; a candidate with more is rejected
+#'   with the capacity status. The per-point outputs and traces below are sized by it, so
+#'   the caller has to know it up front
+#'   It is recommended to compute this argument from the `max_n_points_candidate` output produced by \code{\link{calc_adaptive_js_comp_test_bounds}}.
+#'   The minimum valid value is `1`.
+#' @param min_residuals_per_bin a integer scalar. Minimum count every bin must reach, both in the occupancy search and in the second
+#'   admissibility gate (the consensus pmf)
+#'   The minimum valid value is `0`.
+#'   The default value is `10`.
+#' @param min_neighbor_overlap a numeric scalar. Minimum fractional overlap two consecutive neighborhoods' pooled ranges must have to
+#'   pass the first admissibility gate
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.1`.
+#' @param succeeding_ci_overlap a numeric scalar. Minimum fractional overlap a candidate's confidence interval must have with the
+#'   running best, per `join_method`, to plateau
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.9`.
+#' @param plateau_mode a string, one of "plateau_ci_overlap", "plateau_effect_size", "plateau_both". Which plateau criterion decides when the search stops
+#'
+#'   The default value is `"plateau_ci_overlap"`.
+#' @param delta_median_threshold a numeric scalar. Upper bound the median relative JSD change across studies must stay under for a
+#'   transition to count toward an effect-size plateau
+#'   The minimum valid value is `above(0.0)`.
+#'   The default value is `0.05`.
+#' @param delta_max_threshold a numeric scalar. Upper bound the largest relative JSD change across studies must stay under for a
+#'   transition to count toward an effect-size plateau
+#'   The minimum valid value is `above(0.0)`.
+#'   The default value is `0.10`.
+#' @param delta_epsilon a numeric scalar. Small constant preventing division by zero when a study's previous admissible JSD was
+#'   zero
+#'   The minimum valid value is `above(0.0)`.
+#'   The default value is `1.0e-10`.
+#' @param delta_min_consecutive_transitions a integer scalar. Number of consecutive qualifying transitions required to declare an effect-size plateau
+#'   The minimum valid value is `1`.
+#'   The default value is `2`.
+#' @param m_min a integer scalar. Smallest candidate bin count the occupancy search tests (M_min)
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_N_BINS`.
+#'   The default value is `3`.
+#' @param m_max a integer scalar. Largest candidate bin count the occupancy search tests (M_max); raised to `m_min`
+#'   when smaller
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_N_BINS`.
+#'   The default value is `120`.
+#' @param gamma_occupancy a numeric scalar. Geometric growth factor of the occupancy search's coarse stage
+#'   The minimum valid value is `above(1.0)`.
+#'   The default value is `1.25`.
+#' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's lower residual-range bound
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.05`.
+#' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's upper residual-range bound
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.95`.
+#' @param two_sided_bootstrapping_significance_level a numeric scalar. Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
+#'   to bootstrap_histogram_impl itself
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `100.0`.
+#'   The default value is `2.5`.
+#' @param random_seed a integer scalar. Seed for the GSL random number generator
+#'   The default value is `42`.
+#' @param tau a numeric scalar. Largest relative increase of the dispersion an adaptive growth round may cause and
+#'   still be committed, as in construct_adaptive_neighborhoods
+#'   The minimum valid value is `0.0`.
+#'   The default value is `0.1`.
+#' @param mad_distance_factor a numeric scalar. Multiple of a neighborhood's median absolute deviation that the next reference
+#'   point's target lies beyond it, as in construct_adaptive_neighborhoods
+#'   The minimum valid value is `0.0`.
+#'   The default value is `1.0`.
+#' @param max_pooled_residuals a integer scalar. Cap on the non-NaN residuals adaptive rounds may grow a neighborhood's pool to; 0
+#'   for no cap, as in construct_adaptive_neighborhoods
+#'   The minimum valid value is `0`.
+#'   The default value is `0`.
+#' @param min_study_neighbors a integer scalar. Fewest entries of each study every neighborhood must have for a candidate to be
+#'   admissible, as in construct_adaptive_neighborhoods
+#'   The minimum valid value is `1`.
+#'   The default value is `1`.
+#' @return a named list with elements:
+#'   \item{k_start}{a integer scalar. The finally chosen candidate's `k_start`}
+#'   \item{k_step}{a integer scalar. The finally chosen candidate's `k_step`}
+#'   \item{k_max}{a integer scalar. The finally chosen candidate's `k_max`}
+#'   \item{n_points}{a integer scalar. Number of reference points the finally chosen candidate's construction produced}
+#'   \item{n_bins_per_point}{a integer vector. The finally chosen candidate's per-point histogram bin count; only the leading
+#'     `n_points` entries are meaningful. Where no admissible candidate backs the result,
+#'     the leading `min(n_points, max_n_points_candidate)` entries are `m_min`, since that
+#'     candidate's point count may exceed the capacity}
+#'   \item{shared_residual_range_low}{a numeric vector. The finally chosen candidate's per-point lower residual-range bound (R_low); only the
+#'     leading `n_points` entries are meaningful, `0.0` where no admissible candidate
+#'     backs the result}
+#'   \item{shared_residual_range_high}{a numeric vector. The finally chosen candidate's per-point upper residual-range bound (R_high),
+#'     mirroring `shared_residual_range_low`}
+#'   \item{best_candidate_confidence_interval}{a numeric matrix. The bootstrapped JSD confidence interval of the finally chosen candidate;
+#'     `-1.0` throughout where no admissible candidate backs the result}
+#'   \item{plateau_established}{a logical scalar. `TRUE` when a plateau was found (by the criterion `plateau_mode` selects) or the
+#'     sequence had a single candidate; `FALSE` when the search exhausted the sequence
+#'     without one, in which case the smallest-uncertainty admissible candidate is
+#'     returned if there is one}
+#'   \item{trace_k_start}{a integer vector. Per-admissible-candidate `k_start`. `16` = MAX_CANDIDATE_PAIRS, the adaptive
+#'     sequence's cap
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_k_step}{a integer vector. Per-admissible-candidate `k_step`
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_k_max}{a integer vector. Per-admissible-candidate `k_max`
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_n_points}{a integer vector. Per-admissible-candidate number of reference points
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_global_js_divergence}{a numeric matrix. Per-admissible-candidate, per-study observed global JSD (`J_{i,t}` in Issue #178)
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_ci_lower}{a numeric matrix. Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_ci_upper}{a numeric matrix. Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_ci_width}{a numeric matrix. Per-admissible-candidate, per-study confidence-interval width
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_ci_width_relative}{a numeric matrix. Per-admissible-candidate, per-study confidence-interval width divided by the observed
+#'     global JSD, the denominator floored at `delta_epsilon`
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_delta}{a numeric matrix. Per-admissible-candidate, per-study relative JSD change from the previous admissible
+#'     candidate; `-1.0` throughout at the first one
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_delta_median}{a numeric vector. Per-admissible-candidate median of trace_delta across studies; `-1.0` at the
+#'     first one
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_delta_max}{a numeric vector. Per-admissible-candidate maximum of trace_delta across studies; `-1.0` at the
+#'     first one
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_selected_n_bins}{a integer matrix. Per-admissible-candidate, per-reference-point selected histogram bin count. Jagged:
+#'     only rows `1:trace_n_points(t)` of column `t` are meaningful, so a Python/R caller
+#'     must additionally slice `[:trace_n_points[t], t]` themselves
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_occupancy_failed}{a logical matrix. Per-admissible-candidate, per-reference-point `occupancy_failed` flag; jagged as
+#'     trace_selected_n_bins
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_n_pooled_residuals}{a integer matrix. Per-admissible-candidate, per-reference-point pooled non-NaN residual count (`N_j`);
+#'     jagged as trace_selected_n_bins
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_min_bin_occupancy}{a integer matrix. Per-admissible-candidate, per-reference-point minimum bin occupancy; jagged as
+#'     trace_selected_n_bins
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_mean_bin_occupancy}{a numeric matrix. Per-admissible-candidate, per-reference-point mean bin occupancy; jagged as
+#'     trace_selected_n_bins
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_max_bin_occupancy}{a integer matrix. Per-admissible-candidate, per-reference-point maximum bin occupancy; jagged as
+#'     trace_selected_n_bins
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_sturges_bins}{a integer matrix. Per-admissible-candidate, per-reference-point Sturges' rule diagnostic, with the
+#'     rounded mean per-study neighbor count; jagged as trace_selected_n_bins
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_fd_bins}{a integer matrix. Per-admissible-candidate, per-reference-point Freedman-Diaconis rule diagnostic, with
+#'     the rounded mean per-study neighbor count; jagged as trace_selected_n_bins
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_shared_residual_range_low}{a numeric matrix. Per-admissible-candidate, per-reference-point lower residual-range bound (R_low);
+#'     jagged as trace_selected_n_bins
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_shared_residual_range_high}{a numeric matrix. Per-admissible-candidate, per-reference-point upper residual-range bound (R_high);
+#'     jagged as trace_selected_n_bins
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{candidate_k_start}{a integer vector. `k_start` of every candidate tried, in sequence order
+#'     The first `n_candidates_tried` elements will hold the results.}
+#'   \item{candidate_n_points}{a integer vector. Number of reference points every tried candidate's construction produced (0 for too
+#'     few means), whether or not the candidate was admissible
+#'     The first `n_candidates_tried` elements will hold the results.}
+#'   \item{candidate_status}{a integer vector. What happened to every tried candidate: `0` evaluated,
+#'     `1` construction failed,
+#'     `2` a study neighborhood below `min_study_neighbors`,
+#'     `3` capacity exceeded,
+#'     `4` overlap gate failed,
+#'     `5` consensus-pmf count gate failed
+#'     The first `n_candidates_tried` elements will hold the results.}
+#' @export
+run_js_comp_test_adaptive_parameter_search <- function(gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_ci_overlap", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L) {
+    gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
+    residuals <- .tox_as_double_array(residuals, "residuals", 3L)
+    n_bootstraps <- .tox_as_integer_scalar(n_bootstraps, "n_bootstraps")
+    join_method <- .tox_as_mode(join_method, "join_method", c("join_min", "join_max", "join_median"))
+    max_n_points_candidate <- .tox_as_integer_scalar(max_n_points_candidate, "max_n_points_candidate")
+    min_residuals_per_bin <- .tox_as_integer_scalar(min_residuals_per_bin, "min_residuals_per_bin")
+    min_neighbor_overlap <- .tox_as_double_scalar(min_neighbor_overlap, "min_neighbor_overlap")
+    succeeding_ci_overlap <- .tox_as_double_scalar(succeeding_ci_overlap, "succeeding_ci_overlap")
+    plateau_mode <- .tox_as_mode(plateau_mode, "plateau_mode", c("plateau_ci_overlap", "plateau_effect_size", "plateau_both"))
+    delta_median_threshold <- .tox_as_double_scalar(delta_median_threshold, "delta_median_threshold")
+    delta_max_threshold <- .tox_as_double_scalar(delta_max_threshold, "delta_max_threshold")
+    delta_epsilon <- .tox_as_double_scalar(delta_epsilon, "delta_epsilon")
+    delta_min_consecutive_transitions <- .tox_as_integer_scalar(delta_min_consecutive_transitions, "delta_min_consecutive_transitions")
+    m_min <- .tox_as_integer_scalar(m_min, "m_min")
+    m_max <- .tox_as_integer_scalar(m_max, "m_max")
+    gamma_occupancy <- .tox_as_double_scalar(gamma_occupancy, "gamma_occupancy")
+    lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
+    upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
+    two_sided_bootstrapping_significance_level <- .tox_as_double_scalar(two_sided_bootstrapping_significance_level, "two_sided_bootstrapping_significance_level")
+    random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
+    tau <- .tox_as_double_scalar(tau, "tau")
+    mad_distance_factor <- .tox_as_double_scalar(mad_distance_factor, "mad_distance_factor")
+    max_pooled_residuals <- .tox_as_integer_scalar(max_pooled_residuals, "max_pooled_residuals")
+    min_study_neighbors <- .tox_as_integer_scalar(min_study_neighbors, "min_study_neighbors")
+    if (dim(residuals)[3] != dim(gene_means)[2])
+        .tox_shape_error("residuals", dim(residuals)[3], "gene_means", dim(gene_means)[2])
+    if (dim(residuals)[2] != dim(gene_means)[1])
+        .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
+
+    .result <- .Call("run_js_comp_test_adaptive_parameter_search_call", gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, tau, mad_distance_factor, max_pooled_residuals, min_study_neighbors)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, "n_bins_per_point", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        k_start = .result$k_start,
+        k_step = .result$k_step,
+        k_max = .result$k_max,
+        n_points = .result$n_points,
+        n_bins_per_point = .result$n_bins_per_point,
+        shared_residual_range_low = .result$shared_residual_range_low,
+        shared_residual_range_high = .result$shared_residual_range_high,
+        best_candidate_confidence_interval = .result$best_candidate_confidence_interval,
+        plateau_established = .result$plateau_established,
+        trace_k_start = utils::head(.result$trace_k_start, .result$n_admissible_evaluated),
+        trace_k_step = utils::head(.result$trace_k_step, .result$n_admissible_evaluated),
+        trace_k_max = utils::head(.result$trace_k_max, .result$n_admissible_evaluated),
+        trace_n_points = utils::head(.result$trace_n_points, .result$n_admissible_evaluated),
+        trace_global_js_divergence = .result$trace_global_js_divergence[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_ci_lower = .result$trace_ci_lower[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_ci_upper = .result$trace_ci_upper[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_ci_width = .result$trace_ci_width[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_ci_width_relative = .result$trace_ci_width_relative[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_delta = .result$trace_delta[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_delta_median = utils::head(.result$trace_delta_median, .result$n_admissible_evaluated),
+        trace_delta_max = utils::head(.result$trace_delta_max, .result$n_admissible_evaluated),
+        trace_selected_n_bins = .result$trace_selected_n_bins[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_occupancy_failed = .result$trace_occupancy_failed[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_n_pooled_residuals = .result$trace_n_pooled_residuals[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_min_bin_occupancy = .result$trace_min_bin_occupancy[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_mean_bin_occupancy = .result$trace_mean_bin_occupancy[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_max_bin_occupancy = .result$trace_max_bin_occupancy[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_sturges_bins = .result$trace_sturges_bins[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_fd_bins = .result$trace_fd_bins[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_shared_residual_range_low = .result$trace_shared_residual_range_low[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_shared_residual_range_high = .result$trace_shared_residual_range_high[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        candidate_k_start = utils::head(.result$candidate_k_start, .result$n_candidates_tried),
+        candidate_n_points = utils::head(.result$candidate_n_points, .result$n_candidates_tried),
+        candidate_status = utils::head(.result$candidate_status, .result$n_candidates_tried)
+    )
+}

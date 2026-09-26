@@ -92,6 +92,7 @@ from .tox_data_integration_js_comp_test import (
     run_js_comp_test,
     run_js_comp_test_adaptive,
     run_js_comp_test_parameter_search,
+    run_js_comp_test_adaptive_parameter_search,
 )
 from .tox_data_integration_js_comp_test_impl import (
     calc_js_comp_test_candidate_bounds,
@@ -343,6 +344,7 @@ __all__ = [
     "root_mean_sq_normalization",
     "run_js_comp_test",
     "run_js_comp_test_adaptive",
+    "run_js_comp_test_adaptive_parameter_search",
     "run_js_comp_test_parameter_search",
     "save_tox_data",
     "serialize_char_helper",

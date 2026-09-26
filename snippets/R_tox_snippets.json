@@ -364,6 +364,38 @@
       ")"
     ]
   },
+  "run_js_comp_test_adaptive_parameter_search (call)": {
+    "prefix": "tox:run_js_comp_test_adaptive_parameter_search",
+    "description": "The adaptive-neighborhood counterpart of",
+    "body": [
+      "${1:result} <- run_js_comp_test_adaptive_parameter_search(",
+      "  gene_means = ${2:gene_means},",
+      "  residuals = ${3:residuals},",
+      "  n_bootstraps = ${4:n_bootstraps},",
+      "  join_method = ${5|join_min,join_max,join_median|},",
+      "  max_n_points_candidate = ${6:max_n_points_candidate},",
+      "  min_residuals_per_bin = ${7:10L},",
+      "  min_neighbor_overlap = ${8:0.1},",
+      "  succeeding_ci_overlap = ${9:0.9},",
+      "  plateau_mode = ${10|plateau_ci_overlap,plateau_effect_size,plateau_both|},",
+      "  delta_median_threshold = ${11:0.05},",
+      "  delta_max_threshold = ${12:0.1},",
+      "  delta_epsilon = ${13:1e-10},",
+      "  delta_min_consecutive_transitions = ${14:2L},",
+      "  m_min = ${15:3L},",
+      "  m_max = ${16:120L},",
+      "  gamma_occupancy = ${17:1.25},",
+      "  lower_residual_range_quantile = ${18:0.05},",
+      "  upper_residual_range_quantile = ${19:0.95},",
+      "  two_sided_bootstrapping_significance_level = ${20:2.5},",
+      "  random_seed = ${21:42L},",
+      "  tau = ${22:0.1},",
+      "  mad_distance_factor = ${23:1.0},",
+      "  max_pooled_residuals = ${24:0L},",
+      "  min_study_neighbors = ${25:1L}",
+      ")"
+    ]
+  },
   "calc_js_comp_test_candidate_bounds (call)": {
     "prefix": "tox:calc_js_comp_test_candidate_bounds",
     "description": "Closed-form from the GAMMA-decay candidate-grid formula",

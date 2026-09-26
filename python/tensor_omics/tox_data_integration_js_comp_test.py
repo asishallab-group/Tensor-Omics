@@ -22,7 +22,10 @@ allocates its own. For adaptive (heteroscedastic, Issue #217) neighborhood const
 :func:`tensor_omics.generate_adaptive_js_comp_test_candidates`
 generates the ascending `(k_start, k_step, k_max)` growth-knob candidates instead, and
 `calc_adaptive_js_comp_test_bounds` recommends the reference-point capacity their search's
-per-point arrays are sized by. Once a candidate has passed both gates, its bootstrap confidence interval
+per-point arrays are sized by;
+:func:`tensor_omics.run_js_comp_test_adaptive_parameter_search`
+is that search, the adaptive counterpart of the fixed-k parameter search, with the same
+plateau criteria. Once a candidate has passed both gates, its bootstrap confidence interval
 is resampled from the pooled consensus histogram by
 :func:`tensor_omics.bootstrap_histogram` (heap
 size recommended by
@@ -527,6 +530,79 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
 _RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+
+_lib.run_js_comp_test_adaptive_parameter_search_c.restype = None
+_lib.run_js_comp_test_adaptive_parameter_search_c.argtypes = (
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(ndim=1),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_bool),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    np.ctypeslib.ndpointer(ndim=1),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def estimate_bin_count(
         residuals,
@@ -4175,4 +4251,613 @@ def run_js_comp_test_parameter_search(
         "trace_fd_bins": trace_fd_bins[..., :n_admissible_evaluated.value],
         "trace_shared_residual_range_low": trace_shared_residual_range_low[..., :n_admissible_evaluated.value],
         "trace_shared_residual_range_high": trace_shared_residual_range_high[..., :n_admissible_evaluated.value],
+    }
+
+def run_js_comp_test_adaptive_parameter_search(
+        gene_means,
+        residuals,
+        n_bootstraps,
+        join_method,
+        max_n_points_candidate,
+        min_residuals_per_bin=10,
+        min_neighbor_overlap=0.1,
+        succeeding_ci_overlap=0.9,
+        plateau_mode='plateau_ci_overlap',
+        delta_median_threshold=0.05,
+        delta_max_threshold=0.1,
+        delta_epsilon=1e-10,
+        delta_min_consecutive_transitions=2,
+        m_min=3,
+        m_max=120,
+        gamma_occupancy=1.25,
+        lower_residual_range_quantile=0.05,
+        upper_residual_range_quantile=0.95,
+        two_sided_bootstrapping_significance_level=2.5,
+        random_seed=42,
+        tau=0.1,
+        mad_distance_factor=1.0,
+        max_pooled_residuals=0,
+        min_study_neighbors=1,
+):
+    r"""Search the ascending adaptive (k_start, k_step, k_max) candidate sequence for a stable JSD parameter setting (Issue #217)
+
+    The adaptive-neighborhood counterpart of
+    :func:`tensor_omics.run_js_comp_test_parameter_search`.
+    Instead of a fixed `(n_points, n_neighbors)` grid, it walks the growth-knob candidates of
+    :func:`tensor_omics.generate_adaptive_js_comp_test_candidates`
+    in order. Their `k_start` shrinks, so the number of reference points that emerges ascends.
+    The plateau criteria, `plateau_mode` and the fallbacks are exactly the fixed-k search's.
+
+    **Per candidate**, in order:
+
+    1. Grow its neighborhoods over the pooled, sorted gene means. The pooled means are sorted
+    once for the whole search, with the same routine on the same input as
+    :func:`tensor_omics.construct_adaptive_neighborhoods`,
+    and the growth is that routine's own, with the same `tau`, `mad_distance_factor`,
+    `max_pooled_residuals` and `min_study_neighbors`. So a candidate's neighborhoods are
+    exactly what `construct_adaptive_neighborhoods` returns for its knobs.
+    2. Reject it if the construction status is not ok, or if more than `max_n_points_candidate`
+    reference points emerged.
+    3. First admissibility gate:
+    :func:`tensor_omics.check_neighborhood_overlaps`
+    on the pooled ranges `[a_i, b_i]`.
+    4. Per point, decode the range into per-study gene lists and run Issue #187's occupancy
+    search on the pooled residuals (Pass B). Then build each study's histogram per point
+    (Pass C), the consensus pmf, and apply the second gate,
+    :func:`tensor_omics.check_mean_pmf_min_counts`.
+    This is the pipeline of
+    :func:`tensor_omics.run_js_comp_test_adaptive`.
+    5. From here on everything is the fixed-k search's post-gate bookkeeping, keyed on the
+    candidate index: the observed JSD and the traces, the effect-size check (before the
+    bootstrap, which reuses the observed-JSD buffer as scratch), the bootstrap, the
+    smallest-uncertainty tracking, the CI-overlap check, the `plateau_mode` selection, the
+    effect-size override, and the stop at the first plateau.
+
+    **Candidate log.** Every candidate tried gets an entry in `candidate_k_start`,
+    `candidate_n_points` and `candidate_status`, in order, until the search stops. The status is
+
+    - ``ADAPTIVE_CANDIDATE_EVALUATED``
+    (`0`): passed both gates and has a trace column;
+    - ``ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED``
+    (`1`): construction status too few means or too
+    few residuals, so the growth could not run as specified;
+    - ``ADAPTIVE_CANDIDATE_EMPTY_STUDY``
+    (`2`): construction status empty study neighborhood;
+    - ``ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED``
+    (`3`): more than `max_n_points_candidate` points;
+    - ``ADAPTIVE_CANDIDATE_OVERLAP_FAILED``
+    (`4`): the first gate failed;
+    - ``ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED``
+    (`5`): the second gate failed.
+
+    The checks run in that order and the first failing one is logged. `candidate_n_points` is the
+    number of reference points the construction produced (0 for too few means), whatever the
+    status.
+
+    **Result**, one of three cases, as in the fixed-k search:
+
+    1. A plateau was found, or the sequence had a single candidate: that candidate's knobs,
+    `plateau_established = True`.
+    2. No plateau but at least one admissible candidate: the admissible candidate with the
+    smallest median confidence-interval width, `plateau_established = False`.
+    3. Nothing admissible: candidate 1's knobs, confidence interval `-1.0`,
+    `plateau_established = False`.
+
+    `n_points` is the selected candidate's own logged point count. Where no admissible candidate
+    backs the result (case 3, or case 1 with a single, rejected candidate), every
+    `n_bins_per_point` entry up to `min(n_points, max_n_points_candidate)` is `m_min` and both
+    ranges are `0.0`, as in the fixed-k search. To rebuild the selected neighborhoods, call
+    `construct_adaptive_neighborhoods` with the returned knobs and the same construction
+    options, then `run_js_comp_test_adaptive` with the same occupancy options: its
+    `global_js_divergence` equals the selected candidate's `trace_global_js_divergence` column.
+
+    **Traces** are the fixed-k search's, with `trace_k_start`/`trace_k_step`/`trace_k_max` in
+    place of `trace_n_neighbors`. The per-point traces are jagged per column exactly as there.
+
+    **Memory.** Beyond the fixed-k search's per-point arrays, which are sized by
+    `max_n_points_candidate` (practical capacity from
+    :func:`tensor_omics.calc_adaptive_js_comp_test_bounds`),
+    the construction needs buffers over all `N = max_n_genes_all_studies * n_studies` pooled
+    entries, the largest being `tmp_n_neighbors_per_point` with `n_studies * N` integers. The
+    pooling buffers `tmp_pooled_residuals`/`tmp_pooled_residuals_perm` hold
+    `max_n_reps_all_studies * N` values each, the size of `residuals`, because one study may
+    have all its genes in one neighborhood. The histogram buffers hold `256 * max_n_points_candidate
+    * n_studies` values each.
+
+    Impure: calls the impure
+    :func:`tensor_omics.bootstrap_histogram`. A GSL
+    failure it reports is folded into `ierr` (first failure only) without aborting the search,
+    as in the fixed-k search.
+
+    Parameters
+    ----------
+    gene_means : np.ndarray[np.float64] of shape (max_n_genes_all_studies, n_studies,), column-major (order='F')
+        Mean expression of every gene in every study, NaN for a missing gene
+        NaN is permitted for this value.
+    residuals : np.ndarray[np.float64] of shape (max_n_reps_all_studies, max_n_genes_all_studies, n_studies,), column-major (order='F')
+        Signed residuals of every replicate of every gene in every study, NaN for a missing value
+        NaN is permitted for this value.
+    n_bootstraps : int
+        Number of bootstraps to perform for a candidate
+        The minimum valid value is `1`.
+    join_method : str, one of 'join_min' | 'join_max' | 'join_median'
+        The way to evaluate all studies' confidence-interval overlaps for the plateau
+        condition, forwarded to check_plateau_condition_impl
+
+    max_n_points_candidate : int
+        Most reference points a candidate may emerge with; a candidate with more is rejected
+        with the capacity status. The per-point outputs and traces below are sized by it, so
+        the caller has to know it up front
+        It is recommended to compute this argument from the `max_n_points_candidate` output produced by :func:`tensor_omics.calc_adaptive_js_comp_test_bounds`.
+        The minimum valid value is `1`.
+    min_residuals_per_bin : int, optional, default 10
+        Minimum count every bin must reach, both in the occupancy search and in the second
+        admissibility gate (the consensus pmf)
+        The minimum valid value is `0`.
+        The default value is `10`.
+    min_neighbor_overlap : float, optional, default 0.1
+        Minimum fractional overlap two consecutive neighborhoods' pooled ranges must have to
+        pass the first admissibility gate
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.1`.
+    succeeding_ci_overlap : float, optional, default 0.9
+        Minimum fractional overlap a candidate's confidence interval must have with the
+        running best, per `join_method`, to plateau
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.9`.
+    plateau_mode : str, one of 'plateau_ci_overlap' | 'plateau_effect_size' | 'plateau_both', optional, default 'plateau_ci_overlap'
+        Which plateau criterion decides when the search stops
+
+        The default value is `'plateau_ci_overlap'`.
+    delta_median_threshold : float, optional, default 0.05
+        Upper bound the median relative JSD change across studies must stay under for a
+        transition to count toward an effect-size plateau
+        The minimum valid value is `above(0.0)`.
+        The default value is `0.05`.
+    delta_max_threshold : float, optional, default 0.1
+        Upper bound the largest relative JSD change across studies must stay under for a
+        transition to count toward an effect-size plateau
+        The minimum valid value is `above(0.0)`.
+        The default value is `0.10`.
+    delta_epsilon : float, optional, default 1e-10
+        Small constant preventing division by zero when a study's previous admissible JSD was
+        zero
+        The minimum valid value is `above(0.0)`.
+        The default value is `1.0e-10`.
+    delta_min_consecutive_transitions : int, optional, default 2
+        Number of consecutive qualifying transitions required to declare an effect-size plateau
+        The minimum valid value is `1`.
+        The default value is `2`.
+    m_min : int, optional, default 3
+        Smallest candidate bin count the occupancy search tests (M_min)
+        The minimum valid value is `1`.
+        The maximum valid value is `MAX_N_BINS`.
+        The default value is `3`.
+    m_max : int, optional, default 120
+        Largest candidate bin count the occupancy search tests (M_max); raised to `m_min`
+        when smaller
+        The minimum valid value is `1`.
+        The maximum valid value is `MAX_N_BINS`.
+        The default value is `120`.
+    gamma_occupancy : float, optional, default 1.25
+        Geometric growth factor of the occupancy search's coarse stage
+        The minimum valid value is `above(1.0)`.
+        The default value is `1.25`.
+    lower_residual_range_quantile : float, optional, default 0.05
+        Quantile in [0,1] for each reference point's lower residual-range bound
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.05`.
+    upper_residual_range_quantile : float, optional, default 0.95
+        Quantile in [0,1] for each reference point's upper residual-range bound
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.95`.
+    two_sided_bootstrapping_significance_level : float, optional, default 2.5
+        Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
+        to bootstrap_histogram_impl itself
+        The minimum valid value is `0.0`.
+        The maximum valid value is `100.0`.
+        The default value is `2.5`.
+    random_seed : int, optional, default 42
+        Seed for the GSL random number generator
+        The default value is `42`.
+    tau : float, optional, default 0.1
+        Largest relative increase of the dispersion an adaptive growth round may cause and
+        still be committed, as in construct_adaptive_neighborhoods
+        The minimum valid value is `0.0`.
+        The default value is `0.1`.
+    mad_distance_factor : float, optional, default 1.0
+        Multiple of a neighborhood's median absolute deviation that the next reference
+        point's target lies beyond it, as in construct_adaptive_neighborhoods
+        The minimum valid value is `0.0`.
+        The default value is `1.0`.
+    max_pooled_residuals : int, optional, default 0
+        Cap on the non-NaN residuals adaptive rounds may grow a neighborhood's pool to; 0
+        for no cap, as in construct_adaptive_neighborhoods
+        The minimum valid value is `0`.
+        The default value is `0`.
+    min_study_neighbors : int, optional, default 1
+        Fewest entries of each study every neighborhood must have for a candidate to be
+        admissible, as in construct_adaptive_neighborhoods
+        The minimum valid value is `1`.
+        The default value is `1`.
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        k_start : int
+            The finally chosen candidate's `k_start`
+        k_step : int
+            The finally chosen candidate's `k_step`
+        k_max : int
+            The finally chosen candidate's `k_max`
+        n_points : int
+            Number of reference points the finally chosen candidate's construction produced
+        n_bins_per_point : np.ndarray[np.int32] of shape (max_n_points_candidate,), read-only
+            The finally chosen candidate's per-point histogram bin count; only the leading
+            `n_points` entries are meaningful. Where no admissible candidate backs the result,
+            the leading `min(n_points, max_n_points_candidate)` entries are `m_min`, since that
+            candidate's point count may exceed the capacity
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        shared_residual_range_low : np.ndarray[np.float64] of shape (max_n_points_candidate,), read-only
+            The finally chosen candidate's per-point lower residual-range bound (R_low); only the
+            leading `n_points` entries are meaningful, `0.0` where no admissible candidate
+            backs the result
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        shared_residual_range_high : np.ndarray[np.float64] of shape (max_n_points_candidate,), read-only
+            The finally chosen candidate's per-point upper residual-range bound (R_high),
+            mirroring `shared_residual_range_low`
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        best_candidate_confidence_interval : np.ndarray[np.float64] of shape (2, n_studies,), column-major (order='F'), read-only
+            The bootstrapped JSD confidence interval of the finally chosen candidate;
+            `-1.0` throughout where no admissible candidate backs the result
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        plateau_established : bool
+            `True` when a plateau was found (by the criterion `plateau_mode` selects) or the
+            sequence had a single candidate; `False` when the search exhausted the sequence
+            without one, in which case the smallest-uncertainty admissible candidate is
+            returned if there is one
+        trace_k_start : np.ndarray[np.int32] of shape (16,), read-only
+            Per-admissible-candidate `k_start`. `16` = MAX_CANDIDATE_PAIRS, the adaptive
+            sequence's cap
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_k_step : np.ndarray[np.int32] of shape (16,), read-only
+            Per-admissible-candidate `k_step`
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_k_max : np.ndarray[np.int32] of shape (16,), read-only
+            Per-admissible-candidate `k_max`
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_n_points : np.ndarray[np.int32] of shape (16,), read-only
+            Per-admissible-candidate number of reference points
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_global_js_divergence : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-study observed global JSD (`J_{i,t}` in Issue #178)
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_ci_lower : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_ci_upper : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_ci_width : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-study confidence-interval width
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_ci_width_relative : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-study confidence-interval width divided by the observed
+            global JSD, the denominator floored at `delta_epsilon`
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_delta : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-study relative JSD change from the previous admissible
+            candidate; `-1.0` throughout at the first one
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_delta_median : np.ndarray[np.float64] of shape (16,), read-only
+            Per-admissible-candidate median of trace_delta across studies; `-1.0` at the
+            first one
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_delta_max : np.ndarray[np.float64] of shape (16,), read-only
+            Per-admissible-candidate maximum of trace_delta across studies; `-1.0` at the
+            first one
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_selected_n_bins : np.ndarray[np.int32] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point selected histogram bin count. Jagged:
+            only rows `1:trace_n_points(t)` of column `t` are meaningful, so a Python/R caller
+            must additionally slice `[:trace_n_points[t], t]` themselves
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_occupancy_failed : np.ndarray[np.bool_] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point `occupancy_failed` flag; jagged as
+            trace_selected_n_bins
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_n_pooled_residuals : np.ndarray[np.int32] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point pooled non-NaN residual count (`N_j`);
+            jagged as trace_selected_n_bins
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_min_bin_occupancy : np.ndarray[np.int32] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point minimum bin occupancy; jagged as
+            trace_selected_n_bins
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_mean_bin_occupancy : np.ndarray[np.float64] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point mean bin occupancy; jagged as
+            trace_selected_n_bins
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_max_bin_occupancy : np.ndarray[np.int32] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point maximum bin occupancy; jagged as
+            trace_selected_n_bins
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_sturges_bins : np.ndarray[np.int32] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point Sturges' rule diagnostic, with the
+            rounded mean per-study neighbor count; jagged as trace_selected_n_bins
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_fd_bins : np.ndarray[np.int32] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point Freedman-Diaconis rule diagnostic, with
+            the rounded mean per-study neighbor count; jagged as trace_selected_n_bins
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_shared_residual_range_low : np.ndarray[np.float64] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point lower residual-range bound (R_low);
+            jagged as trace_selected_n_bins
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_shared_residual_range_high : np.ndarray[np.float64] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-reference-point upper residual-range bound (R_high);
+            jagged as trace_selected_n_bins
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        candidate_k_start : np.ndarray[np.int32] of shape (16,), read-only
+            `k_start` of every candidate tried, in sequence order
+            The first `n_candidates_tried` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        candidate_n_points : np.ndarray[np.int32] of shape (16,), read-only
+            Number of reference points every tried candidate's construction produced (0 for too
+            few means), whether or not the candidate was admissible
+            The first `n_candidates_tried` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        candidate_status : np.ndarray[np.int32] of shape (16,), read-only
+            What happened to every tried candidate: `0` evaluated,
+            `1` construction failed,
+            `2` a study neighborhood below `min_study_neighbors`,
+            `3` capacity exceeded,
+            `4` overlap gate failed,
+            `5` consensus-pmf count gate failed
+            The first `n_candidates_tried` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_js_comp_test::run_js_comp_test_adaptive_parameter_search`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        gene_means = np.asfortranarray(gene_means, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'gene_means' must be an array of np.float64: {error}") from None
+    if gene_means.ndim != 2:
+        raise ValueError(f"'gene_means' must have 2 dimensions, but has {gene_means.ndim}")
+    try:
+        residuals = np.asfortranarray(residuals, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'residuals' must be an array of np.float64: {error}") from None
+    if residuals.ndim != 3:
+        raise ValueError(f"'residuals' must have 3 dimensions, but has {residuals.ndim}")
+    join_method = np.array([str(join_method).lower().encode().ljust(11)], dtype="S11")
+    plateau_mode = np.array([str(plateau_mode).lower().encode().ljust(19)], dtype="S19")
+
+    # what the inputs already say, rather than asking for it again
+    n_studies = gene_means.shape[1]
+    max_n_genes_all_studies = gene_means.shape[0]
+    max_n_reps_all_studies = residuals.shape[0]
+
+    # Fortran cannot check that shared extents agree; this can
+    if residuals.shape[2] != n_studies:
+        raise ValueError(f"'residuals' has {residuals.shape[2]} along axis 2, but "
+            f"'gene_means' implies n_studies == {n_studies}"
+        )
+    if residuals.shape[1] != max_n_genes_all_studies:
+        raise ValueError(f"'residuals' has {residuals.shape[1]} along axis 1, but "
+            f"'gene_means' implies max_n_genes_all_studies == {max_n_genes_all_studies}"
+        )
+
+    # outputs and work arrays, which the caller never sees
+    k_start = ctypes.c_int(0)
+    k_step = ctypes.c_int(0)
+    k_max = ctypes.c_int(0)
+    n_points = ctypes.c_int(0)
+    n_bins_per_point = np.empty((max_n_points_candidate,), dtype=np.int32, order='C')
+    shared_residual_range_low = np.empty((max_n_points_candidate,), dtype=np.float64, order='C')
+    shared_residual_range_high = np.empty((max_n_points_candidate,), dtype=np.float64, order='C')
+    best_candidate_confidence_interval = np.empty((2, n_studies,), dtype=np.float64, order='F')
+    plateau_established = ctypes.c_bool(0)
+    n_admissible_evaluated = ctypes.c_int(0)
+    trace_k_start = np.empty((16,), dtype=np.int32, order='C')
+    trace_k_step = np.empty((16,), dtype=np.int32, order='C')
+    trace_k_max = np.empty((16,), dtype=np.int32, order='C')
+    trace_n_points = np.empty((16,), dtype=np.int32, order='C')
+    trace_global_js_divergence = np.empty((n_studies, 16,), dtype=np.float64, order='F')
+    trace_ci_lower = np.empty((n_studies, 16,), dtype=np.float64, order='F')
+    trace_ci_upper = np.empty((n_studies, 16,), dtype=np.float64, order='F')
+    trace_ci_width = np.empty((n_studies, 16,), dtype=np.float64, order='F')
+    trace_ci_width_relative = np.empty((n_studies, 16,), dtype=np.float64, order='F')
+    trace_delta = np.empty((n_studies, 16,), dtype=np.float64, order='F')
+    trace_delta_median = np.empty((16,), dtype=np.float64, order='C')
+    trace_delta_max = np.empty((16,), dtype=np.float64, order='C')
+    trace_selected_n_bins = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
+    trace_occupancy_failed = np.empty((max_n_points_candidate, 16,), dtype=np.bool_, order='F')
+    trace_n_pooled_residuals = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
+    trace_min_bin_occupancy = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
+    trace_mean_bin_occupancy = np.empty((max_n_points_candidate, 16,), dtype=np.float64, order='F')
+    trace_max_bin_occupancy = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
+    trace_sturges_bins = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
+    trace_fd_bins = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
+    trace_shared_residual_range_low = np.empty((max_n_points_candidate, 16,), dtype=np.float64, order='F')
+    trace_shared_residual_range_high = np.empty((max_n_points_candidate, 16,), dtype=np.float64, order='F')
+    n_candidates_tried = ctypes.c_int(0)
+    candidate_k_start = np.empty((16,), dtype=np.int32, order='C')
+    candidate_n_points = np.empty((16,), dtype=np.int32, order='C')
+    candidate_status = np.empty((16,), dtype=np.int32, order='C')
+    ierr = ctypes.c_int(0)
+
+    _lib.run_js_comp_test_adaptive_parameter_search_c(
+        ctypes.byref(ctypes.c_int(n_studies)),
+        ctypes.byref(ctypes.c_int(max_n_genes_all_studies)),
+        ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
+        gene_means,
+        residuals,
+        ctypes.byref(ctypes.c_int(n_bootstraps)),
+        join_method,
+        ctypes.byref(ctypes.c_int(max_n_points_candidate)),
+        ctypes.byref(k_start),
+        ctypes.byref(k_step),
+        ctypes.byref(k_max),
+        ctypes.byref(n_points),
+        n_bins_per_point,
+        shared_residual_range_low,
+        shared_residual_range_high,
+        best_candidate_confidence_interval,
+        ctypes.byref(plateau_established),
+        ctypes.byref(n_admissible_evaluated),
+        trace_k_start,
+        trace_k_step,
+        trace_k_max,
+        trace_n_points,
+        trace_global_js_divergence,
+        trace_ci_lower,
+        trace_ci_upper,
+        trace_ci_width,
+        trace_ci_width_relative,
+        trace_delta,
+        trace_delta_median,
+        trace_delta_max,
+        trace_selected_n_bins,
+        trace_occupancy_failed,
+        trace_n_pooled_residuals,
+        trace_min_bin_occupancy,
+        trace_mean_bin_occupancy,
+        trace_max_bin_occupancy,
+        trace_sturges_bins,
+        trace_fd_bins,
+        trace_shared_residual_range_low,
+        trace_shared_residual_range_high,
+        ctypes.byref(n_candidates_tried),
+        candidate_k_start,
+        candidate_n_points,
+        candidate_status,
+        ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
+        ctypes.byref(ctypes.c_double(min_neighbor_overlap)),
+        ctypes.byref(ctypes.c_double(succeeding_ci_overlap)),
+        plateau_mode,
+        ctypes.byref(ctypes.c_double(delta_median_threshold)),
+        ctypes.byref(ctypes.c_double(delta_max_threshold)),
+        ctypes.byref(ctypes.c_double(delta_epsilon)),
+        ctypes.byref(ctypes.c_int(delta_min_consecutive_transitions)),
+        ctypes.byref(ctypes.c_int(m_min)),
+        ctypes.byref(ctypes.c_int(m_max)),
+        ctypes.byref(ctypes.c_double(gamma_occupancy)),
+        ctypes.byref(ctypes.c_double(lower_residual_range_quantile)),
+        ctypes.byref(ctypes.c_double(upper_residual_range_quantile)),
+        ctypes.byref(ctypes.c_double(two_sided_bootstrapping_significance_level)),
+        ctypes.byref(ctypes.c_int(random_seed)),
+        ctypes.byref(ctypes.c_double(tau)),
+        ctypes.byref(ctypes.c_double(mad_distance_factor)),
+        ctypes.byref(ctypes.c_int(max_pooled_residuals)),
+        ctypes.byref(ctypes.c_int(min_study_neighbors)),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENTS, _RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    n_bins_per_point.flags.writeable = False
+    shared_residual_range_low.flags.writeable = False
+    shared_residual_range_high.flags.writeable = False
+    best_candidate_confidence_interval.flags.writeable = False
+    trace_k_start.flags.writeable = False
+    trace_k_step.flags.writeable = False
+    trace_k_max.flags.writeable = False
+    trace_n_points.flags.writeable = False
+    trace_global_js_divergence.flags.writeable = False
+    trace_ci_lower.flags.writeable = False
+    trace_ci_upper.flags.writeable = False
+    trace_ci_width.flags.writeable = False
+    trace_ci_width_relative.flags.writeable = False
+    trace_delta.flags.writeable = False
+    trace_delta_median.flags.writeable = False
+    trace_delta_max.flags.writeable = False
+    trace_selected_n_bins.flags.writeable = False
+    trace_occupancy_failed.flags.writeable = False
+    trace_n_pooled_residuals.flags.writeable = False
+    trace_min_bin_occupancy.flags.writeable = False
+    trace_mean_bin_occupancy.flags.writeable = False
+    trace_max_bin_occupancy.flags.writeable = False
+    trace_sturges_bins.flags.writeable = False
+    trace_fd_bins.flags.writeable = False
+    trace_shared_residual_range_low.flags.writeable = False
+    trace_shared_residual_range_high.flags.writeable = False
+    candidate_k_start.flags.writeable = False
+    candidate_n_points.flags.writeable = False
+    candidate_status.flags.writeable = False
+
+    return {
+        "k_start": k_start.value,
+        "k_step": k_step.value,
+        "k_max": k_max.value,
+        "n_points": n_points.value,
+        "n_bins_per_point": n_bins_per_point,
+        "shared_residual_range_low": shared_residual_range_low,
+        "shared_residual_range_high": shared_residual_range_high,
+        "best_candidate_confidence_interval": best_candidate_confidence_interval,
+        "plateau_established": plateau_established.value,
+        "trace_k_start": trace_k_start[..., :n_admissible_evaluated.value],
+        "trace_k_step": trace_k_step[..., :n_admissible_evaluated.value],
+        "trace_k_max": trace_k_max[..., :n_admissible_evaluated.value],
+        "trace_n_points": trace_n_points[..., :n_admissible_evaluated.value],
+        "trace_global_js_divergence": trace_global_js_divergence[..., :n_admissible_evaluated.value],
+        "trace_ci_lower": trace_ci_lower[..., :n_admissible_evaluated.value],
+        "trace_ci_upper": trace_ci_upper[..., :n_admissible_evaluated.value],
+        "trace_ci_width": trace_ci_width[..., :n_admissible_evaluated.value],
+        "trace_ci_width_relative": trace_ci_width_relative[..., :n_admissible_evaluated.value],
+        "trace_delta": trace_delta[..., :n_admissible_evaluated.value],
+        "trace_delta_median": trace_delta_median[..., :n_admissible_evaluated.value],
+        "trace_delta_max": trace_delta_max[..., :n_admissible_evaluated.value],
+        "trace_selected_n_bins": trace_selected_n_bins[..., :n_admissible_evaluated.value],
+        "trace_occupancy_failed": trace_occupancy_failed[..., :n_admissible_evaluated.value],
+        "trace_n_pooled_residuals": trace_n_pooled_residuals[..., :n_admissible_evaluated.value],
+        "trace_min_bin_occupancy": trace_min_bin_occupancy[..., :n_admissible_evaluated.value],
+        "trace_mean_bin_occupancy": trace_mean_bin_occupancy[..., :n_admissible_evaluated.value],
+        "trace_max_bin_occupancy": trace_max_bin_occupancy[..., :n_admissible_evaluated.value],
+        "trace_sturges_bins": trace_sturges_bins[..., :n_admissible_evaluated.value],
+        "trace_fd_bins": trace_fd_bins[..., :n_admissible_evaluated.value],
+        "trace_shared_residual_range_low": trace_shared_residual_range_low[..., :n_admissible_evaluated.value],
+        "trace_shared_residual_range_high": trace_shared_residual_range_high[..., :n_admissible_evaluated.value],
+        "candidate_k_start": candidate_k_start[..., :n_candidates_tried.value],
+        "candidate_n_points": candidate_n_points[..., :n_candidates_tried.value],
+        "candidate_status": candidate_status[..., :n_candidates_tried.value],
     }

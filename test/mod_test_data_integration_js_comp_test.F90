@@ -20,7 +20,8 @@ module mod_test_data_integration_js_comp_test
                                                   create_mean_pmf_only, bootstrap_histogram, run_js_comp_test, &
                                                   run_js_comp_test_parameter_search, &
                                                   generate_adaptive_js_comp_test_candidates, &
-                                                  construct_adaptive_neighborhoods, run_js_comp_test_adaptive
+                                                  construct_adaptive_neighborhoods, run_js_comp_test_adaptive, &
+                                                  run_js_comp_test_adaptive_parameter_search
     use tox_data_integration_js_comp_test_impl, only: METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, &
                                                        MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, &
                                                        MODE_PLATEAU_BOTH, calc_js_comp_test_n_top_k_jsds, &
@@ -36,7 +37,10 @@ module mod_test_data_integration_js_comp_test
                                                        ADAPTIVE_STATUS_OK, ADAPTIVE_STATUS_TOO_FEW_MEANS, &
                                                        ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD, &
                                                        ADAPTIVE_STATUS_TOO_FEW_RESIDUALS, &
-                                                       materialize_pooled_neighborhood
+                                                       materialize_pooled_neighborhood, ADAPTIVE_CANDIDATE_EVALUATED, &
+                                                       ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, ADAPTIVE_CANDIDATE_EMPTY_STUDY, &
+                                                       ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, ADAPTIVE_CANDIDATE_OVERLAP_FAILED, &
+                                                       ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED
     use tox_errors
     use test_suite, only: test_case
 
@@ -55,12 +59,27 @@ module mod_test_data_integration_js_comp_test
         real(real64), allocatable :: js(:, :), weights(:, :), global_jsd(:), p_values(:)
     end type adaptive_run_outputs
 
+    !> Test helper type: every output of run_js_comp_test_adaptive_parameter_search, sized by run_adaptive_search.
+    type :: adaptive_search_outputs
+        integer(int32) :: capacity, k_start, k_step, k_max, n_points, n_admissible, n_tried
+        integer(int32) :: trace_k_start(16), trace_k_step(16), trace_k_max(16), trace_n_points(16)
+        integer(int32) :: cand_k_start(16), cand_n_points(16), cand_status(16)
+        logical(c_bool) :: plateau
+        real(real64) :: trace_delta_median(16), trace_delta_max(16)
+        integer(int32), allocatable :: n_bins(:), trace_n_bins(:, :), trace_n_pooled(:, :), trace_min_occ(:, :)
+        integer(int32), allocatable :: trace_max_occ(:, :), trace_sturges(:, :), trace_fd(:, :)
+        logical(c_bool), allocatable :: trace_occ_failed(:, :)
+        real(real64), allocatable :: range_low(:), range_high(:), ci(:, :), trace_jsd(:, :), trace_ci_lower(:, :)
+        real(real64), allocatable :: trace_ci_upper(:, :), trace_ci_width(:, :), trace_ci_width_rel(:, :)
+        real(real64), allocatable :: trace_delta(:, :), trace_mean_occ(:, :), trace_range_low(:, :), trace_range_high(:, :)
+    end type adaptive_search_outputs
+
 contains
 
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(141))
+        allocate (all_tests(164))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -353,6 +372,52 @@ contains
                                   test_run_adaptive_end_to_end_after_construction)
         all_tests(141) = test_case("test_run_adaptive_wrapper_validation", &
                                   test_run_adaptive_wrapper_validation)
+        all_tests(142) = test_case("test_adaptive_search_ci_plateau_mid_sequence", &
+                                  test_adaptive_search_ci_plateau_mid_sequence)
+        all_tests(143) = test_case("test_adaptive_search_effect_size_plateau", &
+                                  test_adaptive_search_effect_size_plateau)
+        all_tests(144) = test_case("test_adaptive_search_both_mode_uses_earlier_trigger", &
+                                  test_adaptive_search_both_mode_uses_earlier_trigger)
+        all_tests(145) = test_case("test_adaptive_search_no_plateau_ci_smallest_uncertainty", &
+                                  test_adaptive_search_no_plateau_ci_smallest_uncertainty)
+        all_tests(146) = test_case("test_adaptive_search_no_plateau_effect_smallest_uncertainty", &
+                                  test_adaptive_search_no_plateau_effect_smallest_uncertainty)
+        all_tests(147) = test_case("test_adaptive_search_no_plateau_both_smallest_uncertainty", &
+                                  test_adaptive_search_no_plateau_both_smallest_uncertainty)
+        all_tests(148) = test_case("test_adaptive_search_nothing_admissible_falls_back_to_first", &
+                                  test_adaptive_search_nothing_admissible_falls_back_to_first)
+        all_tests(149) = test_case("test_adaptive_search_single_candidate_bypasses_plateau", &
+                                  test_adaptive_search_single_candidate_bypasses_plateau)
+        all_tests(150) = test_case("test_adaptive_search_single_rejected_candidate_m_min", &
+                                  test_adaptive_search_single_rejected_candidate_m_min)
+        all_tests(151) = test_case("test_adaptive_search_status_too_few_means", &
+                                  test_adaptive_search_status_too_few_means)
+        all_tests(152) = test_case("test_adaptive_search_status_too_few_residuals", &
+                                  test_adaptive_search_status_too_few_residuals)
+        all_tests(153) = test_case("test_adaptive_search_status_empty_study", &
+                                  test_adaptive_search_status_empty_study)
+        all_tests(154) = test_case("test_adaptive_search_status_capacity_exceeded", &
+                                  test_adaptive_search_status_capacity_exceeded)
+        all_tests(155) = test_case("test_adaptive_search_status_overlap_failed", &
+                                  test_adaptive_search_status_overlap_failed)
+        all_tests(156) = test_case("test_adaptive_search_status_min_count_failed", &
+                                  test_adaptive_search_status_min_count_failed)
+        all_tests(157) = test_case("test_adaptive_search_final_bins_match_selected_trace", &
+                                  test_adaptive_search_final_bins_match_selected_trace)
+        all_tests(158) = test_case("test_adaptive_search_round_trip_reproduces_trace", &
+                                  test_adaptive_search_round_trip_reproduces_trace)
+        all_tests(159) = test_case("test_adaptive_search_n_points_ascend_homoscedastic", &
+                                  test_adaptive_search_n_points_ascend_homoscedastic)
+        all_tests(160) = test_case("test_adaptive_search_wrapper_validation", &
+                                  test_adaptive_search_wrapper_validation)
+        all_tests(161) = test_case("test_adaptive_search_round_trip_non_default_options", &
+                                  test_adaptive_search_round_trip_non_default_options)
+        all_tests(162) = test_case("test_adaptive_search_nothing_admissible_clamped_to_capacity", &
+                                  test_adaptive_search_nothing_admissible_clamped_to_capacity)
+        all_tests(163) = test_case("test_adaptive_search_single_rejected_clamped_to_capacity", &
+                                  test_adaptive_search_single_rejected_clamped_to_capacity)
+        all_tests(164) = test_case("test_adaptive_search_ci_plateau_keeps_earlier_best", &
+                                  test_adaptive_search_ci_plateau_keeps_earlier_best)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -6459,7 +6524,8 @@ contains
     !| arrays. Every output is pre-filled with the sentinel -7 first, so a test can see which
     !| outputs an early error return left untouched.
     subroutine run_adaptive_final(gene_means, residuals, ranges, out, ierr, n_permutations, random_seed, m_min, &
-                                  m_max, min_residuals_per_bin, n_points)
+                                  m_max, min_residuals_per_bin, n_points, gamma_occupancy, &
+                                  lower_residual_range_quantile, upper_residual_range_quantile)
         real(real64), intent(in) :: gene_means(:, :)
             !! Mean expression of every gene in every study, NaN for a missing gene
         real(real64), intent(in) :: residuals(:, :, :)
@@ -6483,6 +6549,12 @@ contains
             !! be admissible in the occupancy search
         integer(int32), intent(in), optional :: n_points
             !! Overrides the reference-point count passed on, for the wrapper validation test
+        real(real64), intent(in), optional :: gamma_occupancy
+            !! Geometric growth factor of the occupancy search, forwarded to run_js_comp_test_adaptive
+        real(real64), intent(in), optional :: lower_residual_range_quantile
+            !! Quantile of each point's lower residual-range bound, forwarded to run_js_comp_test_adaptive
+        real(real64), intent(in), optional :: upper_residual_range_quantile
+            !! Quantile of each point's upper residual-range bound, forwarded to run_js_comp_test_adaptive
         integer(int32) :: n_studies, n_genes, n_reps, n_pts, n_passed
 
         n_genes = size(gene_means, 1, kind=int32)
@@ -6528,7 +6600,9 @@ contains
                                        out%mean_pmf_counts, out%mean_included, out%js, out%weights, out%global_jsd, &
                                        out%p_values, n_permutations=n_permutations, random_seed=random_seed, &
                                        min_residuals_per_bin=min_residuals_per_bin, m_min=m_min, m_max=m_max, &
-                                       ierr=ierr)
+                                       gamma_occupancy=gamma_occupancy, &
+                                       lower_residual_range_quantile=lower_residual_range_quantile, &
+                                       upper_residual_range_quantile=upper_residual_range_quantile, ierr=ierr)
     end subroutine run_adaptive_final
 
     !> Test helper: the fixture shared by the error tests. G = 3, two studies, 2 replicates: study
@@ -6912,5 +6986,892 @@ contains
         call run_adaptive_final(gene_means, residuals, reshape([1, 3], [2, 1]), out, ierr, n_points=0_int32)
         call assert_err(ierr, ERR_INVALID_INPUT, name//"n_points 0", arg_pos=4_int32)
     end subroutine test_run_adaptive_wrapper_validation
+
+    ! ---------------------------------------------------------------------------------------------
+    ! Issue #217, Checkpoint E: run_js_comp_test_adaptive_parameter_search. Two fixtures, both
+    ! built by build_adaptive_search_fixture: G = 500 genes, S = 2 studies, R = 3 replicates, study
+    ! s gene g has mean g + (s - 1)/S, so the pooled sorted order interleaves the studies and pooled
+    ! position p holds the mean (p + 1)/2. The adaptive sequence for G*S = 1000 is
+    ! k_start_1 = max(10, ceiling(0.02*1000)) = 20, then floor(20*0.8^t) = 16, 12, 10 (8 < 10
+    ! stops): (20,5,80), (16,4,64), (12,3,48), (10,3,40).
+    !
+    ! Fixture A, residuals all 0: every neighborhood stops with zero dispersion after exactly
+    ! k_start entries. A first neighborhood [1, k] of k evenly spaced means (step 0.5) has
+    ! MAD = 0.25*(k/2) (the middle pair of the sorted deviations 0.25, 0.25, 0.75, ...), i.e.
+    ! 2.5 / 2.0 / 1.5 / 1.25 for k = 20 / 16 / 12 / 10. The next target mean(k) + MAD lands on
+    ! pooled position 25 / 20 / 15 / 12 (for k = 10 the target 6.75 ties between 6.5 and 7.0 and
+    ! goes to the lower, position 12), and the k nearest entries around it (ties to the lower mean)
+    ! are [15,34] / [12,27] / [9,20] / [7,16]. So consecutive neighborhoods advance by a stride of
+    ! 14 / 11 / 8 / 6 positions, and covering 1000 positions takes 71 / 91 / 125 / 166 points
+    ! (k + stride*(n-1) >= 1000). Their consecutive overlap (last_1 - first_2)/(k - 1) is
+    ! 5/19, 4/15, 3/11, 3/9 (0.263, 0.267, 0.273, 0.333); each study has k/2 entries per
+    ! neighborhood. Every histogram puts all mass in one bin, so every JSD is 0 and every
+    ! bootstrapped confidence interval is exactly [0, 0] (as in the fixed-k plateau tests).
+    !
+    ! Fixture B, pseudo-random residuals in [-2, 2] (the fixed-k no-plateau fixture's linear
+    ! congruential sequence): homoscedastic, so every neighborhood grows to K = k_max entries. As
+    ! for fixture A, K evenly spaced means have MAD = 0.25*(K/2) = K/8, i.e. K/4 positions, so the
+    ! next seed lies K/4 positions beyond the last one, and its K nearest entries (K/2 below it,
+    ! K/2 - 1 above) end K/2 - 1 positions after it: the stride is 3K/4 - 1 = 59 / 47 / 35 / 29 for
+    ! K = 80 / 64 / 48 / 40, and K + stride*(n - 1) >= 1000 gives 17 / 21 / 29 / 35 points. Each
+    ! neighborhood starts K/4 positions before the previous one ends, an overlap of
+    ! (K/4)/(K - 1), about 0.25, above the default 0.1.
+    ! ---------------------------------------------------------------------------------------------
+
+    !> Test helper: fixture A (`use_lcg = .false.`, all residuals 0) or fixture B (`use_lcg =
+    !| .true.`), see the section comment above. `n_valid_genes` < `n_genes` sets every later gene's
+    !| mean to NaN, in every study.
+    subroutine build_adaptive_search_fixture(n_genes, n_studies, n_reps, use_lcg, n_valid_genes, gene_means, residuals)
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes per study
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: n_reps
+            !! Number of replicates per gene
+        logical(c_bool), intent(in) :: use_lcg
+            !! `.true.` for the pseudo-random residuals of fixture B, `.false.` for all-zero ones
+        integer(int32), intent(in) :: n_valid_genes
+            !! Genes `1:n_valid_genes` of each study get a mean, the rest NaN
+        real(real64), intent(out) :: gene_means(n_genes, n_studies)
+            !! Fixture mean expression
+        real(real64), intent(out) :: residuals(n_reps, n_genes, n_studies)
+            !! Fixture residuals
+        integer(int32) :: i_gene, i_study, i_rep, k
+
+        do i_study = 1, n_studies
+            do i_gene = 1, n_genes
+                if (i_gene <= n_valid_genes) then
+                    gene_means(i_gene, i_study) = real(i_gene, real64) + real(i_study - 1, real64)/real(n_studies, real64)
+                else
+                    gene_means(i_gene, i_study) = ieee_value(0.0_real64, ieee_quiet_nan)
+                end if
+                do i_rep = 1, n_reps
+                    if (use_lcg) then
+                        k = i_rep + n_reps*(i_gene - 1) + (i_study - 1)*n_reps*n_genes
+                        residuals(i_rep, i_gene, i_study) = 4.0_real64* &
+                            (mod(1103515245.0_real64*real(k, real64) + 12345.0_real64, 2147483648.0_real64) &
+                             /2147483648.0_real64 - 0.5_real64)
+                    else
+                        residuals(i_rep, i_gene, i_study) = 0.0_real64
+                    end if
+                end do
+            end do
+        end do
+    end subroutine build_adaptive_search_fixture
+
+    !> Test helper: call the generated run_js_comp_test_adaptive_parameter_search wrapper with 10
+    !| bootstraps and METHOD_JOIN_MIN (random seed 1 unless given), sizing every output from
+    !| calc_adaptive_js_comp_test_bounds unless `capacity` overrides it.
+    subroutine run_adaptive_search(gene_means, residuals, out, ierr, capacity, min_residuals_per_bin, &
+                                   min_neighbor_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, &
+                                   delta_min_consecutive_transitions, min_study_neighbors, succeeding_ci_overlap, &
+                                   random_seed, tau, mad_distance_factor, max_pooled_residuals, m_min, m_max, &
+                                   gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile)
+        real(real64), intent(in) :: gene_means(:, :)
+            !! Mean expression of every gene in every study, NaN for a missing gene
+        real(real64), intent(in) :: residuals(:, :, :)
+            !! Signed residuals of every replicate of every gene in every study
+        type(adaptive_search_outputs), intent(out) :: out
+            !! Every output of run_js_comp_test_adaptive_parameter_search
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure
+        integer(int32), intent(in), optional :: capacity
+            !! Overrides max_n_points_candidate
+        integer(int32), intent(in), optional :: min_residuals_per_bin
+            !! Forwarded to the search
+        real(real64), intent(in), optional :: min_neighbor_overlap
+            !! Forwarded to the search
+        integer(int32), intent(in), optional :: plateau_mode
+            !! Forwarded to the search
+        real(real64), intent(in), optional :: delta_median_threshold
+            !! Forwarded to the search
+        real(real64), intent(in), optional :: delta_max_threshold
+            !! Forwarded to the search
+        integer(int32), intent(in), optional :: delta_min_consecutive_transitions
+            !! Forwarded to the search
+        integer(int32), intent(in), optional :: min_study_neighbors
+            !! Forwarded to the search
+        real(real64), intent(in), optional :: succeeding_ci_overlap
+            !! Forwarded to the search
+        integer(int32), intent(in), optional :: random_seed
+            !! Seed for the GSL random number generator; 1 when absent
+        real(real64), intent(in), optional :: tau
+            !! Forwarded to the search
+        real(real64), intent(in), optional :: mad_distance_factor
+            !! Forwarded to the search
+        integer(int32), intent(in), optional :: max_pooled_residuals
+            !! Forwarded to the search
+        integer(int32), intent(in), optional :: m_min
+            !! Forwarded to the search
+        integer(int32), intent(in), optional :: m_max
+            !! Forwarded to the search
+        real(real64), intent(in), optional :: gamma_occupancy
+            !! Forwarded to the search
+        real(real64), intent(in), optional :: lower_residual_range_quantile
+            !! Forwarded to the search
+        real(real64), intent(in), optional :: upper_residual_range_quantile
+            !! Forwarded to the search
+        integer(int32) :: n_studies, n_genes, n_reps, cap, bounds_ierr, seed
+
+        n_genes = size(gene_means, 1, kind=int32)
+        n_studies = size(gene_means, 2, kind=int32)
+        n_reps = size(residuals, 1, kind=int32)
+        call calc_adaptive_js_comp_test_bounds(n_genes, n_studies, cap, bounds_ierr)
+        call assert_equal_int(get_err_code(bounds_ierr), ERR_OK, "run_adaptive_search: bounds ierr")
+        if (present(capacity)) cap = capacity
+        seed = 1_int32
+        if (present(random_seed)) seed = random_seed
+        out%capacity = cap
+
+        allocate (out%n_bins(cap), out%range_low(cap), out%range_high(cap), out%ci(2, n_studies), &
+                  out%trace_jsd(n_studies, 16), out%trace_ci_lower(n_studies, 16), out%trace_ci_upper(n_studies, 16), &
+                  out%trace_ci_width(n_studies, 16), out%trace_ci_width_rel(n_studies, 16), &
+                  out%trace_delta(n_studies, 16), out%trace_n_bins(cap, 16), out%trace_occ_failed(cap, 16), &
+                  out%trace_n_pooled(cap, 16), out%trace_min_occ(cap, 16), out%trace_mean_occ(cap, 16), &
+                  out%trace_max_occ(cap, 16), out%trace_sturges(cap, 16), out%trace_fd(cap, 16), &
+                  out%trace_range_low(cap, 16), out%trace_range_high(cap, 16))
+        out%n_bins = -7_int32
+        out%range_low = -7.0_real64
+        out%range_high = -7.0_real64
+
+        call run_js_comp_test_adaptive_parameter_search(n_studies, n_genes, n_reps, gene_means, residuals, 10_int32, &
+                                                        METHOD_JOIN_MIN, cap, out%k_start, out%k_step, out%k_max, &
+                                                        out%n_points, out%n_bins, out%range_low, out%range_high, out%ci, &
+                                                        out%plateau, out%n_admissible, out%trace_k_start, out%trace_k_step, &
+                                                        out%trace_k_max, out%trace_n_points, out%trace_jsd, &
+                                                        out%trace_ci_lower, out%trace_ci_upper, out%trace_ci_width, &
+                                                        out%trace_ci_width_rel, out%trace_delta, out%trace_delta_median, &
+                                                        out%trace_delta_max, out%trace_n_bins, out%trace_occ_failed, &
+                                                        out%trace_n_pooled, out%trace_min_occ, out%trace_mean_occ, &
+                                                        out%trace_max_occ, out%trace_sturges, out%trace_fd, &
+                                                        out%trace_range_low, out%trace_range_high, out%n_tried, &
+                                                        out%cand_k_start, out%cand_n_points, out%cand_status, &
+                                                        min_residuals_per_bin=min_residuals_per_bin, &
+                                                        min_neighbor_overlap=min_neighbor_overlap, plateau_mode=plateau_mode, &
+                                                        succeeding_ci_overlap=succeeding_ci_overlap, &
+                                                        delta_median_threshold=delta_median_threshold, &
+                                                        delta_max_threshold=delta_max_threshold, &
+                                                        delta_min_consecutive_transitions=delta_min_consecutive_transitions, &
+                                                        m_min=m_min, m_max=m_max, gamma_occupancy=gamma_occupancy, &
+                                                        lower_residual_range_quantile=lower_residual_range_quantile, &
+                                                        upper_residual_range_quantile=upper_residual_range_quantile, &
+                                                        random_seed=seed, tau=tau, mad_distance_factor=mad_distance_factor, &
+                                                        max_pooled_residuals=max_pooled_residuals, &
+                                                        min_study_neighbors=min_study_neighbors, ierr=ierr)
+    end subroutine run_adaptive_search
+
+    !> Test helper: the trace column whose `trace_k_start` equals the selected `k_start`, or 0.
+    integer(int32) function selected_trace_column(out) result(column)
+        type(adaptive_search_outputs), intent(in) :: out
+            !! Outputs of run_adaptive_search
+        integer(int32) :: i_column
+
+        column = 0_int32
+        do i_column = 1, out%n_admissible
+            if (out%trace_k_start(i_column) == out%k_start) column = i_column
+        end do
+    end function selected_trace_column
+
+    !> Test helper: assert the three knobs, the point count and the candidate log.
+    subroutine assert_adaptive_selection(out, knobs, n_points, cand_n_points, cand_status, name)
+        type(adaptive_search_outputs), intent(in) :: out
+            !! Outputs of run_adaptive_search
+        integer(int32), intent(in) :: knobs(3)
+            !! Expected selected `[k_start, k_step, k_max]`
+        integer(int32), intent(in) :: n_points
+            !! Expected selected point count
+        integer(int32), intent(in) :: cand_n_points(:)
+            !! Expected candidate log point counts; its length is the expected n_candidates_tried
+        integer(int32), intent(in) :: cand_status(:)
+            !! Expected candidate log statuses
+        character(len=*), intent(in) :: name
+            !! Message prefix
+        integer(int32), parameter :: all_k_starts(4) = [20_int32, 16_int32, 12_int32, 10_int32]
+        integer(int32) :: n_tried
+
+        n_tried = size(cand_n_points, kind=int32)
+        call assert_equal_array_int([out%k_start, out%k_step, out%k_max], knobs, 3_int32, name//"selected knobs")
+        call assert_equal_int(out%n_points, n_points, name//"selected n_points")
+        call assert_equal_int(out%n_tried, n_tried, name//"n_candidates_tried")
+        call assert_equal_array_int(out%cand_k_start(1:n_tried), all_k_starts(1:n_tried), n_tried, name//"candidate_k_start")
+        call assert_equal_array_int(out%cand_n_points(1:n_tried), cand_n_points, n_tried, name//"candidate_n_points")
+        call assert_equal_array_int(out%cand_status(1:n_tried), cand_status, n_tried, name//"candidate_status")
+    end subroutine assert_adaptive_selection
+
+    !> E1: fixture A, CI-overlap mode (default), gates relaxed (`min_residuals_per_bin = 0`). As in
+    !| test_param_search_finds_plateau_mid_grid: candidate 1's [0,0] interval against the initial
+    !| [-1,-1] best overlaps nothing and becomes the best; candidate 2's [0,0] then overlaps it by
+    !| 1.0 >= 0.9 in both studies, so the search stops at candidate 2 = (16, 4, 64) with 91 points,
+    !| never trying candidates 3 and 4.
+    subroutine test_adaptive_search_ci_plateau_mid_sequence()
+        character(len=*), parameter :: name = "test_adaptive_search_ci_plateau_mid_sequence: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_true(out%plateau, name//"plateau established")
+        call assert_adaptive_selection(out, [16_int32, 4_int32, 64_int32], 91_int32, [71_int32, 91_int32], &
+                                       [ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_EVALUATED], name)
+        call assert_equal_int(out%n_admissible, 2_int32, name//"two admissible candidates")
+        call assert_equal_array_int(out%trace_k_start(1:2), [20_int32, 16_int32], 2_int32, name//"trace_k_start")
+        call assert_equal_array_int(out%trace_k_step(1:2), [5_int32, 4_int32], 2_int32, name//"trace_k_step")
+        call assert_equal_array_int(out%trace_k_max(1:2), [80_int32, 64_int32], 2_int32, name//"trace_k_max")
+        call assert_equal_array_int(out%trace_n_points(1:2), [71_int32, 91_int32], 2_int32, name//"trace_n_points")
+        call assert_equal_array_real(out%trace_jsd(:, 1:2), reshape([0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64], &
+                                                                    [2, 2]), 4_int32, 0.0_real64, name//"trace JSD 0")
+        call assert_equal_array_real(out%trace_delta(:, 1), [-1.0_real64, -1.0_real64], 2_int32, 0.0_real64, &
+                                     name//"no delta at the first admissible candidate")
+        call assert_equal_array_real(out%trace_delta(:, 2), [0.0_real64, 0.0_real64], 2_int32, 0.0_real64, &
+                                     name//"delta 0 at the second")
+        call assert_equal_array_real(out%ci, reshape([0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64], [2, 2]), &
+                                     4_int32, 0.0_real64, name//"selected CI is [0,0], not the -1 sentinel")
+    end subroutine test_adaptive_search_ci_plateau_mid_sequence
+
+    !> E2: fixture A, `MODE_PLATEAU_EFFECT_SIZE`: every transition has delta 0 < 0.05/0.10, so the
+    !| second consecutive qualifying transition (candidate 2 -> 3) plateaus at candidate 3 =
+    !| (12, 3, 48) with 125 points, and the override returns that candidate and its [0,0] interval.
+    subroutine test_adaptive_search_effect_size_plateau()
+        character(len=*), parameter :: name = "test_adaptive_search_effect_size_plateau: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32, &
+                                 plateau_mode=MODE_PLATEAU_EFFECT_SIZE)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_true(out%plateau, name//"plateau established")
+        call assert_adaptive_selection(out, [12_int32, 3_int32, 48_int32], 125_int32, [71_int32, 91_int32, 125_int32], &
+                                       [ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_EVALUATED, &
+                                        ADAPTIVE_CANDIDATE_EVALUATED], name)
+        call assert_equal_int(out%n_admissible, 3_int32, name//"three admissible candidates")
+        call assert_equal_array_real(out%ci, reshape([0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64], [2, 2]), &
+                                     4_int32, 0.0_real64, name//"selected CI is the triggering candidate's [0,0]")
+    end subroutine test_adaptive_search_effect_size_plateau
+
+    !> E3: fixture A, `MODE_PLATEAU_BOTH`: CI overlap plateaus at candidate 2, before effect size
+    !| (candidate 3, see E2), so the earlier trigger governs, exactly as in the fixed-k search.
+    subroutine test_adaptive_search_both_mode_uses_earlier_trigger()
+        character(len=*), parameter :: name = "test_adaptive_search_both_mode_uses_earlier_trigger: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32, &
+                                 plateau_mode=MODE_PLATEAU_BOTH)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_true(out%plateau, name//"plateau established")
+        call assert_adaptive_selection(out, [16_int32, 4_int32, 64_int32], 91_int32, [71_int32, 91_int32], &
+                                       [ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_EVALUATED], name)
+    end subroutine test_adaptive_search_both_mode_uses_earlier_trigger
+
+    !> Test helper for E4a-c: fixture B, every candidate admissible, no plateau in the given mode.
+    !| The expected selection is computed here from the traces themselves, independently of the
+    !| routine's own bookkeeping: the first column with the smallest median (for 2 studies, mean)
+    !| confidence-interval width, which must be unique for the test to discriminate. The selected
+    !| knobs, points, per-point bins and ranges, and interval must be that column's.
+    subroutine check_adaptive_no_plateau_fallback(plateau_mode, name)
+        integer(int32), intent(in) :: plateau_mode
+            !! Plateau mode under test
+        character(len=*), intent(in) :: name
+            !! Message prefix
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr, t, t_best, n_pts
+        real(real64) :: widths(4)
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .true._c_bool, 500_int32, gene_means, residuals)
+        ! Tiny effect-size thresholds: no real-valued delta ever qualifies, so effect size never
+        ! plateaus. succeeding_ci_overlap = 1.0 lets only an interval lying entirely inside the
+        ! running best count. Later, narrower intervals tend to nest inside earlier ones, so CI
+        ! overlap still plateaus for most bootstrap seeds; a scan of seeds 1-60 found 39 and 41
+        ! as the only ones where it never does. That precondition, not a hand-derived value, is
+        ! what seed 39 buys, and it is asserted below (no plateau, four evaluated candidates).
+        call run_adaptive_search(gene_means, residuals, out, ierr, plateau_mode=plateau_mode, &
+                                 delta_median_threshold=1.0e-300_real64, delta_max_threshold=1.0e-300_real64, &
+                                 succeeding_ci_overlap=1.0_real64, random_seed=39_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_false(out%plateau, name//"no plateau")
+        call assert_equal_int(out%n_admissible, 4_int32, name//"all four candidates admissible")
+        call assert_equal_array_int(out%cand_status(1:4), [(ADAPTIVE_CANDIDATE_EVALUATED, t=1, 4)], 4_int32, &
+                                    name//"all evaluated")
+
+        do t = 1, 4
+            widths(t) = 0.5_real64*(out%trace_ci_width(1, t) + out%trace_ci_width(2, t))
+        end do
+        t_best = minloc(widths, dim=1)
+        call assert_equal_int(count(widths == widths(t_best)), 1_int32, name//"unique smallest uncertainty")
+        ! Not candidate 1, so the fallback is distinguishable from "nothing admissible, take the first".
+        call assert_true(t_best > 1, name//"smallest uncertainty is not candidate 1")
+
+        n_pts = out%trace_n_points(t_best)
+        call assert_equal_array_int([out%k_start, out%k_step, out%k_max], &
+                                    [out%trace_k_start(t_best), out%trace_k_step(t_best), out%trace_k_max(t_best)], &
+                                    3_int32, name//"knobs of the smallest-uncertainty candidate")
+        call assert_equal_int(out%n_points, n_pts, name//"its point count")
+        call assert_equal_array_int(out%n_bins(1:n_pts), out%trace_n_bins(1:n_pts, t_best), n_pts, name//"its bins")
+        call assert_equal_array_real(out%range_low(1:n_pts), out%trace_range_low(1:n_pts, t_best), n_pts, 0.0_real64, &
+                                     name//"its R_low")
+        call assert_equal_array_real(out%range_high(1:n_pts), out%trace_range_high(1:n_pts, t_best), n_pts, 0.0_real64, &
+                                     name//"its R_high")
+        call assert_equal_array_real(out%ci(1, :), out%trace_ci_lower(:, t_best), 2_int32, 0.0_real64, name//"its CI lower")
+        call assert_equal_array_real(out%ci(2, :), out%trace_ci_upper(:, t_best), 2_int32, 0.0_real64, name//"its CI upper")
+    end subroutine check_adaptive_no_plateau_fallback
+
+    !> E4a: no-plateau smallest-uncertainty fallback under `MODE_PLATEAU_CI_OVERLAP`.
+    subroutine test_adaptive_search_no_plateau_ci_smallest_uncertainty()
+        call check_adaptive_no_plateau_fallback(MODE_PLATEAU_CI_OVERLAP, &
+                                                "test_adaptive_search_no_plateau_ci_smallest_uncertainty: ")
+    end subroutine test_adaptive_search_no_plateau_ci_smallest_uncertainty
+
+    !> E4b: no-plateau smallest-uncertainty fallback under `MODE_PLATEAU_EFFECT_SIZE`.
+    subroutine test_adaptive_search_no_plateau_effect_smallest_uncertainty()
+        call check_adaptive_no_plateau_fallback(MODE_PLATEAU_EFFECT_SIZE, &
+                                                "test_adaptive_search_no_plateau_effect_smallest_uncertainty: ")
+    end subroutine test_adaptive_search_no_plateau_effect_smallest_uncertainty
+
+    !> E4c: no-plateau smallest-uncertainty fallback under `MODE_PLATEAU_BOTH`.
+    subroutine test_adaptive_search_no_plateau_both_smallest_uncertainty()
+        call check_adaptive_no_plateau_fallback(MODE_PLATEAU_BOTH, &
+                                                "test_adaptive_search_no_plateau_both_smallest_uncertainty: ")
+    end subroutine test_adaptive_search_no_plateau_both_smallest_uncertainty
+
+    !> Test helper for the nothing-admissible cases (E5, E7a too few residuals, E7d): candidate 1's
+    !| knobs (20, 5, 80) and logged point count, `m_min = 3` bins and a zero range on its points
+    !| (on the first `min(n_points, capacity)` of them),
+    !| the -1 interval, no plateau, nothing traced, and all four candidates logged with `status`.
+    subroutine assert_adaptive_nothing_admissible(out, cand_n_points, status, name)
+        type(adaptive_search_outputs), intent(in) :: out
+            !! Outputs of run_adaptive_search
+        integer(int32), intent(in) :: cand_n_points(4)
+            !! Expected candidate log point counts
+        integer(int32), intent(in) :: status
+            !! Expected status of every candidate
+        character(len=*), intent(in) :: name
+            !! Message prefix
+        integer(int32) :: n_pts, n_filled, i
+
+        n_pts = cand_n_points(1)
+        n_filled = min(n_pts, out%capacity)
+        call assert_false(out%plateau, name//"no plateau")
+        call assert_equal_int(out%n_admissible, 0_int32, name//"nothing admissible")
+        call assert_adaptive_selection(out, [20_int32, 5_int32, 80_int32], n_pts, cand_n_points, [(status, i=1, 4)], name)
+        call assert_equal_array_int(out%n_bins(1:n_filled), [(3_int32, i=1, n_filled)], n_filled, name//"m_min bins")
+        call assert_equal_array_real(out%range_low(1:n_filled), [(0.0_real64, i=1, n_filled)], n_filled, 0.0_real64, &
+                                     name//"R_low 0")
+        call assert_equal_array_real(out%range_high(1:n_filled), [(0.0_real64, i=1, n_filled)], n_filled, 0.0_real64, &
+                                     name//"R_high 0")
+        call assert_equal_array_real(out%ci, reshape([-1.0_real64, -1.0_real64, -1.0_real64, -1.0_real64], [2, 2]), &
+                                     4_int32, 0.0_real64, name//"CI -1")
+    end subroutine assert_adaptive_nothing_admissible
+
+    !> E5: fixture A with `min_neighbor_overlap = 0.5`: every candidate's consecutive overlap is
+    !| at most 1/3 (see the section comment), so every one fails the first gate and the result is
+    !| candidate 1 with 71 points.
+    subroutine test_adaptive_search_nothing_admissible_falls_back_to_first()
+        character(len=*), parameter :: name = "test_adaptive_search_nothing_admissible_falls_back_to_first: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32, &
+                                 min_neighbor_overlap=0.5_real64)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_adaptive_nothing_admissible(out, [71_int32, 91_int32, 125_int32, 166_int32], &
+                                                ADAPTIVE_CANDIDATE_OVERLAP_FAILED, name)
+    end subroutine test_adaptive_search_nothing_admissible_falls_back_to_first
+
+    !> E6: G = 10, S = 1, R = 1, means 1..10, residuals 0: N = 10 gives the single candidate
+    !| (10, 3, 40) (k_start_1 = max(10, ceiling(0.2)) = 10, then floor(8) < 10). Its one
+    !| neighborhood takes all 10 entries (10 residuals, zero dispersion) and passes both relaxed
+    !| gates. A single candidate bypasses the plateau machinery: plateau established, its knobs,
+    !| 1 point, the [0,0] interval.
+    subroutine test_adaptive_search_single_candidate_bypasses_plateau()
+        character(len=*), parameter :: name = "test_adaptive_search_single_candidate_bypasses_plateau: "
+        real(real64) :: gene_means(10, 1), residuals(1, 10, 1)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(10_int32, 1_int32, 1_int32, .false._c_bool, 10_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_true(out%plateau, name//"single candidate counts as established")
+        call assert_equal_array_int([out%k_start, out%k_step, out%k_max, out%n_points], [10_int32, 3_int32, 40_int32, 1_int32], &
+                                    4_int32, name//"knobs and point count")
+        call assert_equal_int(out%n_tried, 1_int32, name//"one candidate tried")
+        call assert_equal_int(out%cand_status(1), ADAPTIVE_CANDIDATE_EVALUATED, name//"evaluated")
+        call assert_equal_int(out%n_admissible, 1_int32, name//"one admissible")
+        call assert_equal_int(out%n_bins(1), out%trace_n_bins(1, 1), name//"bins from the trace")
+        call assert_equal_array_real(out%ci(:, 1), [0.0_real64, 0.0_real64], 2_int32, 0.0_real64, name//"CI [0,0]")
+    end subroutine test_adaptive_search_single_candidate_bypasses_plateau
+
+    !> E6b: the E6 data with the default `min_residuals_per_bin = 10`. All 10 residuals are 0, so the
+    !| point's range is degenerate and every residual lands in bin 1: even `m_min = 3` bins leave
+    !| bins 2 and 3 empty, the consensus-pmf gate fails, and the single rejected candidate still
+    !| wins the plateau-or-single branch -- with `m_min` bins, a zero range and the -1 interval,
+    !| because no admissible candidate backs it.
+    subroutine test_adaptive_search_single_rejected_candidate_m_min()
+        character(len=*), parameter :: name = "test_adaptive_search_single_rejected_candidate_m_min: "
+        real(real64) :: gene_means(10, 1), residuals(1, 10, 1)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(10_int32, 1_int32, 1_int32, .false._c_bool, 10_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_true(out%plateau, name//"single candidate counts as established")
+        call assert_equal_array_int([out%k_start, out%k_step, out%k_max, out%n_points], [10_int32, 3_int32, 40_int32, 1_int32], &
+                                    4_int32, name//"knobs and point count")
+        call assert_equal_int(out%cand_status(1), ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED, name//"min-count failed")
+        call assert_equal_int(out%n_admissible, 0_int32, name//"nothing admissible")
+        call assert_equal_int(out%n_bins(1), 3_int32, name//"m_min bins")
+        call assert_equal_array_real([out%range_low(1), out%range_high(1)], [0.0_real64, 0.0_real64], 2_int32, 0.0_real64, &
+                                     name//"zero range")
+        call assert_equal_array_real(out%ci(:, 1), [-1.0_real64, -1.0_real64], 2_int32, 0.0_real64, name//"CI -1")
+    end subroutine test_adaptive_search_single_rejected_candidate_m_min
+
+    !> E7a1: only genes 1..7 of each study have a mean (14 pooled means), residuals 0. Candidates 1
+    !| and 2 (k_start 20, 16 > 14) fail with too few means and 0 points. Candidate 3 (k = 12) builds
+    !| [1,12] and, from the target 6.5 + 1.5 = 8 (position 15, beyond the pool, so the largest mean,
+    !| position 14), [3,14]: 2 points. Candidate 4 (k = 10) builds [1,10] and, from the target
+    !| 5.5 + 1.25 = 6.75 (position 12), [5,14]: 2 points. Both are admissible, so CI overlap
+    !| plateaus at candidate 4, as in E1.
+    subroutine test_adaptive_search_status_too_few_means()
+        character(len=*), parameter :: name = "test_adaptive_search_status_too_few_means: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 7_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_true(out%plateau, name//"plateau established")
+        call assert_adaptive_selection(out, [10_int32, 3_int32, 40_int32], 2_int32, [0_int32, 0_int32, 2_int32, 2_int32], &
+                                       [ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, &
+                                        ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_EVALUATED], name)
+        call assert_equal_array_int(out%trace_k_start(1:2), [12_int32, 10_int32], 2_int32, &
+                                    name//"only the admissible candidates are traced")
+    end subroutine test_adaptive_search_status_too_few_means
+
+    !> E7a2: fixture A with every residual NaN. Each neighborhood's k_start entries hold 0 < 10 valid
+    !| residuals, so it stops there and every construction reports too few residuals; the
+    !| neighborhoods are the zero-dispersion ones of fixture A (71/91/125/166 points), and nothing is
+    !| admissible.
+    subroutine test_adaptive_search_status_too_few_residuals()
+        character(len=*), parameter :: name = "test_adaptive_search_status_too_few_residuals: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
+        residuals = ieee_value(0.0_real64, ieee_quiet_nan)
+        call run_adaptive_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_adaptive_nothing_admissible(out, [71_int32, 91_int32, 125_int32, 166_int32], &
+                                                ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, name)
+    end subroutine test_adaptive_search_status_too_few_residuals
+
+    !> E7a3: fixture A with `min_study_neighbors = 7`: each study has k/2 entries per neighborhood,
+    !| 10 / 8 / 6 / 5, so candidates 3 and 4 report an empty study neighborhood. Effect size with 3
+    !| required transitions never plateaus on the single transition available, so all four are
+    !| tried; the smallest-uncertainty fallback picks candidate 1 (both intervals are [0,0], and
+    !| only a strictly smaller width replaces the first).
+    subroutine test_adaptive_search_status_empty_study()
+        character(len=*), parameter :: name = "test_adaptive_search_status_empty_study: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32, &
+                                 plateau_mode=MODE_PLATEAU_EFFECT_SIZE, delta_min_consecutive_transitions=3_int32, &
+                                 min_study_neighbors=7_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_false(out%plateau, name//"no plateau")
+        call assert_adaptive_selection(out, [20_int32, 5_int32, 80_int32], 71_int32, &
+                                       [71_int32, 91_int32, 125_int32, 166_int32], &
+                                       [ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_EVALUATED, &
+                                        ADAPTIVE_CANDIDATE_EMPTY_STUDY, ADAPTIVE_CANDIDATE_EMPTY_STUDY], name)
+        call assert_equal_array_real(out%ci, reshape([0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64], [2, 2]), &
+                                     4_int32, 0.0_real64, name//"a real [0,0] interval")
+    end subroutine test_adaptive_search_status_empty_study
+
+    !> E7b: fixture A with `max_n_points_candidate = 100`: candidates 3 and 4 emerge with 125 and
+    !| 166 > 100 points and are rejected with the capacity status (their point counts still logged);
+    !| otherwise as the empty-study test above.
+    subroutine test_adaptive_search_status_capacity_exceeded()
+        character(len=*), parameter :: name = "test_adaptive_search_status_capacity_exceeded: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr, capacity=100_int32, min_residuals_per_bin=0_int32, &
+                                 plateau_mode=MODE_PLATEAU_EFFECT_SIZE, delta_min_consecutive_transitions=3_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_false(out%plateau, name//"no plateau")
+        call assert_adaptive_selection(out, [20_int32, 5_int32, 80_int32], 71_int32, &
+                                       [71_int32, 91_int32, 125_int32, 166_int32], &
+                                       [ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_EVALUATED, &
+                                        ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED], name)
+    end subroutine test_adaptive_search_status_capacity_exceeded
+
+    !> E7c: fixture A with `min_neighbor_overlap = 0.3`: the overlaps 0.263, 0.267, 0.273 of
+    !| candidates 1-3 fail, candidate 4's 1/3 passes (the section comment derives them), so the
+    !| single admissible candidate 4 is the smallest-uncertainty fallback.
+    subroutine test_adaptive_search_status_overlap_failed()
+        character(len=*), parameter :: name = "test_adaptive_search_status_overlap_failed: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32, &
+                                 min_neighbor_overlap=0.3_real64)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_false(out%plateau, name//"no plateau from one admissible candidate")
+        call assert_adaptive_selection(out, [10_int32, 3_int32, 40_int32], 166_int32, &
+                                       [71_int32, 91_int32, 125_int32, 166_int32], &
+                                       [ADAPTIVE_CANDIDATE_OVERLAP_FAILED, ADAPTIVE_CANDIDATE_OVERLAP_FAILED, &
+                                        ADAPTIVE_CANDIDATE_OVERLAP_FAILED, ADAPTIVE_CANDIDATE_EVALUATED], name)
+        call assert_equal_int(out%n_admissible, 1_int32, name//"one admissible")
+    end subroutine test_adaptive_search_status_overlap_failed
+
+    !> E7d: fixture A with the default `min_residuals_per_bin = 10`: every residual is 0, so every
+    !| point's range is degenerate, all mass lands in bin 1, and even `m_min = 3` bins leave bins 2
+    !| and 3 of the consensus pmf empty; every candidate fails the second gate.
+    subroutine test_adaptive_search_status_min_count_failed()
+        character(len=*), parameter :: name = "test_adaptive_search_status_min_count_failed: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_adaptive_nothing_admissible(out, [71_int32, 91_int32, 125_int32, 166_int32], &
+                                                ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED, name)
+    end subroutine test_adaptive_search_status_min_count_failed
+
+    !> E8: fixture B, effect size with loose thresholds (10): the first two transitions qualify,
+    !| so the search plateaus at candidate 3 through the effect-size override. The returned
+    !| per-point bins and ranges must be exactly candidate 3's trace column, which the override's
+    !| own snapshot provides; the bins must also genuinely vary (non-trivial occupancy search).
+    subroutine test_adaptive_search_final_bins_match_selected_trace()
+        character(len=*), parameter :: name = "test_adaptive_search_final_bins_match_selected_trace: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr, t, n_pts
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .true._c_bool, 500_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
+                                 delta_median_threshold=10.0_real64, delta_max_threshold=10.0_real64)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_true(out%plateau, name//"plateau established")
+        call assert_adaptive_selection(out, [12_int32, 3_int32, 48_int32], 29_int32, [17_int32, 21_int32, 29_int32], &
+                                       [ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_EVALUATED, &
+                                        ADAPTIVE_CANDIDATE_EVALUATED], name)
+        t = selected_trace_column(out)
+        call assert_equal_int(t, 3_int32, name//"selected trace column")
+        n_pts = out%n_points
+        call assert_equal_array_int(out%n_bins(1:n_pts), out%trace_n_bins(1:n_pts, t), n_pts, name//"bins")
+        call assert_equal_array_real(out%range_low(1:n_pts), out%trace_range_low(1:n_pts, t), n_pts, 0.0_real64, &
+                                     name//"R_low")
+        call assert_equal_array_real(out%range_high(1:n_pts), out%trace_range_high(1:n_pts, t), n_pts, 0.0_real64, &
+                                     name//"R_high")
+        call assert_true(minval(out%n_bins(1:n_pts)) >= 3 .and. maxval(out%n_bins(1:n_pts)) < 120, &
+                         name//"bins chosen by the occupancy search, neither m_min fallback nor m_max")
+    end subroutine test_adaptive_search_final_bins_match_selected_trace
+
+    !> Test helper for E9: fixture B, every candidate evaluated (effect size with tiny thresholds).
+    !| For every trace column, construct_adaptive_neighborhoods with its knobs and the same
+    !| construction options, then run_js_comp_test_adaptive with the same occupancy options, must
+    !| reproduce the traced point count, every traced per-point value and the observed global JSD
+    !| exactly (tolerance 0). `trace_n_points` is returned for the caller's own checks.
+    subroutine check_adaptive_round_trip(name, trace_n_points, trace_n_bins_1, tau, mad_distance_factor, &
+                                         max_pooled_residuals, min_study_neighbors, m_min, m_max, gamma_occupancy, &
+                                         min_residuals_per_bin, lower_residual_range_quantile, &
+                                         upper_residual_range_quantile)
+        character(len=*), intent(in) :: name
+            !! Message prefix
+        integer(int32), intent(out) :: trace_n_points(4)
+            !! The search's traced point count per candidate
+        integer(int32), intent(out) :: trace_n_bins_1(17)
+            !! The search's traced bins of candidate 1's first 17 points
+        real(real64), intent(in), optional :: tau
+            !! Forwarded to the search and the construction
+        real(real64), intent(in), optional :: mad_distance_factor
+            !! Forwarded to the search and the construction
+        integer(int32), intent(in), optional :: max_pooled_residuals
+            !! Forwarded to the search and the construction
+        integer(int32), intent(in), optional :: min_study_neighbors
+            !! Forwarded to the search and the construction
+        integer(int32), intent(in), optional :: m_min
+            !! Forwarded to the search and the final run
+        integer(int32), intent(in), optional :: m_max
+            !! Forwarded to the search and the final run
+        real(real64), intent(in), optional :: gamma_occupancy
+            !! Forwarded to the search and the final run
+        integer(int32), intent(in), optional :: min_residuals_per_bin
+            !! Forwarded to the search and the final run
+        real(real64), intent(in), optional :: lower_residual_range_quantile
+            !! Forwarded to the search and the final run
+        real(real64), intent(in), optional :: upper_residual_range_quantile
+            !! Forwarded to the search and the final run
+        integer(int32), parameter :: n_genes = 500, n_studies = 2, n_reps = 3
+        real(real64) :: gene_means(n_genes, n_studies), residuals(n_reps, n_genes, n_studies)
+        type(adaptive_search_outputs) :: out
+        type(adaptive_run_outputs) :: run
+        integer(int32) :: ierr, t, n_pts, n_points, max_nn, status
+        real(real64) :: x_star(n_genes*n_studies), dispersion(n_genes*n_studies), mads(n_genes*n_studies)
+        integer(int32) :: ranges(2, n_genes*n_studies), n_per_point(n_studies, n_genes*n_studies), stops(n_genes*n_studies)
+
+        call build_adaptive_search_fixture(n_genes, n_studies, n_reps, .true._c_bool, n_genes, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
+                                 delta_median_threshold=1.0e-300_real64, delta_max_threshold=1.0e-300_real64, &
+                                 tau=tau, mad_distance_factor=mad_distance_factor, max_pooled_residuals=max_pooled_residuals, &
+                                 min_study_neighbors=min_study_neighbors, m_min=m_min, m_max=m_max, &
+                                 gamma_occupancy=gamma_occupancy, min_residuals_per_bin=min_residuals_per_bin, &
+                                 lower_residual_range_quantile=lower_residual_range_quantile, &
+                                 upper_residual_range_quantile=upper_residual_range_quantile)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"search ierr")
+        call assert_equal_int(out%n_admissible, 4_int32, name//"all four candidates traced")
+        call assert_true(all(out%trace_jsd(:, 1:4) > 0.0_real64), name//"non-zero JSDs, so the comparison is not vacuous")
+        trace_n_points = out%trace_n_points(1:4)
+        trace_n_bins_1 = out%trace_n_bins(1:17, 1)
+
+        do t = 1, out%n_admissible
+            call construct_adaptive_neighborhoods(n_studies, n_genes, n_reps, gene_means, residuals, out%trace_k_start(t), &
+                                                  out%trace_k_step(t), out%trace_k_max(t), n_points, x_star, ranges, &
+                                                  n_per_point, stops, dispersion, mads, max_nn, status, tau=tau, &
+                                                  mad_distance_factor=mad_distance_factor, &
+                                                  max_pooled_residuals=max_pooled_residuals, &
+                                                  min_study_neighbors=min_study_neighbors, ierr=ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, name//"construct ierr")
+            call assert_equal_int(status, ADAPTIVE_STATUS_OK, name//"construction ok")
+            n_pts = out%trace_n_points(t)
+            call assert_equal_int(n_points, n_pts, name//"point count")
+            call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_points), run, ierr, n_permutations=10_int32, &
+                                    m_min=m_min, m_max=m_max, min_residuals_per_bin=min_residuals_per_bin, &
+                                    gamma_occupancy=gamma_occupancy, &
+                                    lower_residual_range_quantile=lower_residual_range_quantile, &
+                                    upper_residual_range_quantile=upper_residual_range_quantile)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, name//"final run ierr")
+            call assert_equal_array_int(run%n_bins, out%trace_n_bins(1:n_pts, t), n_pts, name//"bins")
+            call assert_equal_array_logical(run%occ_failed, out%trace_occ_failed(1:n_pts, t), n_pts, name//"occupancy_failed")
+            call assert_equal_array_int(run%n_pooled, out%trace_n_pooled(1:n_pts, t), n_pts, name//"n_pooled_residuals")
+            call assert_equal_array_int(run%min_occ, out%trace_min_occ(1:n_pts, t), n_pts, name//"min occupancy")
+            call assert_equal_array_real(run%mean_occ, out%trace_mean_occ(1:n_pts, t), n_pts, 0.0_real64, &
+                                         name//"mean occupancy")
+            call assert_equal_array_int(run%max_occ, out%trace_max_occ(1:n_pts, t), n_pts, name//"max occupancy")
+            call assert_equal_array_int(run%sturges, out%trace_sturges(1:n_pts, t), n_pts, name//"Sturges")
+            call assert_equal_array_int(run%fd, out%trace_fd(1:n_pts, t), n_pts, name//"Freedman-Diaconis")
+            call assert_equal_array_real(run%range_low, out%trace_range_low(1:n_pts, t), n_pts, 0.0_real64, name//"R_low")
+            call assert_equal_array_real(run%range_high, out%trace_range_high(1:n_pts, t), n_pts, 0.0_real64, name//"R_high")
+            call assert_equal_array_real(run%global_jsd, out%trace_jsd(:, t), n_studies, 0.0_real64, &
+                                         name//"global JSD reproduced exactly")
+        end do
+    end subroutine check_adaptive_round_trip
+
+    !> E9, round trip with every construction and occupancy option at its default.
+    subroutine test_adaptive_search_round_trip_reproduces_trace()
+        integer(int32) :: trace_n_points(4), trace_n_bins_1(17)
+
+        call check_adaptive_round_trip("test_adaptive_search_round_trip_reproduces_trace: ", trace_n_points, trace_n_bins_1)
+    end subroutine test_adaptive_search_round_trip_reproduces_trace
+
+    !> E9b, round trip with every construction and occupancy option set away from its default,
+    !| passed identically to the search, the construction and the final run. `tau = 0.02` and the
+    !| residual cap 60 stop growth before k_max, `mad_distance_factor = 0.5` moves the seeds, and
+    !| `min_study_neighbors = 2` still holds; `m_min = 2`, `m_max = 40`, `gamma_occupancy = 1.5`,
+    !| `min_residuals_per_bin = 5` and the quantiles 0.02/0.98 change the binning. The variant is
+    !| only meaningful if the options actually changed something, so the point counts must differ
+    !| from the defaults' 17/21/29/35 and candidate 1's bins from the default run's.
+    subroutine test_adaptive_search_round_trip_non_default_options()
+        character(len=*), parameter :: name = "test_adaptive_search_round_trip_non_default_options: "
+        integer(int32) :: default_n_points(4), default_bins(17), trace_n_points(4), trace_n_bins_1(17)
+
+        call check_adaptive_round_trip(name//"(defaults) ", default_n_points, default_bins)
+        call check_adaptive_round_trip(name, trace_n_points, trace_n_bins_1, tau=0.02_real64, &
+                                       mad_distance_factor=0.5_real64, max_pooled_residuals=60_int32, &
+                                       min_study_neighbors=2_int32, m_min=2_int32, m_max=40_int32, &
+                                       gamma_occupancy=1.5_real64, min_residuals_per_bin=5_int32, &
+                                       lower_residual_range_quantile=0.02_real64, upper_residual_range_quantile=0.98_real64)
+        call assert_true(any(trace_n_points /= default_n_points), name//"the construction options changed the neighborhoods")
+        call assert_true(any(trace_n_bins_1 /= default_bins), name//"the occupancy options changed the binning")
+    end subroutine test_adaptive_search_round_trip_non_default_options
+
+    !> E10: fixture B (homoscedastic, every candidate evaluated as in E9): the traced point counts
+    !| are the independently computed 17 / 21 / 29 / 35, strictly ascending as k_start shrinks.
+    subroutine test_adaptive_search_n_points_ascend_homoscedastic()
+        character(len=*), parameter :: name = "test_adaptive_search_n_points_ascend_homoscedastic: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .true._c_bool, 500_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
+                                 delta_median_threshold=1.0e-300_real64, delta_max_threshold=1.0e-300_real64)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_equal_int(out%n_admissible, 4_int32, name//"all four traced")
+        call assert_equal_array_int(out%trace_n_points(1:4), [17_int32, 21_int32, 29_int32, 35_int32], 4_int32, &
+                                    name//"point counts")
+        call assert_true(all(out%trace_n_points(2:4) > out%trace_n_points(1:3)), name//"strictly ascending")
+    end subroutine test_adaptive_search_n_points_ascend_homoscedastic
+
+    !> The generated wrapper rejects a capacity below 1 (position 8) before running.
+    subroutine test_adaptive_search_wrapper_validation()
+        character(len=*), parameter :: name = "test_adaptive_search_wrapper_validation: "
+        real(real64) :: gene_means(10, 1), residuals(1, 10, 1)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(10_int32, 1_int32, 1_int32, .false._c_bool, 10_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr, capacity=0_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"capacity 0", arg_pos=8_int32)
+    end subroutine test_adaptive_search_wrapper_validation
+
+    !> Clamp path, nothing admissible: fixture A with `max_n_points_candidate = 50`. Every candidate
+    !| emerges with more points (71/91/125/166) and is rejected for capacity, so the result is
+    !| candidate 1 with its logged 71 points, of which only the first 50 fit the outputs: those
+    !| carry `m_min` bins and a zero range.
+    subroutine test_adaptive_search_nothing_admissible_clamped_to_capacity()
+        character(len=*), parameter :: name = "test_adaptive_search_nothing_admissible_clamped_to_capacity: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr, capacity=50_int32, min_residuals_per_bin=0_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_true(out%n_points > out%capacity, name//"the selected point count exceeds the capacity")
+        call assert_adaptive_nothing_admissible(out, [71_int32, 91_int32, 125_int32, 166_int32], &
+                                                ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, name)
+    end subroutine test_adaptive_search_nothing_admissible_clamped_to_capacity
+
+    !> Clamp path, single rejected candidate: G = 100, S = 2 (N = 200) gives the single candidate
+    !| (10, 3, 40) (k_start_1 = max(10, ceiling(4)) = 10, then 8 < 10). With zero residuals every
+    !| neighborhood holds exactly 10 entries and advances by the stride 6 of fixture A's k = 10, so
+    !| 10 + 6*(n - 1) >= 200 gives 33 points. With `max_n_points_candidate = 20` it is rejected for
+    !| capacity; as the single candidate it still wins the plateau-or-single branch, with the first
+    !| 20 entries at `m_min` bins and a zero range, and the -1 interval.
+    subroutine test_adaptive_search_single_rejected_clamped_to_capacity()
+        character(len=*), parameter :: name = "test_adaptive_search_single_rejected_clamped_to_capacity: "
+        real(real64) :: gene_means(100, 2), residuals(3, 100, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr, i
+
+        call build_adaptive_search_fixture(100_int32, 2_int32, 3_int32, .false._c_bool, 100_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr, capacity=20_int32, min_residuals_per_bin=0_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_true(out%plateau, name//"single candidate counts as established")
+        call assert_equal_array_int([out%k_start, out%k_step, out%k_max, out%n_points], &
+                                    [10_int32, 3_int32, 40_int32, 33_int32], 4_int32, name//"knobs and logged point count")
+        call assert_equal_int(out%n_tried, 1_int32, name//"one candidate")
+        call assert_equal_int(out%cand_status(1), ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, name//"capacity exceeded")
+        call assert_equal_array_int(out%n_bins, [(3_int32, i=1, 20)], 20_int32, name//"m_min bins on 1:20")
+        call assert_equal_array_real(out%range_low, [(0.0_real64, i=1, 20)], 20_int32, 0.0_real64, name//"R_low 0")
+        call assert_equal_array_real(out%range_high, [(0.0_real64, i=1, 20)], 20_int32, 0.0_real64, name//"R_high 0")
+        call assert_equal_array_real(out%ci(:, 1), [-1.0_real64, -1.0_real64], 2_int32, 0.0_real64, name//"CI -1")
+    end subroutine test_adaptive_search_single_rejected_clamped_to_capacity
+
+    !> Test helper: fraction of `[a_min, a_max]` covered by `[b_min, b_max]`, the documented
+    !| overlap measure of the CI-overlap criterion, restated here to replay that criterion.
+    real(real64) function replay_fractional_overlap(a_min, a_max, b_min, b_max) result(overlap)
+        real(real64), intent(in) :: a_min
+            !! Lower bound of the interval being measured
+        real(real64), intent(in) :: a_max
+            !! Upper bound of the interval being measured
+        real(real64), intent(in) :: b_min
+            !! Lower bound of the reference interval
+        real(real64), intent(in) :: b_max
+            !! Upper bound of the reference interval
+
+        if (a_max == a_min) then
+            overlap = merge(1.0_real64, 0.0_real64, b_min <= a_max .and. b_max >= a_max)
+        else
+            overlap = max(0.0_real64, (min(a_max, b_max) - max(a_min, b_min))/(a_max - a_min))
+        end if
+    end function replay_fractional_overlap
+
+    !> CI-overlap plateau whose best candidate is EARLIER than the one the loop stops at: fixture B,
+    !| default CI-overlap mode with METHOD_JOIN_MIN and 0.9, seed 1 (found by running it: the search
+    !| stops at candidate 3 while candidate 2 is the best). The expected best is replayed here from
+    !| the traced intervals with the documented rule: a candidate whose number of studies with
+    !| overlap >= 0.9 against the running best is smaller than the best's own stops the search and
+    !| keeps the best; otherwise it becomes the best, and all studies passing stops the search.
+    !| The selected knobs and point count must be the replayed best's, taken from the candidate
+    !| log, not the stopping candidate's.
+    subroutine test_adaptive_search_ci_plateau_keeps_earlier_best()
+        character(len=*), parameter :: name = "test_adaptive_search_ci_plateau_keeps_earlier_best: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2), best_ci(2, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr, t, i_study, n_exceeded, best_count, best_t, stop_t
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .true._c_bool, 500_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, out, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_true(out%plateau, name//"plateau established")
+        call assert_equal_array_int(out%cand_status(1:out%n_tried), [(ADAPTIVE_CANDIDATE_EVALUATED, t=1, out%n_tried)], &
+                                    out%n_tried, name//"every tried candidate evaluated, so trace column = candidate index")
+
+        best_ci = -1.0_real64
+        best_count = 0_int32
+        best_t = 0_int32
+        stop_t = 0_int32
+        do t = 1, out%n_admissible
+            n_exceeded = 0_int32
+            do i_study = 1, 2
+                if (replay_fractional_overlap(out%trace_ci_lower(i_study, t), out%trace_ci_upper(i_study, t), &
+                                              best_ci(1, i_study), best_ci(2, i_study)) >= 0.9_real64) &
+                    n_exceeded = n_exceeded + 1_int32
+            end do
+            if (n_exceeded < best_count) then
+                stop_t = t
+                exit
+            end if
+            best_t = t
+            best_count = n_exceeded
+            best_ci(1, :) = out%trace_ci_lower(:, t)
+            best_ci(2, :) = out%trace_ci_upper(:, t)
+            if (n_exceeded == 2_int32) then
+                stop_t = t
+                exit
+            end if
+        end do
+        call assert_equal_int(stop_t, out%n_tried, name//"the replay stops where the search stopped")
+        call assert_true(best_t < stop_t, name//"the best is an earlier candidate than the stopping one")
+        call assert_equal_array_int([out%k_start, out%k_step, out%k_max], &
+                                    [out%trace_k_start(best_t), out%trace_k_step(best_t), out%trace_k_max(best_t)], &
+                                    3_int32, name//"knobs of the earlier best")
+        call assert_equal_int(out%n_points, out%cand_n_points(best_t), name//"point count of the earlier best")
+        call assert_true(out%n_points /= out%cand_n_points(stop_t), name//"not the stopping candidate's point count")
+        call assert_equal_array_int(out%n_bins(1:out%n_points), out%trace_n_bins(1:out%n_points, best_t), out%n_points, &
+                                    name//"bins of the earlier best")
+        call assert_equal_array_real(out%ci(1, :), out%trace_ci_lower(:, best_t), 2_int32, 0.0_real64, name//"CI lower")
+        call assert_equal_array_real(out%ci(2, :), out%trace_ci_upper(:, best_t), 2_int32, 0.0_real64, name//"CI upper")
+    end subroutine test_adaptive_search_ci_plateau_keeps_earlier_best
 
 end module mod_test_data_integration_js_comp_test
