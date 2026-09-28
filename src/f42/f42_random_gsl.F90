@@ -358,12 +358,8 @@ contains
         integer(int32), dimension(n_populations), intent(inout) :: population_sizes
             !! Sizes of subpopulations (will be reduced by the number of drawn elements per population -> will be the remaining pool);
             !! each must be non-negative and sum to `total_population`.
-            !! Known limitation, ported as-is from the upstream algorithm: only elements
-            !! `1..n_populations-1` are actually reduced -- the loop below never revisits
-            !! `population_sizes(n_populations)`, so that one element is returned unchanged
-            !! regardless of how many of it were drawn. Callers that need the true remaining
-            !! pool for the last subpopulation must compute it themselves as
-            !! `population_sizes(n_populations) - drawn(n_populations)`.
+            !! Every population, the last one included, is reduced by its own draw, so on return this
+            !! is the remaining pool: `population_sizes(i)` becomes `population_sizes(i) - drawn(i)`.
         integer(int32), intent(in) :: total_population
             !! The total population size -> `sum(population_sizes)`
         integer(int32), intent(in) :: n_to_draw
@@ -422,5 +418,6 @@ contains
         end do
 
         drawn(n_populations) = remaining_draws
+        population_sizes(n_populations) = population_sizes(n_populations) - drawn(n_populations)
     end subroutine random_multiv_hypergeom
 end module f42_random_gsl

@@ -15,7 +15,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_random_gsl() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(19))
+        allocate (all_tests(20))
 
         all_tests(1) = test_case("test_create_rng_ok_and_reproducible", test_create_rng_ok_and_reproducible)
         all_tests(2) = test_case("test_reset_rng_restores_stream", test_reset_rng_restores_stream)
@@ -42,8 +42,10 @@ contains
                                   test_multiv_hypergeom_invalid_population_sizes_arg_pos)
         all_tests(18) = test_case("test_multiv_hypergeom_total_population_mismatch_arg_pos", &
                                   test_multiv_hypergeom_total_population_mismatch_arg_pos)
-        all_tests(19) = test_case("test_multiv_hypergeom_pop_sizes_reduction_known_limitation", &
-                                  test_multiv_hypergeom_pop_sizes_reduction_known_limitation)
+        all_tests(19) = test_case("test_multiv_hypergeom_reduces_every_population", &
+                                  test_multiv_hypergeom_reduces_every_population)
+        all_tests(20) = test_case("test_multiv_hypergeom_sequential_draws_partition_pool", &
+                                  test_multiv_hypergeom_sequential_draws_partition_pool)
     end function get_all_tests_random_gsl
 
     !> A generator created with an explicit seed reproduces the exact same first draw as one
@@ -409,16 +411,12 @@ contains
         end do
     end subroutine test_multiv_hypergeom
 
-    !> Regression test for a bug found (not introduced) during this port, faithfully preserved
-    !| from the ported algorithm rather than fixed, per this stage's "port near-verbatim" rule:
-    !| `population_sizes` is documented as the remaining pool after the draw, and elements
-    !| `1..n_populations-1` really are reduced by `drawn(i)` -- but the internal loop only ever
-    !| runs over `1..n_populations-1` and mutates `population_sizes` through an alias scoped to
-    !| that range, so the *last* element, `population_sizes(n_populations)`, is never written
-    !| back and comes out unchanged, however much of it was drawn.
-    !| Known limitation: see [[f42_random_gsl(module):random_multiv_hypergeom(subroutine)]]'s own
-    !| doc comment.
-    subroutine test_multiv_hypergeom_pop_sizes_reduction_known_limitation()
+    !> `population_sizes` is documented as the remaining pool after the draw, so every element --
+    !| the last one included -- must come back reduced by exactly what was drawn from it. The last
+    !| element used to be returned unchanged (the draw loop only runs over `1..n_populations-1`
+    !| and the last population just receives the remaining draws), which left an inflated pool
+    !| for any caller drawing from it again.
+    subroutine test_multiv_hypergeom_reduces_every_population()
         integer(int32), parameter :: n_pop = 4
         integer(int32) :: pop(n_pop), original_pop(n_pop), drawn(n_pop), ierr, i
         type(rng_t) :: rng
@@ -428,25 +426,53 @@ contains
         rng = create_rng(ierr=ierr)
 
         call random_multiv_hypergeom(rng, n_pop, pop, sum(original_pop), 25_int32, drawn, ierr=ierr)
-        call assert_err(ierr, ERR_OK, "test_multiv_hypergeom_pop_sizes_reduction_known_limitation: succeeds")
+        call assert_err(ierr, ERR_OK, "test_multiv_hypergeom_reduces_every_population: succeeds")
 
-        do i = 1, n_pop - 1
-            call assert_equal_int(pop(i), original_pop(i) - drawn(i), &
-                "test_multiv_hypergeom_pop_sizes_reduction_known_limitation: "// &
-                "population_sizes(i) is reduced by drawn(i) for every element but the last")
-        end do
-
-        ! Guard against a vacuous pass: the limitation is only visible if the last
-        ! subpopulation actually had something drawn from it.
+        ! Guard against a vacuous pass: the last element is only tested meaningfully if
+        ! something was actually drawn from it.
         call assert_true(drawn(n_pop) > 0_int32, &
-            "test_multiv_hypergeom_pop_sizes_reduction_known_limitation: "// &
+            "test_multiv_hypergeom_reduces_every_population: "// &
             "fixture draws a nonzero amount from the last subpopulation")
 
-        ! The known limitation itself: the last element is returned unchanged, not reduced.
-        call assert_equal_int(pop(n_pop), original_pop(n_pop), &
-            "test_multiv_hypergeom_pop_sizes_reduction_known_limitation: "// &
-            "population_sizes(n_populations) is NOT reduced by drawn(n_populations) -- known limitation")
-    end subroutine test_multiv_hypergeom_pop_sizes_reduction_known_limitation
+        do i = 1, n_pop
+            call assert_equal_int(pop(i), original_pop(i) - drawn(i), &
+                "test_multiv_hypergeom_reduces_every_population: "// &
+                "population_sizes(i) is reduced by drawn(i) for every element, the last one included")
+        end do
+    end subroutine test_multiv_hypergeom_reduces_every_population
+
+    !> Drawing repeatedly from one pool until it is used up -- passing the pool's current
+    !| `sum(population_sizes)` as `total_population` each time, exactly as
+    !| `gjct_permutation_test_impl` does for its studies -- must partition the pool exactly: the
+    !| draws summed per population equal the original pool, the pool ends all zero, and no pool
+    !| entry ever goes negative along the way. The last population is deliberately the largest,
+    !| so a pool that fails to shrink there shows up in every later draw.
+    subroutine test_multiv_hypergeom_sequential_draws_partition_pool()
+        integer(int32), parameter :: n_pop = 5, n_draws = 4
+        integer(int32) :: pool(n_pop), original_pool(n_pop), drawn(n_pop), drawn_total(n_pop)
+        integer(int32) :: draw_sizes(n_draws), ierr, i_draw
+        type(rng_t) :: rng
+        character(len=*), parameter :: name = "test_multiv_hypergeom_sequential_draws_partition_pool: "
+
+        pool = [6_int32, 3_int32, 8_int32, 4_int32, 19_int32]
+        original_pool = pool
+        draw_sizes = [9_int32, 12_int32, 7_int32, 12_int32]
+        call assert_equal_int(sum(draw_sizes), sum(original_pool), name//"fixture draw sizes sum to the pool total")
+
+        rng = create_rng(seed=2024_int32, ierr=ierr)
+        drawn_total = 0_int32
+        do i_draw = 1, n_draws
+            call random_multiv_hypergeom(rng, n_pop, pool, sum(pool), draw_sizes(i_draw), drawn, ierr=ierr)
+            call assert_err(ierr, ERR_OK, name//"every draw succeeds")
+            call assert_equal_int(sum(drawn), draw_sizes(i_draw), name//"every draw has the requested size")
+            call assert_true(all(pool >= 0_int32), name//"no pool entry ever goes negative")
+            drawn_total = drawn_total + drawn
+        end do
+
+        call assert_equal_array_int(drawn_total, original_pool, n_pop, &
+                                    name//"draws summed per population equal the original pool")
+        call assert_equal_array_int(pool, [0_int32, 0_int32, 0_int32, 0_int32, 0_int32], n_pop, name//"the pool ends all zero")
+    end subroutine test_multiv_hypergeom_sequential_draws_partition_pool
 
     !> Regression test for a bug caught during this port: `random_multinomial`'s dummy list had
     !| to be reordered (`n_populations` before `population_sizes`) so its declaration precedes

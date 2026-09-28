@@ -79,7 +79,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(164))
+        allocate (all_tests(165))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -418,6 +418,8 @@ contains
                                   test_adaptive_search_single_rejected_clamped_to_capacity)
         all_tests(164) = test_case("test_adaptive_search_ci_plateau_keeps_earlier_best", &
                                   test_adaptive_search_ci_plateau_keeps_earlier_best)
+        all_tests(165) = test_case("test_gjct_permutation_depletes_pool_exactly", &
+                                  test_gjct_permutation_depletes_pool_exactly)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -1652,6 +1654,65 @@ contains
                               "test_gjct_permutation_test_conservation_of_counts: "// &
                               "resampled counts must sum to the study's per-point draw size")
     end subroutine test_gjct_permutation_test_conservation_of_counts
+
+    !> One permutation must partition every reference point's pooled consensus counts exactly
+    !| between the studies, as a without-replacement permutation does: the studies draw one after
+    !| another from the same pool (`tmp_mean_pmf_counts`), and their draw sizes sum per point to
+    !| the pool size, so the pool must end all zero and the studies' resampled counts must add up
+    !| per bin to the original pool. Both hold for any seed. The last bin is non-empty at every
+    !| point, since that is the bin `random_multiv_hypergeom` used to leave undepleted: the pool
+    !| then kept its full last-bin count, and later studies drew from an inflated last bin.
+    subroutine test_gjct_permutation_depletes_pool_exactly()
+        integer(int32), parameter :: n_bins = 4, n_points = 3, n_studies = 3, n_permutations = 1
+        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        integer(int32) :: tmp_mean_pmf_counts(n_bins, n_points), tmp_counts(n_bins, n_points)
+        real(real64) :: tmp_pmfs(n_bins, n_points, n_studies)
+        real(real64) :: tmp_js_divergences(n_points, n_studies), tmp_weights(n_points, n_studies)
+        real(real64) :: tmp_global_js_divergence(n_studies)
+        real(real64) :: tmp_pmf_point_major(n_points, n_bins)
+        integer(int32) :: tmp_counts_point_major(n_points, n_bins)
+        integer(int32) :: permuted_counts_total(n_bins), ierr, i_point, i_study
+        character(len=*), parameter :: name = "test_gjct_permutation_depletes_pool_exactly: "
+
+        mean_pmf_counts(:, 1) = [4_int32, 2_int32, 3_int32, 5_int32]
+        mean_pmf_counts(:, 2) = [1_int32, 6_int32, 2_int32, 3_int32]
+        mean_pmf_counts(:, 3) = [2_int32, 0_int32, 3_int32, 7_int32]
+        mean_pmf_included_n_reps = sum(mean_pmf_counts, dim=1)
+        included_n_reps(1, :) = [5_int32, 4_int32, 5_int32]
+        included_n_reps(2, :) = [4_int32, 4_int32, 4_int32]
+        included_n_reps(3, :) = [3_int32, 5_int32, 4_int32]
+        do i_point = 1, n_points
+            mean_pmf(:, i_point) = real(mean_pmf_counts(:, i_point), real64) &
+                                   /real(mean_pmf_included_n_reps(i_point), real64)
+        end do
+        global_jsd_observed = 0.0_real64
+
+        call assert_equal_array_int(sum(included_n_reps, dim=2), mean_pmf_included_n_reps, n_points, &
+                                    name//"fixture draw sizes sum per point to the pool size")
+        call assert_true(all(mean_pmf_counts(n_bins, :) > 0_int32), name//"fixture has a non-empty last bin")
+
+        call gjct_permutation_test_expert(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
+                                          mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
+                                          tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, tmp_js_divergences, tmp_weights, &
+                                          tmp_global_js_divergence, tmp_pmf_point_major, tmp_counts_point_major, &
+                                          ierr=ierr, random_seed=3_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr should be OK")
+
+        call assert_equal_array_int(tmp_mean_pmf_counts, spread(0_int32, 1, n_bins*n_points), n_bins*n_points, &
+                                    name//"the pool is used up exactly, the last bin included", n_rows=n_bins)
+
+        do i_point = 1, n_points
+            permuted_counts_total = 0_int32
+            do i_study = 1, n_studies
+                permuted_counts_total = permuted_counts_total + &
+                    nint(tmp_pmfs(:, i_point, i_study)*real(included_n_reps(i_point, i_study), real64), kind=int32)
+            end do
+            call assert_equal_array_int(permuted_counts_total, mean_pmf_counts(:, i_point), n_bins, &
+                                        name//"the studies' permuted counts sum per bin to the original pool")
+        end do
+    end subroutine test_gjct_permutation_depletes_pool_exactly
 
     !> Calling `gjct_permutation_test` twice with the same `random_seed` and otherwise identical
     !| inputs must produce bit-for-bit identical `p_values`: the GSL stream is deterministic once
@@ -4687,7 +4748,9 @@ contains
     !| build_point_study_histogram): every expected value below was captured from that code's own
     !| output, printed at full precision (es25.17), and is compared EXACTLY (tolerance 0). This is
     !| deliberately not a hand-derived test -- it exists purely to prove the refactor is
-    !| bit-for-bit behavior-preserving. Fixture: build_run_js_comp_test_golden_fixture (3 studies,
+    !| bit-for-bit behavior-preserving. Exception: `p_values` were re-captured after the
+    !| random_multiv_hypergeom last-population depletion fix (the old values characterised the
+    !| undepleted-pool bug); all other values are still the pre-refactor capture. Fixture: build_run_js_comp_test_golden_fixture (3 studies,
     !| uneven replicate counts, NaN means and residuals), 3 reference points, 4 neighbors,
     !| `m_min=2`, `m_max=12`, `min_residuals_per_bin=3` (so the points pick different bin counts,
     !| 6/5/3, exercising the zero padding up to `max_n_bins_per_point`),
@@ -4766,8 +4829,9 @@ contains
                                      name//"weights", n_rows=n_points)
         call assert_equal_array_real(global_js_divergence, [4.78588898838338689e-02_real64, 8.48617529169309465e-02_real64, &
                 1.74576296864357827e-01_real64], n_studies, 0.0_real64, name//"global_js_divergence")
-        call assert_equal_array_real(p_values, [1.39534883720930231e-01_real64, 1.32890365448504993e-01_real64, &
-                7.97342192691029850e-02_real64], n_studies, 0.0_real64, name//"p_values")
+        ! p_values re-captured after the random_multiv_hypergeom last-bin depletion fix
+        call assert_equal_array_real(p_values, [1.62790697674418616e-01_real64, 8.63787375415282360e-02_real64, &
+                2.65780730897009973e-02_real64], n_studies, 0.0_real64, name//"p_values")
         ! counts per (point, study), rows 1:max_n_bins_per_point -- rows beyond the point's own
         ! n_bins_per_point are the zero padding build_residual_histograms_impl guarantees
         call assert_equal_array_int(counts(1:6, 1, 1), [0, 3, 5, 2, 3, 2], 6_int32, name//"counts(1,1)")
