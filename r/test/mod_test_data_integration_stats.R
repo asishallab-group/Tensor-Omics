@@ -14,10 +14,9 @@ test_gjct_permutation_test_basic <- function() {
   included_n_reps <- matrix(0L, n_points, n_studies)
   included_n_reps[, 1] <- c(4, 4)
   included_n_reps[, 2] <- c(6, 6)
-  mean_pmf <- mean_pmf_counts / 10.0
   global_jsd_observed <- c(0.3, 0.3)
 
-  p_values <- gjct_permutation_test(n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps,
+  p_values <- gjct_permutation_test(n_permutations, mean_pmf_counts, mean_pmf_included_n_reps,
                                     included_n_reps, global_jsd_observed, random_seed = 123L)
 
   assert_true(length(p_values) == n_studies)
@@ -36,12 +35,11 @@ test_gjct_permutation_test_seeded_reproducibility <- function() {
   included_n_reps <- matrix(0L, n_points, n_studies)
   included_n_reps[, 1] <- c(4, 4)
   included_n_reps[, 2] <- c(6, 6)
-  mean_pmf <- mean_pmf_counts / 10.0
   global_jsd_observed <- c(0.3, 0.3)
 
-  p_first <- gjct_permutation_test(n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps,
+  p_first <- gjct_permutation_test(n_permutations, mean_pmf_counts, mean_pmf_included_n_reps,
                                    included_n_reps, global_jsd_observed, random_seed = 123L)
-  p_second <- gjct_permutation_test(n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps,
+  p_second <- gjct_permutation_test(n_permutations, mean_pmf_counts, mean_pmf_included_n_reps,
                                     included_n_reps, global_jsd_observed, random_seed = 123L)
 
   assert_equal_numeric(p_first, p_second, TOL, "same random_seed twice must give identical p_values")

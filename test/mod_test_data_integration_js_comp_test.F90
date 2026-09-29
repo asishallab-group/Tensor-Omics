@@ -41,6 +41,8 @@ module mod_test_data_integration_js_comp_test
                                                        ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, ADAPTIVE_CANDIDATE_EMPTY_STUDY, &
                                                        ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, ADAPTIVE_CANDIDATE_OVERLAP_FAILED, &
                                                        ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED
+    use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
+                                             compute_weighted_global_divergence_impl
     use tox_errors
     use test_suite, only: test_case
 
@@ -79,7 +81,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(165))
+        allocate (all_tests(166))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -420,6 +422,8 @@ contains
                                   test_adaptive_search_ci_plateau_keeps_earlier_best)
         all_tests(165) = test_case("test_gjct_permutation_depletes_pool_exactly", &
                                   test_gjct_permutation_depletes_pool_exactly)
+        all_tests(166) = test_case("test_gjct_null_statistic_uses_permuted_consensus", &
+                                  test_gjct_null_statistic_uses_permuted_consensus)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -1627,7 +1631,7 @@ contains
         integer(int32), parameter :: n_bins = 3, n_points = 1, n_studies = 1, n_permutations = 1
         integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: global_jsd_observed(n_studies), p_values(n_studies)
         integer(int32) :: tmp_mean_pmf_counts(n_bins, n_points), tmp_counts(n_bins, n_points)
         real(real64) :: tmp_pmfs(n_bins, n_points, n_studies)
         real(real64) :: tmp_js_divergences(n_points, n_studies), tmp_weights(n_points, n_studies)
@@ -1639,10 +1643,9 @@ contains
         mean_pmf_counts(:, 1) = [5, 3, 2]
         mean_pmf_included_n_reps = [10]
         included_n_reps(1, :) = [4]
-        mean_pmf(:, 1) = real(mean_pmf_counts(:, 1), real64)/10.0_real64
         global_jsd_observed = 0.0_real64
 
-        call gjct_permutation_test_expert(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
+        call gjct_permutation_test_expert(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, &
                                           mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
                                           tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, tmp_js_divergences, tmp_weights, &
                                           tmp_global_js_divergence, tmp_pmf_point_major, tmp_counts_point_major, &
@@ -1666,7 +1669,7 @@ contains
         integer(int32), parameter :: n_bins = 4, n_points = 3, n_studies = 3, n_permutations = 1
         integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: global_jsd_observed(n_studies), p_values(n_studies)
         integer(int32) :: tmp_mean_pmf_counts(n_bins, n_points), tmp_counts(n_bins, n_points)
         real(real64) :: tmp_pmfs(n_bins, n_points, n_studies)
         real(real64) :: tmp_js_divergences(n_points, n_studies), tmp_weights(n_points, n_studies)
@@ -1683,17 +1686,13 @@ contains
         included_n_reps(1, :) = [5_int32, 4_int32, 5_int32]
         included_n_reps(2, :) = [4_int32, 4_int32, 4_int32]
         included_n_reps(3, :) = [3_int32, 5_int32, 4_int32]
-        do i_point = 1, n_points
-            mean_pmf(:, i_point) = real(mean_pmf_counts(:, i_point), real64) &
-                                   /real(mean_pmf_included_n_reps(i_point), real64)
-        end do
         global_jsd_observed = 0.0_real64
 
         call assert_equal_array_int(sum(included_n_reps, dim=2), mean_pmf_included_n_reps, n_points, &
                                     name//"fixture draw sizes sum per point to the pool size")
         call assert_true(all(mean_pmf_counts(n_bins, :) > 0_int32), name//"fixture has a non-empty last bin")
 
-        call gjct_permutation_test_expert(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
+        call gjct_permutation_test_expert(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, &
                                           mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
                                           tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, tmp_js_divergences, tmp_weights, &
                                           tmp_global_js_divergence, tmp_pmf_point_major, tmp_counts_point_major, &
@@ -1714,6 +1713,88 @@ contains
         end do
     end subroutine test_gjct_permutation_depletes_pool_exactly
 
+    !> The null statistic must be computed exactly like the observed one: each permuted study's
+    !| JSD against the equal-weight consensus of the *permuted* studies (as `create_mean_pmf`
+    !| builds it), not against the observed consensus. From the returned `tmp_pmfs` (the one
+    !| permutation's resampled pmfs) the test rebuilds that consensus with `create_mean_pmf`'s own
+    !| formula and accumulation order -- start at 0, then add `pmf/real(n_studies)` study by study
+    !| -- recomputes the per-point and the weighted global JSD with the same two routines the
+    !| permutation test calls, and requires `tmp_js_divergences`/`tmp_global_js_divergence` to
+    !| match exactly (tolerance 0): the same inputs pass through the same arithmetic in the same
+    !| order, and no fast-math flag lets the compiler reassociate or turn the division into a
+    !| reciprocal multiplication, so the results are bit-identical.
+    !|
+    !| The study sizes differ clearly (`[1, 4, 15]` and `[2, 5, 13]` per point), so the
+    !| equal-weight mixture of the permuted pmfs moves with the permutation. The replicate-weighted
+    !| pool pmf -- what the old unit tests passed as the fixed `mean_pmf` input, before the routine
+    !| recomputed the consensus itself -- differs from the permuted consensus for any seed, so the
+    !| test fails for that old behaviour: point 1's first bin holds a single residual, so the
+    !| permuted consensus there is `1/(3*n_k)` for whichever study `k` draws it -- `1/3`, `1/12`
+    !| or `1/45` -- while the pool pmf is `1/20`. The equality with `tmp_global_js_divergence` holds for any seed as well.
+    subroutine test_gjct_null_statistic_uses_permuted_consensus()
+        integer(int32), parameter :: n_bins = 3, n_points = 2, n_studies = 3, n_permutations = 1
+        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: pool_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        integer(int32) :: tmp_mean_pmf_counts(n_bins, n_points), tmp_counts(n_bins, n_points)
+        real(real64) :: tmp_pmfs(n_bins, n_points, n_studies)
+        real(real64) :: tmp_js_divergences(n_points, n_studies), tmp_weights(n_points, n_studies)
+        real(real64) :: tmp_global_js_divergence(n_studies)
+        real(real64) :: tmp_pmf_point_major(n_points, n_bins)
+        integer(int32) :: tmp_counts_point_major(n_points, n_bins)
+        real(real64) :: permuted_consensus(n_bins, n_points), expected_js_divergences(n_points)
+        real(real64) :: expected_weights(n_points), expected_global_jsd
+        integer(int32) :: ierr, i_point, i_study, i_bin
+        character(len=*), parameter :: name = "test_gjct_null_statistic_uses_permuted_consensus: "
+
+        mean_pmf_counts(:, 1) = [1_int32, 7_int32, 12_int32]
+        mean_pmf_counts(:, 2) = [3_int32, 8_int32, 9_int32]
+        mean_pmf_included_n_reps = sum(mean_pmf_counts, dim=1)
+        included_n_reps(1, :) = [1_int32, 4_int32, 15_int32]
+        included_n_reps(2, :) = [2_int32, 5_int32, 13_int32]
+        do i_point = 1, n_points
+            pool_pmf(:, i_point) = real(mean_pmf_counts(:, i_point), real64) &
+                                   /real(mean_pmf_included_n_reps(i_point), real64)
+        end do
+        global_jsd_observed = 0.0_real64
+
+        call assert_equal_array_int(sum(included_n_reps, dim=2), mean_pmf_included_n_reps, n_points, &
+                                    name//"fixture draw sizes sum per point to the pool size")
+
+        call gjct_permutation_test_expert(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, &
+                                          mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
+                                          tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, tmp_js_divergences, tmp_weights, &
+                                          tmp_global_js_divergence, tmp_pmf_point_major, tmp_counts_point_major, &
+                                          ierr=ierr, random_seed=5_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr should be OK")
+
+        ! The equal-weight consensus of the permuted pmfs, in create_mean_pmf_impl's own order.
+        permuted_consensus = 0.0_real64
+        do i_study = 1, n_studies
+            do i_point = 1, n_points
+                do i_bin = 1, n_bins
+                    permuted_consensus(i_bin, i_point) = permuted_consensus(i_bin, i_point) &
+                                                         + tmp_pmfs(i_bin, i_point, i_study)/real(n_studies, real64)
+                end do
+            end do
+        end do
+
+        call assert_true(abs(permuted_consensus(1, 1) - pool_pmf(1, 1)) > 0.01_real64, &
+                         name//"fixture: the replicate-weighted pool pmf differs from the permuted consensus")
+
+        do i_study = 1, n_studies
+            call compute_divergence_per_reference_point_impl(transpose(tmp_pmfs(:, :, i_study)), &
+                                                             transpose(permuted_consensus), n_points, n_bins, &
+                                                             expected_js_divergences)
+            call compute_weighted_global_divergence_impl(expected_js_divergences, n_points, included_n_reps(:, i_study), &
+                                                          mean_pmf_included_n_reps, expected_global_jsd, expected_weights)
+            call assert_equal_array_real(tmp_js_divergences(:, i_study), expected_js_divergences, n_points, 0.0_real64, &
+                                         name//"per-point null JSD is taken against the permuted consensus")
+            call assert_equal_real(tmp_global_js_divergence(i_study), expected_global_jsd, 0.0_real64, &
+                                   name//"weighted global null JSD is taken against the permuted consensus")
+        end do
+    end subroutine test_gjct_null_statistic_uses_permuted_consensus
+
     !> Calling `gjct_permutation_test` twice with the same `random_seed` and otherwise identical
     !| inputs must produce bit-for-bit identical `p_values`: the GSL stream is deterministic once
     !| seeded, so nothing here should be able to introduce drift between calls.
@@ -1721,7 +1802,7 @@ contains
         integer(int32), parameter :: n_bins = 3, n_points = 2, n_studies = 2, n_permutations = 20
         integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies)
+        real(real64) :: global_jsd_observed(n_studies)
         real(real64) :: p_values_first(n_studies), p_values_second(n_studies)
         integer(int32) :: ierr
 
@@ -1730,17 +1811,15 @@ contains
         mean_pmf_included_n_reps = [10, 10]
         included_n_reps(:, 1) = [4, 4]
         included_n_reps(:, 2) = [6, 6]
-        mean_pmf(:, 1) = real(mean_pmf_counts(:, 1), real64)/10.0_real64
-        mean_pmf(:, 2) = real(mean_pmf_counts(:, 2), real64)/10.0_real64
         global_jsd_observed = 0.3_real64
 
-        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
+        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, &
                                    mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values_first, &
                                    ierr=ierr, random_seed=123_int32)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_gjct_permutation_test_seeded_reproducibility: first call ierr should be OK")
 
-        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
+        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, &
                                    mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values_second, &
                                    ierr=ierr, random_seed=123_int32)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
@@ -1755,8 +1834,8 @@ contains
     !| even in the worst-case, deterministic scenario where `count` is guaranteed to be `0` across
     !| every permutation, `p` must come out as `1/(n_permutations+1)`, never exactly `0.0`.
     !| Contrived, deterministically (not merely probabilistically) so: a single-bin histogram
-    !| (`n_bins=1`) means every resample's pmf is `[1.0]`, for both the study and the (unperturbed)
-    !| consensus mean alike, so the Jensen-Shannon divergence between them is exactly `0.0` on
+    !| (`n_bins=1`) means every resample's pmf is `[1.0]`, for both the study and the consensus
+    !| recomputed from the permuted pmfs alike, so the Jensen-Shannon divergence between them is exactly `0.0` on
     !| *every* permutation, regardless of which counts `random_multiv_hypergeom` happens to draw.
     !| Observing a strictly positive `global_jsd_observed` then guarantees no permutation's JSD can
     !| reach it, so `count=0` for all `n_permutations=10` permutations, and the corrected formula
@@ -1765,16 +1844,15 @@ contains
         integer(int32), parameter :: n_bins = 1, n_points = 1, n_studies = 1, n_permutations = 10
         integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: global_jsd_observed(n_studies), p_values(n_studies)
         integer(int32) :: ierr
 
         mean_pmf_counts(1, 1) = 10_int32
         mean_pmf_included_n_reps = [10_int32]
         included_n_reps(1, :) = [5_int32]
-        mean_pmf(1, 1) = 1.0_real64
         global_jsd_observed = 0.5_real64 ! strictly greater than the always-0.0 resampled JSD
 
-        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
+        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, &
                                    mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
                                    ierr=ierr, random_seed=7_int32)
 
@@ -4748,9 +4826,11 @@ contains
     !| build_point_study_histogram): every expected value below was captured from that code's own
     !| output, printed at full precision (es25.17), and is compared EXACTLY (tolerance 0). This is
     !| deliberately not a hand-derived test -- it exists purely to prove the refactor is
-    !| bit-for-bit behavior-preserving. Exception: `p_values` were re-captured after the
-    !| random_multiv_hypergeom last-population depletion fix (the old values characterised the
-    !| undepleted-pool bug); all other values are still the pre-refactor capture. Fixture: build_run_js_comp_test_golden_fixture (3 studies,
+    !| bit-for-bit behavior-preserving. Exception: `p_values` were re-captured after two fixes to
+    !| the permutation test -- the random_multiv_hypergeom last-population depletion fix, and
+    !| recomputing the equal-weight consensus from the permuted pmfs in every permutation instead
+    !| of comparing against the observed consensus (the old values characterised both bugs); all
+    !| other values are still the pre-refactor capture. Fixture: build_run_js_comp_test_golden_fixture (3 studies,
     !| uneven replicate counts, NaN means and residuals), 3 reference points, 4 neighbors,
     !| `m_min=2`, `m_max=12`, `min_residuals_per_bin=3` (so the points pick different bin counts,
     !| 6/5/3, exercising the zero padding up to `max_n_bins_per_point`),
@@ -4829,9 +4909,10 @@ contains
                                      name//"weights", n_rows=n_points)
         call assert_equal_array_real(global_js_divergence, [4.78588898838338689e-02_real64, 8.48617529169309465e-02_real64, &
                 1.74576296864357827e-01_real64], n_studies, 0.0_real64, name//"global_js_divergence")
-        ! p_values re-captured after the random_multiv_hypergeom last-bin depletion fix
-        call assert_equal_array_real(p_values, [1.62790697674418616e-01_real64, 8.63787375415282360e-02_real64, &
-                2.65780730897009973e-02_real64], n_studies, 0.0_real64, name//"p_values")
+        ! p_values re-captured after the random_multiv_hypergeom last-bin depletion fix and the
+        ! per-permutation consensus fix (100/301, 32/301, 1/301)
+        call assert_equal_array_real(p_values, [3.32225913621262470e-01_real64, 1.06312292358803989e-01_real64, &
+                3.32225913621262466e-03_real64], n_studies, 0.0_real64, name//"p_values")
         ! counts per (point, study), rows 1:max_n_bins_per_point -- rows beyond the point's own
         ! n_bins_per_point are the zero padding build_residual_histograms_impl guarantees
         call assert_equal_array_int(counts(1:6, 1, 1), [0, 3, 5, 2, 3, 2], 6_int32, name//"counts(1,1)")

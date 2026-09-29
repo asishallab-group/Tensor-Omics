@@ -6,8 +6,9 @@
 !| against the consensus pmf. Under the null hypothesis that a study is exchangeable with the
 !| pool, every reference point's pooled consensus histogram counts are repeatedly resampled
 !| without replacement (GSL's multivariate hypergeometric distribution) into each study's own
-!| draw size, the pmf/JSD/weighted global JSD are recomputed from that resample, and the observed
-!| value is compared against the resulting null distribution.
+!| draw size, the pmfs, their equal-weight consensus and each study's JSD/weighted global JSD
+!| against it are recomputed from that resample, and the observed value is compared against the
+!| resulting null distribution.
 !|
 !| Generalized to K studies; the pooled resampling pool (`tmp_mean_pmf_counts`) is a work copy
 !| reset every permutation, so the caller's own `mean_pmf_counts` is left untouched.
@@ -36,10 +37,20 @@ contains
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]'s own
     !| precedent.
     !|
+    !| The consensus pmf is recomputed from the permuted pmfs in every permutation, as the
+    !| equal-weight mean of all studies' pmfs, exactly as
+    !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]] builds
+    !| the observed one. So each permuted study's JSD is taken against the consensus of the
+    !| permuted studies, and the null statistic is computed exactly like the observed one. This is
+    !| required because the equal-weight mixture is not invariant under the permutation when the
+    !| studies differ in size: the permuted studies follow the pooled, replicate-weighted
+    !| distribution, whose equal-weight mean moves with every draw, so a fixed observed consensus
+    !| would shift the whole null distribution.
+    !|
     !| The p-value applies the `(1+count)/(n+1)` Laplace add-one correction --
     !| `p_values(i) = anint(count(i)+1)/(n_permutations+1)` -- so a study whose observed JSD is
     !| never reached by any permutation gets `p = 1/(n_permutations+1)`, never `p = 0.0` exactly.
-    subroutine gjct_permutation_test_impl(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
+    subroutine gjct_permutation_test_impl(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, &
                                           mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
                                           tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, tmp_js_divergences, tmp_weights, &
                                           tmp_global_js_divergence, tmp_pmf_point_major, tmp_counts_point_major, &
@@ -60,10 +71,6 @@ contains
             !! Absolute counts of a residual per bin for the consensus pmf -- the pool each
             !! permutation resamples from without replacement, per reference point
             !! DM_MIN(0_int32)
-        real(real64), dimension(n_bins, n_points), intent(in) :: mean_pmf
-            !! The consensus pmf built from all studies' pmfs
-            !! DM_MIN(0.0_real64)
-            !! DM_MAX(1.0_real64)
         integer(int32), dimension(n_points), intent(in) :: mean_pmf_included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point for the consensus pmf
             !! DM_MIN(0_int32)
@@ -92,7 +99,8 @@ contains
             !! Working array for one permutation's global weighted JSD values
         real(real64), dimension(n_points, n_bins), intent(out) :: tmp_pmf_point_major
             !! Working array: one study's resampled pmf, point-major, for calc_pmf_impl's
-            !! point-major convention before transposing into tmp_pmfs
+            !! point-major convention before transposing into tmp_pmfs; then the permuted
+            !! studies' equal-weight consensus pmf, point-major, for the divergence computation
         integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts_point_major
             !! Working array: one study's resampled counts, point-major, transposed from tmp_counts
             !! before calc_pmf_impl
@@ -102,7 +110,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator
 
-        integer(int32) :: i_permutation, i_point, i_study, draw_ierr
+        integer(int32) :: i_permutation, i_point, i_study, i_bin, draw_ierr
         type(rng_t) :: rng
 
         call set_ok(ierr)
@@ -140,10 +148,24 @@ contains
                 tmp_pmfs(:, :, i_study) = transpose(tmp_pmf_point_major)
             end do
 
-            do concurrent(i_study=1:n_studies) shared(tmp_pmfs, mean_pmf, n_points, n_bins, tmp_js_divergences, &
+            ! The permuted studies' equal-weight consensus, point-major: the same formula and
+            ! accumulation order as create_mean_pmf_impl (start at 0, then add pmf/n_studies study
+            ! by study), so it matches that routine bit for bit. Inlined rather than called:
+            ! tox_data_integration_js_comp_test_impl already uses this module.
+            tmp_pmf_point_major = 0.0_real64
+            do i_study = 1, n_studies
+                do i_point = 1, n_points
+                    do concurrent(i_bin=1:n_bins) shared(tmp_pmf_point_major, tmp_pmfs, i_point, i_study, n_studies)
+                        tmp_pmf_point_major(i_point, i_bin) = tmp_pmf_point_major(i_point, i_bin) &
+                                                              + tmp_pmfs(i_bin, i_point, i_study)/real(n_studies, real64)
+                    end do
+                end do
+            end do
+
+            do concurrent(i_study=1:n_studies) shared(tmp_pmfs, tmp_pmf_point_major, n_points, n_bins, tmp_js_divergences, &
                                                       included_n_reps, mean_pmf_included_n_reps, tmp_global_js_divergence, &
                                                       tmp_weights, global_jsd_observed, p_values)
-                call compute_divergence_per_reference_point_impl(transpose(tmp_pmfs(:, :, i_study)), transpose(mean_pmf), &
+                call compute_divergence_per_reference_point_impl(transpose(tmp_pmfs(:, :, i_study)), tmp_pmf_point_major, &
                                                                  n_points, n_bins, tmp_js_divergences(:, i_study))
                 call compute_weighted_global_divergence_impl(tmp_js_divergences(:, i_study), n_points, &
                                                               included_n_reps(:, i_study), mean_pmf_included_n_reps, &

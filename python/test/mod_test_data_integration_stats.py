@@ -25,11 +25,10 @@ def test_gjct_permutation_test_basic():
     included_n_reps = np.zeros((n_points, n_studies), dtype=np.int32, order="F")
     included_n_reps[:, 0] = [4, 4]
     included_n_reps[:, 1] = [6, 6]
-    mean_pmf = mean_pmf_counts.astype(np.float64) / 10.0
     global_jsd_observed = np.array([0.3, 0.3], dtype=np.float64)
 
     p_values = gjct_permutation_test(
-        n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps,
+        n_permutations, mean_pmf_counts, mean_pmf_included_n_reps,
         included_n_reps, global_jsd_observed, random_seed=123
     )
 
@@ -49,15 +48,14 @@ def test_gjct_permutation_test_seeded_reproducibility():
     included_n_reps = np.zeros((n_points, n_studies), dtype=np.int32, order="F")
     included_n_reps[:, 0] = [4, 4]
     included_n_reps[:, 1] = [6, 6]
-    mean_pmf = mean_pmf_counts.astype(np.float64) / 10.0
     global_jsd_observed = np.array([0.3, 0.3], dtype=np.float64)
 
     p_first = gjct_permutation_test(
-        n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps,
+        n_permutations, mean_pmf_counts, mean_pmf_included_n_reps,
         included_n_reps, global_jsd_observed, random_seed=123
     )
     p_second = gjct_permutation_test(
-        n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps,
+        n_permutations, mean_pmf_counts, mean_pmf_included_n_reps,
         included_n_reps, global_jsd_observed, random_seed=123
     )
 

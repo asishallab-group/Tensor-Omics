@@ -1305,9 +1305,9 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #' finally re-derives each study's pmf/JSD/weights/global JSD from its own UNTOUCHED `counts`
 #' via
 #' \code{\link{calc_pmf}} -- `mean_pmf`/`mean_pmf_counts`
-#' are NOT re-derived, since they are invariant across permutations by construction (the
-#' permutation test above only resamples its own scratch copies, never `mean_pmf_counts`
-#' itself), exactly as 125 relies on.
+#' are NOT re-derived, since the permutation test never modifies the observed consensus (it
+#' resamples only its own scratch copies, never `mean_pmf_counts` itself, and builds each
+#' permutation's consensus in its own scratch too), exactly as 125 relies on.
 #'
 #' **Behavioral asymmetry vs.
 #' \code{\link{run_js_comp_test_parameter_search}}

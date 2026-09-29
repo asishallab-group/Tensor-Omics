@@ -116,7 +116,7 @@ SEXP construct_neighborhoods_call(SEXP, SEXP, SEXP, SEXP);
 SEXP construct_neighborhoods_ranged_call(SEXP, SEXP, SEXP);
 SEXP construct_neighborhoods_ranged_expert_call(SEXP, SEXP, SEXP, SEXP);
 SEXP calc_neighborhood_size_call(SEXP, SEXP, SEXP, SEXP);
-SEXP gjct_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP gjct_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP read_expression_vectors_tsv_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP read_gene_ids_from_tsv_file_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP read_orthofinder_file_call(SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -254,7 +254,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"construct_neighborhoods_ranged_call", (DL_FUNC) &construct_neighborhoods_ranged_call, 3},
     {"construct_neighborhoods_ranged_expert_call", (DL_FUNC) &construct_neighborhoods_ranged_expert_call, 4},
     {"calc_neighborhood_size_call", (DL_FUNC) &calc_neighborhood_size_call, 4},
-    {"gjct_permutation_test_call", (DL_FUNC) &gjct_permutation_test_call, 7},
+    {"gjct_permutation_test_call", (DL_FUNC) &gjct_permutation_test_call, 6},
     {"read_expression_vectors_tsv_call", (DL_FUNC) &read_expression_vectors_tsv_call, 8},
     {"read_gene_ids_from_tsv_file_call", (DL_FUNC) &read_gene_ids_from_tsv_file_call, 5},
     {"read_orthofinder_file_call", (DL_FUNC) &read_orthofinder_file_call, 5},

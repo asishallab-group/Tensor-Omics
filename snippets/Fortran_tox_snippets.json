@@ -2080,13 +2080,12 @@
       "    n_points=${3:n_points}, &",
       "    n_studies=${4:n_studies}, &",
       "    mean_pmf_counts=${5:mean_pmf_counts}, &",
-      "    mean_pmf=${6:mean_pmf}, &",
-      "    mean_pmf_included_n_reps=${7:mean_pmf_included_n_reps}, &",
-      "    included_n_reps=${8:included_n_reps}, &",
-      "    global_jsd_observed=${9:global_jsd_observed}, &",
-      "    p_values=${10:p_values}, &",
-      "    random_seed=${11:random_seed}, &",
-      "    ierr=${12:ierr})"
+      "    mean_pmf_included_n_reps=${6:mean_pmf_included_n_reps}, &",
+      "    included_n_reps=${7:included_n_reps}, &",
+      "    global_jsd_observed=${8:global_jsd_observed}, &",
+      "    p_values=${9:p_values}, &",
+      "    random_seed=${10:random_seed}, &",
+      "    ierr=${11:ierr})"
     ]
   },
   "gjct_permutation_test (call, checked)": {
@@ -2099,13 +2098,12 @@
       "    n_points=${3:n_points}, &",
       "    n_studies=${4:n_studies}, &",
       "    mean_pmf_counts=${5:mean_pmf_counts}, &",
-      "    mean_pmf=${6:mean_pmf}, &",
-      "    mean_pmf_included_n_reps=${7:mean_pmf_included_n_reps}, &",
-      "    included_n_reps=${8:included_n_reps}, &",
-      "    global_jsd_observed=${9:global_jsd_observed}, &",
-      "    p_values=${10:p_values}, &",
-      "    random_seed=${11:random_seed}, &",
-      "    ierr=${12:ierr})",
+      "    mean_pmf_included_n_reps=${6:mean_pmf_included_n_reps}, &",
+      "    included_n_reps=${7:included_n_reps}, &",
+      "    global_jsd_observed=${8:global_jsd_observed}, &",
+      "    p_values=${9:p_values}, &",
+      "    random_seed=${10:random_seed}, &",
+      "    ierr=${11:ierr})",
       "if (is_err(ierr)) return"
     ]
   },

@@ -2432,9 +2432,9 @@ contains
     !| finally re-derives each study's pmf/JSD/weights/global JSD from its own UNTOUCHED `counts`
     !| via
     !| [[tox_data_integration_jsd_impl(module):calc_pmf_impl(interface)]] -- `mean_pmf`/`mean_pmf_counts`
-    !| are NOT re-derived, since they are invariant across permutations by construction (the
-    !| permutation test above only resamples its own scratch copies, never `mean_pmf_counts`
-    !| itself), exactly as 125 relies on.
+    !| are NOT re-derived, since the permutation test never modifies the observed consensus (it
+    !| resamples only its own scratch copies, never `mean_pmf_counts` itself, and builds each
+    !| permutation's consensus in its own scratch too), exactly as 125 relies on.
     !|
     !| **Behavioral asymmetry vs.
     !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
@@ -2828,9 +2828,9 @@ contains
     !| finally re-derives each study's pmf/JSD/weights/global JSD from its own UNTOUCHED `counts`
     !| via
     !| [[tox_data_integration_jsd_impl(module):calc_pmf_impl(interface)]] -- `mean_pmf`/`mean_pmf_counts`
-    !| are NOT re-derived, since they are invariant across permutations by construction (the
-    !| permutation test above only resamples its own scratch copies, never `mean_pmf_counts`
-    !| itself), exactly as 125 relies on.
+    !| are NOT re-derived, since the permutation test never modifies the observed consensus (it
+    !| resamples only its own scratch copies, never `mean_pmf_counts` itself, and builds each
+    !| permutation's consensus in its own scratch too), exactly as 125 relies on.
     !|
     !| **Behavioral asymmetry vs.
     !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]

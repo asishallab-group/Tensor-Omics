@@ -8,8 +8,9 @@
 !| against the consensus pmf. Under the null hypothesis that a study is exchangeable with the
 !| pool, every reference point's pooled consensus histogram counts are repeatedly resampled
 !| without replacement (GSL's multivariate hypergeometric distribution) into each study's own
-!| draw size, the pmf/JSD/weighted global JSD are recomputed from that resample, and the observed
-!| value is compared against the resulting null distribution.
+!| draw size, the pmfs, their equal-weight consensus and each study's JSD/weighted global JSD
+!| against it are recomputed from that resample, and the observed value is compared against the
+!| resulting null distribution.
 !|
 !| Generalized to K studies; the pooled resampling pool (`tmp_mean_pmf_counts`) is a work copy
 !| reset every permutation, so the caller's own `mean_pmf_counts` is left untouched.
@@ -37,6 +38,16 @@ contains
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]'s own
     !| precedent.
     !|
+    !| The consensus pmf is recomputed from the permuted pmfs in every permutation, as the
+    !| equal-weight mean of all studies' pmfs, exactly as
+    !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]] builds
+    !| the observed one. So each permuted study's JSD is taken against the consensus of the
+    !| permuted studies, and the null statistic is computed exactly like the observed one. This is
+    !| required because the equal-weight mixture is not invariant under the permutation when the
+    !| studies differ in size: the permuted studies follow the pooled, replicate-weighted
+    !| distribution, whose equal-weight mean moves with every draw, so a fixed observed consensus
+    !| would shift the whole null distribution.
+    !|
     !| The p-value applies the `(1+count)/(n+1)` Laplace add-one correction --
     !| `p_values(i) = anint(count(i)+1)/(n_permutations+1)` -- so a study whose observed JSD is
     !| never reached by any permutation gets `p = 1/(n_permutations+1)`, never `p = 0.0` exactly.
@@ -46,7 +57,6 @@ contains
             n_points,&
             n_studies,&
             mean_pmf_counts,&
-            mean_pmf,&
             mean_pmf_included_n_reps,&
             included_n_reps,&
             global_jsd_observed,&
@@ -72,10 +82,6 @@ contains
             !! Absolute counts of a residual per bin for the consensus pmf -- the pool each
             !! permutation resamples from without replacement, per reference point
             !! The minimum valid value is `0_int32`.
-        real(c_double), dimension(n_bins, n_points), intent(in), target :: mean_pmf
-            !! The consensus pmf built from all studies' pmfs
-            !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `1.0_real64`.
         integer(c_int), dimension(n_points), intent(in), target :: mean_pmf_included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point for the consensus pmf
             !! The minimum valid value is `0_int32`.
@@ -103,7 +109,6 @@ contains
         M_CHECK_NON_NULL(n_studies)
         M_CHECK_NON_NULL(random_seed)
         M_CHECK_ARRAY_NON_NULL(mean_pmf_counts, n_bins * n_points)
-        M_CHECK_ARRAY_NON_NULL(mean_pmf, n_bins * n_points)
         M_CHECK_ARRAY_NON_NULL(mean_pmf_included_n_reps, n_points)
         M_CHECK_ARRAY_NON_NULL(included_n_reps, n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(global_jsd_observed, n_studies)
@@ -115,7 +120,6 @@ contains
             n_points = n_points,&
             n_studies = n_studies,&
             mean_pmf_counts = mean_pmf_counts,&
-            mean_pmf = mean_pmf,&
             mean_pmf_included_n_reps = mean_pmf_included_n_reps,&
             included_n_reps = included_n_reps,&
             global_jsd_observed = global_jsd_observed,&
@@ -137,6 +141,16 @@ contains
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]'s own
     !| precedent.
     !|
+    !| The consensus pmf is recomputed from the permuted pmfs in every permutation, as the
+    !| equal-weight mean of all studies' pmfs, exactly as
+    !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]] builds
+    !| the observed one. So each permuted study's JSD is taken against the consensus of the
+    !| permuted studies, and the null statistic is computed exactly like the observed one. This is
+    !| required because the equal-weight mixture is not invariant under the permutation when the
+    !| studies differ in size: the permuted studies follow the pooled, replicate-weighted
+    !| distribution, whose equal-weight mean moves with every draw, so a fixed observed consensus
+    !| would shift the whole null distribution.
+    !|
     !| The p-value applies the `(1+count)/(n+1)` Laplace add-one correction --
     !| `p_values(i) = anint(count(i)+1)/(n_permutations+1)` -- so a study whose observed JSD is
     !| never reached by any permutation gets `p = 1/(n_permutations+1)`, never `p = 0.0` exactly.
@@ -146,7 +160,6 @@ contains
             n_points,&
             n_studies,&
             mean_pmf_counts,&
-            mean_pmf,&
             mean_pmf_included_n_reps,&
             included_n_reps,&
             global_jsd_observed,&
@@ -180,10 +193,6 @@ contains
             !! Absolute counts of a residual per bin for the consensus pmf -- the pool each
             !! permutation resamples from without replacement, per reference point
             !! The minimum valid value is `0_int32`.
-        real(c_double), dimension(n_bins, n_points), intent(in), target :: mean_pmf
-            !! The consensus pmf built from all studies' pmfs
-            !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `1.0_real64`.
         integer(c_int), dimension(n_points), intent(in), target :: mean_pmf_included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point for the consensus pmf
             !! The minimum valid value is `0_int32`.
@@ -212,7 +221,8 @@ contains
             !! Working array for one permutation's global weighted JSD values
         real(c_double), dimension(n_points, n_bins), intent(out), target :: tmp_pmf_point_major
             !! Working array: one study's resampled pmf, point-major, for calc_pmf_impl's
-            !! point-major convention before transposing into tmp_pmfs
+            !! point-major convention before transposing into tmp_pmfs; then the permuted
+            !! studies' equal-weight consensus pmf, point-major, for the divergence computation
         integer(c_int), dimension(n_points, n_bins), intent(out), target :: tmp_counts_point_major
             !! Working array: one study's resampled counts, point-major, transposed from tmp_counts
             !! before calc_pmf_impl
@@ -230,7 +240,6 @@ contains
         M_CHECK_NON_NULL(n_studies)
         M_CHECK_NON_NULL(random_seed)
         M_CHECK_ARRAY_NON_NULL(mean_pmf_counts, n_bins * n_points)
-        M_CHECK_ARRAY_NON_NULL(mean_pmf, n_bins * n_points)
         M_CHECK_ARRAY_NON_NULL(mean_pmf_included_n_reps, n_points)
         M_CHECK_ARRAY_NON_NULL(included_n_reps, n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(global_jsd_observed, n_studies)
@@ -250,7 +259,6 @@ contains
             n_points = n_points,&
             n_studies = n_studies,&
             mean_pmf_counts = mean_pmf_counts,&
-            mean_pmf = mean_pmf,&
             mean_pmf_included_n_reps = mean_pmf_included_n_reps,&
             included_n_reps = included_n_reps,&
             global_jsd_observed = global_jsd_observed,&

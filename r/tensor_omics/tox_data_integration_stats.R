@@ -13,6 +13,16 @@
 #' \code{\link{bootstrap_histogram}}'s own
 #' precedent.
 #'
+#' The consensus pmf is recomputed from the permuted pmfs in every permutation, as the
+#' equal-weight mean of all studies' pmfs, exactly as
+#' \code{\link{create_mean_pmf}} builds
+#' the observed one. So each permuted study's JSD is taken against the consensus of the
+#' permuted studies, and the null statistic is computed exactly like the observed one. This is
+#' required because the equal-weight mixture is not invariant under the permutation when the
+#' studies differ in size: the permuted studies follow the pooled, replicate-weighted
+#' distribution, whose equal-weight mean moves with every draw, so a fixed observed consensus
+#' would shift the whole null distribution.
+#'
 #' The p-value applies the `(1+count)/(n+1)` Laplace add-one correction --
 #' `p_values(i) = anint(count(i)+1)/(n_permutations+1)` -- so a study whose observed JSD is
 #' never reached by any permutation gets `p = 1/(n_permutations+1)`, never `p = 0.0` exactly.
@@ -25,9 +35,6 @@
 #' @param mean_pmf_counts a integer matrix. Absolute counts of a residual per bin for the consensus pmf -- the pool each
 #'   permutation resamples from without replacement, per reference point
 #'   The minimum valid value is `0`.
-#' @param mean_pmf a numeric matrix. The consensus pmf built from all studies' pmfs
-#'   The minimum valid value is `0.0`.
-#'   The maximum valid value is `1.0`.
 #' @param mean_pmf_included_n_reps a integer vector. Count of non-NaN replicates (included ones) per reference point for the consensus pmf
 #'   The minimum valid value is `0`.
 #' @param included_n_reps a integer matrix. Count of non-NaN replicates (included ones) per reference point, per study -- how
@@ -40,18 +47,13 @@
 #'   resampled global JSD reached or exceeded the observed value -- see the correction
 #'   note above
 #' @export
-gjct_permutation_test <- function(n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, random_seed = 42L) {
+gjct_permutation_test <- function(n_permutations, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, random_seed = 42L) {
     n_permutations <- .tox_as_integer_scalar(n_permutations, "n_permutations")
     mean_pmf_counts <- .tox_as_integer_matrix(mean_pmf_counts, "mean_pmf_counts")
-    mean_pmf <- .tox_as_double_matrix(mean_pmf, "mean_pmf")
     mean_pmf_included_n_reps <- .tox_as_integer_vector(mean_pmf_included_n_reps, "mean_pmf_included_n_reps")
     included_n_reps <- .tox_as_integer_matrix(included_n_reps, "included_n_reps")
     global_jsd_observed <- .tox_as_double_vector(global_jsd_observed, "global_jsd_observed")
     random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
-    if (dim(mean_pmf)[1] != dim(mean_pmf_counts)[1])
-        .tox_shape_error("mean_pmf", dim(mean_pmf)[1], "mean_pmf_counts", dim(mean_pmf_counts)[1])
-    if (dim(mean_pmf)[2] != dim(mean_pmf_counts)[2])
-        .tox_shape_error("mean_pmf", dim(mean_pmf)[2], "mean_pmf_counts", dim(mean_pmf_counts)[2])
     if (length(mean_pmf_included_n_reps) != dim(mean_pmf_counts)[2])
         .tox_shape_error("mean_pmf_included_n_reps", length(mean_pmf_included_n_reps), "mean_pmf_counts", dim(mean_pmf_counts)[2])
     if (dim(included_n_reps)[1] != dim(mean_pmf_counts)[2])
@@ -59,9 +61,9 @@ gjct_permutation_test <- function(n_permutations, mean_pmf_counts, mean_pmf, mea
     if (length(global_jsd_observed) != dim(included_n_reps)[2])
         .tox_shape_error("global_jsd_observed", length(global_jsd_observed), "included_n_reps", dim(included_n_reps)[2])
 
-    .result <- .Call("gjct_permutation_test_call", n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, random_seed)
-    .arguments <- c("n_permutations", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "mean_pmf", "mean_pmf_included_n_reps", "included_n_reps", "global_jsd_observed", "p_values", "random_seed", "ierr")
-    .sources <- c(NA_character_, "mean_pmf_counts", "mean_pmf_counts", "included_n_reps", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("gjct_permutation_test_call", n_permutations, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, random_seed)
+    .arguments <- c("n_permutations", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "mean_pmf_included_n_reps", "included_n_reps", "global_jsd_observed", "p_values", "random_seed", "ierr")
+    .sources <- c(NA_character_, "mean_pmf_counts", "mean_pmf_counts", "included_n_reps", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$p_values

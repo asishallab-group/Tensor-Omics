@@ -6,8 +6,9 @@ A permutation test estimating an empirical p-value for each study's weighted glo
 against the consensus pmf. Under the null hypothesis that a study is exchangeable with the
 pool, every reference point's pooled consensus histogram counts are repeatedly resampled
 without replacement (GSL's multivariate hypergeometric distribution) into each study's own
-draw size, the pmf/JSD/weighted global JSD are recomputed from that resample, and the observed
-value is compared against the resulting null distribution.
+draw size, the pmfs, their equal-weight consensus and each study's JSD/weighted global JSD
+against it are recomputed from that resample, and the observed value is compared against the
+resulting null distribution.
 
 Generalized to K studies; the pooled resampling pool (`tmp_mean_pmf_counts`) is a work copy
 reset every permutation, so the caller's own `mean_pmf_counts` is left untouched.
@@ -32,7 +33,6 @@ _lib.gjct_permutation_test_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
@@ -42,14 +42,13 @@ _lib.gjct_permutation_test_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_GJCT_PERMUTATION_TEST_ARGUMENTS = ("n_permutations", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "mean_pmf", "mean_pmf_included_n_reps", "included_n_reps", "global_jsd_observed", "p_values", "random_seed", "ierr",)
+_GJCT_PERMUTATION_TEST_ARGUMENTS = ("n_permutations", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "mean_pmf_included_n_reps", "included_n_reps", "global_jsd_observed", "p_values", "random_seed", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_GJCT_PERMUTATION_TEST_ARGUMENT_SOURCES = (None, "mean_pmf_counts", "mean_pmf_counts", "included_n_reps", None, None, None, None, None, None, None, None,)
+_GJCT_PERMUTATION_TEST_ARGUMENT_SOURCES = (None, "mean_pmf_counts", "mean_pmf_counts", "included_n_reps", None, None, None, None, None, None, None,)
 
 def gjct_permutation_test(
         n_permutations,
         mean_pmf_counts,
-        mean_pmf,
         mean_pmf_included_n_reps,
         included_n_reps,
         global_jsd_observed,
@@ -68,6 +67,16 @@ def gjct_permutation_test(
     :func:`tensor_omics.bootstrap_histogram`'s own
     precedent.
 
+    The consensus pmf is recomputed from the permuted pmfs in every permutation, as the
+    equal-weight mean of all studies' pmfs, exactly as
+    :func:`tensor_omics.create_mean_pmf` builds
+    the observed one. So each permuted study's JSD is taken against the consensus of the
+    permuted studies, and the null statistic is computed exactly like the observed one. This is
+    required because the equal-weight mixture is not invariant under the permutation when the
+    studies differ in size: the permuted studies follow the pooled, replicate-weighted
+    distribution, whose equal-weight mean moves with every draw, so a fixed observed consensus
+    would shift the whole null distribution.
+
     The p-value applies the `(1+count)/(n+1)` Laplace add-one correction --
     `p_values(i) = anint(count(i)+1)/(n_permutations+1)` -- so a study whose observed JSD is
     never reached by any permutation gets `p = 1/(n_permutations+1)`, never `p = 0.0` exactly.
@@ -81,10 +90,6 @@ def gjct_permutation_test(
         Absolute counts of a residual per bin for the consensus pmf -- the pool each
         permutation resamples from without replacement, per reference point
         The minimum valid value is `0`.
-    mean_pmf : np.ndarray[np.float64] of shape (n_bins, n_points,), column-major (order='F')
-        The consensus pmf built from all studies' pmfs
-        The minimum valid value is `0.0`.
-        The maximum valid value is `1.0`.
     mean_pmf_included_n_reps : np.ndarray[np.int32] of shape (n_points,)
         Count of non-NaN replicates (included ones) per reference point for the consensus pmf
         The minimum valid value is `0`.
@@ -124,12 +129,6 @@ def gjct_permutation_test(
     if mean_pmf_counts.ndim != 2:
         raise ValueError(f"'mean_pmf_counts' must have 2 dimensions, but has {mean_pmf_counts.ndim}")
     try:
-        mean_pmf = np.asfortranarray(mean_pmf, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'mean_pmf' must be an array of np.float64: {error}") from None
-    if mean_pmf.ndim != 2:
-        raise ValueError(f"'mean_pmf' must have 2 dimensions, but has {mean_pmf.ndim}")
-    try:
         mean_pmf_included_n_reps = np.ascontiguousarray(mean_pmf_included_n_reps, dtype=np.int32)
     except (TypeError, ValueError) as error:
         raise TypeError(f"'mean_pmf_included_n_reps' must be an array of np.int32: {error}") from None
@@ -154,14 +153,6 @@ def gjct_permutation_test(
     n_studies = included_n_reps.shape[1]
 
     # Fortran cannot check that shared extents agree; this can
-    if mean_pmf.shape[0] != n_bins:
-        raise ValueError(f"'mean_pmf' has {mean_pmf.shape[0]} along axis 0, but "
-            f"'mean_pmf_counts' implies n_bins == {n_bins}"
-        )
-    if mean_pmf.shape[1] != n_points:
-        raise ValueError(f"'mean_pmf' has {mean_pmf.shape[1]} along axis 1, but "
-            f"'mean_pmf_counts' implies n_points == {n_points}"
-        )
     if mean_pmf_included_n_reps.shape[0] != n_points:
         raise ValueError(f"'mean_pmf_included_n_reps' has {mean_pmf_included_n_reps.shape[0]} along axis 0, but "
             f"'mean_pmf_counts' implies n_points == {n_points}"
@@ -185,7 +176,6 @@ def gjct_permutation_test(
         ctypes.byref(ctypes.c_int(n_points)),
         ctypes.byref(ctypes.c_int(n_studies)),
         mean_pmf_counts,
-        mean_pmf,
         mean_pmf_included_n_reps,
         included_n_reps,
         global_jsd_observed,
