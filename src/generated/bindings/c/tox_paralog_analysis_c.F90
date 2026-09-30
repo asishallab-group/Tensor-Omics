@@ -121,8 +121,8 @@ contains
         integer(c_int), intent(in), target :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
         integer(c_int), intent(in), target :: n_mask_chunks
-            !! number of 32 bit chunks a mask needs to encode `n_genes` genes. Use subroutine `mask_chunk_count` for calculation
-            !! The minimum valid value is `(n_genes + 31) / 32`.
+            !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bit_mask_n_words` computes it
+            !! The minimum valid value is `((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))`.
         integer(c_int), intent(in), target :: n_paralog_subsets
             !! number of gene subsets that can be stored in `work_arr_paralog_subsets`.
             !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis_impl(module):calc_work_arr_paralog_subsets_size]].
@@ -147,7 +147,7 @@ contains
         integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: work_arr_paralog_subsets
             !! working array to hold bitmask encoded subsets for detection.
             !! @note
-            !! Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0_real64)` and represents the number of chunks
+            !! Each column is a bit mask of the `n_genes` genes, laid out as [[f42_bit_masks_impl(module)]] describes.
             !! @endnote
         real(c_double), intent(in), target :: max_angle
             !! maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
@@ -218,8 +218,8 @@ contains
         integer(c_int), intent(in), target :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
         integer(c_int), intent(in), target :: n_mask_chunks
-            !! number of 32 bit chunks a mask needs to encode `n_genes` genes. Use subroutine `mask_chunk_count` for calculation
-            !! The minimum valid value is `(n_genes + 31) / 32`.
+            !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bit_mask_n_words` computes it
+            !! The minimum valid value is `((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))`.
         integer(c_int), intent(in), target :: n_paralog_subsets
             !! number of gene subsets that can be stored in `work_arr_paralog_subsets`.
             !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis_impl(module):calc_work_arr_paralog_subsets_size]].
@@ -244,7 +244,7 @@ contains
         integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: work_arr_paralog_subsets
             !! working array to hold bitmask encoded subsets for detection.
             !! @note
-            !! Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0_real64)` and represents the number of chunks
+            !! Each column is a bit mask of the `n_genes` genes, laid out as [[f42_bit_masks_impl(module)]] describes.
             !! @endnote
         integer(c_int), dimension(n_mask_chunks), intent(out), target :: tmp_active_mask
             !! working array to hold the extended subsets
@@ -322,8 +322,8 @@ contains
         integer(c_int), intent(in), target :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
         integer(c_int), intent(in), target :: n_mask_chunks
-            !! number of 32 bit chunks a mask needs to encode `n_genes` genes. Use subroutine `mask_chunk_count` for calculation
-            !! The minimum valid value is `(n_genes + 31) / 32`.
+            !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bit_mask_n_words` computes it
+            !! The minimum valid value is `((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))`.
         integer(c_int), intent(in), target :: n_paralog_subsets
             !! number of gene subsets that can be stored in `work_arr_paralog_subsets`.
             !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis_impl(module):calc_work_arr_paralog_subsets_size]].
@@ -348,7 +348,7 @@ contains
         integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: work_arr_paralog_subsets
             !! working array to hold bitmask encoded subsets for detection.
             !! @note
-            !! Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0_real64)` and represents the number of chunks
+            !! Each column is a bit mask of the `n_genes` genes, laid out as [[f42_bit_masks_impl(module)]] describes.
             !! @endnote
         real(c_double), intent(in), target :: rdi_threshold
             !! max allowed residual distance from `ancestor`
@@ -424,8 +424,8 @@ contains
         integer(c_int), intent(in), target :: n_dims
             !! size of `ancestor` vector and vectors in `genes`
         integer(c_int), intent(in), target :: n_mask_chunks
-            !! number of 32 bit chunks a mask needs to encode `n_genes` genes. Use subroutine `mask_chunk_count` for calculation
-            !! The minimum valid value is `(n_genes + 31) / 32`.
+            !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bit_mask_n_words` computes it
+            !! The minimum valid value is `((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))`.
         integer(c_int), intent(in), target :: n_paralog_subsets
             !! number of gene subsets that can be stored in `work_arr_paralog_subsets`.
             !! It is *VERY IMPORTANT* to compute this argument from the `work_array_size` output produced by [[tox_paralog_analysis_impl(module):calc_work_arr_paralog_subsets_size]].
@@ -450,7 +450,7 @@ contains
         integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: work_arr_paralog_subsets
             !! working array to hold bitmask encoded subsets for detection.
             !! @note
-            !! Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0_real64)` and represents the number of chunks
+            !! Each column is a bit mask of the `n_genes` genes, laid out as [[f42_bit_masks_impl(module)]] describes.
             !! @endnote
         integer(c_int), dimension(n_mask_chunks), intent(out), target :: tmp_active_mask
             !! working array to hold the extended subsets
@@ -533,7 +533,7 @@ contains
             !! The maximum valid value is `n_genes`.
         integer(c_int), intent(in), target :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes
-            !! The minimum valid value is `(n_genes + 31) / 32`.
+            !! The minimum valid value is `((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))`.
         real(c_double), dimension(n_genes), intent(in), target :: gene_angles
             !! vector, holding the angles between ancestor and genes (0<=angle<=Pi)
             !! The minimum valid value is `0.0_real64`.
@@ -593,7 +593,7 @@ contains
             !! The maximum valid value is `n_genes`.
         integer(c_int), intent(in), target :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes
-            !! The minimum valid value is `(n_genes + 31) / 32`.
+            !! The minimum valid value is `((n_genes)/32_int32 + min(1_int32, mod((n_genes), 32_int32)))`.
         real(c_double), dimension(n_genes), intent(in), target :: gene_angles
             !! vector, holding the angles between ancestor and genes (0<=angle<=Pi)
             !! The minimum valid value is `0.0_real64`.

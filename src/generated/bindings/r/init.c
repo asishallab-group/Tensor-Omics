@@ -45,6 +45,12 @@
 SEXP build_bst_index_call(SEXP);
 SEXP bst_range_query_call(SEXP, SEXP, SEXP);
 SEXP bst_range_query_expert_call(SEXP, SEXP, SEXP, SEXP);
+SEXP bit_mask_n_words_call(SEXP);
+SEXP bit_mask_test_call(SEXP, SEXP, SEXP);
+SEXP bit_mask_from_logical_call(SEXP, SEXP);
+SEXP bit_mask_to_logical_call(SEXP, SEXP);
+SEXP bit_masks_from_logical_2D_call(SEXP, SEXP);
+SEXP bit_masks_to_logical_2D_call(SEXP, SEXP);
 SEXP build_kd_index_call(SEXP, SEXP);
 SEXP build_spherical_kd_call(SEXP, SEXP);
 SEXP deserialize_char_helper_call(SEXP, SEXP, SEXP);
@@ -125,8 +131,6 @@ SEXP detect_dosage_effect_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP detect_subfunctionalization_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP filter_paralogs_by_pattern_dosage_effect_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP filter_paralogs_by_pattern_subfunctionalization_call(SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP mask_check_state_call(SEXP, SEXP);
-SEXP mask_chunk_count_call(SEXP);
 SEXP calc_work_arr_paralog_subsets_size_call(SEXP, SEXP, SEXP);
 SEXP omics_vector_RAP_projection_call(SEXP, SEXP, SEXP);
 SEXP omics_field_RAP_projection_call(SEXP, SEXP, SEXP);
@@ -155,6 +159,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"build_bst_index_call", (DL_FUNC) &build_bst_index_call, 1},
     {"bst_range_query_call", (DL_FUNC) &bst_range_query_call, 3},
     {"bst_range_query_expert_call", (DL_FUNC) &bst_range_query_expert_call, 4},
+    {"bit_mask_n_words_call", (DL_FUNC) &bit_mask_n_words_call, 1},
+    {"bit_mask_test_call", (DL_FUNC) &bit_mask_test_call, 3},
+    {"bit_mask_from_logical_call", (DL_FUNC) &bit_mask_from_logical_call, 2},
+    {"bit_mask_to_logical_call", (DL_FUNC) &bit_mask_to_logical_call, 2},
+    {"bit_masks_from_logical_2D_call", (DL_FUNC) &bit_masks_from_logical_2D_call, 2},
+    {"bit_masks_to_logical_2D_call", (DL_FUNC) &bit_masks_to_logical_2D_call, 2},
     {"build_kd_index_call", (DL_FUNC) &build_kd_index_call, 2},
     {"build_spherical_kd_call", (DL_FUNC) &build_spherical_kd_call, 2},
     {"deserialize_char_helper_call", (DL_FUNC) &deserialize_char_helper_call, 3},
@@ -235,8 +245,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"detect_subfunctionalization_call", (DL_FUNC) &detect_subfunctionalization_call, 8},
     {"filter_paralogs_by_pattern_dosage_effect_call", (DL_FUNC) &filter_paralogs_by_pattern_dosage_effect_call, 5},
     {"filter_paralogs_by_pattern_subfunctionalization_call", (DL_FUNC) &filter_paralogs_by_pattern_subfunctionalization_call, 5},
-    {"mask_check_state_call", (DL_FUNC) &mask_check_state_call, 2},
-    {"mask_chunk_count_call", (DL_FUNC) &mask_chunk_count_call, 1},
     {"calc_work_arr_paralog_subsets_size_call", (DL_FUNC) &calc_work_arr_paralog_subsets_size_call, 3},
     {"omics_vector_RAP_projection_call", (DL_FUNC) &omics_vector_RAP_projection_call, 3},
     {"omics_field_RAP_projection_call", (DL_FUNC) &omics_field_RAP_projection_call, 3},

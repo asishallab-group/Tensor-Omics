@@ -52,6 +52,17 @@
 #define M_GENE_TO_FAM_SENTINEL 0_int32
 #define M_GENE_TO_FAM_DOC(GENES_TARGET_ARG) Index mapping -> each index `i` holds the family index for the corresponding gene in `GENES_TARGET_ARG`, using `M_GENE_TO_FAM_SENTINEL` for unassigned genes
 
+! Bit masks (f42_bit_masks_impl): flag `i` of a mask is bit `mod(i - 1, 32)` of int32 word
+! `(i - 1)/32 + 1`. Macros rather than procedures, because they also size the masks of other
+! modules in their DM_ markers, and because a hot loop can test or set a single flag with them
+! inline -- nothing is inlined across modules, so a procedure call per flag costs more than the
+! flag. M_BIT_MASK_N_WORDS avoids `(n + 31)/32`, which overflows for n near huge(0_int32).
+#define M_BIT_MASK_WORD_BITS 32_int32
+#define M_BIT_MASK_N_WORDS(N_BITS) ((N_BITS)/32_int32 + min(1_int32, mod((N_BITS), 32_int32)))
+#define M_BIT_MASK_WORD(I_BIT) (((I_BIT) - 1_int32)/32_int32 + 1_int32)
+#define M_BIT_MASK_BIT(I_BIT) mod((I_BIT) - 1_int32, 32_int32)
+#define M_BIT_MASK_TEST(BIT_MASK, I_BIT) btest(BIT_MASK(M_BIT_MASK_WORD(I_BIT)), M_BIT_MASK_BIT(I_BIT))
+
 ! not using is_err here, as our error code encoding might lead to unexpected behavior. The ISO standard defines success value as zero.
 #define M_CHECK_IO_ERR(ERR_CODE) if (ierr /= 0) then; call set_err(ierr, ERR_CODE); close(unit); return; end if
 
