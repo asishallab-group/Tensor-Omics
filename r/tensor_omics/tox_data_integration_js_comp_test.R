@@ -1771,13 +1771,24 @@ run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood
 #' are overridden to the candidate that actually triggered the effect-size plateau, so the
 #' candidate this routine returns is always the one that stopped the search.
 #'
-#' Ported verbatim, including the
-#' fallback 125 relies on: if no candidate ever plateaus, the search falls back to the FIRST
-#' (finest-resolution) candidate and resets `best_candidate_pair_confidence_interval` to
-#' `-1.0`; if the grid collapsed to a single candidate (see
+#' The finally returned candidate is decided by one of three cases:
+#'
+#' 1. A plateau was found, or the grid collapsed to a single candidate (see
 #' \code{\link{generate_js_comp_test_candidates}}'s
-#' own small-N collapse note), that one candidate is used regardless of whether it plateaued or
-#' even passed either gate -- the plateau machinery is bypassed entirely, exactly as 125 does.
+#' own small-N collapse note): the best candidate is returned and `plateau_established` is
+#' `TRUE`. A lone candidate is used regardless of whether it plateaued or even passed
+#' either gate -- the plateau machinery is bypassed entirely, exactly as 125 does. If that
+#' lone candidate never passed both gates, no real per-point values exist for it, so every
+#' point's bin count is set to `m_min`, both residual ranges to `0.0`, and
+#' `best_candidate_pair_confidence_interval` stays `-1.0`.
+#' 2. No plateau, but at least one candidate was admissible: the admissible candidate with the
+#' smallest bootstrapped uncertainty (median confidence-interval width across studies) is
+#' returned, with its real confidence interval, and `plateau_established` is `FALSE`. This
+#' applies to every `plateau_mode`.
+#' 3. No plateau, and no candidate was ever admissible: the search falls back to the FIRST
+#' (finest-resolution) candidate, resets `best_candidate_pair_confidence_interval` to
+#' `-1.0`, sets every point's bin count to `m_min` and both residual ranges to `0.0`, and
+#' `plateau_established` is `FALSE`.
 #'
 #' Per the plan's work-array translation for this routine specifically: `max_n_bins_all_candidates`
 #' (data-dependent, not cheaply closed-form in 125) is replaced by the fixed
@@ -1910,13 +1921,14 @@ run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood
 #'     reference point (Step 3: every neighborhood may use a different, asymmetric range).
 #'     Only the leading `n_points` entries are meaningful, mirroring `n_bins_per_point`
 #'     above; `0.0` throughout in the two genuinely-degenerate cases where Pass B
-#'     never ran for the returned candidate (see the final three-way branch's own comments)}
+#'     never ran for the returned candidate (cases 1 and 3 of the routine description)}
 #'   \item{shared_residual_range_high}{a numeric vector. The finally chosen candidate's per-point upper residual-range bound (R_high),
 #'     mirroring `shared_residual_range_low` above in every respect}
 #'   \item{best_candidate_pair_confidence_interval}{a numeric matrix. The bootstrapped JSD confidence interval for the finally chosen candidate pair;
-#'     `-1.0` throughout only when `plateau_established` is `FALSE` and no
-#'     smallest-bootstrap-uncertainty candidate could be substituted either (see
-#'     `plateau_established`)}
+#'     `-1.0` throughout when no candidate was ever admissible: either the lone
+#'     candidate of a collapsed grid never passed both gates (`plateau_established` is
+#'     `TRUE`), or no plateau was found and no smallest-bootstrap-uncertainty candidate
+#'     could be substituted (`plateau_established` is `FALSE`)}
 #'   \item{plateau_established}{a logical scalar. `TRUE` when a real plateau was found (by whichever criterion
 #'     `plateau_mode` selected) or the candidate grid never had more than one candidate to
 #'     begin with. `FALSE` when the search exhausted every admissible candidate
