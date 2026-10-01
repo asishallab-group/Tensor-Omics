@@ -8,7 +8,10 @@
 !| without replacement (GSL's multivariate hypergeometric distribution) into each study's own
 !| draw size, the pmfs, their equal-weight consensus and each study's JSD/weighted global JSD
 !| against it are recomputed from that resample, and the observed value is compared against the
-!| resulting null distribution.
+!| resulting null distribution (`p_values`). From the same resamples, a second p-value
+!| (`p_values_observed_consensus`) compares each resampled study against the fixed observed
+!| consensus pmf instead, the null this test used before; it is kept for comparison, and
+!| `p_values` is the primary result.
 !|
 !| Generalized to K studies; the pooled resampling pool (`tmp_mean_pmf_counts`) is a work copy
 !| reset every permutation, so the caller's own `mean_pmf_counts` is left untouched.
@@ -47,14 +50,19 @@ contains
     !| distribution, whose equal-weight mean moves with every draw, so a fixed observed consensus
     !| would shift the whole null distribution.
     !|
-    !| The p-value applies the `(1+count)/(n+1)` Laplace add-one correction --
+    !| A second p-value, `p_values_observed_consensus`, is computed from the same permutations (no
+    !| further random draws) with the null this test used before: each permuted study's JSD
+    !| against the fixed observed consensus `mean_pmf`. It is kept to compare the two nulls on data
+    !| with known batch effects; `p_values` stays the primary result.
+    !|
+    !| Both p-values apply the `(1+count)/(n+1)` Laplace add-one correction --
     !| `p_values(i) = anint(count(i)+1)/(n_permutations+1)` -- so a study whose observed JSD is
     !| never reached by any permutation gets `p = 1/(n_permutations+1)`, never `p = 0.0` exactly.
-    subroutine gjct_permutation_test_impl(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, &
+    subroutine gjct_permutation_test_impl(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
                                           mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
-                                          tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, tmp_js_divergences, tmp_weights, &
-                                          tmp_global_js_divergence, tmp_pmf_point_major, tmp_counts_point_major, &
-                                          random_seed, ierr)
+                                          p_values_observed_consensus, tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, &
+                                          tmp_js_divergences, tmp_weights, tmp_global_js_divergence, tmp_pmf_point_major, &
+                                          tmp_counts_point_major, random_seed, ierr)
         integer(int32), intent(in) :: n_permutations
             !! Number of permutations to perform
             !! DM_MIN(0_int32)
@@ -71,6 +79,11 @@ contains
             !! Absolute counts of a residual per bin for the consensus pmf -- the pool each
             !! permutation resamples from without replacement, per reference point
             !! DM_MIN(0_int32)
+        real(real64), dimension(n_bins, n_points), intent(in) :: mean_pmf
+            !! The consensus pmf built from all studies' pmfs; each permuted study is compared
+            !! against it for `p_values_observed_consensus` only
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(1.0_real64)
         integer(int32), dimension(n_points), intent(in) :: mean_pmf_included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point for the consensus pmf
             !! DM_MIN(0_int32)
@@ -84,6 +97,12 @@ contains
             !! Empirical p-value per study: the Laplace-corrected fraction of permutations whose
             !! resampled global JSD reached or exceeded the observed value -- see the correction
             !! note above
+        real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
+            !! Empirical p-value per study from the same permutations as `p_values`, but with each
+            !! permuted study's JSD taken against the fixed observed consensus `mean_pmf` instead of
+            !! the consensus of the permuted studies -- the null this test used before it recomputed
+            !! the consensus per permutation. Kept for comparison only; `p_values` is the primary
+            !! result. The same Laplace correction applies
         integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_mean_pmf_counts
             !! Working array for proper resampling per permutation: the remaining pool to draw
             !! from, reset to `mean_pmf_counts` at the start of every permutation
@@ -119,6 +138,7 @@ contains
             ! A genuine runtime failure -- leave every work array in a defined (zeroed) state
             ! rather than resample with an uninitialized generator.
             p_values = 0.0_real64
+            p_values_observed_consensus = 0.0_real64
             tmp_mean_pmf_counts = 0_int32
             tmp_counts = 0_int32
             tmp_pmfs = 0.0_real64
@@ -131,6 +151,7 @@ contains
         end if
 
         p_values = 0.0_real64
+        p_values_observed_consensus = 0.0_real64
         do i_permutation = 1, n_permutations
             ! Resample the histogram: each reference point's pooled consensus counts become a
             ! pool to draw from without replacement, per study. tmp_mean_pmf_counts is refreshed
@@ -146,6 +167,23 @@ contains
                 tmp_counts_point_major = transpose(tmp_counts)
                 call calc_pmf_impl(tmp_counts_point_major, included_n_reps(:, i_study), n_points, n_bins, tmp_pmf_point_major)
                 tmp_pmfs(:, :, i_study) = transpose(tmp_pmf_point_major)
+            end do
+
+            ! The observed-consensus null, as before the consensus was recomputed per permutation:
+            ! each permuted study against the fixed observed consensus mean_pmf, from the same draws.
+            ! The block below overwrites the tmp_* arrays with the recomputed-consensus values.
+            do concurrent(i_study=1:n_studies) shared(tmp_pmfs, mean_pmf, n_points, n_bins, tmp_js_divergences, &
+                                                      included_n_reps, mean_pmf_included_n_reps, tmp_global_js_divergence, &
+                                                      tmp_weights, global_jsd_observed, p_values_observed_consensus)
+                call compute_divergence_per_reference_point_impl(transpose(tmp_pmfs(:, :, i_study)), transpose(mean_pmf), &
+                                                                 n_points, n_bins, tmp_js_divergences(:, i_study))
+                call compute_weighted_global_divergence_impl(tmp_js_divergences(:, i_study), n_points, &
+                                                              included_n_reps(:, i_study), mean_pmf_included_n_reps, &
+                                                              tmp_global_js_divergence(i_study), tmp_weights(:, i_study))
+
+                if (tmp_global_js_divergence(i_study) >= global_jsd_observed(i_study)) then
+                    p_values_observed_consensus(i_study) = p_values_observed_consensus(i_study) + 1.0_real64
+                end if
             end do
 
             ! The permuted studies' equal-weight consensus, point-major: the same formula and
@@ -178,8 +216,10 @@ contains
         end do
 
         if (n_permutations /= 0) then
-            do concurrent(i_study=1:n_studies) shared(p_values, n_permutations)
+            do concurrent(i_study=1:n_studies) shared(p_values, p_values_observed_consensus, n_permutations)
                 p_values(i_study) = anint(p_values(i_study)+1.0_real64)/real(n_permutations+1.0_real64, real64)
+                p_values_observed_consensus(i_study) = anint(p_values_observed_consensus(i_study)+1.0_real64) &
+                                                       /real(n_permutations+1.0_real64, real64)
             end do
         end if
 

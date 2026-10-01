@@ -590,6 +590,7 @@ def test_run_js_comp_test_two_studies_hand_traceable():
     assert result["weights"].shape == (n_points, n_studies)
     assert result["global_js_divergence"].shape == (n_studies,)
     assert result["p_values"].shape == (n_studies,)
+    assert result["p_values_observed_consensus"].shape == (n_studies,)
 
     # A caller must be able to slice down to the meaningful leading bins.
     max_n_bins = result["max_n_bins_per_point"]
@@ -834,6 +835,9 @@ def test_run_js_comp_test_adaptive():
         assert result[key].shape == (n_points, n_studies), f"{key}: wrong shape {result[key].shape}"
     assert result["global_js_divergence"].shape == (n_studies,)
     assert result["p_values"].shape == (n_studies,)
+    assert result["p_values_observed_consensus"].shape == (n_studies,)
+    for key in ("p_values", "p_values_observed_consensus"):
+        assert np.all((result[key] > 0.0) & (result[key] <= 1.0)), f"{key}: expected values in (0, 1]"
     assert np.all(np.isfinite(result["global_js_divergence"]))
 
     reversed_ranges = ranges.copy()

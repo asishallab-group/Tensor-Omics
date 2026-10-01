@@ -412,6 +412,7 @@ _lib.run_js_comp_test_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
@@ -424,9 +425,9 @@ _lib.run_js_comp_test_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr",)
+_RUN_JS_COMP_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_adaptive_c.restype = None
 _lib.run_js_comp_test_adaptive_c.argtypes = (
@@ -459,6 +460,7 @@ _lib.run_js_comp_test_adaptive_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
@@ -471,9 +473,9 @@ _lib.run_js_comp_test_adaptive_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "gene_means", "residuals", "pooled_neighborhood_range", "n_neighbors_per_point", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr",)
+_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "gene_means", "residuals", "pooled_neighborhood_range", "n_neighbors_per_point", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "pooled_neighborhood_range", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "pooled_neighborhood_range", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_parameter_search_c.restype = None
 _lib.run_js_comp_test_parameter_search_c.argtypes = (
@@ -2893,7 +2895,10 @@ def run_js_comp_test(
     each study's observed JSD against that consensus
     (:func:`tensor_omics.compute_divergence_per_reference_point`/:func:`tensor_omics.compute_weighted_global_divergence`,
     called with the consensus pmf as the second argument), runs the permutation test
-    (:func:`tensor_omics.gjct_permutation_test`), and
+    (:func:`tensor_omics.gjct_permutation_test`) -- which
+    returns the primary `p_values` (each permuted study against the consensus of the permuted
+    studies) and, from the same permutations, `p_values_observed_consensus` (each permuted study
+    against the observed consensus `mean_pmf`, kept for comparison) -- and
     finally re-derives each study's pmf/JSD/weights/global JSD from its own UNTOUCHED `counts`
     via
     :func:`tensor_omics.calc_pmf` -- `mean_pmf`/`mean_pmf_counts`
@@ -3130,7 +3135,14 @@ def run_js_comp_test(
             Weighted global JSD of each study against the consensus pmf
             A result is a value; call `.copy()` to obtain a modifiable array.
         p_values : np.ndarray[np.float64] of shape (n_studies,), read-only
-            Empirical p-value per study from gjct_permutation_test_impl
+            Empirical p-value per study from gjct_permutation_test_impl, each permuted study
+            compared against the consensus of the permuted studies -- the primary p-value
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        p_values_observed_consensus : np.ndarray[np.float64] of shape (n_studies,), read-only
+            Empirical p-value per study from the same permutations, but with each permuted study
+            compared against the fixed observed consensus `mean_pmf`, as the permutation test did
+            before it recomputed the consensus per permutation. Kept for comparison only;
+            `p_values` is the primary result
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -3217,6 +3229,7 @@ def run_js_comp_test(
     weights = np.empty((n_points, n_studies,), dtype=np.float64, order='F')
     global_js_divergence = np.empty((n_studies,), dtype=np.float64, order='C')
     p_values = np.empty((n_studies,), dtype=np.float64, order='C')
+    p_values_observed_consensus = np.empty((n_studies,), dtype=np.float64, order='C')
     ierr = ctypes.c_int(0)
 
     _lib.run_js_comp_test_c(
@@ -3252,6 +3265,7 @@ def run_js_comp_test(
         weights,
         global_js_divergence,
         p_values,
+        p_values_observed_consensus,
         ctypes.byref(ctypes.c_int(n_permutations)),
         ctypes.byref(ctypes.c_int(random_seed)),
         ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
@@ -3288,6 +3302,7 @@ def run_js_comp_test(
     weights.flags.writeable = False
     global_js_divergence.flags.writeable = False
     p_values.flags.writeable = False
+    p_values_observed_consensus.flags.writeable = False
 
     return {
         "neighborhood_indices": neighborhood_indices,
@@ -3313,6 +3328,7 @@ def run_js_comp_test(
         "weights": weights,
         "global_js_divergence": global_js_divergence,
         "p_values": p_values,
+        "p_values_observed_consensus": p_values_observed_consensus,
     }
 
 def run_js_comp_test_adaptive(
@@ -3354,7 +3370,8 @@ def run_js_comp_test_adaptive(
     exactly as in `run_js_comp_test_impl`: the consensus pmf
     (:func:`tensor_omics.create_mean_pmf`), each
     study's JSD against it and the weighted global JSD, the permutation test
-    (:func:`tensor_omics.gjct_permutation_test`) and the
+    (:func:`tensor_omics.gjct_permutation_test`, with
+    both its `p_values` and its comparison `p_values_observed_consensus`) and the
     final re-derivation from the untouched `counts`. Neighborhoods that decode to the same gene
     sets as a fixed-k run's therefore give bit-identical results. Every point is weighted by its
     non-NaN residual count, which under adaptive growth genuinely differs between points.
@@ -3514,7 +3531,14 @@ def run_js_comp_test_adaptive(
             Weighted global JSD of each study against the consensus pmf
             A result is a value; call `.copy()` to obtain a modifiable array.
         p_values : np.ndarray[np.float64] of shape (n_studies,), read-only
-            Empirical p-value per study from the permutation test
+            Empirical p-value per study from the permutation test, each permuted study compared
+            against the consensus of the permuted studies -- the primary p-value
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        p_values_observed_consensus : np.ndarray[np.float64] of shape (n_studies,), read-only
+            Empirical p-value per study from the same permutations, but with each permuted study
+            compared against the fixed observed consensus `mean_pmf`, as the permutation test did
+            before it recomputed the consensus per permutation. Kept for comparison only;
+            `p_values` is the primary result
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -3586,6 +3610,7 @@ def run_js_comp_test_adaptive(
     weights = np.empty((n_points, n_studies,), dtype=np.float64, order='F')
     global_js_divergence = np.empty((n_studies,), dtype=np.float64, order='C')
     p_values = np.empty((n_studies,), dtype=np.float64, order='C')
+    p_values_observed_consensus = np.empty((n_studies,), dtype=np.float64, order='C')
     ierr = ctypes.c_int(0)
 
     _lib.run_js_comp_test_adaptive_c(
@@ -3618,6 +3643,7 @@ def run_js_comp_test_adaptive(
         weights,
         global_js_divergence,
         p_values,
+        p_values_observed_consensus,
         ctypes.byref(ctypes.c_int(n_permutations)),
         ctypes.byref(ctypes.c_int(random_seed)),
         ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
@@ -3653,6 +3679,7 @@ def run_js_comp_test_adaptive(
     weights.flags.writeable = False
     global_js_divergence.flags.writeable = False
     p_values.flags.writeable = False
+    p_values_observed_consensus.flags.writeable = False
 
     return {
         "n_neighbors_per_point": n_neighbors_per_point,
@@ -3677,6 +3704,7 @@ def run_js_comp_test_adaptive(
         "weights": weights,
         "global_js_divergence": global_js_divergence,
         "p_values": p_values,
+        "p_values_observed_consensus": p_values_observed_consensus,
     }
 
 def run_js_comp_test_parameter_search(

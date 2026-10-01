@@ -525,6 +525,7 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
   assert_equal_int(dim(result$weights), c(n_points, n_studies), "weights shape")
   assert_equal_int(length(result$global_js_divergence), n_studies, "global_js_divergence shape")
   assert_equal_int(length(result$p_values), n_studies, "p_values shape")
+  assert_equal_int(length(result$p_values_observed_consensus), n_studies, "p_values_observed_consensus shape")
 
   # A caller must be able to slice down to the meaningful leading bins.
   max_n_bins <- as.integer(result$max_n_bins_per_point)
@@ -782,6 +783,10 @@ test_run_js_comp_test_adaptive <- function() {
   }
   assert_equal_int(length(result$global_js_divergence), n_studies, "global_js_divergence length")
   assert_equal_int(length(result$p_values), n_studies, "p_values length")
+  assert_equal_int(length(result$p_values_observed_consensus), n_studies, "p_values_observed_consensus length")
+  for (key in c("p_values", "p_values_observed_consensus")) {
+    assert_true(all(result[[key]] > 0.0 & result[[key]] <= 1.0), paste(key, "in (0, 1]"))
+  }
   assert_true(all(is.finite(result$global_js_divergence)), "global JSD finite")
 
   reversed_ranges <- ranges

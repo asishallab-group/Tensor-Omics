@@ -2803,8 +2803,9 @@ contains
     !| fails, its error code is returned in `ierr` and this routine returns at once.
     subroutine finish_js_comp_test(n_studies, n_points, max_n_bins_per_point, pmfs, counts, included_n_reps, mean_pmf, &
                                    mean_pmf_counts, mean_pmf_included_n_reps, js_divergences, weights, &
-                                   global_js_divergence, p_values, tmp_counts_point_major, tmp_pmf_point_major, &
-                                   tmp_permutation_mean_pmf_counts, tmp_permutation_counts, tmp_permutation_pmfs, &
+                                   global_js_divergence, p_values, p_values_observed_consensus, &
+                                   tmp_counts_point_major, tmp_pmf_point_major, tmp_permutation_mean_pmf_counts, &
+                                   tmp_permutation_counts, tmp_permutation_pmfs, &
                                    tmp_permutation_js_divergences, tmp_permutation_weights, &
                                    tmp_permutation_global_js_divergence, n_permutations, random_seed, ierr)
         integer(int32), intent(in) :: n_studies
@@ -2834,6 +2835,9 @@ contains
             !! Weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_studies), intent(out) :: p_values
             !! Empirical p-value per study from gjct_permutation_test_impl
+        real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
+            !! Empirical p-value per study from gjct_permutation_test_impl, with each permuted
+            !! study compared against the observed consensus `mean_pmf`
         integer(int32), dimension(n_points, MAX_N_BINS), intent(out) :: tmp_counts_point_major
             !! Working array forwarded to gjct_permutation_test_impl
         real(real64), dimension(n_points, MAX_N_BINS), intent(out) :: tmp_pmf_point_major
@@ -2878,8 +2882,9 @@ contains
         end do
 
         call gjct_permutation_test_impl(n_permutations, max_n_bins_per_point, n_points, n_studies, &
-                                        mean_pmf_counts(1:max_n_bins_per_point, :), mean_pmf_included_n_reps, &
-                                        included_n_reps, global_js_divergence, p_values, &
+                                        mean_pmf_counts(1:max_n_bins_per_point, :), mean_pmf(1:max_n_bins_per_point, :), &
+                                        mean_pmf_included_n_reps, included_n_reps, global_js_divergence, p_values, &
+                                        p_values_observed_consensus, &
                                         tmp_permutation_mean_pmf_counts(1:max_n_bins_per_point, :), &
                                         tmp_permutation_counts(1:max_n_bins_per_point, :), tmp_permutation_pmfs(1:max_n_bins_per_point, :, :), &
                                         tmp_permutation_js_divergences, tmp_permutation_weights, &
@@ -2945,7 +2950,10 @@ contains
     !| each study's observed JSD against that consensus
     !| ([[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl(interface)]]/[[tox_data_integration_jsd_impl(module):compute_weighted_global_divergence_impl(interface)]],
     !| called with the consensus pmf as the second argument), runs the permutation test
-    !| ([[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]]), and
+    !| ([[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]]) -- which
+    !| returns the primary `p_values` (each permuted study against the consensus of the permuted
+    !| studies) and, from the same permutations, `p_values_observed_consensus` (each permuted study
+    !| against the observed consensus `mean_pmf`, kept for comparison) -- and
     !| finally re-derives each study's pmf/JSD/weights/global JSD from its own UNTOUCHED `counts`
     !| via
     !| [[tox_data_integration_jsd_impl(module):calc_pmf_impl(interface)]] -- `mean_pmf`/`mean_pmf_counts`
@@ -3020,7 +3028,8 @@ contains
                                      occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
                                      max_bin_occupancy, sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, &
                                      mean_pmf_counts, mean_pmf_included_n_reps, js_divergences, weights, &
-                                     global_js_divergence, p_values, tmp_neighborhood_residuals_gathered, &
+                                     global_js_divergence, p_values, p_values_observed_consensus, &
+                                     tmp_neighborhood_residuals_gathered, &
                                      tmp_counts_point_major, tmp_pmf_point_major, tmp_pooled_residuals, &
                                      tmp_pooled_residuals_perm, tmp_bin_counts_search, tmp_point_n_neighbors, &
                                      tmp_permutation_mean_pmf_counts, tmp_permutation_counts, tmp_permutation_pmfs, &
@@ -3135,7 +3144,13 @@ contains
         real(real64), dimension(n_studies), intent(out) :: global_js_divergence
             !! Weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_studies), intent(out) :: p_values
-            !! Empirical p-value per study from gjct_permutation_test_impl
+            !! Empirical p-value per study from gjct_permutation_test_impl, each permuted study
+            !! compared against the consensus of the permuted studies -- the primary p-value
+        real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
+            !! Empirical p-value per study from the same permutations, but with each permuted study
+            !! compared against the fixed observed consensus `mean_pmf`, as the permutation test did
+            !! before it recomputed the consensus per permutation. Kept for comparison only;
+            !! `p_values` is the primary result
         real(real64), dimension(max_n_reps_all_studies, n_neighbors, n_points), intent(out) :: &
             tmp_neighborhood_residuals_gathered
             !! Working array: gathered neighborhood residual values, one slice per reference
@@ -3297,8 +3312,9 @@ contains
 
         call finish_js_comp_test(n_studies, n_points, max_n_bins_per_point, pmfs, counts, included_n_reps, mean_pmf, &
                                  mean_pmf_counts, mean_pmf_included_n_reps, js_divergences, weights, &
-                                 global_js_divergence, p_values, tmp_counts_point_major, tmp_pmf_point_major, &
-                                 tmp_permutation_mean_pmf_counts, tmp_permutation_counts, tmp_permutation_pmfs, &
+                                 global_js_divergence, p_values, p_values_observed_consensus, &
+                                 tmp_counts_point_major, tmp_pmf_point_major, tmp_permutation_mean_pmf_counts, &
+                                 tmp_permutation_counts, tmp_permutation_pmfs, &
                                  tmp_permutation_js_divergences, tmp_permutation_weights, &
                                  tmp_permutation_global_js_divergence, actual_n_permutations, random_seed, &
                                  finish_ierr)
@@ -3334,7 +3350,8 @@ contains
     !| exactly as in `run_js_comp_test_impl`: the consensus pmf
     !| ([[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]), each
     !| study's JSD against it and the weighted global JSD, the permutation test
-    !| ([[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]]) and the
+    !| ([[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]], with
+    !| both its `p_values` and its comparison `p_values_observed_consensus`) and the
     !| final re-derivation from the untouched `counts`. Neighborhoods that decode to the same gene
     !| sets as a fixed-k run's therefore give bit-identical results. Every point is weighted by its
     !| non-NaN residual count, which under adaptive growth genuinely differs between points.
@@ -3371,7 +3388,8 @@ contains
                                               min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, sturges_bins, &
                                               fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
                                               mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, &
-                                              p_values, tmp_gene_means_perm_all, tmp_point_neighborhood_indices, &
+                                              p_values, p_values_observed_consensus, tmp_gene_means_perm_all, &
+                                              tmp_point_neighborhood_indices, &
                                               tmp_neighbor_residuals, tmp_counts_point_major, tmp_pmf_point_major, &
                                               tmp_pooled_residuals, tmp_pooled_residuals_perm, tmp_bin_counts_search, &
                                               tmp_permutation_mean_pmf_counts, tmp_permutation_counts, &
@@ -3456,7 +3474,13 @@ contains
         real(real64), dimension(n_studies), intent(out) :: global_js_divergence
             !! Weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_studies), intent(out) :: p_values
-            !! Empirical p-value per study from the permutation test
+            !! Empirical p-value per study from the permutation test, each permuted study compared
+            !! against the consensus of the permuted studies -- the primary p-value
+        real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
+            !! Empirical p-value per study from the same permutations, but with each permuted study
+            !! compared against the fixed observed consensus `mean_pmf`, as the permutation test did
+            !! before it recomputed the consensus per permutation. Kept for comparison only;
+            !! `p_values` is the primary result
         integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_gene_means_perm_all
             !! Working array: sorting permutation of the pooled `gene_means`, seeded and sorted here
             !! exactly as construct_adaptive_neighborhoods sorts it
@@ -3612,8 +3636,9 @@ contains
 
         call finish_js_comp_test(n_studies, n_points, max_n_bins_per_point, pmfs, counts, included_n_reps, mean_pmf, &
                                  mean_pmf_counts, mean_pmf_included_n_reps, js_divergences, weights, &
-                                 global_js_divergence, p_values, tmp_counts_point_major, tmp_pmf_point_major, &
-                                 tmp_permutation_mean_pmf_counts, tmp_permutation_counts, tmp_permutation_pmfs, &
+                                 global_js_divergence, p_values, p_values_observed_consensus, &
+                                 tmp_counts_point_major, tmp_pmf_point_major, tmp_permutation_mean_pmf_counts, &
+                                 tmp_permutation_counts, tmp_permutation_pmfs, &
                                  tmp_permutation_js_divergences, tmp_permutation_weights, &
                                  tmp_permutation_global_js_divergence, actual_n_permutations, random_seed, &
                                  finish_ierr)

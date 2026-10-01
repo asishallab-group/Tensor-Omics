@@ -8,7 +8,10 @@
 !| without replacement (GSL's multivariate hypergeometric distribution) into each study's own
 !| draw size, the pmfs, their equal-weight consensus and each study's JSD/weighted global JSD
 !| against it are recomputed from that resample, and the observed value is compared against the
-!| resulting null distribution.
+!| resulting null distribution (`p_values`). From the same resamples, a second p-value
+!| (`p_values_observed_consensus`) compares each resampled study against the fixed observed
+!| consensus pmf instead, the null this test used before; it is kept for comparison, and
+!| `p_values` is the primary result.
 !|
 !| Generalized to K studies; the pooled resampling pool (`tmp_mean_pmf_counts`) is a work copy
 !| reset every permutation, so the caller's own `mean_pmf_counts` is left untouched.
@@ -49,7 +52,12 @@ contains
     !| distribution, whose equal-weight mean moves with every draw, so a fixed observed consensus
     !| would shift the whole null distribution.
     !|
-    !| The p-value applies the `(1+count)/(n+1)` Laplace add-one correction --
+    !| A second p-value, `p_values_observed_consensus`, is computed from the same permutations (no
+    !| further random draws) with the null this test used before: each permuted study's JSD
+    !| against the fixed observed consensus `mean_pmf`. It is kept to compare the two nulls on data
+    !| with known batch effects; `p_values` stays the primary result.
+    !|
+    !| Both p-values apply the `(1+count)/(n+1)` Laplace add-one correction --
     !| `p_values(i) = anint(count(i)+1)/(n_permutations+1)` -- so a study whose observed JSD is
     !| never reached by any permutation gets `p = 1/(n_permutations+1)`, never `p = 0.0` exactly.
     subroutine gjct_permutation_test(&
@@ -58,10 +66,12 @@ contains
             n_points,&
             n_studies,&
             mean_pmf_counts,&
+            mean_pmf,&
             mean_pmf_included_n_reps,&
             included_n_reps,&
             global_jsd_observed,&
             p_values,&
+            p_values_observed_consensus,&
             random_seed,&
             ierr&
         )
@@ -81,6 +91,11 @@ contains
             !! Absolute counts of a residual per bin for the consensus pmf -- the pool each
             !! permutation resamples from without replacement, per reference point
             !! The minimum valid value is `0_int32`.
+        real(real64), dimension(n_bins, n_points), intent(in) :: mean_pmf
+            !! The consensus pmf built from all studies' pmfs; each permuted study is compared
+            !! against it for `p_values_observed_consensus` only
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
         integer(int32), dimension(n_points), intent(in) :: mean_pmf_included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point for the consensus pmf
             !! The minimum valid value is `0_int32`.
@@ -94,6 +109,12 @@ contains
             !! Empirical p-value per study: the Laplace-corrected fraction of permutations whose
             !! resampled global JSD reached or exceeded the observed value -- see the correction
             !! note above
+        real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
+            !! Empirical p-value per study from the same permutations as `p_values`, but with each
+            !! permuted study's JSD taken against the fixed observed consensus `mean_pmf` instead of
+            !! the consensus of the permuted studies -- the null this test used before it recomputed
+            !! the consensus per permutation. Kept for comparison only; `p_values` is the primary
+            !! result. The same Laplace correction applies
         integer(int32), intent(in), optional :: random_seed
             !! Seed for the GSL random number generator
             !! The default value is `42_int32`.
@@ -115,9 +136,10 @@ contains
         call validate_in_range_int(n_points, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_studies, ierr, arg_pos=4_int32, min=1_int32)
         call validate_all_in_range_int(mean_pmf_counts, n_bins * n_points, ierr, arg_pos=5_int32, min=0_int32)
-        call validate_all_in_range_int(mean_pmf_included_n_reps, n_points, ierr, arg_pos=6_int32, min=0_int32)
-        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=7_int32, min=0_int32)
-        call validate_all_in_range_real(global_jsd_observed, n_studies, ierr, arg_pos=8_int32)
+        call validate_all_in_range_real(mean_pmf, n_bins * n_points, ierr, arg_pos=6_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_int(mean_pmf_included_n_reps, n_points, ierr, arg_pos=7_int32, min=0_int32)
+        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=8_int32, min=0_int32)
+        call validate_all_in_range_real(global_jsd_observed, n_studies, ierr, arg_pos=9_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -136,10 +158,12 @@ contains
             n_points = n_points,&
             n_studies = n_studies,&
             mean_pmf_counts = mean_pmf_counts,&
+            mean_pmf = mean_pmf,&
             mean_pmf_included_n_reps = mean_pmf_included_n_reps,&
             included_n_reps = included_n_reps,&
             global_jsd_observed = global_jsd_observed,&
             p_values = p_values,&
+            p_values_observed_consensus = p_values_observed_consensus,&
             tmp_mean_pmf_counts = tmp_mean_pmf_counts,&
             tmp_counts = tmp_counts,&
             tmp_pmfs = tmp_pmfs,&
@@ -176,7 +200,12 @@ contains
     !| distribution, whose equal-weight mean moves with every draw, so a fixed observed consensus
     !| would shift the whole null distribution.
     !|
-    !| The p-value applies the `(1+count)/(n+1)` Laplace add-one correction --
+    !| A second p-value, `p_values_observed_consensus`, is computed from the same permutations (no
+    !| further random draws) with the null this test used before: each permuted study's JSD
+    !| against the fixed observed consensus `mean_pmf`. It is kept to compare the two nulls on data
+    !| with known batch effects; `p_values` stays the primary result.
+    !|
+    !| Both p-values apply the `(1+count)/(n+1)` Laplace add-one correction --
     !| `p_values(i) = anint(count(i)+1)/(n_permutations+1)` -- so a study whose observed JSD is
     !| never reached by any permutation gets `p = 1/(n_permutations+1)`, never `p = 0.0` exactly.
     subroutine gjct_permutation_test_expert(&
@@ -185,10 +214,12 @@ contains
             n_points,&
             n_studies,&
             mean_pmf_counts,&
+            mean_pmf,&
             mean_pmf_included_n_reps,&
             included_n_reps,&
             global_jsd_observed,&
             p_values,&
+            p_values_observed_consensus,&
             tmp_mean_pmf_counts,&
             tmp_counts,&
             tmp_pmfs,&
@@ -216,6 +247,11 @@ contains
             !! Absolute counts of a residual per bin for the consensus pmf -- the pool each
             !! permutation resamples from without replacement, per reference point
             !! The minimum valid value is `0_int32`.
+        real(real64), dimension(n_bins, n_points), intent(in) :: mean_pmf
+            !! The consensus pmf built from all studies' pmfs; each permuted study is compared
+            !! against it for `p_values_observed_consensus` only
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
         integer(int32), dimension(n_points), intent(in) :: mean_pmf_included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point for the consensus pmf
             !! The minimum valid value is `0_int32`.
@@ -229,6 +265,12 @@ contains
             !! Empirical p-value per study: the Laplace-corrected fraction of permutations whose
             !! resampled global JSD reached or exceeded the observed value -- see the correction
             !! note above
+        real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
+            !! Empirical p-value per study from the same permutations as `p_values`, but with each
+            !! permuted study's JSD taken against the fixed observed consensus `mean_pmf` instead of
+            !! the consensus of the permuted studies -- the null this test used before it recomputed
+            !! the consensus per permutation. Kept for comparison only; `p_values` is the primary
+            !! result. The same Laplace correction applies
         integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_mean_pmf_counts
             !! Working array for proper resampling per permutation: the remaining pool to draw
             !! from, reset to `mean_pmf_counts` at the start of every permutation
@@ -262,9 +304,10 @@ contains
         call validate_in_range_int(n_points, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_studies, ierr, arg_pos=4_int32, min=1_int32)
         call validate_all_in_range_int(mean_pmf_counts, n_bins * n_points, ierr, arg_pos=5_int32, min=0_int32)
-        call validate_all_in_range_int(mean_pmf_included_n_reps, n_points, ierr, arg_pos=6_int32, min=0_int32)
-        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=7_int32, min=0_int32)
-        call validate_all_in_range_real(global_jsd_observed, n_studies, ierr, arg_pos=8_int32)
+        call validate_all_in_range_real(mean_pmf, n_bins * n_points, ierr, arg_pos=6_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_int(mean_pmf_included_n_reps, n_points, ierr, arg_pos=7_int32, min=0_int32)
+        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=8_int32, min=0_int32)
+        call validate_all_in_range_real(global_jsd_observed, n_studies, ierr, arg_pos=9_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -274,10 +317,12 @@ contains
             n_points = n_points,&
             n_studies = n_studies,&
             mean_pmf_counts = mean_pmf_counts,&
+            mean_pmf = mean_pmf,&
             mean_pmf_included_n_reps = mean_pmf_included_n_reps,&
             included_n_reps = included_n_reps,&
             global_jsd_observed = global_jsd_observed,&
             p_values = p_values,&
+            p_values_observed_consensus = p_values_observed_consensus,&
             tmp_mean_pmf_counts = tmp_mean_pmf_counts,&
             tmp_counts = tmp_counts,&
             tmp_pmfs = tmp_pmfs,&

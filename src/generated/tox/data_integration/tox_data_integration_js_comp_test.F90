@@ -2375,7 +2375,10 @@ contains
     !| each study's observed JSD against that consensus
     !| ([[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl(interface)]]/[[tox_data_integration_jsd_impl(module):compute_weighted_global_divergence_impl(interface)]],
     !| called with the consensus pmf as the second argument), runs the permutation test
-    !| ([[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]]), and
+    !| ([[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]]) -- which
+    !| returns the primary `p_values` (each permuted study against the consensus of the permuted
+    !| studies) and, from the same permutations, `p_values_observed_consensus` (each permuted study
+    !| against the observed consensus `mean_pmf`, kept for comparison) -- and
     !| finally re-derives each study's pmf/JSD/weights/global JSD from its own UNTOUCHED `counts`
     !| via
     !| [[tox_data_integration_jsd_impl(module):calc_pmf_impl(interface)]] -- `mean_pmf`/`mean_pmf_counts`
@@ -2476,6 +2479,7 @@ contains
             weights,&
             global_js_divergence,&
             p_values,&
+            p_values_observed_consensus,&
             n_permutations,&
             random_seed,&
             min_residuals_per_bin,&
@@ -2593,7 +2597,13 @@ contains
         real(real64), dimension(n_studies), intent(out) :: global_js_divergence
             !! Weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_studies), intent(out) :: p_values
-            !! Empirical p-value per study from gjct_permutation_test_impl
+            !! Empirical p-value per study from gjct_permutation_test_impl, each permuted study
+            !! compared against the consensus of the permuted studies -- the primary p-value
+        real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
+            !! Empirical p-value per study from the same permutations, but with each permuted study
+            !! compared against the fixed observed consensus `mean_pmf`, as the permutation test did
+            !! before it recomputed the consensus per permutation. Kept for comparison only;
+            !! `p_values` is the primary result
         integer(int32), intent(in), optional :: n_permutations
             !! Number of permutations, forwarded to gjct_permutation_test_impl
             !! The minimum valid value is `0_int32`.
@@ -2663,13 +2673,13 @@ contains
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_points, ierr, arg_pos=4_int32, min=1_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
-        call validate_in_range_int(n_permutations, ierr, arg_pos=33_int32, min=0_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=35_int32, min=0_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=36_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=37_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=38_int32, min=above(1.0_real64))
-        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=39_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=40_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_int(n_permutations, ierr, arg_pos=34_int32, min=0_int32)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=36_int32, min=0_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=37_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=38_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=39_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=40_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=41_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(gene_means_perms, max_n_genes_all_studies * n_studies, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, allow_nan=.true._c_bool)
@@ -2724,6 +2734,7 @@ contains
             weights = weights,&
             global_js_divergence = global_js_divergence,&
             p_values = p_values,&
+            p_values_observed_consensus = p_values_observed_consensus,&
             tmp_neighborhood_residuals_gathered = tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major = tmp_counts_point_major,&
             tmp_pmf_point_major = tmp_pmf_point_major,&
@@ -2788,7 +2799,10 @@ contains
     !| each study's observed JSD against that consensus
     !| ([[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl(interface)]]/[[tox_data_integration_jsd_impl(module):compute_weighted_global_divergence_impl(interface)]],
     !| called with the consensus pmf as the second argument), runs the permutation test
-    !| ([[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]]), and
+    !| ([[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]]) -- which
+    !| returns the primary `p_values` (each permuted study against the consensus of the permuted
+    !| studies) and, from the same permutations, `p_values_observed_consensus` (each permuted study
+    !| against the observed consensus `mean_pmf`, kept for comparison) -- and
     !| finally re-derives each study's pmf/JSD/weights/global JSD from its own UNTOUCHED `counts`
     !| via
     !| [[tox_data_integration_jsd_impl(module):calc_pmf_impl(interface)]] -- `mean_pmf`/`mean_pmf_counts`
@@ -2889,6 +2903,7 @@ contains
             weights,&
             global_js_divergence,&
             p_values,&
+            p_values_observed_consensus,&
             tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major,&
             tmp_pmf_point_major,&
@@ -3019,7 +3034,13 @@ contains
         real(real64), dimension(n_studies), intent(out) :: global_js_divergence
             !! Weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_studies), intent(out) :: p_values
-            !! Empirical p-value per study from gjct_permutation_test_impl
+            !! Empirical p-value per study from gjct_permutation_test_impl, each permuted study
+            !! compared against the consensus of the permuted studies -- the primary p-value
+        real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
+            !! Empirical p-value per study from the same permutations, but with each permuted study
+            !! compared against the fixed observed consensus `mean_pmf`, as the permutation test did
+            !! before it recomputed the consensus per permutation. Kept for comparison only;
+            !! `p_values` is the primary result
         real(real64), dimension(max_n_reps_all_studies, n_neighbors, n_points), intent(out) :: tmp_neighborhood_residuals_gathered
             !! Working array: gathered neighborhood residual values, one slice per reference
             !! point, reused for every study (Pass C)
@@ -3116,13 +3137,13 @@ contains
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_points, ierr, arg_pos=4_int32, min=1_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
-        call validate_in_range_int(n_permutations, ierr, arg_pos=46_int32, min=0_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=48_int32, min=0_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=49_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=50_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=51_int32, min=above(1.0_real64))
-        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=52_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=53_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_int(n_permutations, ierr, arg_pos=47_int32, min=0_int32)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=49_int32, min=0_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=50_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=51_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=52_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=53_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=54_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(gene_means_perms, max_n_genes_all_studies * n_studies, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, allow_nan=.true._c_bool)
@@ -3163,6 +3184,7 @@ contains
             weights = weights,&
             global_js_divergence = global_js_divergence,&
             p_values = p_values,&
+            p_values_observed_consensus = p_values_observed_consensus,&
             tmp_neighborhood_residuals_gathered = tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major = tmp_counts_point_major,&
             tmp_pmf_point_major = tmp_pmf_point_major,&
@@ -3214,7 +3236,8 @@ contains
     !| exactly as in `run_js_comp_test_impl`: the consensus pmf
     !| ([[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]), each
     !| study's JSD against it and the weighted global JSD, the permutation test
-    !| ([[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]]) and the
+    !| ([[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]], with
+    !| both its `p_values` and its comparison `p_values_observed_consensus`) and the
     !| final re-derivation from the untouched `counts`. Neighborhoods that decode to the same gene
     !| sets as a fixed-k run's therefore give bit-identical results. Every point is weighted by its
     !| non-NaN residual count, which under adaptive growth genuinely differs between points.
@@ -3274,6 +3297,7 @@ contains
             weights,&
             global_js_divergence,&
             p_values,&
+            p_values_observed_consensus,&
             n_permutations,&
             random_seed,&
             min_residuals_per_bin,&
@@ -3360,7 +3384,13 @@ contains
         real(real64), dimension(n_studies), intent(out) :: global_js_divergence
             !! Weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_studies), intent(out) :: p_values
-            !! Empirical p-value per study from the permutation test
+            !! Empirical p-value per study from the permutation test, each permuted study compared
+            !! against the consensus of the permuted studies -- the primary p-value
+        real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
+            !! Empirical p-value per study from the same permutations, but with each permuted study
+            !! compared against the fixed observed consensus `mean_pmf`, as the permutation test did
+            !! before it recomputed the consensus per permutation. Kept for comparison only;
+            !! `p_values` is the primary result
         integer(int32), intent(in), optional :: n_permutations
             !! Number of permutations, forwarded to gjct_permutation_test_impl
             !! The minimum valid value is `0_int32`.
@@ -3423,13 +3453,13 @@ contains
         call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=2_int32, min=1_int32)
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_points, ierr, arg_pos=4_int32, min=1_int32)
-        call validate_in_range_int(n_permutations, ierr, arg_pos=30_int32, min=0_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=32_int32, min=0_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=33_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=34_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=35_int32, min=above(1.0_real64))
-        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=36_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=37_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_int(n_permutations, ierr, arg_pos=31_int32, min=0_int32)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=33_int32, min=0_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=34_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=35_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=36_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=37_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=38_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(pooled_neighborhood_range, 2 * n_points, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies*n_studies)
@@ -3481,6 +3511,7 @@ contains
             weights = weights,&
             global_js_divergence = global_js_divergence,&
             p_values = p_values,&
+            p_values_observed_consensus = p_values_observed_consensus,&
             tmp_gene_means_perm_all = tmp_gene_means_perm_all,&
             tmp_point_neighborhood_indices = tmp_point_neighborhood_indices,&
             tmp_neighbor_residuals = tmp_neighbor_residuals,&
@@ -3533,7 +3564,8 @@ contains
     !| exactly as in `run_js_comp_test_impl`: the consensus pmf
     !| ([[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]), each
     !| study's JSD against it and the weighted global JSD, the permutation test
-    !| ([[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]]) and the
+    !| ([[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]], with
+    !| both its `p_values` and its comparison `p_values_observed_consensus`) and the
     !| final re-derivation from the untouched `counts`. Neighborhoods that decode to the same gene
     !| sets as a fixed-k run's therefore give bit-identical results. Every point is weighted by its
     !| non-NaN residual count, which under adaptive growth genuinely differs between points.
@@ -3593,6 +3625,7 @@ contains
             weights,&
             global_js_divergence,&
             p_values,&
+            p_values_observed_consensus,&
             tmp_gene_means_perm_all,&
             tmp_point_neighborhood_indices,&
             tmp_neighbor_residuals,&
@@ -3693,7 +3726,13 @@ contains
         real(real64), dimension(n_studies), intent(out) :: global_js_divergence
             !! Weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_studies), intent(out) :: p_values
-            !! Empirical p-value per study from the permutation test
+            !! Empirical p-value per study from the permutation test, each permuted study compared
+            !! against the consensus of the permuted studies -- the primary p-value
+        real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
+            !! Empirical p-value per study from the same permutations, but with each permuted study
+            !! compared against the fixed observed consensus `mean_pmf`, as the permutation test did
+            !! before it recomputed the consensus per permutation. Kept for comparison only;
+            !! `p_values` is the primary result
         integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_gene_means_perm_all
             !! Working array: sorting permutation of the pooled `gene_means`, seeded and sorted here
             !! exactly as construct_adaptive_neighborhoods sorts it
@@ -3773,13 +3812,13 @@ contains
         call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=2_int32, min=1_int32)
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_points, ierr, arg_pos=4_int32, min=1_int32)
-        call validate_in_range_int(n_permutations, ierr, arg_pos=44_int32, min=0_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=46_int32, min=0_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=47_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=48_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=49_int32, min=above(1.0_real64))
-        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=50_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=51_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_int(n_permutations, ierr, arg_pos=45_int32, min=0_int32)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=47_int32, min=0_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=48_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=49_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=50_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=51_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=52_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(pooled_neighborhood_range, 2 * n_points, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies*n_studies)
@@ -3816,6 +3855,7 @@ contains
             weights = weights,&
             global_js_divergence = global_js_divergence,&
             p_values = p_values,&
+            p_values_observed_consensus = p_values_observed_consensus,&
             tmp_gene_means_perm_all = tmp_gene_means_perm_all,&
             tmp_point_neighborhood_indices = tmp_point_neighborhood_indices,&
             tmp_neighbor_residuals = tmp_neighbor_residuals,&

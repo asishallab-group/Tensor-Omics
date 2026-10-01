@@ -15,7 +15,8 @@ TOL = 1e-12
 
 
 def test_gjct_permutation_test_basic():
-    """p_values must land in [0, 1] for a simple 2-study, 2-point scenario."""
+    """Both p-value arrays must have one entry per study and land in (0, 1] for a simple
+    2-study, 2-point scenario (the Laplace correction keeps them above 0)."""
     n_bins, n_points, n_studies, n_permutations = 3, 2, 2, 20
 
     mean_pmf_counts = np.zeros((n_bins, n_points), dtype=np.int32, order="F")
@@ -25,20 +26,23 @@ def test_gjct_permutation_test_basic():
     included_n_reps = np.zeros((n_points, n_studies), dtype=np.int32, order="F")
     included_n_reps[:, 0] = [4, 4]
     included_n_reps[:, 1] = [6, 6]
+    mean_pmf = mean_pmf_counts.astype(np.float64) / 10.0
     global_jsd_observed = np.array([0.3, 0.3], dtype=np.float64)
 
-    p_values = gjct_permutation_test(
-        n_permutations, mean_pmf_counts, mean_pmf_included_n_reps,
+    result = gjct_permutation_test(
+        n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps,
         included_n_reps, global_jsd_observed, random_seed=123
     )
 
-    assert len(p_values) == n_studies
-    assert np.all(p_values >= 0.0) and np.all(p_values <= 1.0)
+    for key in ("p_values", "p_values_observed_consensus"):
+        p_values = result[key]
+        assert len(p_values) == n_studies, key
+        assert np.all(p_values > 0.0) and np.all(p_values <= 1.0), key
 
 
 def test_gjct_permutation_test_seeded_reproducibility():
-    """Same random_seed twice must give identical p_values -- mirrors the Fortran test of the
-    same name (test/mod_test_data_integration_js_comp_test.F90)."""
+    """Same random_seed twice must give identical p_values and p_values_observed_consensus --
+    mirrors the Fortran test of the same name (test/mod_test_data_integration_js_comp_test.F90)."""
     n_bins, n_points, n_studies, n_permutations = 3, 2, 2, 20
 
     mean_pmf_counts = np.zeros((n_bins, n_points), dtype=np.int32, order="F")
@@ -48,18 +52,20 @@ def test_gjct_permutation_test_seeded_reproducibility():
     included_n_reps = np.zeros((n_points, n_studies), dtype=np.int32, order="F")
     included_n_reps[:, 0] = [4, 4]
     included_n_reps[:, 1] = [6, 6]
+    mean_pmf = mean_pmf_counts.astype(np.float64) / 10.0
     global_jsd_observed = np.array([0.3, 0.3], dtype=np.float64)
 
     p_first = gjct_permutation_test(
-        n_permutations, mean_pmf_counts, mean_pmf_included_n_reps,
+        n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps,
         included_n_reps, global_jsd_observed, random_seed=123
     )
     p_second = gjct_permutation_test(
-        n_permutations, mean_pmf_counts, mean_pmf_included_n_reps,
+        n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps,
         included_n_reps, global_jsd_observed, random_seed=123
     )
 
-    np.testing.assert_allclose(p_first, p_second, atol=TOL)
+    for key in ("p_values", "p_values_observed_consensus"):
+        np.testing.assert_allclose(p_first[key], p_second[key], atol=TOL, err_msg=key)
 
 
 if __name__ == '__main__':

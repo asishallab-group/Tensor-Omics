@@ -22,8 +22,8 @@ void check_effect_size_plateau_condition_c(const double*, const double*, const i
 void create_mean_pmf_c(const double*, const int*, const int*, const int*, const int*, const int*, double*, int*, int*, int*);
 void create_mean_pmf_only_c(const double*, const int*, const int*, const int*, double*, int*);
 void bootstrap_histogram_c(const int*, const int*, const int*, const int*, const int*, const int*, const int*, double*, const double*, const int*, int*);
-void run_js_comp_test_c(const int*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, int*);
-void run_js_comp_test_adaptive_c(const int*, const int*, const int*, const int*, const double*, const double*, const int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, int*);
+void run_js_comp_test_c(const int*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, int*);
+void run_js_comp_test_adaptive_c(const int*, const int*, const int*, const int*, const double*, const double*, const int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, int*);
 void run_js_comp_test_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, const int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, int*);
 void run_js_comp_test_adaptive_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, int*, int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, int*, int*, int*, int*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const double*, const double*, const int*, const int*, int*);
 
@@ -882,6 +882,7 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_means_pe
     { SEXP weights_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(weights_dim)[0] = n_points; INTEGER(weights_dim)[1] = n_studies; Rf_setAttrib(weights, R_DimSymbol, weights_dim); UNPROTECT(1); }
     SEXP global_js_divergence = PROTECT(Rf_allocVector(REALSXP, n_studies)); nprot++;
     SEXP p_values = PROTECT(Rf_allocVector(REALSXP, n_studies)); nprot++;
+    SEXP p_values_observed_consensus = PROTECT(Rf_allocVector(REALSXP, n_studies)); nprot++;
     int ierr = 0;
 
     run_js_comp_test_c(
@@ -917,6 +918,7 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_means_pe
         REAL(weights),
         REAL(global_js_divergence),
         REAL(p_values),
+        REAL(p_values_observed_consensus),
         &n_permutations_v,
         &random_seed_v,
         &min_residuals_per_bin_v,
@@ -931,7 +933,7 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_means_pe
     // convert the outputs back
     SEXP occupancy_failed = PROTECT(tox_bool_out(occupancy_failed_c, n_points)); nprot++;
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 24)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 25)); nprot++;
     SET_VECTOR_ELT(_out, 0, neighborhood_indices);
     SET_VECTOR_ELT(_out, 1, neighborhood_range);
     SET_VECTOR_ELT(_out, 2, n_bins_per_point);
@@ -955,8 +957,9 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_means_pe
     SET_VECTOR_ELT(_out, 20, weights);
     SET_VECTOR_ELT(_out, 21, global_js_divergence);
     SET_VECTOR_ELT(_out, 22, p_values);
-    SET_VECTOR_ELT(_out, 23, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 24)); nprot++;
+    SET_VECTOR_ELT(_out, 23, p_values_observed_consensus);
+    SET_VECTOR_ELT(_out, 24, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 25)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("neighborhood_indices"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("neighborhood_range"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("n_bins_per_point"));
@@ -980,7 +983,8 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_means_pe
     SET_STRING_ELT(_nms, 20, Rf_mkChar("weights"));
     SET_STRING_ELT(_nms, 21, Rf_mkChar("global_js_divergence"));
     SET_STRING_ELT(_nms, 22, Rf_mkChar("p_values"));
-    SET_STRING_ELT(_nms, 23, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 23, Rf_mkChar("p_values_observed_consensus"));
+    SET_STRING_ELT(_nms, 24, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;
@@ -1035,6 +1039,7 @@ SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled
     { SEXP weights_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(weights_dim)[0] = n_points; INTEGER(weights_dim)[1] = n_studies; Rf_setAttrib(weights, R_DimSymbol, weights_dim); UNPROTECT(1); }
     SEXP global_js_divergence = PROTECT(Rf_allocVector(REALSXP, n_studies)); nprot++;
     SEXP p_values = PROTECT(Rf_allocVector(REALSXP, n_studies)); nprot++;
+    SEXP p_values_observed_consensus = PROTECT(Rf_allocVector(REALSXP, n_studies)); nprot++;
     int ierr = 0;
 
     run_js_comp_test_adaptive_c(
@@ -1067,6 +1072,7 @@ SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled
         REAL(weights),
         REAL(global_js_divergence),
         REAL(p_values),
+        REAL(p_values_observed_consensus),
         &n_permutations_v,
         &random_seed_v,
         &min_residuals_per_bin_v,
@@ -1081,7 +1087,7 @@ SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled
     // convert the outputs back
     SEXP occupancy_failed = PROTECT(tox_bool_out(occupancy_failed_c, n_points)); nprot++;
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 23)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 24)); nprot++;
     SET_VECTOR_ELT(_out, 0, n_neighbors_per_point);
     SET_VECTOR_ELT(_out, 1, n_bins_per_point);
     SET_VECTOR_ELT(_out, 2, shared_residual_range_low);
@@ -1104,8 +1110,9 @@ SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled
     SET_VECTOR_ELT(_out, 19, weights);
     SET_VECTOR_ELT(_out, 20, global_js_divergence);
     SET_VECTOR_ELT(_out, 21, p_values);
-    SET_VECTOR_ELT(_out, 22, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 23)); nprot++;
+    SET_VECTOR_ELT(_out, 22, p_values_observed_consensus);
+    SET_VECTOR_ELT(_out, 23, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 24)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("n_neighbors_per_point"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("n_bins_per_point"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("shared_residual_range_low"));
@@ -1128,7 +1135,8 @@ SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled
     SET_STRING_ELT(_nms, 19, Rf_mkChar("weights"));
     SET_STRING_ELT(_nms, 20, Rf_mkChar("global_js_divergence"));
     SET_STRING_ELT(_nms, 21, Rf_mkChar("p_values"));
-    SET_STRING_ELT(_nms, 22, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 22, Rf_mkChar("p_values_observed_consensus"));
+    SET_STRING_ELT(_nms, 23, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;

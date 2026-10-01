@@ -658,10 +658,11 @@
       "${1:result} <- gjct_permutation_test(",
       "  n_permutations = ${2:n_permutations},",
       "  mean_pmf_counts = ${3:mean_pmf_counts},",
-      "  mean_pmf_included_n_reps = ${4:mean_pmf_included_n_reps},",
-      "  included_n_reps = ${5:included_n_reps},",
-      "  global_jsd_observed = ${6:global_jsd_observed},",
-      "  random_seed = ${7:42L}",
+      "  mean_pmf = ${4:mean_pmf},",
+      "  mean_pmf_included_n_reps = ${5:mean_pmf_included_n_reps},",
+      "  included_n_reps = ${6:included_n_reps},",
+      "  global_jsd_observed = ${7:global_jsd_observed},",
+      "  random_seed = ${8:42L}",
       ")"
     ]
   },
