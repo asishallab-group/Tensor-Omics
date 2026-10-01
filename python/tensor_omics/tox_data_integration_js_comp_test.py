@@ -2885,9 +2885,10 @@ def run_js_comp_test(
     A already computed, then builds its residual histograms at the real per-point bin counts
     (:func:`tensor_omics.build_residual_histograms`).
 
-    A neighbor gene index outside `[1, max_n_genes_all_studies]` -- which Pass A produces when
-    `n_neighbors` exceeds a study's gene count -- is reported by Pass B as `ERR_INVALID_INPUT`,
-    and the routine returns right there, before Pass C would read `residuals` out of bounds.
+    `n_neighbors` may not exceed `max_n_genes_all_studies`, so every neighbor gene index Pass A
+    produces lies in `[1, max_n_genes_all_studies]`. Pass B still checks each index and, should
+    one ever fall outside, reports `ERR_INVALID_INPUT` and returns before Pass C could read
+    `residuals` out of bounds -- a safeguard that valid input cannot reach.
 
     After Pass C, the pipeline continues exactly as before: pools the per-study pmfs into the
     consensus pmf
@@ -2972,6 +2973,7 @@ def run_js_comp_test(
     n_neighbors : int
         Number of neighbors per neighborhood
         The minimum valid value is `1`.
+        The maximum valid value is `max_n_genes_all_studies`.
     gene_means : np.ndarray[np.float64] of shape (max_n_genes_all_studies, n_studies,), column-major (order='F')
         Per-gene mean expression values for all studies
         NaN is permitted for this value.

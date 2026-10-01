@@ -2940,9 +2940,10 @@ contains
     !|   A already computed, then builds its residual histograms at the real per-point bin counts
     !|   ([[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]).
     !|
-    !| A neighbor gene index outside `[1, max_n_genes_all_studies]` -- which Pass A produces when
-    !| `n_neighbors` exceeds a study's gene count -- is reported by Pass B as `ERR_INVALID_INPUT`,
-    !| and the routine returns right there, before Pass C would read `residuals` out of bounds.
+    !| `n_neighbors` may not exceed `max_n_genes_all_studies`, so every neighbor gene index Pass A
+    !| produces lies in `[1, max_n_genes_all_studies]`. Pass B still checks each index and, should
+    !| one ever fall outside, reports `ERR_INVALID_INPUT` and returns before Pass C could read
+    !| `residuals` out of bounds -- a safeguard that valid input cannot reach.
     !|
     !| After Pass C, the pipeline continues exactly as before: pools the per-study pmfs into the
     !| consensus pmf
@@ -3052,6 +3053,7 @@ contains
         integer(int32), intent(in) :: n_neighbors
             !! Number of neighbors per neighborhood
             !! DM_MIN(1_int32)
+            !! DM_MAX(max_n_genes_all_studies)
         real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
             !! Per-gene mean expression values for all studies
             !! DM_ALLOW_NAN
@@ -3237,8 +3239,8 @@ contains
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         integer(int32), intent(out) :: ierr
-            !! Error code; ERR_INVALID_INPUT if a neighbor gene index is out of range (see above),
-            !! ERR_ALLOC_FAIL if GSL could not allocate the random number generator for the
+            !! Error code; ERR_INVALID_INPUT if a neighbor gene index is out of range (a safeguard
+            !! valid input cannot reach, see above), ERR_ALLOC_FAIL if GSL could not allocate the random number generator for the
             !! permutation test
 
         integer(int32) :: i_study, i_point, actual_n_permutations, point_ierr, finish_ierr
@@ -3265,8 +3267,7 @@ contains
         ! require) -- the memory-conscious choice given each iteration's work (gather, heapsort,
         ! one occupancy search) is already substantial on its own, mirroring
         ! run_js_comp_test_parameter_search_impl's own Pass B. Every study has the same
-        ! n_neighbors here. A gene index out of range (possible when n_neighbors exceeds a study's
-        ! gene count) stops the routine with that error instead of reading out of bounds below.
+        ! n_neighbors here.
         tmp_point_n_neighbors = n_neighbors
         do i_point = 1, n_points
             call determine_point_bin_count(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, &
@@ -3281,6 +3282,11 @@ contains
                                            gamma_occupancy=gamma_occupancy, &
                                            lower_residual_range_quantile=lower_residual_range_quantile, &
                                            upper_residual_range_quantile=upper_residual_range_quantile)
+            ! Defensive: determine_point_bin_count only fails on an out-of-range gene index. Pass A
+            ! is called with n_genes_S = max_n_genes_all_studies, the wrapper bounds n_neighbors by
+            ! that and gene_means_perms to [1, max_n_genes_all_studies], so every index is in range
+            ! and this branch cannot be reached through the wrapper. It is kept for direct callers,
+            ! since Pass C would otherwise read residuals out of bounds, and has no test.
             if (is_err(point_ierr)) then
                 call set_err_once(ierr, get_err_code(point_ierr))
                 return

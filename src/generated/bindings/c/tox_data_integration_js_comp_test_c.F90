@@ -2418,9 +2418,10 @@ contains
     !| A already computed, then builds its residual histograms at the real per-point bin counts
     !| ([[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]).
     !|
-    !| A neighbor gene index outside `[1, max_n_genes_all_studies]` -- which Pass A produces when
-    !| `n_neighbors` exceeds a study's gene count -- is reported by Pass B as `ERR_INVALID_INPUT`,
-    !| and the routine returns right there, before Pass C would read `residuals` out of bounds.
+    !| `n_neighbors` may not exceed `max_n_genes_all_studies`, so every neighbor gene index Pass A
+    !| produces lies in `[1, max_n_genes_all_studies]`. Pass B still checks each index and, should
+    !| one ever fall outside, reports `ERR_INVALID_INPUT` and returns before Pass C could read
+    !| `residuals` out of bounds -- a safeguard that valid input cannot reach.
     !|
     !| After Pass C, the pipeline continues exactly as before: pools the per-study pmfs into the
     !| consensus pmf
@@ -2560,6 +2561,7 @@ contains
         integer(c_int), intent(in), target :: n_neighbors
             !! Number of neighbors per neighborhood
             !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `max_n_genes_all_studies`.
         real(c_double), dimension(max_n_genes_all_studies, n_studies), intent(in), target :: gene_means
             !! Per-gene mean expression values for all studies
             !! NaN is permitted for this value.
@@ -2704,8 +2706,8 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         integer(c_int), intent(out), target :: ierr
-            !! Error code; ERR_INVALID_INPUT if a neighbor gene index is out of range (see above),
-            !! ERR_ALLOC_FAIL if GSL could not allocate the random number generator for the
+            !! Error code; ERR_INVALID_INPUT if a neighbor gene index is out of range (a safeguard
+            !! valid input cannot reach, see above), ERR_ALLOC_FAIL if GSL could not allocate the random number generator for the
             !! permutation test
 
         M_CHECK_IERR_NON_NULL
@@ -2826,9 +2828,10 @@ contains
     !| A already computed, then builds its residual histograms at the real per-point bin counts
     !| ([[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]).
     !|
-    !| A neighbor gene index outside `[1, max_n_genes_all_studies]` -- which Pass A produces when
-    !| `n_neighbors` exceeds a study's gene count -- is reported by Pass B as `ERR_INVALID_INPUT`,
-    !| and the routine returns right there, before Pass C would read `residuals` out of bounds.
+    !| `n_neighbors` may not exceed `max_n_genes_all_studies`, so every neighbor gene index Pass A
+    !| produces lies in `[1, max_n_genes_all_studies]`. Pass B still checks each index and, should
+    !| one ever fall outside, reports `ERR_INVALID_INPUT` and returns before Pass C could read
+    !| `residuals` out of bounds -- a safeguard that valid input cannot reach.
     !|
     !| After Pass C, the pipeline continues exactly as before: pools the per-study pmfs into the
     !| consensus pmf
@@ -2981,6 +2984,7 @@ contains
         integer(c_int), intent(in), target :: n_neighbors
             !! Number of neighbors per neighborhood
             !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `max_n_genes_all_studies`.
         real(c_double), dimension(max_n_genes_all_studies, n_studies), intent(in), target :: gene_means
             !! Per-gene mean expression values for all studies
             !! NaN is permitted for this value.
@@ -3165,8 +3169,8 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         integer(c_int), intent(out), target :: ierr
-            !! Error code; ERR_INVALID_INPUT if a neighbor gene index is out of range (see above),
-            !! ERR_ALLOC_FAIL if GSL could not allocate the random number generator for the
+            !! Error code; ERR_INVALID_INPUT if a neighbor gene index is out of range (a safeguard
+            !! valid input cannot reach, see above), ERR_ALLOC_FAIL if GSL could not allocate the random number generator for the
             !! permutation test
 
         M_CHECK_IERR_NON_NULL

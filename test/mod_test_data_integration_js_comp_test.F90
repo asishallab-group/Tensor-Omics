@@ -5354,15 +5354,17 @@ contains
                                      name//"all-NaN neighborhood: pmf")
     end subroutine test_point_study_histogram_excludes_nan_residuals
 
-    !> With `n_neighbors = 3` but only 2 genes, Pass A (construct_neighborhoods_ranged_impl) fills
-    !| the third neighbor slot with gene index 3, which is outside `residuals`' gene extent.
-    !| run_js_comp_test must report ERR_INVALID_INPUT from Pass B and return there. Before the
-    !| per-point refactor it recorded the same error but kept going, and Pass C then read
-    !| `residuals(:, 3, :)` out of bounds. The error code alone cannot tell the two apart, so every
-    !| output Pass C and the tail would write (`counts`, `pmfs`, `included_n_reps`, `mean_pmf`,
-    !| `mean_pmf_counts`, `mean_pmf_included_n_reps`, `js_divergences`, `weights`,
-    !| `global_js_divergence`, `p_values`) is pre-filled with the sentinel -7 and must come back
-    !| untouched, proving the routine returned before Pass C.
+    !> `n_neighbors = 3` but only 2 genes (`max_n_genes_all_studies = 2`): the generated wrapper
+    !| run_js_comp_test's range validation (`n_neighbors <= max_n_genes_all_studies`) must reject
+    !| it as ERR_INVALID_INPUT at argument position 5 (`n_neighbors`), before the implementation
+    !| runs at all. Without that bound, Pass A (construct_neighborhoods_ranged_impl) would fill the
+    !| third neighbor slot with the out-of-range gene index 3, and only the implementation's own
+    !| gene-index check in Pass B would catch it -- with the argument position cleared on the way
+    !| out, which is what the `arg_pos=5` assert below tells apart. The outputs are pre-filled with
+    !| the sentinel -7 and must come back untouched; since the wrapper returns before the
+    !| implementation runs, these asserts only confirm that nothing is written on rejection. The
+    !| implementation's own early return before Pass C is a defensive branch the wrapper makes
+    !| unreachable, documented as untested at its call site.
     subroutine test_run_js_comp_test_too_many_neighbors_sets_ierr()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
         integer(int32), parameter :: n_points = 1, n_neighbors = 3
@@ -5416,7 +5418,8 @@ contains
                               p_values_observed_consensus, ierr=ierr, n_permutations=10_int32)
 
         call assert_err(ierr, ERR_INVALID_INPUT, &
-                        "test_run_js_comp_test_too_many_neighbors_sets_ierr: out-of-range neighbor gene index")
+                        "test_run_js_comp_test_too_many_neighbors_sets_ierr: wrapper range validation rejects "// &
+                        "n_neighbors > max_n_genes_all_studies", arg_pos=5_int32)
         call assert_true(all(counts == -7_int32), &
                          "test_run_js_comp_test_too_many_neighbors_sets_ierr: counts untouched (no Pass C)")
         call assert_true(all(pmfs == -7.0_real64), &

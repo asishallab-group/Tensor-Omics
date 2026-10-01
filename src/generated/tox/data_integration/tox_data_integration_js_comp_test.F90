@@ -2365,9 +2365,10 @@ contains
     !| A already computed, then builds its residual histograms at the real per-point bin counts
     !| ([[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]).
     !|
-    !| A neighbor gene index outside `[1, max_n_genes_all_studies]` -- which Pass A produces when
-    !| `n_neighbors` exceeds a study's gene count -- is reported by Pass B as `ERR_INVALID_INPUT`,
-    !| and the routine returns right there, before Pass C would read `residuals` out of bounds.
+    !| `n_neighbors` may not exceed `max_n_genes_all_studies`, so every neighbor gene index Pass A
+    !| produces lies in `[1, max_n_genes_all_studies]`. Pass B still checks each index and, should
+    !| one ever fall outside, reports `ERR_INVALID_INPUT` and returns before Pass C could read
+    !| `residuals` out of bounds -- a safeguard that valid input cannot reach.
     !|
     !| After Pass C, the pipeline continues exactly as before: pools the per-study pmfs into the
     !| consensus pmf
@@ -2505,6 +2506,7 @@ contains
         integer(int32), intent(in) :: n_neighbors
             !! Number of neighbors per neighborhood
             !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `max_n_genes_all_studies`.
         real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
             !! Per-gene mean expression values for all studies
             !! NaN is permitted for this value.
@@ -2649,8 +2651,8 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
-            !! Error code; ERR_INVALID_INPUT if a neighbor gene index is out of range (see above),
-            !! ERR_ALLOC_FAIL if GSL could not allocate the random number generator for the
+            !! Error code; ERR_INVALID_INPUT if a neighbor gene index is out of range (a safeguard
+            !! valid input cannot reach, see above), ERR_ALLOC_FAIL if GSL could not allocate the random number generator for the
             !! permutation test
         real(real64), dimension(:, :, :), allocatable :: tmp_neighborhood_residuals_gathered
         integer(int32), dimension(:, :), allocatable :: tmp_counts_point_major
@@ -2672,7 +2674,7 @@ contains
         call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=2_int32, min=1_int32)
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_points, ierr, arg_pos=4_int32, min=1_int32)
-        call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
+        call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32, max=max_n_genes_all_studies)
         call validate_in_range_int(n_permutations, ierr, arg_pos=34_int32, min=0_int32)
         call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=36_int32, min=0_int32)
         call validate_in_range_int(m_min, ierr, arg_pos=37_int32, min=1_int32, max=MAX_N_BINS)
@@ -2789,9 +2791,10 @@ contains
     !| A already computed, then builds its residual histograms at the real per-point bin counts
     !| ([[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]).
     !|
-    !| A neighbor gene index outside `[1, max_n_genes_all_studies]` -- which Pass A produces when
-    !| `n_neighbors` exceeds a study's gene count -- is reported by Pass B as `ERR_INVALID_INPUT`,
-    !| and the routine returns right there, before Pass C would read `residuals` out of bounds.
+    !| `n_neighbors` may not exceed `max_n_genes_all_studies`, so every neighbor gene index Pass A
+    !| produces lies in `[1, max_n_genes_all_studies]`. Pass B still checks each index and, should
+    !| one ever fall outside, reports `ERR_INVALID_INPUT` and returns before Pass C could read
+    !| `residuals` out of bounds -- a safeguard that valid input cannot reach.
     !|
     !| After Pass C, the pipeline continues exactly as before: pools the per-study pmfs into the
     !| consensus pmf
@@ -2942,6 +2945,7 @@ contains
         integer(int32), intent(in) :: n_neighbors
             !! Number of neighbors per neighborhood
             !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `max_n_genes_all_studies`.
         real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
             !! Per-gene mean expression values for all studies
             !! NaN is permitted for this value.
@@ -3126,8 +3130,8 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
-            !! Error code; ERR_INVALID_INPUT if a neighbor gene index is out of range (see above),
-            !! ERR_ALLOC_FAIL if GSL could not allocate the random number generator for the
+            !! Error code; ERR_INVALID_INPUT if a neighbor gene index is out of range (a safeguard
+            !! valid input cannot reach, see above), ERR_ALLOC_FAIL if GSL could not allocate the random number generator for the
             !! permutation test
 
         call set_ok(ierr)
@@ -3136,7 +3140,7 @@ contains
         call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=2_int32, min=1_int32)
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_points, ierr, arg_pos=4_int32, min=1_int32)
-        call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
+        call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32, max=max_n_genes_all_studies)
         call validate_in_range_int(n_permutations, ierr, arg_pos=47_int32, min=0_int32)
         call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=49_int32, min=0_int32)
         call validate_in_range_int(m_min, ierr, arg_pos=50_int32, min=1_int32, max=MAX_N_BINS)
