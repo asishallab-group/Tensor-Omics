@@ -1274,7 +1274,8 @@
       "    upper_residual_range_quantile=${50:upper_residual_range_quantile}, &",
       "    two_sided_bootstrapping_significance_level=${51:two_sided_bootstrapping_significance_level}, &",
       "    random_seed=${52:random_seed}, &",
-      "    ierr=${53:ierr})"
+      "    bin_count_mode=${53|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
+      "    ierr=${54:ierr})"
     ]
   },
   "run_js_comp_test_parameter_search (call, checked)": {
@@ -1334,7 +1335,8 @@
       "    upper_residual_range_quantile=${50:upper_residual_range_quantile}, &",
       "    two_sided_bootstrapping_significance_level=${51:two_sided_bootstrapping_significance_level}, &",
       "    random_seed=${52:random_seed}, &",
-      "    ierr=${53:ierr})",
+      "    bin_count_mode=${53|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
+      "    ierr=${54:ierr})",
       "if (is_err(ierr)) return"
     ]
   },

@@ -26,7 +26,7 @@ void create_mean_pmf_only_c(const double*, const int*, const int*, const int*, d
 void bootstrap_histogram_c(const int*, const int*, const int*, const int*, const int*, const int*, const int*, double*, const double*, const int*, int*);
 void run_js_comp_test_c(const int*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, const char*, int*);
 void run_js_comp_test_adaptive_c(const int*, const int*, const int*, const int*, const double*, const double*, const int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, const char*, int*);
-void run_js_comp_test_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, const int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, int*);
+void run_js_comp_test_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, const int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const char*, int*);
 void run_js_comp_test_adaptive_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, int*, int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, int*, int*, int*, int*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const double*, const double*, const int*, const int*, const char*, int*);
 
 SEXP estimate_bin_count_call(SEXP residuals, SEXP max_n_reps_all_studies, SEXP n_neighbors, SEXP shared_residual_range) {
@@ -1331,7 +1331,7 @@ SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled
     return _out;
 }
 
-SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEXP n_bootstraps, SEXP join_method, SEXP max_n_points_candidate, SEXP max_n_neighbors_candidate, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed) {
+SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEXP n_bootstraps, SEXP join_method, SEXP max_n_points_candidate, SEXP max_n_neighbors_candidate, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP bin_count_mode) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(gene_means, R_DimSymbol))[1];
@@ -1360,6 +1360,7 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
     // convert what Fortran cannot take from R directly
     char* join_method_c = tox_char_in(join_method, 11);
     char* plateau_mode_c = tox_char_in(plateau_mode, 19);
+    char* bin_count_mode_c = tox_char_in(bin_count_mode, 29);
 
     // outputs and work space
     int n_points = 0;
@@ -1461,6 +1462,7 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
         &upper_residual_range_quantile_v,
         &two_sided_bootstrapping_significance_level_v,
         &random_seed_v,
+        bin_count_mode_c,
         &ierr
     );
 

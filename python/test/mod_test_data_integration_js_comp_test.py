@@ -45,8 +45,8 @@ from tensor_omics.error_handling import ERR_INVALID_INPUT
 TOL = 1e-12
 
 
-# Every `bin_count_mode` string of run_js_comp_test, run_js_comp_test_adaptive and
-# run_js_comp_test_adaptive_parameter_search.
+# Every `bin_count_mode` string of run_js_comp_test, run_js_comp_test_adaptive and both
+# parameter searches.
 BIN_COUNT_MODES = ("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted",
                    "bin_count_stone_pooled")
 
@@ -821,6 +821,36 @@ def test_run_js_comp_test_parameter_search():
     n_points_2 = result2["n_points"]
     np.testing.assert_array_equal(result2["n_bins_per_point"][:n_points_2],
                                    result2["trace_selected_n_bins"][:n_points_2, 0])
+
+    # ============================================================
+    # Test 5 -- bin_count_mode: every mode string is accepted (type/shape only; the Stone bin
+    # counts themselves are the Fortran suite's job, test_param_search_stone_matches_standalone),
+    # an unknown one rejected. Reuses Test 2's single-candidate setup.
+    # ============================================================
+    for mode in BIN_COUNT_MODES:
+        result_mode = run_js_comp_test_parameter_search(gene_means_2, residuals_2,
+                                                        n_bootstraps=5, join_method='join_min',
+                                                        max_n_points_candidate=bounds_2["max_n_points_candidate"],
+                                                        max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
+                                                        min_residuals_per_bin=0, min_neighbor_overlap=0.0,
+                                                        random_seed=1, bin_count_mode=mode)
+        n_points_mode = result_mode["n_points"]
+        assert result_mode["n_bins_per_point"].dtype == np.int32, f"{mode}: n_bins_per_point dtype"
+        assert result_mode["n_bins_per_point"].shape == (bounds_2["max_n_points_candidate"],), \
+            f"{mode}: n_bins_per_point shape"
+        assert np.all((result_mode["n_bins_per_point"][:n_points_mode] >= 3) &
+                      (result_mode["n_bins_per_point"][:n_points_mode] <= 120)), \
+            f"{mode}: bin counts within the default [m_min, m_max]"
+        assert result_mode["trace_occupancy_failed"].dtype == np.bool_, f"{mode}: trace_occupancy_failed dtype"
+        assert result_mode["trace_selected_n_bins"].shape[-1] >= 1, f"{mode}: at least one traced candidate"
+        assert result_mode["trace_occupancy_failed"].shape == result_mode["trace_selected_n_bins"].shape, \
+            f"{mode}: trace shapes"
+    assert_error(lambda: run_js_comp_test_parameter_search(gene_means_2, residuals_2,
+                                                           n_bootstraps=5, join_method='join_min',
+                                                           max_n_points_candidate=bounds_2["max_n_points_candidate"],
+                                                           max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
+                                                           bin_count_mode="nonsense"),
+                 "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
 
 
 def test_generate_adaptive_js_comp_test_candidates():

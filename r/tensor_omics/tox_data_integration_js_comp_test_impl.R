@@ -89,9 +89,12 @@ calc_adaptive_js_comp_test_bounds <- function(max_n_genes_all_studies, n_studies
 #' flat pooled array. This is the exact same pooling
 #' \code{\link{run_js_comp_test}} and
 #' \code{\link{run_js_comp_test_parameter_search}}
-#' perform internally, per reference point, before handing the result to
+#' perform internally, per reference point, before handing the result to the bin-count search
+#' their `bin_count_mode` names (by default
 #' \code{\link{determine_bin_count_occupancy}}'s
-#' own occupancy search -- published so a caller can reconstruct that exact same input directly
+#' own occupancy search; in the Stone modes, study `s` is pool block
+#' `(s - 1)*max_n_reps_all_studies*n_neighbors + 1` to `s*max_n_reps_all_studies*n_neighbors`)
+#' -- published so a caller can reconstruct that exact same input directly
 #' on real data and feed it to
 #' \code{\link{determine_bin_count_occupancy_exhaustive}}
 #' (or to `determine_bin_count_occupancy` itself), to check whether the fast search and the

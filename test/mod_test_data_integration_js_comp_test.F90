@@ -90,12 +90,26 @@ module mod_test_data_integration_js_comp_test
         real(real64) :: range_low, range_high, mean_occ
     end type stone_outputs
 
+    !> Test helper type: every output of run_js_comp_test_parameter_search, sized by run_fixed_k_search.
+    type :: fixed_k_search_outputs
+        integer(int32) :: n_points, n_neighbors, n_admissible
+        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
+        logical(c_bool) :: plateau
+        real(real64) :: trace_delta_median(16), trace_delta_max(16)
+        integer(int32), allocatable :: n_bins(:), trace_n_bins(:, :), trace_n_pooled(:, :), trace_min_occ(:, :)
+        integer(int32), allocatable :: trace_max_occ(:, :), trace_sturges(:, :), trace_fd(:, :)
+        logical(c_bool), allocatable :: trace_occ_failed(:, :)
+        real(real64), allocatable :: range_low(:), range_high(:), ci(:, :), trace_jsd(:, :), trace_ci_lower(:, :)
+        real(real64), allocatable :: trace_ci_upper(:, :), trace_ci_width(:, :), trace_ci_width_rel(:, :)
+        real(real64), allocatable :: trace_delta(:, :), trace_mean_occ(:, :), trace_range_low(:, :), trace_range_high(:, :)
+    end type fixed_k_search_outputs
+
 contains
 
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(194))
+        allocate (all_tests(198))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -494,6 +508,14 @@ contains
                                   test_adaptive_search_stone_matches_standalone)
         all_tests(194) = test_case("test_adaptive_search_stone_ignores_gamma", &
                                   test_adaptive_search_stone_ignores_gamma)
+        all_tests(195) = test_case("test_param_search_bin_count_mode_default_is_occupancy", &
+                                  test_param_search_bin_count_mode_default_is_occupancy)
+        all_tests(196) = test_case("test_param_search_stone_matches_standalone", &
+                                  test_param_search_stone_matches_standalone)
+        all_tests(197) = test_case("test_param_search_stone_ignores_gamma", &
+                                  test_param_search_stone_ignores_gamma)
+        all_tests(198) = test_case("test_stone_matches_brute_force_with_outside_values", &
+                                  test_stone_matches_brute_force_with_outside_values)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -8626,6 +8648,45 @@ contains
         end do
     end subroutine test_stone_matches_brute_force_leave_one_out
 
+    !> As test_stone_matches_brute_force_leave_one_out, but with the default 5 %/95 % range, so
+    !| values of every study lie outside it: 3 studies of 15, 22 and 30 values, no floor, m in
+    !| [1, 15], 4 seeds. The brute-force reference gets only the values inside
+    !| `[R_low, R_high]` (each study's own inside values for the per-study modes, all inside
+    !| values for the pooled mode), so it checks the inside-only scoring and, in the size-weighted
+    !| mode, the inside-count weights, independently of the routine.
+    subroutine test_stone_matches_brute_force_with_outside_values()
+        character(len=*), parameter :: name = "test_stone_matches_brute_force_with_outside_values: "
+        integer(int32), parameter :: modes(3) = [MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, &
+                                                  MODE_BIN_COUNT_STONE_POOLED]
+        real(real64) :: values(67)
+        integer(int32) :: labels(67), i_seed, i_mode, i_study, expected
+        logical(c_bool) :: inside(67)
+        type(stone_outputs) :: out
+        character(len=16) :: case_text
+
+        labels(1:15) = 1_int32
+        labels(16:37) = 2_int32
+        labels(38:67) = 3_int32
+        do i_seed = 1, 4
+            call lcg_values(int(7000 + 1000*i_seed, int64), -3.0_real64, 7.0_real64, values)
+            do i_mode = 1, 3
+                write (case_text, '(a,i0,a,i0)') "seed ", i_seed, " mode ", modes(i_mode)
+                call run_stone(values, labels, 3_int32, modes(i_mode), 1_int32, 15_int32, 0_int32, 0.05_real64, &
+                               0.95_real64, out)
+                call assert_equal_int(get_err_code(out%ierr), ERR_OK, name//"ierr OK, "//trim(case_text))
+                call assert_false(out%failed, name//"not failed, "//trim(case_text))
+                inside = values >= out%range_low .and. values <= out%range_high
+                do i_study = 1, 3
+                    call assert_true(logical(any(.not. inside .and. labels == i_study), kind=c_bool), &
+                                     name//"a value of every study lies outside the range, "//trim(case_text))
+                end do
+                expected = brute_force_stone_argmin(pack(values, inside), pack(labels, inside), 3_int32, modes(i_mode), &
+                                                    out%range_low, out%range_high, 1_int32, 15_int32)
+                call assert_equal_int(out%n_bins, expected, name//"argmin == brute force, "//trim(case_text))
+            end do
+        end do
+    end subroutine test_stone_matches_brute_force_with_outside_values
+
     !> Regression guard: Stone is scored on the residuals inside [R_low, R_high] only. On the
     !| logistic fixture (default 5 %/95 % range, m in [3, 120], no floor), Theorem 2 on the clamped
     !| histograms (`histogram_bin_counts`, n = 1000) keeps falling and picks m_max = 120, while
@@ -9791,5 +9852,232 @@ contains
                                          0.0_real64, name//"trace_shared_residual_range_low")
         end do
     end subroutine assert_traced_bins_equal
+
+    ! ---------------------------------------------------------------------------------------------
+    ! `bin_count_mode` on run_js_comp_test_parameter_search (the fixed-k search). Fixture: the
+    ! adaptive Stone fixture (300 genes, 3 studies, 4 replicates, distinct means, logistic
+    ! residuals), whose grid has the two candidates (300, 4) and (300, 2). Both gates are relaxed
+    ! (overlap 0) and the effect-size plateau thresholds are tiny, so every admissible candidate
+    ! gets a trace column. The Stone expectations are not hand values: every traced point must
+    ! equal determine_bin_count_stone on that point's own pool, rebuilt here.
+    ! ---------------------------------------------------------------------------------------------
+
+    !> Test helper: run_js_comp_test_parameter_search on `gene_means`/`residuals` with every
+    !| output allocated from calc_js_comp_test_candidate_bounds, 5 bootstraps, `METHOD_JOIN_MIN`,
+    !| `min_neighbor_overlap = 0`, the effect-size plateau with thresholds 1e-300 (never reached),
+    !| seed 1; the remaining optionals are forwarded.
+    subroutine run_fixed_k_search(gene_means, residuals, out, ierr, min_residuals_per_bin, gamma_occupancy, &
+                                  bin_count_mode)
+        real(real64), intent(in) :: gene_means(:, :)
+            !! Mean expression of every gene in every study
+        real(real64), intent(in) :: residuals(:, :, :)
+            !! Signed residuals of every replicate of every gene in every study
+        type(fixed_k_search_outputs), intent(out) :: out
+            !! Every output of run_js_comp_test_parameter_search
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure
+        integer(int32), intent(in), optional :: min_residuals_per_bin
+            !! Forwarded to the search
+        real(real64), intent(in), optional :: gamma_occupancy
+            !! Forwarded to the search
+        integer(int32), intent(in), optional :: bin_count_mode
+            !! Forwarded to the search
+        integer(int32) :: n_studies, n_genes, n_reps, max_points, max_neighbors, bounds_ierr
+
+        n_genes = size(gene_means, 1, kind=int32)
+        n_studies = size(gene_means, 2, kind=int32)
+        n_reps = size(residuals, 1, kind=int32)
+        call calc_js_comp_test_candidate_bounds(n_genes, max_points, max_neighbors, bounds_ierr)
+        call assert_equal_int(get_err_code(bounds_ierr), ERR_OK, "run_fixed_k_search: bounds ierr")
+
+        allocate (out%n_bins(max_points), out%range_low(max_points), out%range_high(max_points), &
+                  out%ci(2, n_studies), out%trace_jsd(n_studies, 16), out%trace_ci_lower(n_studies, 16), &
+                  out%trace_ci_upper(n_studies, 16), out%trace_ci_width(n_studies, 16), &
+                  out%trace_ci_width_rel(n_studies, 16), out%trace_delta(n_studies, 16), &
+                  out%trace_n_bins(max_points, 16), out%trace_occ_failed(max_points, 16), &
+                  out%trace_n_pooled(max_points, 16), out%trace_min_occ(max_points, 16), &
+                  out%trace_mean_occ(max_points, 16), out%trace_max_occ(max_points, 16), &
+                  out%trace_sturges(max_points, 16), out%trace_fd(max_points, 16), &
+                  out%trace_range_low(max_points, 16), out%trace_range_high(max_points, 16))
+
+        call run_js_comp_test_parameter_search(n_studies, n_genes, n_reps, gene_means, residuals, 5_int32, &
+                                               METHOD_JOIN_MIN, max_points, max_neighbors, out%n_points, &
+                                               out%n_neighbors, out%n_bins, out%range_low, out%range_high, out%ci, &
+                                               out%plateau, out%n_admissible, out%trace_n_points, &
+                                               out%trace_n_neighbors, out%trace_jsd, out%trace_ci_lower, &
+                                               out%trace_ci_upper, out%trace_ci_width, out%trace_ci_width_rel, &
+                                               out%trace_delta, out%trace_delta_median, out%trace_delta_max, &
+                                               out%trace_n_bins, out%trace_occ_failed, out%trace_n_pooled, &
+                                               out%trace_min_occ, out%trace_mean_occ, out%trace_max_occ, &
+                                               out%trace_sturges, out%trace_fd, out%trace_range_low, &
+                                               out%trace_range_high, ierr=ierr, &
+                                               min_residuals_per_bin=min_residuals_per_bin, &
+                                               min_neighbor_overlap=0.0_real64, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
+                                               delta_median_threshold=1.0e-300_real64, &
+                                               delta_max_threshold=1.0e-300_real64, gamma_occupancy=gamma_occupancy, &
+                                               random_seed=1_int32, bin_count_mode=bin_count_mode)
+    end subroutine run_fixed_k_search
+
+    !> Test helper: two fixed-k searches returned the same selection, the same final bin counts and
+    !| ranges, the same confidence interval and the same traces, every meaningful row
+    !| `1:trace_n_points(t)` of every per-point trace compared exactly.
+    subroutine assert_fixed_k_searches_equal(name, a, b)
+        character(len=*), intent(in) :: name
+            !! Message prefix
+        type(fixed_k_search_outputs), intent(in) :: a
+            !! The first search's outputs
+        type(fixed_k_search_outputs), intent(in) :: b
+            !! The second search's outputs
+        integer(int32) :: t, n_pts, n_studies
+
+        n_studies = size(a%ci, 2, kind=int32)
+        call assert_equal_array_int([b%n_points, b%n_neighbors, b%n_admissible], [a%n_points, a%n_neighbors, a%n_admissible], &
+                                    3_int32, name//"selection and counter")
+        call assert_true(logical(a%plateau .eqv. b%plateau, kind=c_bool), name//"plateau_established")
+        call assert_equal_array_int(b%n_bins(1:a%n_points), a%n_bins(1:a%n_points), a%n_points, name//"n_bins_per_point")
+        call assert_equal_array_real(b%range_low(1:a%n_points), a%range_low(1:a%n_points), a%n_points, 0.0_real64, &
+                                     name//"R_low")
+        call assert_equal_array_real(b%range_high(1:a%n_points), a%range_high(1:a%n_points), a%n_points, 0.0_real64, &
+                                     name//"R_high")
+        call assert_equal_array_real(b%ci, a%ci, 2_int32*n_studies, 0.0_real64, name//"best confidence interval")
+        call assert_equal_array_int(b%trace_n_points(1:a%n_admissible), a%trace_n_points(1:a%n_admissible), &
+                                    a%n_admissible, name//"trace_n_points")
+        call assert_equal_array_int(b%trace_n_neighbors(1:a%n_admissible), a%trace_n_neighbors(1:a%n_admissible), &
+                                    a%n_admissible, name//"trace_n_neighbors")
+        call assert_equal_array_real(b%trace_jsd(:, 1:a%n_admissible), a%trace_jsd(:, 1:a%n_admissible), &
+                                     n_studies*a%n_admissible, 0.0_real64, name//"trace_global_js_divergence")
+        call assert_equal_array_real(b%trace_ci_lower(:, 1:a%n_admissible), a%trace_ci_lower(:, 1:a%n_admissible), &
+                                     n_studies*a%n_admissible, 0.0_real64, name//"trace_ci_lower")
+        do t = 1, a%n_admissible
+            n_pts = a%trace_n_points(t)
+            call assert_equal_array_int(b%trace_n_bins(1:n_pts, t), a%trace_n_bins(1:n_pts, t), n_pts, &
+                                        name//"trace_selected_n_bins")
+            call assert_equal_array_logical(b%trace_occ_failed(1:n_pts, t), a%trace_occ_failed(1:n_pts, t), n_pts, &
+                                            name//"trace_occupancy_failed")
+            call assert_equal_array_int(b%trace_n_pooled(1:n_pts, t), a%trace_n_pooled(1:n_pts, t), n_pts, &
+                                        name//"trace_n_pooled_residuals")
+            call assert_equal_array_int(b%trace_min_occ(1:n_pts, t), a%trace_min_occ(1:n_pts, t), n_pts, &
+                                        name//"trace_min_bin_occupancy")
+            call assert_equal_array_real(b%trace_mean_occ(1:n_pts, t), a%trace_mean_occ(1:n_pts, t), n_pts, 0.0_real64, &
+                                         name//"trace_mean_bin_occupancy")
+            call assert_equal_array_int(b%trace_max_occ(1:n_pts, t), a%trace_max_occ(1:n_pts, t), n_pts, &
+                                        name//"trace_max_bin_occupancy")
+            call assert_equal_array_int(b%trace_sturges(1:n_pts, t), a%trace_sturges(1:n_pts, t), n_pts, &
+                                        name//"trace_sturges_bins")
+            call assert_equal_array_int(b%trace_fd(1:n_pts, t), a%trace_fd(1:n_pts, t), n_pts, name//"trace_fd_bins")
+            call assert_equal_array_real(b%trace_range_low(1:n_pts, t), a%trace_range_low(1:n_pts, t), n_pts, &
+                                         0.0_real64, name//"trace_shared_residual_range_low")
+            call assert_equal_array_real(b%trace_range_high(1:n_pts, t), a%trace_range_high(1:n_pts, t), n_pts, &
+                                         0.0_real64, name//"trace_shared_residual_range_high")
+        end do
+    end subroutine assert_fixed_k_searches_equal
+
+    !> run_js_comp_test_parameter_search with `bin_count_mode` omitted and with
+    !| MODE_BIN_COUNT_OCCUPANCY passed explicitly gives identical outputs, exactly (Stone fixture,
+    !| floor 3: both candidates are traced, as simulated with the Python bindings).
+    subroutine test_param_search_bin_count_mode_default_is_occupancy()
+        character(len=*), parameter :: name = "test_param_search_bin_count_mode_default_is_occupancy: "
+        real(real64) :: gene_means(300, 3), residuals(4, 300, 3)
+        type(fixed_k_search_outputs) :: a, b
+        integer(int32) :: ierr_a, ierr_b
+
+        call build_adaptive_stone_fixture(gene_means, residuals)
+        call run_fixed_k_search(gene_means, residuals, a, ierr_a, min_residuals_per_bin=3_int32)
+        call run_fixed_k_search(gene_means, residuals, b, ierr_b, min_residuals_per_bin=3_int32, &
+                                bin_count_mode=MODE_BIN_COUNT_OCCUPANCY)
+        call assert_equal_int(get_err_code(ierr_a), ERR_OK, name//"omitted: ierr")
+        call assert_equal_int(get_err_code(ierr_b), ERR_OK, name//"explicit: ierr")
+        call assert_equal_int(a%n_admissible, 2_int32, name//"both candidates traced")
+        call assert_fixed_k_searches_equal(name, a, b)
+    end subroutine test_param_search_bin_count_mode_default_is_occupancy
+
+    !> run_js_comp_test_parameter_search in every Stone mode (Stone fixture, floors 0 and 3): for
+    !| every traced candidate, its neighborhoods rebuilt from the traced `(n_points, n_neighbors)`
+    !| with pool_means and construct_neighborhoods_ranged, every point's traced bin count, flag,
+    !| range and diagnostics equal determine_bin_count_stone on that point's pool (gathered with
+    !| gather_pooled_neighborhood_residuals, each study's block labelled as its study). Both
+    !| candidates are traced at both floors, and floor 3 changes some traced pick of candidate 1
+    !| against floor 0 in every mode (simulated with the Python bindings: the bin counts of
+    !| candidate 1 sum to 1819/1798/1250 at floor 0 and 1735/1703/1234 at floor 3 for equal,
+    !| size-weighted and pooled). Candidate 1's Stone picks also differ from the occupancy
+    !| search's.
+    subroutine test_param_search_stone_matches_standalone()
+        character(len=*), parameter :: name = "test_param_search_stone_matches_standalone: "
+        integer(int32), parameter :: modes(3) = [MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, &
+                                                  MODE_BIN_COUNT_STONE_POOLED]
+        integer(int32), parameter :: floors(2) = [0_int32, 3_int32]
+        real(real64) :: gene_means(300, 3), residuals(4, 300, 3)
+        real(real64), allocatable :: x_star(:)
+        integer(int32), allocatable :: idx(:, :, :), ranges(:, :), bins_floor0(:)
+        type(fixed_k_search_outputs) :: out, occupancy
+        type(stone_outputs) :: ref
+        integer(int32) :: ierr, i_mode, i_floor, t, i_study, i_point, n_pts, k, n_pool
+        character(len=48) :: case_text
+
+        call build_adaptive_stone_fixture(gene_means, residuals)
+        call run_fixed_k_search(gene_means, residuals, occupancy, ierr, min_residuals_per_bin=0_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"occupancy run: ierr")
+        do i_mode = 1, 3
+            do i_floor = 1, 2
+                write (case_text, '(a,i0,a,i0,a)') "mode ", modes(i_mode), ", floor ", floors(i_floor), ": "
+                call run_fixed_k_search(gene_means, residuals, out, ierr, min_residuals_per_bin=floors(i_floor), &
+                                        bin_count_mode=modes(i_mode))
+                call assert_equal_int(get_err_code(ierr), ERR_OK, name//trim(case_text)//"ierr")
+                call assert_equal_int(out%n_admissible, 2_int32, name//trim(case_text)//"both candidates traced")
+                do t = 1, out%n_admissible
+                    n_pts = out%trace_n_points(t)
+                    k = out%trace_n_neighbors(t)
+                    allocate (x_star(n_pts), idx(k, n_pts, 3), ranges(2, n_pts))
+                    call pool_means(reshape(gene_means, [900]), 900_int32, n_pts, n_pool, x_star, ierr)
+                    call assert_equal_int(get_err_code(ierr), ERR_OK, name//trim(case_text)//"pool_means ierr")
+                    do i_study = 1, 3
+                        call construct_neighborhoods_ranged(n_pts, x_star, 300_int32, gene_means(:, i_study), k, &
+                                                            idx(:, :, i_study), ranges, ierr)
+                        call assert_equal_int(get_err_code(ierr), ERR_OK, name//trim(case_text)//"construct ierr")
+                    end do
+                    do i_point = 1, n_pts
+                        call stone_reference_point(residuals, idx(:, i_point, :), [k, k, k], modes(i_mode), ref, &
+                                                   min_residuals_per_bin=floors(i_floor))
+                        call assert_point_matches_stone(name//trim(case_text), ref, out%trace_n_bins(i_point, t), &
+                                                        out%trace_occ_failed(i_point, t), out%trace_range_low(i_point, t), &
+                                                        out%trace_range_high(i_point, t), out%trace_n_pooled(i_point, t), &
+                                                        out%trace_min_occ(i_point, t), out%trace_mean_occ(i_point, t), &
+                                                        out%trace_max_occ(i_point, t), out%trace_sturges(i_point, t), &
+                                                        out%trace_fd(i_point, t))
+                    end do
+                    deallocate (x_star, idx, ranges)
+                end do
+                n_pts = out%trace_n_points(1)
+                if (floors(i_floor) == 0_int32) then
+                    bins_floor0 = out%trace_n_bins(1:n_pts, 1)
+                    call assert_true(logical(any(bins_floor0 /= occupancy%trace_n_bins(1:n_pts, 1)), kind=c_bool), &
+                                     name//trim(case_text)//"a Stone pick differs from the occupancy search")
+                else
+                    call assert_true(logical(any(out%trace_n_bins(1:n_pts, 1) /= bins_floor0), kind=c_bool), &
+                                     name//trim(case_text)//"the floor changed a pick")
+                end if
+            end do
+        end do
+    end subroutine test_param_search_stone_matches_standalone
+
+    !> In a Stone mode run_js_comp_test_parameter_search ignores `gamma_occupancy`: gamma 1.05 and
+    !| 4.0 (pooled mode, floor 3, Stone fixture) give the same selection, bin counts, confidence
+    !| interval and traces.
+    subroutine test_param_search_stone_ignores_gamma()
+        character(len=*), parameter :: name = "test_param_search_stone_ignores_gamma: "
+        real(real64) :: gene_means(300, 3), residuals(4, 300, 3)
+        type(fixed_k_search_outputs) :: a, b
+        integer(int32) :: ierr_a, ierr_b
+
+        call build_adaptive_stone_fixture(gene_means, residuals)
+        call run_fixed_k_search(gene_means, residuals, a, ierr_a, min_residuals_per_bin=3_int32, &
+                                gamma_occupancy=1.05_real64, bin_count_mode=MODE_BIN_COUNT_STONE_POOLED)
+        call run_fixed_k_search(gene_means, residuals, b, ierr_b, min_residuals_per_bin=3_int32, &
+                                gamma_occupancy=4.0_real64, bin_count_mode=MODE_BIN_COUNT_STONE_POOLED)
+        call assert_equal_int(get_err_code(ierr_a), ERR_OK, name//"gamma 1.05: ierr")
+        call assert_equal_int(get_err_code(ierr_b), ERR_OK, name//"gamma 4.0: ierr")
+        call assert_equal_int(a%n_admissible, 2_int32, name//"both candidates traced")
+        call assert_fixed_k_searches_equal(name, a, b)
+    end subroutine test_param_search_stone_ignores_gamma
 
 end module mod_test_data_integration_js_comp_test

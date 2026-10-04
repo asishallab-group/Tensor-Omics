@@ -8,9 +8,10 @@
 !| generates candidate `(n_points, n_neighbors)` pairs only -- each candidate's real
 !| per-neighborhood histogram bin count is decided later, per reference point, by Issue #187's
 !| occupancy search
-!| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]] or, where
-!| an entry point offers the switch `bin_count_mode`, by Stone's cross-validation rule
-!| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]]),
+!| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]] (the
+!| default) or by Stone's cross-validation rule
+!| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]], chosen by
+!| the switch `bin_count_mode` that both parameter searches and both final runs take),
 !| two admissibility gates a candidate must pass before it is bootstrapped
 !| ([[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]],
 !| [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]),
@@ -246,10 +247,10 @@ module tox_data_integration_js_comp_test_impl
 
     ! `bin_count_mode`'s values: how a reference point's histogram bin count is chosen. Occupancy
     ! is Issue #187's search (determine_bin_count_occupancy_impl). MODE_BIN_COUNT_OCCUPANCY is the
-    ! default of the `bin_count_mode` of run_js_comp_test_impl, run_js_comp_test_adaptive_impl and
-    ! run_js_comp_test_adaptive_parameter_search_impl, so existing results stay unchanged; the
-    ! fixed-k parameter search does not take `bin_count_mode` yet, and determine_bin_count_stone_impl
-    ! rejects the occupancy value. The three Stone values choose the bin count
+    ! default of the `bin_count_mode` of all four pipeline entry points (run_js_comp_test_impl,
+    ! run_js_comp_test_adaptive_impl, run_js_comp_test_parameter_search_impl and
+    ! run_js_comp_test_adaptive_parameter_search_impl), so existing results stay unchanged;
+    ! determine_bin_count_stone_impl rejects the occupancy value. The three Stone values choose the bin count
     ! by Stone's leave-one-out cross-validation (determine_bin_count_stone_impl), scored per study
     ! and summed with equal weights, scored per study and weighted by each study's residual count,
     ! or scored once on the pooled residuals. Each value is a CM_ macro first, so that a
@@ -1522,7 +1523,7 @@ contains
     !| bin `j`, estimates the integrated squared error of the density estimate up to a constant,
     !| and the bin count with the smallest score is chosen. An alternative to
     !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
-    !| occupancy search, with the same inputs, range and outputs.
+    !| occupancy search, with the same range, floor and diagnostics.
     !|
     !| The range `[shared_residual_range_low, shared_residual_range_high]` is the
     !| `lower_residual_range_quantile`/`upper_residual_range_quantile` percentiles of all non-NaN
@@ -1690,9 +1691,12 @@ contains
     !| flat pooled array. This is the exact same pooling
     !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_impl(interface)]] and
     !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
-    !| perform internally, per reference point, before handing the result to
+    !| perform internally, per reference point, before handing the result to the bin-count search
+    !| their `bin_count_mode` names (by default
     !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
-    !| own occupancy search -- published so a caller can reconstruct that exact same input directly
+    !| own occupancy search; in the Stone modes, study `s` is pool block
+    !| `(s - 1)*max_n_reps_all_studies*n_neighbors + 1` to `s*max_n_reps_all_studies*n_neighbors`)
+    !| -- published so a caller can reconstruct that exact same input directly
     !| on real data and feed it to
     !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_exhaustive_impl(interface)]]
     !| (or to `determine_bin_count_occupancy` itself), to check whether the fast search and the
@@ -1787,7 +1791,8 @@ contains
     !|   `bin_count_failed`. `gamma_occupancy` is not used.
     !|
     !| Both rules get `n_neighbors` only for the Sturges/Freedman-Diaconis diagnostics. Private
-    !| helper of `determine_point_bin_count`. Precondition, not checked: `bin_count_mode` is one of
+    !| helper of `determine_point_bin_count` and of the fixed-k parameter search's Pass B.
+    !| Precondition, not checked: `bin_count_mode` is one of
     !| the four `MODE_BIN_COUNT_*` values (any other is treated as a Stone mode with equal weights),
     !| and `study_block_ends` ascends to `n_residuals`.
     pure subroutine select_point_bin_count(pooled_residuals, pooled_residuals_perm, n_residuals, n_studies, &
@@ -2126,8 +2131,9 @@ contains
     !| effect -- both
     !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_impl(interface)]] and
     !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
-    !| now compute real per-neighborhood bin counts via
-    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
+    !| now compute real per-neighborhood bin counts via the bin-count search `bin_count_mode`
+    !| selects (by default
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]])
     !| once a candidate has passed admissibility, superseding the old global-pool
     !| `estimate_bin_count_impl` estimate this routine used to produce for every candidate
     !| regardless of admissibility.
@@ -4156,12 +4162,21 @@ contains
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         integer(int32), intent(in), optional :: bin_count_mode
-            !! How Pass B chooses each reference point's histogram bin count. In the three Stone
-            !! modes every bin count from `m_min` to `m_max` is scored by Stone's cross-validation
-            !! rule, as in
-            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]] with each
-            !! study as its own study; `min_residuals_per_bin` stays the floor every admissible bin count must
-            !! meet, and `gamma_occupancy` is not used
+            !! How Pass B chooses each reference point's histogram bin count.
+            !! One of: [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]] (the default),
+            !! Issue #187's occupancy search, the largest bin count whose pooled histogram has every bin
+            !! at or above `min_residuals_per_bin`;
+            !! [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]], Stone's
+            !! cross-validation rule with each study's residuals scored as their own sample and the
+            !! scores summed;
+            !! [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]], the
+            !! same with each study's score multiplied by its residual count inside the range; or
+            !! [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]], Stone's rule
+            !! on all studies' residuals pooled. The Stone modes score every bin count from `m_min` to
+            !! `m_max`, as
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]] does;
+            !! `min_residuals_per_bin` stays the floor every admissible bin count must meet, and
+            !! `gamma_occupancy` is not used
             !!
             !! | Mode | Value |
             !! |------|-------|
@@ -4510,12 +4525,21 @@ contains
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         integer(int32), intent(in), optional :: bin_count_mode
-            !! How Pass B chooses each reference point's histogram bin count. In the three Stone
-            !! modes every bin count from `m_min` to `m_max` is scored by Stone's cross-validation
-            !! rule, as in
-            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]] with each
-            !! study as its own study; `min_residuals_per_bin` stays the floor every admissible bin count must
-            !! meet, and `gamma_occupancy` is not used
+            !! How Pass B chooses each reference point's histogram bin count.
+            !! One of: [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]] (the default),
+            !! Issue #187's occupancy search, the largest bin count whose pooled histogram has every bin
+            !! at or above `min_residuals_per_bin`;
+            !! [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]], Stone's
+            !! cross-validation rule with each study's residuals scored as their own sample and the
+            !! scores summed;
+            !! [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]], the
+            !! same with each study's score multiplied by its residual count inside the range; or
+            !! [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]], Stone's rule
+            !! on all studies' residuals pooled. The Stone modes score every bin count from `m_min` to
+            !! `m_max`, as
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]] does;
+            !! `min_residuals_per_bin` stays the floor every admissible bin count must meet, and
+            !! `gamma_occupancy` is not used
             !!
             !! | Mode | Value |
             !! |------|-------|
@@ -4684,14 +4708,32 @@ contains
     !|    `-1.0`, sets every point's bin count to `m_min` and both residual ranges to `0.0`, and
     !|    `plateau_established` is `.false.`.
     !|
+    !| **Pass B, per candidate that passed the first gate.** For every reference point,
+    !| [[tox_data_integration_js_comp_test_impl(module):gather_pooled_neighborhood_residuals(interface)]]
+    !| pools the point's residuals across all its neighbors of all studies, and the bin-count
+    !| search `bin_count_mode` names picks the point's bin count and residual range on that pool:
+    !| Issue #187's occupancy search
+    !| ([[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]],
+    !| the default) or Stone's cross-validation rule
+    !| ([[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]],
+    !| each study's neighbors forming its own study). `occupancy_failed` in the traces means that
+    !| search failed for the point, which then uses `m_min` bins. To reproduce one traced point,
+    !| gather its pool the same way and call the bin-count search with the same options.
+    !|
+    !| **Memory.** The pooling buffers `tmp_pooled_residuals`/`tmp_pooled_residuals_perm` hold
+    !| `max_n_reps_all_studies * max_n_neighbors_candidate * n_studies` values each, one reference
+    !| point's pool at the largest candidate neighbor count. A third buffer of that size, the int32
+    !| `tmp_residual_to_study_perm`, holds the per-study grouping the Stone modes of
+    !| `bin_count_mode` need; the plain entry point allocates it in every mode, occupancy included.
+    !|
     !| Per the plan's work-array translation for this routine specifically: `max_n_bins_all_candidates`
     !| (data-dependent, not cheaply closed-form in 125) is replaced by the fixed
     !| [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] ceiling, so every
     !| bin-dimensioned work array below is sized to MAX_N_BINS and sliced `(1:max_n_bins, ...)` per
     !| candidate, rather than carrying a separate recommend-sized dimension argument for it.
-    !| `max_n_bins` is the widest per-point bin count Issue #187's occupancy search (Pass B below)
-    !| chose for the current candidate, `maxval(tmp_n_bins_per_point(1:n_points))` -- it replaces
-    !| the old single scalar `n_bins` that used to come from the global-pool Sturges/FD estimate.
+    !| `max_n_bins` is the widest per-point bin count Pass B's bin-count search (below) chose for
+    !| the current candidate, `maxval(tmp_n_bins_per_point(1:n_points))` -- it replaces the old
+    !| single scalar `n_bins` that used to come from the global-pool Sturges/FD estimate.
     !| `gene_means` is passed to
     !| [[f42_sort_impl(module):sort_real_heapsort_expl_size(interface)]]
     !| as its own multi-dimensional self -- that callee declares its matching dummy with an
@@ -4731,7 +4773,8 @@ contains
                                                        tmp_bootstrapping_top_k_jsds, tmp_prev_global_js_divergence, &
                                                        tmp_delta_perm, tmp_best_uncertainty_confidence_interval, &
                                                        tmp_pooled_residuals, tmp_pooled_residuals_perm, &
-                                                       tmp_bin_counts_search, tmp_occupancy_failed, &
+                                                       tmp_bin_counts_search, tmp_residual_to_study_perm, &
+                                                       tmp_study_block_ends, tmp_study_block_sizes, tmp_occupancy_failed, &
                                                        tmp_n_pooled_residuals, tmp_min_bin_occupancy, &
                                                        tmp_mean_bin_occupancy, tmp_max_bin_occupancy, tmp_sturges_bins, &
                                                        tmp_fd_bins, tmp_best_n_bins_per_point, &
@@ -4744,7 +4787,8 @@ contains
                                                        delta_max_threshold, delta_epsilon, &
                                                        delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, &
                                                        lower_residual_range_quantile, upper_residual_range_quantile, &
-                                                       two_sided_bootstrapping_significance_level, random_seed, ierr)
+                                                       two_sided_bootstrapping_significance_level, random_seed, &
+                                                       bin_count_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -4883,7 +4927,7 @@ contains
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_selected_n_bins
             !! Per-admissible-candidate, per-reference-point selected histogram bin count
-            !! (Issue #187's `M_j`), from determine_bin_count_occupancy_impl. Unlike every OTHER
+            !! (Issue #187's `M_j`), from Pass B's bin-count search (per `bin_count_mode`). Unlike every OTHER
             !! trace_* array above, whose first extent is a fixed thing like `n_studies`, this
             !! array's first extent is `max_n_points_candidate`, NOT `n_points`, because `n_points`
             !! itself varies per candidate (that is why `trace_n_points(16)` exists as its own
@@ -4894,61 +4938,62 @@ contains
             !! additionally slice `[:trace_n_points[t], t]` themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         logical(c_bool), dimension(max_n_points_candidate, 16), intent(out) :: trace_occupancy_failed
-            !! Per-admissible-candidate, per-reference-point `occupancy_failed` flag from
-            !! determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            !! Per-admissible-candidate, per-reference-point `occupancy_failed` flag: `.true.` iff the
+            !! bin-count search failed (occupancy or Stone, per `bin_count_mode`), and the point then
+            !! uses `m_min` bins. Jagged per candidate column exactly as
             !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
             !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_n_pooled_residuals
             !! Per-admissible-candidate, per-reference-point pooled residual count (`N_j`) from
-            !! determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            !! Pass B's bin-count search. Jagged per candidate column exactly as
             !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
             !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_min_bin_occupancy
             !! Per-admissible-candidate, per-reference-point minimum bin occupancy at
-            !! trace_selected_n_bins, from determine_bin_count_occupancy_impl. Jagged per candidate
+            !! trace_selected_n_bins, from Pass B's bin-count search. Jagged per candidate
             !! column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
             !! meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
             !! themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(max_n_points_candidate, 16), intent(out) :: trace_mean_bin_occupancy
             !! Per-admissible-candidate, per-reference-point mean bin occupancy at
-            !! trace_selected_n_bins, from determine_bin_count_occupancy_impl. Jagged per candidate
+            !! trace_selected_n_bins, from Pass B's bin-count search. Jagged per candidate
             !! column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
             !! meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
             !! themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_max_bin_occupancy
             !! Per-admissible-candidate, per-reference-point maximum bin occupancy at
-            !! trace_selected_n_bins, from determine_bin_count_occupancy_impl. Jagged per candidate
+            !! trace_selected_n_bins, from Pass B's bin-count search. Jagged per candidate
             !! column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
             !! meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
             !! themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_sturges_bins
             !! Per-admissible-candidate, per-reference-point Sturges' rule bin-count diagnostic
-            !! from determine_bin_count_occupancy_impl (never part of the occupancy search's own
+            !! from Pass B's bin-count search (never part of the bin-count search's own
             !! decision). Jagged per candidate column exactly as trace_selected_n_bins above --
             !! only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R caller
             !! must slice `[:trace_n_points[t], t]` themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_fd_bins
             !! Per-admissible-candidate, per-reference-point Freedman-Diaconis rule bin-count
-            !! diagnostic from determine_bin_count_occupancy_impl (never part of the occupancy
+            !! diagnostic from Pass B's bin-count search (never part of the bin-count
             !! search's own decision). Jagged per candidate column exactly as trace_selected_n_bins
             !! above -- only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R
             !! caller must slice `[:trace_n_points[t], t]` themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(max_n_points_candidate, 16), intent(out) :: trace_shared_residual_range_low
             !! Per-admissible-candidate, per-reference-point lower residual-range bound (R_low)
-            !! from determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            !! from Pass B's bin-count search. Jagged per candidate column exactly as
             !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
             !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(max_n_points_candidate, 16), intent(out) :: trace_shared_residual_range_high
             !! Per-admissible-candidate, per-reference-point upper residual-range bound (R_high)
-            !! from determine_bin_count_occupancy_impl. Jagged per candidate column exactly as
+            !! from Pass B's bin-count search. Jagged per candidate column exactly as
             !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
             !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
@@ -4984,12 +5029,10 @@ contains
             !! study. `256` = MAX_N_BINS, see tmp_counts_point_major above
         integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_n_bins_per_point
             !! Working array: this candidate's per-point histogram bin count, decided by Pass B's
-            !! occupancy search
-            !! ([[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]])
-            !! for each reference point independently
+            !! bin-count search (per `bin_count_mode`) for each reference point independently
         real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_shared_residual_range_low
             !! Working array: this candidate's per-point lower residual-range bound (R_low), from
-            !! Pass B's occupancy search, mirroring tmp_n_bins_per_point above
+            !! Pass B's bin-count search, mirroring tmp_n_bins_per_point above
         real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_shared_residual_range_high
             !! Working array: this candidate's per-point upper residual-range bound (R_high),
             !! mirroring tmp_shared_residual_range_low above
@@ -5043,14 +5086,23 @@ contains
             tmp_pooled_residuals_perm
             !! Working array: sorting permutation for tmp_pooled_residuals, reused per point
         integer(int32), dimension(256), intent(out) :: tmp_bin_counts_search
-            !! Working array forwarded to determine_bin_count_occupancy_impl's own per-bin-count
-            !! search scratch, reused per point. `256` = MAX_N_BINS, matching
-            !! determine_bin_count_occupancy_impl's own tmp_bin_counts dummy -- written as a
-            !! literal because a generated wrapper's dummy dimension cannot reference a module
-            !! parameter
+            !! Working array forwarded to the bin-count search's own per-bin-count scratch, reused
+            !! per point. `256` = MAX_N_BINS, matching the bin-count searches' own tmp_bin_counts
+            !! dummy -- written as a literal because a generated wrapper's dummy dimension cannot
+            !! reference a module parameter
+        integer(int32), dimension(max_n_reps_all_studies*max_n_neighbors_candidate*n_studies), intent(out) :: &
+            tmp_residual_to_study_perm
+            !! Working array for the Stone modes of `bin_count_mode`: the indices of
+            !! tmp_pooled_residuals grouped by study, each study's sorted, reused per point
+        integer(int32), dimension(n_studies), intent(out) :: tmp_study_block_ends
+            !! Working array: the last index of each study's block in tmp_pooled_residuals, reused
+            !! per point
+        integer(int32), dimension(n_studies), intent(out) :: tmp_study_block_sizes
+            !! Working array for the Stone modes of `bin_count_mode`: each study's block size in
+            !! tmp_pooled_residuals, reused per point
         logical(c_bool), dimension(max_n_points_candidate), intent(out) :: tmp_occupancy_failed
-            !! Working array: this candidate's per-point occupancy_failed flag from Pass B
-            !! (determine_bin_count_occupancy_impl)
+            !! Working array: this candidate's per-point occupancy_failed flag from Pass B's
+            !! bin-count search (per `bin_count_mode`)
         integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_n_pooled_residuals
             !! Working array: this candidate's per-point pooled residual count (N_j) from Pass B
         integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_min_bin_occupancy
@@ -5089,8 +5141,10 @@ contains
             !! tmp_best_uncertainty_shared_residual_range_low above
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum count each bin of the consensus pmf must reach to pass the second
-            !! admissibility gate. Reuses Issue #187's occupancy-search default rather than an
-            !! independently-tunable threshold of its own: once
+            !! admissibility gate, and the floor every bin of the pooled histogram must reach in
+            !! Pass B's bin-count search, in every `bin_count_mode`. Reuses Issue #187's
+            !! occupancy-search default rather than an independently-tunable threshold of its own:
+            !! once
             !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
             !! wires real per-neighborhood bin counts in, a separate laxer threshold here would
             !! silently let a candidate the occupancy search already marked `occupancy_failed`
@@ -5141,33 +5195,33 @@ contains
             !! DM_MIN(1_int32)
             !! DM_DEFAULT(CM_DELTA_MIN_CONSECUTIVE_TRANSITIONS_DEFAULT)
         integer(int32), intent(in), optional :: m_min
-            !! Smallest candidate bin count Pass B's occupancy search will ever test (M_min),
-            !! forwarded to determine_bin_count_occupancy_impl
+            !! Smallest candidate bin count Pass B's bin-count search will ever test (M_min),
+            !! forwarded to the bin-count search
             !! DM_MIN(1_int32)
             !! DM_MAX(MAX_N_BINS)
             !! DM_DEFAULT(CM_OCCUPANCY_M_MIN_DEFAULT)
         integer(int32), intent(in), optional :: m_max
-            !! Largest candidate bin count Pass B's occupancy search will ever test (M_max),
-            !! forwarded to determine_bin_count_occupancy_impl; if a caller passes `m_max < m_min`,
-            !! determine_bin_count_occupancy_impl clamps it up to `m_min` internally
+            !! Largest candidate bin count Pass B's bin-count search will ever test (M_max),
+            !! forwarded to the bin-count search; if a caller passes `m_max < m_min`, the search
+            !! clamps it up to `m_min` internally
             !! DM_MIN(1_int32)
             !! DM_MAX(MAX_N_BINS)
             !! DM_DEFAULT(CM_OCCUPANCY_M_MAX_DEFAULT)
         real(real64), intent(in), optional :: gamma_occupancy
             !! Geometric growth factor for Pass B's occupancy search's coarse search stage,
             !! forwarded to determine_bin_count_occupancy_impl; must exceed 1 or the search never
-            !! advances
+            !! advances. Unused in the Stone modes of `bin_count_mode`, which test every bin count
             !! DM_MIN(above(1.0_real64))
             !! DM_DEFAULT(CM_OCCUPANCY_GAMMA_DEFAULT)
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for each reference point's own lower residual-range bound,
-            !! forwarded to determine_bin_count_occupancy_impl
+            !! forwarded to the bin-count search
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for each reference point's own upper residual-range bound,
-            !! forwarded to determine_bin_count_occupancy_impl
+            !! forwarded to the bin-count search
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
@@ -5180,6 +5234,30 @@ contains
         integer(int32), intent(in), optional :: random_seed
             !! Seed for the GSL random number generator
             !! DM_DEFAULT(42_int32)
+        integer(int32), intent(in), optional :: bin_count_mode
+            !! How Pass B chooses each reference point's histogram bin count, for every candidate.
+            !! One of: [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]] (the default),
+            !! Issue #187's occupancy search, the largest bin count whose pooled histogram has every bin
+            !! at or above `min_residuals_per_bin`;
+            !! [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]], Stone's
+            !! cross-validation rule with each study's residuals scored as their own sample and the
+            !! scores summed;
+            !! [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]], the
+            !! same with each study's score multiplied by its residual count inside the range; or
+            !! [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]], Stone's rule
+            !! on all studies' residuals pooled. The Stone modes score every bin count from `m_min` to
+            !! `m_max`, as
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]] does;
+            !! `min_residuals_per_bin` stays the floor every admissible bin count must meet, and
+            !! `gamma_occupancy` is not used
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Issue #187's occupancy search: the largest bin count whose pooled histogram has every bin at or above `min_residuals_per_bin` (default) | [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]] |
+            !! | Stone's cross-validation: minimise the sum of every study's own score | [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]] |
+            !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
+            !! | Stone's cross-validation: minimise the score of all studies' residuals pooled | [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]] |
+            !! DM_DEFAULT(CM_MODE_BIN_COUNT_OCCUPANCY)
         integer(int32), intent(out) :: ierr
             !! Error code; folds any GSL allocation failure bootstrap_histogram_impl reports
 
@@ -5188,7 +5266,7 @@ contains
         integer(int32) :: prev_n_points, best_candidate_index, best_exceeded_ci_overlap_count, n_candidates
         integer(int32) :: pool_size, bootstrap_ierr, actual_min_residuals_per_bin
         integer(int32) :: actual_plateau_mode, actual_delta_min_consecutive_transitions, n_consecutive_effect_size_ok
-        integer(int32) :: best_uncertainty_candidate_index, actual_m_min
+        integer(int32) :: best_uncertainty_candidate_index, actual_m_min, actual_bin_count_mode
         real(real64) :: actual_min_neighbor_overlap, actual_succeeding_ci_overlap
         real(real64) :: actual_delta_median_threshold, actual_delta_max_threshold, actual_delta_epsilon
         real(real64) :: best_uncertainty_value, median_ci_width
@@ -5205,6 +5283,7 @@ contains
         M_DEFAULT_VAL(delta_epsilon, actual_delta_epsilon, CM_DELTA_EPSILON_DEFAULT)
         M_DEFAULT_VAL(delta_min_consecutive_transitions, actual_delta_min_consecutive_transitions, CM_DELTA_MIN_CONSECUTIVE_TRANSITIONS_DEFAULT)
         M_DEFAULT_VAL(m_min, actual_m_min, CM_OCCUPANCY_M_MIN_DEFAULT)
+        M_DEFAULT_VAL(bin_count_mode, actual_bin_count_mode, CM_MODE_BIN_COUNT_OCCUPANCY)
 
         pool_size = max_n_genes_all_studies*n_studies
 
@@ -5264,15 +5343,22 @@ contains
             end do
             if (.not. all_have_min_neighbor_overlap) cycle
 
-            ! ===== PASS B (per point): Issue #187's occupancy-constrained bin-count search, pooling
-            ! every study's residuals for one reference point at a time. Deliberately a plain
+            ! ===== PASS B (per point): the bin-count search bin_count_mode names (Issue #187's
+            ! occupancy search by default, or Stone's rule), pooling every study's residuals for one
+            ! reference point at a time. Deliberately a plain
             ! sequential `do`, NOT `do concurrent`: this is not the "loops with data-dependent
             ! control flow across iterations" exception from Fortran_Coding_Guides.pdf Sec 10 (each
-            ! iteration's work -- gather, heapsort, one occupancy search -- is fully independent of
+            ! iteration's work -- gather, heapsort, one bin-count search -- is fully independent of
             ! every other point), but a single small tmp_pooled_residuals buffer is reused across
             ! points here rather than allocating one such buffer per point (up to
             ! max_n_points_candidate of them, which `do concurrent`'s `local()` would require) -- the
             ! memory-conscious choice given each iteration's work is already substantial on its own.
+            ! gather_pooled_neighborhood_residuals lays every study's residuals out as one block of
+            ! max_n_reps_all_studies*n_neighbors values, study after study, so study i_study's block
+            ! ends at i_study*max_n_reps_all_studies*n_neighbors for every point of this candidate.
+            do concurrent(i_study=1:n_studies) shared(tmp_study_block_ends, max_n_reps_all_studies, n_neighbors)
+                tmp_study_block_ends(i_study) = i_study*max_n_reps_all_studies*n_neighbors
+            end do
             do i_point = 1, n_points
                 call gather_pooled_neighborhood_residuals(residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
                     n_neighbors, n_studies, tmp_neighborhood_indices_all_studies(1:n_neighbors, i_point, 1:n_studies), &
@@ -5283,15 +5369,19 @@ contains
                 call sort_array_heapsort(tmp_pooled_residuals(1:max_n_reps_all_studies*n_neighbors*n_studies), &
                                          tmp_pooled_residuals_perm(1:max_n_reps_all_studies*n_neighbors*n_studies))
 
-                call determine_bin_count_occupancy_impl( &
+                ! In occupancy mode select_point_bin_count makes exactly the former direct
+                ! determine_bin_count_occupancy_impl call with these arguments.
+                call select_point_bin_count( &
                     tmp_pooled_residuals(1:max_n_reps_all_studies*n_neighbors*n_studies), &
                     tmp_pooled_residuals_perm(1:max_n_reps_all_studies*n_neighbors*n_studies), &
-                    max_n_reps_all_studies*n_neighbors*n_studies, max_n_reps_all_studies, n_neighbors, &
+                    max_n_reps_all_studies*n_neighbors*n_studies, n_studies, tmp_study_block_ends, &
+                    max_n_reps_all_studies, n_neighbors, actual_bin_count_mode, &
                     tmp_n_bins_per_point(i_point), tmp_occupancy_failed(i_point), &
                     tmp_shared_residual_range_low(i_point), tmp_shared_residual_range_high(i_point), &
                     tmp_n_pooled_residuals(i_point), tmp_min_bin_occupancy(i_point), tmp_mean_bin_occupancy(i_point), &
                     tmp_max_bin_occupancy(i_point), tmp_sturges_bins(i_point), tmp_fd_bins(i_point), &
-                    tmp_bin_counts_search, m_min, m_max, actual_min_residuals_per_bin, gamma_occupancy, &
+                    tmp_bin_counts_search, tmp_residual_to_study_perm(1:max_n_reps_all_studies*n_neighbors*n_studies), &
+                    tmp_study_block_sizes, m_min, m_max, actual_min_residuals_per_bin, gamma_occupancy, &
                     lower_residual_range_quantile, upper_residual_range_quantile)
             end do
 
@@ -5490,12 +5580,12 @@ contains
                 ! generate_js_comp_test_candidates_impl no longer computes any bin estimate at all
                 ! (Issue #187, Step 2.7) -- there is no real per-neighborhood value available for
                 ! this candidate, so fall back to actual_m_min, the smallest bin count the
-                ! occupancy search would ever try, as the most conservative available choice. This
-                ! mirrors determine_bin_count_occupancy_impl's own FAILURE case, which uses m_min
+                ! bin-count search would ever try, as the most conservative available choice. This
+                ! mirrors the bin-count search's own FAILURE case (occupancy or Stone), which uses m_min
                 ! as its fallback for exactly the same "we don't have enough information" reason.
                 ! The range has no equivalent fallback value -- Pass B never ran, so there is no
                 ! data to derive a percentile from -- so it is zeroed, matching
-                ! determine_bin_count_occupancy_impl's own all-NaN degenerate convention.
+                ! the bin-count search's own all-NaN degenerate convention.
                 n_bins_per_point(1:n_points) = actual_m_min
                 shared_residual_range_low(1:n_points) = 0.0_real64
                 shared_residual_range_high(1:n_points) = 0.0_real64
@@ -5520,9 +5610,9 @@ contains
             ! CI-reset-to--1.0 fallback path), so there is no real per-neighborhood bin count
             ! available for it either. generate_js_comp_test_candidates_impl no longer computes any
             ! bin estimate at all (Issue #187, Step 2.7), so fall back to actual_m_min -- the
-            ! smallest bin count the occupancy search would ever try -- exactly as the other
+            ! smallest bin count the bin-count search would ever try -- exactly as the other
             ! degenerate branch above does, and consistent with
-            ! determine_bin_count_occupancy_impl's own FAILURE case using m_min for the same reason.
+            ! the bin-count search's own FAILURE case using m_min for the same reason.
             ! The range is zeroed for the same reason as the other genuinely-degenerate branch above.
             n_bins_per_point(1:n_points) = actual_m_min
             shared_residual_range_low(1:n_points) = 0.0_real64
@@ -6054,11 +6144,20 @@ contains
             !! DM_DEFAULT(CM_ADAPTIVE_MIN_STUDY_NEIGHBORS_DEFAULT)
         integer(int32), intent(in), optional :: bin_count_mode
             !! How Pass B chooses each reference point's histogram bin count, for every candidate.
-            !! In the three Stone modes every bin count from `m_min` to `m_max` is scored by Stone's
-            !! cross-validation rule, as in
-            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]] with each
-            !! study as its own study; `min_residuals_per_bin` stays the floor every admissible bin count must
-            !! meet, and `gamma_occupancy` is not used
+            !! One of: [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_OCCUPANCY(variable)]] (the default),
+            !! Issue #187's occupancy search, the largest bin count whose pooled histogram has every bin
+            !! at or above `min_residuals_per_bin`;
+            !! [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]], Stone's
+            !! cross-validation rule with each study's residuals scored as their own sample and the
+            !! scores summed;
+            !! [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]], the
+            !! same with each study's score multiplied by its residual count inside the range; or
+            !! [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]], Stone's rule
+            !! on all studies' residuals pooled. The Stone modes score every bin count from `m_min` to
+            !! `m_max`, as
+            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]] does;
+            !! `min_residuals_per_bin` stays the floor every admissible bin count must meet, and
+            !! `gamma_occupancy` is not used
             !!
             !! | Mode | Value |
             !! |------|-------|

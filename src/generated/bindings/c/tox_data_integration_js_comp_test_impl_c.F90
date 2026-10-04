@@ -10,9 +10,10 @@
 !| generates candidate `(n_points, n_neighbors)` pairs only -- each candidate's real
 !| per-neighborhood histogram bin count is decided later, per reference point, by Issue #187's
 !| occupancy search
-!| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]] or, where
-!| an entry point offers the switch `bin_count_mode`, by Stone's cross-validation rule
-!| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]]),
+!| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]] (the
+!| default) or by Stone's cross-validation rule
+!| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]], chosen by
+!| the switch `bin_count_mode` that both parameter searches and both final runs take),
 !| two admissibility gates a candidate must pass before it is bootstrapped
 !| ([[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]],
 !| [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]),
@@ -169,9 +170,12 @@ contains
     !| flat pooled array. This is the exact same pooling
     !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_impl(interface)]] and
     !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
-    !| perform internally, per reference point, before handing the result to
+    !| perform internally, per reference point, before handing the result to the bin-count search
+    !| their `bin_count_mode` names (by default
     !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
-    !| own occupancy search -- published so a caller can reconstruct that exact same input directly
+    !| own occupancy search; in the Stone modes, study `s` is pool block
+    !| `(s - 1)*max_n_reps_all_studies*n_neighbors + 1` to `s*max_n_reps_all_studies*n_neighbors`)
+    !| -- published so a caller can reconstruct that exact same input directly
     !| on real data and feed it to
     !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_exhaustive_impl(interface)]]
     !| (or to `determine_bin_count_occupancy` itself), to check whether the fast search and the
