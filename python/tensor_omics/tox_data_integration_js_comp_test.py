@@ -6,8 +6,11 @@ The data-driven `(n_points, n_neighbors)` parameter-stabilization search this pi
 before the JSD-Comp-Test proper (Issue #126): a GAMMA-decay candidate grid
 (:func:`tensor_omics.generate_js_comp_test_candidates`
 generates candidate `(n_points, n_neighbors)` pairs only -- each candidate's real
-per-neighborhood histogram bin count is decided later, per reference point, by
-:func:`tensor_omics.determine_bin_count_occupancy`),
+per-neighborhood histogram bin count is decided later, per reference point, by Issue #187's
+occupancy search
+:func:`tensor_omics.determine_bin_count_occupancy` or, where
+an entry point offers the switch `bin_count_mode`, by Stone's cross-validation rule
+:func:`tensor_omics.determine_bin_count_stone`),
 two admissibility gates a candidate must pass before it is bootstrapped
 (:func:`tensor_omics.check_neighborhood_overlaps`,
 :func:`tensor_omics.check_mean_pmf_min_counts`),
@@ -492,13 +495,14 @@ _lib.run_js_comp_test_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr",)
+_RUN_JS_COMP_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_adaptive_c.restype = None
 _lib.run_js_comp_test_adaptive_c.argtypes = (
@@ -540,13 +544,14 @@ _lib.run_js_comp_test_adaptive_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "gene_means", "residuals", "pooled_neighborhood_range", "n_neighbors_per_point", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr",)
+_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "gene_means", "residuals", "pooled_neighborhood_range", "n_neighbors_per_point", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "pooled_neighborhood_range", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "pooled_neighborhood_range", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_parameter_search_c.restype = None
 _lib.run_js_comp_test_parameter_search_c.argtypes = (
@@ -675,13 +680,14 @@ _lib.run_js_comp_test_adaptive_parameter_search_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "ierr",)
+_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def estimate_bin_count(
         residuals,
@@ -1971,7 +1977,8 @@ def determine_bin_count_stone_expert(
         Pooled signed residuals for one neighborhood, across all its neighbors and all studies
         NaN is permitted for this value.
     pooled_residuals_perm : np.ndarray[np.int32] of shape (n_residuals,)
-        Sorting permutation for `pooled_residuals`, ascending, NaN last
+        Sorting permutation for `pooled_residuals`, ascending, NaN last; each study's own
+        order is taken from it as well
         The minimum valid value is `1`.
         The maximum valid value is `n_residuals`.
     residual_to_study : np.ndarray[np.int32] of shape (n_residuals,)
@@ -3418,6 +3425,7 @@ def run_js_comp_test(
         gamma_occupancy=1.25,
         lower_residual_range_quantile=0.05,
         upper_residual_range_quantile=0.95,
+        bin_count_mode='bin_count_occupancy',
 ):
     r"""Run the JSD-Comp-Test pipeline for one fixed (n_points, n_neighbors) parameter setting
 
@@ -3436,9 +3444,11 @@ def run_js_comp_test(
     - Pass B (per point, sequential -- see the implementation body's own comment for why): pools
     every study's residuals for one reference point at a time
     (:func:`tensor_omics.gather_pooled_neighborhood_residuals`,
-    now published as its own entry point) and runs Issue #187's occupancy-constrained
-    bin-count search on the pooled result
-    (:func:`tensor_omics.determine_bin_count_occupancy`),
+    now published as its own entry point) and runs the bin-count search `bin_count_mode`
+    names on the pooled result -- Issue #187's occupancy search
+    (:func:`tensor_omics.determine_bin_count_occupancy`,
+    the default) or Stone's cross-validation rule
+    (:func:`tensor_omics.determine_bin_count_stone`) --
     deciding `n_bins_per_point(i_point)` independently for every reference point, plus the
     `occupancy_failed`/`n_pooled_residuals`/`min_bin_occupancy`/`mean_bin_occupancy`/
     `max_bin_occupancy`/`sturges_bins`/`fd_bins` diagnostics. `max_n_bins_per_point`
@@ -3477,7 +3487,7 @@ def run_js_comp_test(
     admissibility gate at all (no
     :func:`tensor_omics.check_neighborhood_overlaps`,
     no :func:`tensor_omics.check_mean_pmf_min_counts`,
-    no early exit). A reference point whose Pass B occupancy search fails even at `m_min`
+    no early exit). A reference point whose Pass B bin-count search fails (per `bin_count_mode`)
     (`occupancy_failed(i_point) = True_c_bool`) still gets a real histogram built, at
     `n_bins_per_point(i_point) == m_min`, and that point still contributes to
     `global_js_divergence` exactly like every other point -- its contribution is down-weighted
@@ -3489,7 +3499,8 @@ def run_js_comp_test(
     **A real, deliberate change to this routine's public array shapes (Issue #187):** the old
     mandatory scalar input `n_bins` is gone -- there is no way for a caller to know the right bin
     count in advance, since it is now genuinely computed inside this routine by Pass B's
-    occupancy search, independently per reference point. Every array whose bin-sized dimension
+    bin-count search (per `bin_count_mode`), independently per reference point. Every array
+    whose bin-sized dimension
     used to be sized by that input (`pmfs`, `counts`, `mean_pmf`, `mean_pmf_counts`,
     `tmp_counts_point_major`, `tmp_pmf_point_major`, `tmp_permutation_mean_pmf_counts`,
     `tmp_permutation_counts`, `tmp_permutation_pmfs`) is now sized to the fixed compile-time
@@ -3559,41 +3570,49 @@ def run_js_comp_test(
         The default value is `42`.
     min_residuals_per_bin : int, optional, default 10
         Minimum number of pooled residuals every bin must reach for a candidate bin count to
-        be admissible in Pass B's occupancy search, forwarded to
-        determine_bin_count_occupancy_impl
+        be admissible in Pass B's bin-count search, the floor in every `bin_count_mode`
         The minimum valid value is `0`.
         The default value is `10`.
     m_min : int, optional, default 3
-        Smallest candidate bin count Pass B's occupancy search will ever test (M_min),
-        forwarded to determine_bin_count_occupancy_impl
+        Smallest candidate bin count Pass B's bin-count search will ever test (M_min),
+        forwarded to the bin-count search
         The minimum valid value is `1`.
         The maximum valid value is `MAX_N_BINS`.
         The default value is `3`.
     m_max : int, optional, default 120
-        Largest candidate bin count Pass B's occupancy search will ever test (M_max),
-        forwarded to determine_bin_count_occupancy_impl; if a caller passes `m_max < m_min`,
-        determine_bin_count_occupancy_impl clamps it up to `m_min` internally
+        Largest candidate bin count Pass B's bin-count search will ever test (M_max),
+        forwarded to the bin-count search; if a caller passes `m_max < m_min`, the search
+        clamps it up to `m_min` internally
         The minimum valid value is `1`.
         The maximum valid value is `MAX_N_BINS`.
         The default value is `120`.
     gamma_occupancy : float, optional, default 1.25
         Geometric growth factor for Pass B's occupancy search's coarse search stage,
         forwarded to determine_bin_count_occupancy_impl; must exceed 1 or the search never
-        advances
+        advances. Unused in the Stone modes of `bin_count_mode`, which test every bin count
         The minimum valid value is `above(1.0)`.
         The default value is `1.25`.
     lower_residual_range_quantile : float, optional, default 0.05
         Quantile in [0,1] for each reference point's own lower residual-range bound,
-        forwarded to determine_bin_count_occupancy_impl
+        forwarded to the bin-count search
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.05`.
     upper_residual_range_quantile : float, optional, default 0.95
         Quantile in [0,1] for each reference point's own upper residual-range bound,
-        forwarded to determine_bin_count_occupancy_impl
+        forwarded to the bin-count search
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
+    bin_count_mode : str, one of 'bin_count_occupancy' | 'bin_count_stone_equal' | 'bin_count_stone_size_weighted' | 'bin_count_stone_pooled', optional, default 'bin_count_occupancy'
+        How Pass B chooses each reference point's histogram bin count. In the three Stone
+        modes every bin count from `m_min` to `m_max` is scored by Stone's cross-validation
+        rule, as in
+        :func:`tensor_omics.determine_bin_count_stone` with each
+        study as its own study; `min_residuals_per_bin` stays the floor every admissible bin count must
+        meet, and `gamma_occupancy` is not used
+
+        The default value is `'bin_count_occupancy'`.
 
     Returns
     -------
@@ -3609,18 +3628,18 @@ def run_js_comp_test(
             A result is a value; call `.copy()` to obtain a modifiable array.
         n_bins_per_point : np.ndarray[np.int32] of shape (n_points,), read-only
             This reference point's own selected histogram bin count (Issue #187's `M_j`), from
-            Pass B's occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood
-            may use a different bin count
+            Pass B's bin-count search (the occupancy search or Stone's rule, per
+            `bin_count_mode`) -- every neighborhood may use a different bin count
             A result is a value; call `.copy()` to obtain a modifiable array.
         shared_residual_range_low : np.ndarray[np.float64] of shape (n_points,), read-only
             This reference point's own lower residual-range bound (R_low), from Pass B's
-            occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood may use a
-            different, asymmetric range (Step 3)
+            bin-count search (per `bin_count_mode`) -- every neighborhood may use a different,
+            asymmetric range (Step 3)
             A result is a value; call `.copy()` to obtain a modifiable array.
         shared_residual_range_high : np.ndarray[np.float64] of shape (n_points,), read-only
             This reference point's own upper residual-range bound (R_high), from Pass B's
-            occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood may use a
-            different, asymmetric range (Step 3)
+            bin-count search (per `bin_count_mode`) -- every neighborhood may use a different,
+            asymmetric range (Step 3)
             A result is a value; call `.copy()` to obtain a modifiable array.
         max_n_bins_per_point : int
             The widest `n_bins_per_point` value across all `n_points` reference points
@@ -3634,38 +3653,36 @@ def run_js_comp_test(
             LAST declared extent, and bins is the FIRST declared extent of every one of those
             arrays
         occupancy_failed : np.ndarray[np.bool_] of shape (n_points,), read-only
-            This reference point's `occupancy_failed` flag from Pass B
-            (determine_bin_count_occupancy_impl) -- `True` iff even `m_min` bins could not
-            satisfy the occupancy criterion for it. See this routine's own doc block above for
+            This reference point's `occupancy_failed` flag from Pass B -- `True` iff the
+            bin-count search failed for it (occupancy or Stone, per `bin_count_mode`), and the
+            point then uses `m_min` bins. See this routine's own doc block above for
             the behavioral asymmetry this implies vs. run_js_comp_test_parameter_search_impl: a
             `True` point here still gets a real histogram and still contributes to
             `global_js_divergence`, it is never rejected
             A result is a value; call `.copy()` to obtain a modifiable array.
         n_pooled_residuals : np.ndarray[np.int32] of shape (n_points,), read-only
-            This reference point's pooled residual count (N_j) from Pass B
-            (determine_bin_count_occupancy_impl)
+            This reference point's pooled residual count (N_j) from Pass B's
+            bin-count search (per `bin_count_mode`)
             A result is a value; call `.copy()` to obtain a modifiable array.
         min_bin_occupancy : np.ndarray[np.int32] of shape (n_points,), read-only
-            This reference point's minimum bin occupancy at `n_bins_per_point`, from Pass B
-            (determine_bin_count_occupancy_impl)
+            This reference point's minimum bin occupancy at `n_bins_per_point`, from Pass B's
+            bin-count search (per `bin_count_mode`)
             A result is a value; call `.copy()` to obtain a modifiable array.
         mean_bin_occupancy : np.ndarray[np.float64] of shape (n_points,), read-only
-            This reference point's mean bin occupancy at `n_bins_per_point`, from Pass B
-            (determine_bin_count_occupancy_impl)
+            This reference point's mean bin occupancy at `n_bins_per_point`, from Pass B's
+            bin-count search (per `bin_count_mode`)
             A result is a value; call `.copy()` to obtain a modifiable array.
         max_bin_occupancy : np.ndarray[np.int32] of shape (n_points,), read-only
-            This reference point's maximum bin occupancy at `n_bins_per_point`, from Pass B
-            (determine_bin_count_occupancy_impl)
+            This reference point's maximum bin occupancy at `n_bins_per_point`, from Pass B's
+            bin-count search (per `bin_count_mode`)
             A result is a value; call `.copy()` to obtain a modifiable array.
         sturges_bins : np.ndarray[np.int32] of shape (n_points,), read-only
-            This reference point's Sturges' rule bin-count diagnostic from Pass B
-            (determine_bin_count_occupancy_impl) -- never part of the occupancy search's own
-            decision
+            This reference point's Sturges' rule bin-count diagnostic from Pass B's bin-count
+            search (per `bin_count_mode`) -- never part of the bin-count search's own decision
             A result is a value; call `.copy()` to obtain a modifiable array.
         fd_bins : np.ndarray[np.int32] of shape (n_points,), read-only
-            This reference point's Freedman-Diaconis rule bin-count diagnostic from Pass B
-            (determine_bin_count_occupancy_impl) -- never part of the occupancy search's own
-            decision
+            This reference point's Freedman-Diaconis rule bin-count diagnostic from Pass B's bin-count
+            search (per `bin_count_mode`) -- never part of the bin-count search's own decision
             A result is a value; call `.copy()` to obtain a modifiable array.
         pmfs : np.ndarray[np.float64] of shape (256, n_points, n_studies,), column-major (order='F'), read-only
             `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`. `256`
@@ -3745,6 +3762,7 @@ def run_js_comp_test(
         raise TypeError(f"'x_star' must be an array of np.float64: {error}") from None
     if x_star.ndim != 1:
         raise ValueError(f"'x_star' must have 1 dimension, but has {x_star.ndim}")
+    bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
@@ -3839,6 +3857,7 @@ def run_js_comp_test(
         ctypes.byref(ctypes.c_double(gamma_occupancy)),
         ctypes.byref(ctypes.c_double(lower_residual_range_quantile)),
         ctypes.byref(ctypes.c_double(upper_residual_range_quantile)),
+        bin_count_mode,
         ctypes.byref(ierr),
     )
 
@@ -3908,6 +3927,7 @@ def run_js_comp_test_adaptive(
         gamma_occupancy=1.25,
         lower_residual_range_quantile=0.05,
         upper_residual_range_quantile=0.95,
+        bin_count_mode='bin_count_occupancy',
 ):
     r"""Run the JSD-Comp-Test pipeline on adaptive (Issue #217) neighborhoods
 
@@ -3927,11 +3947,14 @@ def run_js_comp_test_adaptive(
     `(n_studies, n_points)` orientation, and add up to `b - a + 1`.
 
     **Pipeline, per reference point.** Pass B pools the point's residuals across all its genes
-    of all studies and picks its bin count and residual range with Issue #187's occupancy
-    search
-    (:func:`tensor_omics.determine_bin_count_occupancy`),
-    its Sturges/Freedman-Diaconis diagnostics computed with the rounded mean per-study neighbor
-    count. Pass C builds each study's histogram from that study's own genes of the point. Then,
+    of all studies and picks its bin count and residual range with the search `bin_count_mode`
+    names: Issue #187's occupancy search
+    (:func:`tensor_omics.determine_bin_count_occupancy`,
+    the default) or Stone's cross-validation rule
+    (:func:`tensor_omics.determine_bin_count_stone`,
+    each study's genes forming its own study), its Sturges/Freedman-Diaconis diagnostics
+    computed with the rounded mean per-study neighbor count. Pass C builds each study's
+    histogram from that study's own genes of the point. Then,
     exactly as in `run_js_comp_test_impl`: the consensus pmf
     (:func:`tensor_omics.create_mean_pmf`), each
     study's JSD against it and the weighted global JSD, the permutation test
@@ -3956,7 +3979,9 @@ def run_js_comp_test_adaptive(
     neighbor count. The pooling buffers `tmp_pooled_residuals`/`tmp_pooled_residuals_perm`
     therefore hold `max_n_reps_all_studies * max_n_genes_all_studies * n_studies` values each,
     the size of `residuals` itself; Pass B and Pass C are sequential over points so one such
-    buffer serves every point.
+    buffer serves every point. A third buffer of that size, the int32
+    `tmp_residual_to_study_perm`, holds the per-study grouping the Stone modes of
+    `bin_count_mode` need; the plain entry point allocates it in every mode, occupancy included.
 
     The bin-sized arrays have the same fixed 256-bin
     (``MAX_N_BINS``) leading extent as in
@@ -3990,22 +4015,23 @@ def run_js_comp_test_adaptive(
         The default value is `42`.
     min_residuals_per_bin : int, optional, default 10
         Minimum number of pooled residuals every bin must reach for a candidate bin count to
-        be admissible in the occupancy search
+        be admissible in the bin-count search, the floor in every `bin_count_mode`
         The minimum valid value is `0`.
         The default value is `10`.
     m_min : int, optional, default 3
-        Smallest candidate bin count the occupancy search tests (M_min)
+        Smallest candidate bin count the bin-count search tests (M_min)
         The minimum valid value is `1`.
         The maximum valid value is `MAX_N_BINS`.
         The default value is `3`.
     m_max : int, optional, default 120
-        Largest candidate bin count the occupancy search tests (M_max); raised to `m_min`
+        Largest candidate bin count the bin-count search tests (M_max); raised to `m_min`
         when smaller
         The minimum valid value is `1`.
         The maximum valid value is `MAX_N_BINS`.
         The default value is `120`.
     gamma_occupancy : float, optional, default 1.25
-        Geometric growth factor of the occupancy search's coarse stage
+        Geometric growth factor of the occupancy search's coarse stage; unused in the Stone
+        modes of `bin_count_mode`, which test every bin count
         The minimum valid value is `above(1.0)`.
         The default value is `1.25`.
     lower_residual_range_quantile : float, optional, default 0.05
@@ -4018,6 +4044,15 @@ def run_js_comp_test_adaptive(
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
+    bin_count_mode : str, one of 'bin_count_occupancy' | 'bin_count_stone_equal' | 'bin_count_stone_size_weighted' | 'bin_count_stone_pooled', optional, default 'bin_count_occupancy'
+        How Pass B chooses each reference point's histogram bin count. In the three Stone
+        modes every bin count from `m_min` to `m_max` is scored by Stone's cross-validation
+        rule, as in
+        :func:`tensor_omics.determine_bin_count_stone` with each
+        study as its own study; `min_residuals_per_bin` stays the floor every admissible bin count must
+        meet, and `gamma_occupancy` is not used
+
+        The default value is `'bin_count_occupancy'`.
 
     Returns
     -------
@@ -4028,21 +4063,21 @@ def run_js_comp_test_adaptive(
             For each neighborhood, how many of its genes belong to each study (at least 1 each)
             A result is a value; call `.copy()` to obtain a modifiable array.
         n_bins_per_point : np.ndarray[np.int32] of shape (n_points,), read-only
-            Each reference point's selected histogram bin count, from the occupancy search
+            Each reference point's selected histogram bin count, from the bin-count search
             A result is a value; call `.copy()` to obtain a modifiable array.
         shared_residual_range_low : np.ndarray[np.float64] of shape (n_points,), read-only
-            Each reference point's lower residual-range bound (R_low), from the occupancy search
+            Each reference point's lower residual-range bound (R_low), from the bin-count search
             A result is a value; call `.copy()` to obtain a modifiable array.
         shared_residual_range_high : np.ndarray[np.float64] of shape (n_points,), read-only
-            Each reference point's upper residual-range bound (R_high), from the occupancy search
+            Each reference point's upper residual-range bound (R_high), from the bin-count search
             A result is a value; call `.copy()` to obtain a modifiable array.
         max_n_bins_per_point : int
             The widest `n_bins_per_point` value, `maxval(n_bins_per_point)`: the number of leading,
             meaningful rows of `pmfs`, `counts`, `mean_pmf` and `mean_pmf_counts`
         occupancy_failed : np.ndarray[np.bool_] of shape (n_points,), read-only
-            `True` iff even `m_min` bins could not satisfy the occupancy criterion for this
-            reference point; such a point still gets a histogram at `m_min` bins and still
-            contributes to `global_js_divergence`
+            `True` iff the bin-count search failed for this reference point (occupancy or
+            Stone, per `bin_count_mode`); such a point still gets a histogram at `m_min` bins and
+            still contributes to `global_js_divergence`
             A result is a value; call `.copy()` to obtain a modifiable array.
         n_pooled_residuals : np.ndarray[np.int32] of shape (n_points,), read-only
             Each reference point's pooled non-NaN residual count (N_j), across all its genes of
@@ -4059,11 +4094,11 @@ def run_js_comp_test_adaptive(
             A result is a value; call `.copy()` to obtain a modifiable array.
         sturges_bins : np.ndarray[np.int32] of shape (n_points,), read-only
             Each reference point's Sturges' rule diagnostic, with the rounded mean per-study
-            neighbor count; never part of the occupancy search's decision
+            neighbor count; never part of the bin-count search's decision
             A result is a value; call `.copy()` to obtain a modifiable array.
         fd_bins : np.ndarray[np.int32] of shape (n_points,), read-only
             Each reference point's Freedman-Diaconis rule diagnostic, with the rounded mean
-            per-study neighbor count; never part of the occupancy search's decision
+            per-study neighbor count; never part of the bin-count search's decision
             A result is a value; call `.copy()` to obtain a modifiable array.
         pmfs : np.ndarray[np.float64] of shape (256, n_points, n_studies,), column-major (order='F'), read-only
             `counts` normalized per reference point and study. `256` = MAX_N_BINS; only rows
@@ -4135,6 +4170,7 @@ def run_js_comp_test_adaptive(
         raise TypeError(f"'pooled_neighborhood_range' must be an array of np.int32: {error}") from None
     if pooled_neighborhood_range.ndim != 2:
         raise ValueError(f"'pooled_neighborhood_range' must have 2 dimensions, but has {pooled_neighborhood_range.ndim}")
+    bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
@@ -4217,6 +4253,7 @@ def run_js_comp_test_adaptive(
         ctypes.byref(ctypes.c_double(gamma_occupancy)),
         ctypes.byref(ctypes.c_double(lower_residual_range_quantile)),
         ctypes.byref(ctypes.c_double(upper_residual_range_quantile)),
+        bin_count_mode,
         ctypes.byref(ierr),
     )
 
@@ -4889,6 +4926,7 @@ def run_js_comp_test_adaptive_parameter_search(
         mad_distance_factor=1.0,
         max_pooled_residuals=0,
         min_study_neighbors=1,
+        bin_count_mode='bin_count_occupancy',
 ):
     r"""Search the ascending adaptive (k_start, k_step, k_max) candidate sequence for a stable JSD parameter setting (Issue #217)
 
@@ -4912,8 +4950,9 @@ def run_js_comp_test_adaptive_parameter_search(
     3. First admissibility gate:
     :func:`tensor_omics.check_neighborhood_overlaps`
     on the pooled ranges `[a_i, b_i]`.
-    4. Per point, decode the range into per-study gene lists and run Issue #187's occupancy
-    search on the pooled residuals (Pass B). Then build each study's histogram per point
+    4. Per point, decode the range into per-study gene lists and run the bin-count search
+    `bin_count_mode` names (Issue #187's occupancy search by default, or Stone's rule) on the
+    pooled residuals (Pass B). Then build each study's histogram per point
     (Pass C), the consensus pmf, and apply the second gate,
     :func:`tensor_omics.check_mean_pmf_min_counts`.
     This is the pipeline of
@@ -4959,8 +4998,9 @@ def run_js_comp_test_adaptive_parameter_search(
     `n_bins_per_point` entry up to `min(n_points, max_n_points_candidate)` is `m_min` and both
     ranges are `0.0`, as in the fixed-k search. To rebuild the selected neighborhoods, call
     `construct_adaptive_neighborhoods` with the returned knobs and the same construction
-    options, then `run_js_comp_test_adaptive` with the same occupancy options: its
-    `global_js_divergence` equals the selected candidate's `trace_global_js_divergence` column.
+    options, then `run_js_comp_test_adaptive` with the same bin-count options
+    (`bin_count_mode` included): its `global_js_divergence` equals the selected candidate's
+    `trace_global_js_divergence` column.
 
     **Traces** are the fixed-k search's, with `trace_k_start`/`trace_k_step`/`trace_k_max` in
     place of `trace_n_neighbors`. The per-point traces are jagged per column exactly as there.
@@ -4972,7 +5012,10 @@ def run_js_comp_test_adaptive_parameter_search(
     entries, the largest being `tmp_n_neighbors_per_point` with `n_studies * N` integers. The
     pooling buffers `tmp_pooled_residuals`/`tmp_pooled_residuals_perm` hold
     `max_n_reps_all_studies * N` values each, the size of `residuals`, because one study may
-    have all its genes in one neighborhood. The histogram buffers hold `256 * max_n_points_candidate
+    have all its genes in one neighborhood. A third buffer of that size, the int32
+    `tmp_residual_to_study_perm`, holds the per-study grouping the Stone modes of
+    `bin_count_mode` need; the plain entry point allocates it in every mode, occupancy included.
+    The histogram buffers hold `256 * max_n_points_candidate
     * n_studies` values each.
 
     Impure: calls the impure
@@ -5002,8 +5045,8 @@ def run_js_comp_test_adaptive_parameter_search(
         It is recommended to compute this argument from the `max_n_points_candidate` output produced by :func:`tensor_omics.calc_adaptive_js_comp_test_bounds`.
         The minimum valid value is `1`.
     min_residuals_per_bin : int, optional, default 10
-        Minimum count every bin must reach, both in the occupancy search and in the second
-        admissibility gate (the consensus pmf)
+        Minimum count every bin must reach, both in the bin-count search (the floor in every
+        `bin_count_mode`) and in the second admissibility gate (the consensus pmf)
         The minimum valid value is `0`.
         The default value is `10`.
     min_neighbor_overlap : float, optional, default 0.1
@@ -5042,18 +5085,19 @@ def run_js_comp_test_adaptive_parameter_search(
         The minimum valid value is `1`.
         The default value is `2`.
     m_min : int, optional, default 3
-        Smallest candidate bin count the occupancy search tests (M_min)
+        Smallest candidate bin count the bin-count search tests (M_min)
         The minimum valid value is `1`.
         The maximum valid value is `MAX_N_BINS`.
         The default value is `3`.
     m_max : int, optional, default 120
-        Largest candidate bin count the occupancy search tests (M_max); raised to `m_min`
+        Largest candidate bin count the bin-count search tests (M_max); raised to `m_min`
         when smaller
         The minimum valid value is `1`.
         The maximum valid value is `MAX_N_BINS`.
         The default value is `120`.
     gamma_occupancy : float, optional, default 1.25
-        Geometric growth factor of the occupancy search's coarse stage
+        Geometric growth factor of the occupancy search's coarse stage; unused in the Stone
+        modes of `bin_count_mode`, which test every bin count
         The minimum valid value is `above(1.0)`.
         The default value is `1.25`.
     lower_residual_range_quantile : float, optional, default 0.05
@@ -5095,6 +5139,15 @@ def run_js_comp_test_adaptive_parameter_search(
         admissible, as in construct_adaptive_neighborhoods
         The minimum valid value is `1`.
         The default value is `1`.
+    bin_count_mode : str, one of 'bin_count_occupancy' | 'bin_count_stone_equal' | 'bin_count_stone_size_weighted' | 'bin_count_stone_pooled', optional, default 'bin_count_occupancy'
+        How Pass B chooses each reference point's histogram bin count, for every candidate.
+        In the three Stone modes every bin count from `m_min` to `m_max` is scored by Stone's
+        cross-validation rule, as in
+        :func:`tensor_omics.determine_bin_count_stone` with each
+        study as its own study; `min_residuals_per_bin` stays the floor every admissible bin count must
+        meet, and `gamma_occupancy` is not used
+
+        The default value is `'bin_count_occupancy'`.
 
     Returns
     -------
@@ -5193,7 +5246,8 @@ def run_js_comp_test_adaptive_parameter_search(
             The first `n_admissible_evaluated` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
         trace_occupancy_failed : np.ndarray[np.bool_] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
-            Per-admissible-candidate, per-reference-point `occupancy_failed` flag; jagged as
+            Per-admissible-candidate, per-reference-point `occupancy_failed` flag: `True` iff the
+            bin-count search failed (occupancy or Stone, per `bin_count_mode`); jagged as
             trace_selected_n_bins
             The first `n_admissible_evaluated` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
@@ -5281,6 +5335,7 @@ def run_js_comp_test_adaptive_parameter_search(
         raise ValueError(f"'residuals' must have 3 dimensions, but has {residuals.ndim}")
     join_method = np.array([str(join_method).lower().encode().ljust(11)], dtype="S11")
     plateau_mode = np.array([str(plateau_mode).lower().encode().ljust(19)], dtype="S19")
+    bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
@@ -5400,6 +5455,7 @@ def run_js_comp_test_adaptive_parameter_search(
         ctypes.byref(ctypes.c_double(mad_distance_factor)),
         ctypes.byref(ctypes.c_int(max_pooled_residuals)),
         ctypes.byref(ctypes.c_int(min_study_neighbors)),
+        bin_count_mode,
         ctypes.byref(ierr),
     )
 

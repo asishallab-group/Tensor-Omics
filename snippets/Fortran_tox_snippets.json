@@ -1067,7 +1067,8 @@
       "    gamma_occupancy=${39:gamma_occupancy}, &",
       "    lower_residual_range_quantile=${40:lower_residual_range_quantile}, &",
       "    upper_residual_range_quantile=${41:upper_residual_range_quantile}, &",
-      "    ierr=${42:ierr})"
+      "    bin_count_mode=${42|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
+      "    ierr=${43:ierr})"
     ]
   },
   "run_js_comp_test (call, checked)": {
@@ -1116,7 +1117,8 @@
       "    gamma_occupancy=${39:gamma_occupancy}, &",
       "    lower_residual_range_quantile=${40:lower_residual_range_quantile}, &",
       "    upper_residual_range_quantile=${41:upper_residual_range_quantile}, &",
-      "    ierr=${42:ierr})",
+      "    bin_count_mode=${42|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
+      "    ierr=${43:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1163,7 +1165,8 @@
       "    gamma_occupancy=${36:gamma_occupancy}, &",
       "    lower_residual_range_quantile=${37:lower_residual_range_quantile}, &",
       "    upper_residual_range_quantile=${38:upper_residual_range_quantile}, &",
-      "    ierr=${39:ierr})"
+      "    bin_count_mode=${39|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
+      "    ierr=${40:ierr})"
     ]
   },
   "run_js_comp_test_adaptive (call, checked)": {
@@ -1209,7 +1212,8 @@
       "    gamma_occupancy=${36:gamma_occupancy}, &",
       "    lower_residual_range_quantile=${37:lower_residual_range_quantile}, &",
       "    upper_residual_range_quantile=${38:upper_residual_range_quantile}, &",
-      "    ierr=${39:ierr})",
+      "    bin_count_mode=${39|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
+      "    ierr=${40:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1402,7 +1406,8 @@
       "    mad_distance_factor=${61:mad_distance_factor}, &",
       "    max_pooled_residuals=${62:max_pooled_residuals}, &",
       "    min_study_neighbors=${63:min_study_neighbors}, &",
-      "    ierr=${64:ierr})"
+      "    bin_count_mode=${64|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
+      "    ierr=${65:ierr})"
     ]
   },
   "run_js_comp_test_adaptive_parameter_search (call, checked)": {
@@ -1473,7 +1478,8 @@
       "    mad_distance_factor=${61:mad_distance_factor}, &",
       "    max_pooled_residuals=${62:max_pooled_residuals}, &",
       "    min_study_neighbors=${63:min_study_neighbors}, &",
-      "    ierr=${64:ierr})",
+      "    bin_count_mode=${64|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
+      "    ierr=${65:ierr})",
       "if (is_err(ierr)) return"
     ]
   },

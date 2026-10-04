@@ -45,6 +45,12 @@ from tensor_omics.error_handling import ERR_INVALID_INPUT
 TOL = 1e-12
 
 
+# Every `bin_count_mode` string of run_js_comp_test, run_js_comp_test_adaptive and
+# run_js_comp_test_adaptive_parameter_search.
+BIN_COUNT_MODES = ("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted",
+                   "bin_count_stone_pooled")
+
+
 def test_estimate_bin_count():
     # NOTE: estimate_bin_count/estimate_bin_count_expert now return a dict with keys n_bins,
     # sturges_bins and fd_bins (Issue #187 checkpoint 1). Per this project's testing philosophy
@@ -663,6 +669,22 @@ def test_run_js_comp_test_two_studies_hand_traceable():
     assert abs(result["p_values"][0] - 0.0) < TOL, "n_permutations=0 -> p_values stay 0.0"
     assert abs(result["p_values"][1] - 0.0) < TOL, "n_permutations=0 -> p_values stay 0.0"
 
+    # bin_count_mode: every mode string is accepted (type/shape only; the bin counts themselves
+    # are the Fortran suite's job), an unknown one is rejected by the C layer.
+    for mode in BIN_COUNT_MODES:
+        result_mode = run_js_comp_test(n_neighbors=1, gene_means=gene_means, gene_means_perms=gene_means_perms,
+                                       residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
+                                       min_residuals_per_bin=1, bin_count_mode=mode)
+        assert result_mode["n_bins_per_point"].shape == (n_points,), f"{mode}: n_bins_per_point shape"
+        assert result_mode["occupancy_failed"].shape == (n_points,), f"{mode}: occupancy_failed shape"
+        assert result_mode["occupancy_failed"].dtype == np.bool_, f"{mode}: occupancy_failed dtype"
+        assert result_mode["pmfs"].shape == (256, n_points, n_studies), f"{mode}: pmfs shape"
+        assert result_mode["global_js_divergence"].shape == (n_studies,), f"{mode}: global_js_divergence shape"
+    assert_error(lambda: run_js_comp_test(n_neighbors=1, gene_means=gene_means, gene_means_perms=gene_means_perms,
+                                          residuals=residuals, x_star=x_star, n_permutations=0,
+                                          bin_count_mode="nonsense"),
+                 "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
+
 
 def test_run_js_comp_test_parameter_search():
     max_n_genes_all_studies = 2000
@@ -901,6 +923,20 @@ def test_run_js_comp_test_adaptive():
         assert np.all((result[key] > 0.0) & (result[key] <= 1.0)), f"{key}: expected values in (0, 1]"
     assert np.all(np.isfinite(result["global_js_divergence"]))
 
+    # bin_count_mode: every mode string is accepted (type/shape only), an unknown one rejected.
+    for mode in BIN_COUNT_MODES:
+        result_mode = run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations=0,
+                                                min_residuals_per_bin=2, m_min=2, m_max=8, bin_count_mode=mode)
+        assert result_mode["n_bins_per_point"].shape == (n_points,), f"{mode}: n_bins_per_point shape"
+        assert result_mode["occupancy_failed"].shape == (n_points,), f"{mode}: occupancy_failed shape"
+        assert result_mode["occupancy_failed"].dtype == np.bool_, f"{mode}: occupancy_failed dtype"
+        assert np.all((result_mode["n_bins_per_point"] >= 2) & (result_mode["n_bins_per_point"] <= 8)), \
+            f"{mode}: bin counts within [m_min, m_max]"
+        assert result_mode["global_js_divergence"].shape == (n_studies,), f"{mode}: global_js_divergence shape"
+    assert_error(lambda: run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations=0,
+                                                   bin_count_mode="nonsense"),
+                 "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
+
     reversed_ranges = ranges.copy()
     reversed_ranges[:, 0] = [2, 1]
     assert_error(lambda: run_js_comp_test_adaptive(gene_means, residuals, reversed_ranges, n_permutations=0),
@@ -955,6 +991,25 @@ def test_run_js_comp_test_adaptive_parameter_search():
     assert_error(lambda: run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps=10,
                                                                     join_method='join_min', max_n_points_candidate=0),
                  "expected ERR_INVALID_INPUT for max_n_points_candidate=0", ERR_INVALID_INPUT)
+
+    # bin_count_mode: every mode string is accepted (type/shape only), an unknown one rejected.
+    for mode in BIN_COUNT_MODES:
+        result_mode = run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps=10,
+                                                                 join_method='join_min',
+                                                                 max_n_points_candidate=capacity,
+                                                                 min_residuals_per_bin=0, min_neighbor_overlap=0.0,
+                                                                 random_seed=1, bin_count_mode=mode)
+        assert isinstance(result_mode["n_points"], (int, np.integer)), f"{mode}: n_points type"
+        assert result_mode["n_bins_per_point"].shape == (capacity,), f"{mode}: n_bins_per_point shape"
+        n_admissible_mode = result_mode["trace_k_start"].shape[-1]
+        assert result_mode["trace_selected_n_bins"].shape == (capacity, n_admissible_mode), \
+            f"{mode}: trace_selected_n_bins shape"
+        assert result_mode["trace_occupancy_failed"].dtype == np.bool_, f"{mode}: trace_occupancy_failed dtype"
+    assert_error(lambda: run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps=10,
+                                                                    join_method='join_min',
+                                                                    max_n_points_candidate=capacity,
+                                                                    bin_count_mode="nonsense"),
+                 "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
 
 
 def main():

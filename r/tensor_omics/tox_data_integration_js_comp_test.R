@@ -781,7 +781,8 @@ determine_bin_count_stone <- function(pooled_residuals, residual_to_study, n_stu
 #'
 #' @param pooled_residuals a numeric vector. Pooled signed residuals for one neighborhood, across all its neighbors and all studies
 #'   NaN is permitted for this value.
-#' @param pooled_residuals_perm a integer vector. Sorting permutation for `pooled_residuals`, ascending, NaN last
+#' @param pooled_residuals_perm a integer vector. Sorting permutation for `pooled_residuals`, ascending, NaN last; each study's own
+#'   order is taken from it as well
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_residuals`.
 #' @param residual_to_study a integer vector. Study each pooled residual comes from
@@ -1571,9 +1572,11 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #' - Pass B (per point, sequential -- see the implementation body's own comment for why): pools
 #' every study's residuals for one reference point at a time
 #' (\code{\link{gather_pooled_neighborhood_residuals}},
-#' now published as its own entry point) and runs Issue #187's occupancy-constrained
-#' bin-count search on the pooled result
-#' (\code{\link{determine_bin_count_occupancy}}),
+#' now published as its own entry point) and runs the bin-count search `bin_count_mode`
+#' names on the pooled result -- Issue #187's occupancy search
+#' (\code{\link{determine_bin_count_occupancy}},
+#' the default) or Stone's cross-validation rule
+#' (\code{\link{determine_bin_count_stone}}) --
 #' deciding `n_bins_per_point(i_point)` independently for every reference point, plus the
 #' `occupancy_failed`/`n_pooled_residuals`/`min_bin_occupancy`/`mean_bin_occupancy`/
 #' `max_bin_occupancy`/`sturges_bins`/`fd_bins` diagnostics. `max_n_bins_per_point`
@@ -1612,7 +1615,7 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #' admissibility gate at all (no
 #' \code{\link{check_neighborhood_overlaps}},
 #' no \code{\link{check_mean_pmf_min_counts}},
-#' no early exit). A reference point whose Pass B occupancy search fails even at `m_min`
+#' no early exit). A reference point whose Pass B bin-count search fails (per `bin_count_mode`)
 #' (`occupancy_failed(i_point) = TRUE_c_bool`) still gets a real histogram built, at
 #' `n_bins_per_point(i_point) == m_min`, and that point still contributes to
 #' `global_js_divergence` exactly like every other point -- its contribution is down-weighted
@@ -1624,7 +1627,8 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #' **A real, deliberate change to this routine's public array shapes (Issue #187):** the old
 #' mandatory scalar input `n_bins` is gone -- there is no way for a caller to know the right bin
 #' count in advance, since it is now genuinely computed inside this routine by Pass B's
-#' occupancy search, independently per reference point. Every array whose bin-sized dimension
+#' bin-count search (per `bin_count_mode`), independently per reference point. Every array
+#' whose bin-sized dimension
 #' used to be sized by that input (`pmfs`, `counts`, `mean_pmf`, `mean_pmf_counts`,
 #' `tmp_counts_point_major`, `tmp_pmf_point_major`, `tmp_permutation_mean_pmf_counts`,
 #' `tmp_permutation_counts`, `tmp_permutation_pmfs`) is now sized to the fixed compile-time
@@ -1687,49 +1691,56 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #' @param random_seed a integer scalar. Seed for the GSL random number generator
 #'   The default value is `42`.
 #' @param min_residuals_per_bin a integer scalar. Minimum number of pooled residuals every bin must reach for a candidate bin count to
-#'   be admissible in Pass B's occupancy search, forwarded to
-#'   determine_bin_count_occupancy_impl
+#'   be admissible in Pass B's bin-count search, the floor in every `bin_count_mode`
 #'   The minimum valid value is `0`.
 #'   The default value is `10`.
-#' @param m_min a integer scalar. Smallest candidate bin count Pass B's occupancy search will ever test (M_min),
-#'   forwarded to determine_bin_count_occupancy_impl
+#' @param m_min a integer scalar. Smallest candidate bin count Pass B's bin-count search will ever test (M_min),
+#'   forwarded to the bin-count search
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `MAX_N_BINS`.
 #'   The default value is `3`.
-#' @param m_max a integer scalar. Largest candidate bin count Pass B's occupancy search will ever test (M_max),
-#'   forwarded to determine_bin_count_occupancy_impl; if a caller passes `m_max < m_min`,
-#'   determine_bin_count_occupancy_impl clamps it up to `m_min` internally
+#' @param m_max a integer scalar. Largest candidate bin count Pass B's bin-count search will ever test (M_max),
+#'   forwarded to the bin-count search; if a caller passes `m_max < m_min`, the search
+#'   clamps it up to `m_min` internally
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `MAX_N_BINS`.
 #'   The default value is `120`.
 #' @param gamma_occupancy a numeric scalar. Geometric growth factor for Pass B's occupancy search's coarse search stage,
 #'   forwarded to determine_bin_count_occupancy_impl; must exceed 1 or the search never
-#'   advances
+#'   advances. Unused in the Stone modes of `bin_count_mode`, which test every bin count
 #'   The minimum valid value is `above(1.0)`.
 #'   The default value is `1.25`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's own lower residual-range bound,
-#'   forwarded to determine_bin_count_occupancy_impl
+#'   forwarded to the bin-count search
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.05`.
 #' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's own upper residual-range bound,
-#'   forwarded to determine_bin_count_occupancy_impl
+#'   forwarded to the bin-count search
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.95`.
+#' @param bin_count_mode a string, one of "bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled". How Pass B chooses each reference point's histogram bin count. In the three Stone
+#'   modes every bin count from `m_min` to `m_max` is scored by Stone's cross-validation
+#'   rule, as in
+#'   \code{\link{determine_bin_count_stone}} with each
+#'   study as its own study; `min_residuals_per_bin` stays the floor every admissible bin count must
+#'   meet, and `gamma_occupancy` is not used
+#'
+#'   The default value is `"bin_count_occupancy"`.
 #' @return a named list with elements:
 #'   \item{neighborhood_indices}{a integer array of rank 3. Gene indices of the selected neighborhood, per reference point, per study (Pass A)}
 #'   \item{neighborhood_range}{a integer array of rank 3. For each reference point and study, the `[min_idx, max_idx]` neighborhood span, as
 #'     produced by construct_neighborhoods_ranged_impl (Pass A)}
 #'   \item{n_bins_per_point}{a integer vector. This reference point's own selected histogram bin count (Issue #187's `M_j`), from
-#'     Pass B's occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood
-#'     may use a different bin count}
+#'     Pass B's bin-count search (the occupancy search or Stone's rule, per
+#'     `bin_count_mode`) -- every neighborhood may use a different bin count}
 #'   \item{shared_residual_range_low}{a numeric vector. This reference point's own lower residual-range bound (R_low), from Pass B's
-#'     occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood may use a
-#'     different, asymmetric range (Step 3)}
+#'     bin-count search (per `bin_count_mode`) -- every neighborhood may use a different,
+#'     asymmetric range (Step 3)}
 #'   \item{shared_residual_range_high}{a numeric vector. This reference point's own upper residual-range bound (R_high), from Pass B's
-#'     occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood may use a
-#'     different, asymmetric range (Step 3)}
+#'     bin-count search (per `bin_count_mode`) -- every neighborhood may use a different,
+#'     asymmetric range (Step 3)}
 #'   \item{max_n_bins_per_point}{a integer scalar. The widest `n_bins_per_point` value across all `n_points` reference points
 #'     (`maxval(n_bins_per_point(1:n_points))`), derived once after Pass B. The number of
 #'     leading, meaningful bins/rows in `pmfs`, `counts`, `mean_pmf` and `mean_pmf_counts`
@@ -1740,26 +1751,24 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #'     trimming directive cannot express this trim, because it only ever trims an array's
 #'     LAST declared extent, and bins is the FIRST declared extent of every one of those
 #'     arrays}
-#'   \item{occupancy_failed}{a logical vector. This reference point's `occupancy_failed` flag from Pass B
-#'     (determine_bin_count_occupancy_impl) -- `TRUE` iff even `m_min` bins could not
-#'     satisfy the occupancy criterion for it. See this routine's own doc block above for
+#'   \item{occupancy_failed}{a logical vector. This reference point's `occupancy_failed` flag from Pass B -- `TRUE` iff the
+#'     bin-count search failed for it (occupancy or Stone, per `bin_count_mode`), and the
+#'     point then uses `m_min` bins. See this routine's own doc block above for
 #'     the behavioral asymmetry this implies vs. run_js_comp_test_parameter_search_impl: a
 #'     `TRUE` point here still gets a real histogram and still contributes to
 #'     `global_js_divergence`, it is never rejected}
-#'   \item{n_pooled_residuals}{a integer vector. This reference point's pooled residual count (N_j) from Pass B
-#'     (determine_bin_count_occupancy_impl)}
-#'   \item{min_bin_occupancy}{a integer vector. This reference point's minimum bin occupancy at `n_bins_per_point`, from Pass B
-#'     (determine_bin_count_occupancy_impl)}
-#'   \item{mean_bin_occupancy}{a numeric vector. This reference point's mean bin occupancy at `n_bins_per_point`, from Pass B
-#'     (determine_bin_count_occupancy_impl)}
-#'   \item{max_bin_occupancy}{a integer vector. This reference point's maximum bin occupancy at `n_bins_per_point`, from Pass B
-#'     (determine_bin_count_occupancy_impl)}
-#'   \item{sturges_bins}{a integer vector. This reference point's Sturges' rule bin-count diagnostic from Pass B
-#'     (determine_bin_count_occupancy_impl) -- never part of the occupancy search's own
-#'     decision}
-#'   \item{fd_bins}{a integer vector. This reference point's Freedman-Diaconis rule bin-count diagnostic from Pass B
-#'     (determine_bin_count_occupancy_impl) -- never part of the occupancy search's own
-#'     decision}
+#'   \item{n_pooled_residuals}{a integer vector. This reference point's pooled residual count (N_j) from Pass B's
+#'     bin-count search (per `bin_count_mode`)}
+#'   \item{min_bin_occupancy}{a integer vector. This reference point's minimum bin occupancy at `n_bins_per_point`, from Pass B's
+#'     bin-count search (per `bin_count_mode`)}
+#'   \item{mean_bin_occupancy}{a numeric vector. This reference point's mean bin occupancy at `n_bins_per_point`, from Pass B's
+#'     bin-count search (per `bin_count_mode`)}
+#'   \item{max_bin_occupancy}{a integer vector. This reference point's maximum bin occupancy at `n_bins_per_point`, from Pass B's
+#'     bin-count search (per `bin_count_mode`)}
+#'   \item{sturges_bins}{a integer vector. This reference point's Sturges' rule bin-count diagnostic from Pass B's bin-count
+#'     search (per `bin_count_mode`) -- never part of the bin-count search's own decision}
+#'   \item{fd_bins}{a integer vector. This reference point's Freedman-Diaconis rule bin-count diagnostic from Pass B's bin-count
+#'     search (per `bin_count_mode`) -- never part of the bin-count search's own decision}
 #'   \item{pmfs}{a numeric array of rank 3. `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`. `256`
 #'     = MAX_N_BINS, a fixed ceiling (see `max_n_bins_per_point` above) -- only rows `1:max_n_bins_per_point`
 #'     are meaningful; a Python/R caller must slice `[:max_n_bins_per_point, ...]` themselves}
@@ -1781,7 +1790,7 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #'     before it recomputed the consensus per permutation. Kept for comparison only;
 #'     `p_values` is the primary result}
 #' @export
-run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residuals, x_star, n_permutations = 1000L, random_seed = 42L, min_residuals_per_bin = 10L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95) {
+run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residuals, x_star, n_permutations = 1000L, random_seed = 42L, min_residuals_per_bin = 10L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, bin_count_mode = "bin_count_occupancy") {
     n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     gene_means_perms <- .tox_as_integer_matrix(gene_means_perms, "gene_means_perms")
@@ -1795,6 +1804,7 @@ run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residual
     gamma_occupancy <- .tox_as_double_scalar(gamma_occupancy, "gamma_occupancy")
     lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
     upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
+    bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
     if (dim(gene_means_perms)[2] != dim(gene_means)[2])
         .tox_shape_error("gene_means_perms", dim(gene_means_perms)[2], "gene_means", dim(gene_means)[2])
     if (dim(residuals)[3] != dim(gene_means)[2])
@@ -1804,9 +1814,9 @@ run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residual
     if (dim(residuals)[2] != dim(gene_means)[1])
         .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
 
-    .result <- .Call("run_js_comp_test_call", n_neighbors, gene_means, gene_means_perms, residuals, x_star, n_permutations, random_seed, min_residuals_per_bin, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr")
-    .sources <- c("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("run_js_comp_test_call", n_neighbors, gene_means, gene_means_perms, residuals, x_star, n_permutations, random_seed, min_residuals_per_bin, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, bin_count_mode)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -1855,11 +1865,14 @@ run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residual
 #' `(n_studies, n_points)` orientation, and add up to `b - a + 1`.
 #'
 #' **Pipeline, per reference point.** Pass B pools the point's residuals across all its genes
-#' of all studies and picks its bin count and residual range with Issue #187's occupancy
-#' search
-#' (\code{\link{determine_bin_count_occupancy}}),
-#' its Sturges/Freedman-Diaconis diagnostics computed with the rounded mean per-study neighbor
-#' count. Pass C builds each study's histogram from that study's own genes of the point. Then,
+#' of all studies and picks its bin count and residual range with the search `bin_count_mode`
+#' names: Issue #187's occupancy search
+#' (\code{\link{determine_bin_count_occupancy}},
+#' the default) or Stone's cross-validation rule
+#' (\code{\link{determine_bin_count_stone}},
+#' each study's genes forming its own study), its Sturges/Freedman-Diaconis diagnostics
+#' computed with the rounded mean per-study neighbor count. Pass C builds each study's
+#' histogram from that study's own genes of the point. Then,
 #' exactly as in `run_js_comp_test_impl`: the consensus pmf
 #' (\code{\link{create_mean_pmf}}), each
 #' study's JSD against it and the weighted global JSD, the permutation test
@@ -1884,7 +1897,9 @@ run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residual
 #' neighbor count. The pooling buffers `tmp_pooled_residuals`/`tmp_pooled_residuals_perm`
 #' therefore hold `max_n_reps_all_studies * max_n_genes_all_studies * n_studies` values each,
 #' the size of `residuals` itself; Pass B and Pass C are sequential over points so one such
-#' buffer serves every point.
+#' buffer serves every point. A third buffer of that size, the int32
+#' `tmp_residual_to_study_perm`, holds the per-study grouping the Stone modes of
+#' `bin_count_mode` need; the plain entry point allocates it in every mode, occupancy included.
 #'
 #' The bin-sized arrays have the same fixed 256-bin
 #' (\code{MAX_N_BINS}) leading extent as in
@@ -1913,19 +1928,20 @@ run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residual
 #' @param random_seed a integer scalar. Seed for the GSL random number generator
 #'   The default value is `42`.
 #' @param min_residuals_per_bin a integer scalar. Minimum number of pooled residuals every bin must reach for a candidate bin count to
-#'   be admissible in the occupancy search
+#'   be admissible in the bin-count search, the floor in every `bin_count_mode`
 #'   The minimum valid value is `0`.
 #'   The default value is `10`.
-#' @param m_min a integer scalar. Smallest candidate bin count the occupancy search tests (M_min)
+#' @param m_min a integer scalar. Smallest candidate bin count the bin-count search tests (M_min)
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `MAX_N_BINS`.
 #'   The default value is `3`.
-#' @param m_max a integer scalar. Largest candidate bin count the occupancy search tests (M_max); raised to `m_min`
+#' @param m_max a integer scalar. Largest candidate bin count the bin-count search tests (M_max); raised to `m_min`
 #'   when smaller
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `MAX_N_BINS`.
 #'   The default value is `120`.
-#' @param gamma_occupancy a numeric scalar. Geometric growth factor of the occupancy search's coarse stage
+#' @param gamma_occupancy a numeric scalar. Geometric growth factor of the occupancy search's coarse stage; unused in the Stone
+#'   modes of `bin_count_mode`, which test every bin count
 #'   The minimum valid value is `above(1.0)`.
 #'   The default value is `1.25`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's lower residual-range bound
@@ -1936,25 +1952,33 @@ run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residual
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.95`.
+#' @param bin_count_mode a string, one of "bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled". How Pass B chooses each reference point's histogram bin count. In the three Stone
+#'   modes every bin count from `m_min` to `m_max` is scored by Stone's cross-validation
+#'   rule, as in
+#'   \code{\link{determine_bin_count_stone}} with each
+#'   study as its own study; `min_residuals_per_bin` stays the floor every admissible bin count must
+#'   meet, and `gamma_occupancy` is not used
+#'
+#'   The default value is `"bin_count_occupancy"`.
 #' @return a named list with elements:
 #'   \item{n_neighbors_per_point}{a integer matrix. For each neighborhood, how many of its genes belong to each study (at least 1 each)}
-#'   \item{n_bins_per_point}{a integer vector. Each reference point's selected histogram bin count, from the occupancy search}
-#'   \item{shared_residual_range_low}{a numeric vector. Each reference point's lower residual-range bound (R_low), from the occupancy search}
-#'   \item{shared_residual_range_high}{a numeric vector. Each reference point's upper residual-range bound (R_high), from the occupancy search}
+#'   \item{n_bins_per_point}{a integer vector. Each reference point's selected histogram bin count, from the bin-count search}
+#'   \item{shared_residual_range_low}{a numeric vector. Each reference point's lower residual-range bound (R_low), from the bin-count search}
+#'   \item{shared_residual_range_high}{a numeric vector. Each reference point's upper residual-range bound (R_high), from the bin-count search}
 #'   \item{max_n_bins_per_point}{a integer scalar. The widest `n_bins_per_point` value, `maxval(n_bins_per_point)`: the number of leading,
 #'     meaningful rows of `pmfs`, `counts`, `mean_pmf` and `mean_pmf_counts`}
-#'   \item{occupancy_failed}{a logical vector. `TRUE` iff even `m_min` bins could not satisfy the occupancy criterion for this
-#'     reference point; such a point still gets a histogram at `m_min` bins and still
-#'     contributes to `global_js_divergence`}
+#'   \item{occupancy_failed}{a logical vector. `TRUE` iff the bin-count search failed for this reference point (occupancy or
+#'     Stone, per `bin_count_mode`); such a point still gets a histogram at `m_min` bins and
+#'     still contributes to `global_js_divergence`}
 #'   \item{n_pooled_residuals}{a integer vector. Each reference point's pooled non-NaN residual count (N_j), across all its genes of
 #'     all studies}
 #'   \item{min_bin_occupancy}{a integer vector. Each reference point's minimum bin occupancy at `n_bins_per_point`}
 #'   \item{mean_bin_occupancy}{a numeric vector. Each reference point's mean bin occupancy at `n_bins_per_point`}
 #'   \item{max_bin_occupancy}{a integer vector. Each reference point's maximum bin occupancy at `n_bins_per_point`}
 #'   \item{sturges_bins}{a integer vector. Each reference point's Sturges' rule diagnostic, with the rounded mean per-study
-#'     neighbor count; never part of the occupancy search's decision}
+#'     neighbor count; never part of the bin-count search's decision}
 #'   \item{fd_bins}{a integer vector. Each reference point's Freedman-Diaconis rule diagnostic, with the rounded mean
-#'     per-study neighbor count; never part of the occupancy search's decision}
+#'     per-study neighbor count; never part of the bin-count search's decision}
 #'   \item{pmfs}{a numeric array of rank 3. `counts` normalized per reference point and study. `256` = MAX_N_BINS; only rows
 #'     `1:max_n_bins_per_point` are meaningful}
 #'   \item{counts}{a integer array of rank 3. Absolute counts of a residual per bin for `pmfs`. `256` = MAX_N_BINS; only rows
@@ -1974,7 +1998,7 @@ run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residual
 #'     before it recomputed the consensus per permutation. Kept for comparison only;
 #'     `p_values` is the primary result}
 #' @export
-run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood_range, n_permutations = 1000L, random_seed = 42L, min_residuals_per_bin = 10L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95) {
+run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood_range, n_permutations = 1000L, random_seed = 42L, min_residuals_per_bin = 10L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, bin_count_mode = "bin_count_occupancy") {
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
     pooled_neighborhood_range <- .tox_as_integer_matrix(pooled_neighborhood_range, "pooled_neighborhood_range")
@@ -1986,14 +2010,15 @@ run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood
     gamma_occupancy <- .tox_as_double_scalar(gamma_occupancy, "gamma_occupancy")
     lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
     upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
+    bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
     if (dim(residuals)[3] != dim(gene_means)[2])
         .tox_shape_error("residuals", dim(residuals)[3], "gene_means", dim(gene_means)[2])
     if (dim(residuals)[2] != dim(gene_means)[1])
         .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
 
-    .result <- .Call("run_js_comp_test_adaptive_call", gene_means, residuals, pooled_neighborhood_range, n_permutations, random_seed, min_residuals_per_bin, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "gene_means", "residuals", "pooled_neighborhood_range", "n_neighbors_per_point", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr")
-    .sources <- c("gene_means", "gene_means", "residuals", "pooled_neighborhood_range", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("run_js_comp_test_adaptive_call", gene_means, residuals, pooled_neighborhood_range, n_permutations, random_seed, min_residuals_per_bin, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, bin_count_mode)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "gene_means", "residuals", "pooled_neighborhood_range", "n_neighbors_per_point", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", "pooled_neighborhood_range", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -2414,8 +2439,9 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstrap
 #' 3. First admissibility gate:
 #' \code{\link{check_neighborhood_overlaps}}
 #' on the pooled ranges `[a_i, b_i]`.
-#' 4. Per point, decode the range into per-study gene lists and run Issue #187's occupancy
-#' search on the pooled residuals (Pass B). Then build each study's histogram per point
+#' 4. Per point, decode the range into per-study gene lists and run the bin-count search
+#' `bin_count_mode` names (Issue #187's occupancy search by default, or Stone's rule) on the
+#' pooled residuals (Pass B). Then build each study's histogram per point
 #' (Pass C), the consensus pmf, and apply the second gate,
 #' \code{\link{check_mean_pmf_min_counts}}.
 #' This is the pipeline of
@@ -2461,8 +2487,9 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstrap
 #' `n_bins_per_point` entry up to `min(n_points, max_n_points_candidate)` is `m_min` and both
 #' ranges are `0.0`, as in the fixed-k search. To rebuild the selected neighborhoods, call
 #' `construct_adaptive_neighborhoods` with the returned knobs and the same construction
-#' options, then `run_js_comp_test_adaptive` with the same occupancy options: its
-#' `global_js_divergence` equals the selected candidate's `trace_global_js_divergence` column.
+#' options, then `run_js_comp_test_adaptive` with the same bin-count options
+#' (`bin_count_mode` included): its `global_js_divergence` equals the selected candidate's
+#' `trace_global_js_divergence` column.
 #'
 #' **Traces** are the fixed-k search's, with `trace_k_start`/`trace_k_step`/`trace_k_max` in
 #' place of `trace_n_neighbors`. The per-point traces are jagged per column exactly as there.
@@ -2474,7 +2501,10 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstrap
 #' entries, the largest being `tmp_n_neighbors_per_point` with `n_studies * N` integers. The
 #' pooling buffers `tmp_pooled_residuals`/`tmp_pooled_residuals_perm` hold
 #' `max_n_reps_all_studies * N` values each, the size of `residuals`, because one study may
-#' have all its genes in one neighborhood. The histogram buffers hold `256 * max_n_points_candidate
+#' have all its genes in one neighborhood. A third buffer of that size, the int32
+#' `tmp_residual_to_study_perm`, holds the per-study grouping the Stone modes of
+#' `bin_count_mode` need; the plain entry point allocates it in every mode, occupancy included.
+#' The histogram buffers hold `256 * max_n_points_candidate
 #' * n_studies` values each.
 #'
 #' Impure: calls the impure
@@ -2498,8 +2528,8 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstrap
 #'   the caller has to know it up front
 #'   It is recommended to compute this argument from the `max_n_points_candidate` output produced by \code{\link{calc_adaptive_js_comp_test_bounds}}.
 #'   The minimum valid value is `1`.
-#' @param min_residuals_per_bin a integer scalar. Minimum count every bin must reach, both in the occupancy search and in the second
-#'   admissibility gate (the consensus pmf)
+#' @param min_residuals_per_bin a integer scalar. Minimum count every bin must reach, both in the bin-count search (the floor in every
+#'   `bin_count_mode`) and in the second admissibility gate (the consensus pmf)
 #'   The minimum valid value is `0`.
 #'   The default value is `10`.
 #' @param min_neighbor_overlap a numeric scalar. Minimum fractional overlap two consecutive neighborhoods' pooled ranges must have to
@@ -2530,16 +2560,17 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstrap
 #' @param delta_min_consecutive_transitions a integer scalar. Number of consecutive qualifying transitions required to declare an effect-size plateau
 #'   The minimum valid value is `1`.
 #'   The default value is `2`.
-#' @param m_min a integer scalar. Smallest candidate bin count the occupancy search tests (M_min)
+#' @param m_min a integer scalar. Smallest candidate bin count the bin-count search tests (M_min)
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `MAX_N_BINS`.
 #'   The default value is `3`.
-#' @param m_max a integer scalar. Largest candidate bin count the occupancy search tests (M_max); raised to `m_min`
+#' @param m_max a integer scalar. Largest candidate bin count the bin-count search tests (M_max); raised to `m_min`
 #'   when smaller
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `MAX_N_BINS`.
 #'   The default value is `120`.
-#' @param gamma_occupancy a numeric scalar. Geometric growth factor of the occupancy search's coarse stage
+#' @param gamma_occupancy a numeric scalar. Geometric growth factor of the occupancy search's coarse stage; unused in the Stone
+#'   modes of `bin_count_mode`, which test every bin count
 #'   The minimum valid value is `above(1.0)`.
 #'   The default value is `1.25`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's lower residual-range bound
@@ -2573,6 +2604,14 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstrap
 #'   admissible, as in construct_adaptive_neighborhoods
 #'   The minimum valid value is `1`.
 #'   The default value is `1`.
+#' @param bin_count_mode a string, one of "bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled". How Pass B chooses each reference point's histogram bin count, for every candidate.
+#'   In the three Stone modes every bin count from `m_min` to `m_max` is scored by Stone's
+#'   cross-validation rule, as in
+#'   \code{\link{determine_bin_count_stone}} with each
+#'   study as its own study; `min_residuals_per_bin` stays the floor every admissible bin count must
+#'   meet, and `gamma_occupancy` is not used
+#'
+#'   The default value is `"bin_count_occupancy"`.
 #' @return a named list with elements:
 #'   \item{k_start}{a integer scalar. The finally chosen candidate's `k_start`}
 #'   \item{k_step}{a integer scalar. The finally chosen candidate's `k_step`}
@@ -2626,7 +2665,8 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstrap
 #'     only rows `1:trace_n_points(t)` of column `t` are meaningful, so a Python/R caller
 #'     must additionally slice `[:trace_n_points[t], t]` themselves
 #'     The first `n_admissible_evaluated` elements will hold the results.}
-#'   \item{trace_occupancy_failed}{a logical matrix. Per-admissible-candidate, per-reference-point `occupancy_failed` flag; jagged as
+#'   \item{trace_occupancy_failed}{a logical matrix. Per-admissible-candidate, per-reference-point `occupancy_failed` flag: `TRUE` iff the
+#'     bin-count search failed (occupancy or Stone, per `bin_count_mode`); jagged as
 #'     trace_selected_n_bins
 #'     The first `n_admissible_evaluated` elements will hold the results.}
 #'   \item{trace_n_pooled_residuals}{a integer matrix. Per-admissible-candidate, per-reference-point pooled non-NaN residual count (`N_j`);
@@ -2666,7 +2706,7 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstrap
 #'     `5` consensus-pmf count gate failed
 #'     The first `n_candidates_tried` elements will hold the results.}
 #' @export
-run_js_comp_test_adaptive_parameter_search <- function(gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_ci_overlap", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L) {
+run_js_comp_test_adaptive_parameter_search <- function(gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_ci_overlap", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L, bin_count_mode = "bin_count_occupancy") {
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
     n_bootstraps <- .tox_as_integer_scalar(n_bootstraps, "n_bootstraps")
@@ -2691,14 +2731,15 @@ run_js_comp_test_adaptive_parameter_search <- function(gene_means, residuals, n_
     mad_distance_factor <- .tox_as_double_scalar(mad_distance_factor, "mad_distance_factor")
     max_pooled_residuals <- .tox_as_integer_scalar(max_pooled_residuals, "max_pooled_residuals")
     min_study_neighbors <- .tox_as_integer_scalar(min_study_neighbors, "min_study_neighbors")
+    bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
     if (dim(residuals)[3] != dim(gene_means)[2])
         .tox_shape_error("residuals", dim(residuals)[3], "gene_means", dim(gene_means)[2])
     if (dim(residuals)[2] != dim(gene_means)[1])
         .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
 
-    .result <- .Call("run_js_comp_test_adaptive_parameter_search_call", gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, tau, mad_distance_factor, max_pooled_residuals, min_study_neighbors)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "ierr")
-    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, "n_bins_per_point", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("run_js_comp_test_adaptive_parameter_search_call", gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, tau, mad_distance_factor, max_pooled_residuals, min_study_neighbors, bin_count_mode)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, "n_bins_per_point", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(

@@ -379,6 +379,7 @@
       "    gamma_occupancy=${12:1.25},",
       "    lower_residual_range_quantile=${13:0.05},",
       "    upper_residual_range_quantile=${14:0.95},",
+      "    bin_count_mode=${15|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
       ")"
     ]
   },
@@ -398,6 +399,7 @@
       "    gamma_occupancy=${10:1.25},",
       "    lower_residual_range_quantile=${11:0.05},",
       "    upper_residual_range_quantile=${12:0.95},",
+      "    bin_count_mode=${13|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
       ")"
     ]
   },
@@ -459,6 +461,7 @@
       "    mad_distance_factor=${23:1.0},",
       "    max_pooled_residuals=${24:0},",
       "    min_study_neighbors=${25:1},",
+      "    bin_count_mode=${26|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
       ")"
     ]
   },

@@ -7,6 +7,11 @@ source("r/test_helpers.R")
 
 TOL <- 1e-12
 
+# Every `bin_count_mode` string of run_js_comp_test, run_js_comp_test_adaptive and
+# run_js_comp_test_adaptive_parameter_search.
+BIN_COUNT_MODES <- c("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted",
+                     "bin_count_stone_pooled")
+
 test_estimate_bin_count <- function() {
   # NOTE: estimate_bin_count/estimate_bin_count_expert now return a named list with n_bins,
   # sturges_bins and fd_bins (Issue #187 checkpoint 1). Per this project's testing philosophy
@@ -592,6 +597,22 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
 
   assert_true(abs(result$p_values[1] - 0.0) < TOL, "n_permutations=0 -> p_values stay 0.0")
   assert_true(abs(result$p_values[2] - 0.0) < TOL, "n_permutations=0 -> p_values stay 0.0")
+
+  # bin_count_mode: every mode string is accepted (type/shape only; the bin counts themselves are
+  # the Fortran suite's job), an unknown one is rejected before Fortran.
+  for (mode in BIN_COUNT_MODES) {
+    result_mode <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = gene_means_perms,
+                                    residuals = residuals, x_star = x_star, n_permutations = 0L, random_seed = 1L,
+                                    min_residuals_per_bin = 1L, bin_count_mode = mode)
+    assert_equal_int(length(result_mode$n_bins_per_point), n_points, paste(mode, "n_bins_per_point length"))
+    assert_true(is.logical(result_mode$occupancy_failed), paste(mode, "occupancy_failed must be logical"))
+    assert_equal_int(dim(result_mode$pmfs), c(256L, n_points, n_studies), paste(mode, "pmfs shape"))
+    assert_equal_int(length(result_mode$global_js_divergence), n_studies, paste(mode, "global_js_divergence length"))
+  }
+  assert_error(run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = gene_means_perms,
+                                residuals = residuals, x_star = x_star, n_permutations = 0L,
+                                bin_count_mode = "nonsense"),
+               "expected an unknown bin_count_mode string to be rejected before Fortran")
 }
 
 test_run_js_comp_test_parameter_search <- function() {
@@ -844,6 +865,20 @@ test_run_js_comp_test_adaptive <- function() {
   }
   assert_true(all(is.finite(result$global_js_divergence)), "global JSD finite")
 
+  # bin_count_mode: every mode string is accepted (type/shape only), an unknown one rejected.
+  for (mode in BIN_COUNT_MODES) {
+    result_mode <- run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations = 0L,
+                                             min_residuals_per_bin = 2L, m_min = 2L, m_max = 8L, bin_count_mode = mode)
+    assert_equal_int(length(result_mode$n_bins_per_point), n_points, paste(mode, "n_bins_per_point length"))
+    assert_true(is.logical(result_mode$occupancy_failed), paste(mode, "occupancy_failed must be logical"))
+    assert_true(all(result_mode$n_bins_per_point >= 2 & result_mode$n_bins_per_point <= 8),
+                paste(mode, "bin counts within [m_min, m_max]"))
+    assert_equal_int(length(result_mode$global_js_divergence), n_studies, paste(mode, "global_js_divergence length"))
+  }
+  assert_error(run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations = 0L,
+                                         bin_count_mode = "nonsense"),
+               "expected an unknown bin_count_mode string to be rejected before Fortran")
+
   reversed_ranges <- ranges
   reversed_ranges[, 1] <- c(2L, 1L)
   assert_error(run_js_comp_test_adaptive(gene_means, residuals, reversed_ranges, n_permutations = 0L),
@@ -902,6 +937,26 @@ test_run_js_comp_test_adaptive_parameter_search <- function() {
   assert_error(run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps = 10L,
                                                           join_method = "join_min", max_n_points_candidate = 0L),
                "expected ERR_INVALID_INPUT for max_n_points_candidate=0", ERR_INVALID_INPUT)
+
+  # bin_count_mode: every mode string is accepted (type/shape only), an unknown one rejected.
+  for (mode in BIN_COUNT_MODES) {
+    result_mode <- run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps = 10L,
+                                                              join_method = "join_min",
+                                                              max_n_points_candidate = capacity,
+                                                              min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
+                                                              random_seed = 1L, bin_count_mode = mode)
+    assert_true(is.numeric(result_mode$n_points) && length(result_mode$n_points) == 1,
+                paste(mode, "n_points must be a single number"))
+    assert_equal_int(length(result_mode$n_bins_per_point), capacity, paste(mode, "n_bins_per_point length"))
+    n_admissible_mode <- length(result_mode$trace_k_start)
+    assert_equal_int(dim(result_mode$trace_selected_n_bins), c(capacity, n_admissible_mode),
+                     paste(mode, "trace_selected_n_bins shape"))
+    assert_true(is.logical(result_mode$trace_occupancy_failed), paste(mode, "trace_occupancy_failed must be logical"))
+  }
+  assert_error(run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps = 10L,
+                                                          join_method = "join_min", max_n_points_candidate = capacity,
+                                                          bin_count_mode = "nonsense"),
+               "expected an unknown bin_count_mode string to be rejected before Fortran")
 }
 
 run_all_tests()
