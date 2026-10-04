@@ -12,6 +12,8 @@ void determine_bin_count_occupancy_c(const double*, const int*, const int*, cons
 void determine_bin_count_occupancy_expert_c(const double*, const int*, const int*, const int*, const int*, int*, unsigned char*, double*, double*, int*, int*, double*, int*, int*, int*, int*, const int*, const int*, const int*, const double*, const double*, const double*, int*);
 void determine_bin_count_occupancy_exhaustive_c(const double*, const int*, const int*, const double*, const double*, int*, unsigned char*, int*, double*, int*, const int*, const int*, const int*, int*);
 void determine_bin_count_occupancy_exhaustive_expert_c(const double*, const int*, const int*, const int*, const double*, const double*, int*, unsigned char*, int*, double*, int*, const int*, const int*, const int*, int*);
+void determine_bin_count_stone_c(const double*, const int*, const int*, const int*, const int*, const int*, int*, unsigned char*, double*, double*, int*, int*, double*, int*, int*, int*, const char*, const int*, const int*, const int*, const double*, const double*, int*);
+void determine_bin_count_stone_expert_c(const double*, const int*, const int*, const int*, const int*, const int*, const int*, int*, unsigned char*, double*, double*, int*, int*, double*, int*, int*, int*, int*, int*, int*, const char*, const int*, const int*, const int*, const double*, const double*, int*);
 void generate_js_comp_test_candidates_c(const int*, int*, int*, int*);
 void generate_adaptive_js_comp_test_candidates_c(const int*, const int*, int*, int*, int*);
 void construct_adaptive_neighborhoods_c(const int*, const int*, const int*, const double*, const double*, const int*, const int*, const int*, int*, double*, int*, int*, int*, double*, double*, int*, int*, const double*, const double*, const int*, const int*, int*);
@@ -389,6 +391,185 @@ SEXP determine_bin_count_occupancy_exhaustive_expert_call(SEXP pooled_residuals,
     SET_STRING_ELT(_nms, 3, Rf_mkChar("mean_bin_occupancy"));
     SET_STRING_ELT(_nms, 4, Rf_mkChar("max_bin_occupancy"));
     SET_STRING_ELT(_nms, 5, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP determine_bin_count_stone_call(SEXP pooled_residuals, SEXP residual_to_study, SEXP n_studies, SEXP max_n_reps_all_studies, SEXP n_neighbors, SEXP bin_count_mode, SEXP m_min, SEXP m_max, SEXP min_residuals_per_bin, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile) {
+    int nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_residuals = (int) Rf_length(pooled_residuals);
+
+    // scalar inputs, pulled from their length-1 vectors
+    int n_studies_v = Rf_asInteger(n_studies);
+    int max_n_reps_all_studies_v = Rf_asInteger(max_n_reps_all_studies);
+    int n_neighbors_v = Rf_asInteger(n_neighbors);
+    int m_min_v = Rf_asInteger(m_min);
+    int m_max_v = Rf_asInteger(m_max);
+    int min_residuals_per_bin_v = Rf_asInteger(min_residuals_per_bin);
+    double lower_residual_range_quantile_v = Rf_asReal(lower_residual_range_quantile);
+    double upper_residual_range_quantile_v = Rf_asReal(upper_residual_range_quantile);
+
+    // convert what Fortran cannot take from R directly
+    char* bin_count_mode_c = tox_char_in(bin_count_mode, 29);
+
+    // outputs and work space
+    int selected_n_bins = 0;
+    unsigned char stone_failed = 0;
+    double shared_residual_range_low = 0;
+    double shared_residual_range_high = 0;
+    int n_pooled_residuals = 0;
+    int min_bin_occupancy = 0;
+    double mean_bin_occupancy = 0;
+    int max_bin_occupancy = 0;
+    int sturges_bins = 0;
+    int fd_bins = 0;
+    int ierr = 0;
+
+    determine_bin_count_stone_c(
+        REAL(pooled_residuals),
+        &n_residuals,
+        INTEGER(residual_to_study),
+        &n_studies_v,
+        &max_n_reps_all_studies_v,
+        &n_neighbors_v,
+        &selected_n_bins,
+        &stone_failed,
+        &shared_residual_range_low,
+        &shared_residual_range_high,
+        &n_pooled_residuals,
+        &min_bin_occupancy,
+        &mean_bin_occupancy,
+        &max_bin_occupancy,
+        &sturges_bins,
+        &fd_bins,
+        bin_count_mode_c,
+        &m_min_v,
+        &m_max_v,
+        &min_residuals_per_bin_v,
+        &lower_residual_range_quantile_v,
+        &upper_residual_range_quantile_v,
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 11)); nprot++;
+    SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(selected_n_bins));
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarLogical(stone_failed != 0));
+    SET_VECTOR_ELT(_out, 2, Rf_ScalarReal(shared_residual_range_low));
+    SET_VECTOR_ELT(_out, 3, Rf_ScalarReal(shared_residual_range_high));
+    SET_VECTOR_ELT(_out, 4, Rf_ScalarInteger(n_pooled_residuals));
+    SET_VECTOR_ELT(_out, 5, Rf_ScalarInteger(min_bin_occupancy));
+    SET_VECTOR_ELT(_out, 6, Rf_ScalarReal(mean_bin_occupancy));
+    SET_VECTOR_ELT(_out, 7, Rf_ScalarInteger(max_bin_occupancy));
+    SET_VECTOR_ELT(_out, 8, Rf_ScalarInteger(sturges_bins));
+    SET_VECTOR_ELT(_out, 9, Rf_ScalarInteger(fd_bins));
+    SET_VECTOR_ELT(_out, 10, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 11)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("selected_n_bins"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("stone_failed"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("shared_residual_range_low"));
+    SET_STRING_ELT(_nms, 3, Rf_mkChar("shared_residual_range_high"));
+    SET_STRING_ELT(_nms, 4, Rf_mkChar("n_pooled_residuals"));
+    SET_STRING_ELT(_nms, 5, Rf_mkChar("min_bin_occupancy"));
+    SET_STRING_ELT(_nms, 6, Rf_mkChar("mean_bin_occupancy"));
+    SET_STRING_ELT(_nms, 7, Rf_mkChar("max_bin_occupancy"));
+    SET_STRING_ELT(_nms, 8, Rf_mkChar("sturges_bins"));
+    SET_STRING_ELT(_nms, 9, Rf_mkChar("fd_bins"));
+    SET_STRING_ELT(_nms, 10, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP determine_bin_count_stone_expert_call(SEXP pooled_residuals, SEXP pooled_residuals_perm, SEXP residual_to_study, SEXP n_studies, SEXP max_n_reps_all_studies, SEXP n_neighbors, SEXP bin_count_mode, SEXP m_min, SEXP m_max, SEXP min_residuals_per_bin, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile) {
+    int nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_residuals = (int) Rf_length(pooled_residuals);
+
+    // scalar inputs, pulled from their length-1 vectors
+    int n_studies_v = Rf_asInteger(n_studies);
+    int max_n_reps_all_studies_v = Rf_asInteger(max_n_reps_all_studies);
+    int n_neighbors_v = Rf_asInteger(n_neighbors);
+    int m_min_v = Rf_asInteger(m_min);
+    int m_max_v = Rf_asInteger(m_max);
+    int min_residuals_per_bin_v = Rf_asInteger(min_residuals_per_bin);
+    double lower_residual_range_quantile_v = Rf_asReal(lower_residual_range_quantile);
+    double upper_residual_range_quantile_v = Rf_asReal(upper_residual_range_quantile);
+
+    // convert what Fortran cannot take from R directly
+    char* bin_count_mode_c = tox_char_in(bin_count_mode, 29);
+
+    // outputs and work space
+    int selected_n_bins = 0;
+    unsigned char stone_failed = 0;
+    double shared_residual_range_low = 0;
+    double shared_residual_range_high = 0;
+    int n_pooled_residuals = 0;
+    int min_bin_occupancy = 0;
+    double mean_bin_occupancy = 0;
+    int max_bin_occupancy = 0;
+    int sturges_bins = 0;
+    int fd_bins = 0;
+    int* tmp_bin_counts = (int*) R_alloc(256, sizeof(int));
+    int* tmp_residual_to_study_perm = (int*) R_alloc(n_residuals, sizeof(int));
+    int* tmp_study_block_sizes = (int*) R_alloc(n_studies_v, sizeof(int));
+    int ierr = 0;
+
+    determine_bin_count_stone_expert_c(
+        REAL(pooled_residuals),
+        INTEGER(pooled_residuals_perm),
+        &n_residuals,
+        INTEGER(residual_to_study),
+        &n_studies_v,
+        &max_n_reps_all_studies_v,
+        &n_neighbors_v,
+        &selected_n_bins,
+        &stone_failed,
+        &shared_residual_range_low,
+        &shared_residual_range_high,
+        &n_pooled_residuals,
+        &min_bin_occupancy,
+        &mean_bin_occupancy,
+        &max_bin_occupancy,
+        &sturges_bins,
+        &fd_bins,
+        tmp_bin_counts,
+        tmp_residual_to_study_perm,
+        tmp_study_block_sizes,
+        bin_count_mode_c,
+        &m_min_v,
+        &m_max_v,
+        &min_residuals_per_bin_v,
+        &lower_residual_range_quantile_v,
+        &upper_residual_range_quantile_v,
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 11)); nprot++;
+    SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(selected_n_bins));
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarLogical(stone_failed != 0));
+    SET_VECTOR_ELT(_out, 2, Rf_ScalarReal(shared_residual_range_low));
+    SET_VECTOR_ELT(_out, 3, Rf_ScalarReal(shared_residual_range_high));
+    SET_VECTOR_ELT(_out, 4, Rf_ScalarInteger(n_pooled_residuals));
+    SET_VECTOR_ELT(_out, 5, Rf_ScalarInteger(min_bin_occupancy));
+    SET_VECTOR_ELT(_out, 6, Rf_ScalarReal(mean_bin_occupancy));
+    SET_VECTOR_ELT(_out, 7, Rf_ScalarInteger(max_bin_occupancy));
+    SET_VECTOR_ELT(_out, 8, Rf_ScalarInteger(sturges_bins));
+    SET_VECTOR_ELT(_out, 9, Rf_ScalarInteger(fd_bins));
+    SET_VECTOR_ELT(_out, 10, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 11)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("selected_n_bins"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("stone_failed"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("shared_residual_range_low"));
+    SET_STRING_ELT(_nms, 3, Rf_mkChar("shared_residual_range_high"));
+    SET_STRING_ELT(_nms, 4, Rf_mkChar("n_pooled_residuals"));
+    SET_STRING_ELT(_nms, 5, Rf_mkChar("min_bin_occupancy"));
+    SET_STRING_ELT(_nms, 6, Rf_mkChar("mean_bin_occupancy"));
+    SET_STRING_ELT(_nms, 7, Rf_mkChar("max_bin_occupancy"));
+    SET_STRING_ELT(_nms, 8, Rf_mkChar("sturges_bins"));
+    SET_STRING_ELT(_nms, 9, Rf_mkChar("fd_bins"));
+    SET_STRING_ELT(_nms, 10, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;

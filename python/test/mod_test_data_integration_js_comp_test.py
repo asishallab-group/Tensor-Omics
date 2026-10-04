@@ -20,6 +20,8 @@ from tensor_omics import (
     determine_bin_count_occupancy_expert,
     determine_bin_count_occupancy_exhaustive,
     determine_bin_count_occupancy_exhaustive_expert,
+    determine_bin_count_stone,
+    determine_bin_count_stone_expert,
     generate_js_comp_test_candidates,
     generate_adaptive_js_comp_test_candidates,
     construct_adaptive_neighborhoods,
@@ -191,6 +193,65 @@ def test_determine_bin_count_occupancy_exhaustive():
     assert result_nan["occupancy_failed"]
     assert result_nan["min_bin_occupancy"] == 0
     assert result_nan["max_bin_occupancy"] == 0
+
+
+def test_determine_bin_count_stone():
+    # Call-ability and return type/shape only, per this project's testing philosophy
+    # (Fortran_Coding_Guides.pdf Sec 17.1) -- the numerics of Stone's rule (Theorem 2 by hand,
+    # brute-force leave-one-out, ties, floor, failure paths) are the Fortran suite's job
+    # (mod_test_data_integration_js_comp_test.F90's own test_stone_* tests).
+    rng = np.random.default_rng(7)
+    residuals = rng.standard_normal(300)
+    residual_to_study = np.repeat(np.array([1, 2, 3], dtype=np.int32), [120, 60, 120])
+    rng.shuffle(residual_to_study)
+
+    for mode in ("bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"):
+        result = determine_bin_count_stone(residuals, residual_to_study, n_studies=3, max_n_reps_all_studies=1,
+                                           n_neighbors=1, bin_count_mode=mode)
+        assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+        for key in ("selected_n_bins", "stone_failed", "shared_residual_range_low", "shared_residual_range_high",
+                    "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy",
+                    "sturges_bins", "fd_bins"):
+            assert key in result, f"missing expected output key '{key}' ({mode})"
+        assert isinstance(result["stone_failed"], (bool, np.bool_)), \
+            f"expected stone_failed to be a bool, got {type(result['stone_failed'])} ({mode})"
+        assert isinstance(result["selected_n_bins"], (int, np.integer)), \
+            f"expected selected_n_bins to be an int, got {type(result['selected_n_bins'])} ({mode})"
+        assert isinstance(result["mean_bin_occupancy"], (float, np.floating)), \
+            f"expected mean_bin_occupancy to be a float ({mode})"
+        assert not result["stone_failed"], f"Stone should not fail on this dense fixture ({mode})"
+        assert 3 <= result["selected_n_bins"] <= 120, f"selected_n_bins within [m_min, m_max] ({mode})"
+        assert result["shared_residual_range_low"] < result["shared_residual_range_high"], \
+            f"non-degenerate range expected ({mode})"
+
+    # The default mode is accepted without being named.
+    result = determine_bin_count_stone(residuals, residual_to_study, n_studies=3, max_n_reps_all_studies=1,
+                                       n_neighbors=1)
+    assert not result["stone_failed"]
+
+    # The expert entry point, given the same sorting permutation, must agree.
+    residuals_perm = (np.argsort(residuals, kind="mergesort") + 1).astype(np.int32)
+    result_expert = determine_bin_count_stone_expert(residuals, residuals_perm, residual_to_study, n_studies=3,
+                                                     max_n_reps_all_studies=1, n_neighbors=1)
+    assert result_expert["selected_n_bins"] == result["selected_n_bins"], \
+        "expert entry point should agree with the plain one given the same sorted permutation"
+
+    # An unknown mode string, and the occupancy mode (not a Stone mode), are rejected by the C layer.
+    assert_error(lambda: determine_bin_count_stone(residuals, residual_to_study, n_studies=3, max_n_reps_all_studies=1,
+                                                   n_neighbors=1, bin_count_mode="bin_count_occupancy"),
+                 "expected the occupancy mode to be rejected", ERR_INVALID_INPUT)
+    assert_error(lambda: determine_bin_count_stone(residuals, residual_to_study, n_studies=3, max_n_reps_all_studies=1,
+                                                   n_neighbors=1, bin_count_mode="nonsense"),
+                 "expected an unknown mode string to be rejected", ERR_INVALID_INPUT)
+    # A study label outside [1, n_studies] is invalid input.
+    assert_error(lambda: determine_bin_count_stone(residuals, residual_to_study, n_studies=2, max_n_reps_all_studies=1,
+                                                   n_neighbors=1),
+                 "expected ERR_INVALID_INPUT for a label above n_studies", ERR_INVALID_INPUT)
+
+    # All-NaN pool: the search fails.
+    result_nan = determine_bin_count_stone(np.full(4, np.nan), np.array([1, 2, 1, 2], dtype=np.int32), n_studies=2,
+                                           max_n_reps_all_studies=1, n_neighbors=1)
+    assert result_nan["stone_failed"], "all-NaN pool must fail"
 
 
 def test_generate_js_comp_test_candidates():

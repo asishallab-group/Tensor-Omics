@@ -172,6 +172,45 @@
       ")"
     ]
   },
+  "determine_bin_count_stone (call)": {
+    "prefix": "tox:determine_bin_count_stone",
+    "description": "Chooses the number of equal-width histogram bins for one neighborhood's pooled residuals by",
+    "body": [
+      "${1:result} <- determine_bin_count_stone(",
+      "  pooled_residuals = ${2:pooled_residuals},",
+      "  residual_to_study = ${3:residual_to_study},",
+      "  n_studies = ${4:n_studies},",
+      "  max_n_reps_all_studies = ${5:max_n_reps_all_studies},",
+      "  n_neighbors = ${6:n_neighbors},",
+      "  bin_count_mode = ${7|bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
+      "  m_min = ${8:3L},",
+      "  m_max = ${9:120L},",
+      "  min_residuals_per_bin = ${10:10L},",
+      "  lower_residual_range_quantile = ${11:0.05},",
+      "  upper_residual_range_quantile = ${12:0.95}",
+      ")"
+    ]
+  },
+  "determine_bin_count_stone_expert (call)": {
+    "prefix": "tox:determine_bin_count_stone_expert",
+    "description": "Chooses the number of equal-width histogram bins for one neighborhood's pooled residuals by",
+    "body": [
+      "${1:result} <- determine_bin_count_stone_expert(",
+      "  pooled_residuals = ${2:pooled_residuals},",
+      "  pooled_residuals_perm = ${3:pooled_residuals_perm},",
+      "  residual_to_study = ${4:residual_to_study},",
+      "  n_studies = ${5:n_studies},",
+      "  max_n_reps_all_studies = ${6:max_n_reps_all_studies},",
+      "  n_neighbors = ${7:n_neighbors},",
+      "  bin_count_mode = ${8|bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
+      "  m_min = ${9:3L},",
+      "  m_max = ${10:120L},",
+      "  min_residuals_per_bin = ${11:10L},",
+      "  lower_residual_range_quantile = ${12:0.05},",
+      "  upper_residual_range_quantile = ${13:0.95}",
+      ")"
+    ]
+  },
   "generate_js_comp_test_candidates (call)": {
     "prefix": "tox:generate_js_comp_test_candidates",
     "description": "Ported from the grid-building half of 125-stabilize-jscomp's",

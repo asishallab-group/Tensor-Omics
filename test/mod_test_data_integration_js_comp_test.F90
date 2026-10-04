@@ -7,12 +7,13 @@
 !| size). Later stages of the port keep adding to this suite.
 module mod_test_data_integration_js_comp_test
     use asserts
-    use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_fortran_env, only: real64, int32, int64
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_is_nan, ieee_positive_inf, &
                                             ieee_negative_inf
     use tox_data_integration
     use tox_data_integration_js_comp_test, only: estimate_bin_count, determine_bin_count_occupancy, &
+                                                  determine_bin_count_stone, determine_bin_count_stone_expert, &
                                                   determine_bin_count_occupancy_exhaustive, &
                                                   generate_js_comp_test_candidates, check_neighborhood_overlaps, &
                                                   check_mean_pmf_min_counts, check_plateau_condition, &
@@ -40,7 +41,12 @@ module mod_test_data_integration_js_comp_test
                                                        materialize_pooled_neighborhood, ADAPTIVE_CANDIDATE_EVALUATED, &
                                                        ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, ADAPTIVE_CANDIDATE_EMPTY_STUDY, &
                                                        ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, ADAPTIVE_CANDIDATE_OVERLAP_FAILED, &
-                                                       ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED
+                                                       ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED, &
+                                                       sorted_bin_counts, histogram_bin_counts, &
+                                                       MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, &
+                                                       MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, MODE_BIN_COUNT_STONE_POOLED, &
+                                                       MAX_N_BINS
+    use f42_sort_impl, only: init_perm, sort_array_heapsort
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
                                              compute_weighted_global_divergence_impl
     use tox_errors
@@ -77,12 +83,19 @@ module mod_test_data_integration_js_comp_test
         real(real64), allocatable :: trace_delta(:, :), trace_mean_occ(:, :), trace_range_low(:, :), trace_range_high(:, :)
     end type adaptive_search_outputs
 
+    !> Test helper type: every output of determine_bin_count_stone, filled by run_stone.
+    type :: stone_outputs
+        integer(int32) :: n_bins, n_pooled, min_occ, max_occ, sturges, fd, ierr
+        logical(c_bool) :: failed
+        real(real64) :: range_low, range_high, mean_occ
+    end type stone_outputs
+
 contains
 
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(167))
+        allocate (all_tests(184))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -427,6 +440,40 @@ contains
                                   test_gjct_null_statistic_uses_permuted_consensus)
         all_tests(167) = test_case("test_gjct_observed_consensus_p_value", &
                                   test_gjct_observed_consensus_p_value)
+        all_tests(168) = test_case("test_sorted_bin_counts_matches_histogram_bin_counts", &
+                                  test_sorted_bin_counts_matches_histogram_bin_counts)
+        all_tests(169) = test_case("test_stone_theorem2_hand_computed_per_mode", &
+                                  test_stone_theorem2_hand_computed_per_mode)
+        all_tests(170) = test_case("test_stone_matches_brute_force_leave_one_out", &
+                                  test_stone_matches_brute_force_leave_one_out)
+        all_tests(171) = test_case("test_stone_scores_inside_residuals_not_clamped", &
+                                  test_stone_scores_inside_residuals_not_clamped)
+        all_tests(172) = test_case("test_stone_tie_goes_to_smaller_m", &
+                                  test_stone_tie_goes_to_smaller_m)
+        all_tests(173) = test_case("test_stone_floor_binds", &
+                                  test_stone_floor_binds)
+        all_tests(174) = test_case("test_stone_no_admissible_m_fails", &
+                                  test_stone_no_admissible_m_fails)
+        all_tests(175) = test_case("test_stone_all_residuals_nan_fails", &
+                                  test_stone_all_residuals_nan_fails)
+        all_tests(176) = test_case("test_stone_zero_range_fails", &
+                                  test_stone_zero_range_fails)
+        all_tests(177) = test_case("test_stone_skips_study_with_fewer_than_two_inside", &
+                                  test_stone_skips_study_with_fewer_than_two_inside)
+        all_tests(178) = test_case("test_stone_all_studies_below_two_inside_fails", &
+                                  test_stone_all_studies_below_two_inside_fails)
+        all_tests(179) = test_case("test_stone_pooled_total_below_two_fails", &
+                                  test_stone_pooled_total_below_two_fails)
+        all_tests(180) = test_case("test_stone_shuffled_labels_match_contiguous", &
+                                  test_stone_shuffled_labels_match_contiguous)
+        all_tests(181) = test_case("test_stone_rejects_non_stone_mode", &
+                                  test_stone_rejects_non_stone_mode)
+        all_tests(182) = test_case("test_stone_diagnostics_match_occupancy_routine", &
+                                  test_stone_diagnostics_match_occupancy_routine)
+        all_tests(183) = test_case("test_stone_expert_matches_plain", &
+                                  test_stone_expert_matches_plain)
+        all_tests(184) = test_case("test_stone_m_max_at_max_n_bins", &
+                                  test_stone_m_max_at_max_n_bins)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -8172,5 +8219,770 @@ contains
         call assert_equal_array_real(out%ci(1, :), out%trace_ci_lower(:, best_t), 2_int32, 0.0_real64, name//"CI lower")
         call assert_equal_array_real(out%ci(2, :), out%trace_ci_upper(:, best_t), 2_int32, 0.0_real64, name//"CI upper")
     end subroutine test_adaptive_search_ci_plateau_keeps_earlier_best
+
+    ! ---------------------------------------------------------------------------------------------
+    ! Stone's cross-validation bin-count search (determine_bin_count_stone)
+    ! ---------------------------------------------------------------------------------------------
+
+    !> Test helper: call determine_bin_count_stone with every knob explicit and collect its outputs.
+    subroutine run_stone(values, labels, n_studies, mode, m_min, m_max, floor, lower_q, upper_q, out)
+        real(real64), intent(in) :: values(:)
+            !! Pooled residuals
+        integer(int32), intent(in) :: labels(:)
+            !! Study of each residual
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: mode
+            !! bin_count_mode
+        integer(int32), intent(in) :: m_min
+            !! Smallest bin count tested
+        integer(int32), intent(in) :: m_max
+            !! Largest bin count tested
+        integer(int32), intent(in) :: floor
+            !! min_residuals_per_bin
+        real(real64), intent(in) :: lower_q
+            !! lower_residual_range_quantile
+        real(real64), intent(in) :: upper_q
+            !! upper_residual_range_quantile
+        type(stone_outputs), intent(out) :: out
+            !! Every output
+
+        call determine_bin_count_stone(values, size(values, kind=int32), labels, n_studies, 1_int32, 1_int32, &
+                                       out%n_bins, out%failed, out%range_low, out%range_high, out%n_pooled, &
+                                       out%min_occ, out%mean_occ, out%max_occ, out%sturges, out%fd, &
+                                       bin_count_mode=mode, m_min=m_min, m_max=m_max, min_residuals_per_bin=floor, &
+                                       lower_residual_range_quantile=lower_q, upper_residual_range_quantile=upper_q, &
+                                       ierr=out%ierr)
+    end subroutine run_stone
+
+    !> Test helper: the bin of `x` under the pipeline's clamp-then-bin rule.
+    pure integer(int32) function stone_test_bin(x, range_low, range_high, m) result(bin_idx)
+        real(real64), intent(in) :: x
+            !! Value
+        real(real64), intent(in) :: range_low
+            !! Lower range end
+        real(real64), intent(in) :: range_high
+            !! Upper range end
+        integer(int32), intent(in) :: m
+            !! Number of bins
+
+        real(real64) :: width
+
+        width = (range_high - range_low)/real(m, real64)
+        bin_idx = min(m, int((max(range_low, min(x, range_high)) - range_low)/width) + 1_int32)
+    end function stone_test_bin
+
+    !> Test helper: Stone's score by its brute-force leave-one-out definition,
+    !| `J = integral(fhat^2) - (2/n) * sum_i fhat_(-i)(X_i)`, for `values` all inside the range.
+    pure real(real64) function loo_stone_score(values, range_low, range_high, m) result(score)
+        real(real64), intent(in) :: values(:)
+            !! Sample, all inside [range_low, range_high]
+        real(real64), intent(in) :: range_low
+            !! Lower range end
+        real(real64), intent(in) :: range_high
+            !! Upper range end
+        integer(int32), intent(in) :: m
+            !! Number of bins
+
+        integer(int32) :: bins(size(values)), i, k, n, same
+        real(real64) :: h, integral, loo_sum
+
+        n = size(values, kind=int32)
+        h = (range_high - range_low)/real(m, real64)
+        do i = 1, n
+            bins(i) = stone_test_bin(values(i), range_low, range_high, m)
+        end do
+        integral = 0.0_real64
+        do k = 1, m
+            integral = integral + h*(real(count(bins == k), real64)/(real(n, real64)*h))**2
+        end do
+        loo_sum = 0.0_real64
+        do i = 1, n
+            same = count(bins == bins(i)) - 1_int32
+            loo_sum = loo_sum + real(same, real64)/(real(n - 1_int32, real64)*h)
+        end do
+        score = integral - 2.0_real64/real(n, real64)*loo_sum
+    end function loo_stone_score
+
+    !> Test helper: Theorem 2 in the lecture notes' own form,
+    !| `J = 2/(h(n-1)) - (n+1)/(h(n-1)) * sum_j (c_j/n)^2`.
+    pure real(real64) function theorem2_score(counts, n, range_width) result(score)
+        integer(int32), intent(in) :: counts(:)
+            !! Count per bin
+        integer(int32), intent(in) :: n
+            !! Number of values
+        real(real64), intent(in) :: range_width
+            !! R_high - R_low
+
+        real(real64) :: h
+
+        h = range_width/real(size(counts), real64)
+        score = 2.0_real64/(h*real(n - 1_int32, real64)) - real(n + 1_int32, real64)/(h*real(n - 1_int32, real64))* &
+                sum((real(counts, real64)/real(n, real64))**2)
+    end function theorem2_score
+
+    !> Test helper: argmin of the brute-force leave-one-out score combined per `mode`, over
+    !| `[m_min, m_max]`, with every value inside `[range_low, range_high]` and no floor; per-study
+    !| modes skip a study with fewer than 2 values. Ties go to the smaller bin count.
+    function brute_force_stone_argmin(values, labels, n_studies, mode, range_low, range_high, m_min, m_max) &
+            result(best_m)
+        real(real64), intent(in) :: values(:)
+            !! Pooled values
+        integer(int32), intent(in) :: labels(:)
+            !! Study of each value
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: mode
+            !! bin_count_mode
+        real(real64), intent(in) :: range_low
+            !! Lower range end
+        real(real64), intent(in) :: range_high
+            !! Upper range end
+        integer(int32), intent(in) :: m_min
+            !! Smallest bin count
+        integer(int32), intent(in) :: m_max
+            !! Largest bin count
+        integer(int32) :: best_m
+
+        integer(int32) :: m, k, n_k
+        real(real64) :: score, best_score
+
+        best_m = -1_int32
+        best_score = huge(1.0_real64)
+        do m = m_min, m_max
+            if (mode == MODE_BIN_COUNT_STONE_POOLED) then
+                score = loo_stone_score(values, range_low, range_high, m)
+            else
+                score = 0.0_real64
+                do k = 1, n_studies
+                    n_k = count(labels == k)
+                    if (n_k < 2_int32) cycle
+                    if (mode == MODE_BIN_COUNT_STONE_SIZE_WEIGHTED) then
+                        score = score + real(n_k, real64)*loo_stone_score(pack(values, labels == k), range_low, &
+                                                                          range_high, m)
+                    else
+                        score = score + loo_stone_score(pack(values, labels == k), range_low, range_high, m)
+                    end if
+                end do
+            end if
+            if (score < best_score) then
+                best_score = score
+                best_m = m
+            end if
+        end do
+    end function brute_force_stone_argmin
+
+    !> Test helper: `n` deterministic pseudo-random values in `[low, high)` from a linear
+    !| congruential generator, so fixtures need no RNG state.
+    subroutine lcg_values(seed, low, high, values)
+        integer(int64), intent(in) :: seed
+            !! Seed
+        real(real64), intent(in) :: low
+            !! Lower end
+        real(real64), intent(in) :: high
+            !! Upper end
+        real(real64), intent(out) :: values(:)
+            !! Generated values
+
+        integer(int64), parameter :: lcg_mod = 2147483647_int64, lcg_mul = 48271_int64
+        integer(int64) :: state
+        integer(int32) :: i
+
+        state = mod(seed, lcg_mod - 1_int64) + 1_int64
+        do i = 1, size(values)
+            state = mod(lcg_mul*state, lcg_mod)
+            values(i) = low + (high - low)*real(state, real64)/real(lcg_mod, real64)
+        end do
+    end subroutine lcg_values
+
+    !> Test helper: the logistic-quantile fixture `log(u/(1-u))` at `u = (i - 0.5)/1000`, a
+    !| heavy-tailed, symmetric bell. With the default 5 %/95 % range, 50 values lie below and 50
+    !| above it. Python reference (Theorem 2 on the inside values, `m` in [3, 120]): the
+    !| inside-only argmin is m = 8; scoring the clamped histogram instead picks m = 120.
+    subroutine logistic_fixture(values, labels)
+        real(real64), intent(out) :: values(1000)
+            !! Values
+        integer(int32), intent(out) :: labels(1000)
+            !! All study 1
+
+        integer(int32) :: i
+        real(real64) :: u
+
+        do i = 1, 1000
+            u = (real(i, real64) - 0.5_real64)/1000.0_real64
+            values(i) = log(u/(1.0_real64 - u))
+        end do
+        labels = 1_int32
+    end subroutine logistic_fixture
+
+    !> `sorted_bin_counts` (binary search on sorted values, inside values only) plus the clamped
+    !| tails reproduces `histogram_bin_counts` exactly, for m = 3, 17, 120 and 256. The values mix
+    !| pseudo-random ones in [-2, 4] (some below R_low = -1, some above R_high = 3), every bin edge
+    !| `R_low + j*w` itself (including R_low and R_high), and two NaNs. A zero-width range puts every
+    !| inside value into bin 1.
+    subroutine test_sorted_bin_counts_matches_histogram_bin_counts()
+        character(len=*), parameter :: name = "test_sorted_bin_counts_matches_histogram_bin_counts: "
+        integer(int32), parameter :: m_values(4) = [3_int32, 17_int32, 120_int32, 256_int32]
+        real(real64), parameter :: range_low = -1.0_real64, range_high = 3.0_real64
+        real(real64), allocatable :: values(:)
+        integer(int32), allocatable :: perm(:), counts(:), hist(:)
+        integer(int32) :: i_m, m, j, n, n_valid, n_below, n_inside, min_occ
+        real(real64) :: width, nan_val
+        character(len=8) :: m_text
+
+        nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
+        do i_m = 1, size(m_values)
+            m = m_values(i_m)
+            write (m_text, '(i0)') m
+            n = 80_int32 + (m + 1_int32) + 2_int32
+            allocate (values(n), perm(n), counts(m), hist(m))
+            call lcg_values(int(m, int64)*7_int64, -2.0_real64, 4.0_real64, values(1:80))
+            width = (range_high - range_low)/real(m, real64)
+            do j = 0, m
+                values(81 + j) = range_low + real(j, real64)*width
+            end do
+            values(n - 1:n) = nan_val
+            n_valid = n - 2_int32
+            call init_perm(perm)
+            call sort_array_heapsort(values, perm)
+
+            call sorted_bin_counts(values, n, perm, n, range_low, range_high, m, counts, n_below, n_inside)
+            call assert_equal_int(n_below, count(values < range_low), name//"n_below, m="//trim(m_text))
+            call assert_equal_int(n_inside, count(values >= range_low .and. values <= range_high), &
+                                  name//"n_inside, m="//trim(m_text))
+            call assert_equal_int(sum(counts), n_inside, name//"inside counts sum to n_inside, m="//trim(m_text))
+            counts(1) = counts(1) + n_below
+            counts(m) = counts(m) + (n_valid - n_below - n_inside)
+            call histogram_bin_counts(values, perm, n, n_valid, range_low, range_high, m, hist, min_occ)
+            call assert_equal_array_int(counts, hist, m, name//"clamped counts == histogram_bin_counts, m="//trim(m_text))
+            deallocate (values, perm, counts, hist)
+        end do
+
+        ! Zero-width range: every inside value (== 1.0) in bin 1, nothing elsewhere.
+        allocate (values(6), perm(6), counts(5))
+        values = [0.5_real64, 1.0_real64, 1.0_real64, 2.0_real64, 1.0_real64, nan_val]
+        call init_perm(perm)
+        call sort_array_heapsort(values, perm)
+        call sorted_bin_counts(values, 6_int32, perm, 6_int32, 1.0_real64, 1.0_real64, 5_int32, counts, n_below, n_inside)
+        call assert_equal_int(n_below, 1_int32, name//"zero range: one value below")
+        call assert_equal_int(n_inside, 3_int32, name//"zero range: three values equal the range")
+        call assert_equal_int(counts(1), 3_int32, name//"zero range: all inside values in bin 1")
+        call assert_equal_int(sum(counts(2:5)), 0_int32, name//"zero range: other bins empty")
+    end subroutine test_sorted_bin_counts_matches_histogram_bin_counts
+
+    !> Theorem 2 by hand. Study 1 = {0, 3, 3}, study 2 = {11, 12}; with the quantiles 0 and 1 the
+    !| range is [0, 12] (R = 12, every value inside), m in [1, 6], no floor. In the evaluated form
+    !| `J = m*(2n^2 - (n+1)Q)/(R(n-1)n^2)`, Q = sum of squared counts:
+    !|   study 1 (n=3): m<=3 all in bin 1, Q=9 -> J1 = -m/12; m>=4 counts (1,2), Q=5 -> J1 = -m/108
+    !|   study 2 (n=2): always one bin, Q=4 -> J2 = -m/12
+    !|   equal  = J1 + J2:     m=1..6: -1/6, -1/3, -1/2, -10/27, -25/54, -5/9  -> argmin m=6
+    !|   size   = 3J1 + 2J2:   m=1..6: -5/12, -5/6, -5/4, -7/9, -35/36, -7/6   -> argmin m=3
+    !|   pooled (n=5): Q = 25, 13, 13, 9, 9, 9 -> J = -1/12, -7/150, -7/100, -1/75, -1/60, -1/50
+    !|                                                                          -> argmin m=1
+    !| The three modes pick three different bin counts. The pooled clamped histogram at the chosen
+    !| m gives the diagnostics: m=6 bins (1,2,0,0,0,2) -> min 0, max 2; m=3 (3,0,2) -> 0, 3;
+    !| m=1 (5) -> 5, 5. The brute-force leave-one-out helper reproduces the hand values.
+    subroutine test_stone_theorem2_hand_computed_per_mode()
+        character(len=*), parameter :: name = "test_stone_theorem2_hand_computed_per_mode: "
+        real(real64) :: values(5), all_inside(5)
+        integer(int32) :: labels(5)
+        type(stone_outputs) :: out
+        integer(int32) :: n_bins, n_pooled, min_occ, max_occ, sturges, fd, ierr
+        logical(c_bool) :: failed
+        real(real64) :: range_low, range_high, mean_occ
+
+        values = [0.0_real64, 3.0_real64, 3.0_real64, 12.0_real64, 11.0_real64]
+        labels = [1_int32, 1_int32, 1_int32, 2_int32, 2_int32]
+        all_inside = values
+
+        call assert_equal_real(loo_stone_score(values(1:3), 0.0_real64, 12.0_real64, 2_int32), -1.0_real64/6.0_real64, &
+                               TOL, name//"leave-one-out J1(2) == -2/12")
+        call assert_equal_real(loo_stone_score(values(1:3), 0.0_real64, 12.0_real64, 6_int32), -1.0_real64/18.0_real64, &
+                               TOL, name//"leave-one-out J1(6) == -6/108")
+        call assert_equal_real(loo_stone_score(values(4:5), 0.0_real64, 12.0_real64, 6_int32), -0.5_real64, &
+                               TOL, name//"leave-one-out J2(6) == -6/12")
+        call assert_equal_real(loo_stone_score(all_inside, 0.0_real64, 12.0_real64, 1_int32), -1.0_real64/12.0_real64, &
+                               TOL, name//"leave-one-out pooled J(1) == -1/12")
+        call assert_equal_real(loo_stone_score(all_inside, 0.0_real64, 12.0_real64, 4_int32), -1.0_real64/75.0_real64, &
+                               TOL, name//"leave-one-out pooled J(4) == -1/75")
+
+        call run_stone(values, labels, 2_int32, MODE_BIN_COUNT_STONE_EQUAL, 1_int32, 6_int32, 0_int32, 0.0_real64, &
+                       1.0_real64, out)
+        call assert_equal_int(get_err_code(out%ierr), ERR_OK, name//"equal: ierr OK")
+        call assert_false(out%failed, name//"equal: not failed")
+        call assert_equal_int(out%n_bins, 6_int32, name//"equal picks m=6")
+        call assert_equal_int(out%min_occ, 0_int32, name//"equal: min occupancy at m=6")
+        call assert_equal_int(out%max_occ, 2_int32, name//"equal: max occupancy at m=6")
+        call assert_equal_real(out%mean_occ, 5.0_real64/6.0_real64, TOL, name//"equal: mean occupancy 5/6")
+        call assert_equal_real(out%range_low, 0.0_real64, TOL, name//"R_low = min")
+        call assert_equal_real(out%range_high, 12.0_real64, TOL, name//"R_high = max")
+        call assert_equal_int(out%n_pooled, 5_int32, name//"n_pooled")
+
+        call run_stone(values, labels, 2_int32, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, 1_int32, 6_int32, 0_int32, &
+                       0.0_real64, 1.0_real64, out)
+        call assert_false(out%failed, name//"size-weighted: not failed")
+        call assert_equal_int(out%n_bins, 3_int32, name//"size-weighted picks m=3")
+        call assert_equal_int(out%min_occ, 0_int32, name//"size-weighted: min occupancy at m=3")
+        call assert_equal_int(out%max_occ, 3_int32, name//"size-weighted: max occupancy at m=3")
+
+        call run_stone(values, labels, 2_int32, MODE_BIN_COUNT_STONE_POOLED, 1_int32, 6_int32, 0_int32, 0.0_real64, &
+                       1.0_real64, out)
+        call assert_false(out%failed, name//"pooled: not failed")
+        call assert_equal_int(out%n_bins, 1_int32, name//"pooled picks m=1")
+        call assert_equal_int(out%min_occ, 5_int32, name//"pooled: min occupancy at m=1")
+        call assert_equal_int(out%max_occ, 5_int32, name//"pooled: max occupancy at m=1")
+
+        ! bin_count_mode omitted: the default is the equal-weight mode.
+        call determine_bin_count_stone(values, 5_int32, labels, 2_int32, 1_int32, 1_int32, n_bins, failed, range_low, &
+                                       range_high, n_pooled, min_occ, mean_occ, max_occ, sturges, fd, m_min=1_int32, &
+                                       m_max=6_int32, min_residuals_per_bin=0_int32, &
+                                       lower_residual_range_quantile=0.0_real64, &
+                                       upper_residual_range_quantile=1.0_real64, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"default mode: ierr OK")
+        call assert_equal_int(n_bins, 6_int32, name//"default mode == equal weights (m=6)")
+    end subroutine test_stone_theorem2_hand_computed_per_mode
+
+    !> On pseudo-random data (3 studies of 7, 12 and 20 values, quantiles 0 and 1 so every value is
+    !| inside, no floor, m in [1, 15]), every mode picks the argmin of the brute-force leave-one-out
+    !| score, for 4 seeds.
+    subroutine test_stone_matches_brute_force_leave_one_out()
+        character(len=*), parameter :: name = "test_stone_matches_brute_force_leave_one_out: "
+        integer(int32), parameter :: modes(3) = [MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, &
+                                                  MODE_BIN_COUNT_STONE_POOLED]
+        real(real64) :: values(39)
+        integer(int32) :: labels(39), i_seed, i_mode, expected
+        type(stone_outputs) :: out
+        character(len=16) :: case_text
+
+        labels(1:7) = 1_int32
+        labels(8:19) = 2_int32
+        labels(20:39) = 3_int32
+        do i_seed = 1, 4
+            call lcg_values(int(1000*i_seed, int64), -3.0_real64, 7.0_real64, values)
+            do i_mode = 1, 3
+                write (case_text, '(a,i0,a,i0)') "seed ", i_seed, " mode ", modes(i_mode)
+                call run_stone(values, labels, 3_int32, modes(i_mode), 1_int32, 15_int32, 0_int32, 0.0_real64, &
+                               1.0_real64, out)
+                call assert_equal_int(get_err_code(out%ierr), ERR_OK, name//"ierr OK, "//trim(case_text))
+                call assert_false(out%failed, name//"not failed, "//trim(case_text))
+                expected = brute_force_stone_argmin(values, labels, 3_int32, modes(i_mode), out%range_low, &
+                                                    out%range_high, 1_int32, 15_int32)
+                call assert_equal_int(out%n_bins, expected, name//"argmin == brute force, "//trim(case_text))
+            end do
+        end do
+    end subroutine test_stone_matches_brute_force_leave_one_out
+
+    !> Regression guard: Stone is scored on the residuals inside [R_low, R_high] only. On the
+    !| logistic fixture (default 5 %/95 % range, m in [3, 120], no floor), Theorem 2 on the clamped
+    !| histograms (`histogram_bin_counts`, n = 1000) keeps falling and picks m_max = 120, while
+    !| the inside-only scoring picks m = 8. The routine must pick 8.
+    subroutine test_stone_scores_inside_residuals_not_clamped()
+        character(len=*), parameter :: name = "test_stone_scores_inside_residuals_not_clamped: "
+        real(real64) :: values(1000), score, best_clamped_score, best_inside_score
+        integer(int32) :: labels(1000), perm(1000), hist(120), counts(120), m, min_occ, n_below, n_inside
+        integer(int32) :: best_clamped_m, best_inside_m
+        type(stone_outputs) :: out
+
+        call logistic_fixture(values, labels)
+        call run_stone(values, labels, 1_int32, MODE_BIN_COUNT_STONE_EQUAL, 3_int32, 120_int32, 0_int32, 0.05_real64, &
+                       0.95_real64, out)
+        call assert_equal_int(get_err_code(out%ierr), ERR_OK, name//"ierr OK")
+        call assert_false(out%failed, name//"not failed")
+        call assert_equal_int(out%n_bins, 8_int32, name//"inside-only scoring picks m=8")
+
+        call init_perm(perm)
+        call sort_array_heapsort(values, perm)
+        best_clamped_m = -1_int32
+        best_inside_m = -1_int32
+        best_clamped_score = huge(1.0_real64)
+        best_inside_score = huge(1.0_real64)
+        do m = 3, 120
+            call histogram_bin_counts(values, perm, 1000_int32, 1000_int32, out%range_low, out%range_high, m, &
+                                      hist(1:m), min_occ)
+            score = theorem2_score(hist(1:m), 1000_int32, out%range_high - out%range_low)
+            if (score < best_clamped_score) then
+                best_clamped_score = score
+                best_clamped_m = m
+            end if
+            call sorted_bin_counts(values, 1000_int32, perm, 1000_int32, out%range_low, out%range_high, m, &
+                                   counts(1:m), n_below, n_inside)
+            score = theorem2_score(counts(1:m), n_inside, out%range_high - out%range_low)
+            if (score < best_inside_score) then
+                best_inside_score = score
+                best_inside_m = m
+            end if
+        end do
+        call assert_equal_int(best_clamped_m, 120_int32, name//"scoring the clamped histogram would pick m_max")
+        call assert_equal_int(best_inside_m, out%n_bins, name//"the routine matches inside-only Theorem 2")
+        call assert_equal_int(n_inside, 900_int32, name//"900 of 1000 values inside the 5-95 % range")
+    end subroutine test_stone_scores_inside_residuals_not_clamped
+
+    !> Ties go to the smaller bin count. One study {0, 1, 1, 8, 8, 8, 8, 10, 12}, quantiles 0 and
+    !| 1 (R = 12), no floor, n = 9:
+    !|   m = 3: counts (3, 0, 6), Q = 45, 2n^2 - (n+1)Q = 162 - 450 = -288, J = 3*(-288)/(12*8*81) = -1/9
+    !|   m = 8: counts (3, 0, 0, 0, 0, 4, 1, 1), Q = 27, 162 - 270 = -108, J = 8*(-108)/(12*8*81) = -1/9
+    !| and every other m in [1, 8] scores higher (Python, exact fractions). Both products m*D are
+    !| -864, so the two scores are bit-equal. The search picks 3; with m_min = 4 it picks 8.
+    subroutine test_stone_tie_goes_to_smaller_m()
+        character(len=*), parameter :: name = "test_stone_tie_goes_to_smaller_m: "
+        real(real64) :: values(9)
+        integer(int32) :: labels(9)
+        type(stone_outputs) :: out
+
+        values = [0.0_real64, 1.0_real64, 1.0_real64, 8.0_real64, 8.0_real64, 8.0_real64, 8.0_real64, 10.0_real64, &
+                  12.0_real64]
+        labels = 1_int32
+        call run_stone(values, labels, 1_int32, MODE_BIN_COUNT_STONE_EQUAL, 1_int32, 8_int32, 0_int32, 0.0_real64, &
+                       1.0_real64, out)
+        call assert_equal_int(out%n_bins, 3_int32, name//"tie between m=3 and m=8 -> 3")
+        call run_stone(values, labels, 1_int32, MODE_BIN_COUNT_STONE_POOLED, 1_int32, 8_int32, 0_int32, 0.0_real64, &
+                       1.0_real64, out)
+        call assert_equal_int(out%n_bins, 3_int32, name//"pooled (same single study): tie -> 3")
+        call run_stone(values, labels, 1_int32, MODE_BIN_COUNT_STONE_EQUAL, 4_int32, 8_int32, 0_int32, 0.0_real64, &
+                       1.0_real64, out)
+        call assert_equal_int(out%n_bins, 8_int32, name//"without m=3, the other tied minimum m=8 wins")
+    end subroutine test_stone_tie_goes_to_smaller_m
+
+    !> The `min_residuals_per_bin` floor on the pooled clamped histogram binds. Logistic fixture,
+    !| default range and bin counts. The free argmin is m = 8, whose clamped histogram has min 87
+    !| and max 176. Floor 0 and floor 87 (exactly at the minimum: admissible) keep m = 8; floor 90
+    !| rules m = 8 out and the best admissible bin count is m = 7 (min 109, max 206). The
+    !| reported occupancy equals `histogram_bin_counts` at the chosen m.
+    subroutine test_stone_floor_binds()
+        character(len=*), parameter :: name = "test_stone_floor_binds: "
+        real(real64) :: values(1000)
+        integer(int32) :: labels(1000), perm(1000), hist(120), min_occ
+        type(stone_outputs) :: out
+
+        call logistic_fixture(values, labels)
+        call init_perm(perm)
+        call sort_array_heapsort(values, perm)
+
+        call run_stone(values, labels, 1_int32, MODE_BIN_COUNT_STONE_EQUAL, 3_int32, 120_int32, 0_int32, 0.05_real64, &
+                       0.95_real64, out)
+        call assert_equal_int(out%n_bins, 8_int32, name//"floor 0 reproduces the free argmin m=8")
+        call assert_equal_int(out%min_occ, 87_int32, name//"min occupancy at m=8")
+        call assert_equal_int(out%max_occ, 176_int32, name//"max occupancy at m=8")
+        call assert_equal_real(out%mean_occ, 125.0_real64, TOL, name//"mean occupancy 1000/8")
+        call histogram_bin_counts(values, perm, 1000_int32, 1000_int32, out%range_low, out%range_high, 8_int32, &
+                                  hist(1:8), min_occ)
+        call assert_equal_int(out%min_occ, minval(hist(1:8)), name//"min occupancy == histogram_bin_counts at m=8")
+        call assert_equal_int(out%max_occ, maxval(hist(1:8)), name//"max occupancy == histogram_bin_counts at m=8")
+
+        call run_stone(values, labels, 1_int32, MODE_BIN_COUNT_STONE_EQUAL, 3_int32, 120_int32, 87_int32, &
+                       0.05_real64, 0.95_real64, out)
+        call assert_equal_int(out%n_bins, 8_int32, name//"floor 87 == min occupancy: m=8 still admissible")
+
+        call run_stone(values, labels, 1_int32, MODE_BIN_COUNT_STONE_EQUAL, 3_int32, 120_int32, 90_int32, &
+                       0.05_real64, 0.95_real64, out)
+        call assert_false(out%failed, name//"floor 90: not failed")
+        call assert_equal_int(out%n_bins, 7_int32, name//"floor 90 rules out m=8, best admissible m=7")
+        call histogram_bin_counts(values, perm, 1000_int32, 1000_int32, out%range_low, out%range_high, 7_int32, &
+                                  hist(1:7), min_occ)
+        call assert_equal_int(out%min_occ, minval(hist(1:7)), name//"min occupancy == histogram_bin_counts at m=7")
+        call assert_equal_int(out%max_occ, maxval(hist(1:7)), name//"max occupancy == histogram_bin_counts at m=7")
+        call assert_equal_int(out%min_occ, 109_int32, name//"min occupancy at m=7")
+        call assert_equal_int(out%max_occ, 206_int32, name//"max occupancy at m=7")
+    end subroutine test_stone_floor_binds
+
+    !> No bin count passes the floor (1001 > every bin of 1000 residuals): the search fails, with
+    !| m_min and zero occupancy, while the range and n_pooled are still reported.
+    subroutine test_stone_no_admissible_m_fails()
+        character(len=*), parameter :: name = "test_stone_no_admissible_m_fails: "
+        real(real64) :: values(1000)
+        integer(int32) :: labels(1000)
+        type(stone_outputs) :: out
+
+        call logistic_fixture(values, labels)
+        call run_stone(values, labels, 1_int32, MODE_BIN_COUNT_STONE_EQUAL, 3_int32, 120_int32, 1001_int32, &
+                       0.05_real64, 0.95_real64, out)
+        call assert_equal_int(get_err_code(out%ierr), ERR_OK, name//"ierr OK")
+        call assert_true(out%failed, name//"failed")
+        call assert_equal_int(out%n_bins, 3_int32, name//"selected = m_min")
+        call assert_equal_int(out%min_occ, 0_int32, name//"min occupancy 0")
+        call assert_equal_int(out%max_occ, 0_int32, name//"max occupancy 0")
+        call assert_equal_real(out%mean_occ, 0.0_real64, TOL, name//"mean occupancy 0")
+        call assert_equal_int(out%n_pooled, 1000_int32, name//"n_pooled still reported")
+        call assert_true(logical(out%range_high > out%range_low, kind=c_bool), name//"range still reported")
+    end subroutine test_stone_no_admissible_m_fails
+
+    !> Every residual NaN: failed, m_min, range 0/0, n_pooled 0, Sturges/FD fall back to 1.
+    subroutine test_stone_all_residuals_nan_fails()
+        character(len=*), parameter :: name = "test_stone_all_residuals_nan_fails: "
+        real(real64) :: values(4)
+        integer(int32) :: labels(4)
+        type(stone_outputs) :: out
+
+        values = ieee_value(1.0_real64, ieee_quiet_nan)
+        labels = [1_int32, 2_int32, 1_int32, 2_int32]
+        call run_stone(values, labels, 2_int32, MODE_BIN_COUNT_STONE_EQUAL, 3_int32, 120_int32, 10_int32, 0.05_real64, &
+                       0.95_real64, out)
+        call assert_equal_int(get_err_code(out%ierr), ERR_OK, name//"ierr OK")
+        call assert_true(out%failed, name//"failed")
+        call assert_equal_int(out%n_bins, 3_int32, name//"selected = m_min")
+        call assert_equal_int(out%n_pooled, 0_int32, name//"n_pooled 0")
+        call assert_equal_real(out%range_low, 0.0_real64, TOL, name//"R_low 0")
+        call assert_equal_real(out%range_high, 0.0_real64, TOL, name//"R_high 0")
+        call assert_equal_int(out%min_occ, 0_int32, name//"min occupancy 0")
+        call assert_equal_int(out%max_occ, 0_int32, name//"max occupancy 0")
+        call assert_equal_int(out%sturges, 1_int32, name//"Sturges falls back to 1")
+        call assert_equal_int(out%fd, 1_int32, name//"FD falls back to 1")
+    end subroutine test_stone_all_residuals_nan_fails
+
+    !> Every residual equal: the range has width 0, so the search fails in every mode.
+    subroutine test_stone_zero_range_fails()
+        character(len=*), parameter :: name = "test_stone_zero_range_fails: "
+        real(real64) :: values(4)
+        integer(int32) :: labels(4)
+        type(stone_outputs) :: out
+
+        values = 5.0_real64
+        labels = [1_int32, 1_int32, 2_int32, 2_int32]
+        call run_stone(values, labels, 2_int32, MODE_BIN_COUNT_STONE_EQUAL, 3_int32, 120_int32, 0_int32, 0.05_real64, &
+                       0.95_real64, out)
+        call assert_true(out%failed, name//"equal: failed")
+        call assert_equal_int(out%n_bins, 3_int32, name//"equal: selected = m_min")
+        call assert_equal_real(out%range_low, 5.0_real64, TOL, name//"R_low 5")
+        call assert_equal_real(out%range_high, 5.0_real64, TOL, name//"R_high 5")
+        call run_stone(values, labels, 2_int32, MODE_BIN_COUNT_STONE_POOLED, 3_int32, 120_int32, 0_int32, 0.05_real64, &
+                       0.95_real64, out)
+        call assert_true(out%failed, name//"pooled: failed")
+    end subroutine test_stone_zero_range_fails
+
+    !> A study with fewer than 2 inside residuals is left out of the per-study sums. The hand
+    !| fixture of test_stone_theorem2_hand_computed_per_mode gains a study 3 with the single
+    !| residual 6, a NaN in study 1, and an empty study 4. The range stays [0, 12] and the per-study
+    !| scores are unchanged, so equal still picks 6 and size-weighted 3 (not failed, no division
+    !| by n-1 = 0); pooled (now n = 6) picks 1 (Python reference).
+    subroutine test_stone_skips_study_with_fewer_than_two_inside()
+        character(len=*), parameter :: name = "test_stone_skips_study_with_fewer_than_two_inside: "
+        real(real64) :: values(7)
+        integer(int32) :: labels(7)
+        type(stone_outputs) :: out
+
+        values = [0.0_real64, 3.0_real64, 3.0_real64, 12.0_real64, 11.0_real64, 6.0_real64, &
+                  ieee_value(1.0_real64, ieee_quiet_nan)]
+        labels = [1_int32, 1_int32, 1_int32, 2_int32, 2_int32, 3_int32, 1_int32]
+        call run_stone(values, labels, 4_int32, MODE_BIN_COUNT_STONE_EQUAL, 1_int32, 6_int32, 0_int32, 0.0_real64, &
+                       1.0_real64, out)
+        call assert_equal_int(get_err_code(out%ierr), ERR_OK, name//"ierr OK")
+        call assert_false(out%failed, name//"equal: not failed")
+        call assert_equal_int(out%n_bins, 6_int32, name//"equal: study 3 skipped, still m=6")
+        call assert_equal_int(out%n_pooled, 6_int32, name//"n_pooled excludes the NaN")
+        call run_stone(values, labels, 4_int32, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, 1_int32, 6_int32, 0_int32, &
+                       0.0_real64, 1.0_real64, out)
+        call assert_false(out%failed, name//"size-weighted: not failed")
+        call assert_equal_int(out%n_bins, 3_int32, name//"size-weighted: study 3 skipped, still m=3")
+        call run_stone(values, labels, 4_int32, MODE_BIN_COUNT_STONE_POOLED, 1_int32, 6_int32, 0_int32, 0.0_real64, &
+                       1.0_real64, out)
+        call assert_false(out%failed, name//"pooled: not failed")
+        call assert_equal_int(out%n_bins, 1_int32, name//"pooled picks m=1")
+    end subroutine test_stone_skips_study_with_fewer_than_two_inside
+
+    !> Three studies of one residual each ({0}, {5}, {12}, quantiles 0 and 1): no study has 2
+    !| inside residuals, so both per-study modes fail (m_min). Pooled has 3 and succeeds: J(1) =
+    !| -1/12 is its smallest score over m in [1, 6] (Python, exact).
+    subroutine test_stone_all_studies_below_two_inside_fails()
+        character(len=*), parameter :: name = "test_stone_all_studies_below_two_inside_fails: "
+        real(real64) :: values(3)
+        integer(int32) :: labels(3)
+        type(stone_outputs) :: out
+
+        values = [0.0_real64, 5.0_real64, 12.0_real64]
+        labels = [1_int32, 2_int32, 3_int32]
+        call run_stone(values, labels, 3_int32, MODE_BIN_COUNT_STONE_EQUAL, 1_int32, 6_int32, 0_int32, 0.0_real64, &
+                       1.0_real64, out)
+        call assert_true(out%failed, name//"equal: failed")
+        call assert_equal_int(out%n_bins, 1_int32, name//"equal: selected = m_min")
+        call assert_equal_int(out%min_occ, 0_int32, name//"equal: min occupancy 0")
+        call run_stone(values, labels, 3_int32, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, 1_int32, 6_int32, 0_int32, &
+                       0.0_real64, 1.0_real64, out)
+        call assert_true(out%failed, name//"size-weighted: failed")
+        call run_stone(values, labels, 3_int32, MODE_BIN_COUNT_STONE_POOLED, 1_int32, 6_int32, 0_int32, 0.0_real64, &
+                       1.0_real64, out)
+        call assert_false(out%failed, name//"pooled: not failed")
+        call assert_equal_int(out%n_bins, 1_int32, name//"pooled picks m=1")
+    end subroutine test_stone_all_studies_below_two_inside_fails
+
+    !> {0, 1, 2} with the default quantiles: R_low = 0.1, R_high = 1.9 (positive width), but only
+    !| the value 1 lies inside. Pooled mode needs 2 inside residuals in total and fails.
+    subroutine test_stone_pooled_total_below_two_fails()
+        character(len=*), parameter :: name = "test_stone_pooled_total_below_two_fails: "
+        real(real64) :: values(3)
+        integer(int32) :: labels(3)
+        type(stone_outputs) :: out
+
+        values = [0.0_real64, 1.0_real64, 2.0_real64]
+        labels = 1_int32
+        call run_stone(values, labels, 1_int32, MODE_BIN_COUNT_STONE_POOLED, 3_int32, 120_int32, 0_int32, 0.05_real64, &
+                       0.95_real64, out)
+        call assert_equal_int(get_err_code(out%ierr), ERR_OK, name//"ierr OK")
+        call assert_true(out%failed, name//"pooled: failed")
+        call assert_equal_int(out%n_bins, 3_int32, name//"selected = m_min")
+        call assert_equal_real(out%range_low, 0.1_real64, TOL, name//"R_low 0.1")
+        call assert_equal_real(out%range_high, 1.9_real64, TOL, name//"R_high 1.9")
+        call assert_equal_int(out%n_pooled, 3_int32, name//"n_pooled 3")
+    end subroutine test_stone_pooled_total_below_two_fails
+
+    !> The routine groups the residuals by study itself, so the order of the residuals does not
+    !| matter: 3 studies (40, 25 and 60 pseudo-random values, one NaN each), default range, floor
+    !| 5, m in [3, 40]. Contiguous labels and the same (value, label) pairs reordered by `i ->
+    !| mod(37*i, 125) + 1` give identical outputs in every mode.
+    subroutine test_stone_shuffled_labels_match_contiguous()
+        character(len=*), parameter :: name = "test_stone_shuffled_labels_match_contiguous: "
+        integer(int32), parameter :: modes(3) = [MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, &
+                                                  MODE_BIN_COUNT_STONE_POOLED]
+        real(real64) :: values(125), shuffled_values(125)
+        integer(int32) :: labels(125), shuffled_labels(125), i, i_mode
+        type(stone_outputs) :: contiguous, shuffled
+        character(len=8) :: mode_text
+
+        call lcg_values(4242_int64, -3.0_real64, 5.0_real64, values)
+        labels(1:40) = 1_int32
+        labels(41:65) = 2_int32
+        labels(66:125) = 3_int32
+        values([7, 50, 100]) = ieee_value(1.0_real64, ieee_quiet_nan)
+        do i = 1, 125
+            shuffled_values(mod(37*i, 125) + 1) = values(i)
+            shuffled_labels(mod(37*i, 125) + 1) = labels(i)
+        end do
+
+        do i_mode = 1, 3
+            write (mode_text, '(i0)') modes(i_mode)
+            call run_stone(values, labels, 3_int32, modes(i_mode), 3_int32, 40_int32, 5_int32, 0.05_real64, &
+                           0.95_real64, contiguous)
+            call run_stone(shuffled_values, shuffled_labels, 3_int32, modes(i_mode), 3_int32, 40_int32, 5_int32, &
+                           0.05_real64, 0.95_real64, shuffled)
+            call assert_false(contiguous%failed, name//"contiguous not failed, mode "//trim(mode_text))
+            call assert_equal_int(shuffled%n_bins, contiguous%n_bins, name//"n_bins, mode "//trim(mode_text))
+            call assert_true(logical(shuffled%failed .eqv. contiguous%failed, kind=c_bool), &
+                             name//"failed flag, mode "//trim(mode_text))
+            call assert_equal_int(shuffled%min_occ, contiguous%min_occ, name//"min occupancy, mode "//trim(mode_text))
+            call assert_equal_int(shuffled%max_occ, contiguous%max_occ, name//"max occupancy, mode "//trim(mode_text))
+            call assert_equal_int(shuffled%n_pooled, contiguous%n_pooled, name//"n_pooled, mode "//trim(mode_text))
+            call assert_equal_real(shuffled%range_low, contiguous%range_low, 0.0_real64, &
+                                   name//"R_low, mode "//trim(mode_text))
+            call assert_equal_real(shuffled%range_high, contiguous%range_high, 0.0_real64, &
+                                   name//"R_high, mode "//trim(mode_text))
+        end do
+    end subroutine test_stone_shuffled_labels_match_contiguous
+
+    !> `bin_count_mode` accepts the three Stone values only: the occupancy value and an unknown
+    !| value are rejected as invalid input at the mode's position (17).
+    subroutine test_stone_rejects_non_stone_mode()
+        character(len=*), parameter :: name = "test_stone_rejects_non_stone_mode: "
+        real(real64) :: values(5)
+        integer(int32) :: labels(5)
+        type(stone_outputs) :: out
+
+        values = [0.0_real64, 3.0_real64, 3.0_real64, 12.0_real64, 11.0_real64]
+        labels = [1_int32, 1_int32, 1_int32, 2_int32, 2_int32]
+        call run_stone(values, labels, 2_int32, MODE_BIN_COUNT_OCCUPANCY, 1_int32, 6_int32, 0_int32, 0.0_real64, &
+                       1.0_real64, out)
+        call assert_err(out%ierr, ERR_INVALID_INPUT, name//"occupancy mode rejected", 17_int32)
+        call run_stone(values, labels, 2_int32, 99_int32, 1_int32, 6_int32, 0_int32, 0.0_real64, 1.0_real64, out)
+        call assert_err(out%ierr, ERR_INVALID_INPUT, name//"unknown mode rejected", 17_int32)
+    end subroutine test_stone_rejects_non_stone_mode
+
+    !> The range and the Sturges/FD diagnostics are those of the occupancy routine on the same
+    !| residuals; `m_max < m_min` is raised to `m_min` (m_min = 10, m_max = 5 -> 10, mean 1000/10).
+    subroutine test_stone_diagnostics_match_occupancy_routine()
+        character(len=*), parameter :: name = "test_stone_diagnostics_match_occupancy_routine: "
+        real(real64) :: values(1000), occ_mean, occ_low, occ_high
+        integer(int32) :: labels(1000), occ_n_bins, occ_n_pooled, occ_min, occ_max, occ_sturges, occ_fd, ierr
+        logical(c_bool) :: occ_failed
+        type(stone_outputs) :: out
+
+        call logistic_fixture(values, labels)
+        call run_stone(values, labels, 1_int32, MODE_BIN_COUNT_STONE_EQUAL, 3_int32, 120_int32, 10_int32, &
+                       0.05_real64, 0.95_real64, out)
+        call determine_bin_count_occupancy(values, 1000_int32, 1_int32, 1_int32, occ_n_bins, occ_failed, occ_low, &
+                                           occ_high, occ_n_pooled, occ_min, occ_mean, occ_max, occ_sturges, occ_fd, &
+                                           ierr=ierr)
+        call assert_equal_real(out%range_low, occ_low, 0.0_real64, name//"R_low == occupancy routine")
+        call assert_equal_real(out%range_high, occ_high, 0.0_real64, name//"R_high == occupancy routine")
+        call assert_equal_int(out%n_pooled, occ_n_pooled, name//"n_pooled == occupancy routine")
+        call assert_equal_int(out%sturges, occ_sturges, name//"Sturges == occupancy routine")
+        call assert_equal_int(out%fd, occ_fd, name//"FD == occupancy routine")
+
+        call run_stone(values, labels, 1_int32, MODE_BIN_COUNT_STONE_EQUAL, 10_int32, 5_int32, 0_int32, 0.05_real64, &
+                       0.95_real64, out)
+        call assert_false(out%failed, name//"m_max < m_min: not failed")
+        call assert_equal_int(out%n_bins, 10_int32, name//"m_max raised to m_min: only m=10 tested")
+        call assert_equal_real(out%mean_occ, 100.0_real64, TOL, name//"mean occupancy 1000/10")
+    end subroutine test_stone_diagnostics_match_occupancy_routine
+
+    !> The expert entry point, given the ascending permutation the plain one builds, returns the
+    !| same result on the hand fixture of test_stone_theorem2_hand_computed_per_mode (equal weights
+    !| pick m = 6), and leaves the per-study grouping in its work arrays: block sizes (3, 2), study
+    !| 1's indices {1, 2, 3} first (index 1, the value 0, leading), then study 2's indices ordered
+    !| by value (5 = 11 before 4 = 12).
+    subroutine test_stone_expert_matches_plain()
+        character(len=*), parameter :: name = "test_stone_expert_matches_plain: "
+        real(real64) :: values(5), range_low, range_high, mean_occ
+        integer(int32) :: labels(5), perm(5), work_bins(256), work_perm(5), work_sizes(2)
+        integer(int32) :: n_bins, n_pooled, min_occ, max_occ, sturges, fd, ierr
+        logical(c_bool) :: failed
+        type(stone_outputs) :: plain
+
+        values = [0.0_real64, 3.0_real64, 3.0_real64, 12.0_real64, 11.0_real64]
+        labels = [1_int32, 1_int32, 1_int32, 2_int32, 2_int32]
+        call run_stone(values, labels, 2_int32, MODE_BIN_COUNT_STONE_EQUAL, 1_int32, 6_int32, 0_int32, 0.0_real64, &
+                       1.0_real64, plain)
+        call init_perm(perm)
+        call sort_array_heapsort(values, perm)
+        call determine_bin_count_stone_expert(pooled_residuals=values, pooled_residuals_perm=perm, n_residuals=5_int32, &
+                                              residual_to_study=labels, n_studies=2_int32, &
+                                              max_n_reps_all_studies=1_int32, n_neighbors=1_int32, &
+                                              selected_n_bins=n_bins, stone_failed=failed, &
+                                              shared_residual_range_low=range_low, &
+                                              shared_residual_range_high=range_high, n_pooled_residuals=n_pooled, &
+                                              min_bin_occupancy=min_occ, mean_bin_occupancy=mean_occ, &
+                                              max_bin_occupancy=max_occ, sturges_bins=sturges, fd_bins=fd, &
+                                              tmp_bin_counts=work_bins, tmp_residual_to_study_perm=work_perm, &
+                                              tmp_study_block_sizes=work_sizes, &
+                                              bin_count_mode=MODE_BIN_COUNT_STONE_EQUAL, m_min=1_int32, m_max=6_int32, &
+                                              min_residuals_per_bin=0_int32, lower_residual_range_quantile=0.0_real64, &
+                                              upper_residual_range_quantile=1.0_real64, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr OK")
+        call assert_equal_int(n_bins, plain%n_bins, name//"expert n_bins == plain")
+        call assert_equal_int(n_bins, 6_int32, name//"equal weights pick m=6")
+        call assert_true(logical(failed .eqv. plain%failed, kind=c_bool), name//"expert failed flag == plain")
+        call assert_equal_int(min_occ, plain%min_occ, name//"expert min occupancy == plain")
+        call assert_equal_int(max_occ, plain%max_occ, name//"expert max occupancy == plain")
+        call assert_equal_real(range_low, plain%range_low, 0.0_real64, name//"expert R_low == plain")
+        call assert_equal_real(range_high, plain%range_high, 0.0_real64, name//"expert R_high == plain")
+        call assert_equal_array_int(work_sizes, [3_int32, 2_int32], 2_int32, name//"per-study block sizes")
+        call assert_equal_int(work_perm(1), 1_int32, name//"study 1 block starts with its smallest value")
+        call assert_equal_int(work_perm(2) + work_perm(3), 5_int32, name//"study 1 block holds indices 2 and 3 next")
+        call assert_equal_array_int(work_perm(4:5), [5_int32, 4_int32], 2_int32, name//"study 2 block ordered by value")
+    end subroutine test_stone_expert_matches_plain
+
+    !> The full bin-count range up to MAX_N_BINS = 256 on the logistic fixture (no floor): over
+    !| [3, 256] the pick is still m = 8 (Python reference), and with m_min = m_max = 256 the only
+    !| candidate is chosen, its occupancy equal to `histogram_bin_counts` at 256 bins.
+    subroutine test_stone_m_max_at_max_n_bins()
+        character(len=*), parameter :: name = "test_stone_m_max_at_max_n_bins: "
+        real(real64) :: values(1000)
+        integer(int32) :: labels(1000), perm(1000), hist(256), min_occ
+        type(stone_outputs) :: out
+
+        call logistic_fixture(values, labels)
+        call run_stone(values, labels, 1_int32, MODE_BIN_COUNT_STONE_EQUAL, 3_int32, MAX_N_BINS, 0_int32, &
+                       0.05_real64, 0.95_real64, out)
+        call assert_equal_int(get_err_code(out%ierr), ERR_OK, name//"ierr OK")
+        call assert_equal_int(out%n_bins, 8_int32, name//"m in [3, 256]: still m=8")
+
+        call run_stone(values, labels, 1_int32, MODE_BIN_COUNT_STONE_POOLED, MAX_N_BINS, MAX_N_BINS, 0_int32, &
+                       0.05_real64, 0.95_real64, out)
+        call assert_false(out%failed, name//"m=256 only: not failed")
+        call assert_equal_int(out%n_bins, 256_int32, name//"m=256 only: chosen")
+        call init_perm(perm)
+        call sort_array_heapsort(values, perm)
+        call histogram_bin_counts(values, perm, 1000_int32, 1000_int32, out%range_low, out%range_high, 256_int32, &
+                                  hist, min_occ)
+        call assert_equal_int(out%min_occ, minval(hist), name//"min occupancy == histogram_bin_counts at 256")
+        call assert_equal_int(out%max_occ, maxval(hist), name//"max occupancy == histogram_bin_counts at 256")
+    end subroutine test_stone_m_max_at_max_n_bins
 
 end module mod_test_data_integration_js_comp_test

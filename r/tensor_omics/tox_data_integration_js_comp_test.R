@@ -585,6 +585,298 @@ determine_bin_count_occupancy_exhaustive_expert <- function(pooled_residuals, po
     )
 }
 
+#' Choose one neighborhood's histogram bin count by Stone's cross-validation rule
+#'
+#' Chooses the number of equal-width histogram bins for one neighborhood's pooled residuals by
+#' Stone's leave-one-out cross-validation (Duke STA 293.3 lecture notes, ch. 6, Theorem 2):
+#' for a histogram of `n` values over `m` bins of width `h`, the score
+#' `J(m) = 2/(h(n-1)) - (n+1)/(h(n-1)) * sum_j p_j^2`, with `p_j` the share of the values in
+#' bin `j`, estimates the integrated squared error of the density estimate up to a constant,
+#' and the bin count with the smallest score is chosen. An alternative to
+#' \code{\link{determine_bin_count_occupancy}}'s
+#' occupancy search, with the same inputs, range and outputs.
+#'
+#' The range `[shared_residual_range_low, shared_residual_range_high]` is the
+#' `lower_residual_range_quantile`/`upper_residual_range_quantile` percentiles of all non-NaN
+#' pooled residuals, as in the occupancy search, so `h = (R_high - R_low)/m`. The score counts
+#' only the residuals **inside** the range (`n` is their number): the JSD histograms clamp the
+#' residuals outside it into the edge bins, but scored that way Stone's rule reads the clamped
+#' edges as density spikes and always picks `m_max`.
+#'
+#' Every bin count `m` in `[m_min, m_max]` is tested, ties going to the smaller `m`. A single
+#' score (pooled mode, or one study) is evaluated so that mathematically equal scores are
+#' bit-equal for samples of up to about 200,000 residuals; in the per-study modes the sum over
+#' the studies is ordinary floating-point arithmetic, so mathematically equal totals may differ
+#' in the last bit.
+#'
+#' `residual_to_study` says which study each residual comes from, and `bin_count_mode` how the
+#' studies are combined into one shared bin count:
+#' \code{'bin_count_stone_equal'} (the
+#' default) minimises the sum of every study's own score `J_k(m)`,
+#' \code{'bin_count_stone_size_weighted'}
+#' the sum of `n_k * J_k(m)` with `n_k` the study's inside count, and
+#' \code{'bin_count_stone_pooled'} the
+#' score `J(m)` of all studies' residuals together. The two per-study modes leave out a study
+#' with fewer than 2 residuals inside the range.
+#'
+#' `min_residuals_per_bin` stays a hard floor, with the occupancy search's definition: a bin
+#' count is admissible only if the pooled histogram with the outside residuals clamped into the
+#' edge bins has every bin at or above it (`0` turns the floor off). The minimum is taken over
+#' the admissible bin counts only.
+#'
+#' `stone_failed = TRUE` means no bin count could be chosen: every pooled residual is NaN, the
+#' range has width 0 or less, no study has 2 residuals inside the range (pooled mode: fewer than
+#' 2 inside in total), or no bin count passes the floor. `selected_n_bins` is then `m_min`, only
+#' so a caller ignoring the flag has a value to build with, and the occupancy diagnostics are 0.
+#' Otherwise the diagnostics describe the pooled clamped histogram at `selected_n_bins`.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::determine_bin_count_stone}, whose argument names
+#' are the ones an error message reports.
+#'
+#' This entry point seeds \code{pooled_residuals_perm} and sorts it by \code{pooled_residuals} and computes \code{tmp_bin_counts}, \code{tmp_residual_to_study_perm} and \code{tmp_study_block_sizes} for you.
+#' Call \code{determine_bin_count_stone_expert} to do that yourself.
+#'
+#' @param pooled_residuals a numeric vector. Pooled signed residuals for one neighborhood, across all its neighbors and all studies
+#'   NaN is permitted for this value.
+#' @param residual_to_study a integer vector. Study each pooled residual comes from
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_studies`.
+#' @param n_studies a integer scalar. Number of studies
+#'   The minimum valid value is `1`.
+#' @param max_n_reps_all_studies a integer scalar. Maximum number of replicates across all studies
+#'   The minimum valid value is `1`.
+#' @param n_neighbors a integer scalar. Neighborhood size of the candidate under test
+#'   The minimum valid value is `1`.
+#' @param bin_count_mode a string, one of "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled". How the studies' scores are combined into one bin count
+#'
+#'   The default value is `"bin_count_stone_equal"`.
+#' @param m_min a integer scalar. Smallest candidate bin count tested (M_min)
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_N_BINS`.
+#'   The default value is `3`.
+#' @param m_max a integer scalar. Largest candidate bin count tested (M_max); if a caller passes `m_max < m_min`, the
+#'   implementation clamps it up to `m_min` internally
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_N_BINS`.
+#'   The default value is `120`.
+#' @param min_residuals_per_bin a integer scalar. Minimum number of pooled residuals every bin of the pooled clamped histogram must
+#'   reach for a candidate bin count to be admissible (0 turns the floor off)
+#'   The minimum valid value is `0`.
+#'   The default value is `10`.
+#' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own lower residual-range bound
+#'   (shared_residual_range_low)
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.05`.
+#' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own upper residual-range bound
+#'   (shared_residual_range_high)
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.95`.
+#' @return a named list with elements:
+#'   \item{selected_n_bins}{a integer scalar. The chosen bin count: the admissible bin count in [m_min, m_max] with the smallest
+#'     Stone score; m_min when stone_failed}
+#'   \item{stone_failed}{a logical scalar. `TRUE` iff no bin count could be chosen (see above); the caller should then reject
+#'     this neighborhood rather than build a histogram from selected_n_bins}
+#'   \item{shared_residual_range_low}{a numeric scalar. This neighborhood's own lower residual-range bound (R_low): the
+#'     lower_residual_range_quantile percentile of its own pooled signed residuals. 0.0
+#'     when every pooled residual is NaN}
+#'   \item{shared_residual_range_high}{a numeric scalar. This neighborhood's own upper residual-range bound (R_high): the
+#'     upper_residual_range_quantile percentile of its own pooled signed residuals. 0.0
+#'     when every pooled residual is NaN}
+#'   \item{n_pooled_residuals}{a integer scalar. Count of non-NaN pooled residuals (N_j)}
+#'   \item{min_bin_occupancy}{a integer scalar. Minimum bin count of the pooled clamped histogram at selected_n_bins; 0 when stone_failed}
+#'   \item{mean_bin_occupancy}{a numeric scalar. Mean bin count at selected_n_bins (== n_pooled_residuals / selected_n_bins); 0 when
+#'     stone_failed}
+#'   \item{max_bin_occupancy}{a integer scalar. Maximum bin count of the pooled clamped histogram at selected_n_bins; 0 when stone_failed}
+#'   \item{sturges_bins}{a integer scalar. Sturges' rule estimate for this neighborhood's own pooled residuals, from
+#'     estimate_bin_count_impl -- a diagnostic only, never part of the decision}
+#'   \item{fd_bins}{a integer scalar. Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
+#'     estimate_bin_count_impl -- a diagnostic only, never part of the decision}
+#' @export
+determine_bin_count_stone <- function(pooled_residuals, residual_to_study, n_studies, max_n_reps_all_studies, n_neighbors, bin_count_mode = "bin_count_stone_equal", m_min = 3L, m_max = 120L, min_residuals_per_bin = 10L, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95) {
+    pooled_residuals <- .tox_as_double_vector(pooled_residuals, "pooled_residuals")
+    residual_to_study <- .tox_as_integer_vector(residual_to_study, "residual_to_study")
+    n_studies <- .tox_as_integer_scalar(n_studies, "n_studies")
+    max_n_reps_all_studies <- .tox_as_integer_scalar(max_n_reps_all_studies, "max_n_reps_all_studies")
+    n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
+    bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
+    m_min <- .tox_as_integer_scalar(m_min, "m_min")
+    m_max <- .tox_as_integer_scalar(m_max, "m_max")
+    min_residuals_per_bin <- .tox_as_integer_scalar(min_residuals_per_bin, "min_residuals_per_bin")
+    lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
+    upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
+    if (length(residual_to_study) != length(pooled_residuals))
+        .tox_shape_error("residual_to_study", length(residual_to_study), "pooled_residuals", length(pooled_residuals))
+
+    .result <- .Call("determine_bin_count_stone_call", pooled_residuals, residual_to_study, n_studies, max_n_reps_all_studies, n_neighbors, bin_count_mode, m_min, m_max, min_residuals_per_bin, lower_residual_range_quantile, upper_residual_range_quantile)
+    .arguments <- c("pooled_residuals", "n_residuals", "residual_to_study", "n_studies", "max_n_reps_all_studies", "n_neighbors", "selected_n_bins", "stone_failed", "shared_residual_range_low", "shared_residual_range_high", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "bin_count_mode", "m_min", "m_max", "min_residuals_per_bin", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr")
+    .sources <- c(NA_character_, "pooled_residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        selected_n_bins = .result$selected_n_bins,
+        stone_failed = .result$stone_failed,
+        shared_residual_range_low = .result$shared_residual_range_low,
+        shared_residual_range_high = .result$shared_residual_range_high,
+        n_pooled_residuals = .result$n_pooled_residuals,
+        min_bin_occupancy = .result$min_bin_occupancy,
+        mean_bin_occupancy = .result$mean_bin_occupancy,
+        max_bin_occupancy = .result$max_bin_occupancy,
+        sturges_bins = .result$sturges_bins,
+        fd_bins = .result$fd_bins
+    )
+}
+
+#' Choose one neighborhood's histogram bin count by Stone's cross-validation rule
+#'
+#' Chooses the number of equal-width histogram bins for one neighborhood's pooled residuals by
+#' Stone's leave-one-out cross-validation (Duke STA 293.3 lecture notes, ch. 6, Theorem 2):
+#' for a histogram of `n` values over `m` bins of width `h`, the score
+#' `J(m) = 2/(h(n-1)) - (n+1)/(h(n-1)) * sum_j p_j^2`, with `p_j` the share of the values in
+#' bin `j`, estimates the integrated squared error of the density estimate up to a constant,
+#' and the bin count with the smallest score is chosen. An alternative to
+#' \code{\link{determine_bin_count_occupancy}}'s
+#' occupancy search, with the same inputs, range and outputs.
+#'
+#' The range `[shared_residual_range_low, shared_residual_range_high]` is the
+#' `lower_residual_range_quantile`/`upper_residual_range_quantile` percentiles of all non-NaN
+#' pooled residuals, as in the occupancy search, so `h = (R_high - R_low)/m`. The score counts
+#' only the residuals **inside** the range (`n` is their number): the JSD histograms clamp the
+#' residuals outside it into the edge bins, but scored that way Stone's rule reads the clamped
+#' edges as density spikes and always picks `m_max`.
+#'
+#' Every bin count `m` in `[m_min, m_max]` is tested, ties going to the smaller `m`. A single
+#' score (pooled mode, or one study) is evaluated so that mathematically equal scores are
+#' bit-equal for samples of up to about 200,000 residuals; in the per-study modes the sum over
+#' the studies is ordinary floating-point arithmetic, so mathematically equal totals may differ
+#' in the last bit.
+#'
+#' `residual_to_study` says which study each residual comes from, and `bin_count_mode` how the
+#' studies are combined into one shared bin count:
+#' \code{'bin_count_stone_equal'} (the
+#' default) minimises the sum of every study's own score `J_k(m)`,
+#' \code{'bin_count_stone_size_weighted'}
+#' the sum of `n_k * J_k(m)` with `n_k` the study's inside count, and
+#' \code{'bin_count_stone_pooled'} the
+#' score `J(m)` of all studies' residuals together. The two per-study modes leave out a study
+#' with fewer than 2 residuals inside the range.
+#'
+#' `min_residuals_per_bin` stays a hard floor, with the occupancy search's definition: a bin
+#' count is admissible only if the pooled histogram with the outside residuals clamped into the
+#' edge bins has every bin at or above it (`0` turns the floor off). The minimum is taken over
+#' the admissible bin counts only.
+#'
+#' `stone_failed = TRUE` means no bin count could be chosen: every pooled residual is NaN, the
+#' range has width 0 or less, no study has 2 residuals inside the range (pooled mode: fewer than
+#' 2 inside in total), or no bin count passes the floor. `selected_n_bins` is then `m_min`, only
+#' so a caller ignoring the flag has a value to build with, and the occupancy diagnostics are 0.
+#' Otherwise the diagnostics describe the pooled clamped histogram at `selected_n_bins`.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::determine_bin_count_stone_expert}, whose argument names
+#' are the ones an error message reports.
+#'
+#' The expert entry point: you supply \code{pooled_residuals_perm}, \code{tmp_bin_counts}, \code{tmp_residual_to_study_perm} and \code{tmp_study_block_sizes} yourself.
+#' \code{determine_bin_count_stone} seeds \code{pooled_residuals_perm} and sorts it by \code{pooled_residuals} and computes \code{tmp_bin_counts}, \code{tmp_residual_to_study_perm} and \code{tmp_study_block_sizes} for you.
+#'
+#' @param pooled_residuals a numeric vector. Pooled signed residuals for one neighborhood, across all its neighbors and all studies
+#'   NaN is permitted for this value.
+#' @param pooled_residuals_perm a integer vector. Sorting permutation for `pooled_residuals`, ascending, NaN last
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_residuals`.
+#' @param residual_to_study a integer vector. Study each pooled residual comes from
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_studies`.
+#' @param n_studies a integer scalar. Number of studies
+#'   The minimum valid value is `1`.
+#' @param max_n_reps_all_studies a integer scalar. Maximum number of replicates across all studies
+#'   The minimum valid value is `1`.
+#' @param n_neighbors a integer scalar. Neighborhood size of the candidate under test
+#'   The minimum valid value is `1`.
+#' @param bin_count_mode a string, one of "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled". How the studies' scores are combined into one bin count
+#'
+#'   The default value is `"bin_count_stone_equal"`.
+#' @param m_min a integer scalar. Smallest candidate bin count tested (M_min)
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_N_BINS`.
+#'   The default value is `3`.
+#' @param m_max a integer scalar. Largest candidate bin count tested (M_max); if a caller passes `m_max < m_min`, the
+#'   implementation clamps it up to `m_min` internally
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_N_BINS`.
+#'   The default value is `120`.
+#' @param min_residuals_per_bin a integer scalar. Minimum number of pooled residuals every bin of the pooled clamped histogram must
+#'   reach for a candidate bin count to be admissible (0 turns the floor off)
+#'   The minimum valid value is `0`.
+#'   The default value is `10`.
+#' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own lower residual-range bound
+#'   (shared_residual_range_low)
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.05`.
+#' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own upper residual-range bound
+#'   (shared_residual_range_high)
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.95`.
+#' @return a named list with elements:
+#'   \item{selected_n_bins}{a integer scalar. The chosen bin count: the admissible bin count in [m_min, m_max] with the smallest
+#'     Stone score; m_min when stone_failed}
+#'   \item{stone_failed}{a logical scalar. `TRUE` iff no bin count could be chosen (see above); the caller should then reject
+#'     this neighborhood rather than build a histogram from selected_n_bins}
+#'   \item{shared_residual_range_low}{a numeric scalar. This neighborhood's own lower residual-range bound (R_low): the
+#'     lower_residual_range_quantile percentile of its own pooled signed residuals. 0.0
+#'     when every pooled residual is NaN}
+#'   \item{shared_residual_range_high}{a numeric scalar. This neighborhood's own upper residual-range bound (R_high): the
+#'     upper_residual_range_quantile percentile of its own pooled signed residuals. 0.0
+#'     when every pooled residual is NaN}
+#'   \item{n_pooled_residuals}{a integer scalar. Count of non-NaN pooled residuals (N_j)}
+#'   \item{min_bin_occupancy}{a integer scalar. Minimum bin count of the pooled clamped histogram at selected_n_bins; 0 when stone_failed}
+#'   \item{mean_bin_occupancy}{a numeric scalar. Mean bin count at selected_n_bins (== n_pooled_residuals / selected_n_bins); 0 when
+#'     stone_failed}
+#'   \item{max_bin_occupancy}{a integer scalar. Maximum bin count of the pooled clamped histogram at selected_n_bins; 0 when stone_failed}
+#'   \item{sturges_bins}{a integer scalar. Sturges' rule estimate for this neighborhood's own pooled residuals, from
+#'     estimate_bin_count_impl -- a diagnostic only, never part of the decision}
+#'   \item{fd_bins}{a integer scalar. Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
+#'     estimate_bin_count_impl -- a diagnostic only, never part of the decision}
+#' @export
+determine_bin_count_stone_expert <- function(pooled_residuals, pooled_residuals_perm, residual_to_study, n_studies, max_n_reps_all_studies, n_neighbors, bin_count_mode = "bin_count_stone_equal", m_min = 3L, m_max = 120L, min_residuals_per_bin = 10L, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95) {
+    pooled_residuals <- .tox_as_double_vector(pooled_residuals, "pooled_residuals")
+    pooled_residuals_perm <- .tox_as_integer_vector(pooled_residuals_perm, "pooled_residuals_perm")
+    residual_to_study <- .tox_as_integer_vector(residual_to_study, "residual_to_study")
+    n_studies <- .tox_as_integer_scalar(n_studies, "n_studies")
+    max_n_reps_all_studies <- .tox_as_integer_scalar(max_n_reps_all_studies, "max_n_reps_all_studies")
+    n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
+    bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
+    m_min <- .tox_as_integer_scalar(m_min, "m_min")
+    m_max <- .tox_as_integer_scalar(m_max, "m_max")
+    min_residuals_per_bin <- .tox_as_integer_scalar(min_residuals_per_bin, "min_residuals_per_bin")
+    lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
+    upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
+    if (length(pooled_residuals_perm) != length(pooled_residuals))
+        .tox_shape_error("pooled_residuals_perm", length(pooled_residuals_perm), "pooled_residuals", length(pooled_residuals))
+    if (length(residual_to_study) != length(pooled_residuals))
+        .tox_shape_error("residual_to_study", length(residual_to_study), "pooled_residuals", length(pooled_residuals))
+
+    .result <- .Call("determine_bin_count_stone_expert_call", pooled_residuals, pooled_residuals_perm, residual_to_study, n_studies, max_n_reps_all_studies, n_neighbors, bin_count_mode, m_min, m_max, min_residuals_per_bin, lower_residual_range_quantile, upper_residual_range_quantile)
+    .arguments <- c("pooled_residuals", "pooled_residuals_perm", "n_residuals", "residual_to_study", "n_studies", "max_n_reps_all_studies", "n_neighbors", "selected_n_bins", "stone_failed", "shared_residual_range_low", "shared_residual_range_high", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "tmp_bin_counts", "tmp_residual_to_study_perm", "tmp_study_block_sizes", "bin_count_mode", "m_min", "m_max", "min_residuals_per_bin", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr")
+    .sources <- c(NA_character_, NA_character_, "pooled_residuals", NA_character_, "tmp_study_block_sizes", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        selected_n_bins = .result$selected_n_bins,
+        stone_failed = .result$stone_failed,
+        shared_residual_range_low = .result$shared_residual_range_low,
+        shared_residual_range_high = .result$shared_residual_range_high,
+        n_pooled_residuals = .result$n_pooled_residuals,
+        min_bin_occupancy = .result$min_bin_occupancy,
+        mean_bin_occupancy = .result$mean_bin_occupancy,
+        max_bin_occupancy = .result$max_bin_occupancy,
+        sturges_bins = .result$sturges_bins,
+        fd_bins = .result$fd_bins
+    )
+}
+
 #' Generate the GAMMA-decay (n_points, n_neighbors) candidate grid
 #'
 #' Ported from the grid-building half of 125-stabilize-jscomp's

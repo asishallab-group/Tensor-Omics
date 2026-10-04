@@ -17,6 +17,9 @@
 !| is a brute-force reference implementation of the same per-point bin-count search, exhaustively
 !| testing every candidate `M` instead of the fast geometric-search-then-refinement the production
 !| routine uses, for validating that the fast search's own result is correct.
+!| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]]
+!| is the alternative bin-count rule: Stone's leave-one-out cross-validation, scored per study or
+!| on the pooled residuals, with the same range and the same occupancy floor.
 !| `calc_js_comp_test_candidate_bounds` sizes the candidate-grid work arrays for a caller that
 !| allocates its own. For adaptive (heteroscedastic, Issue #217) neighborhood construction,
 !| [[tox_data_integration_js_comp_test_impl(module):generate_adaptive_js_comp_test_candidates_impl(interface)]]
@@ -60,6 +63,9 @@ module tox_data_integration_js_comp_test_impl
              determine_point_bin_count, build_point_study_histogram, &
              estimate_bin_count_impl, determine_bin_count_occupancy_impl, &
              determine_bin_count_occupancy_exhaustive_impl, &
+             determine_bin_count_stone_impl, sorted_bin_counts, histogram_bin_counts, &
+             MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, &
+             MODE_BIN_COUNT_STONE_POOLED, &
              generate_js_comp_test_candidates_impl, &
              check_neighborhood_overlaps_impl, check_mean_pmf_min_counts_impl, check_plateau_condition_impl, &
              check_effect_size_plateau_condition_impl, create_mean_pmf_impl, create_mean_pmf_only_impl, &
@@ -234,6 +240,35 @@ module tox_data_integration_js_comp_test_impl
         !! Plateau mode: relative-effect-size stability only
     integer(int32), parameter :: MODE_PLATEAU_BOTH = 2_int32
         !! Plateau mode: either CI overlap or relative-effect-size stability
+
+    ! `bin_count_mode`'s values: how a reference point's histogram bin count is chosen. Occupancy
+    ! is Issue #187's search (determine_bin_count_occupancy_impl); MODE_BIN_COUNT_OCCUPANCY is
+    ! reserved for the pipeline entry points' `bin_count_mode` (wired in a follow-up), where it is
+    ! to be the default so existing results stay unchanged. The three Stone values choose the bin count
+    ! by Stone's leave-one-out cross-validation (determine_bin_count_stone_impl), scored per study
+    ! and summed with equal weights, scored per study and weighted by each study's residual count,
+    ! or scored once on the pooled residuals. Each value is a CM_ macro first, so that a
+    ! DM_DEFAULT can name it.
+#define CM_MODE_BIN_COUNT_OCCUPANCY 0_int32
+#define CM_MODE_BIN_COUNT_STONE_EQUAL 1_int32
+#define CM_MODE_BIN_COUNT_STONE_SIZE_WEIGHTED 2_int32
+#define CM_MODE_BIN_COUNT_STONE_POOLED 3_int32
+    integer(int32), parameter :: MODE_BIN_COUNT_OCCUPANCY = CM_MODE_BIN_COUNT_OCCUPANCY
+        !! Bin-count mode: the largest bin count whose pooled histogram has every bin at or above
+        !! the occupancy floor (Issue #187)
+    integer(int32), parameter :: MODE_BIN_COUNT_STONE_EQUAL = CM_MODE_BIN_COUNT_STONE_EQUAL
+        !! Bin-count mode: Stone's cross-validation score of every study, summed with equal weights
+    integer(int32), parameter :: MODE_BIN_COUNT_STONE_SIZE_WEIGHTED = CM_MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
+        !! Bin-count mode: Stone's cross-validation score of every study, weighted by the study's
+        !! residual count inside the range
+    integer(int32), parameter :: MODE_BIN_COUNT_STONE_POOLED = CM_MODE_BIN_COUNT_STONE_POOLED
+        !! Bin-count mode: Stone's cross-validation score of the pooled residuals of all studies
+
+    ! Which monotone predicate sorted_partition_point (below) searches for. Private selector
+    ! values of an internal helper, not a published mode.
+    integer(int32), parameter :: PREDICATE_BELOW = 1_int32
+    integer(int32), parameter :: PREDICATE_AT_MOST = 2_int32
+    integer(int32), parameter :: PREDICATE_BIN_AT_MOST = 3_int32
 
     ! Issue #178's suggested defaults for the relative-effect-size plateau criterion. Explicitly
     ! provisional: the issue itself says "the exact thresholds should be validated empirically",
@@ -716,19 +751,22 @@ contains
         mean_bin_occupancy = real(n_pooled_residuals, real64)/real(best_m, real64)
     end subroutine determine_bin_count_occupancy_impl
 
-    !> Bins already-permutation-sorted pooled residuals into `trial_m` equal-width bins over
+    !> summary: Bin already-sorted pooled residuals into equal-width bins, clamping the outside ones into the edge bins
+    !| AUTHOR_LASZLO_LANG
+    !| Bins already-permutation-sorted pooled residuals into `trial_m` equal-width bins over
     !| `[shared_residual_range_low, shared_residual_range_high]`, this neighborhood's own
     !| asymmetric range, mirroring
     !| [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]'s own
     !| clamp-then-bin-index formula, but for a flat 1-D pooled array instead of a 3-D
-    !| per-study-per-point one. Not published: a private helper for
+    !| per-study-per-point one. Not published: a helper for
     !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
     !| geometric search and local-refinement loops, called O(log(m_max/m_min)) + refinement times
     !| per neighborhood -- kept separate from the heavier per-study/per-point routine above rather
     !| than reusing it, since that one is called far less often and has the wrong shape for this.
     !| `pure`, allocates nothing, explicit-shape dummies only: `bin_counts`'s own extent is
     !| `trial_m`, which is fine for an internal helper that is never itself wrapped (only `tmp_`
-    !| dummies of a wrapped `_impl` routine need a literal dimension).
+    !| dummies of a wrapped `_impl` routine need a literal dimension). Public only so the test
+    !| suite can compare it with `sorted_bin_counts` directly.
     !|
     !| Only `pooled_residuals_perm(1:n_pool)` is scanned -- the caller has already established that
     !| any trailing NaN entries sort last and are excluded, exactly as
@@ -911,6 +949,644 @@ contains
         max_bin_occupancy = maxval(candidate_bin_counts(1:best_m))
         mean_bin_occupancy = real(n_pooled_residuals, real64)/real(best_m, real64)
     end subroutine determine_bin_count_occupancy_exhaustive_impl
+
+    !> summary: Count already-sorted values into equal-width bins, inside the range only, by binary search
+    !| AUTHOR_LASZLO_LANG
+    !| Counts already-sorted values into `trial_m` equal-width bins over `[range_low, range_high]`,
+    !| inside the range only, in O(trial_m log n_perm) instead of one pass over the values.
+    !|
+    !| The values are `values(perm(1:n_perm))`, which `perm` orders ascending with any NaN last.
+    !| Only the values inside the range (`range_low <= x <= range_high`) are counted into
+    !| `bin_counts`, and their number is `n_inside`. The values below the range are only counted, in
+    !| `n_below`. The values above the range are counted nowhere: a caller that knows how many of
+    !| its values are not NaN gets them as `n_valid - n_below - n_inside`. NaN is never counted.
+    !|
+    !| An inside value `x` lands in bin `min(trial_m, int((x - range_low)/bin_width) + 1)` with
+    !| `bin_width = (range_high - range_low)/trial_m` (1 for a range of width 0 or less), the same
+    !| rule as `histogram_bin_counts`. That bin index never decreases as `x` grows, so the number of
+    !| values up to bin `j` is found by a binary search on the sorted values. For a range of
+    !| positive width the counts are exactly `histogram_bin_counts`' counts for the inside values;
+    !| that routine additionally clamps the `n_below` values into bin 1 and the values above the
+    !| range into bin `trial_m`. Cost: two binary searches for the range ends plus one per bin.
+    !|
+    !| Not published: a helper of
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]],
+    !| which scores only the inside values and tests every bin count. Public only so the test
+    !| suite can compare it with `histogram_bin_counts` directly. Precondition, not checked:
+    !| `perm(1:n_perm)` are indices into `values` that order them ascending, NaN last.
+    pure subroutine sorted_bin_counts(values, n_values, perm, n_perm, range_low, range_high, trial_m, bin_counts, &
+                                      n_below, n_inside)
+        integer(int32), intent(in) :: n_values
+            !! Number of elements in `values`
+        real(real64), intent(in) :: values(n_values)
+            !! Values to count, NaN allowed
+        integer(int32), intent(in) :: n_perm
+            !! Number of positions in `perm`
+        integer(int32), intent(in) :: perm(n_perm)
+            !! Indices into `values`, ordering the counted values ascending, NaN last
+        real(real64), intent(in) :: range_low
+            !! Lower end of the binned range (R_low)
+        real(real64), intent(in) :: range_high
+            !! Upper end of the binned range (R_high)
+        integer(int32), intent(in) :: trial_m
+            !! Number of equal-width bins
+        integer(int32), intent(out) :: bin_counts(trial_m)
+            !! Number of inside values per bin
+        integer(int32), intent(out) :: n_below
+            !! Number of values below `range_low`
+        integer(int32), intent(out) :: n_inside
+            !! Number of values inside `[range_low, range_high]`, the sum of `bin_counts`
+
+        real(real64) :: bin_width
+        integer(int32) :: n_up_to_high, n_up_to_bin, n_before_bin, i_bin
+
+        ! Same zero-range guard as histogram_bin_counts.
+        if (range_high - range_low <= 0.0_real64) then
+            bin_width = 1.0_real64
+        else
+            bin_width = (range_high - range_low)/real(trial_m, real64)
+        end if
+
+        ! A comparison with NaN is false, so both predicates stay monotone over a NaN tail.
+        n_below = sorted_partition_point(values, n_values, perm, n_perm, 0_int32, n_perm, PREDICATE_BELOW, &
+                                         range_low, bin_width, 0_int32)
+        n_up_to_high = sorted_partition_point(values, n_values, perm, n_perm, n_below, n_perm, PREDICATE_AT_MOST, &
+                                              range_high, bin_width, 0_int32)
+        n_inside = n_up_to_high - n_below
+
+        ! Sequential: each bin's search starts where the previous bin ended. The bin predicate is
+        ! only evaluated inside the range, which holds no NaN.
+        n_before_bin = n_below
+        do i_bin = 1, trial_m - 1_int32
+            n_up_to_bin = sorted_partition_point(values, n_values, perm, n_perm, n_before_bin, n_up_to_high, &
+                                                 PREDICATE_BIN_AT_MOST, range_low, bin_width, i_bin)
+            bin_counts(i_bin) = n_up_to_bin - n_before_bin
+            n_before_bin = n_up_to_bin
+        end do
+        bin_counts(trial_m) = n_up_to_high - n_before_bin
+    end subroutine sorted_bin_counts
+
+    !> Binary search over positions `first_pos+1 .. last_pos` of a sorted permutation: returns the
+    !| last position up to which a monotone predicate holds (`first_pos` when it holds nowhere).
+    !|
+    !| The predicate on `probed_value = values(perm(pos))` is chosen by `predicate_kind`:
+    !| `PREDICATE_BELOW` is `probed_value < threshold`, `PREDICATE_AT_MOST` is `probed_value <=
+    !| threshold`, and `PREDICATE_BIN_AT_MOST` is `int((probed_value - threshold)/bin_width) + 1 <=
+    !| max_bin`, with
+    !| `threshold` the range's lower end. Precondition, not checked: the predicate holds on a
+    !| leading run of the positions and fails on the rest. Private helper of `sorted_bin_counts`.
+    pure integer(int32) function sorted_partition_point(values, n_values, perm, n_perm, first_pos, last_pos, &
+                                                        predicate_kind, threshold, bin_width, max_bin) result(split_pos)
+        integer(int32), intent(in) :: n_values
+            !! Number of elements in `values`
+        real(real64), intent(in) :: values(n_values)
+            !! Values the permutation orders
+        integer(int32), intent(in) :: n_perm
+            !! Number of positions in `perm`
+        integer(int32), intent(in) :: perm(n_perm)
+            !! Indices into `values`, ascending order
+        integer(int32), intent(in) :: first_pos
+            !! The predicate is known to hold up to this position (0 for none)
+        integer(int32), intent(in) :: last_pos
+            !! Last position searched
+        integer(int32), intent(in) :: predicate_kind
+            !! PREDICATE_BELOW, PREDICATE_AT_MOST or PREDICATE_BIN_AT_MOST
+        real(real64), intent(in) :: threshold
+            !! Compared value, or the range's lower end for PREDICATE_BIN_AT_MOST
+        real(real64), intent(in) :: bin_width
+            !! Bin width, used by PREDICATE_BIN_AT_MOST only
+        integer(int32), intent(in) :: max_bin
+            !! Largest accepted bin index, used by PREDICATE_BIN_AT_MOST only
+
+        integer(int32) :: holds_pos, fails_pos, mid_pos
+        real(real64) :: probed_value
+        logical(c_bool) :: holds
+
+        ! Invariant: the predicate holds up to holds_pos and fails at fails_pos (last_pos + 1 is a
+        ! virtual failing position).
+        holds_pos = first_pos
+        fails_pos = last_pos + 1_int32
+        do while (fails_pos - holds_pos > 1_int32)
+            mid_pos = holds_pos + (fails_pos - holds_pos)/2_int32
+            probed_value = values(perm(mid_pos))
+            select case (predicate_kind)
+            case (PREDICATE_BELOW)
+                holds = probed_value < threshold
+            case (PREDICATE_AT_MOST)
+                holds = probed_value <= threshold
+            case default ! PREDICATE_BIN_AT_MOST
+                holds = int((probed_value - threshold)/bin_width) + 1_int32 <= max_bin
+            end select
+            if (holds) then
+                holds_pos = mid_pos
+            else
+                fails_pos = mid_pos
+            end if
+        end do
+        split_pos = holds_pos
+    end function sorted_partition_point
+
+    !> Stone's leave-one-out cross-validation score (Duke STA 293.3 lecture notes, ch. 6,
+    !| Theorem 2) of one histogram of `n_inside` values over `trial_m` equal bins on a range of
+    !| width `range_width`:
+    !| `J = 2/(h(n-1)) - (n+1)/(h(n-1)) * sum_j p_j^2`, with `h = range_width/trial_m` and
+    !| `p_j = bin_counts(j)/n`. It is evaluated in the algebraically identical form
+    !| `J = trial_m*(2n^2 - (n+1)*Q) / (range_width*(n-1)*n^2)` with the integer `Q = sum_j
+    !| bin_counts(j)^2`: while `n^3` stays below 2^53 every term of the numerator is an exact
+    !| integer, so two bin counts with mathematically equal scores also get bit-equal scores, and
+    !| the tie rule (smaller bin count) does not depend on rounding. Precondition, not checked:
+    !| `n_inside >= 2` and `range_width > 0`. Private helper of `stone_bin_count_core`.
+    pure real(real64) function stone_risk_estimate(bin_counts, trial_m, n_inside, range_width) result(risk)
+        integer(int32), intent(in) :: trial_m
+            !! Number of bins
+        integer(int32), intent(in) :: bin_counts(trial_m)
+            !! Count of values per bin
+        integer(int32), intent(in) :: n_inside
+            !! Number of values, the sum of `bin_counts`
+        real(real64), intent(in) :: range_width
+            !! Width of the binned range, R_high - R_low
+
+        integer(int64) :: sum_sq
+        integer(int32) :: i_bin
+        real(real64) :: n_real
+
+        sum_sq = 0_int64
+        do concurrent(i_bin=1:trial_m) shared(bin_counts) reduce(+:sum_sq)
+            sum_sq = sum_sq + int(bin_counts(i_bin), int64)*int(bin_counts(i_bin), int64)
+        end do
+        n_real = real(n_inside, real64)
+        risk = real(trial_m, real64)*(2.0_real64*n_real*n_real - (n_real + 1.0_real64)*real(sum_sq, real64)) &
+               /(range_width*(n_real - 1.0_real64)*n_real*n_real)
+    end function stone_risk_estimate
+
+    !> The Stone bin-count search on pooled residuals that are already grouped by study.
+    !|
+    !| Private core of
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]],
+    !| written to be reused by a caller that already holds every study's residuals as one
+    !| contiguous block. The input layout:
+    !|
+    !| - `pooled_residuals_perm` orders all of `pooled_residuals` ascending, NaN last. It gives the
+    !|   range quantiles and the pooled count below and above the range.
+    !| - `residual_to_study_perm` holds indices into the whole of `pooled_residuals`, grouped by study:
+    !|   study `k`'s indices fill positions `sum(study_block_sizes(1:k-1)) + 1` to
+    !|   `sum(study_block_sizes(1:k))`, ordered ascending with NaN last within the block. A caller
+    !|   with contiguous per-study blocks builds it with `init_perm` on all positions (which is then
+    !|   already grouped) and one `sort_array_heapsort(pooled_residuals, ...)` per block slice.
+    !|
+    !| The range is the `lower/upper_residual_range_quantile` percentiles of all non-NaN pooled
+    !| residuals, exactly as in
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]].
+    !| Every bin count `m` in `[m_min, m_max]` is tested (Stone's score over `m` has many local
+    !| minima, so no faster search is safe), in ascending order:
+    !|
+    !| 1. Each study's residuals inside the range are counted into `m` bins
+    !|    (`sorted_bin_counts`). Values outside the range are left out of the score: with them
+    !|    clamped into the edge bins, Stone's score keeps falling with `m` and always picks `m_max`.
+    !| 2. The score depends on `bin_count_mode`: the sum of every study's
+    !|    `stone_risk_estimate` (`MODE_BIN_COUNT_STONE_EQUAL`), the same sum with each study's
+    !|    score multiplied by its inside count (`MODE_BIN_COUNT_STONE_SIZE_WEIGHTED`), or one score
+    !|    of the summed inside counts (`MODE_BIN_COUNT_STONE_POOLED`). Any other value is treated as
+    !|    equal weights. The per-study modes skip a study with fewer than 2 inside residuals.
+    !| 3. `m` is admissible only if the pooled clamped histogram (the summed inside counts, plus the
+    !|    pooled residuals below the range in bin 1 and those above it in bin `m`) has every bin at
+    !|    or above `min_residuals_per_bin`. That histogram is the one `histogram_bin_counts` builds.
+    !| 4. The admissible `m` with the smallest score wins; on a tie the smaller `m` stays.
+    !|
+    !| The search fails (`stone_failed = .true.`, `selected_n_bins = m_min`, occupancy diagnostics
+    !| 0) when every pooled residual is NaN, the range has width 0 or less, no study has 2 inside
+    !| residuals (pooled mode: fewer than 2 inside residuals in total), or no `m` is admissible.
+    !| Otherwise the occupancy diagnostics describe the pooled clamped histogram at the chosen `m`.
+    !|
+    !| The loop over `m` is a sequential `do`: it keeps a running argmin whose tie rule depends on
+    !| the order, and its pooled counts accumulate over the studies. `pooled_counts` is an
+    !| ordinary MAX_N_BINS-sized local, like `candidate_bin_counts` in
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_exhaustive_impl(interface)]].
+    pure subroutine stone_bin_count_core(pooled_residuals, pooled_residuals_perm, n_residuals, n_studies, &
+                                         residual_to_study_perm, study_block_sizes, max_n_reps_all_studies, n_neighbors, &
+                                         bin_count_mode, selected_n_bins, stone_failed, shared_residual_range_low, &
+                                         shared_residual_range_high, n_pooled_residuals, min_bin_occupancy, &
+                                         mean_bin_occupancy, max_bin_occupancy, sturges_bins, fd_bins, tmp_bin_counts, &
+                                         m_min, m_max, min_residuals_per_bin, lower_residual_range_quantile, &
+                                         upper_residual_range_quantile)
+        integer(int32), intent(in) :: n_residuals
+            !! Number of pooled residuals
+        real(real64), intent(in) :: pooled_residuals(n_residuals)
+            !! Pooled signed residuals of one neighborhood, all studies
+        integer(int32), intent(in) :: pooled_residuals_perm(n_residuals)
+            !! Sorting permutation for `pooled_residuals`, ascending, NaN last
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: residual_to_study_perm(n_residuals)
+            !! Indices into `pooled_residuals`, grouped by study and sorted within each study (see above)
+        integer(int32), intent(in) :: study_block_sizes(n_studies)
+            !! Number of residuals of each study, NaN included; sums to `n_residuals`
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies, for the Sturges/FD diagnostics
+        integer(int32), intent(in) :: n_neighbors
+            !! Neighborhood size, for the Sturges/FD diagnostics
+        integer(int32), intent(in) :: bin_count_mode
+            !! MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED or MODE_BIN_COUNT_STONE_POOLED
+        integer(int32), intent(out) :: selected_n_bins
+            !! The chosen bin count; m_min when stone_failed
+        logical(c_bool), intent(out) :: stone_failed
+            !! `.true.` iff the search failed (see above)
+        real(real64), intent(out) :: shared_residual_range_low
+            !! Lower residual-range bound (R_low); 0.0 when every pooled residual is NaN
+        real(real64), intent(out) :: shared_residual_range_high
+            !! Upper residual-range bound (R_high); 0.0 when every pooled residual is NaN
+        integer(int32), intent(out) :: n_pooled_residuals
+            !! Count of non-NaN pooled residuals
+        integer(int32), intent(out) :: min_bin_occupancy
+            !! Minimum bin count of the pooled clamped histogram at selected_n_bins; 0 when stone_failed
+        real(real64), intent(out) :: mean_bin_occupancy
+            !! n_pooled_residuals / selected_n_bins; 0 when stone_failed
+        integer(int32), intent(out) :: max_bin_occupancy
+            !! Maximum bin count of the pooled clamped histogram at selected_n_bins; 0 when stone_failed
+        integer(int32), intent(out) :: sturges_bins
+            !! Sturges' rule diagnostic from estimate_bin_count_impl
+        integer(int32), intent(out) :: fd_bins
+            !! Freedman-Diaconis rule diagnostic from estimate_bin_count_impl
+        integer(int32), intent(out) :: tmp_bin_counts(MAX_N_BINS)
+            !! Working array: one study's inside counts at the bin count under test
+        integer(int32), intent(in), optional :: m_min
+            !! Smallest bin count tested; default CM_OCCUPANCY_M_MIN_DEFAULT
+        integer(int32), intent(in), optional :: m_max
+            !! Largest bin count tested, raised to m_min if smaller; default CM_OCCUPANCY_M_MAX_DEFAULT
+        integer(int32), intent(in), optional :: min_residuals_per_bin
+            !! Floor on every bin of the pooled clamped histogram; default
+            !! CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT
+        real(real64), intent(in), optional :: lower_residual_range_quantile
+            !! Quantile of R_low; default CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT
+        real(real64), intent(in), optional :: upper_residual_range_quantile
+            !! Quantile of R_high; default CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT
+
+        integer(int32) :: actual_m_min, actual_m_max, actual_min_residuals_per_bin
+        real(real64) :: actual_lower_residual_range_quantile, actual_upper_residual_range_quantile
+        integer(int32) :: i_pool, i_study, block_start, block_end, trial_m, best_m, best_min_occ, best_max_occ
+        integer(int32) :: n_eligible_studies, n_total_inside, n_study_below, n_study_inside
+        integer(int32) :: pooled_n_below, pooled_n_inside, pooled_n_above, min_occ, max_occ, combined_n_bins_unused
+        integer(int32) :: pooled_counts(MAX_N_BINS)
+        real(real64) :: half_span, range_width, score, best_score
+        logical(c_bool) :: pooled_scoring, size_weighted, found_admissible
+
+        M_DEFAULT_VAL(m_min, actual_m_min, CM_OCCUPANCY_M_MIN_DEFAULT)
+        M_DEFAULT_VAL(m_max, actual_m_max, CM_OCCUPANCY_M_MAX_DEFAULT)
+        M_DEFAULT_VAL(min_residuals_per_bin, actual_min_residuals_per_bin, CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
+        M_DEFAULT_VAL(lower_residual_range_quantile, actual_lower_residual_range_quantile, CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+        M_DEFAULT_VAL(upper_residual_range_quantile, actual_upper_residual_range_quantile, CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+        actual_m_max = max(actual_m_min, actual_m_max)
+        pooled_scoring = bin_count_mode == MODE_BIN_COUNT_STONE_POOLED
+        size_weighted = bin_count_mode == MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
+
+        ! NaN sorts last -- same scan-back as determine_bin_count_occupancy_impl.
+        n_pooled_residuals = n_residuals
+        do i_pool = n_pooled_residuals, 1, -1
+            if (ieee_is_nan(pooled_residuals(pooled_residuals_perm(i_pool)))) then
+                n_pooled_residuals = n_pooled_residuals - 1_int32
+            else
+                exit
+            end if
+        end do
+
+        ! The range, exactly as in determine_bin_count_occupancy_impl (0.0/0.0 for an all-NaN pool).
+        if (n_pooled_residuals == 0_int32) then
+            shared_residual_range_low = 0.0_real64
+            shared_residual_range_high = 0.0_real64
+        else
+            call calc_percentile_impl(pooled_residuals, n_residuals, pooled_residuals_perm, &
+                                      actual_lower_residual_range_quantile, shared_residual_range_low, &
+                                      n_considered=n_pooled_residuals)
+            call calc_percentile_impl(pooled_residuals, n_residuals, pooled_residuals_perm, &
+                                      actual_upper_residual_range_quantile, shared_residual_range_high, &
+                                      n_considered=n_pooled_residuals)
+        end if
+
+        ! Diagnostics only, before any early return so sturges_bins/fd_bins are always defined;
+        ! half the span, as in determine_bin_count_occupancy_impl.
+        half_span = (shared_residual_range_high - shared_residual_range_low)/2.0_real64
+        call estimate_bin_count_impl(pooled_residuals, pooled_residuals_perm, n_residuals, max_n_reps_all_studies, &
+                                     n_neighbors, half_span, combined_n_bins_unused, sturges_bins, fd_bins)
+
+        ! The failure outputs; overwritten below once an admissible bin count is found.
+        stone_failed = .true.
+        selected_n_bins = actual_m_min
+        min_bin_occupancy = 0_int32
+        mean_bin_occupancy = 0.0_real64
+        max_bin_occupancy = 0_int32
+
+        range_width = shared_residual_range_high - shared_residual_range_low
+        if (n_pooled_residuals == 0_int32 .or. range_width <= 0.0_real64) return
+
+        ! The pooled residuals below and above the range, which clamping adds to the edge bins.
+        call sorted_bin_counts(pooled_residuals, n_residuals, pooled_residuals_perm(1:n_pooled_residuals), &
+                               n_pooled_residuals, shared_residual_range_low, shared_residual_range_high, 1_int32, &
+                               tmp_bin_counts(1:1), pooled_n_below, pooled_n_inside)
+        pooled_n_above = n_pooled_residuals - pooled_n_below - pooled_n_inside
+
+        ! Which studies can be scored: each needs 2 inside residuals (pooled mode: 2 in total).
+        n_eligible_studies = 0_int32
+        n_total_inside = 0_int32
+        block_end = 0_int32
+        do i_study = 1, n_studies
+            block_start = block_end + 1_int32
+            block_end = block_end + study_block_sizes(i_study)
+            call sorted_bin_counts(pooled_residuals, n_residuals, residual_to_study_perm(block_start:block_end), &
+                                   study_block_sizes(i_study), shared_residual_range_low, shared_residual_range_high, &
+                                   1_int32, tmp_bin_counts(1:1), n_study_below, n_study_inside)
+            n_total_inside = n_total_inside + n_study_inside
+            if (n_study_inside >= 2_int32) n_eligible_studies = n_eligible_studies + 1_int32
+        end do
+        if (pooled_scoring) then
+            if (n_total_inside < 2_int32) return
+        else
+            if (n_eligible_studies == 0_int32) return
+        end if
+
+        found_admissible = .false.
+        best_m = actual_m_min
+        best_score = 0.0_real64
+        best_min_occ = 0_int32
+        best_max_occ = 0_int32
+        do trial_m = actual_m_min, actual_m_max
+            pooled_counts(1:trial_m) = 0_int32
+            score = 0.0_real64
+            block_end = 0_int32
+            do i_study = 1, n_studies
+                block_start = block_end + 1_int32
+                block_end = block_end + study_block_sizes(i_study)
+                call sorted_bin_counts(pooled_residuals, n_residuals, residual_to_study_perm(block_start:block_end), &
+                                       study_block_sizes(i_study), shared_residual_range_low, &
+                                       shared_residual_range_high, trial_m, tmp_bin_counts(1:trial_m), &
+                                       n_study_below, n_study_inside)
+                pooled_counts(1:trial_m) = pooled_counts(1:trial_m) + tmp_bin_counts(1:trial_m)
+                if (.not. pooled_scoring .and. n_study_inside >= 2_int32) then
+                    if (size_weighted) then
+                        score = score + real(n_study_inside, real64)* &
+                                stone_risk_estimate(tmp_bin_counts(1:trial_m), trial_m, n_study_inside, range_width)
+                    else
+                        score = score + stone_risk_estimate(tmp_bin_counts(1:trial_m), trial_m, n_study_inside, &
+                                                            range_width)
+                    end if
+                end if
+            end do
+            if (pooled_scoring) score = stone_risk_estimate(pooled_counts(1:trial_m), trial_m, n_total_inside, range_width)
+
+            ! The floor, on the pooled clamped histogram.
+            pooled_counts(1) = pooled_counts(1) + pooled_n_below
+            pooled_counts(trial_m) = pooled_counts(trial_m) + pooled_n_above
+            min_occ = minval(pooled_counts(1:trial_m))
+            max_occ = maxval(pooled_counts(1:trial_m))
+            if (min_occ < actual_min_residuals_per_bin) cycle
+
+            ! Strictly smaller only, so on a tie the smaller bin count (tested first) stays.
+            if (.not. found_admissible .or. score < best_score) then
+                found_admissible = .true.
+                best_score = score
+                best_m = trial_m
+                best_min_occ = min_occ
+                best_max_occ = max_occ
+            end if
+        end do
+
+        if (.not. found_admissible) return
+
+        stone_failed = .false.
+        selected_n_bins = best_m
+        min_bin_occupancy = best_min_occ
+        max_bin_occupancy = best_max_occ
+        mean_bin_occupancy = real(n_pooled_residuals, real64)/real(best_m, real64)
+    end subroutine stone_bin_count_core
+
+    !> Groups pooled residuals by study and sorts each study's residuals: fills
+    !| `residual_to_study_perm` with the indices of `pooled_residuals` grouped by `residual_to_study`
+    !| (study 1 first), each study's indices ordered ascending by residual with NaN last, and
+    !| `study_block_sizes` with each study's residual count. A counting sort by study label places
+    !| the indices (keeping their original order within a study), then a heapsort orders each
+    !| study's block. Private helper of
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]].
+    !| Precondition, not checked: every label is in `[1, n_studies]`.
+    pure subroutine build_residual_to_study_perm(pooled_residuals, n_residuals, residual_to_study, n_studies, &
+                                                 residual_to_study_perm, study_block_sizes)
+        integer(int32), intent(in) :: n_residuals
+            !! Number of pooled residuals
+        real(real64), intent(in) :: pooled_residuals(n_residuals)
+            !! Pooled signed residuals of one neighborhood, all studies
+        integer(int32), intent(in) :: residual_to_study(n_residuals)
+            !! Study label of each pooled residual, in `[1, n_studies]`
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(out) :: residual_to_study_perm(n_residuals)
+            !! Indices of `pooled_residuals`, grouped by study and sorted within each study
+        integer(int32), intent(out) :: study_block_sizes(n_studies)
+            !! Number of pooled residuals of each study, NaN included
+
+        integer(int32) :: i_residual, i_study, study_idx, n_in_study, block_end, block_start
+
+        ! Counting sort by study label. Sequential: distinct residuals can share a counter.
+        study_block_sizes = 0_int32
+        do i_residual = 1, n_residuals
+            study_idx = residual_to_study(i_residual)
+            study_block_sizes(study_idx) = study_block_sizes(study_idx) + 1_int32
+        end do
+        ! Each counter becomes the position just before its study's block ...
+        block_end = 0_int32
+        do i_study = 1, n_studies
+            n_in_study = study_block_sizes(i_study)
+            study_block_sizes(i_study) = block_end
+            block_end = block_end + n_in_study
+        end do
+        ! ... and, once every index is placed, the last position of that block.
+        do i_residual = 1, n_residuals
+            study_idx = residual_to_study(i_residual)
+            study_block_sizes(study_idx) = study_block_sizes(study_idx) + 1_int32
+            residual_to_study_perm(study_block_sizes(study_idx)) = i_residual
+        end do
+
+        ! The blocks are disjoint, so each one is sorted independently.
+        do concurrent(i_study=1:n_studies) local(block_start, block_end) &
+                shared(pooled_residuals, residual_to_study_perm, study_block_sizes)
+            if (i_study == 1_int32) then
+                block_start = 1_int32
+            else
+                block_start = study_block_sizes(i_study - 1_int32) + 1_int32
+            end if
+            block_end = study_block_sizes(i_study)
+            call sort_array_heapsort(pooled_residuals, residual_to_study_perm(block_start:block_end))
+        end do
+
+        ! Block ends back to block sizes. Sequential, from the last study down, so every
+        ! study still reads its predecessor's end.
+        do i_study = n_studies, 2, -1
+            study_block_sizes(i_study) = study_block_sizes(i_study) - study_block_sizes(i_study - 1_int32)
+        end do
+    end subroutine build_residual_to_study_perm
+
+    !> summary: Choose one neighborhood's histogram bin count by Stone's cross-validation rule
+    !| AUTHOR_LASZLO_LANG
+    !| Chooses the number of equal-width histogram bins for one neighborhood's pooled residuals by
+    !| Stone's leave-one-out cross-validation (Duke STA 293.3 lecture notes, ch. 6, Theorem 2):
+    !| for a histogram of `n` values over `m` bins of width `h`, the score
+    !| `J(m) = 2/(h(n-1)) - (n+1)/(h(n-1)) * sum_j p_j^2`, with `p_j` the share of the values in
+    !| bin `j`, estimates the integrated squared error of the density estimate up to a constant,
+    !| and the bin count with the smallest score is chosen. An alternative to
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+    !| occupancy search, with the same inputs, range and outputs.
+    !|
+    !| The range `[shared_residual_range_low, shared_residual_range_high]` is the
+    !| `lower_residual_range_quantile`/`upper_residual_range_quantile` percentiles of all non-NaN
+    !| pooled residuals, as in the occupancy search, so `h = (R_high - R_low)/m`. The score counts
+    !| only the residuals **inside** the range (`n` is their number): the JSD histograms clamp the
+    !| residuals outside it into the edge bins, but scored that way Stone's rule reads the clamped
+    !| edges as density spikes and always picks `m_max`.
+    !|
+    !| Every bin count `m` in `[m_min, m_max]` is tested, ties going to the smaller `m`. A single
+    !| score (pooled mode, or one study) is evaluated so that mathematically equal scores are
+    !| bit-equal for samples of up to about 200,000 residuals; in the per-study modes the sum over
+    !| the studies is ordinary floating-point arithmetic, so mathematically equal totals may differ
+    !| in the last bit.
+    !|
+    !| `residual_to_study` says which study each residual comes from, and `bin_count_mode` how the
+    !| studies are combined into one shared bin count:
+    !| [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]] (the
+    !| default) minimises the sum of every study's own score `J_k(m)`,
+    !| [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]]
+    !| the sum of `n_k * J_k(m)` with `n_k` the study's inside count, and
+    !| [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]] the
+    !| score `J(m)` of all studies' residuals together. The two per-study modes leave out a study
+    !| with fewer than 2 residuals inside the range.
+    !|
+    !| `min_residuals_per_bin` stays a hard floor, with the occupancy search's definition: a bin
+    !| count is admissible only if the pooled histogram with the outside residuals clamped into the
+    !| edge bins has every bin at or above it (`0` turns the floor off). The minimum is taken over
+    !| the admissible bin counts only.
+    !|
+    !| `stone_failed = .true.` means no bin count could be chosen: every pooled residual is NaN, the
+    !| range has width 0 or less, no study has 2 residuals inside the range (pooled mode: fewer than
+    !| 2 inside in total), or no bin count passes the floor. `selected_n_bins` is then `m_min`, only
+    !| so a caller ignoring the flag has a value to build with, and the occupancy diagnostics are 0.
+    !| Otherwise the diagnostics describe the pooled clamped histogram at `selected_n_bins`.
+    pure subroutine determine_bin_count_stone_impl(pooled_residuals, pooled_residuals_perm, n_residuals, &
+                                                    residual_to_study, n_studies, max_n_reps_all_studies, n_neighbors, &
+                                                    selected_n_bins, stone_failed, shared_residual_range_low, &
+                                                    shared_residual_range_high, n_pooled_residuals, min_bin_occupancy, &
+                                                    mean_bin_occupancy, max_bin_occupancy, sturges_bins, fd_bins, &
+                                                    tmp_bin_counts, tmp_residual_to_study_perm, tmp_study_block_sizes, &
+                                                    bin_count_mode, m_min, m_max, min_residuals_per_bin, &
+                                                    lower_residual_range_quantile, &
+                                                    upper_residual_range_quantile)
+        integer(int32), intent(in) :: n_residuals
+            !! Number of pooled residuals
+        real(real64), intent(in) :: pooled_residuals(n_residuals)
+            !! Pooled signed residuals for one neighborhood, across all its neighbors and all studies
+            !! DM_ALLOW_NAN
+        integer(int32), intent(in) :: pooled_residuals_perm(n_residuals)
+            !! Sorting permutation for `pooled_residuals`, ascending, NaN last
+            !! DM_MIN(1_int32)
+            !! DM_MAX(n_residuals)
+        integer(int32), intent(in) :: residual_to_study(n_residuals)
+            !! Study each pooled residual comes from
+            !! DM_MIN(1_int32)
+            !! DM_MAX(n_studies)
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+            !! DM_MIN(1_int32)
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+            !! DM_MIN(1_int32)
+        integer(int32), intent(in) :: n_neighbors
+            !! Neighborhood size of the candidate under test
+            !! DM_MIN(1_int32)
+        integer(int32), intent(out) :: selected_n_bins
+            !! The chosen bin count: the admissible bin count in [m_min, m_max] with the smallest
+            !! Stone score; m_min when stone_failed
+        logical(c_bool), intent(out) :: stone_failed
+            !! `.true.` iff no bin count could be chosen (see above); the caller should then reject
+            !! this neighborhood rather than build a histogram from selected_n_bins
+        real(real64), intent(out) :: shared_residual_range_low
+            !! This neighborhood's own lower residual-range bound (R_low): the
+            !! lower_residual_range_quantile percentile of its own pooled signed residuals. 0.0
+            !! when every pooled residual is NaN
+        real(real64), intent(out) :: shared_residual_range_high
+            !! This neighborhood's own upper residual-range bound (R_high): the
+            !! upper_residual_range_quantile percentile of its own pooled signed residuals. 0.0
+            !! when every pooled residual is NaN
+        integer(int32), intent(out) :: n_pooled_residuals
+            !! Count of non-NaN pooled residuals (N_j)
+        integer(int32), intent(out) :: min_bin_occupancy
+            !! Minimum bin count of the pooled clamped histogram at selected_n_bins; 0 when stone_failed
+        real(real64), intent(out) :: mean_bin_occupancy
+            !! Mean bin count at selected_n_bins (== n_pooled_residuals / selected_n_bins); 0 when
+            !! stone_failed
+        integer(int32), intent(out) :: max_bin_occupancy
+            !! Maximum bin count of the pooled clamped histogram at selected_n_bins; 0 when stone_failed
+        integer(int32), intent(out) :: sturges_bins
+            !! Sturges' rule estimate for this neighborhood's own pooled residuals, from
+            !! estimate_bin_count_impl -- a diagnostic only, never part of the decision
+        integer(int32), intent(out) :: fd_bins
+            !! Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
+            !! estimate_bin_count_impl -- a diagnostic only, never part of the decision
+        integer(int32), intent(out) :: tmp_bin_counts(256)
+            !! Working array: one study's bin counts at the bin count under test (256 = MAX_N_BINS,
+            !! written as a literal since a generated wrapper's dummy dimension cannot reference a
+            !! module parameter)
+        integer(int32), intent(out) :: tmp_residual_to_study_perm(n_residuals)
+            !! Working array: the indices of `pooled_residuals` grouped by `residual_to_study` (study 1
+            !! first), each study's indices ordered ascending by residual, NaN last
+        integer(int32), intent(out) :: tmp_study_block_sizes(n_studies)
+            !! Working array: number of pooled residuals of each study
+        integer(int32), intent(in), optional :: bin_count_mode
+            !! How the studies' scores are combined into one bin count
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Minimise the sum of the per-study scores (default) | [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]] |
+            !! | Minimise the sum of the per-study scores, each multiplied by the study's inside count | [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
+            !! | Minimise the score of all studies' residuals pooled | [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]] |
+            !! DM_DEFAULT(CM_MODE_BIN_COUNT_STONE_EQUAL)
+        integer(int32), intent(in), optional :: m_min
+            !! Smallest candidate bin count tested (M_min)
+            !! DM_MIN(1_int32)
+            !! DM_MAX(MAX_N_BINS)
+            !! DM_DEFAULT(CM_OCCUPANCY_M_MIN_DEFAULT)
+        integer(int32), intent(in), optional :: m_max
+            !! Largest candidate bin count tested (M_max); if a caller passes `m_max < m_min`, the
+            !! implementation clamps it up to `m_min` internally
+            !! DM_MIN(1_int32)
+            !! DM_MAX(MAX_N_BINS)
+            !! DM_DEFAULT(CM_OCCUPANCY_M_MAX_DEFAULT)
+        integer(int32), intent(in), optional :: min_residuals_per_bin
+            !! Minimum number of pooled residuals every bin of the pooled clamped histogram must
+            !! reach for a candidate bin count to be admissible (0 turns the floor off)
+            !! DM_MIN(0_int32)
+            !! DM_DEFAULT(CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
+        real(real64), intent(in), optional :: lower_residual_range_quantile
+            !! Quantile in [0,1] for this neighborhood's own lower residual-range bound
+            !! (shared_residual_range_low)
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(1.0_real64)
+            !! DM_DEFAULT(CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+        real(real64), intent(in), optional :: upper_residual_range_quantile
+            !! Quantile in [0,1] for this neighborhood's own upper residual-range bound
+            !! (shared_residual_range_high)
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(1.0_real64)
+            !! DM_DEFAULT(CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+
+        integer(int32) :: actual_bin_count_mode
+
+        M_DEFAULT_VAL(bin_count_mode, actual_bin_count_mode, CM_MODE_BIN_COUNT_STONE_EQUAL)
+
+        call build_residual_to_study_perm(pooled_residuals, n_residuals, residual_to_study, n_studies, &
+                                          tmp_residual_to_study_perm, tmp_study_block_sizes)
+
+        call stone_bin_count_core(pooled_residuals, pooled_residuals_perm, n_residuals, n_studies, &
+                                  tmp_residual_to_study_perm, tmp_study_block_sizes, max_n_reps_all_studies, n_neighbors, &
+                                  actual_bin_count_mode, selected_n_bins, stone_failed, shared_residual_range_low, &
+                                  shared_residual_range_high, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                  max_bin_occupancy, sturges_bins, fd_bins, tmp_bin_counts, m_min, m_max, &
+                                  min_residuals_per_bin, lower_residual_range_quantile, upper_residual_range_quantile)
+    end subroutine determine_bin_count_stone_impl
 
     !> M_EXPORT_C
     !| summary: Pool one reference point's residuals across every neighbor and every study

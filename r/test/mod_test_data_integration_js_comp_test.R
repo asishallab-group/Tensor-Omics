@@ -147,6 +147,61 @@ test_determine_bin_count_occupancy_exhaustive <- function() {
   assert_equal_int(as.integer(out_nan$max_bin_occupancy), 0L, "expected max_bin_occupancy=0")
 }
 
+test_determine_bin_count_stone <- function() {
+  # Call-ability and return type/shape only, per this project's testing philosophy
+  # (Fortran_Coding_Guides.pdf Sec 17.1) -- the numerics of Stone's rule are the Fortran suite's
+  # job (mod_test_data_integration_js_comp_test.F90's own test_stone_* tests).
+  set.seed(7)
+  residuals <- rnorm(300)
+  residual_to_study <- sample(rep(1:3, times = c(120, 60, 120)))
+
+  for (mode in c("bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled")) {
+    out <- determine_bin_count_stone(residuals, residual_to_study, n_studies = 3L, max_n_reps_all_studies = 1L,
+                                     n_neighbors = 1L, bin_count_mode = mode)
+    for (key in c("selected_n_bins", "stone_failed", "shared_residual_range_low", "shared_residual_range_high",
+                  "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy",
+                  "sturges_bins", "fd_bins")) {
+      assert_true(key %in% names(out), paste0("missing expected output key '", key, "' (", mode, ")"))
+    }
+    assert_true(is.logical(out$stone_failed), paste("stone_failed should be logical", mode))
+    assert_true(is.numeric(out$selected_n_bins), paste("selected_n_bins should be numeric", mode))
+    assert_true(is.numeric(out$mean_bin_occupancy), paste("mean_bin_occupancy should be numeric", mode))
+    assert_true(!out$stone_failed, paste("Stone should not fail on this dense fixture", mode))
+    assert_true(out$selected_n_bins >= 3 && out$selected_n_bins <= 120,
+                paste("selected_n_bins within [m_min, m_max]", mode))
+    assert_true(out$shared_residual_range_low < out$shared_residual_range_high,
+                paste("non-degenerate range expected", mode))
+  }
+
+  # The default mode is accepted without being named.
+  out <- determine_bin_count_stone(residuals, residual_to_study, n_studies = 3L, max_n_reps_all_studies = 1L,
+                                   n_neighbors = 1L)
+  assert_true(!out$stone_failed, "default mode should not fail")
+
+  # The expert entry point, given the same sorting permutation, must agree.
+  out_expert <- determine_bin_count_stone_expert(residuals, order(residuals), residual_to_study, n_studies = 3L,
+                                                 max_n_reps_all_studies = 1L, n_neighbors = 1L)
+  assert_equal_int(as.integer(out_expert$selected_n_bins), as.integer(out$selected_n_bins),
+                   "expert entry point should agree with the plain one given the same sorted permutation")
+
+  # An unknown mode string, and the occupancy mode (not a Stone mode), are rejected before Fortran.
+  assert_error(determine_bin_count_stone(residuals, residual_to_study, n_studies = 3L, max_n_reps_all_studies = 1L,
+                                         n_neighbors = 1L, bin_count_mode = "bin_count_occupancy"),
+               "expected the occupancy mode to be rejected")
+  assert_error(determine_bin_count_stone(residuals, residual_to_study, n_studies = 3L, max_n_reps_all_studies = 1L,
+                                         n_neighbors = 1L, bin_count_mode = "nonsense"),
+               "expected an unknown mode string to be rejected")
+  # A study label outside [1, n_studies] is invalid input.
+  assert_error(determine_bin_count_stone(residuals, residual_to_study, n_studies = 2L, max_n_reps_all_studies = 1L,
+                                         n_neighbors = 1L),
+               "expected ERR_INVALID_INPUT for a label above n_studies", ERR_INVALID_INPUT)
+
+  # All-NaN pool: the search fails.
+  out_nan <- determine_bin_count_stone(rep(NaN, 4), c(1L, 2L, 1L, 2L), n_studies = 2L,
+                                       max_n_reps_all_studies = 1L, n_neighbors = 1L)
+  assert_true(out_nan$stone_failed, "all-NaN pool must fail")
+}
+
 test_generate_js_comp_test_candidates <- function() {
   # ============================================================
   # Test 1 -- small-N candidate-grid collapse at its exact threshold

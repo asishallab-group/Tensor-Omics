@@ -17,6 +17,9 @@ and the plateau check that decides when the search has converged
 is a brute-force reference implementation of the same per-point bin-count search, exhaustively
 testing every candidate `M` instead of the fast geometric-search-then-refinement the production
 routine uses, for validating that the fast search's own result is correct.
+:func:`tensor_omics.determine_bin_count_stone`
+is the alternative bin-count rule: Stone's leave-one-out cross-validation, scored per study or
+on the pooled residuals, with the same range and the same occupancy floor.
 `calc_js_comp_test_candidate_bounds` sizes the candidate-grid work arrays for a caller that
 allocates its own. For adaptive (heteroscedastic, Issue #217) neighborhood construction,
 :func:`tensor_omics.generate_adaptive_js_comp_test_candidates`
