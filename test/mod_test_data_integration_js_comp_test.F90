@@ -45,7 +45,7 @@ module mod_test_data_integration_js_comp_test
                                                        sorted_bin_counts, histogram_bin_counts, group_sorted_perm_by_study, &
                                                        MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, &
                                                        MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, MODE_BIN_COUNT_STONE_POOLED, &
-                                                       MAX_N_BINS
+                                                       MAX_N_BINS, generate_js_comp_test_candidates_impl
     use f42_sort_impl, only: init_perm, sort_array_heapsort
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
                                              compute_weighted_global_divergence_impl
@@ -109,7 +109,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(198))
+        allocate (all_tests(201))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -516,6 +516,12 @@ contains
                                   test_param_search_stone_ignores_gamma)
         all_tests(198) = test_case("test_stone_matches_brute_force_with_outside_values", &
                                   test_stone_matches_brute_force_with_outside_values)
+        all_tests(199) = test_case("test_param_search_rejects_undersized_max_n_points_candidate", &
+                                  test_param_search_rejects_undersized_max_n_points_candidate)
+        all_tests(200) = test_case("test_param_search_rejects_undersized_max_n_neighbors_candidate", &
+                                  test_param_search_rejects_undersized_max_n_neighbors_candidate)
+        all_tests(201) = test_case("test_param_search_bounds_match_candidate_bounds", &
+                                  test_param_search_bounds_match_candidate_bounds)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -10079,5 +10085,178 @@ contains
         call assert_equal_int(a%n_admissible, 2_int32, name//"both candidates traced")
         call assert_fixed_k_searches_equal(name, a, b)
     end subroutine test_param_search_stone_ignores_gamma
+
+    ! ---------------------------------------------------------------------------------------------
+    ! The lower bounds of run_js_comp_test_parameter_search's `max_n_points_candidate` and
+    ! `max_n_neighbors_candidate`: both size its outputs and work arrays, so a value below what
+    ! calc_js_comp_test_candidate_bounds returns for the gene count must be rejected by the
+    ! wrapper's validation rather than written past. Fixture: 300 genes, 2 studies, 3 replicates.
+    ! The grid is (300, 4) and (300, 2) (`ceil(4*sqrt(300))=70`, clamped up to `MIN_POINTS=300`;
+    ! `floor(300/(0.25*300))=4`, `floor(300/(0.5*300))=2`), and the bounds are exactly 300 and 4.
+    ! ---------------------------------------------------------------------------------------------
+
+    !> Test helper: run_js_comp_test_parameter_search on the 300-gene fixture above with the given
+    !| bounds, every output allocated from those bounds exactly as a caller who trusted them would.
+    subroutine run_fixed_k_search_with_bounds(max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        integer(int32), intent(in) :: max_n_points_candidate
+            !! Passed as the search's `max_n_points_candidate`, and the extent of every output it sizes
+        integer(int32), intent(in) :: max_n_neighbors_candidate
+            !! Passed as the search's `max_n_neighbors_candidate`
+        integer(int32), intent(out) :: ierr
+            !! The search's error code
+        integer(int32), parameter :: n_studies = 2, n_genes = 300, n_reps = 3
+        real(real64) :: gene_means(n_genes, n_studies), residuals(n_reps, n_genes, n_studies)
+        type(fixed_k_search_outputs) :: out
+        integer(int32) :: i_gene, i_study
+
+        do i_study = 1, n_studies
+            do i_gene = 1, n_genes
+                gene_means(i_gene, i_study) = real(i_gene, real64)
+                residuals(:, i_gene, i_study) = [-0.5_real64, 0.0_real64, 0.5_real64]
+            end do
+        end do
+
+        allocate (out%n_bins(max_n_points_candidate), out%range_low(max_n_points_candidate), &
+                  out%range_high(max_n_points_candidate), out%ci(2, n_studies), out%trace_jsd(n_studies, 16), &
+                  out%trace_ci_lower(n_studies, 16), out%trace_ci_upper(n_studies, 16), &
+                  out%trace_ci_width(n_studies, 16), out%trace_ci_width_rel(n_studies, 16), &
+                  out%trace_delta(n_studies, 16), out%trace_n_bins(max_n_points_candidate, 16), &
+                  out%trace_occ_failed(max_n_points_candidate, 16), out%trace_n_pooled(max_n_points_candidate, 16), &
+                  out%trace_min_occ(max_n_points_candidate, 16), out%trace_mean_occ(max_n_points_candidate, 16), &
+                  out%trace_max_occ(max_n_points_candidate, 16), out%trace_sturges(max_n_points_candidate, 16), &
+                  out%trace_fd(max_n_points_candidate, 16), out%trace_range_low(max_n_points_candidate, 16), &
+                  out%trace_range_high(max_n_points_candidate, 16))
+
+        call run_js_comp_test_parameter_search(n_studies, n_genes, n_reps, gene_means, residuals, 5_int32, &
+                                               METHOD_JOIN_MIN, max_n_points_candidate, max_n_neighbors_candidate, &
+                                               out%n_points, out%n_neighbors, out%n_bins, out%range_low, &
+                                               out%range_high, out%ci, out%plateau, out%n_admissible, &
+                                               out%trace_n_points, out%trace_n_neighbors, out%trace_jsd, &
+                                               out%trace_ci_lower, out%trace_ci_upper, out%trace_ci_width, &
+                                               out%trace_ci_width_rel, out%trace_delta, out%trace_delta_median, &
+                                               out%trace_delta_max, out%trace_n_bins, out%trace_occ_failed, &
+                                               out%trace_n_pooled, out%trace_min_occ, out%trace_mean_occ, &
+                                               out%trace_max_occ, out%trace_sturges, out%trace_fd, &
+                                               out%trace_range_low, out%trace_range_high, ierr=ierr, &
+                                               min_neighbor_overlap=0.0_real64, random_seed=1_int32)
+    end subroutine run_fixed_k_search_with_bounds
+
+    !> A `max_n_points_candidate` one below the bound (299 for the grid's first `n_points` of 300,
+    !| `max_n_neighbors_candidate` correct) is rejected with ERR_INVALID_INPUT at argument 8 by the
+    !| wrapper's validation, instead of the 300th reference point being written past the arrays it
+    !| sizes. The exact bounds run the search to completion.
+    subroutine test_param_search_rejects_undersized_max_n_points_candidate()
+        character(len=*), parameter :: name = "test_param_search_rejects_undersized_max_n_points_candidate: "
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate, ierr
+
+        call calc_js_comp_test_candidate_bounds(300_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call assert_equal_array_int([get_err_code(ierr), max_n_points_candidate, max_n_neighbors_candidate], &
+                                    [ERR_OK, 300_int32, 4_int32], 3_int32, name//"bounds of the 300-gene grid")
+
+        call run_fixed_k_search_with_bounds(max_n_points_candidate - 1_int32, max_n_neighbors_candidate, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"rejected at argument 8", 8_int32)
+
+        call run_fixed_k_search_with_bounds(max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call assert_err(ierr, ERR_OK, name//"the exact bounds are accepted")
+    end subroutine test_param_search_rejects_undersized_max_n_points_candidate
+
+    !> A `max_n_neighbors_candidate` one below the bound (3 for the grid's largest `n_neighbors` of
+    !| 4, `max_n_points_candidate` correct) is rejected with ERR_INVALID_INPUT at argument 9 by the
+    !| wrapper's validation, instead of the 4th neighbor being written past the arrays it sizes.
+    subroutine test_param_search_rejects_undersized_max_n_neighbors_candidate()
+        character(len=*), parameter :: name = "test_param_search_rejects_undersized_max_n_neighbors_candidate: "
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate, ierr
+
+        call calc_js_comp_test_candidate_bounds(300_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call assert_equal_array_int([get_err_code(ierr), max_n_points_candidate, max_n_neighbors_candidate], &
+                                    [ERR_OK, 300_int32, 4_int32], 3_int32, name//"bounds of the 300-gene grid")
+
+        call run_fixed_k_search_with_bounds(max_n_points_candidate, max_n_neighbors_candidate - 1_int32, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"rejected at argument 9", 9_int32)
+    end subroutine test_param_search_rejects_undersized_max_n_neighbors_candidate
+
+    !> Test helper: validation-only call of run_js_comp_test_parameter_search for `n_genes` genes
+    !| (1 study, 1 replicate) with the given bounds and every output sized by them.
+    !| `min_residuals_per_bin = -1` (argument 38) is always invalid and is validated after the two
+    !| bounds, so the call returns before any search work: at argument 38 when both bounds pass,
+    !| at 8 or 9 when one of them fails.
+    subroutine validate_fixed_k_bounds(n_genes, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        integer(int32), intent(in) :: n_genes
+            !! Number of genes of the single study
+        integer(int32), intent(in) :: max_n_points_candidate
+            !! Passed as the search's `max_n_points_candidate`, and the extent of every output it sizes
+        integer(int32), intent(in) :: max_n_neighbors_candidate
+            !! Passed as the search's `max_n_neighbors_candidate`
+        integer(int32), intent(out) :: ierr
+            !! The search's error code
+        real(real64), allocatable :: gene_means(:, :), residuals(:, :, :)
+        type(fixed_k_search_outputs) :: out
+        integer(int32) :: n_points_alloc
+
+        n_points_alloc = max(1_int32, max_n_points_candidate)
+        allocate (gene_means(n_genes, 1), residuals(1, n_genes, 1))
+        gene_means = 1.0_real64
+        residuals = 0.0_real64
+        allocate (out%n_bins(n_points_alloc), out%range_low(n_points_alloc), out%range_high(n_points_alloc), &
+                  out%ci(2, 1), out%trace_jsd(1, 16), out%trace_ci_lower(1, 16), out%trace_ci_upper(1, 16), &
+                  out%trace_ci_width(1, 16), out%trace_ci_width_rel(1, 16), out%trace_delta(1, 16), &
+                  out%trace_n_bins(n_points_alloc, 16), out%trace_occ_failed(n_points_alloc, 16), &
+                  out%trace_n_pooled(n_points_alloc, 16), out%trace_min_occ(n_points_alloc, 16), &
+                  out%trace_mean_occ(n_points_alloc, 16), out%trace_max_occ(n_points_alloc, 16), &
+                  out%trace_sturges(n_points_alloc, 16), out%trace_fd(n_points_alloc, 16), &
+                  out%trace_range_low(n_points_alloc, 16), out%trace_range_high(n_points_alloc, 16))
+
+        call run_js_comp_test_parameter_search(1_int32, n_genes, 1_int32, gene_means, residuals, 5_int32, &
+                                               METHOD_JOIN_MIN, max_n_points_candidate, max_n_neighbors_candidate, &
+                                               out%n_points, out%n_neighbors, out%n_bins, out%range_low, &
+                                               out%range_high, out%ci, out%plateau, out%n_admissible, &
+                                               out%trace_n_points, out%trace_n_neighbors, out%trace_jsd, &
+                                               out%trace_ci_lower, out%trace_ci_upper, out%trace_ci_width, &
+                                               out%trace_ci_width_rel, out%trace_delta, out%trace_delta_median, &
+                                               out%trace_delta_max, out%trace_n_bins, out%trace_occ_failed, &
+                                               out%trace_n_pooled, out%trace_min_occ, out%trace_mean_occ, &
+                                               out%trace_max_occ, out%trace_sturges, out%trace_fd, &
+                                               out%trace_range_low, out%trace_range_high, ierr=ierr, &
+                                               min_residuals_per_bin=-1_int32)
+    end subroutine validate_fixed_k_bounds
+
+    !> The two lower bounds of run_js_comp_test_parameter_search stay in sync with
+    !| calc_js_comp_test_candidate_bounds, for every gene count 1..3000 and then every 997th up to
+    !| 200,406. For each count: the producer's bounds pass validation (the call fails only at the
+    !| later argument 38), one below either bound fails at its own position (8 or 9), and the
+    !| producer's bounds cover the real grid: `max_n_points_candidate` equals its first `n_points`
+    !| exactly, and `max_n_neighbors_candidate` is at least its largest `n_neighbors`. No search
+    !| runs, so the sweep stays cheap.
+    subroutine test_param_search_bounds_match_candidate_bounds()
+        character(len=*), parameter :: name = "test_param_search_bounds_match_candidate_bounds: "
+        integer(int32) :: candidates(2, 16)
+        integer(int32) :: n_genes, max_points, max_neighbors, n_candidates, ierr, n_mismatches
+        character(len=16) :: genes_text
+
+        n_mismatches = 0_int32
+        n_genes = 1_int32
+        do while (n_genes <= 200406_int32)
+            write (genes_text, '(i0)') n_genes
+            call calc_js_comp_test_candidate_bounds(n_genes, max_points, max_neighbors, ierr)
+            call assert_err(ierr, ERR_OK, name//"bounds ierr, G="//trim(genes_text))
+            call generate_js_comp_test_candidates_impl(n_genes, candidates, n_candidates)
+            if (maxval(candidates(1, 1:n_candidates)) /= max_points .or. &
+                maxval(candidates(2, 1:n_candidates)) > max_neighbors) n_mismatches = n_mismatches + 1_int32
+
+            call validate_fixed_k_bounds(n_genes, max_points, max_neighbors, ierr)
+            call assert_err(ierr, ERR_INVALID_INPUT, name//"exact bounds pass, G="//trim(genes_text), 38_int32)
+            call validate_fixed_k_bounds(n_genes, max_points - 1_int32, max_neighbors, ierr)
+            call assert_err(ierr, ERR_INVALID_INPUT, name//"points bound - 1 fails, G="//trim(genes_text), 8_int32)
+            call validate_fixed_k_bounds(n_genes, max_points, max_neighbors - 1_int32, ierr)
+            call assert_err(ierr, ERR_INVALID_INPUT, name//"neighbors bound - 1 fails, G="//trim(genes_text), 9_int32)
+
+            if (n_genes < 3000_int32) then
+                n_genes = n_genes + 1_int32
+            else
+                n_genes = n_genes + 997_int32
+            end if
+        end do
+        call assert_equal_int(n_mismatches, 0_int32, name//"producer bounds cover the generated grid")
+    end subroutine test_param_search_bounds_match_candidate_bounds
 
 end module mod_test_data_integration_js_comp_test

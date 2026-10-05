@@ -786,6 +786,31 @@ test_run_js_comp_test_parameter_search <- function() {
                "expected an unknown bin_count_mode string to be rejected before Fortran")
 }
 
+test_run_js_comp_test_parameter_search_rejects_undersized_bounds <- function() {
+  # A max_n_points_candidate or max_n_neighbors_candidate one below what
+  # calc_js_comp_test_candidate_bounds returns for the gene count (299 and 3 for 300 genes) is
+  # rejected with invalid input instead of being written past
+  # (test_param_search_rejects_undersized_max_n_points_candidate and
+  # test_param_search_rejects_undersized_max_n_neighbors_candidate).
+  n_genes <- 300L
+  n_reps <- 3L
+  n_studies <- 2L
+  gene_means <- matrix(rep(as.numeric(seq_len(n_genes)), n_studies), nrow = n_genes, ncol = n_studies)
+  residuals <- array(rep(c(-0.5, 0.0, 0.5), n_genes * n_studies), dim = c(n_reps, n_genes, n_studies))
+
+  bounds <- calc_js_comp_test_candidate_bounds(n_genes)
+  assert_error(run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps = 5L, join_method = "join_min",
+                                                 max_n_points_candidate = bounds$max_n_points_candidate - 1L,
+                                                 max_n_neighbors_candidate = bounds$max_n_neighbors_candidate,
+                                                 min_neighbor_overlap = 0.0, random_seed = 1L),
+               "expected ERR_INVALID_INPUT for max_n_points_candidate below its bound", ERR_INVALID_INPUT)
+  assert_error(run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps = 5L, join_method = "join_min",
+                                                 max_n_points_candidate = bounds$max_n_points_candidate,
+                                                 max_n_neighbors_candidate = bounds$max_n_neighbors_candidate - 1L,
+                                                 min_neighbor_overlap = 0.0, random_seed = 1L),
+               "expected ERR_INVALID_INPUT for max_n_neighbors_candidate below its bound", ERR_INVALID_INPUT)
+}
+
 test_generate_adaptive_js_comp_test_candidates <- function() {
   # Call-ability, return type/shape and non-error only -- the hand-derived sequences are the
   # Fortran suite's job (test_adaptive_candidates_*). G=2000, S=2 must not collapse to a single

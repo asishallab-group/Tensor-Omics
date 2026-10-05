@@ -853,6 +853,36 @@ def test_run_js_comp_test_parameter_search():
                  "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
 
 
+def test_run_js_comp_test_parameter_search_rejects_undersized_bounds():
+    # A max_n_points_candidate or max_n_neighbors_candidate one below what
+    # calc_js_comp_test_candidate_bounds returns for the gene count (299 and 3 for 300 genes) is
+    # rejected with invalid input instead of being written past
+    # (test_param_search_rejects_undersized_max_n_points_candidate and
+    # test_param_search_rejects_undersized_max_n_neighbors_candidate).
+    n_genes, n_reps, n_studies = 300, 3, 2
+    gene_means = np.empty((n_genes, n_studies), dtype=np.float64, order='F')
+    residuals = np.empty((n_reps, n_genes, n_studies), dtype=np.float64, order='F')
+    for i_study in range(n_studies):
+        gene_means[:, i_study] = np.arange(1, n_genes + 1, dtype=np.float64)
+        residuals[:, :, i_study] = np.array([-0.5, 0.0, 0.5]).reshape(3, 1)
+
+    bounds = calc_js_comp_test_candidate_bounds(n_genes)
+    max_points = bounds["max_n_points_candidate"]
+    max_neighbors = bounds["max_n_neighbors_candidate"]
+    assert_error(lambda: run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=5,
+                                                           join_method='join_min',
+                                                           max_n_points_candidate=max_points - 1,
+                                                           max_n_neighbors_candidate=max_neighbors,
+                                                           min_neighbor_overlap=0.0, random_seed=1),
+                 "expected ERR_INVALID_INPUT for max_n_points_candidate below its bound", ERR_INVALID_INPUT)
+    assert_error(lambda: run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=5,
+                                                           join_method='join_min',
+                                                           max_n_points_candidate=max_points,
+                                                           max_n_neighbors_candidate=max_neighbors - 1,
+                                                           min_neighbor_overlap=0.0, random_seed=1),
+                 "expected ERR_INVALID_INPUT for max_n_neighbors_candidate below its bound", ERR_INVALID_INPUT)
+
+
 def test_generate_adaptive_js_comp_test_candidates():
     # Call-ability, return type/shape and non-error only -- the hand-derived sequences are the
     # Fortran suite's job (test_adaptive_candidates_*). G=2000, S=2 must not collapse to a single

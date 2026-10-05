@@ -4474,18 +4474,22 @@ def run_js_comp_test_parameter_search(
         jagged `trace_*` arrays) are sized by this argument, so unlike before Issue #187 it
         is no longer purely an internal sizing detail the plain wrapper can compute and
         hide -- the caller must know it up front to receive those arrays, hence JUST_INFO
-        rather than AUTO here now
+        rather than AUTO here now. It must be at least the `max_n_points_candidate` that
+        `calc_js_comp_test_candidate_bounds` returns for this `max_n_genes_all_studies`;
+        a smaller value fails with invalid input
         It is recommended to compute this argument from the `max_n_points_candidate` output produced by :func:`tensor_omics.calc_js_comp_test_candidate_bounds`.
-        The minimum valid value is `1`.
+        The minimum valid value is `max(MIN_POINTS, min(ceiling(4.0*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS))`.
     max_n_neighbors_candidate : int
         Safe upper bound on the grid's largest `n_neighbors` candidate. Also JUST_INFO, not
         because anything returned is sized by it (nothing is), but because it comes from the
         same `calc_js_comp_test_candidate_bounds` call as `max_n_points_candidate` above --
         now that that call can no longer run automatically inside this wrapper, splitting
         this one back into an AUTO call would just be a second, redundant call to the same
-        routine for no benefit
+        routine for no benefit. It must be at least the `max_n_neighbors_candidate` that
+        `calc_js_comp_test_candidate_bounds` returns for this `max_n_genes_all_studies`;
+        a smaller value fails with invalid input
         It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by :func:`tensor_omics.calc_js_comp_test_candidate_bounds`.
-        The minimum valid value is `1`.
+        The minimum valid value is `max(1, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(0.2*real(max(MIN_POINTS, min(ceiling(4.0*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32))`.
     min_residuals_per_bin : int, optional, default 10
         Minimum count each bin of the consensus pmf must reach to pass the second
         admissibility gate, and the floor every bin of the pooled histogram must reach in
