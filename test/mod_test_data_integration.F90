@@ -17,7 +17,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(22))
+        allocate (all_tests(23))
         all_tests(1) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
         all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(3) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
@@ -49,6 +49,8 @@ contains
                                   test_build_residual_histograms_variable_bins_per_point)
         all_tests(22) = test_case("test_build_residual_histograms_zero_padding_safe_for_jsd", &
                                   test_build_residual_histograms_zero_padding_safe_for_jsd)
+        all_tests(23) = test_case("test_compute_weighted_global_divergence_large_counts", &
+                                  test_compute_weighted_global_divergence_large_counts)
     end function get_all_tests_data_integration
 
     !> Test the fjct_compute_jsd function.
@@ -889,6 +891,67 @@ contains
         call assert_equal_real(global_jsd, expected, TOL, "test_compute_weighted_global_divergence: Test 5: weighted global JSD")
 
     end subroutine test_compute_weighted_global_divergence
+
+    !> Regression test: sample counts whose sum exceeds huge(1_int32) = 2147483647.
+    !| In gJCT the second study is the consensus, whose counts sum over all studies, so a large but
+    !| valid input can push the total past the int32 range. The total and the per-point counts
+    !| must be summed in int64 before the conversion to real64, or they wrap to negative values.
+    subroutine test_compute_weighted_global_divergence_large_counts
+        real(real64) :: jsd_two(2), w_two(2), jsd_one(1), w_one(1)
+        integer(int32) :: n1_two(2), n2_two(2), n1_one(1), n2_one(1)
+        real(real64) :: global_jsd
+        integer(int32) :: ierr
+
+        ! ============================================================
+        ! Test 1 — Total count overflows int32
+        ! ============================================================
+        !
+        ! n1 = [2e9, 0], n2 = [0, 2e9]
+        ! n_j = [2e9, 2e9], T = 4e9 > 2147483647
+        ! w = [0.5, 0.5]
+        ! global_jsd = 0.5*0.2 + 0.5*0.4 = 0.3
+        !
+        jsd_two = [0.2_real64, 0.4_real64]
+        n1_two = [2000000000_int32, 0_int32]
+        n2_two = [0_int32, 2000000000_int32]
+
+        call compute_weighted_global_divergence(jsd_two, 2_int32, n1_two, n2_two, &
+                                                global_jsd, w_two, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_compute_weighted_global_divergence_large_counts: Test 1: ierr OK")
+        call assert_equal_array_real(w_two, [0.5_real64, 0.5_real64], 2_int32, TOL, &
+                                     "test_compute_weighted_global_divergence_large_counts: Test 1: weights")
+        call assert_equal_real(global_jsd, 0.3_real64, TOL, &
+                               "test_compute_weighted_global_divergence_large_counts: Test 1: global JSD")
+
+        ! ============================================================
+        ! Test 2 — Per-point count overflows int32
+        ! ============================================================
+        !
+        ! n1 = [1.5e9], n2 = [1.5e9]
+        ! n_1 = 3e9 > 2147483647, T = 3e9
+        ! w = [1.0]
+        ! global_jsd = jsd(1) = 0.7
+        !
+        ! With both sums in int32, n_1 and T wrap to the same negative value and the weight still
+        ! comes out as 1.0. This case guards the per-point sum: with only T summed in int64, the
+        ! weight would be the wrapped n_1 over the correct T, a negative number.
+        !
+        jsd_one = [0.7_real64]
+        n1_one = [1500000000_int32]
+        n2_one = [1500000000_int32]
+
+        call compute_weighted_global_divergence(jsd_one, 1_int32, n1_one, n2_one, &
+                                                global_jsd, w_one, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_compute_weighted_global_divergence_large_counts: Test 2: ierr OK")
+        call assert_equal_array_real(w_one, [1.0_real64], 1_int32, TOL, &
+                                     "test_compute_weighted_global_divergence_large_counts: Test 2: weight")
+        call assert_equal_real(global_jsd, 0.7_real64, TOL, &
+                               "test_compute_weighted_global_divergence_large_counts: Test 2: global JSD")
+    end subroutine test_compute_weighted_global_divergence_large_counts
 
     ! --------------------------------------------------------------------------
     ! Test Cases for compute_gene_means

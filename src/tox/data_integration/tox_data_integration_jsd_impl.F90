@@ -8,7 +8,7 @@
 !| figure for the pair of studies.
 module tox_data_integration_jsd_impl
     use f42_safeguard
-    use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_fortran_env, only: int32, int64, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use f42_math_impl, only: clamp, is_close, LOG_2
@@ -351,12 +351,19 @@ contains
         real(real64), dimension(n_points), intent(out) :: weights
             !! Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`
 
-        integer(int32) :: i_point, included_reps
+        integer(int32) :: i_point
+        integer(int64) :: n_included_total, n_included_reps
         real(real64) :: total_sample_count
 
         global_js_divergence = 0.0_real64
 
-        total_sample_count = real(sum(included_n_reps_S1) + sum(included_n_reps_S2), real64)
+        ! Count in int64, here and per point below: in gJCT study 2 is the consensus, whose counts sum
+        ! over all studies, so a sum can exceed huge(1_int32) for large but valid inputs.
+        n_included_total = 0_int64
+        do concurrent(i_point=1:n_points) shared(included_n_reps_S1, included_n_reps_S2) reduce(+:n_included_total)
+            n_included_total = n_included_total + int(included_n_reps_S1(i_point), int64) + int(included_n_reps_S2(i_point), int64)
+        end do
+        total_sample_count = real(n_included_total, real64)
 
         ! Guard against a zero total sample count (no replicate had a non-NaN residual at any reference
         ! point in either study): fall back to all-zero weights instead of dividing by zero below.
@@ -364,10 +371,10 @@ contains
             weights = 0.0_real64
         else
             ! Calculate the global Jensen-Shannon divergence
-            do concurrent(i_point=1:n_points) local(included_reps) shared(weights, included_n_reps_S1, included_n_reps_S2, total_sample_count) reduce(+:global_js_divergence)
-                included_reps = included_n_reps_S1(i_point) + included_n_reps_S2(i_point)
+            do concurrent(i_point=1:n_points) local(n_included_reps) shared(weights, js_divergences, included_n_reps_S1, included_n_reps_S2, total_sample_count) reduce(+:global_js_divergence)
+                n_included_reps = int(included_n_reps_S1(i_point), int64) + int(included_n_reps_S2(i_point), int64)
 
-                weights(i_point) = real(included_reps, real64)/total_sample_count
+                weights(i_point) = real(n_included_reps, real64)/total_sample_count
 
                 global_js_divergence = global_js_divergence + weights(i_point)*js_divergences(i_point)
             end do
