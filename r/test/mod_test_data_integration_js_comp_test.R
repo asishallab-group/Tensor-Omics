@@ -811,6 +811,30 @@ test_run_js_comp_test_parameter_search_rejects_undersized_bounds <- function() {
                "expected ERR_INVALID_INPUT for max_n_neighbors_candidate below its bound", ERR_INVALID_INPUT)
 }
 
+test_run_js_comp_test_rejects_reversed_residual_range_quantiles <- function() {
+  # An upper residual-range quantile below the lower one (0.05 < 0.95) is rejected with invalid
+  # input instead of collapsing every histogram into one bin
+  # (test_run_js_comp_test_rejects_reversed_residual_range_quantiles in the Fortran suite).
+  gene_means <- matrix(c(1.0, 5.0, 1.0, 5.0), nrow = 2)
+  gene_means_perms <- matrix(c(1L, 2L, 1L, 2L), nrow = 2)
+  residuals <- array(NaN, dim = c(2, 2, 2))
+  residuals[, 1, 1] <- c(-1.0, 1.0)
+  residuals[, 1, 2] <- c(-3.0, 3.0)
+  x_star <- c(1.0)
+
+  call <- function() {
+    run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = gene_means_perms,
+                     residuals = residuals, x_star = x_star, n_permutations = 0L, random_seed = 1L,
+                     min_residuals_per_bin = 1L, lower_residual_range_quantile = 0.95,
+                     upper_residual_range_quantile = 0.05)
+  }
+  assert_error(call(), "expected ERR_INVALID_INPUT for upper_residual_range_quantile below the lower one",
+               ERR_INVALID_INPUT)
+  err <- tryCatch({ call(); NULL }, error = function(e) e)
+  assert_true(identical(err$argument, "upper_residual_range_quantile"),
+              "expected the error on upper_residual_range_quantile")
+}
+
 test_generate_adaptive_js_comp_test_candidates <- function() {
   # Call-ability, return type/shape and non-error only -- the hand-derived sequences are the
   # Fortran suite's job (test_adaptive_candidates_*). G=2000, S=2 must not collapse to a single

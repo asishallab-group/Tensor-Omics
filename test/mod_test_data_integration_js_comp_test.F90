@@ -13,6 +13,7 @@ module mod_test_data_integration_js_comp_test
                                             ieee_negative_inf
     use tox_data_integration
     use tox_data_integration_js_comp_test, only: estimate_bin_count, determine_bin_count_occupancy, &
+                                                  determine_bin_count_occupancy_expert, &
                                                   determine_bin_count_stone, determine_bin_count_stone_expert, &
                                                   determine_bin_count_occupancy_exhaustive, &
                                                   generate_js_comp_test_candidates, check_neighborhood_overlaps, &
@@ -109,7 +110,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(201))
+        allocate (all_tests(208))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -522,6 +523,19 @@ contains
                                   test_param_search_rejects_undersized_max_n_neighbors_candidate)
         all_tests(201) = test_case("test_param_search_bounds_match_candidate_bounds", &
                                   test_param_search_bounds_match_candidate_bounds)
+        all_tests(202) = test_case("test_run_js_comp_test_rejects_reversed_residual_range_quantiles", &
+                                  test_run_js_comp_test_rejects_reversed_residual_range_quantiles)
+        all_tests(203) = test_case("test_occupancy_rejects_reversed_residual_range_quantiles", &
+                                  test_occupancy_rejects_reversed_residual_range_quantiles)
+        all_tests(204) = test_case("test_occupancy_accepts_equal_residual_range_quantiles", &
+                                  test_occupancy_accepts_equal_residual_range_quantiles)
+        all_tests(205) = test_case("test_occupancy_upper_quantile_only", test_occupancy_upper_quantile_only)
+        all_tests(206) = test_case("test_stone_rejects_reversed_residual_range_quantiles", &
+                                  test_stone_rejects_reversed_residual_range_quantiles)
+        all_tests(207) = test_case("test_occupancy_expert_rejects_reversed_residual_range_quantiles", &
+                                  test_occupancy_expert_rejects_reversed_residual_range_quantiles)
+        all_tests(208) = test_case("test_occupancy_known_limitation_lower_only_above_default_upper", &
+                                  test_occupancy_known_limitation_lower_only_above_default_upper)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -10258,5 +10272,241 @@ contains
         end do
         call assert_equal_int(n_mismatches, 0_int32, name//"producer bounds cover the generated grid")
     end subroutine test_param_search_bounds_match_candidate_bounds
+
+    !> A reversed residual-range quantile pair (lower 0.95 above upper 0.05) is rejected by
+    !| run_js_comp_test at the upper quantile's position (41 in the plain wrapper). Before the
+    !| check existed, R_low ended up above R_high, every residual was clamped into bin 1, every
+    !| JSD became 0 and ierr stayed OK. Reuses test_run_js_comp_test_two_studies_hand_traceable's
+    !| fixture.
+    subroutine test_run_js_comp_test_rejects_reversed_residual_range_quantiles()
+        character(len=*), parameter :: name = "test_run_js_comp_test_rejects_reversed_residual_range_quantiles: "
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
+        integer(int32), parameter :: n_points = 1, n_neighbors = 1
+        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
+        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
+        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+        real(real64) :: x_star(n_points)
+        integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
+        integer(int32) :: neighborhood_range(2, n_points, n_studies)
+        integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
+        real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
+        logical(c_bool) :: occupancy_failed(n_points)
+        integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
+        real(real64) :: mean_bin_occupancy(n_points)
+        integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
+        real(real64) :: pmfs(256, n_points, n_studies)
+        integer(int32) :: counts(256, n_points, n_studies)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: mean_pmf(256, n_points)
+        integer(int32) :: mean_pmf_counts(256, n_points)
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
+        real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
+        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
+        real(real64) :: p_values_observed_consensus(n_studies)
+        integer(int32) :: ierr
+        real(real64) :: nan_val
+
+        nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
+
+        gene_means(:, 1) = [1.0_real64, 5.0_real64]
+        gene_means(:, 2) = [1.0_real64, 5.0_real64]
+        gene_means_perms(:, 1) = [1, 2]
+        gene_means_perms(:, 2) = [1, 2]
+
+        residuals(:, 1, 1) = [-1.0_real64, 1.0_real64]
+        residuals(:, 2, 1) = nan_val
+        residuals(:, 1, 2) = [-3.0_real64, 3.0_real64]
+        residuals(:, 2, 2) = nan_val
+
+        x_star = [1.0_real64]
+
+        call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
+                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                              max_n_bins_per_point, occupancy_failed, &
+                              n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
+                              sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
+                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
+                              p_values_observed_consensus, &
+                              ierr=ierr, n_permutations=0_int32, random_seed=1_int32, min_residuals_per_bin=1_int32, &
+                              lower_residual_range_quantile=0.95_real64, upper_residual_range_quantile=0.05_real64)
+
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"upper quantile below lower quantile is rejected", 41_int32)
+    end subroutine test_run_js_comp_test_rejects_reversed_residual_range_quantiles
+
+    !> determine_bin_count_occupancy rejects a reversed residual-range quantile pair (lower 0.95,
+    !| upper 0.05) at the upper quantile's position (20 in the plain wrapper), on
+    !| test_occupancy_finds_valid_below_m_max's fixture (-60..59).
+    subroutine test_occupancy_rejects_reversed_residual_range_quantiles()
+        character(len=*), parameter :: name = "test_occupancy_rejects_reversed_residual_range_quantiles: "
+        integer(int32), parameter :: n_residuals = 120
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr, i
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
+        logical(c_bool) :: occupancy_failed
+
+        do i = 1, n_residuals
+            residuals(i) = real(i - 61, real64) ! -60, -59, ..., 59
+        end do
+
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, &
+                                           lower_residual_range_quantile=0.95_real64, &
+                                           upper_residual_range_quantile=0.05_real64, ierr=ierr)
+
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"upper quantile below lower quantile is rejected", 20_int32)
+    end subroutine test_occupancy_rejects_reversed_residual_range_quantiles
+
+    !> Equal residual-range quantiles (0.5/0.5) still pass validation: the bound on the upper
+    !| quantile is inclusive (at least the lower quantile). This documents that the degenerate,
+    !| zero-width case (R_low == R_high, every residual clamped into bin 1) is still accepted; only a
+    !| strictly reversed pair is rejected.
+    subroutine test_occupancy_accepts_equal_residual_range_quantiles()
+        character(len=*), parameter :: name = "test_occupancy_accepts_equal_residual_range_quantiles: "
+        integer(int32), parameter :: n_residuals = 120
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr, i
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
+        logical(c_bool) :: occupancy_failed
+
+        do i = 1, n_residuals
+            residuals(i) = real(i - 61, real64) ! -60, -59, ..., 59
+        end do
+
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, &
+                                           lower_residual_range_quantile=0.5_real64, &
+                                           upper_residual_range_quantile=0.5_real64, ierr=ierr)
+
+        call assert_err(ierr, ERR_OK, name//"equal quantiles pass validation")
+        call assert_equal_real(shared_residual_range_low, shared_residual_range_high, TOL, &
+                               name//"equal quantiles give a zero-width range")
+    end subroutine test_occupancy_accepts_equal_residual_range_quantiles
+
+    !> A Fortran caller who passes only upper_residual_range_quantile (lower omitted) runs normally:
+    !| the wrapper hands the absent lower quantile on as the validator's absent `min`, and the
+    !| implementation falls back to the default lower quantile 0.05. On -60..59:
+    !| rank(0.9, 120) = 0.9*119 + 1 = 108.1 -> value(108)=47, value(109)=48 at fraction 0.1 ->
+    !| R_high = 47.1; R_low stays the default 5th percentile, -54.05 (see
+    !| test_occupancy_finds_valid_below_m_max).
+    subroutine test_occupancy_upper_quantile_only()
+        character(len=*), parameter :: name = "test_occupancy_upper_quantile_only: "
+        integer(int32), parameter :: n_residuals = 120
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr, i
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
+        logical(c_bool) :: occupancy_failed
+
+        do i = 1, n_residuals
+            residuals(i) = real(i - 61, real64) ! -60, -59, ..., 59
+        end do
+
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, &
+                                           upper_residual_range_quantile=0.9_real64, ierr=ierr)
+
+        call assert_err(ierr, ERR_OK, name//"upper quantile alone passes validation")
+        call assert_equal_real(shared_residual_range_low, -54.05_real64, TOL, &
+                               name//"R_low is the default 5th percentile")
+        call assert_equal_real(shared_residual_range_high, 47.1_real64, TOL, &
+                               name//"R_high is the 90th percentile")
+    end subroutine test_occupancy_upper_quantile_only
+
+    !> determine_bin_count_stone rejects a reversed residual-range quantile pair (lower 0.95, upper
+    !| 0.05) at the upper quantile's position (22 in the plain wrapper). Two studies, residuals
+    !| -60..59 split evenly between them.
+    subroutine test_stone_rejects_reversed_residual_range_quantiles()
+        character(len=*), parameter :: name = "test_stone_rejects_reversed_residual_range_quantiles: "
+        integer(int32), parameter :: n_residuals = 120
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: residual_to_study(n_residuals)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr, i
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
+        logical(c_bool) :: stone_failed
+
+        do i = 1, n_residuals
+            residuals(i) = real(i - 61, real64) ! -60, -59, ..., 59
+            residual_to_study(i) = 1_int32 + mod(i, 2_int32)
+        end do
+
+        call determine_bin_count_stone(residuals, n_residuals, residual_to_study, 2_int32, 1_int32, 1_int32, &
+                                       selected_n_bins, stone_failed, shared_residual_range_low, &
+                                       shared_residual_range_high, n_pooled_residuals, min_bin_occupancy, &
+                                       mean_bin_occupancy, max_bin_occupancy, sturges_bins, fd_bins, &
+                                       lower_residual_range_quantile=0.95_real64, &
+                                       upper_residual_range_quantile=0.05_real64, ierr=ierr)
+
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"upper quantile below lower quantile is rejected", 22_int32)
+    end subroutine test_stone_rejects_reversed_residual_range_quantiles
+
+    !> The expert tier validates the quantile order too: determine_bin_count_occupancy_expert rejects
+    !| a reversed pair (lower 0.95, upper 0.05) at the upper quantile's position (22 in the expert
+    !| wrapper, which also takes pooled_residuals_perm and tmp_bin_counts).
+    subroutine test_occupancy_expert_rejects_reversed_residual_range_quantiles()
+        character(len=*), parameter :: name = "test_occupancy_expert_rejects_reversed_residual_range_quantiles: "
+        integer(int32), parameter :: n_residuals = 120
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: residuals_perm(n_residuals), tmp_bin_counts(256)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr, i
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
+        logical(c_bool) :: occupancy_failed
+
+        do i = 1, n_residuals
+            residuals(i) = real(i - 61, real64) ! -60, -59, ..., 59, already ascending
+            residuals_perm(i) = i
+        end do
+
+        call determine_bin_count_occupancy_expert(residuals, residuals_perm, n_residuals, 1_int32, 1_int32, &
+                                                  selected_n_bins, occupancy_failed, shared_residual_range_low, &
+                                                  shared_residual_range_high, n_pooled_residuals, min_bin_occupancy, &
+                                                  mean_bin_occupancy, max_bin_occupancy, sturges_bins, fd_bins, &
+                                                  tmp_bin_counts, lower_residual_range_quantile=0.95_real64, &
+                                                  upper_residual_range_quantile=0.05_real64, ierr=ierr)
+
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"upper quantile below lower quantile is rejected", 22_int32)
+    end subroutine test_occupancy_expert_rejects_reversed_residual_range_quantiles
+
+    !> Documents a KNOWN LIMITATION, not desired behaviour: the quantile-order check lives on
+    !| upper_residual_range_quantile and names lower_residual_range_quantile as its bound, so it
+    !| only runs when both are passed. A Fortran caller who omits `upper` and passes `lower = 0.97`
+    !| (above the default upper 0.95) is still accepted with ierr OK, and gets R_low above R_high
+    !| (the collapsed-histogram case the check exists to stop). Python and R always pass both
+    !| quantiles, so only Fortran callers can reach this. If the generator ever substitutes an
+    !| absent optional's default into a bound, this test should flip to expecting
+    !| ERR_INVALID_INPUT.
+    subroutine test_occupancy_known_limitation_lower_only_above_default_upper()
+        character(len=*), parameter :: name = "test_occupancy_known_limitation_lower_only_above_default_upper: "
+        integer(int32), parameter :: n_residuals = 120
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
+        integer(int32) :: sturges_bins, fd_bins, ierr, i
+        real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
+        logical(c_bool) :: occupancy_failed
+
+        do i = 1, n_residuals
+            residuals(i) = real(i - 61, real64) ! -60, -59, ..., 59
+        end do
+
+        call determine_bin_count_occupancy(residuals, n_residuals, 1_int32, 1_int32, selected_n_bins, &
+                                           occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                           n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                           max_bin_occupancy, sturges_bins, fd_bins, &
+                                           lower_residual_range_quantile=0.97_real64, ierr=ierr)
+
+        call assert_err(ierr, ERR_OK, name//"lower above the default upper is (still) accepted when upper is omitted")
+        call assert_true(shared_residual_range_low > shared_residual_range_high, &
+                         name//"and the range is reversed (R_low > R_high)")
+    end subroutine test_occupancy_known_limitation_lower_only_above_default_upper
 
 end module mod_test_data_integration_js_comp_test

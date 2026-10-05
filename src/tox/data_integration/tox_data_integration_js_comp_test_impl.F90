@@ -614,13 +614,18 @@ contains
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for this neighborhood's own lower residual-range bound
             !! (shared_residual_range_low)
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+        ! The lower bound below (lower_residual_range_quantile) is inclusive on purpose: above() must not be
+        ! used, because the wrapper would evaluate above() with an absent optional when a Fortran
+        ! caller omits lower_residual_range_quantile.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for this neighborhood's own upper residual-range bound
             !! (shared_residual_range_high)
-            !! DM_MIN(0.0_real64)
+            !! DM_MIN(lower_residual_range_quantile)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
 
@@ -1656,13 +1661,18 @@ contains
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for this neighborhood's own lower residual-range bound
             !! (shared_residual_range_low)
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+        ! The lower bound below (lower_residual_range_quantile) is inclusive on purpose: above() must not be
+        ! used, because the wrapper would evaluate above() with an absent optional when a Fortran
+        ! caller omits lower_residual_range_quantile.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for this neighborhood's own upper residual-range bound
             !! (shared_residual_range_high)
-            !! DM_MIN(0.0_real64)
+            !! DM_MIN(lower_residual_range_quantile)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
 
@@ -4152,13 +4162,18 @@ contains
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for each reference point's own lower residual-range bound,
             !! forwarded to the bin-count search
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+        ! The lower bound below (lower_residual_range_quantile) is inclusive on purpose: above() must not be
+        ! used, because the wrapper would evaluate above() with an absent optional when a Fortran
+        ! caller omits lower_residual_range_quantile.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for each reference point's own upper residual-range bound,
             !! forwarded to the bin-count search
-            !! DM_MIN(0.0_real64)
+            !! DM_MIN(lower_residual_range_quantile)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         integer(int32), intent(in), optional :: bin_count_mode
@@ -4516,12 +4531,17 @@ contains
             !! DM_DEFAULT(CM_OCCUPANCY_GAMMA_DEFAULT)
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for each reference point's lower residual-range bound
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+        ! The lower bound below (lower_residual_range_quantile) is inclusive on purpose: above() must not be
+        ! used, because the wrapper would evaluate above() with an absent optional when a Fortran
+        ! caller omits lower_residual_range_quantile.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for each reference point's upper residual-range bound
-            !! DM_MIN(0.0_real64)
+            !! DM_MIN(lower_residual_range_quantile)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         integer(int32), intent(in), optional :: bin_count_mode
@@ -5220,13 +5240,18 @@ contains
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for each reference point's own lower residual-range bound,
             !! forwarded to the bin-count search
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+        ! The lower bound below (lower_residual_range_quantile) is inclusive on purpose: above() must not be
+        ! used, because the wrapper would evaluate above() with an absent optional when a Fortran
+        ! caller omits lower_residual_range_quantile.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for each reference point's own upper residual-range bound,
             !! forwarded to the bin-count search
-            !! DM_MIN(0.0_real64)
+            !! DM_MIN(lower_residual_range_quantile)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
@@ -6109,12 +6134,17 @@ contains
             !! DM_DEFAULT(CM_OCCUPANCY_GAMMA_DEFAULT)
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for each reference point's lower residual-range bound
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+        ! The lower bound below (lower_residual_range_quantile) is inclusive on purpose: above() must not be
+        ! used, because the wrapper would evaluate above() with an absent optional when a Fortran
+        ! caller omits lower_residual_range_quantile.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for each reference point's upper residual-range bound
-            !! DM_MIN(0.0_real64)
+            !! DM_MIN(lower_residual_range_quantile)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level

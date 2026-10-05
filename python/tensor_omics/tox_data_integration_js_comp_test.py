@@ -992,13 +992,15 @@ def determine_bin_count_occupancy(
     lower_residual_range_quantile : float, optional, default 0.05
         Quantile in [0,1] for this neighborhood's own lower residual-range bound
         (shared_residual_range_low)
+        Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+        with invalid input reported on upper_residual_range_quantile.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.05`.
     upper_residual_range_quantile : float, optional, default 0.95
         Quantile in [0,1] for this neighborhood's own upper residual-range bound
         (shared_residual_range_high)
-        The minimum valid value is `0.0`.
+        The minimum valid value is `lower_residual_range_quantile`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
 
@@ -1211,13 +1213,15 @@ def determine_bin_count_occupancy_expert(
     lower_residual_range_quantile : float, optional, default 0.05
         Quantile in [0,1] for this neighborhood's own lower residual-range bound
         (shared_residual_range_low)
+        Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+        with invalid input reported on upper_residual_range_quantile.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.05`.
     upper_residual_range_quantile : float, optional, default 0.95
         Quantile in [0,1] for this neighborhood's own upper residual-range bound
         (shared_residual_range_high)
-        The minimum valid value is `0.0`.
+        The minimum valid value is `lower_residual_range_quantile`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
 
@@ -1778,13 +1782,15 @@ def determine_bin_count_stone(
     lower_residual_range_quantile : float, optional, default 0.05
         Quantile in [0,1] for this neighborhood's own lower residual-range bound
         (shared_residual_range_low)
+        Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+        with invalid input reported on upper_residual_range_quantile.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.05`.
     upper_residual_range_quantile : float, optional, default 0.95
         Quantile in [0,1] for this neighborhood's own upper residual-range bound
         (shared_residual_range_high)
-        The minimum valid value is `0.0`.
+        The minimum valid value is `lower_residual_range_quantile`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
 
@@ -2019,13 +2025,15 @@ def determine_bin_count_stone_expert(
     lower_residual_range_quantile : float, optional, default 0.05
         Quantile in [0,1] for this neighborhood's own lower residual-range bound
         (shared_residual_range_low)
+        Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+        with invalid input reported on upper_residual_range_quantile.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.05`.
     upper_residual_range_quantile : float, optional, default 0.95
         Quantile in [0,1] for this neighborhood's own upper residual-range bound
         (shared_residual_range_high)
-        The minimum valid value is `0.0`.
+        The minimum valid value is `lower_residual_range_quantile`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
 
@@ -3598,13 +3606,15 @@ def run_js_comp_test(
     lower_residual_range_quantile : float, optional, default 0.05
         Quantile in [0,1] for each reference point's own lower residual-range bound,
         forwarded to the bin-count search
+        Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+        with invalid input reported on upper_residual_range_quantile.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.05`.
     upper_residual_range_quantile : float, optional, default 0.95
         Quantile in [0,1] for each reference point's own upper residual-range bound,
         forwarded to the bin-count search
-        The minimum valid value is `0.0`.
+        The minimum valid value is `lower_residual_range_quantile`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
     bin_count_mode : str, one of 'bin_count_occupancy' | 'bin_count_stone_equal' | 'bin_count_stone_size_weighted' | 'bin_count_stone_pooled', optional, default 'bin_count_occupancy'
@@ -4048,12 +4058,14 @@ def run_js_comp_test_adaptive(
         The default value is `1.25`.
     lower_residual_range_quantile : float, optional, default 0.05
         Quantile in [0,1] for each reference point's lower residual-range bound
+        Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+        with invalid input reported on upper_residual_range_quantile.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.05`.
     upper_residual_range_quantile : float, optional, default 0.95
         Quantile in [0,1] for each reference point's upper residual-range bound
-        The minimum valid value is `0.0`.
+        The minimum valid value is `lower_residual_range_quantile`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
     bin_count_mode : str, one of 'bin_count_occupancy' | 'bin_count_stone_equal' | 'bin_count_stone_size_weighted' | 'bin_count_stone_pooled', optional, default 'bin_count_occupancy'
@@ -4562,13 +4574,15 @@ def run_js_comp_test_parameter_search(
     lower_residual_range_quantile : float, optional, default 0.05
         Quantile in [0,1] for each reference point's own lower residual-range bound,
         forwarded to the bin-count search
+        Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+        with invalid input reported on upper_residual_range_quantile.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.05`.
     upper_residual_range_quantile : float, optional, default 0.95
         Quantile in [0,1] for each reference point's own upper residual-range bound,
         forwarded to the bin-count search
-        The minimum valid value is `0.0`.
+        The minimum valid value is `lower_residual_range_quantile`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
     two_sided_bootstrapping_significance_level : float, optional, default 2.5
@@ -5169,12 +5183,14 @@ def run_js_comp_test_adaptive_parameter_search(
         The default value is `1.25`.
     lower_residual_range_quantile : float, optional, default 0.05
         Quantile in [0,1] for each reference point's lower residual-range bound
+        Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+        with invalid input reported on upper_residual_range_quantile.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.05`.
     upper_residual_range_quantile : float, optional, default 0.95
         Quantile in [0,1] for each reference point's upper residual-range bound
-        The minimum valid value is `0.0`.
+        The minimum valid value is `lower_residual_range_quantile`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
     two_sided_bootstrapping_significance_level : float, optional, default 2.5

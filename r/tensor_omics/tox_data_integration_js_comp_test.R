@@ -181,12 +181,14 @@ estimate_bin_count_expert <- function(residuals, residuals_perm, max_n_reps_all_
 #'   The default value is `1.25`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own lower residual-range bound
 #'   (shared_residual_range_low)
+#'   Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+#'   with invalid input reported on upper_residual_range_quantile.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.05`.
 #' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own upper residual-range bound
 #'   (shared_residual_range_high)
-#'   The minimum valid value is `0.0`.
+#'   The minimum valid value is `lower_residual_range_quantile`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.95`.
 #' @return a named list with elements:
@@ -320,12 +322,14 @@ determine_bin_count_occupancy <- function(pooled_residuals, max_n_reps_all_studi
 #'   The default value is `1.25`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own lower residual-range bound
 #'   (shared_residual_range_low)
+#'   Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+#'   with invalid input reported on upper_residual_range_quantile.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.05`.
 #' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own upper residual-range bound
 #'   (shared_residual_range_high)
-#'   The minimum valid value is `0.0`.
+#'   The minimum valid value is `lower_residual_range_quantile`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.95`.
 #' @return a named list with elements:
@@ -665,12 +669,14 @@ determine_bin_count_occupancy_exhaustive_expert <- function(pooled_residuals, po
 #'   The default value is `10`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own lower residual-range bound
 #'   (shared_residual_range_low)
+#'   Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+#'   with invalid input reported on upper_residual_range_quantile.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.05`.
 #' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own upper residual-range bound
 #'   (shared_residual_range_high)
-#'   The minimum valid value is `0.0`.
+#'   The minimum valid value is `lower_residual_range_quantile`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.95`.
 #' @return a named list with elements:
@@ -812,12 +818,14 @@ determine_bin_count_stone <- function(pooled_residuals, residual_to_study, n_stu
 #'   The default value is `10`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own lower residual-range bound
 #'   (shared_residual_range_low)
+#'   Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+#'   with invalid input reported on upper_residual_range_quantile.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.05`.
 #' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own upper residual-range bound
 #'   (shared_residual_range_high)
-#'   The minimum valid value is `0.0`.
+#'   The minimum valid value is `lower_residual_range_quantile`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.95`.
 #' @return a named list with elements:
@@ -1713,12 +1721,14 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #'   The default value is `1.25`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's own lower residual-range bound,
 #'   forwarded to the bin-count search
+#'   Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+#'   with invalid input reported on upper_residual_range_quantile.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.05`.
 #' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's own upper residual-range bound,
 #'   forwarded to the bin-count search
-#'   The minimum valid value is `0.0`.
+#'   The minimum valid value is `lower_residual_range_quantile`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.95`.
 #' @param bin_count_mode a string, one of "bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled". How Pass B chooses each reference point's histogram bin count.
@@ -1955,11 +1965,13 @@ run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residual
 #'   The minimum valid value is `above(1.0)`.
 #'   The default value is `1.25`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's lower residual-range bound
+#'   Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+#'   with invalid input reported on upper_residual_range_quantile.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.05`.
 #' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's upper residual-range bound
-#'   The minimum valid value is `0.0`.
+#'   The minimum valid value is `lower_residual_range_quantile`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.95`.
 #' @param bin_count_mode a string, one of "bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled". How Pass B chooses each reference point's histogram bin count.
@@ -2257,12 +2269,14 @@ run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood
 #'   The default value is `1.25`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's own lower residual-range bound,
 #'   forwarded to the bin-count search
+#'   Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+#'   with invalid input reported on upper_residual_range_quantile.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.05`.
 #' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's own upper residual-range bound,
 #'   forwarded to the bin-count search
-#'   The minimum valid value is `0.0`.
+#'   The minimum valid value is `lower_residual_range_quantile`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.95`.
 #' @param two_sided_bootstrapping_significance_level a numeric scalar. Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
@@ -2636,11 +2650,13 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstrap
 #'   The minimum valid value is `above(1.0)`.
 #'   The default value is `1.25`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's lower residual-range bound
+#'   Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+#'   with invalid input reported on upper_residual_range_quantile.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.05`.
 #' @param upper_residual_range_quantile a numeric scalar. Quantile in [0,1] for each reference point's upper residual-range bound
-#'   The minimum valid value is `0.0`.
+#'   The minimum valid value is `lower_residual_range_quantile`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.95`.
 #' @param two_sided_bootstrapping_significance_level a numeric scalar. Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and

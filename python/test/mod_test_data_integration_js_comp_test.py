@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from test_helpers import run_all_tests, assert_error
 from tensor_omics import (
+    ToxError,
     estimate_bin_count,
     estimate_bin_count_expert,
     determine_bin_count_occupancy,
@@ -881,6 +882,32 @@ def test_run_js_comp_test_parameter_search_rejects_undersized_bounds():
                                                            max_n_neighbors_candidate=max_neighbors - 1,
                                                            min_neighbor_overlap=0.0, random_seed=1),
                  "expected ERR_INVALID_INPUT for max_n_neighbors_candidate below its bound", ERR_INVALID_INPUT)
+
+
+def test_run_js_comp_test_rejects_reversed_residual_range_quantiles():
+    # An upper residual-range quantile below the lower one (0.05 < 0.95) is rejected with invalid
+    # input instead of collapsing every histogram into one bin
+    # (test_run_js_comp_test_rejects_reversed_residual_range_quantiles in the Fortran suite).
+    gene_means = np.array([[1.0, 1.0], [5.0, 5.0]], dtype=np.float64, order='F')
+    gene_means_perms = np.array([[1, 1], [2, 2]], dtype=np.int32, order='F')
+    residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
+    residuals[:, 0, 0] = [-1.0, 1.0]
+    residuals[:, 0, 1] = [-3.0, 3.0]
+    x_star = np.array([1.0], dtype=np.float64)
+
+    def call():
+        return run_js_comp_test(n_neighbors=1, gene_means=gene_means, gene_means_perms=gene_means_perms,
+                                residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
+                                min_residuals_per_bin=1, lower_residual_range_quantile=0.95,
+                                upper_residual_range_quantile=0.05)
+
+    assert_error(call, "expected ERR_INVALID_INPUT for upper_residual_range_quantile below the lower one",
+                 ERR_INVALID_INPUT)
+    try:
+        call()
+    except ToxError as error:
+        assert error.argument == "upper_residual_range_quantile", \
+            f"expected the error on upper_residual_range_quantile, got {error.argument!r}"
 
 
 def test_generate_adaptive_js_comp_test_candidates():

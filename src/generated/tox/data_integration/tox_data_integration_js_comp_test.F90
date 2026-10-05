@@ -381,13 +381,15 @@ contains
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for this neighborhood's own lower residual-range bound
             !! (shared_residual_range_low)
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for this neighborhood's own upper residual-range bound
             !! (shared_residual_range_high)
-            !! The minimum valid value is `0.0_real64`.
+            !! The minimum valid value is `lower_residual_range_quantile`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
@@ -405,7 +407,7 @@ contains
         call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=17_int32, min=0_int32)
         call validate_in_range_real(gamma_occupancy, ierr, arg_pos=18_int32, min=above(1.0_real64))
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=19_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=20_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=20_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_all_in_range_real(pooled_residuals, n_residuals, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
@@ -583,13 +585,15 @@ contains
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for this neighborhood's own lower residual-range bound
             !! (shared_residual_range_low)
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for this neighborhood's own upper residual-range bound
             !! (shared_residual_range_high)
-            !! The minimum valid value is `0.0_real64`.
+            !! The minimum valid value is `lower_residual_range_quantile`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
@@ -605,7 +609,7 @@ contains
         call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=19_int32, min=0_int32)
         call validate_in_range_real(gamma_occupancy, ierr, arg_pos=20_int32, min=above(1.0_real64))
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=21_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=22_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=22_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_all_in_range_real(pooled_residuals, n_residuals, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(pooled_residuals_perm, n_residuals, ierr, arg_pos=2_int32, min=1_int32, max=n_residuals)
         if (is_err(ierr)) return
@@ -1047,13 +1051,15 @@ contains
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for this neighborhood's own lower residual-range bound
             !! (shared_residual_range_low)
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for this neighborhood's own upper residual-range bound
             !! (shared_residual_range_high)
-            !! The minimum valid value is `0.0_real64`.
+            !! The minimum valid value is `lower_residual_range_quantile`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
@@ -1073,7 +1079,7 @@ contains
         call validate_in_range_int(m_max, ierr, arg_pos=19_int32, min=1_int32, max=MAX_N_BINS)
         call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=20_int32, min=0_int32)
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=21_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=22_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=22_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_all_in_range_real(pooled_residuals, n_residuals, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(residual_to_study, n_residuals, ierr, arg_pos=3_int32, min=1_int32, max=n_studies)
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=17_int32); end if
@@ -1278,13 +1284,15 @@ contains
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for this neighborhood's own lower residual-range bound
             !! (shared_residual_range_low)
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for this neighborhood's own upper residual-range bound
             !! (shared_residual_range_high)
-            !! The minimum valid value is `0.0_real64`.
+            !! The minimum valid value is `lower_residual_range_quantile`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
@@ -1300,7 +1308,7 @@ contains
         call validate_in_range_int(m_max, ierr, arg_pos=23_int32, min=1_int32, max=MAX_N_BINS)
         call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=24_int32, min=0_int32)
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=25_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=26_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=26_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_all_in_range_real(pooled_residuals, n_residuals, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(pooled_residuals_perm, n_residuals, ierr, arg_pos=2_int32, min=1_int32, max=n_residuals)
         call validate_all_in_range_int(residual_to_study, n_residuals, ierr, arg_pos=4_int32, min=1_int32, max=n_studies)
@@ -3088,13 +3096,15 @@ contains
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for each reference point's own lower residual-range bound,
             !! forwarded to the bin-count search
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for each reference point's own upper residual-range bound,
             !! forwarded to the bin-count search
-            !! The minimum valid value is `0.0_real64`.
+            !! The minimum valid value is `lower_residual_range_quantile`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         integer(int32), intent(in), optional :: bin_count_mode
@@ -3155,7 +3165,7 @@ contains
         call validate_in_range_int(m_max, ierr, arg_pos=38_int32, min=1_int32, max=MAX_N_BINS)
         call validate_in_range_real(gamma_occupancy, ierr, arg_pos=39_int32, min=above(1.0_real64))
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=40_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=41_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=41_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(gene_means_perms, max_n_genes_all_studies * n_studies, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, allow_nan=.true._c_bool)
@@ -3615,13 +3625,15 @@ contains
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for each reference point's own lower residual-range bound,
             !! forwarded to the bin-count search
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for each reference point's own upper residual-range bound,
             !! forwarded to the bin-count search
-            !! The minimum valid value is `0.0_real64`.
+            !! The minimum valid value is `lower_residual_range_quantile`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         integer(int32), intent(in), optional :: bin_count_mode
@@ -3666,7 +3678,7 @@ contains
         call validate_in_range_int(m_max, ierr, arg_pos=54_int32, min=1_int32, max=MAX_N_BINS)
         call validate_in_range_real(gamma_occupancy, ierr, arg_pos=55_int32, min=above(1.0_real64))
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=56_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=57_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=57_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(gene_means_perms, max_n_genes_all_studies * n_studies, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, allow_nan=.true._c_bool)
@@ -3955,12 +3967,14 @@ contains
             !! The default value is `1.25_real64`.
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for each reference point's lower residual-range bound
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for each reference point's upper residual-range bound
-            !! The minimum valid value is `0.0_real64`.
+            !! The minimum valid value is `lower_residual_range_quantile`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         integer(int32), intent(in), optional :: bin_count_mode
@@ -4021,7 +4035,7 @@ contains
         call validate_in_range_int(m_max, ierr, arg_pos=35_int32, min=1_int32, max=MAX_N_BINS)
         call validate_in_range_real(gamma_occupancy, ierr, arg_pos=36_int32, min=above(1.0_real64))
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=37_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=38_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=38_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(pooled_neighborhood_range, 2 * n_points, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies*n_studies)
@@ -4382,12 +4396,14 @@ contains
             !! The default value is `1.25_real64`.
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for each reference point's lower residual-range bound
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for each reference point's upper residual-range bound
-            !! The minimum valid value is `0.0_real64`.
+            !! The minimum valid value is `lower_residual_range_quantile`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         integer(int32), intent(in), optional :: bin_count_mode
@@ -4431,7 +4447,7 @@ contains
         call validate_in_range_int(m_max, ierr, arg_pos=52_int32, min=1_int32, max=MAX_N_BINS)
         call validate_in_range_real(gamma_occupancy, ierr, arg_pos=53_int32, min=above(1.0_real64))
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=54_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=55_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=55_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(pooled_neighborhood_range, 2 * n_points, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies*n_studies)
@@ -4938,13 +4954,15 @@ contains
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for each reference point's own lower residual-range bound,
             !! forwarded to the bin-count search
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for each reference point's own upper residual-range bound,
             !! forwarded to the bin-count search
-            !! The minimum valid value is `0.0_real64`.
+            !! The minimum valid value is `lower_residual_range_quantile`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
@@ -5047,7 +5065,7 @@ contains
         call validate_in_range_int(m_max, ierr, arg_pos=47_int32, min=1_int32, max=MAX_N_BINS)
         call validate_in_range_real(gamma_occupancy, ierr, arg_pos=48_int32, min=above(1.0_real64))
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=49_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=50_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=50_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=51_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
@@ -5835,13 +5853,15 @@ contains
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for each reference point's own lower residual-range bound,
             !! forwarded to the bin-count search
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for each reference point's own upper residual-range bound,
             !! forwarded to the bin-count search
-            !! The minimum valid value is `0.0_real64`.
+            !! The minimum valid value is `lower_residual_range_quantile`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
@@ -5900,7 +5920,7 @@ contains
         call validate_in_range_int(m_max, ierr, arg_pos=92_int32, min=1_int32, max=MAX_N_BINS)
         call validate_in_range_real(gamma_occupancy, ierr, arg_pos=93_int32, min=above(1.0_real64))
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=94_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=95_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=95_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=96_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
@@ -6403,12 +6423,14 @@ contains
             !! The default value is `1.25_real64`.
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for each reference point's lower residual-range bound
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for each reference point's upper residual-range bound
-            !! The minimum valid value is `0.0_real64`.
+            !! The minimum valid value is `lower_residual_range_quantile`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
@@ -6531,7 +6553,7 @@ contains
         call validate_in_range_int(m_max, ierr, arg_pos=54_int32, min=1_int32, max=MAX_N_BINS)
         call validate_in_range_real(gamma_occupancy, ierr, arg_pos=55_int32, min=above(1.0_real64))
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=56_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=57_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=57_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=58_int32, min=0.0_real64, max=100.0_real64)
         call validate_in_range_real(tau, ierr, arg_pos=60_int32, min=0.0_real64)
         call validate_in_range_real(mad_distance_factor, ierr, arg_pos=61_int32, min=0.0_real64)
@@ -7255,12 +7277,14 @@ contains
             !! The default value is `1.25_real64`.
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for each reference point's lower residual-range bound
+            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
+            !! with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
         real(real64), intent(in), optional :: upper_residual_range_quantile
             !! Quantile in [0,1] for each reference point's upper residual-range bound
-            !! The minimum valid value is `0.0_real64`.
+            !! The minimum valid value is `lower_residual_range_quantile`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
         real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
@@ -7338,7 +7362,7 @@ contains
         call validate_in_range_int(m_max, ierr, arg_pos=100_int32, min=1_int32, max=MAX_N_BINS)
         call validate_in_range_real(gamma_occupancy, ierr, arg_pos=101_int32, min=above(1.0_real64))
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=102_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=103_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=103_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=104_int32, min=0.0_real64, max=100.0_real64)
         call validate_in_range_real(tau, ierr, arg_pos=106_int32, min=0.0_real64)
         call validate_in_range_real(mad_distance_factor, ierr, arg_pos=107_int32, min=0.0_real64)
