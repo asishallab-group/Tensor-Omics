@@ -359,8 +359,8 @@ contains
         real(real64) :: x_star_val
 
         ! Process each reference point
-        do concurrent(i_point=1:n_points) local(last_gene, x_star_val, x_star_idx, left_gene, right_gene) &
-                shared(x_star, neighborhood_indices, n_neighbors, mean_S, mean_S_perm)
+        do concurrent(i_point=1:n_points) local(last_gene, x_star_val, x_star_idx, left_gene, right_gene, i_neighbor) &
+                shared(x_star, neighborhood_indices, neighborhood_range, n_neighbors, n_genes_S, mean_S, mean_S_perm)
             associate ( &
                 nhood_range_min => neighborhood_range(1, i_point), &
                 nhood_range_max => neighborhood_range(2, i_point) &
@@ -380,7 +380,7 @@ contains
                     nhood_range_max = min(n_genes_S, n_neighbors)
 
                     ! The first `n_neighbors` genes are the closest to `x_star_val`
-                    do concurrent(i_neighbor=1:n_neighbors) local(gene_idx) shared(n_genes_S, neighborhood_indices, i_point)
+                    do concurrent(i_neighbor=1:n_neighbors) local(gene_idx) shared(n_genes_S, neighborhood_indices, mean_S_perm, i_point)
                         if (i_neighbor <= n_genes_S) then
                             gene_idx = mean_S_perm(i_neighbor)
                         else

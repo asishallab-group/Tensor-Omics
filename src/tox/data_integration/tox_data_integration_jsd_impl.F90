@@ -183,12 +183,13 @@ contains
         filter_neighbors = present(neighbor_mask)
 
         ! 1. assign the bins to the residuals (increase the respective count)
-        ! outer loop cannot be concurrent, as counts of same residuals and bins but different neighbors might be changed at the same time
+        ! The outer (i_point) loop is concurrent: each iteration only changes its own counts(i_point, :).
         ! inner (i_neighbor) loop must be a plain sequential `do`: different neighbors can hit the same
         ! (i_point, bin_idx) count simultaneously, so `counts(i_point, bin_idx) = counts(i_point, bin_idx) + 1`
         ! would be a data race under `do concurrent`.
-        do concurrent(i_point=1:n_points) local(included_reps, bin_width, bin_idx, clamped_residual) &
-                shared(included_n_reps, n_bins_per_point, shared_residual_range_low, shared_residual_range_high)
+        do concurrent(i_point=1:n_points) local(included_reps, bin_width, bin_idx, clamped_residual, i_neighbor, i_rep) &
+                shared(included_n_reps, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                       neighborhood_residuals, neighbor_mask, filter_neighbors, counts, n_neighbors, n_reps)
             ! Guard against a zero-or-negative range (e.g. the 0.0/0.0 degenerate fallback
             ! `determine_bin_count_occupancy_impl` returns when all pooled residuals are NaN): fall
             ! back to a fixed bin width so every (clamped) residual deterministically lands in a
