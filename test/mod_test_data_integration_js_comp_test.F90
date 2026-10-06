@@ -81,6 +81,7 @@ module mod_test_data_integration_js_comp_test
         logical(c_bool), allocatable :: trace_occ_failed(:, :)
         real(real64), allocatable :: range_low(:), range_high(:), ci(:, :), trace_jsd(:, :), trace_ci_lower(:, :)
         real(real64), allocatable :: trace_ci_upper(:, :), trace_ci_width(:, :), trace_ci_width_rel(:, :)
+        real(real64), allocatable :: trace_ci_overlap(:, :)
         real(real64), allocatable :: trace_delta(:, :), trace_mean_occ(:, :), trace_range_low(:, :), trace_range_high(:, :)
     end type adaptive_search_outputs
 
@@ -102,6 +103,7 @@ module mod_test_data_integration_js_comp_test
         logical(c_bool), allocatable :: trace_occ_failed(:, :)
         real(real64), allocatable :: range_low(:), range_high(:), ci(:, :), trace_jsd(:, :), trace_ci_lower(:, :)
         real(real64), allocatable :: trace_ci_upper(:, :), trace_ci_width(:, :), trace_ci_width_rel(:, :)
+        real(real64), allocatable :: trace_ci_overlap(:, :)
         real(real64), allocatable :: trace_delta(:, :), trace_mean_occ(:, :), trace_range_low(:, :), trace_range_high(:, :)
     end type fixed_k_search_outputs
 
@@ -110,7 +112,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(227))
+        allocate (all_tests(228))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -574,6 +576,8 @@ contains
                                   test_adaptive_bounds_rejects_pool_beyond_int32)
         all_tests(227) = test_case("test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins", &
                                   test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins)
+        all_tests(228) = test_case("test_check_plateau_condition_ci_overlap_fractional_values", &
+                                   test_check_plateau_condition_ci_overlap_fractional_values)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -1289,6 +1293,7 @@ contains
         real(real64) :: confidence_interval(2, n_studies), best_ci(2, n_studies)
         integer(int32) :: best_candidate_index, best_exceeded_count, ierr
         logical(c_bool) :: plateau_found
+        real(real64) :: ci_overlap(n_studies)
 
         ! Study 1,2: candidate fully inside the wide best interval -> overlap 1.0 (passes).
         ! Study 3: candidate far outside the best interval -> overlap 0.0 (fails).
@@ -1302,7 +1307,10 @@ contains
         best_exceeded_count = 0_int32
 
         call check_plateau_condition(confidence_interval, best_ci, n_studies, best_candidate_index, &
-                                     best_exceeded_count, 1_int32, METHOD_JOIN_MIN, 0.9_real64, plateau_found, ierr)
+                                     best_exceeded_count, 1_int32, METHOD_JOIN_MIN, 0.9_real64, ci_overlap, plateau_found, ierr)
+
+        call assert_equal_array_real(ci_overlap, [1.0_real64, 1.0_real64, 0.0_real64], 3_int32, TOL, &
+                                     "test_check_plateau_condition_join_min_requires_all: 2-of-3 ci_overlap")
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_check_plateau_condition_join_min_requires_all: 2-of-3 ierr should be OK")
@@ -1319,7 +1327,10 @@ contains
         best_exceeded_count = 0_int32
 
         call check_plateau_condition(confidence_interval, best_ci, n_studies, best_candidate_index, &
-                                     best_exceeded_count, 1_int32, METHOD_JOIN_MIN, 0.9_real64, plateau_found, ierr)
+                                     best_exceeded_count, 1_int32, METHOD_JOIN_MIN, 0.9_real64, ci_overlap, plateau_found, ierr)
+
+        call assert_equal_array_real(ci_overlap, [1.0_real64, 1.0_real64, 1.0_real64], 3_int32, TOL, &
+                                     "test_check_plateau_condition_join_min_requires_all: 3-of-3 ci_overlap")
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_check_plateau_condition_join_min_requires_all: 3-of-3 ierr should be OK")
@@ -1334,6 +1345,7 @@ contains
         real(real64) :: confidence_interval(2, n_studies), best_ci(2, n_studies)
         integer(int32) :: best_candidate_index, best_exceeded_count, ierr
         logical(c_bool) :: plateau_found
+        real(real64) :: ci_overlap(n_studies)
 
         confidence_interval(:, 1) = [-2.0_real64, -1.0_real64]
         confidence_interval(:, 2) = [-2.0_real64, -1.0_real64]
@@ -1345,7 +1357,10 @@ contains
         best_exceeded_count = 0_int32
 
         call check_plateau_condition(confidence_interval, best_ci, n_studies, best_candidate_index, &
-                                     best_exceeded_count, 1_int32, METHOD_JOIN_MAX, 0.9_real64, plateau_found, ierr)
+                                     best_exceeded_count, 1_int32, METHOD_JOIN_MAX, 0.9_real64, ci_overlap, plateau_found, ierr)
+
+        call assert_equal_array_real(ci_overlap, [0.0_real64, 0.0_real64, 0.0_real64], 3_int32, TOL, &
+                                     "test_check_plateau_condition_join_max_requires_any: 0-of-3 ci_overlap")
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_check_plateau_condition_join_max_requires_any: 0-of-3 ierr should be OK")
@@ -1360,7 +1375,10 @@ contains
         best_exceeded_count = 0_int32
 
         call check_plateau_condition(confidence_interval, best_ci, n_studies, best_candidate_index, &
-                                     best_exceeded_count, 1_int32, METHOD_JOIN_MAX, 0.9_real64, plateau_found, ierr)
+                                     best_exceeded_count, 1_int32, METHOD_JOIN_MAX, 0.9_real64, ci_overlap, plateau_found, ierr)
+
+        call assert_equal_array_real(ci_overlap, [1.0_real64, 0.0_real64, 0.0_real64], 3_int32, TOL, &
+                                     "test_check_plateau_condition_join_max_requires_any: 1-of-3 ci_overlap")
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_check_plateau_condition_join_max_requires_any: 1-of-3 ierr should be OK")
@@ -1375,6 +1393,7 @@ contains
         real(real64) :: confidence_interval(2, n_studies), best_ci(2, n_studies)
         integer(int32) :: best_candidate_index, best_exceeded_count, ierr
         logical(c_bool) :: plateau_found
+        real(real64) :: ci_overlap(n_studies)
 
         confidence_interval(:, 1) = [0.4_real64, 0.6_real64]
         confidence_interval(:, 2) = [-2.0_real64, -1.0_real64]
@@ -1386,7 +1405,10 @@ contains
         best_exceeded_count = 0_int32
 
         call check_plateau_condition(confidence_interval, best_ci, n_studies, best_candidate_index, &
-                                     best_exceeded_count, 1_int32, METHOD_JOIN_MEDIAN, 0.9_real64, plateau_found, ierr)
+                                     best_exceeded_count, 1_int32, METHOD_JOIN_MEDIAN, 0.9_real64, ci_overlap, plateau_found, ierr)
+
+        call assert_equal_array_real(ci_overlap, [1.0_real64, 0.0_real64, 0.0_real64], 3_int32, TOL, &
+                                     "test_check_plateau_condition_join_median_requires_majority: 1-of-3 ci_overlap")
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_check_plateau_condition_join_median_requires_majority: 1-of-3 ierr should be OK")
@@ -1401,7 +1423,10 @@ contains
         best_exceeded_count = 0_int32
 
         call check_plateau_condition(confidence_interval, best_ci, n_studies, best_candidate_index, &
-                                     best_exceeded_count, 1_int32, METHOD_JOIN_MEDIAN, 0.9_real64, plateau_found, ierr)
+                                     best_exceeded_count, 1_int32, METHOD_JOIN_MEDIAN, 0.9_real64, ci_overlap, plateau_found, ierr)
+
+        call assert_equal_array_real(ci_overlap, [1.0_real64, 1.0_real64, 0.0_real64], 3_int32, TOL, &
+                                     "test_check_plateau_condition_join_median_requires_majority: 2-of-3 ci_overlap")
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_check_plateau_condition_join_median_requires_majority: 2-of-3 ierr should be OK")
@@ -1418,6 +1443,7 @@ contains
         real(real64) :: confidence_interval(2, n_studies), best_ci(2, n_studies), expected_best_ci(2, n_studies)
         integer(int32) :: best_candidate_index, best_exceeded_count, ierr
         logical(c_bool) :: plateau_found
+        real(real64) :: ci_overlap(n_studies)
 
         ! New candidate: both studies clearly fail the overlap check against best_ci below.
         confidence_interval(:, 1) = [-5.0_real64, -4.0_real64]
@@ -1427,9 +1453,13 @@ contains
         expected_best_ci = best_ci
         best_candidate_index = 5_int32
         best_exceeded_count = 2_int32
+        ci_overlap = -7.0_real64 ! must be overwritten even though the worse-than-best shortcut fires
 
         call check_plateau_condition(confidence_interval, best_ci, n_studies, best_candidate_index, &
-                                     best_exceeded_count, 9_int32, METHOD_JOIN_MIN, 0.5_real64, plateau_found, ierr)
+                                     best_exceeded_count, 9_int32, METHOD_JOIN_MIN, 0.5_real64, ci_overlap, plateau_found, ierr)
+
+        call assert_equal_array_real(ci_overlap, [0.0_real64, 0.0_real64], 2_int32, TOL, &
+                                     "test_check_plateau_condition_worse_than_previous_short_circuits: worse candidate ci_overlap")
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_check_plateau_condition_worse_than_previous_short_circuits: ierr should be OK")
@@ -1446,6 +1476,35 @@ contains
                                      "test_check_plateau_condition_worse_than_previous_short_circuits: "// &
                                      "best_candidate_pair_confidence_interval must not be overwritten")
     end subroutine test_check_plateau_condition_worse_than_previous_short_circuits
+
+    !> The per-study overlaps are fractions of the candidate's own interval width, not just 0 or 1:
+    !| against the best interval `[0, 1]`, `[0.4, 0.6]` lies inside (1.0), `[-0.5, 0.5]` shares half
+    !| of its width (0.5), `[-2, -1]` shares nothing (0.0), and `[0, 2]` is twice as wide as the best
+    !| interval so only half of the candidate is covered (0.5, the candidate's width is the
+    !| denominator). `ci_overlap` is pre-filled with a sentinel to show every entry is written.
+    subroutine test_check_plateau_condition_ci_overlap_fractional_values()
+        integer(int32), parameter :: n_studies = 4
+        real(real64) :: confidence_interval(2, n_studies), best_ci(2, n_studies), ci_overlap(n_studies)
+        integer(int32) :: best_candidate_index, best_exceeded_count, ierr
+        logical(c_bool) :: plateau_found
+
+        confidence_interval(:, 1) = [0.4_real64, 0.6_real64]
+        confidence_interval(:, 2) = [-0.5_real64, 0.5_real64]
+        confidence_interval(:, 3) = [-2.0_real64, -1.0_real64]
+        confidence_interval(:, 4) = [0.0_real64, 2.0_real64]
+        best_ci = spread([0.0_real64, 1.0_real64], 2, n_studies)
+        best_candidate_index = 0_int32
+        best_exceeded_count = 0_int32
+        ci_overlap = -7.0_real64
+
+        call check_plateau_condition(confidence_interval, best_ci, n_studies, best_candidate_index, &
+                                     best_exceeded_count, 1_int32, METHOD_JOIN_MIN, 0.9_real64, ci_overlap, plateau_found, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_check_plateau_condition_ci_overlap_fractional_values: ierr should be OK")
+        call assert_equal_array_real(ci_overlap, [1.0_real64, 0.5_real64, 0.0_real64, 0.5_real64], n_studies, TOL, &
+                                     "test_check_plateau_condition_ci_overlap_fractional_values: ci_overlap")
+    end subroutine test_check_plateau_condition_ci_overlap_fractional_values
 
     !> `has_previous = .false.` (the very first admissible candidate): no transition exists, so
     !| `delta`/`delta_median`/`delta_max` must all be the `-1.0` sentinel, `n_consecutive_ok` must
@@ -2983,7 +3042,8 @@ contains
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
+            trace_ci_overlap(n_studies, 16)
         real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study
 
@@ -3016,7 +3076,8 @@ contains
                                                best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
-                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, &
+                                               trace_ci_overlap, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
@@ -3079,7 +3140,8 @@ contains
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
+            trace_ci_overlap(n_studies, 16)
         real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study
 
@@ -3112,7 +3174,8 @@ contains
                                                best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
-                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, &
+                                               trace_ci_overlap, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
@@ -3136,6 +3199,10 @@ contains
                          best_candidate_pair_confidence_interval(2, 1) <= 1.0_real64, &
                          "test_param_search_single_candidate_bypasses_plateau: "// &
                          "relaxed gates let bootstrap actually run, giving a real (not -1.0) CI")
+
+        call assert_equal_array_real(trace_ci_overlap(:, 1), [-1.0_real64, -1.0_real64], 2_int32, TOL, &
+                                     "test_param_search_single_candidate_bypasses_plateau: "// &
+                                     "the first admissible candidate's trace_ci_overlap is the -1.0 sentinel")
     end subroutine test_param_search_single_candidate_bypasses_plateau
 
     !> Exercises the search's actual "success" path: stopping at a genuine mid-grid plateau, rather
@@ -3199,7 +3266,8 @@ contains
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
+            trace_ci_overlap(n_studies, 16)
         real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study
 
@@ -3232,7 +3300,8 @@ contains
                                                best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
-                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, &
+                                               trace_ci_overlap, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
@@ -3276,6 +3345,13 @@ contains
                                      "test_param_search_finds_plateau_mid_grid: trace_ci_width_relative(:,1) is 0.0")
         call assert_equal_array_real(trace_ci_width_relative(:, 2), [0.0_real64, 0.0_real64], 2_int32, TOL, &
                                      "test_param_search_finds_plateau_mid_grid: trace_ci_width_relative(:,2) is 0.0")
+
+        ! Slot 1 has no previous best: the -1.0 sentinel. Slot 2's zero-width interval [0, 0] lies
+        ! inside the best so far (slot 1's [0, 0]), so it overlaps fully: 1.0.
+        call assert_equal_array_real(trace_ci_overlap(:, 1), [-1.0_real64, -1.0_real64], 2_int32, TOL, &
+                                     "test_param_search_finds_plateau_mid_grid: trace_ci_overlap(:,1) is the -1.0 sentinel")
+        call assert_equal_array_real(trace_ci_overlap(:, 2), [1.0_real64, 1.0_real64], 2_int32, TOL, &
+                                     "test_param_search_finds_plateau_mid_grid: trace_ci_overlap(:,2) is 1.0")
 
         ! Slot 1 is the first admissible candidate -- no predecessor to diff against, so the
         ! effect-size trace is the -1.0 sentinel throughout, never a real (mis-)computed value.
@@ -3342,7 +3418,8 @@ contains
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
+            trace_ci_overlap(n_studies, 16)
         real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study
 
@@ -3375,7 +3452,8 @@ contains
                                                best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
-                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, &
+                                               trace_ci_overlap, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
@@ -3430,7 +3508,8 @@ contains
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
+            trace_ci_overlap(n_studies, 16)
         real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study
 
@@ -3463,7 +3542,8 @@ contains
                                                best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
-                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, &
+                                               trace_ci_overlap, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
@@ -3487,6 +3567,53 @@ contains
                               "test_param_search_both_mode_uses_earlier_trigger: "// &
                               "stops at the second candidate's n_neighbors")
     end subroutine test_param_search_both_mode_uses_earlier_trigger
+
+    !> Test helper: checks a search's `trace_ci_overlap` against the traced confidence intervals.
+    !| Column 1 (the first admissible candidate, no previous best) must be the `-1.0` sentinel.
+    !| Every later column must be, per study, the fraction of that candidate's interval
+    !| `[lower, upper]` covered by the interval of the candidate before it,
+    !| `max(0, min(upper, previous_upper) - max(lower, previous_lower)) / (upper - lower)`
+    !| (1.0 for a zero-width interval inside the previous one, else 0.0). The previous column
+    !| is the running best only while no candidate was worse than its predecessor, which holds for
+    !| the callers' no-plateau runs, where every candidate becomes the new best in turn.
+    subroutine assert_ci_overlap_trace_vs_previous_column(trace_ci_lower, trace_ci_upper, trace_ci_overlap, n_studies, &
+                                                          n_admissible, name)
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies (rows of every trace array)
+        integer(int32), intent(in) :: n_admissible
+            !! Number of admissible candidates (leading columns to check)
+        real(real64), intent(in) :: trace_ci_lower(n_studies, 16)
+            !! Traced interval lower bounds
+        real(real64), intent(in) :: trace_ci_upper(n_studies, 16)
+            !! Traced interval upper bounds
+        real(real64), intent(in) :: trace_ci_overlap(n_studies, 16)
+            !! Traced overlaps under test
+        character(len=*), intent(in) :: name
+            !! Message prefix
+        real(real64) :: expected(n_studies)
+        integer(int32) :: i_candidate, i_study
+
+        call assert_equal_array_real(trace_ci_overlap(:, 1), [(-1.0_real64, i_study=1, n_studies)], n_studies, TOL, &
+                                     name//"trace_ci_overlap column 1 is the -1.0 sentinel")
+        do i_candidate = 2, n_admissible
+            do i_study = 1, n_studies
+                if (trace_ci_upper(i_study, i_candidate) > trace_ci_lower(i_study, i_candidate)) then
+                    expected(i_study) = max(0.0_real64, min(trace_ci_upper(i_study, i_candidate), &
+                                                            trace_ci_upper(i_study, i_candidate - 1)) &
+                                            - max(trace_ci_lower(i_study, i_candidate), &
+                                                  trace_ci_lower(i_study, i_candidate - 1))) &
+                                        /(trace_ci_upper(i_study, i_candidate) - trace_ci_lower(i_study, i_candidate))
+                else if (trace_ci_lower(i_study, i_candidate - 1) <= trace_ci_upper(i_study, i_candidate) .and. &
+                         trace_ci_upper(i_study, i_candidate - 1) >= trace_ci_upper(i_study, i_candidate)) then
+                    expected(i_study) = 1.0_real64
+                else
+                    expected(i_study) = 0.0_real64
+                end if
+            end do
+            call assert_equal_array_real(trace_ci_overlap(:, i_candidate), expected, n_studies, TOL, &
+                                         name//"trace_ci_overlap equals the overlap with the previous candidate's interval")
+        end do
+    end subroutine assert_ci_overlap_trace_vs_previous_column
 
     !> Exercises the new Issue #178 no-plateau fallback (`plateau_established = .false.` +
     !| smallest-bootstrap-uncertainty candidate selection), which only the tests above never
@@ -3542,7 +3669,8 @@ contains
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
+            trace_ci_overlap(n_studies, 16)
         real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study, i_rep, k
 
@@ -3581,7 +3709,8 @@ contains
                                                best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
-                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, &
+                                               trace_ci_overlap, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
@@ -3615,6 +3744,10 @@ contains
                                      [9.3509303187972945e-04_real64, 1.8663009912309732e-02_real64], 2_int32, TOL, &
                                      "test_param_search_no_plateau_uses_smallest_uncertainty: study 2 CI")
 
+        call assert_ci_overlap_trace_vs_previous_column(trace_ci_lower, trace_ci_upper, trace_ci_overlap, n_studies, &
+                                                        n_admissible_evaluated, &
+                                                        "test_param_search_no_plateau_uses_smallest_uncertainty: ")
+
     end subroutine test_param_search_no_plateau_uses_smallest_uncertainty
 
     !> Same LCG-residual fixture as `test_param_search_no_plateau_uses_smallest_uncertainty`
@@ -3644,7 +3777,8 @@ contains
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
+            trace_ci_overlap(n_studies, 16)
         real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study, i_rep, k
 
@@ -3683,7 +3817,8 @@ contains
                                                best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
-                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, &
+                                               trace_ci_overlap, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
@@ -3740,7 +3875,8 @@ contains
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
+            trace_ci_overlap(n_studies, 16)
         real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study, i_rep, k
 
@@ -3779,7 +3915,8 @@ contains
                                                best_candidate_pair_confidence_interval, plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
-                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, &
+                                               trace_ci_overlap, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
@@ -3857,7 +3994,8 @@ contains
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
+            trace_ci_overlap(n_studies, 16)
         real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study
 
@@ -3891,7 +4029,8 @@ contains
                                                plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
-                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, &
+                                               trace_ci_overlap, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
@@ -3995,7 +4134,8 @@ contains
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
+            trace_ci_overlap(n_studies, 16)
         real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
 
         do i_study = 1, n_studies
@@ -4038,7 +4178,8 @@ contains
                                                plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
-                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, &
+                                               trace_ci_overlap, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
@@ -4118,7 +4259,8 @@ contains
         logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
+            trace_ci_overlap(n_studies, 16)
         real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study, i_rep, k, t, selected_column
 
@@ -4158,7 +4300,8 @@ contains
                                                plateau_established, &
                                                n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
-                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, &
+                                               trace_ci_overlap, trace_delta, &
                                                trace_delta_median, trace_delta_max, &
                                                trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
                                                trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
@@ -7954,6 +8097,7 @@ contains
         allocate (out%n_bins(cap), out%range_low(cap), out%range_high(cap), out%ci(2, n_studies), &
                   out%trace_jsd(n_studies, 16), out%trace_ci_lower(n_studies, 16), out%trace_ci_upper(n_studies, 16), &
                   out%trace_ci_width(n_studies, 16), out%trace_ci_width_rel(n_studies, 16), &
+                  out%trace_ci_overlap(n_studies, 16), &
                   out%trace_delta(n_studies, 16), out%trace_n_bins(cap, 16), out%trace_occ_failed(cap, 16), &
                   out%trace_n_pooled(cap, 16), out%trace_min_occ(cap, 16), out%trace_mean_occ(cap, 16), &
                   out%trace_max_occ(cap, 16), out%trace_sturges(cap, 16), out%trace_fd(cap, 16), &
@@ -7968,7 +8112,8 @@ contains
                                                         out%plateau, out%n_admissible, out%trace_k_start, out%trace_k_step, &
                                                         out%trace_k_max, out%trace_n_points, out%trace_jsd, &
                                                         out%trace_ci_lower, out%trace_ci_upper, out%trace_ci_width, &
-                                                        out%trace_ci_width_rel, out%trace_delta, out%trace_delta_median, &
+                                                        out%trace_ci_width_rel, out%trace_ci_overlap, out%trace_delta, &
+                                                        out%trace_delta_median, &
                                                         out%trace_delta_max, out%trace_n_bins, out%trace_occ_failed, &
                                                         out%trace_n_pooled, out%trace_min_occ, out%trace_mean_occ, &
                                                         out%trace_max_occ, out%trace_sturges, out%trace_fd, &
@@ -8140,6 +8285,10 @@ contains
         call assert_equal_int(count(widths == widths(t_best)), 1_int32, name//"unique smallest uncertainty")
         ! Not candidate 1, so the fallback is distinguishable from "nothing admissible, take the first".
         call assert_true(t_best > 1, name//"smallest uncertainty is not candidate 1")
+        ! No CI plateau, so every candidate became the running best in turn: each overlap is
+        ! against the candidate before it.
+        call assert_ci_overlap_trace_vs_previous_column(out%trace_ci_lower, out%trace_ci_upper, out%trace_ci_overlap, &
+                                                        2_int32, 4_int32, name)
 
         n_pts = out%trace_n_points(t_best)
         call assert_equal_array_int([out%k_start, out%k_step, out%k_max], &
@@ -10311,7 +10460,8 @@ contains
         allocate (out%n_bins(max_points), out%range_low(max_points), out%range_high(max_points), &
                   out%ci(2, n_studies), out%trace_jsd(n_studies, 16), out%trace_ci_lower(n_studies, 16), &
                   out%trace_ci_upper(n_studies, 16), out%trace_ci_width(n_studies, 16), &
-                  out%trace_ci_width_rel(n_studies, 16), out%trace_delta(n_studies, 16), &
+                  out%trace_ci_width_rel(n_studies, 16), out%trace_ci_overlap(n_studies, 16), &
+                  out%trace_delta(n_studies, 16), &
                   out%trace_n_bins(max_points, 16), out%trace_occ_failed(max_points, 16), &
                   out%trace_n_pooled(max_points, 16), out%trace_min_occ(max_points, 16), &
                   out%trace_mean_occ(max_points, 16), out%trace_max_occ(max_points, 16), &
@@ -10324,7 +10474,8 @@ contains
                                                out%plateau, out%n_admissible, out%trace_n_points, &
                                                out%trace_n_neighbors, out%trace_jsd, out%trace_ci_lower, &
                                                out%trace_ci_upper, out%trace_ci_width, out%trace_ci_width_rel, &
-                                               out%trace_delta, out%trace_delta_median, out%trace_delta_max, &
+                                               out%trace_ci_overlap, out%trace_delta, out%trace_delta_median, &
+                                               out%trace_delta_max, &
                                                out%trace_n_bins, out%trace_occ_failed, out%trace_n_pooled, &
                                                out%trace_min_occ, out%trace_mean_occ, out%trace_max_occ, &
                                                out%trace_sturges, out%trace_fd, out%trace_range_low, &
@@ -10532,6 +10683,7 @@ contains
                   out%range_high(max_n_points_candidate), out%ci(2, n_studies), out%trace_jsd(n_studies, 16), &
                   out%trace_ci_lower(n_studies, 16), out%trace_ci_upper(n_studies, 16), &
                   out%trace_ci_width(n_studies, 16), out%trace_ci_width_rel(n_studies, 16), &
+                  out%trace_ci_overlap(n_studies, 16), &
                   out%trace_delta(n_studies, 16), out%trace_n_bins(max_n_points_candidate, 16), &
                   out%trace_occ_failed(max_n_points_candidate, 16), out%trace_n_pooled(max_n_points_candidate, 16), &
                   out%trace_min_occ(max_n_points_candidate, 16), out%trace_mean_occ(max_n_points_candidate, 16), &
@@ -10545,7 +10697,8 @@ contains
                                                out%range_high, out%ci, out%plateau, out%n_admissible, &
                                                out%trace_n_points, out%trace_n_neighbors, out%trace_jsd, &
                                                out%trace_ci_lower, out%trace_ci_upper, out%trace_ci_width, &
-                                               out%trace_ci_width_rel, out%trace_delta, out%trace_delta_median, &
+                                               out%trace_ci_width_rel, out%trace_ci_overlap, out%trace_delta, &
+                                               out%trace_delta_median, &
                                                out%trace_delta_max, out%trace_n_bins, out%trace_occ_failed, &
                                                out%trace_n_pooled, out%trace_min_occ, out%trace_mean_occ, &
                                                out%trace_max_occ, out%trace_sturges, out%trace_fd, &
@@ -10589,8 +10742,8 @@ contains
 
     !> Test helper: validation-only call of run_js_comp_test_parameter_search for `n_genes` genes
     !| (1 study, 1 replicate) with the given bounds and every output sized by them.
-    !| `min_residuals_per_bin = -1` (argument 38) is always invalid and is validated after the two
-    !| bounds, so the call returns before any search work: at argument 38 when both bounds pass,
+    !| `min_residuals_per_bin = -1` (argument 39) is always invalid and is validated after the two
+    !| bounds, so the call returns before any search work: at argument 39 when both bounds pass,
     !| at 8 or 9 when one of them fails.
     subroutine validate_fixed_k_bounds(n_genes, max_n_points_candidate, max_n_neighbors_candidate, ierr)
         integer(int32), intent(in) :: n_genes
@@ -10611,7 +10764,8 @@ contains
         residuals = 0.0_real64
         allocate (out%n_bins(n_points_alloc), out%range_low(n_points_alloc), out%range_high(n_points_alloc), &
                   out%ci(2, 1), out%trace_jsd(1, 16), out%trace_ci_lower(1, 16), out%trace_ci_upper(1, 16), &
-                  out%trace_ci_width(1, 16), out%trace_ci_width_rel(1, 16), out%trace_delta(1, 16), &
+                  out%trace_ci_width(1, 16), out%trace_ci_width_rel(1, 16), &
+                  out%trace_ci_overlap(1, 16), out%trace_delta(1, 16), &
                   out%trace_n_bins(n_points_alloc, 16), out%trace_occ_failed(n_points_alloc, 16), &
                   out%trace_n_pooled(n_points_alloc, 16), out%trace_min_occ(n_points_alloc, 16), &
                   out%trace_mean_occ(n_points_alloc, 16), out%trace_max_occ(n_points_alloc, 16), &
@@ -10624,7 +10778,8 @@ contains
                                                out%range_high, out%ci, out%plateau, out%n_admissible, &
                                                out%trace_n_points, out%trace_n_neighbors, out%trace_jsd, &
                                                out%trace_ci_lower, out%trace_ci_upper, out%trace_ci_width, &
-                                               out%trace_ci_width_rel, out%trace_delta, out%trace_delta_median, &
+                                               out%trace_ci_width_rel, out%trace_ci_overlap, out%trace_delta, &
+                                               out%trace_delta_median, &
                                                out%trace_delta_max, out%trace_n_bins, out%trace_occ_failed, &
                                                out%trace_n_pooled, out%trace_min_occ, out%trace_mean_occ, &
                                                out%trace_max_occ, out%trace_sturges, out%trace_fd, &
@@ -10635,7 +10790,7 @@ contains
     !> The two lower bounds of run_js_comp_test_parameter_search stay in sync with
     !| calc_js_comp_test_candidate_bounds, for every gene count 1..3000 and then every 997th up to
     !| 200,406. For each count: the producer's bounds pass validation (the call fails only at the
-    !| later argument 38), one below either bound fails at its own position (8 or 9), and the
+    !| later argument 39), one below either bound fails at its own position (8 or 9), and the
     !| producer's bounds cover the real grid: `max_n_points_candidate` equals its first `n_points`
     !| exactly, and `max_n_neighbors_candidate` is at least its largest `n_neighbors`. No search
     !| runs, so the sweep stays cheap.
@@ -10656,7 +10811,7 @@ contains
                 maxval(candidates(2, 1:n_candidates)) > max_neighbors) n_mismatches = n_mismatches + 1_int32
 
             call validate_fixed_k_bounds(n_genes, max_points, max_neighbors, ierr)
-            call assert_err(ierr, ERR_INVALID_INPUT, name//"exact bounds pass, G="//trim(genes_text), 38_int32)
+            call assert_err(ierr, ERR_INVALID_INPUT, name//"exact bounds pass, G="//trim(genes_text), 39_int32)
             call validate_fixed_k_bounds(n_genes, max_points - 1_int32, max_neighbors, ierr)
             call assert_err(ierr, ERR_INVALID_INPUT, name//"points bound - 1 fails, G="//trim(genes_text), 8_int32)
             call validate_fixed_k_bounds(n_genes, max_points, max_neighbors - 1_int32, ierr)

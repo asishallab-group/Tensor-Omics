@@ -2069,6 +2069,7 @@ contains
             candidate_index,&
             join_method,&
             succeeding_ci_overlap,&
+            ci_overlap,&
             plateau_found,&
             ierr&
         )
@@ -2108,6 +2109,15 @@ contains
             !! "exceeded"
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
+        real(real64), dimension(n_studies), intent(out) :: ci_overlap
+            !! Per-study fractional overlap of `confidence_interval` with
+            !! `best_candidate_pair_confidence_interval` as it was on entry (the running best at
+            !! that time, not the candidate tested before this one), relative to the width of the
+            !! new candidate's own interval, in `[0, 1]`: the values `succeeding_ci_overlap` is
+            !! tested against. Filled for every study on every call, also when the new candidate is
+            !! worse than the best and the call plateaus immediately. For the very first candidate
+            !! the caller's best interval is only the `-1.0` seed, so the values carry no meaning
+            !! there (the searches record `-1.0_real64` instead)
         logical(c_bool), intent(out) :: plateau_found
             !! `.true.` once the new candidate is no better than the previous best, or once
             !! `join_method`'s overlap condition is met by the new candidate
@@ -2135,6 +2145,7 @@ contains
             candidate_index = candidate_index,&
             join_method = join_method,&
             succeeding_ci_overlap = succeeding_ci_overlap,&
+            ci_overlap = ci_overlap,&
             plateau_found = plateau_found&
         )
     end subroutine check_plateau_condition
@@ -4732,6 +4743,7 @@ contains
             trace_ci_upper,&
             trace_ci_width,&
             trace_ci_width_relative,&
+            trace_ci_overlap,&
             trace_delta,&
             trace_delta_median,&
             trace_delta_max,&
@@ -4882,6 +4894,17 @@ contains
             !! formula omits this floor, but the same near-zero-JSD instability that motivates
             !! `delta_epsilon` in the `Delta_{i,t}` formula applies here too (a near-zero `J`
             !! destabilizes any ratio that divides by it, whichever candidate's `J` it is)
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_overlap
+            !! Per-admissible-candidate, per-study fractional overlap of the candidate's bootstrapped
+            !! confidence interval with the running best candidate's interval at that moment, in
+            !! `[0, 1]`, from check_plateau_condition_impl: the values `succeeding_ci_overlap` is
+            !! tested against. The running best is the best candidate so far, which is not always
+            !! the candidate just before (a candidate that is no worse than the best so far becomes
+            !! the new best; a worse one ends the search in CI-overlap or both mode); the denominator is this
+            !! candidate's own interval width. `-1.0_real64` throughout at the first admissible
+            !! candidate (no previous best to compare with) -- every other column within
+            !! `1:n_admissible_evaluated` holds a real value
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
@@ -5150,24 +5173,24 @@ contains
         call validate_in_range_int(n_bootstraps, ierr, arg_pos=6_int32, min=1_int32)
         call validate_in_range_int(max_n_points_candidate, ierr, arg_pos=8_int32, min=max(MIN_POINTS, min(ceiling(4.0_real64*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)))
         call validate_in_range_int(max_n_neighbors_candidate, ierr, arg_pos=9_int32, min=max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(0.2_real64*real(max(MIN_POINTS, min(ceiling(4.0_real64*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32)))
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=38_int32, min=0_int32)
-        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=39_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=40_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=42_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=43_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_epsilon, ierr, arg_pos=44_int32, min=above(0.0_real64))
-        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=45_int32, min=1_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=46_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=47_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=48_int32, min=above(1.0_real64))
-        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=49_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=50_int32, min=lower_residual_range_quantile, max=1.0_real64)
-        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=51_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=39_int32, min=0_int32)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=40_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=41_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=43_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=44_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_epsilon, ierr, arg_pos=45_int32, min=above(0.0_real64))
+        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=46_int32, min=1_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=47_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=48_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=49_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=50_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=51_int32, min=lower_residual_range_quantile, max=1.0_real64)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=52_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
-        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=41_int32); end if
-        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=53_int32); end if
+        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=42_int32); end if
+        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=54_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -5247,6 +5270,7 @@ contains
             trace_ci_upper = trace_ci_upper,&
             trace_ci_width = trace_ci_width,&
             trace_ci_width_relative = trace_ci_width_relative,&
+            trace_ci_overlap = trace_ci_overlap,&
             trace_delta = trace_delta,&
             trace_delta_median = trace_delta_median,&
             trace_delta_max = trace_delta_max,&
@@ -5453,6 +5477,7 @@ contains
             trace_ci_upper,&
             trace_ci_width,&
             trace_ci_width_relative,&
+            trace_ci_overlap,&
             trace_delta,&
             trace_delta_median,&
             trace_delta_max,&
@@ -5652,6 +5677,17 @@ contains
             !! formula omits this floor, but the same near-zero-JSD instability that motivates
             !! `delta_epsilon` in the `Delta_{i,t}` formula applies here too (a near-zero `J`
             !! destabilizes any ratio that divides by it, whichever candidate's `J` it is)
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_overlap
+            !! Per-admissible-candidate, per-study fractional overlap of the candidate's bootstrapped
+            !! confidence interval with the running best candidate's interval at that moment, in
+            !! `[0, 1]`, from check_plateau_condition_impl: the values `succeeding_ci_overlap` is
+            !! tested against. The running best is the best candidate so far, which is not always
+            !! the candidate just before (a candidate that is no worse than the best so far becomes
+            !! the new best; a worse one ends the search in CI-overlap or both mode); the denominator is this
+            !! candidate's own interval width. `-1.0_real64` throughout at the first admissible
+            !! candidate (no previous best to compare with) -- every other column within
+            !! `1:n_admissible_evaluated` holds a real value
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
@@ -6013,24 +6049,24 @@ contains
         call validate_in_range_int(max_n_points_candidate, ierr, arg_pos=8_int32, min=max(MIN_POINTS, min(ceiling(4.0_real64*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)))
         call validate_in_range_int(max_n_neighbors_candidate, ierr, arg_pos=9_int32, min=max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(0.2_real64*real(max(MIN_POINTS, min(ceiling(4.0_real64*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32)))
         call validate_in_range_int(n_bootstrapping_top_k_jsds, ierr, arg_pos=10_int32, min=1_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=83_int32, min=0_int32)
-        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=84_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=85_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=87_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=88_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_epsilon, ierr, arg_pos=89_int32, min=above(0.0_real64))
-        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=90_int32, min=1_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=91_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=92_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=93_int32, min=above(1.0_real64))
-        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=94_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=95_int32, min=lower_residual_range_quantile, max=1.0_real64)
-        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=96_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=84_int32, min=0_int32)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=85_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=86_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=88_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=89_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_epsilon, ierr, arg_pos=90_int32, min=above(0.0_real64))
+        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=91_int32, min=1_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=92_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=93_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=94_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=95_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=96_int32, min=lower_residual_range_quantile, max=1.0_real64)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=97_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
-        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=86_int32); end if
-        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=98_int32); end if
+        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=87_int32); end if
+        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=99_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -6060,6 +6096,7 @@ contains
             trace_ci_upper = trace_ci_upper,&
             trace_ci_width = trace_ci_width,&
             trace_ci_width_relative = trace_ci_width_relative,&
+            trace_ci_overlap = trace_ci_overlap,&
             trace_delta = trace_delta,&
             trace_delta_median = trace_delta_median,&
             trace_delta_max = trace_delta_max,&
@@ -6269,6 +6306,7 @@ contains
             trace_ci_upper,&
             trace_ci_width,&
             trace_ci_width_relative,&
+            trace_ci_overlap,&
             trace_delta,&
             trace_delta_median,&
             trace_delta_max,&
@@ -6402,6 +6440,12 @@ contains
         real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_width_relative
             !! Per-admissible-candidate, per-study confidence-interval width divided by the observed
             !! global JSD, the denominator floored at `delta_epsilon`
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_overlap
+            !! Per-admissible-candidate, per-study fractional overlap of the candidate's bootstrapped
+            !! confidence interval with the running best candidate's interval at that moment, in
+            !! `[0, 1]`, relative to this candidate's own interval width; `-1.0_real64` throughout at
+            !! the first one. See the fixed-k search's `trace_ci_overlap` for the running-best detail
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
@@ -6661,28 +6705,28 @@ contains
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_bootstraps, ierr, arg_pos=6_int32, min=1_int32)
         call validate_in_range_int(max_n_points_candidate, ierr, arg_pos=8_int32, min=1_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=45_int32, min=0_int32)
-        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=46_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=47_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=49_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=50_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_epsilon, ierr, arg_pos=51_int32, min=above(0.0_real64))
-        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=52_int32, min=1_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=53_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=54_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=55_int32, min=above(1.0_real64))
-        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=56_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=57_int32, min=lower_residual_range_quantile, max=1.0_real64)
-        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=58_int32, min=0.0_real64, max=100.0_real64)
-        call validate_in_range_real(tau, ierr, arg_pos=60_int32, min=0.0_real64)
-        call validate_in_range_real(mad_distance_factor, ierr, arg_pos=61_int32, min=0.0_real64)
-        call validate_in_range_int(max_pooled_residuals, ierr, arg_pos=62_int32, min=0_int32)
-        call validate_in_range_int(min_study_neighbors, ierr, arg_pos=63_int32, min=1_int32)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=46_int32, min=0_int32)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=47_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=48_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=50_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=51_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_epsilon, ierr, arg_pos=52_int32, min=above(0.0_real64))
+        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=53_int32, min=1_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=54_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=55_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=56_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=57_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=58_int32, min=lower_residual_range_quantile, max=1.0_real64)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=59_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(tau, ierr, arg_pos=61_int32, min=0.0_real64)
+        call validate_in_range_real(mad_distance_factor, ierr, arg_pos=62_int32, min=0.0_real64)
+        call validate_in_range_int(max_pooled_residuals, ierr, arg_pos=63_int32, min=0_int32)
+        call validate_in_range_int(min_study_neighbors, ierr, arg_pos=64_int32, min=1_int32)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
-        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=48_int32); end if
-        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=64_int32); end if
+        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=49_int32); end if
+        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=65_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -6766,6 +6810,7 @@ contains
             trace_ci_upper = trace_ci_upper,&
             trace_ci_width = trace_ci_width,&
             trace_ci_width_relative = trace_ci_width_relative,&
+            trace_ci_overlap = trace_ci_overlap,&
             trace_delta = trace_delta,&
             trace_delta_median = trace_delta_median,&
             trace_delta_max = trace_delta_max,&
@@ -6985,6 +7030,7 @@ contains
             trace_ci_upper,&
             trace_ci_width,&
             trace_ci_width_relative,&
+            trace_ci_overlap,&
             trace_delta,&
             trace_delta_median,&
             trace_delta_max,&
@@ -7168,6 +7214,12 @@ contains
         real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_width_relative
             !! Per-admissible-candidate, per-study confidence-interval width divided by the observed
             !! global JSD, the denominator floored at `delta_epsilon`
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_overlap
+            !! Per-admissible-candidate, per-study fractional overlap of the candidate's bootstrapped
+            !! confidence interval with the running best candidate's interval at that moment, in
+            !! `[0, 1]`, relative to this candidate's own interval width; `-1.0_real64` throughout at
+            !! the first one. See the fixed-k search's `trace_ci_overlap` for the running-best detail
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
@@ -7485,28 +7537,28 @@ contains
         call validate_in_range_int(n_bootstraps, ierr, arg_pos=6_int32, min=1_int32)
         call validate_in_range_int(max_n_points_candidate, ierr, arg_pos=8_int32, min=1_int32)
         call validate_in_range_int(n_bootstrapping_top_k_jsds, ierr, arg_pos=9_int32, min=1_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=91_int32, min=0_int32)
-        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=92_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=93_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=95_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=96_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_epsilon, ierr, arg_pos=97_int32, min=above(0.0_real64))
-        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=98_int32, min=1_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=99_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=100_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=101_int32, min=above(1.0_real64))
-        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=102_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=103_int32, min=lower_residual_range_quantile, max=1.0_real64)
-        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=104_int32, min=0.0_real64, max=100.0_real64)
-        call validate_in_range_real(tau, ierr, arg_pos=106_int32, min=0.0_real64)
-        call validate_in_range_real(mad_distance_factor, ierr, arg_pos=107_int32, min=0.0_real64)
-        call validate_in_range_int(max_pooled_residuals, ierr, arg_pos=108_int32, min=0_int32)
-        call validate_in_range_int(min_study_neighbors, ierr, arg_pos=109_int32, min=1_int32)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=92_int32, min=0_int32)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=93_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=94_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=96_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=97_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_epsilon, ierr, arg_pos=98_int32, min=above(0.0_real64))
+        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=99_int32, min=1_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=100_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=101_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=102_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=103_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=104_int32, min=lower_residual_range_quantile, max=1.0_real64)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=105_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(tau, ierr, arg_pos=107_int32, min=0.0_real64)
+        call validate_in_range_real(mad_distance_factor, ierr, arg_pos=108_int32, min=0.0_real64)
+        call validate_in_range_int(max_pooled_residuals, ierr, arg_pos=109_int32, min=0_int32)
+        call validate_in_range_int(min_study_neighbors, ierr, arg_pos=110_int32, min=1_int32)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
-        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=94_int32); end if
-        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=110_int32); end if
+        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=95_int32); end if
+        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=111_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -7539,6 +7591,7 @@ contains
             trace_ci_upper = trace_ci_upper,&
             trace_ci_width = trace_ci_width,&
             trace_ci_width_relative = trace_ci_width_relative,&
+            trace_ci_overlap = trace_ci_overlap,&
             trace_delta = trace_delta,&
             trace_delta_median = trace_delta_median,&
             trace_delta_max = trace_delta_max,&

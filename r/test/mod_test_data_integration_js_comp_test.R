@@ -317,6 +317,8 @@ test_check_plateau_condition <- function() {
                                      best_exceeded_ci_overlap_count = 0L, candidate_index = 1L,
                                      join_method = "join_min", succeeding_ci_overlap = 0.9)
   assert_false(result$plateau_found, "Test 1 failed: 2-of-3 studies must not plateau")
+  # Studies 1,2 sit inside the best interval (overlap 1.0), study 3 is far outside (0.0).
+  assert_equal_numeric(as.numeric(result$ci_overlap), c(1.0, 1.0, 0.0), TOL, "Test 1 failed: ci_overlap of 2-of-3")
 
   confidence_interval[, 3] <- c(0.4, 0.6)
   best_ci_2 <- matrix(c(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), nrow = 2)
@@ -324,6 +326,7 @@ test_check_plateau_condition <- function() {
                                       best_exceeded_ci_overlap_count = 0L, candidate_index = 1L,
                                       join_method = "join_min", succeeding_ci_overlap = 0.9)
   assert_true(result2$plateau_found, "Test 1 failed: 3-of-3 studies must plateau")
+  assert_equal_numeric(as.numeric(result2$ci_overlap), c(1.0, 1.0, 1.0), TOL, "Test 1 failed: ci_overlap of 3-of-3")
 
   # ============================================================
   # Test 2 -- METHOD_JOIN_MAX succeeds once any one study passes
@@ -335,6 +338,7 @@ test_check_plateau_condition <- function() {
                                            best_exceeded_ci_overlap_count = 0L, candidate_index = 1L,
                                            join_method = "join_max", succeeding_ci_overlap = 0.9)
   assert_false(result_max_0$plateau_found, "Test 2 failed: 0-of-3 studies must not plateau")
+  assert_equal_numeric(as.numeric(result_max_0$ci_overlap), c(0.0, 0.0, 0.0), TOL, "Test 2 failed: ci_overlap of 0-of-3")
 
   confidence_interval_max[, 1] <- c(0.4, 0.6)
   best_ci_max_2 <- matrix(c(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), nrow = 2)
@@ -342,6 +346,7 @@ test_check_plateau_condition <- function() {
                                            best_exceeded_ci_overlap_count = 0L, candidate_index = 1L,
                                            join_method = "join_max", succeeding_ci_overlap = 0.9)
   assert_true(result_max_1$plateau_found, "Test 2 failed: 1-of-3 studies must plateau")
+  assert_equal_numeric(as.numeric(result_max_1$ci_overlap), c(1.0, 0.0, 0.0), TOL, "Test 2 failed: ci_overlap of 1-of-3")
 
   # ============================================================
   # Test 3 -- METHOD_JOIN_MEDIAN succeeds once a majority pass (n_studies=3 -> threshold 2)
@@ -353,6 +358,7 @@ test_check_plateau_condition <- function() {
                                            best_exceeded_ci_overlap_count = 0L, candidate_index = 1L,
                                            join_method = "join_median", succeeding_ci_overlap = 0.9)
   assert_false(result_med_1$plateau_found, "Test 3 failed: 1-of-3 must not plateau")
+  assert_equal_numeric(as.numeric(result_med_1$ci_overlap), c(1.0, 0.0, 0.0), TOL, "Test 3 failed: ci_overlap of 1-of-3")
 
   confidence_interval_med[, 2] <- c(0.4, 0.6)
   best_ci_med_2 <- matrix(c(0.0, 1.0, 0.0, 1.0, 0.0, 1.0), nrow = 2)
@@ -360,6 +366,7 @@ test_check_plateau_condition <- function() {
                                            best_exceeded_ci_overlap_count = 0L, candidate_index = 1L,
                                            join_method = "join_median", succeeding_ci_overlap = 0.9)
   assert_true(result_med_2$plateau_found, "Test 3 failed: 2-of-3 must plateau")
+  assert_equal_numeric(as.numeric(result_med_2$ci_overlap), c(1.0, 1.0, 0.0), TOL, "Test 3 failed: ci_overlap of 2-of-3")
 
   # ============================================================
   # Test 4 -- a candidate worse than the previous best plateaus immediately, and none of the
@@ -379,6 +386,22 @@ test_check_plateau_condition <- function() {
                     "Test 4 failed: best_exceeded_ci_overlap_count must not be overwritten")
   assert_equal_numeric(best_ci_worse, expected_best_ci_worse, TOL,
                         "Test 4 failed: best_candidate_pair_confidence_interval must not be overwritten")
+  # The overlaps are still reported on the worse-than-best shortcut.
+  assert_equal_numeric(as.numeric(result_worse$ci_overlap), c(0.0, 0.0), TOL, "Test 4 failed: ci_overlap still reported")
+
+  # ============================================================
+  # Test 5 -- fractional overlaps (test_check_plateau_condition_ci_overlap_fractional_values):
+  # against the best interval [0, 1], [0.4, 0.6] lies inside (1.0), [-0.5, 0.5] shares half of its
+  # width (0.5), [-2, -1] shares nothing (0.0), and [0, 2] is twice as wide as the best interval,
+  # so only half of the candidate is covered (0.5: the candidate's width is the denominator).
+  # ============================================================
+  confidence_interval_frac <- matrix(c(0.4, 0.6, -0.5, 0.5, -2.0, -1.0, 0.0, 2.0), nrow = 2)
+  best_ci_frac <- matrix(c(0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0), nrow = 2)
+  result_frac <- check_plateau_condition(confidence_interval_frac, best_ci_frac, best_candidate_index = 0L,
+                                          best_exceeded_ci_overlap_count = 0L, candidate_index = 1L,
+                                          join_method = "join_min", succeeding_ci_overlap = 0.9)
+  assert_equal_numeric(as.numeric(result_frac$ci_overlap), c(1.0, 0.5, 0.0, 0.5), TOL,
+                        "Test 5 failed: fractional ci_overlap values")
 }
 
 test_create_mean_pmf <- function() {
@@ -760,7 +783,7 @@ test_run_js_comp_test_parameter_search <- function() {
   # since every trace_* output already comes back trimmed to exactly that length.
   for (key in c("trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower",
                 "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta",
-                "trace_delta_median", "trace_delta_max", "plateau_established")) {
+                "trace_delta_median", "trace_delta_max", "plateau_established", "trace_ci_overlap")) {
     assert_true(!is.null(result3[[key]]), paste0("missing expected output '", key, "'"))
   }
   assert_true(is.logical(result3$plateau_established), "plateau_established should be logical")
@@ -769,8 +792,12 @@ test_run_js_comp_test_parameter_search <- function() {
   assert_true(ncol(result3$trace_ci_width) == n_admissible, "trace_ci_width has n_admissible columns")
   assert_true(all(dim(result3$trace_ci_width_relative) == dim(result3$trace_ci_width)),
               "trace_ci_width_relative shape matches trace_ci_width")
+  assert_true(all(dim(result3$trace_ci_overlap) == dim(result3$trace_ci_width)),
+              "trace_ci_overlap shape matches trace_ci_width")
   # The first (and here, only) admissible candidate has no predecessor to diff against.
   assert_equal_numeric(result3$trace_delta[, 1], c(-1.0, -1.0), TOL, "first candidate's delta is the -1.0 sentinel")
+  # Likewise no previous best to overlap with: the same -1.0 sentinel.
+  assert_equal_numeric(result3$trace_ci_overlap[, 1], c(-1.0, -1.0), TOL, "first candidate's overlap is the -1.0 sentinel")
 
   # ============================================================
   # Test 4 -- callability/shape coverage for the Issue #187 per-point outputs added by this
@@ -1129,9 +1156,12 @@ test_run_js_comp_test_adaptive_parameter_search <- function() {
     assert_equal_int(length(result[[key]]), n_admissible, paste(key, "length"))
   }
   for (key in c("trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width",
-                "trace_ci_width_relative", "trace_delta")) {
+                "trace_ci_width_relative", "trace_ci_overlap", "trace_delta")) {
     assert_equal_int(dim(result[[key]]), c(n_studies, n_admissible), paste(key, "shape"))
   }
+  # The first admissible candidate has no previous best to overlap with: the -1.0 sentinel.
+  assert_equal_numeric(as.numeric(result$trace_ci_overlap[, 1]), rep(-1.0, n_studies), TOL,
+                        "first candidate's overlap is the -1.0 sentinel")
   for (key in c("trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals",
                 "trace_shared_residual_range_low", "trace_shared_residual_range_high")) {
     assert_equal_int(dim(result[[key]]), c(capacity, n_admissible), paste(key, "shape"))

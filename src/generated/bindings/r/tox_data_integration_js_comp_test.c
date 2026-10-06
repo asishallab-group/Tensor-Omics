@@ -19,15 +19,15 @@ void generate_adaptive_js_comp_test_candidates_c(const int*, const int*, int*, i
 void construct_adaptive_neighborhoods_c(const int*, const int*, const int*, const double*, const double*, const int*, const int*, const int*, int*, double*, int*, int*, int*, double*, double*, int*, int*, const double*, const double*, const int*, const int*, int*);
 void check_neighborhood_overlaps_c(const int*, const int*, const double*, unsigned char*, int*);
 void check_mean_pmf_min_counts_c(const int*, const int*, const int*, const int*, const int*, unsigned char*, int*);
-void check_plateau_condition_c(const double*, double*, const int*, int*, int*, const int*, const char*, const double*, unsigned char*, int*);
+void check_plateau_condition_c(const double*, double*, const int*, int*, int*, const int*, const char*, const double*, double*, unsigned char*, int*);
 void check_effect_size_plateau_condition_c(const double*, const double*, const int*, const unsigned char*, const double*, const double*, const double*, const int*, int*, double*, double*, double*, unsigned char*, int*);
 void create_mean_pmf_c(const double*, const int*, const int*, const int*, const int*, const int*, double*, int*, int*, int*);
 void create_mean_pmf_only_c(const double*, const int*, const int*, const int*, double*, int*);
 void bootstrap_histogram_c(const int*, const int*, const int*, const int*, const int*, const int*, const int*, double*, const double*, const int*, int*);
 void run_js_comp_test_c(const int*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, const char*, int*);
 void run_js_comp_test_adaptive_c(const int*, const int*, const int*, const int*, const double*, const double*, const int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, const char*, int*);
-void run_js_comp_test_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, const int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const char*, int*);
-void run_js_comp_test_adaptive_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, int*, int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, int*, int*, int*, int*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const double*, const double*, const int*, const int*, const char*, int*);
+void run_js_comp_test_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, const int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const char*, int*);
+void run_js_comp_test_adaptive_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, int*, int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, int*, int*, int*, int*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const double*, const double*, const int*, const int*, const char*, int*);
 
 SEXP estimate_bin_count_call(SEXP residuals, SEXP max_n_reps_all_studies, SEXP n_neighbors, SEXP shared_residual_range) {
     int nprot = 0;
@@ -804,6 +804,7 @@ SEXP check_plateau_condition_call(SEXP confidence_interval, SEXP best_candidate_
     char* join_method_c = tox_char_in(join_method, 11);
 
     // outputs and work space
+    SEXP ci_overlap = PROTECT(Rf_allocVector(REALSXP, n_studies)); nprot++;
     unsigned char plateau_found = 0;
     int ierr = 0;
 
@@ -816,22 +817,25 @@ SEXP check_plateau_condition_call(SEXP confidence_interval, SEXP best_candidate_
         &candidate_index_v,
         join_method_c,
         &succeeding_ci_overlap_v,
+        REAL(ci_overlap),
         &plateau_found,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 5)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 6)); nprot++;
     SET_VECTOR_ELT(_out, 0, best_candidate_pair_confidence_interval_out);
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(best_candidate_index_v));
     SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(best_exceeded_ci_overlap_count_v));
-    SET_VECTOR_ELT(_out, 3, Rf_ScalarLogical(plateau_found != 0));
-    SET_VECTOR_ELT(_out, 4, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 5)); nprot++;
+    SET_VECTOR_ELT(_out, 3, ci_overlap);
+    SET_VECTOR_ELT(_out, 4, Rf_ScalarLogical(plateau_found != 0));
+    SET_VECTOR_ELT(_out, 5, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 6)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("best_candidate_pair_confidence_interval"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("best_candidate_index"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("best_exceeded_ci_overlap_count"));
-    SET_STRING_ELT(_nms, 3, Rf_mkChar("plateau_found"));
-    SET_STRING_ELT(_nms, 4, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 3, Rf_mkChar("ci_overlap"));
+    SET_STRING_ELT(_nms, 4, Rf_mkChar("plateau_found"));
+    SET_STRING_ELT(_nms, 5, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;
@@ -1384,6 +1388,8 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
     { SEXP trace_ci_width_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_ci_width_dim)[0] = n_studies; INTEGER(trace_ci_width_dim)[1] = 16; Rf_setAttrib(trace_ci_width, R_DimSymbol, trace_ci_width_dim); UNPROTECT(1); }
     SEXP trace_ci_width_relative = PROTECT(Rf_allocVector(REALSXP, n_studies * 16)); nprot++;
     { SEXP trace_ci_width_relative_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_ci_width_relative_dim)[0] = n_studies; INTEGER(trace_ci_width_relative_dim)[1] = 16; Rf_setAttrib(trace_ci_width_relative, R_DimSymbol, trace_ci_width_relative_dim); UNPROTECT(1); }
+    SEXP trace_ci_overlap = PROTECT(Rf_allocVector(REALSXP, n_studies * 16)); nprot++;
+    { SEXP trace_ci_overlap_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_ci_overlap_dim)[0] = n_studies; INTEGER(trace_ci_overlap_dim)[1] = 16; Rf_setAttrib(trace_ci_overlap, R_DimSymbol, trace_ci_overlap_dim); UNPROTECT(1); }
     SEXP trace_delta = PROTECT(Rf_allocVector(REALSXP, n_studies * 16)); nprot++;
     { SEXP trace_delta_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_delta_dim)[0] = n_studies; INTEGER(trace_delta_dim)[1] = 16; Rf_setAttrib(trace_delta, R_DimSymbol, trace_delta_dim); UNPROTECT(1); }
     SEXP trace_delta_median = PROTECT(Rf_allocVector(REALSXP, 16)); nprot++;
@@ -1434,6 +1440,7 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
         REAL(trace_ci_upper),
         REAL(trace_ci_width),
         REAL(trace_ci_width_relative),
+        REAL(trace_ci_overlap),
         REAL(trace_delta),
         REAL(trace_delta_median),
         REAL(trace_delta_max),
@@ -1470,7 +1477,7 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
     SEXP trace_occupancy_failed = PROTECT(tox_bool_out(trace_occupancy_failed_c, max_n_points_candidate_v * 16)); nprot++;
     { SEXP trace_occupancy_failed_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_occupancy_failed_dim)[0] = max_n_points_candidate_v; INTEGER(trace_occupancy_failed_dim)[1] = 16; Rf_setAttrib(trace_occupancy_failed, R_DimSymbol, trace_occupancy_failed_dim); UNPROTECT(1); }
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 29)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 30)); nprot++;
     SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(n_points));
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(n_neighbors));
     SET_VECTOR_ELT(_out, 2, n_bins_per_point);
@@ -1486,21 +1493,22 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
     SET_VECTOR_ELT(_out, 12, trace_ci_upper);
     SET_VECTOR_ELT(_out, 13, trace_ci_width);
     SET_VECTOR_ELT(_out, 14, trace_ci_width_relative);
-    SET_VECTOR_ELT(_out, 15, trace_delta);
-    SET_VECTOR_ELT(_out, 16, trace_delta_median);
-    SET_VECTOR_ELT(_out, 17, trace_delta_max);
-    SET_VECTOR_ELT(_out, 18, trace_selected_n_bins);
-    SET_VECTOR_ELT(_out, 19, trace_occupancy_failed);
-    SET_VECTOR_ELT(_out, 20, trace_n_pooled_residuals);
-    SET_VECTOR_ELT(_out, 21, trace_min_bin_occupancy);
-    SET_VECTOR_ELT(_out, 22, trace_mean_bin_occupancy);
-    SET_VECTOR_ELT(_out, 23, trace_max_bin_occupancy);
-    SET_VECTOR_ELT(_out, 24, trace_sturges_bins);
-    SET_VECTOR_ELT(_out, 25, trace_fd_bins);
-    SET_VECTOR_ELT(_out, 26, trace_shared_residual_range_low);
-    SET_VECTOR_ELT(_out, 27, trace_shared_residual_range_high);
-    SET_VECTOR_ELT(_out, 28, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 29)); nprot++;
+    SET_VECTOR_ELT(_out, 15, trace_ci_overlap);
+    SET_VECTOR_ELT(_out, 16, trace_delta);
+    SET_VECTOR_ELT(_out, 17, trace_delta_median);
+    SET_VECTOR_ELT(_out, 18, trace_delta_max);
+    SET_VECTOR_ELT(_out, 19, trace_selected_n_bins);
+    SET_VECTOR_ELT(_out, 20, trace_occupancy_failed);
+    SET_VECTOR_ELT(_out, 21, trace_n_pooled_residuals);
+    SET_VECTOR_ELT(_out, 22, trace_min_bin_occupancy);
+    SET_VECTOR_ELT(_out, 23, trace_mean_bin_occupancy);
+    SET_VECTOR_ELT(_out, 24, trace_max_bin_occupancy);
+    SET_VECTOR_ELT(_out, 25, trace_sturges_bins);
+    SET_VECTOR_ELT(_out, 26, trace_fd_bins);
+    SET_VECTOR_ELT(_out, 27, trace_shared_residual_range_low);
+    SET_VECTOR_ELT(_out, 28, trace_shared_residual_range_high);
+    SET_VECTOR_ELT(_out, 29, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 30)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("n_points"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("n_neighbors"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("n_bins_per_point"));
@@ -1516,20 +1524,21 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
     SET_STRING_ELT(_nms, 12, Rf_mkChar("trace_ci_upper"));
     SET_STRING_ELT(_nms, 13, Rf_mkChar("trace_ci_width"));
     SET_STRING_ELT(_nms, 14, Rf_mkChar("trace_ci_width_relative"));
-    SET_STRING_ELT(_nms, 15, Rf_mkChar("trace_delta"));
-    SET_STRING_ELT(_nms, 16, Rf_mkChar("trace_delta_median"));
-    SET_STRING_ELT(_nms, 17, Rf_mkChar("trace_delta_max"));
-    SET_STRING_ELT(_nms, 18, Rf_mkChar("trace_selected_n_bins"));
-    SET_STRING_ELT(_nms, 19, Rf_mkChar("trace_occupancy_failed"));
-    SET_STRING_ELT(_nms, 20, Rf_mkChar("trace_n_pooled_residuals"));
-    SET_STRING_ELT(_nms, 21, Rf_mkChar("trace_min_bin_occupancy"));
-    SET_STRING_ELT(_nms, 22, Rf_mkChar("trace_mean_bin_occupancy"));
-    SET_STRING_ELT(_nms, 23, Rf_mkChar("trace_max_bin_occupancy"));
-    SET_STRING_ELT(_nms, 24, Rf_mkChar("trace_sturges_bins"));
-    SET_STRING_ELT(_nms, 25, Rf_mkChar("trace_fd_bins"));
-    SET_STRING_ELT(_nms, 26, Rf_mkChar("trace_shared_residual_range_low"));
-    SET_STRING_ELT(_nms, 27, Rf_mkChar("trace_shared_residual_range_high"));
-    SET_STRING_ELT(_nms, 28, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 15, Rf_mkChar("trace_ci_overlap"));
+    SET_STRING_ELT(_nms, 16, Rf_mkChar("trace_delta"));
+    SET_STRING_ELT(_nms, 17, Rf_mkChar("trace_delta_median"));
+    SET_STRING_ELT(_nms, 18, Rf_mkChar("trace_delta_max"));
+    SET_STRING_ELT(_nms, 19, Rf_mkChar("trace_selected_n_bins"));
+    SET_STRING_ELT(_nms, 20, Rf_mkChar("trace_occupancy_failed"));
+    SET_STRING_ELT(_nms, 21, Rf_mkChar("trace_n_pooled_residuals"));
+    SET_STRING_ELT(_nms, 22, Rf_mkChar("trace_min_bin_occupancy"));
+    SET_STRING_ELT(_nms, 23, Rf_mkChar("trace_mean_bin_occupancy"));
+    SET_STRING_ELT(_nms, 24, Rf_mkChar("trace_max_bin_occupancy"));
+    SET_STRING_ELT(_nms, 25, Rf_mkChar("trace_sturges_bins"));
+    SET_STRING_ELT(_nms, 26, Rf_mkChar("trace_fd_bins"));
+    SET_STRING_ELT(_nms, 27, Rf_mkChar("trace_shared_residual_range_low"));
+    SET_STRING_ELT(_nms, 28, Rf_mkChar("trace_shared_residual_range_high"));
+    SET_STRING_ELT(_nms, 29, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;
@@ -1595,6 +1604,8 @@ SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP gene_means, SEXP resid
     { SEXP trace_ci_width_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_ci_width_dim)[0] = n_studies; INTEGER(trace_ci_width_dim)[1] = 16; Rf_setAttrib(trace_ci_width, R_DimSymbol, trace_ci_width_dim); UNPROTECT(1); }
     SEXP trace_ci_width_relative = PROTECT(Rf_allocVector(REALSXP, n_studies * 16)); nprot++;
     { SEXP trace_ci_width_relative_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_ci_width_relative_dim)[0] = n_studies; INTEGER(trace_ci_width_relative_dim)[1] = 16; Rf_setAttrib(trace_ci_width_relative, R_DimSymbol, trace_ci_width_relative_dim); UNPROTECT(1); }
+    SEXP trace_ci_overlap = PROTECT(Rf_allocVector(REALSXP, n_studies * 16)); nprot++;
+    { SEXP trace_ci_overlap_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_ci_overlap_dim)[0] = n_studies; INTEGER(trace_ci_overlap_dim)[1] = 16; Rf_setAttrib(trace_ci_overlap, R_DimSymbol, trace_ci_overlap_dim); UNPROTECT(1); }
     SEXP trace_delta = PROTECT(Rf_allocVector(REALSXP, n_studies * 16)); nprot++;
     { SEXP trace_delta_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_delta_dim)[0] = n_studies; INTEGER(trace_delta_dim)[1] = 16; Rf_setAttrib(trace_delta, R_DimSymbol, trace_delta_dim); UNPROTECT(1); }
     SEXP trace_delta_median = PROTECT(Rf_allocVector(REALSXP, 16)); nprot++;
@@ -1652,6 +1663,7 @@ SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP gene_means, SEXP resid
         REAL(trace_ci_upper),
         REAL(trace_ci_width),
         REAL(trace_ci_width_relative),
+        REAL(trace_ci_overlap),
         REAL(trace_delta),
         REAL(trace_delta_median),
         REAL(trace_delta_max),
@@ -1696,7 +1708,7 @@ SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP gene_means, SEXP resid
     SEXP trace_occupancy_failed = PROTECT(tox_bool_out(trace_occupancy_failed_c, max_n_points_candidate_v * 16)); nprot++;
     { SEXP trace_occupancy_failed_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_occupancy_failed_dim)[0] = max_n_points_candidate_v; INTEGER(trace_occupancy_failed_dim)[1] = 16; Rf_setAttrib(trace_occupancy_failed, R_DimSymbol, trace_occupancy_failed_dim); UNPROTECT(1); }
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 37)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 38)); nprot++;
     SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(k_start));
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(k_step));
     SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(k_max));
@@ -1716,25 +1728,26 @@ SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP gene_means, SEXP resid
     SET_VECTOR_ELT(_out, 16, trace_ci_upper);
     SET_VECTOR_ELT(_out, 17, trace_ci_width);
     SET_VECTOR_ELT(_out, 18, trace_ci_width_relative);
-    SET_VECTOR_ELT(_out, 19, trace_delta);
-    SET_VECTOR_ELT(_out, 20, trace_delta_median);
-    SET_VECTOR_ELT(_out, 21, trace_delta_max);
-    SET_VECTOR_ELT(_out, 22, trace_selected_n_bins);
-    SET_VECTOR_ELT(_out, 23, trace_occupancy_failed);
-    SET_VECTOR_ELT(_out, 24, trace_n_pooled_residuals);
-    SET_VECTOR_ELT(_out, 25, trace_min_bin_occupancy);
-    SET_VECTOR_ELT(_out, 26, trace_mean_bin_occupancy);
-    SET_VECTOR_ELT(_out, 27, trace_max_bin_occupancy);
-    SET_VECTOR_ELT(_out, 28, trace_sturges_bins);
-    SET_VECTOR_ELT(_out, 29, trace_fd_bins);
-    SET_VECTOR_ELT(_out, 30, trace_shared_residual_range_low);
-    SET_VECTOR_ELT(_out, 31, trace_shared_residual_range_high);
-    SET_VECTOR_ELT(_out, 32, Rf_ScalarInteger(n_candidates_tried));
-    SET_VECTOR_ELT(_out, 33, candidate_k_start);
-    SET_VECTOR_ELT(_out, 34, candidate_n_points);
-    SET_VECTOR_ELT(_out, 35, candidate_status);
-    SET_VECTOR_ELT(_out, 36, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 37)); nprot++;
+    SET_VECTOR_ELT(_out, 19, trace_ci_overlap);
+    SET_VECTOR_ELT(_out, 20, trace_delta);
+    SET_VECTOR_ELT(_out, 21, trace_delta_median);
+    SET_VECTOR_ELT(_out, 22, trace_delta_max);
+    SET_VECTOR_ELT(_out, 23, trace_selected_n_bins);
+    SET_VECTOR_ELT(_out, 24, trace_occupancy_failed);
+    SET_VECTOR_ELT(_out, 25, trace_n_pooled_residuals);
+    SET_VECTOR_ELT(_out, 26, trace_min_bin_occupancy);
+    SET_VECTOR_ELT(_out, 27, trace_mean_bin_occupancy);
+    SET_VECTOR_ELT(_out, 28, trace_max_bin_occupancy);
+    SET_VECTOR_ELT(_out, 29, trace_sturges_bins);
+    SET_VECTOR_ELT(_out, 30, trace_fd_bins);
+    SET_VECTOR_ELT(_out, 31, trace_shared_residual_range_low);
+    SET_VECTOR_ELT(_out, 32, trace_shared_residual_range_high);
+    SET_VECTOR_ELT(_out, 33, Rf_ScalarInteger(n_candidates_tried));
+    SET_VECTOR_ELT(_out, 34, candidate_k_start);
+    SET_VECTOR_ELT(_out, 35, candidate_n_points);
+    SET_VECTOR_ELT(_out, 36, candidate_status);
+    SET_VECTOR_ELT(_out, 37, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 38)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("k_start"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("k_step"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("k_max"));
@@ -1754,24 +1767,25 @@ SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP gene_means, SEXP resid
     SET_STRING_ELT(_nms, 16, Rf_mkChar("trace_ci_upper"));
     SET_STRING_ELT(_nms, 17, Rf_mkChar("trace_ci_width"));
     SET_STRING_ELT(_nms, 18, Rf_mkChar("trace_ci_width_relative"));
-    SET_STRING_ELT(_nms, 19, Rf_mkChar("trace_delta"));
-    SET_STRING_ELT(_nms, 20, Rf_mkChar("trace_delta_median"));
-    SET_STRING_ELT(_nms, 21, Rf_mkChar("trace_delta_max"));
-    SET_STRING_ELT(_nms, 22, Rf_mkChar("trace_selected_n_bins"));
-    SET_STRING_ELT(_nms, 23, Rf_mkChar("trace_occupancy_failed"));
-    SET_STRING_ELT(_nms, 24, Rf_mkChar("trace_n_pooled_residuals"));
-    SET_STRING_ELT(_nms, 25, Rf_mkChar("trace_min_bin_occupancy"));
-    SET_STRING_ELT(_nms, 26, Rf_mkChar("trace_mean_bin_occupancy"));
-    SET_STRING_ELT(_nms, 27, Rf_mkChar("trace_max_bin_occupancy"));
-    SET_STRING_ELT(_nms, 28, Rf_mkChar("trace_sturges_bins"));
-    SET_STRING_ELT(_nms, 29, Rf_mkChar("trace_fd_bins"));
-    SET_STRING_ELT(_nms, 30, Rf_mkChar("trace_shared_residual_range_low"));
-    SET_STRING_ELT(_nms, 31, Rf_mkChar("trace_shared_residual_range_high"));
-    SET_STRING_ELT(_nms, 32, Rf_mkChar("n_candidates_tried"));
-    SET_STRING_ELT(_nms, 33, Rf_mkChar("candidate_k_start"));
-    SET_STRING_ELT(_nms, 34, Rf_mkChar("candidate_n_points"));
-    SET_STRING_ELT(_nms, 35, Rf_mkChar("candidate_status"));
-    SET_STRING_ELT(_nms, 36, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 19, Rf_mkChar("trace_ci_overlap"));
+    SET_STRING_ELT(_nms, 20, Rf_mkChar("trace_delta"));
+    SET_STRING_ELT(_nms, 21, Rf_mkChar("trace_delta_median"));
+    SET_STRING_ELT(_nms, 22, Rf_mkChar("trace_delta_max"));
+    SET_STRING_ELT(_nms, 23, Rf_mkChar("trace_selected_n_bins"));
+    SET_STRING_ELT(_nms, 24, Rf_mkChar("trace_occupancy_failed"));
+    SET_STRING_ELT(_nms, 25, Rf_mkChar("trace_n_pooled_residuals"));
+    SET_STRING_ELT(_nms, 26, Rf_mkChar("trace_min_bin_occupancy"));
+    SET_STRING_ELT(_nms, 27, Rf_mkChar("trace_mean_bin_occupancy"));
+    SET_STRING_ELT(_nms, 28, Rf_mkChar("trace_max_bin_occupancy"));
+    SET_STRING_ELT(_nms, 29, Rf_mkChar("trace_sturges_bins"));
+    SET_STRING_ELT(_nms, 30, Rf_mkChar("trace_fd_bins"));
+    SET_STRING_ELT(_nms, 31, Rf_mkChar("trace_shared_residual_range_low"));
+    SET_STRING_ELT(_nms, 32, Rf_mkChar("trace_shared_residual_range_high"));
+    SET_STRING_ELT(_nms, 33, Rf_mkChar("n_candidates_tried"));
+    SET_STRING_ELT(_nms, 34, Rf_mkChar("candidate_k_start"));
+    SET_STRING_ELT(_nms, 35, Rf_mkChar("candidate_n_points"));
+    SET_STRING_ELT(_nms, 36, Rf_mkChar("candidate_status"));
+    SET_STRING_ELT(_nms, 37, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;

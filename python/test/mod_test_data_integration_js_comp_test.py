@@ -386,6 +386,8 @@ def test_check_plateau_condition():
                                       best_exceeded_ci_overlap_count=0, candidate_index=1,
                                       join_method='join_min', succeeding_ci_overlap=0.9)
     assert not result["plateau_found"], "Test 1 failed: 2-of-3 studies must not plateau"
+    # Studies 1,2 sit inside the best interval (overlap 1.0), study 3 is far outside (0.0).
+    np.testing.assert_array_almost_equal(result["ci_overlap"], [1.0, 1.0, 0.0], decimal=12)
 
     confidence_interval[:, 2] = [0.4, 0.6]
     best_ci_2 = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]], dtype=np.float64, order='F')
@@ -393,6 +395,7 @@ def test_check_plateau_condition():
                                        best_exceeded_ci_overlap_count=0, candidate_index=1,
                                        join_method='join_min', succeeding_ci_overlap=0.9)
     assert result2["plateau_found"], "Test 1 failed: 3-of-3 studies must plateau"
+    np.testing.assert_array_almost_equal(result2["ci_overlap"], [1.0, 1.0, 1.0], decimal=12)
 
     # ============================================================
     # Test 2 -- METHOD_JOIN_MAX succeeds once any one study passes
@@ -404,6 +407,7 @@ def test_check_plateau_condition():
                                             best_exceeded_ci_overlap_count=0, candidate_index=1,
                                             join_method='join_max', succeeding_ci_overlap=0.9)
     assert not result_max_0["plateau_found"], "Test 2 failed: 0-of-3 studies must not plateau"
+    np.testing.assert_array_almost_equal(result_max_0["ci_overlap"], [0.0, 0.0, 0.0], decimal=12)
 
     confidence_interval_max[:, 0] = [0.4, 0.6]
     best_ci_max_2 = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]], dtype=np.float64, order='F')
@@ -411,6 +415,7 @@ def test_check_plateau_condition():
                                             best_exceeded_ci_overlap_count=0, candidate_index=1,
                                             join_method='join_max', succeeding_ci_overlap=0.9)
     assert result_max_1["plateau_found"], "Test 2 failed: 1-of-3 studies must plateau"
+    np.testing.assert_array_almost_equal(result_max_1["ci_overlap"], [1.0, 0.0, 0.0], decimal=12)
 
     # ============================================================
     # Test 3 -- METHOD_JOIN_MEDIAN succeeds once a majority pass (n_studies=3 -> threshold 2)
@@ -422,6 +427,7 @@ def test_check_plateau_condition():
                                             best_exceeded_ci_overlap_count=0, candidate_index=1,
                                             join_method='join_median', succeeding_ci_overlap=0.9)
     assert not result_med_1["plateau_found"], "Test 3 failed: 1-of-3 must not plateau"
+    np.testing.assert_array_almost_equal(result_med_1["ci_overlap"], [1.0, 0.0, 0.0], decimal=12)
 
     confidence_interval_med[:, 1] = [0.4, 0.6]
     best_ci_med_2 = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]], dtype=np.float64, order='F')
@@ -429,6 +435,7 @@ def test_check_plateau_condition():
                                             best_exceeded_ci_overlap_count=0, candidate_index=1,
                                             join_method='join_median', succeeding_ci_overlap=0.9)
     assert result_med_2["plateau_found"], "Test 3 failed: 2-of-3 must plateau"
+    np.testing.assert_array_almost_equal(result_med_2["ci_overlap"], [1.0, 1.0, 0.0], decimal=12)
 
     # ============================================================
     # Test 4 -- a candidate worse than the previous best plateaus immediately, regardless of
@@ -447,6 +454,21 @@ def test_check_plateau_condition():
     assert result_worse["best_exceeded_ci_overlap_count"] == 2, \
         "Test 4 failed: best_exceeded_ci_overlap_count must not be overwritten"
     np.testing.assert_array_almost_equal(best_ci_worse, expected_best_ci_worse, decimal=12)
+    # The overlaps are still reported on the worse-than-best shortcut.
+    np.testing.assert_array_almost_equal(result_worse["ci_overlap"], [0.0, 0.0], decimal=12)
+
+    # ============================================================
+    # Test 5 -- fractional overlaps (test_check_plateau_condition_ci_overlap_fractional_values):
+    # against the best interval [0, 1], [0.4, 0.6] lies inside (1.0), [-0.5, 0.5] shares half of
+    # its width (0.5), [-2, -1] shares nothing (0.0), and [0, 2] is twice as wide as the best
+    # interval, so only half of the candidate is covered (0.5: the candidate's width is the denominator).
+    # ============================================================
+    confidence_interval_frac = np.array([[0.4, -0.5, -2.0, 0.0], [0.6, 0.5, -1.0, 2.0]], dtype=np.float64, order='F')
+    best_ci_frac = np.array([[0.0] * 4, [1.0] * 4], dtype=np.float64, order='F')
+    result_frac = check_plateau_condition(confidence_interval_frac, best_ci_frac, best_candidate_index=0,
+                                           best_exceeded_ci_overlap_count=0, candidate_index=1,
+                                           join_method='join_min', succeeding_ci_overlap=0.9)
+    np.testing.assert_array_almost_equal(result_frac["ci_overlap"], [1.0, 0.5, 0.0, 0.5], decimal=12)
 
 
 def test_create_mean_pmf():
@@ -831,7 +853,7 @@ def test_run_js_comp_test_parameter_search():
     # return since every trace_* array already comes back trimmed to exactly that length.
     for key in ("trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower",
                 "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta",
-                "trace_delta_median", "trace_delta_max", "plateau_established"):
+                "trace_delta_median", "trace_delta_max", "plateau_established", "trace_ci_overlap"):
         assert key in result3, f"missing expected output key '{key}'"
     assert isinstance(result3["plateau_established"], (bool, np.bool_)), \
         f"expected plateau_established to be a bool, got {type(result3['plateau_established'])}"
@@ -840,10 +862,14 @@ def test_run_js_comp_test_parameter_search():
     assert result3["trace_global_js_divergence"].shape[-1] == n_admissible
     assert result3["trace_ci_width"].shape[-1] == n_admissible
     assert result3["trace_ci_width_relative"].shape == result3["trace_ci_width"].shape
+    assert result3["trace_ci_overlap"].shape == result3["trace_ci_width"].shape
+    assert result3["trace_ci_overlap"].dtype == np.float64
     assert result3["trace_ci_width"].dtype == np.float64
     assert result3["trace_delta"].dtype == np.float64
     # The first (and here, only) admissible candidate has no predecessor to diff against.
     np.testing.assert_array_almost_equal(result3["trace_delta"][:, 0], [-1.0, -1.0], decimal=12)
+    # Likewise no previous best to overlap with: the same -1.0 sentinel.
+    np.testing.assert_array_almost_equal(result3["trace_ci_overlap"][:, 0], [-1.0, -1.0], decimal=12)
 
     # ============================================================
     # Test 4 -- callability/shape coverage for the Issue #187 per-point outputs added by this
@@ -1197,8 +1223,11 @@ def test_run_js_comp_test_adaptive_parameter_search():
     for key in ("trace_k_step", "trace_k_max", "trace_n_points", "trace_delta_median", "trace_delta_max"):
         assert result[key].shape == (n_admissible,), f"{key}: wrong shape {result[key].shape}"
     for key in ("trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width",
-                "trace_ci_width_relative", "trace_delta"):
+                "trace_ci_width_relative", "trace_ci_overlap", "trace_delta"):
         assert result[key].shape == (n_studies, n_admissible), f"{key}: wrong shape {result[key].shape}"
+    assert result["trace_ci_overlap"].dtype == np.float64
+    # The first admissible candidate has no previous best to overlap with: the -1.0 sentinel.
+    np.testing.assert_array_almost_equal(result["trace_ci_overlap"][:, 0], -1.0, decimal=12)
     for key in ("trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals",
                 "trace_shared_residual_range_low", "trace_shared_residual_range_high"):
         assert result[key].shape == (capacity, n_admissible), f"{key}: wrong shape {result[key].shape}"

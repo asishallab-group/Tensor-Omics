@@ -367,14 +367,15 @@ _lib.check_plateau_condition_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_double),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_bool),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CHECK_PLATEAU_CONDITION_ARGUMENTS = ("confidence_interval", "best_candidate_pair_confidence_interval", "n_studies", "best_candidate_index", "best_exceeded_ci_overlap_count", "candidate_index", "join_method", "succeeding_ci_overlap", "plateau_found", "ierr",)
+_CHECK_PLATEAU_CONDITION_ARGUMENTS = ("confidence_interval", "best_candidate_pair_confidence_interval", "n_studies", "best_candidate_index", "best_exceeded_ci_overlap_count", "candidate_index", "join_method", "succeeding_ci_overlap", "ci_overlap", "plateau_found", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_CHECK_PLATEAU_CONDITION_ARGUMENT_SOURCES = (None, None, "confidence_interval", None, None, None, None, None, None, None,)
+_CHECK_PLATEAU_CONDITION_ARGUMENT_SOURCES = (None, None, "confidence_interval", None, None, None, None, None, None, None, None,)
 
 _lib.check_effect_size_plateau_condition_c.restype = None
 _lib.check_effect_size_plateau_condition_c.argtypes = (
@@ -581,6 +582,7 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
@@ -613,9 +615,9 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "ierr",)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_adaptive_parameter_search_c.restype = None
 _lib.run_js_comp_test_adaptive_parameter_search_c.argtypes = (
@@ -647,6 +649,7 @@ _lib.run_js_comp_test_adaptive_parameter_search_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
@@ -687,9 +690,9 @@ _lib.run_js_comp_test_adaptive_parameter_search_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "ierr",)
+_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def estimate_bin_count(
         residuals,
@@ -2852,6 +2855,16 @@ def check_plateau_condition(
             Number of studies whose overlap exceeded `succeeding_ci_overlap` for the current
             best candidate pair; overwritten unless the new candidate is worse
             The minimum valid value is `0`.
+        ci_overlap : np.ndarray[np.float64] of shape (n_studies,), read-only
+            Per-study fractional overlap of `confidence_interval` with
+            `best_candidate_pair_confidence_interval` as it was on entry (the running best at
+            that time, not the candidate tested before this one), relative to the width of the
+            new candidate's own interval, in `[0, 1]`: the values `succeeding_ci_overlap` is
+            tested against. Filled for every study on every call, also when the new candidate is
+            worse than the best and the call plateaus immediately. For the very first candidate
+            the caller's best interval is only the `-1.0` seed, so the values carry no meaning
+            there (the searches record `-1.0` instead)
+            A result is a value; call `.copy()` to obtain a modifiable array.
         plateau_found : bool
             `True` once the new candidate is no better than the previous best, or once
             `join_method`'s overlap condition is met by the new candidate
@@ -2893,6 +2906,7 @@ def check_plateau_condition(
         )
 
     # outputs and work arrays, which the caller never sees
+    ci_overlap = np.empty((n_studies,), dtype=np.float64, order='C')
     plateau_found = ctypes.c_bool(0)
     ierr = ctypes.c_int(0)
 
@@ -2905,15 +2919,20 @@ def check_plateau_condition(
         ctypes.byref(ctypes.c_int(candidate_index)),
         join_method,
         ctypes.byref(ctypes.c_double(succeeding_ci_overlap)),
+        ci_overlap,
         ctypes.byref(plateau_found),
         ctypes.byref(ierr),
     )
 
     check_err_code(ierr.value, _CHECK_PLATEAU_CONDITION_ARGUMENTS, _CHECK_PLATEAU_CONDITION_ARGUMENT_SOURCES)
 
+    # a result is a value: modify a copy, not this
+    ci_overlap.flags.writeable = False
+
     return {
         "best_candidate_index": best_candidate_index.value,
         "best_exceeded_ci_overlap_count": best_exceeded_ci_overlap_count.value,
+        "ci_overlap": ci_overlap,
         "plateau_found": plateau_found.value,
     }
 
@@ -4750,6 +4769,18 @@ def run_js_comp_test_parameter_search(
             destabilizes any ratio that divides by it, whichever candidate's `J` it is)
             The first `n_admissible_evaluated` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_ci_overlap : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-study fractional overlap of the candidate's bootstrapped
+            confidence interval with the running best candidate's interval at that moment, in
+            `[0, 1]`, from check_plateau_condition_impl: the values `succeeding_ci_overlap` is
+            tested against. The running best is the best candidate so far, which is not always
+            the candidate just before (a candidate that is no worse than the best so far becomes
+            the new best; a worse one ends the search in CI-overlap or both mode); the denominator is this
+            candidate's own interval width. `-1.0` throughout at the first admissible
+            candidate (no previous best to compare with) -- every other column within
+            `1:n_admissible_evaluated` holds a real value
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
         trace_delta : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
             Per-admissible-candidate, per-study relative JSD change from the previous admissible
             candidate (`Delta_{i,t}`), from check_effect_size_plateau_condition_impl;
@@ -4909,6 +4940,7 @@ def run_js_comp_test_parameter_search(
     trace_ci_upper = np.empty((n_studies, 16,), dtype=np.float64, order='F')
     trace_ci_width = np.empty((n_studies, 16,), dtype=np.float64, order='F')
     trace_ci_width_relative = np.empty((n_studies, 16,), dtype=np.float64, order='F')
+    trace_ci_overlap = np.empty((n_studies, 16,), dtype=np.float64, order='F')
     trace_delta = np.empty((n_studies, 16,), dtype=np.float64, order='F')
     trace_delta_median = np.empty((16,), dtype=np.float64, order='C')
     trace_delta_max = np.empty((16,), dtype=np.float64, order='C')
@@ -4949,6 +4981,7 @@ def run_js_comp_test_parameter_search(
         trace_ci_upper,
         trace_ci_width,
         trace_ci_width_relative,
+        trace_ci_overlap,
         trace_delta,
         trace_delta_median,
         trace_delta_max,
@@ -4995,6 +5028,7 @@ def run_js_comp_test_parameter_search(
     trace_ci_upper.flags.writeable = False
     trace_ci_width.flags.writeable = False
     trace_ci_width_relative.flags.writeable = False
+    trace_ci_overlap.flags.writeable = False
     trace_delta.flags.writeable = False
     trace_delta_median.flags.writeable = False
     trace_delta_max.flags.writeable = False
@@ -5024,6 +5058,7 @@ def run_js_comp_test_parameter_search(
         "trace_ci_upper": trace_ci_upper[..., :n_admissible_evaluated.value],
         "trace_ci_width": trace_ci_width[..., :n_admissible_evaluated.value],
         "trace_ci_width_relative": trace_ci_width_relative[..., :n_admissible_evaluated.value],
+        "trace_ci_overlap": trace_ci_overlap[..., :n_admissible_evaluated.value],
         "trace_delta": trace_delta[..., :n_admissible_evaluated.value],
         "trace_delta_median": trace_delta_median[..., :n_admissible_evaluated.value],
         "trace_delta_max": trace_delta_max[..., :n_admissible_evaluated.value],
@@ -5387,6 +5422,13 @@ def run_js_comp_test_adaptive_parameter_search(
             global JSD, the denominator floored at `delta_epsilon`
             The first `n_admissible_evaluated` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_ci_overlap : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-study fractional overlap of the candidate's bootstrapped
+            confidence interval with the running best candidate's interval at that moment, in
+            `[0, 1]`, relative to this candidate's own interval width; `-1.0` throughout at
+            the first one. See the fixed-k search's `trace_ci_overlap` for the running-best detail
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
         trace_delta : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
             Per-admissible-candidate, per-study relative JSD change from the previous admissible
             candidate; `-1.0` throughout at the first one
@@ -5536,6 +5578,7 @@ def run_js_comp_test_adaptive_parameter_search(
     trace_ci_upper = np.empty((n_studies, 16,), dtype=np.float64, order='F')
     trace_ci_width = np.empty((n_studies, 16,), dtype=np.float64, order='F')
     trace_ci_width_relative = np.empty((n_studies, 16,), dtype=np.float64, order='F')
+    trace_ci_overlap = np.empty((n_studies, 16,), dtype=np.float64, order='F')
     trace_delta = np.empty((n_studies, 16,), dtype=np.float64, order='F')
     trace_delta_median = np.empty((16,), dtype=np.float64, order='C')
     trace_delta_max = np.empty((16,), dtype=np.float64, order='C')
@@ -5583,6 +5626,7 @@ def run_js_comp_test_adaptive_parameter_search(
         trace_ci_upper,
         trace_ci_width,
         trace_ci_width_relative,
+        trace_ci_overlap,
         trace_delta,
         trace_delta_median,
         trace_delta_max,
@@ -5639,6 +5683,7 @@ def run_js_comp_test_adaptive_parameter_search(
     trace_ci_upper.flags.writeable = False
     trace_ci_width.flags.writeable = False
     trace_ci_width_relative.flags.writeable = False
+    trace_ci_overlap.flags.writeable = False
     trace_delta.flags.writeable = False
     trace_delta_median.flags.writeable = False
     trace_delta_max.flags.writeable = False
@@ -5675,6 +5720,7 @@ def run_js_comp_test_adaptive_parameter_search(
         "trace_ci_upper": trace_ci_upper[..., :n_admissible_evaluated.value],
         "trace_ci_width": trace_ci_width[..., :n_admissible_evaluated.value],
         "trace_ci_width_relative": trace_ci_width_relative[..., :n_admissible_evaluated.value],
+        "trace_ci_overlap": trace_ci_overlap[..., :n_admissible_evaluated.value],
         "trace_delta": trace_delta[..., :n_admissible_evaluated.value],
         "trace_delta_median": trace_delta_median[..., :n_admissible_evaluated.value],
         "trace_delta_max": trace_delta_max[..., :n_admissible_evaluated.value],

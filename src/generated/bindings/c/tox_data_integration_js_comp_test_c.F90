@@ -2153,6 +2153,7 @@ contains
             candidate_index,&
             join_method,&
             succeeding_ci_overlap,&
+            ci_overlap,&
             plateau_found,&
             ierr&
         ) bind(C, name="check_plateau_condition_c")
@@ -2195,6 +2196,15 @@ contains
             !! "exceeded"
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
+        real(c_double), dimension(n_studies), intent(out), target :: ci_overlap
+            !! Per-study fractional overlap of `confidence_interval` with
+            !! `best_candidate_pair_confidence_interval` as it was on entry (the running best at
+            !! that time, not the candidate tested before this one), relative to the width of the
+            !! new candidate's own interval, in `[0, 1]`: the values `succeeding_ci_overlap` is
+            !! tested against. Filled for every study on every call, also when the new candidate is
+            !! worse than the best and the call plateaus immediately. For the very first candidate
+            !! the caller's best interval is only the `-1.0` seed, so the values carry no meaning
+            !! there (the searches record `-1.0_real64` instead)
         logical(c_bool), intent(out), target :: plateau_found
             !! `.true.` once the new candidate is no better than the previous best, or once
             !! `join_method`'s overlap condition is met by the new candidate
@@ -2213,6 +2223,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(confidence_interval, 2 * n_studies)
         M_CHECK_ARRAY_NON_NULL(best_candidate_pair_confidence_interval, 2 * n_studies)
         M_CHECK_ARRAY_NON_NULL(join_method, 11)
+        M_CHECK_ARRAY_NON_NULL(ci_overlap, n_studies)
 
         block
             character(len=:), pointer :: join_method_f
@@ -2240,6 +2251,7 @@ contains
             candidate_index = candidate_index,&
             join_method = join_method_mode_f,&
             succeeding_ci_overlap = succeeding_ci_overlap,&
+            ci_overlap = ci_overlap,&
             plateau_found = plateau_found,&
             ierr = ierr&
         )
@@ -4941,6 +4953,7 @@ contains
             trace_ci_upper,&
             trace_ci_width,&
             trace_ci_width_relative,&
+            trace_ci_overlap,&
             trace_delta,&
             trace_delta_median,&
             trace_delta_max,&
@@ -5094,6 +5107,17 @@ contains
             !! formula omits this floor, but the same near-zero-JSD instability that motivates
             !! `delta_epsilon` in the `Delta_{i,t}` formula applies here too (a near-zero `J`
             !! destabilizes any ratio that divides by it, whichever candidate's `J` it is)
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_overlap
+            !! Per-admissible-candidate, per-study fractional overlap of the candidate's bootstrapped
+            !! confidence interval with the running best candidate's interval at that moment, in
+            !! `[0, 1]`, from check_plateau_condition_impl: the values `succeeding_ci_overlap` is
+            !! tested against. The running best is the best candidate so far, which is not always
+            !! the candidate just before (a candidate that is no worse than the best so far becomes
+            !! the new best; a worse one ends the search in CI-overlap or both mode); the denominator is this
+            !! candidate's own interval width. `-1.0_real64` throughout at the first admissible
+            !! candidate (no previous best to compare with) -- every other column within
+            !! `1:n_admissible_evaluated` holds a real value
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
@@ -5352,6 +5376,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(trace_ci_upper, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_ci_width, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_ci_width_relative, n_studies * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_ci_overlap, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta_median, 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta_max, 16)
@@ -5444,6 +5469,7 @@ contains
             trace_ci_upper = trace_ci_upper,&
             trace_ci_width = trace_ci_width,&
             trace_ci_width_relative = trace_ci_width_relative,&
+            trace_ci_overlap = trace_ci_overlap,&
             trace_delta = trace_delta,&
             trace_delta_median = trace_delta_median,&
             trace_delta_max = trace_delta_max,&
@@ -5605,6 +5631,7 @@ contains
             trace_ci_upper,&
             trace_ci_width,&
             trace_ci_width_relative,&
+            trace_ci_overlap,&
             trace_delta,&
             trace_delta_median,&
             trace_delta_max,&
@@ -5807,6 +5834,17 @@ contains
             !! formula omits this floor, but the same near-zero-JSD instability that motivates
             !! `delta_epsilon` in the `Delta_{i,t}` formula applies here too (a near-zero `J`
             !! destabilizes any ratio that divides by it, whichever candidate's `J` it is)
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_overlap
+            !! Per-admissible-candidate, per-study fractional overlap of the candidate's bootstrapped
+            !! confidence interval with the running best candidate's interval at that moment, in
+            !! `[0, 1]`, from check_plateau_condition_impl: the values `succeeding_ci_overlap` is
+            !! tested against. The running best is the best candidate so far, which is not always
+            !! the candidate just before (a candidate that is no worse than the best so far becomes
+            !! the new best; a worse one ends the search in CI-overlap or both mode); the denominator is this
+            !! candidate's own interval width. `-1.0_real64` throughout at the first admissible
+            !! candidate (no previous best to compare with) -- every other column within
+            !! `1:n_admissible_evaluated` holds a real value
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
@@ -6203,6 +6241,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(trace_ci_upper, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_ci_width, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_ci_width_relative, n_studies * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_ci_overlap, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta_median, 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta_max, 16)
@@ -6340,6 +6379,7 @@ contains
             trace_ci_upper = trace_ci_upper,&
             trace_ci_width = trace_ci_width,&
             trace_ci_width_relative = trace_ci_width_relative,&
+            trace_ci_overlap = trace_ci_overlap,&
             trace_delta = trace_delta,&
             trace_delta_median = trace_delta_median,&
             trace_delta_max = trace_delta_max,&
@@ -6548,6 +6588,7 @@ contains
             trace_ci_upper,&
             trace_ci_width,&
             trace_ci_width_relative,&
+            trace_ci_overlap,&
             trace_delta,&
             trace_delta_median,&
             trace_delta_max,&
@@ -6684,6 +6725,12 @@ contains
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_width_relative
             !! Per-admissible-candidate, per-study confidence-interval width divided by the observed
             !! global JSD, the denominator floored at `delta_epsilon`
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_overlap
+            !! Per-admissible-candidate, per-study fractional overlap of the candidate's bootstrapped
+            !! confidence interval with the running best candidate's interval at that moment, in
+            !! `[0, 1]`, relative to this candidate's own interval width; `-1.0_real64` throughout at
+            !! the first one. See the fixed-k search's `trace_ci_overlap` for the running-best detail
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
@@ -6941,6 +6988,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(trace_ci_upper, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_ci_width, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_ci_width_relative, n_studies * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_ci_overlap, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta_median, 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta_max, 16)
@@ -7039,6 +7087,7 @@ contains
             trace_ci_upper = trace_ci_upper,&
             trace_ci_width = trace_ci_width,&
             trace_ci_width_relative = trace_ci_width_relative,&
+            trace_ci_overlap = trace_ci_overlap,&
             trace_delta = trace_delta,&
             trace_delta_median = trace_delta_median,&
             trace_delta_max = trace_delta_max,&
@@ -7212,6 +7261,7 @@ contains
             trace_ci_upper,&
             trace_ci_width,&
             trace_ci_width_relative,&
+            trace_ci_overlap,&
             trace_delta,&
             trace_delta_median,&
             trace_delta_max,&
@@ -7398,6 +7448,12 @@ contains
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_width_relative
             !! Per-admissible-candidate, per-study confidence-interval width divided by the observed
             !! global JSD, the denominator floored at `delta_epsilon`
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_overlap
+            !! Per-admissible-candidate, per-study fractional overlap of the candidate's bootstrapped
+            !! confidence interval with the running best candidate's interval at that moment, in
+            !! `[0, 1]`, relative to this candidate's own interval width; `-1.0_real64` throughout at
+            !! the first one. See the fixed-k search's `trace_ci_overlap` for the running-best detail
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
@@ -7759,6 +7815,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(trace_ci_upper, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_ci_width, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_ci_width_relative, n_studies * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_ci_overlap, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta_median, 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta_max, 16)
@@ -7903,6 +7960,7 @@ contains
             trace_ci_upper = trace_ci_upper,&
             trace_ci_width = trace_ci_width,&
             trace_ci_width_relative = trace_ci_width_relative,&
+            trace_ci_overlap = trace_ci_overlap,&
             trace_delta = trace_delta,&
             trace_delta_median = trace_delta_median,&
             trace_delta_max = trace_delta_max,&
