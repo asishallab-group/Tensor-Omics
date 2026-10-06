@@ -69,6 +69,9 @@ from .tox_data_archive import (
     get_tox_data_dims,
     read_tox_data_into,
 )
+from .tox_data_flyer_json import (
+    save_flyer_json,
+)
 from .tox_data_integration_jsd import (
     determine_shared_residual_range,
     determine_shared_residual_range_expert,
@@ -285,6 +288,7 @@ __all__ = [
     "relative_axes_changes_from_shift_vector",
     "relative_axes_expression_from_expression_vector",
     "root_mean_sq_normalization",
+    "save_flyer_json",
     "save_tox_data",
     "serialize_char_helper",
     "serialize_complex_helper",

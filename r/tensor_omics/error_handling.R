@@ -31,6 +31,8 @@ ERR_TYPE_MISMATCH <- 207L
 ERR_STRING_TOO_LONG <- 208L
 ERR_IDX_OUT_OF_BOUNDS <- 209L
 ERR_DIVISION_BY_ZERO <- 210L
+ERR_JSON_SEQUENCE <- 211L
+ERR_INVALID_UTF8 <- 212L
 ERR_ALLOC_FAIL <- 301L
 ERR_POINTER_NULL <- 302L
 ERR_UNIT_NOT_CONNECTED <- 5002L
@@ -65,6 +67,8 @@ ERR_UNKNOWN <- 9999L
     "208" = "String exceeds buffer size",
     "209" = "Array index out of bounds",
     "210" = "Division by zero encountered",
+    "211" = "JSON writer called out of order: no valid document can follow",
+    "212" = "String is not valid UTF-8",
     "301" = "memory allocation failed",
     "302" = "null pointer dereference",
     "5002" = "Fortran runtime error: unit not connected",
@@ -100,6 +104,8 @@ ERR_UNKNOWN <- 9999L
     "208" = "ERR_STRING_TOO_LONG",
     "209" = "ERR_IDX_OUT_OF_BOUNDS",
     "210" = "ERR_DIVISION_BY_ZERO",
+    "211" = "ERR_JSON_SEQUENCE",
+    "212" = "ERR_INVALID_UTF8",
     "301" = "ERR_ALLOC_FAIL",
     "302" = "ERR_POINTER_NULL",
     "5002" = "ERR_UNIT_NOT_CONNECTED",
@@ -135,6 +141,8 @@ ERR_UNKNOWN <- 9999L
     "208" = "tox_input_error",
     "209" = "tox_input_error",
     "210" = "tox_input_error",
+    "211" = "tox_input_error",
+    "212" = "tox_input_error",
     "301" = "tox_memory_error",
     "302" = "tox_memory_error",
     "5002" = "tox_runtime_error",

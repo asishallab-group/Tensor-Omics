@@ -6,3 +6,7 @@ src/generated/** linguist-generated=true
 python/tensor_omics/** linguist-generated=true
 r/tensor_omics/** linguist-generated=true
 snippets/** linguist-generated=true
+
+# Compared byte for byte with the file save_flyer_json writes, so no checkout may turn its line
+# feed into CR LF.
+test/test_files/flyer_expected.json -text

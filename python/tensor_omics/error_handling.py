@@ -103,6 +103,10 @@ ERR_IDX_OUT_OF_BOUNDS = 209
 #: Array index out of bounds
 ERR_DIVISION_BY_ZERO = 210
 #: Division by zero encountered
+ERR_JSON_SEQUENCE = 211
+#: JSON writer called out of order: no valid document can follow
+ERR_INVALID_UTF8 = 212
+#: String is not valid UTF-8
 ERR_ALLOC_FAIL = 301
 #: memory allocation failed
 ERR_POINTER_NULL = 302
@@ -142,6 +146,8 @@ _MESSAGES = {
     208: "String exceeds buffer size",
     209: "Array index out of bounds",
     210: "Division by zero encountered",
+    211: "JSON writer called out of order: no valid document can follow",
+    212: "String is not valid UTF-8",
     301: "memory allocation failed",
     302: "null pointer dereference",
     5002: "Fortran runtime error: unit not connected",
@@ -177,6 +183,8 @@ _NAMES = {
     208: "ERR_STRING_TOO_LONG",
     209: "ERR_IDX_OUT_OF_BOUNDS",
     210: "ERR_DIVISION_BY_ZERO",
+    211: "ERR_JSON_SEQUENCE",
+    212: "ERR_INVALID_UTF8",
     301: "ERR_ALLOC_FAIL",
     302: "ERR_POINTER_NULL",
     5002: "ERR_UNIT_NOT_CONNECTED",
@@ -212,6 +220,8 @@ _EXCEPTIONS = {
     208: ToxInputError,
     209: ToxInputError,
     210: ToxInputError,
+    211: ToxInputError,
+    212: ToxInputError,
     301: ToxMemoryError,
     302: ToxMemoryError,
     5002: ToxRuntimeError,

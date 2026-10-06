@@ -72,6 +72,7 @@ SEXP create_zip_archive_call(SEXP, SEXP, SEXP);
 SEXP save_tox_data_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP get_tox_data_dims_call(SEXP);
 SEXP read_tox_data_into_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP save_flyer_json_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP determine_shared_residual_range_call(SEXP, SEXP);
 SEXP determine_shared_residual_range_expert_call(SEXP, SEXP, SEXP);
 SEXP determine_study_shared_residual_range_call(SEXP, SEXP, SEXP);
@@ -182,6 +183,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"save_tox_data_call", (DL_FUNC) &save_tox_data_call, 13},
     {"get_tox_data_dims_call", (DL_FUNC) &get_tox_data_dims_call, 1},
     {"read_tox_data_into_call", (DL_FUNC) &read_tox_data_into_call, 12},
+    {"save_flyer_json_call", (DL_FUNC) &save_flyer_json_call, 10},
     {"determine_shared_residual_range_call", (DL_FUNC) &determine_shared_residual_range_call, 2},
     {"determine_shared_residual_range_expert_call", (DL_FUNC) &determine_shared_residual_range_expert_call, 3},
     {"determine_study_shared_residual_range_call", (DL_FUNC) &determine_study_shared_residual_range_call, 3},

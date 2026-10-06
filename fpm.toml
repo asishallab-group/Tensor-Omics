@@ -25,6 +25,10 @@ diagnostics.ifx.flags = "-g -traceback -check all -warn all -diag-enable=all -st
 diagnostics.gfortran.flags = "-g -fbacktrace -fcheck=all -Wall -Wextra -Warray-temporaries -Wrealloc-lhs-all -std=f2023 -pedantic"
 
 default.linux.flags = "-fPIC"
+# nvfortran flushes subnormal numbers to zero unless told otherwise, and then writes them as 0
+# (the JSON writer, f42_serde_json_serialize, would lose them); -Kieee -Mnoflushz keep them.
+# nvfortran 26.9 or later is required: 25.7 miscompiles the JSON writer's class(*) arguments.
+default.nvfortran.flags = "-Kieee -Mnoflushz"
 
 [[test]]
 name = "run_tests"
