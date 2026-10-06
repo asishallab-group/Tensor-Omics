@@ -8,6 +8,7 @@ machine rather than re-argued.
 |---|---|
 | [`logical-kinds/`](logical-kinds/) | What does the `c_bool` marshalling copy at the C boundary cost, and does holding a mask in `c_bool` rather than the default kind cost anything to write or to read? |
 | [`r-binding-backend/`](r-binding-backend/) | Should the R binding go through Rcpp, cpp11, pure C `.Call`, or `.C`? |
+| [`subnormal-detection/`](subnormal-detection/) | How could f42 recognise a subnormal value reliably — by `exponent`, by `ieee_class`, or by its bit pattern — and what would the test cost in `scaled_length`'s loops, called from another module or written inline? (f42 then chose not to detect subnormals at all.) |
 
 ## Layout of a benchmark
 
@@ -52,6 +53,10 @@ interval; a smaller step survives as a plausible number. It showed in `logical-k
 single ifx cells an order of magnitude below both their neighbours, landing in a different cell
 on every run. `cpu_time` is monotonic on both compilers and is the same quantity as wall time
 for a single-threaded benchmark whose measurements each run for 0.1 s or more.
+
+nvfortran is the exception: its `cpu_time` and its `system_clock` are both `gettimeofday`
+underneath, a wall clock with the same trap. A benchmark that includes nvfortran times with `clock_gettime(CLOCK_PROCESS_CPUTIME_ID)`
+through `bind(c)`, as `subnormal-detection/` does.
 
 Two smaller ones worth repeating:
 
