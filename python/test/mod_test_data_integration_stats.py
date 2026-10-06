@@ -41,6 +41,31 @@ def test_gjct_permutation_test_basic():
         assert np.all(p_values > 0.0) and np.all(p_values <= 1.0), key
 
 
+def test_gjct_permutation_test_zero_permutations_gives_nan_p_values():
+    """n_permutations=0 skips the test: both p-value arrays are NaN ("not computed"), not 0.0 --
+    mirrors the Fortran test of the same name (test/mod_test_data_integration_js_comp_test.F90)."""
+    n_bins, n_points, n_studies = 3, 2, 2
+
+    mean_pmf_counts = np.zeros((n_bins, n_points), dtype=np.int32, order="F")
+    mean_pmf_counts[:, 0] = [5, 3, 2]
+    mean_pmf_counts[:, 1] = [2, 2, 6]
+    mean_pmf_included_n_reps = np.array([10, 10], dtype=np.int32)
+    included_n_reps = np.zeros((n_points, n_studies), dtype=np.int32, order="F")
+    included_n_reps[:, 0] = [4, 4]
+    included_n_reps[:, 1] = [6, 6]
+    mean_pmf = mean_pmf_counts.astype(np.float64) / 10.0
+    global_jsd_observed = np.array([0.3, 0.3], dtype=np.float64)
+
+    result = gjct_permutation_test(
+        0, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps,
+        included_n_reps, global_jsd_observed, random_seed=123
+    )
+
+    for key in ("p_values", "p_values_observed_consensus"):
+        assert len(result[key]) == n_studies, key
+        assert np.all(np.isnan(result[key])), f"{key}: expected NaN for n_permutations=0"
+
+
 def test_gjct_permutation_test_seeded_reproducibility():
     """Same random_seed twice must give identical p_values and p_values_observed_consensus --
     mirrors the Fortran test of the same name (test/mod_test_data_integration_js_comp_test.F90)."""

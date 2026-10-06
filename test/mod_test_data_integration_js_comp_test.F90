@@ -110,7 +110,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(223))
+        allocate (all_tests(225))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -566,6 +566,10 @@ contains
                                   test_gjct_permutation_test_rejects_draws_larger_than_pool)
         all_tests(223) = test_case("test_bootstrap_histogram_rejects_draws_from_empty_pool", &
                                   test_bootstrap_histogram_rejects_draws_from_empty_pool)
+        all_tests(224) = test_case("test_gjct_permutation_test_zero_permutations_gives_nan_p_values", &
+                                  test_gjct_permutation_test_zero_permutations_gives_nan_p_values)
+        all_tests(225) = test_case("test_run_js_comp_test_zero_permutations_gives_nan_p_values", &
+                                  test_run_js_comp_test_zero_permutations_gives_nan_p_values)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -2272,11 +2276,127 @@ contains
                                      "p_values_observed_consensus are zeroed, so no permutation ran")
     end subroutine test_gjct_permutation_test_rejects_draws_larger_than_pool
 
+    !> `n_permutations = 0` skips the permutation test: nothing is tested, so both p-value arrays
+    !| come back NaN ("not computed") with `ierr` OK, not `0.0`, which would read as "maximally
+    !| significant". The control, with one permutation on the same input, gives finite p-values in
+    !| (0, 1] (the Laplace correction keeps them above 0).
+    subroutine test_gjct_permutation_test_zero_permutations_gives_nan_p_values()
+        character(len=*), parameter :: name = "test_gjct_permutation_test_zero_permutations_gives_nan_p_values: "
+        integer(int32), parameter :: n_bins = 3, n_points = 1, n_studies = 2
+        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: p_values_observed_consensus(n_studies)
+        integer(int32) :: ierr
+
+        mean_pmf_counts(:, 1) = [5, 3, 2]
+        mean_pmf_included_n_reps = [10]
+        included_n_reps(1, :) = [4, 6]
+        mean_pmf(:, 1) = real(mean_pmf_counts(:, 1), real64)/10.0_real64
+        global_jsd_observed = 0.3_real64
+
+        p_values = -1.0_real64
+        p_values_observed_consensus = -1.0_real64
+        call gjct_permutation_test(0_int32, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
+                                   mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
+                                   p_values_observed_consensus, ierr=ierr, random_seed=7_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"n_permutations=0: ierr should be OK")
+        call assert_true(all(ieee_is_nan(p_values)), name//"n_permutations=0: p_values are NaN (not computed)")
+        call assert_true(all(ieee_is_nan(p_values_observed_consensus)), &
+                         name//"n_permutations=0: p_values_observed_consensus are NaN (not computed)")
+
+        p_values = -1.0_real64
+        p_values_observed_consensus = -1.0_real64
+        call gjct_permutation_test(1_int32, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
+                                   mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
+                                   p_values_observed_consensus, ierr=ierr, random_seed=7_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"control, n_permutations=1: ierr should be OK")
+        call assert_true(all(.not. ieee_is_nan(p_values) .and. p_values > 0.0_real64 .and. p_values <= 1.0_real64), &
+                         name//"control, n_permutations=1: p_values are finite in (0, 1]")
+        call assert_true(all(.not. ieee_is_nan(p_values_observed_consensus) .and. p_values_observed_consensus > 0.0_real64 &
+                             .and. p_values_observed_consensus <= 1.0_real64), &
+                         name//"control, n_permutations=1: p_values_observed_consensus are finite in (0, 1]")
+    end subroutine test_gjct_permutation_test_zero_permutations_gives_nan_p_values
+
+    !> The same through `run_js_comp_test` (the fixture of
+    !| `test_run_js_comp_test_two_studies_hand_traceable`): `n_permutations=0` gives NaN
+    !| `p_values` and `p_values_observed_consensus`, while the JSDs and `ierr` are unaffected;
+    !| the control with `n_permutations=2` on the same input gives finite p-values in (0, 1].
+    subroutine test_run_js_comp_test_zero_permutations_gives_nan_p_values()
+        character(len=*), parameter :: name = "test_run_js_comp_test_zero_permutations_gives_nan_p_values: "
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
+        integer(int32), parameter :: n_points = 1, n_neighbors = 1
+        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
+        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
+        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+        real(real64) :: x_star(n_points)
+        integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
+        integer(int32) :: neighborhood_range(2, n_points, n_studies)
+        integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
+        real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
+        logical(c_bool) :: occupancy_failed(n_points)
+        integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
+        real(real64) :: mean_bin_occupancy(n_points)
+        integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
+        real(real64) :: pmfs(256, n_points, n_studies)
+        integer(int32) :: counts(256, n_points, n_studies)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: mean_pmf(256, n_points)
+        integer(int32) :: mean_pmf_counts(256, n_points)
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
+        real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
+        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
+        real(real64) :: p_values_observed_consensus(n_studies)
+        integer(int32) :: ierr, i_run
+        integer(int32), parameter :: n_permutations_runs(2) = [0_int32, 2_int32]
+        real(real64) :: nan_val
+
+        nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
+        gene_means(:, 1) = [1.0_real64, 5.0_real64]
+        gene_means(:, 2) = [1.0_real64, 5.0_real64]
+        gene_means_perms(:, 1) = [1, 2]
+        gene_means_perms(:, 2) = [1, 2]
+        residuals(:, 1, 1) = [-1.0_real64, 1.0_real64]
+        residuals(:, 2, 1) = nan_val
+        residuals(:, 1, 2) = [-3.0_real64, 3.0_real64]
+        residuals(:, 2, 2) = nan_val
+        x_star = [1.0_real64]
+
+        do i_run = 1, 2
+            p_values = -1.0_real64
+            p_values_observed_consensus = -1.0_real64
+            call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
+                                  gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                                  neighborhood_range, n_bins_per_point, shared_residual_range_low, &
+                                  shared_residual_range_high, max_n_bins_per_point, occupancy_failed, &
+                                  n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
+                                  sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
+                                  mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
+                                  p_values_observed_consensus, ierr=ierr, n_permutations=n_permutations_runs(i_run), &
+                                  random_seed=1_int32, min_residuals_per_bin=1_int32)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr should be OK")
+            call assert_true(all(.not. ieee_is_nan(global_js_divergence)), name//"global_js_divergence is finite")
+            if (n_permutations_runs(i_run) == 0_int32) then
+                call assert_true(all(ieee_is_nan(p_values)), name//"n_permutations=0: p_values are NaN (not computed)")
+                call assert_true(all(ieee_is_nan(p_values_observed_consensus)), &
+                                 name//"n_permutations=0: p_values_observed_consensus are NaN (not computed)")
+            else
+                call assert_true(all(.not. ieee_is_nan(p_values) .and. p_values > 0.0_real64 .and. p_values <= 1.0_real64), &
+                                 name//"control, n_permutations=2: p_values are finite in (0, 1]")
+                call assert_true(all(.not. ieee_is_nan(p_values_observed_consensus) &
+                                     .and. p_values_observed_consensus > 0.0_real64 &
+                                     .and. p_values_observed_consensus <= 1.0_real64), &
+                                 name//"control, n_permutations=2: p_values_observed_consensus are finite in (0, 1]")
+            end if
+        end do
+    end subroutine test_run_js_comp_test_zero_permutations_gives_nan_p_values
+
     !> End-to-end 2-study case run through `run_js_comp_test` with `n_permutations=0`: GSL's
     !| `create_rng` still runs (so `ierr` is genuinely exercised), but the permutation loop itself
-    !| never executes, so `gjct_permutation_test_impl` leaves everything untouched and
-    !| `run_js_comp_test_impl`'s final re-derivation step reproduces exactly the same values it
-    !| already had -- making the whole pipeline deterministic and hand-traceable.
+    !| never executes, so `gjct_permutation_test_impl` leaves the JSDs untouched and returns NaN
+    !| p-values (not computed), and `run_js_comp_test_impl`'s final re-derivation step reproduces
+    !| exactly the same values it already had -- making the whole pipeline deterministic and
+    !| hand-traceable.
     !|
     !| One reference point, one neighbor per study (`x_star=1.0` sits exactly on gene 1's mean, so
     !| both studies trivially pick gene 1 -- see test_construct_neighborhoods_ranged_basic's own
@@ -2412,13 +2532,11 @@ contains
         call assert_equal_real(weights(1, 2), 1.0_real64, TOL, &
                                "test_run_js_comp_test_two_studies_hand_traceable: single reference point weight is 1.0")
 
-        call assert_equal_real(p_values(1), 0.0_real64, TOL, &
-                               "test_run_js_comp_test_two_studies_hand_traceable: n_permutations=0 -> p_values stay 0.0")
-        call assert_equal_real(p_values(2), 0.0_real64, TOL, &
-                               "test_run_js_comp_test_two_studies_hand_traceable: n_permutations=0 -> p_values stay 0.0")
-        call assert_equal_array_real(p_values_observed_consensus, [0.0_real64, 0.0_real64], n_studies, TOL, &
-                                     "test_run_js_comp_test_two_studies_hand_traceable: "// &
-                                     "n_permutations=0 -> p_values_observed_consensus stay 0.0")
+        call assert_true(all(ieee_is_nan(p_values)), &
+                         "test_run_js_comp_test_two_studies_hand_traceable: n_permutations=0 -> p_values are NaN (not computed)")
+        call assert_true(all(ieee_is_nan(p_values_observed_consensus)), &
+                         "test_run_js_comp_test_two_studies_hand_traceable: "// &
+                         "n_permutations=0 -> p_values_observed_consensus are NaN (not computed)")
     end subroutine test_run_js_comp_test_two_studies_hand_traceable
 
     !> Compliance-review fix (Issue #187 cleanup): `min_residuals_per_bin`'s `DM_MIN` used to
@@ -7400,7 +7518,7 @@ contains
     !| - JSD(P, M) = (sum_i P_i ln(P_i/m_i) + sum_i M_i ln(M_i/m_i))/(2 ln 2), m = (P + M)/2:
     !|   study 1, m = [3/8, 1/4, 3/8]: (2/3) ln(8/9) + (1/3) ln(4/3) + (5/6) ln(10/9) + (1/6) ln(2/3);
     !|   study 2, m = [11/24, 1/12, 11/24]: ln(12/11) + (5/6) ln(10/11) + (1/6) ln 2.
-    !| - One point: weight 1 each, global JSD = the point's JSD; n_permutations 0 leaves p = 0.
+    !| - One point: weight 1 each, global JSD = the point's JSD; n_permutations 0 gives NaN p-values (not computed).
     subroutine test_run_adaptive_ragged_hand_traceable()
         real(real64) :: gene_means(3, 2), residuals(2, 3, 2), expected_js(2)
         integer(int32) :: ierr, i_bin
@@ -7444,9 +7562,9 @@ contains
         call assert_equal_array_real(out%js(1, :), expected_js, 2_int32, TOL, name//"js_divergences")
         call assert_equal_array_real(out%global_jsd, expected_js, 2_int32, TOL, name//"global_js_divergence")
         call assert_equal_array_real(out%weights(1, :), [1.0_real64, 1.0_real64], 2_int32, TOL, name//"weights")
-        call assert_equal_array_real(out%p_values, [0.0_real64, 0.0_real64], 2_int32, TOL, name//"p_values")
-        call assert_equal_array_real(out%p_values_observed_consensus, [0.0_real64, 0.0_real64], 2_int32, TOL, &
-                                     name//"p_values_observed_consensus")
+        call assert_true(all(ieee_is_nan(out%p_values)), name//"n_permutations=0 -> p_values are NaN (not computed)")
+        call assert_true(all(ieee_is_nan(out%p_values_observed_consensus)), &
+                         name//"n_permutations=0 -> p_values_observed_consensus are NaN (not computed)")
     end subroutine test_run_adaptive_ragged_hand_traceable
 
     !> Issue #217 (D4): a reversed range is a runtime error. build_adaptive_final_fixture with the

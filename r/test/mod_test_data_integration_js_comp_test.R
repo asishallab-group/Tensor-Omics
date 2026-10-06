@@ -628,8 +628,9 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
   assert_equal_int(as.integer(result$neighborhood_indices[, 1, 1]), 1L, "study 1 neighbor should be gene 1")
   assert_equal_int(as.integer(result$neighborhood_indices[, 1, 2]), 1L, "study 2 neighbor should be gene 1")
 
-  assert_true(abs(result$p_values[1] - 0.0) < TOL, "n_permutations=0 -> p_values stay 0.0")
-  assert_true(abs(result$p_values[2] - 0.0) < TOL, "n_permutations=0 -> p_values stay 0.0")
+  assert_true(all(is.nan(result$p_values)), "n_permutations=0 -> p_values are NaN (not computed)")
+  assert_true(all(is.nan(result$p_values_observed_consensus)),
+              "n_permutations=0 -> p_values_observed_consensus are NaN (not computed)")
 
   # bin_count_mode: every mode string is accepted (type/shape only; the bin counts themselves are
   # the Fortran suite's job), an unknown one is rejected before Fortran.
@@ -646,6 +647,33 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
                                 residuals = residuals, x_star = x_star, n_permutations = 0L,
                                 bin_count_mode = "nonsense"),
                "expected an unknown bin_count_mode string to be rejected before Fortran")
+}
+
+test_run_js_comp_test_zero_permutations_gives_nan_p_values <- function() {
+  # n_permutations = 0 skips the permutation test: both p-value vectors are NaN ("not computed"), not
+  # 0.0 (which would read as "maximally significant"). The control with permutations gives finite
+  # p-values in (0, 1]. Same tiny fixture as test_run_js_comp_test_two_studies_hand_traceable.
+  gene_means <- matrix(c(1.0, 5.0, 1.0, 5.0), nrow = 2)
+  gene_means_perms <- matrix(c(1L, 2L, 1L, 2L), nrow = 2)
+  residuals <- array(NaN, dim = c(2, 2, 2))
+  residuals[, 1, 1] <- c(-1.0, 1.0)
+  residuals[, 1, 2] <- c(-3.0, 3.0)
+  x_star <- c(1.0)
+
+  skipped <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = gene_means_perms,
+                              residuals = residuals, x_star = x_star, n_permutations = 0L, random_seed = 1L,
+                              min_residuals_per_bin = 1L)
+  for (key in c("p_values", "p_values_observed_consensus")) {
+    assert_true(all(is.nan(skipped[[key]])), paste(key, "n_permutations=0 must give NaN"))
+  }
+  assert_true(all(is.finite(skipped$global_js_divergence)), "the JSDs are still computed")
+
+  control <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = gene_means_perms,
+                              residuals = residuals, x_star = x_star, n_permutations = 2L, random_seed = 1L,
+                              min_residuals_per_bin = 1L)
+  for (key in c("p_values", "p_values_observed_consensus")) {
+    assert_true(all(control[[key]] > 0.0 & control[[key]] <= 1.0), paste(key, "control expected in (0, 1]"))
+  }
 }
 
 test_run_js_comp_test_parameter_search <- function() {

@@ -3503,6 +3503,9 @@ def run_js_comp_test(
     resamples only its own scratch copies, never `mean_pmf_counts` itself, and builds each
     permutation's consensus in its own scratch too), exactly as 125 relies on.
 
+    With `n_permutations = 0` the permutation test is skipped: no permutation runs, and both
+    p-values are NaN ("not computed"). Everything else is computed as usual.
+
     **Behavioral asymmetry vs.
     :func:`tensor_omics.run_js_comp_test_parameter_search`
     -- read before using this entry point where inadequately-supported neighborhoods must be
@@ -3586,7 +3589,9 @@ def run_js_comp_test(
     x_star : np.ndarray[np.float64] of shape (n_points,)
         Mean-expression reference points
     n_permutations : int, optional, default 1000
-        Number of permutations, forwarded to gjct_permutation_test_impl
+        Number of permutations, forwarded to gjct_permutation_test_impl. `0` skips the
+        permutation test: `p_values` and `p_values_observed_consensus` are then NaN ("not
+        computed")
         The minimum valid value is `0`.
         The default value is `1000`.
     random_seed : int, optional, default 42
@@ -3753,13 +3758,15 @@ def run_js_comp_test(
             A result is a value; call `.copy()` to obtain a modifiable array.
         p_values : np.ndarray[np.float64] of shape (n_studies,), read-only
             Empirical p-value per study from gjct_permutation_test_impl, each permuted study
-            compared against the consensus of the permuted studies -- the primary p-value
+            compared against the consensus of the permuted studies -- the primary p-value.
+            NaN when `n_permutations` is 0: no permutation was run, so no p-value was computed
             A result is a value; call `.copy()` to obtain a modifiable array.
         p_values_observed_consensus : np.ndarray[np.float64] of shape (n_studies,), read-only
             Empirical p-value per study from the same permutations, but with each permuted study
             compared against the fixed observed consensus `mean_pmf`, as the permutation test did
             before it recomputed the consensus per permutation. Kept for comparison only;
-            `p_values` is the primary result
+            `p_values` is the primary result. NaN when `n_permutations` is 0: no permutation was
+            run, so no p-value was computed
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -3998,6 +4005,8 @@ def run_js_comp_test_adaptive(
     final re-derivation from the untouched `counts`. Neighborhoods that decode to the same gene
     sets as a fixed-k run's therefore give bit-identical results. Every point is weighted by its
     non-NaN residual count, which under adaptive growth genuinely differs between points.
+    With `n_permutations = 0` the permutation test is skipped: no permutation runs, and both
+    p-values are NaN ("not computed").
     Like `run_js_comp_test_impl`, there is no admissibility gate: overlap and occupancy are the
     parameter search's concern.
 
@@ -4049,7 +4058,9 @@ def run_js_comp_test_adaptive(
         The minimum valid value is `1`.
         The maximum valid value is `max_n_genes_all_studies*n_studies`.
     n_permutations : int, optional, default 1000
-        Number of permutations, forwarded to gjct_permutation_test_impl
+        Number of permutations, forwarded to gjct_permutation_test_impl. `0` skips the
+        permutation test: `p_values` and `p_values_observed_consensus` are then NaN ("not
+        computed")
         The minimum valid value is `0`.
         The default value is `1000`.
     random_seed : int, optional, default 42
@@ -4185,13 +4196,15 @@ def run_js_comp_test_adaptive(
             A result is a value; call `.copy()` to obtain a modifiable array.
         p_values : np.ndarray[np.float64] of shape (n_studies,), read-only
             Empirical p-value per study from the permutation test, each permuted study compared
-            against the consensus of the permuted studies -- the primary p-value
+            against the consensus of the permuted studies -- the primary p-value. NaN when
+            `n_permutations` is 0: no permutation was run, so no p-value was computed
             A result is a value; call `.copy()` to obtain a modifiable array.
         p_values_observed_consensus : np.ndarray[np.float64] of shape (n_studies,), read-only
             Empirical p-value per study from the same permutations, but with each permuted study
             compared against the fixed observed consensus `mean_pmf`, as the permutation test did
             before it recomputed the consensus per permutation. Kept for comparison only;
-            `p_values` is the primary result
+            `p_values` is the primary result. NaN when `n_permutations` is 0: no permutation was
+            run, so no p-value was computed
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -4547,7 +4560,10 @@ def run_js_comp_test_parameter_search(
         The default value is `0.1`.
     succeeding_ci_overlap : float, optional, default 0.9
         Minimum fractional overlap a candidate's confidence interval must have with the
-        running best, per `join_method`, to plateau
+        running best, per `join_method`, to plateau. `0` switches this check off on purpose:
+        every study then counts as overlapping, so with a `plateau_mode` that uses the
+        CI-overlap criterion the first admissible candidate already plateaus (used for
+        baseline sweeps)
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.9`.
@@ -5173,7 +5189,10 @@ def run_js_comp_test_adaptive_parameter_search(
         The default value is `0.1`.
     succeeding_ci_overlap : float, optional, default 0.9
         Minimum fractional overlap a candidate's confidence interval must have with the
-        running best, per `join_method`, to plateau
+        running best, per `join_method`, to plateau. `0` switches this check off on purpose:
+        every study then counts as overlapping, so with a `plateau_mode` that uses the
+        CI-overlap criterion the first admissible candidate already plateaus (used for
+        baseline sweeps)
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.9`.

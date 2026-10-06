@@ -18,6 +18,7 @@
 module tox_data_integration_stats_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use f42_random_gsl, only: rng_t, create_rng, destroy_rng, random_multiv_hypergeom
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
                                              compute_weighted_global_divergence_impl, calc_pmf_impl
@@ -63,13 +64,16 @@ contains
     !| Both p-values apply the `(1+count)/(n+1)` Laplace add-one correction --
     !| `p_values(i) = anint(count(i)+1)/(n_permutations+1)` -- so a study whose observed JSD is
     !| never reached by any permutation gets `p = 1/(n_permutations+1)`, never `p = 0.0` exactly.
+    !| With `n_permutations = 0` there is nothing to test: no permutation runs, and both p-values
+    !| are NaN ("not computed"), not `0.0`.
     subroutine gjct_permutation_test_impl(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
                                           mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
                                           p_values_observed_consensus, tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, &
                                           tmp_js_divergences, tmp_weights, tmp_global_js_divergence, tmp_pmf_point_major, &
                                           tmp_counts_point_major, random_seed, ierr)
         integer(int32), intent(in) :: n_permutations
-            !! Number of permutations to perform
+            !! Number of permutations to perform. `0` skips the test: no permutation runs, and
+            !! `p_values` and `p_values_observed_consensus` are then NaN ("not computed")
             !! DM_MIN(0_int32)
         integer(int32), intent(in) :: n_bins
             !! Number of equally sized histogram bins
@@ -101,13 +105,15 @@ contains
         real(real64), dimension(n_studies), intent(out) :: p_values
             !! Empirical p-value per study: the Laplace-corrected fraction of permutations whose
             !! resampled global JSD reached or exceeded the observed value -- see the correction
-            !! note above
+            !! note above. NaN when `n_permutations` is 0: no permutation was run, so no p-value
+            !! was computed
         real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
             !! Empirical p-value per study from the same permutations as `p_values`, but with each
             !! permuted study's JSD taken against the fixed observed consensus `mean_pmf` instead of
             !! the consensus of the permuted studies -- the null this test used before it recomputed
             !! the consensus per permutation. Kept for comparison only; `p_values` is the primary
-            !! result. The same Laplace correction applies
+            !! result. The same Laplace correction applies. NaN when `n_permutations` is 0: no
+            !! permutation was run, so no p-value was computed
         integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_mean_pmf_counts
             !! Working array for proper resampling per permutation: the remaining pool to draw
             !! from, reset to `mean_pmf_counts` at the start of every permutation
@@ -240,6 +246,11 @@ contains
                 p_values_observed_consensus(i_study) = anint(p_values_observed_consensus(i_study)+1.0_real64) &
                                                        /real(n_permutations+1.0_real64, real64)
             end do
+        else
+            ! No permutation ran, so nothing was tested: "not computed", not 0.0 (which would read as
+            ! maximally significant). The error branches above still return zeroed p-values.
+            p_values = M_NAN
+            p_values_observed_consensus = M_NAN
         end if
 
         call destroy_rng(rng)

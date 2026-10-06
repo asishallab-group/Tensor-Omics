@@ -28,6 +28,30 @@ test_gjct_permutation_test_basic <- function() {
   }
 }
 
+# n_permutations = 0 skips the test: both p-value vectors are NaN ("not computed"), not 0.0 -- mirrors
+# the Fortran test of the same name (test/mod_test_data_integration_js_comp_test.F90).
+test_gjct_permutation_test_zero_permutations_gives_nan_p_values <- function() {
+  n_bins <- 3; n_points <- 2; n_studies <- 2
+
+  mean_pmf_counts <- matrix(0L, n_bins, n_points)
+  mean_pmf_counts[, 1] <- c(5, 3, 2)
+  mean_pmf_counts[, 2] <- c(2, 2, 6)
+  mean_pmf_included_n_reps <- c(10L, 10L)
+  included_n_reps <- matrix(0L, n_points, n_studies)
+  included_n_reps[, 1] <- c(4, 4)
+  included_n_reps[, 2] <- c(6, 6)
+  mean_pmf <- mean_pmf_counts / 10.0
+  global_jsd_observed <- c(0.3, 0.3)
+
+  result <- gjct_permutation_test(0L, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps,
+                                  included_n_reps, global_jsd_observed, random_seed = 123L)
+
+  for (key in c("p_values", "p_values_observed_consensus")) {
+    assert_true(length(result[[key]]) == n_studies)
+    assert_true(all(is.nan(result[[key]])), paste(key, "expected NaN for n_permutations=0"))
+  }
+}
+
 # Same random_seed twice must give identical p_values and p_values_observed_consensus -- mirrors
 # the Fortran test of the same name (test/mod_test_data_integration_js_comp_test.F90).
 test_gjct_permutation_test_seeded_reproducibility <- function() {

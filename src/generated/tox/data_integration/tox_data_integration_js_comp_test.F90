@@ -2861,6 +2861,9 @@ contains
     !| resamples only its own scratch copies, never `mean_pmf_counts` itself, and builds each
     !| permutation's consensus in its own scratch too), exactly as 125 relies on.
     !|
+    !| With `n_permutations = 0` the permutation test is skipped: no permutation runs, and both
+    !| p-values are NaN ("not computed"). Everything else is computed as usual.
+    !|
     !| **Behavioral asymmetry vs.
     !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
     !| -- read before using this entry point where inadequately-supported neighborhoods must be
@@ -3075,14 +3078,18 @@ contains
             !! Weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_studies), intent(out) :: p_values
             !! Empirical p-value per study from gjct_permutation_test_impl, each permuted study
-            !! compared against the consensus of the permuted studies -- the primary p-value
+            !! compared against the consensus of the permuted studies -- the primary p-value.
+            !! NaN when `n_permutations` is 0: no permutation was run, so no p-value was computed
         real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
             !! Empirical p-value per study from the same permutations, but with each permuted study
             !! compared against the fixed observed consensus `mean_pmf`, as the permutation test did
             !! before it recomputed the consensus per permutation. Kept for comparison only;
-            !! `p_values` is the primary result
+            !! `p_values` is the primary result. NaN when `n_permutations` is 0: no permutation was
+            !! run, so no p-value was computed
         integer(int32), intent(in), optional :: n_permutations
-            !! Number of permutations, forwarded to gjct_permutation_test_impl
+            !! Number of permutations, forwarded to gjct_permutation_test_impl. `0` skips the
+            !! permutation test: `p_values` and `p_values_observed_consensus` are then NaN ("not
+            !! computed")
             !! The minimum valid value is `0_int32`.
             !! The default value is `1000_int32`.
         integer(int32), intent(in), optional :: random_seed
@@ -3334,6 +3341,9 @@ contains
     !| resamples only its own scratch copies, never `mean_pmf_counts` itself, and builds each
     !| permutation's consensus in its own scratch too), exactly as 125 relies on.
     !|
+    !| With `n_permutations = 0` the permutation test is skipped: no permutation runs, and both
+    !| p-values are NaN ("not computed"). Everything else is computed as usual.
+    !|
     !| **Behavioral asymmetry vs.
     !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
     !| -- read before using this entry point where inadequately-supported neighborhoods must be
@@ -3564,12 +3574,14 @@ contains
             !! Weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_studies), intent(out) :: p_values
             !! Empirical p-value per study from gjct_permutation_test_impl, each permuted study
-            !! compared against the consensus of the permuted studies -- the primary p-value
+            !! compared against the consensus of the permuted studies -- the primary p-value.
+            !! NaN when `n_permutations` is 0: no permutation was run, so no p-value was computed
         real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
             !! Empirical p-value per study from the same permutations, but with each permuted study
             !! compared against the fixed observed consensus `mean_pmf`, as the permutation test did
             !! before it recomputed the consensus per permutation. Kept for comparison only;
-            !! `p_values` is the primary result
+            !! `p_values` is the primary result. NaN when `n_permutations` is 0: no permutation was
+            !! run, so no p-value was computed
         real(real64), dimension(max_n_reps_all_studies, n_neighbors, n_points), intent(out) :: tmp_neighborhood_residuals_gathered
             !! Working array: gathered neighborhood residual values, one slice per reference
             !! point, reused for every study (Pass C)
@@ -3620,7 +3632,9 @@ contains
         real(real64), dimension(n_studies), intent(out) :: tmp_permutation_global_js_divergence
             !! Working array forwarded to gjct_permutation_test_impl's own resampled global JSD values
         integer(int32), intent(in), optional :: n_permutations
-            !! Number of permutations, forwarded to gjct_permutation_test_impl
+            !! Number of permutations, forwarded to gjct_permutation_test_impl. `0` skips the
+            !! permutation test: `p_values` and `p_values_observed_consensus` are then NaN ("not
+            !! computed")
             !! The minimum valid value is `0_int32`.
             !! The default value is `1000_int32`.
         integer(int32), intent(in), optional :: random_seed
@@ -3814,6 +3828,8 @@ contains
     !| final re-derivation from the untouched `counts`. Neighborhoods that decode to the same gene
     !| sets as a fixed-k run's therefore give bit-identical results. Every point is weighted by its
     !| non-NaN residual count, which under adaptive growth genuinely differs between points.
+    !| With `n_permutations = 0` the permutation test is skipped: no permutation runs, and both
+    !| p-values are NaN ("not computed").
     !| Like `run_js_comp_test_impl`, there is no admissibility gate: overlap and occupancy are the
     !| parameter search's concern.
     !|
@@ -3968,14 +3984,18 @@ contains
             !! Weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_studies), intent(out) :: p_values
             !! Empirical p-value per study from the permutation test, each permuted study compared
-            !! against the consensus of the permuted studies -- the primary p-value
+            !! against the consensus of the permuted studies -- the primary p-value. NaN when
+            !! `n_permutations` is 0: no permutation was run, so no p-value was computed
         real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
             !! Empirical p-value per study from the same permutations, but with each permuted study
             !! compared against the fixed observed consensus `mean_pmf`, as the permutation test did
             !! before it recomputed the consensus per permutation. Kept for comparison only;
-            !! `p_values` is the primary result
+            !! `p_values` is the primary result. NaN when `n_permutations` is 0: no permutation was
+            !! run, so no p-value was computed
         integer(int32), intent(in), optional :: n_permutations
-            !! Number of permutations, forwarded to gjct_permutation_test_impl
+            !! Number of permutations, forwarded to gjct_permutation_test_impl. `0` skips the
+            !! permutation test: `p_values` and `p_values_observed_consensus` are then NaN ("not
+            !! computed")
             !! The minimum valid value is `0_int32`.
             !! The default value is `1000_int32`.
         integer(int32), intent(in), optional :: random_seed
@@ -4194,6 +4214,8 @@ contains
     !| final re-derivation from the untouched `counts`. Neighborhoods that decode to the same gene
     !| sets as a fixed-k run's therefore give bit-identical results. Every point is weighted by its
     !| non-NaN residual count, which under adaptive growth genuinely differs between points.
+    !| With `n_permutations = 0` the permutation test is skipped: no permutation runs, and both
+    !| p-values are NaN ("not computed").
     !| Like `run_js_comp_test_impl`, there is no admissibility gate: overlap and occupancy are the
     !| parameter search's concern.
     !|
@@ -4365,12 +4387,14 @@ contains
             !! Weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_studies), intent(out) :: p_values
             !! Empirical p-value per study from the permutation test, each permuted study compared
-            !! against the consensus of the permuted studies -- the primary p-value
+            !! against the consensus of the permuted studies -- the primary p-value. NaN when
+            !! `n_permutations` is 0: no permutation was run, so no p-value was computed
         real(real64), dimension(n_studies), intent(out) :: p_values_observed_consensus
             !! Empirical p-value per study from the same permutations, but with each permuted study
             !! compared against the fixed observed consensus `mean_pmf`, as the permutation test did
             !! before it recomputed the consensus per permutation. Kept for comparison only;
-            !! `p_values` is the primary result
+            !! `p_values` is the primary result. NaN when `n_permutations` is 0: no permutation was
+            !! run, so no p-value was computed
         integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_gene_means_perm_all
             !! Working array: sorting permutation of the pooled `gene_means`, seeded and sorted here
             !! exactly as construct_adaptive_neighborhoods sorts it
@@ -4412,7 +4436,9 @@ contains
         real(real64), dimension(n_studies), intent(out) :: tmp_permutation_global_js_divergence
             !! Working array forwarded to the permutation test
         integer(int32), intent(in), optional :: n_permutations
-            !! Number of permutations, forwarded to gjct_permutation_test_impl
+            !! Number of permutations, forwarded to gjct_permutation_test_impl. `0` skips the
+            !! permutation test: `p_values` and `p_values_observed_consensus` are then NaN ("not
+            !! computed")
             !! The minimum valid value is `0_int32`.
             !! The default value is `1000_int32`.
         integer(int32), intent(in), optional :: random_seed
@@ -4948,7 +4974,10 @@ contains
             !! The default value is `0.1_real64`.
         real(real64), intent(in), optional :: succeeding_ci_overlap
             !! Minimum fractional overlap a candidate's confidence interval must have with the
-            !! running best, per `join_method`, to plateau
+            !! running best, per `join_method`, to plateau. `0` switches this check off on purpose:
+            !! every study then counts as overlapping, so with a `plateau_mode` that uses the
+            !! CI-overlap criterion the first admissible candidate already plateaus (used for
+            !! baseline sweeps)
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.9_real64`.
@@ -5852,7 +5881,10 @@ contains
             !! The default value is `0.1_real64`.
         real(real64), intent(in), optional :: succeeding_ci_overlap
             !! Minimum fractional overlap a candidate's confidence interval must have with the
-            !! running best, per `join_method`, to plateau
+            !! running best, per `join_method`, to plateau. `0` switches this check off on purpose:
+            !! every study then counts as overlapping, so with a `plateau_mode` that uses the
+            !! CI-overlap criterion the first admissible candidate already plateaus (used for
+            !! baseline sweeps)
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.9_real64`.
@@ -6441,7 +6473,10 @@ contains
             !! The default value is `0.1_real64`.
         real(real64), intent(in), optional :: succeeding_ci_overlap
             !! Minimum fractional overlap a candidate's confidence interval must have with the
-            !! running best, per `join_method`, to plateau
+            !! running best, per `join_method`, to plateau. `0` switches this check off on purpose:
+            !! every study then counts as overlapping, so with a `plateau_mode` that uses the
+            !! CI-overlap criterion the first admissible candidate already plateaus (used for
+            !! baseline sweeps)
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.9_real64`.
@@ -7307,7 +7342,10 @@ contains
             !! The default value is `0.1_real64`.
         real(real64), intent(in), optional :: succeeding_ci_overlap
             !! Minimum fractional overlap a candidate's confidence interval must have with the
-            !! running best, per `join_method`, to plateau
+            !! running best, per `join_method`, to plateau. `0` switches this check off on purpose:
+            !! every study then counts as overlapping, so with a `plateau_mode` that uses the
+            !! CI-overlap criterion the first admissible candidate already plateaus (used for
+            !! baseline sweeps)
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.9_real64`.

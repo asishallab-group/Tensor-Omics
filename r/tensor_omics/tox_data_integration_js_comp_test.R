@@ -1629,6 +1629,9 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #' resamples only its own scratch copies, never `mean_pmf_counts` itself, and builds each
 #' permutation's consensus in its own scratch too), exactly as 125 relies on.
 #'
+#' With `n_permutations = 0` the permutation test is skipped: no permutation runs, and both
+#' p-values are NaN ("not computed"). Everything else is computed as usual.
+#'
 #' **Behavioral asymmetry vs.
 #' \code{\link{run_js_comp_test_parameter_search}}
 #' -- read before using this entry point where inadequately-supported neighborhoods must be
@@ -1707,7 +1710,9 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #' @param residuals a numeric array of rank 3. Matrix of signed residuals per study
 #'   NaN is permitted for this value.
 #' @param x_star a numeric vector. Mean-expression reference points
-#' @param n_permutations a integer scalar. Number of permutations, forwarded to gjct_permutation_test_impl
+#' @param n_permutations a integer scalar. Number of permutations, forwarded to gjct_permutation_test_impl. `0` skips the
+#'   permutation test: `p_values` and `p_values_observed_consensus` are then NaN ("not
+#'   computed")
 #'   The minimum valid value is `0`.
 #'   The default value is `1000`.
 #' @param random_seed a integer scalar. Seed for the GSL random number generator
@@ -1817,11 +1822,13 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #'   \item{weights}{a numeric matrix. Per-reference-point weights for `global_js_divergence`}
 #'   \item{global_js_divergence}{a numeric vector. Weighted global JSD of each study against the consensus pmf}
 #'   \item{p_values}{a numeric vector. Empirical p-value per study from gjct_permutation_test_impl, each permuted study
-#'     compared against the consensus of the permuted studies -- the primary p-value}
+#'     compared against the consensus of the permuted studies -- the primary p-value.
+#'     NaN when `n_permutations` is 0: no permutation was run, so no p-value was computed}
 #'   \item{p_values_observed_consensus}{a numeric vector. Empirical p-value per study from the same permutations, but with each permuted study
 #'     compared against the fixed observed consensus `mean_pmf`, as the permutation test did
 #'     before it recomputed the consensus per permutation. Kept for comparison only;
-#'     `p_values` is the primary result}
+#'     `p_values` is the primary result. NaN when `n_permutations` is 0: no permutation was
+#'     run, so no p-value was computed}
 #' @export
 run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residuals, x_star, n_permutations = 1000L, random_seed = 42L, min_residuals_per_bin = 10L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, bin_count_mode = "bin_count_occupancy") {
     n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
@@ -1914,6 +1921,8 @@ run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residual
 #' final re-derivation from the untouched `counts`. Neighborhoods that decode to the same gene
 #' sets as a fixed-k run's therefore give bit-identical results. Every point is weighted by its
 #' non-NaN residual count, which under adaptive growth genuinely differs between points.
+#' With `n_permutations = 0` the permutation test is skipped: no permutation runs, and both
+#' p-values are NaN ("not computed").
 #' Like `run_js_comp_test_impl`, there is no admissibility gate: overlap and occupancy are the
 #' parameter search's concern.
 #'
@@ -1962,7 +1971,9 @@ run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residual
 #'   pooled means, as returned by construct_adaptive_neighborhoods
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `max_n_genes_all_studies*n_studies`.
-#' @param n_permutations a integer scalar. Number of permutations, forwarded to gjct_permutation_test_impl
+#' @param n_permutations a integer scalar. Number of permutations, forwarded to gjct_permutation_test_impl. `0` skips the
+#'   permutation test: `p_values` and `p_values_observed_consensus` are then NaN ("not
+#'   computed")
 #'   The minimum valid value is `0`.
 #'   The default value is `1000`.
 #' @param random_seed a integer scalar. Seed for the GSL random number generator
@@ -2043,11 +2054,13 @@ run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residual
 #'   \item{weights}{a numeric matrix. Per-reference-point weights for `global_js_divergence`}
 #'   \item{global_js_divergence}{a numeric vector. Weighted global JSD of each study against the consensus pmf}
 #'   \item{p_values}{a numeric vector. Empirical p-value per study from the permutation test, each permuted study compared
-#'     against the consensus of the permuted studies -- the primary p-value}
+#'     against the consensus of the permuted studies -- the primary p-value. NaN when
+#'     `n_permutations` is 0: no permutation was run, so no p-value was computed}
 #'   \item{p_values_observed_consensus}{a numeric vector. Empirical p-value per study from the same permutations, but with each permuted study
 #'     compared against the fixed observed consensus `mean_pmf`, as the permutation test did
 #'     before it recomputed the consensus per permutation. Kept for comparison only;
-#'     `p_values` is the primary result}
+#'     `p_values` is the primary result. NaN when `n_permutations` is 0: no permutation was
+#'     run, so no p-value was computed}
 #' @export
 run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood_range, n_permutations = 1000L, random_seed = 42L, min_residuals_per_bin = 10L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, bin_count_mode = "bin_count_occupancy") {
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
@@ -2251,7 +2264,10 @@ run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.1`.
 #' @param succeeding_ci_overlap a numeric scalar. Minimum fractional overlap a candidate's confidence interval must have with the
-#'   running best, per `join_method`, to plateau
+#'   running best, per `join_method`, to plateau. `0` switches this check off on purpose:
+#'   every study then counts as overlapping, so with a `plateau_mode` that uses the
+#'   CI-overlap criterion the first admissible candidate already plateaus (used for
+#'   baseline sweeps)
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.9`.
@@ -2649,7 +2665,10 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstrap
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.1`.
 #' @param succeeding_ci_overlap a numeric scalar. Minimum fractional overlap a candidate's confidence interval must have with the
-#'   running best, per `join_method`, to plateau
+#'   running best, per `join_method`, to plateau. `0` switches this check off on purpose:
+#'   every study then counts as overlapping, so with a `plateau_mode` that uses the
+#'   CI-overlap criterion the first admissible candidate already plateaus (used for
+#'   baseline sweeps)
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.9`.

@@ -702,8 +702,9 @@ def test_run_js_comp_test_two_studies_hand_traceable():
     assert list(result["neighborhood_indices"][:, 0, 0]) == [1], "study 1 neighbor should be gene 1"
     assert list(result["neighborhood_indices"][:, 0, 1]) == [1], "study 2 neighbor should be gene 1"
 
-    assert abs(result["p_values"][0] - 0.0) < TOL, "n_permutations=0 -> p_values stay 0.0"
-    assert abs(result["p_values"][1] - 0.0) < TOL, "n_permutations=0 -> p_values stay 0.0"
+    assert np.all(np.isnan(result["p_values"])), "n_permutations=0 -> p_values are NaN (not computed)"
+    assert np.all(np.isnan(result["p_values_observed_consensus"])), \
+        "n_permutations=0 -> p_values_observed_consensus are NaN (not computed)"
 
     # bin_count_mode: every mode string is accepted (type/shape only; the bin counts themselves
     # are the Fortran suite's job), an unknown one is rejected by the C layer.
@@ -720,6 +721,31 @@ def test_run_js_comp_test_two_studies_hand_traceable():
                                           residuals=residuals, x_star=x_star, n_permutations=0,
                                           bin_count_mode="nonsense"),
                  "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
+
+
+def test_run_js_comp_test_zero_permutations_gives_nan_p_values():
+    # n_permutations=0 skips the permutation test: both p-value arrays are NaN ("not computed"), not
+    # 0.0 (which would read as "maximally significant"). The control with permutations gives finite
+    # p-values in (0, 1]. Same tiny fixture as test_run_js_comp_test_two_studies_hand_traceable.
+    gene_means = np.array([[1.0, 1.0], [5.0, 5.0]], dtype=np.float64, order='F')
+    gene_means_perms = np.array([[1, 1], [2, 2]], dtype=np.int32, order='F')
+    residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
+    residuals[:, 0, 0] = [-1.0, 1.0]
+    residuals[:, 0, 1] = [-3.0, 3.0]
+    x_star = np.array([1.0], dtype=np.float64)
+
+    skipped = run_js_comp_test(n_neighbors=1, gene_means=gene_means, gene_means_perms=gene_means_perms,
+                               residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
+                               min_residuals_per_bin=1)
+    for key in ("p_values", "p_values_observed_consensus"):
+        assert np.all(np.isnan(skipped[key])), f"{key}: n_permutations=0 must give NaN"
+    assert np.all(np.isfinite(skipped["global_js_divergence"])), "the JSDs are still computed"
+
+    control = run_js_comp_test(n_neighbors=1, gene_means=gene_means, gene_means_perms=gene_means_perms,
+                               residuals=residuals, x_star=x_star, n_permutations=2, random_seed=1,
+                               min_residuals_per_bin=1)
+    for key in ("p_values", "p_values_observed_consensus"):
+        assert np.all((control[key] > 0.0) & (control[key] <= 1.0)), f"{key}: control expected in (0, 1]"
 
 
 def test_run_js_comp_test_parameter_search():

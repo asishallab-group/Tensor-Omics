@@ -36,11 +36,14 @@
 #' Both p-values apply the `(1+count)/(n+1)` Laplace add-one correction --
 #' `p_values(i) = anint(count(i)+1)/(n_permutations+1)` -- so a study whose observed JSD is
 #' never reached by any permutation gets `p = 1/(n_permutations+1)`, never `p = 0.0` exactly.
+#' With `n_permutations = 0` there is nothing to test: no permutation runs, and both p-values
+#' are NaN ("not computed"), not `0.0`.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_stats::gjct_permutation_test}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param n_permutations a integer scalar. Number of permutations to perform
+#' @param n_permutations a integer scalar. Number of permutations to perform. `0` skips the test: no permutation runs, and
+#'   `p_values` and `p_values_observed_consensus` are then NaN ("not computed")
 #'   The minimum valid value is `0`.
 #' @param mean_pmf_counts a integer matrix. Absolute counts of a residual per bin for the consensus pmf -- the pool each
 #'   permutation resamples from without replacement, per reference point
@@ -60,12 +63,14 @@
 #' @return a named list with elements:
 #'   \item{p_values}{a numeric vector. Empirical p-value per study: the Laplace-corrected fraction of permutations whose
 #'     resampled global JSD reached or exceeded the observed value -- see the correction
-#'     note above}
+#'     note above. NaN when `n_permutations` is 0: no permutation was run, so no p-value
+#'     was computed}
 #'   \item{p_values_observed_consensus}{a numeric vector. Empirical p-value per study from the same permutations as `p_values`, but with each
 #'     permuted study's JSD taken against the fixed observed consensus `mean_pmf` instead of
 #'     the consensus of the permuted studies -- the null this test used before it recomputed
 #'     the consensus per permutation. Kept for comparison only; `p_values` is the primary
-#'     result. The same Laplace correction applies}
+#'     result. The same Laplace correction applies. NaN when `n_permutations` is 0: no
+#'     permutation was run, so no p-value was computed}
 #' @export
 gjct_permutation_test <- function(n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, random_seed = 42L) {
     n_permutations <- .tox_as_integer_scalar(n_permutations, "n_permutations")
