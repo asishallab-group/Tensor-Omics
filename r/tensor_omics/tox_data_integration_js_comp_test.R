@@ -1703,7 +1703,6 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #' @param residuals a numeric array of rank 3. Matrix of signed residuals per study
 #'   NaN is permitted for this value.
 #' @param x_star a numeric vector. Mean-expression reference points
-#'   NaN is permitted for this value.
 #' @param n_permutations a integer scalar. Number of permutations, forwarded to gjct_permutation_test_impl
 #'   The minimum valid value is `0`.
 #'   The default value is `1000`.

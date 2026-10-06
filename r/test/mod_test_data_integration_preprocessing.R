@@ -239,4 +239,34 @@ test_construct_neighborhoods_explicit <- function() {
   
 }
 
+# Test: pool_means_expert rejects a pooled_means_perm entry outside 1..pool_size with
+# ERR_INVALID_INPUT on pooled_means_perm, instead of reading outside pooled_means
+# (test_pool_means_expert_rejects_out_of_range_perm in the Fortran suite).
+test_pool_means_expert_rejects_out_of_range_perm <- function() {
+  pool <- c(1.0, 2.0, 3.0, 4.0)
+
+  for (bad_entry in c(0L, 5L)) {
+    perm <- c(1L, 2L, 3L, bad_entry)
+    assert_error(pool_means_expert(pool, perm, 1L),
+                 sprintf("expected ERR_INVALID_INPUT for pooled_means_perm entry %d", bad_entry), ERR_INVALID_INPUT)
+    err <- tryCatch({ pool_means_expert(pool, perm, 1L); NULL }, error = function(e) e)
+    assert_true(identical(err$argument, "pooled_means_perm"), "expected the error on pooled_means_perm")
+  }
+}
+
+# Test: construct_neighborhoods_ranged_expert rejects a mean_S_perm entry outside 1..n_genes_S
+# with ERR_INVALID_INPUT on mean_S_perm, instead of reading outside mean_S
+# (test_construct_neighborhoods_ranged_expert_rejects_bad_perm in the Fortran suite).
+test_construct_neighborhoods_ranged_expert_rejects_bad_perm <- function() {
+  x_star <- c(2.5)
+  mean_S <- c(1.0, 2.0, 3.0)
+  mean_S_perm <- c(1L, 2L, 7L)
+
+  assert_error(construct_neighborhoods_ranged_expert(x_star, mean_S, mean_S_perm, 2L),
+               "expected ERR_INVALID_INPUT for mean_S_perm entry 7 > n_genes_S", ERR_INVALID_INPUT)
+  err <- tryCatch({ construct_neighborhoods_ranged_expert(x_star, mean_S, mean_S_perm, 2L); NULL },
+                  error = function(e) e)
+  assert_true(identical(err$argument, "mean_S_perm"), "expected the error on mean_S_perm")
+}
+
 run_all_tests()

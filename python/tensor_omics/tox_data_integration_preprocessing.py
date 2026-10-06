@@ -381,6 +381,8 @@ def pool_means_expert(
         NaN is permitted for this value.
     pooled_means_perm : np.ndarray[np.int32] of shape (pool_size,)
         Sorting permutation for `pooled_means`
+        The minimum valid value is `1`.
+        The maximum valid value is `pool_size`.
     n_points : int
         Number of reference points to define
 
@@ -786,6 +788,8 @@ def construct_neighborhoods_ranged_expert(
         NaN is permitted for this value.
     mean_S_perm : np.ndarray[np.int32] of shape (n_genes_S,)
         Sorting permutation for `mean_S`
+        The minimum valid value is `1`.
+        The maximum valid value is `n_genes_S`.
     n_neighbors : int
         Number of neighbors to select per reference point
         The minimum valid value is `1`.

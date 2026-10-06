@@ -110,7 +110,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(219))
+        allocate (all_tests(221))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -558,6 +558,10 @@ contains
                                   test_adaptive_search_nan_residuals_study_not_admissible)
         all_tests(219) = test_case("test_final_runs_accept_partly_different_gene_sets", &
                                   test_final_runs_accept_partly_different_gene_sets)
+        all_tests(220) = test_case("test_construct_neighborhoods_ranged_expert_rejects_bad_perm", &
+                                  test_construct_neighborhoods_ranged_expert_rejects_bad_perm)
+        all_tests(221) = test_case("test_run_js_comp_test_rejects_nan_x_star", &
+                                  test_run_js_comp_test_rejects_nan_x_star)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -709,6 +713,33 @@ contains
                         "test_construct_neighborhoods_ranged_plain_and_validation: n_neighbors=0 rejected", &
                         arg_pos=5_int32)
     end subroutine test_construct_neighborhoods_ranged_plain_and_validation
+
+    !> construct_neighborhoods_ranged_expert takes the caller's `mean_S_perm` and indexes `mean_S`
+    !| with it, so an entry outside `1..n_genes_S` is rejected with ERR_INVALID_INPUT at its
+    !| position (5). Before the check, `mean_S_perm = [1, 2, 7]` with three genes returned OK after
+    !| reading `mean_S(7)`, outside the array.
+    subroutine test_construct_neighborhoods_ranged_expert_rejects_bad_perm()
+        character(len=*), parameter :: name = "test_construct_neighborhoods_ranged_expert_rejects_bad_perm: "
+        integer(int32), parameter :: n_points = 1, n_genes_S = 3, n_neighbors = 2
+        real(real64) :: x_star(n_points), mean_S(n_genes_S)
+        integer(int32) :: mean_S_perm(n_genes_S)
+        integer(int32) :: neighborhood_indices(n_neighbors, n_points)
+        integer(int32) :: neighborhood_range(2, n_points)
+        integer(int32) :: ierr
+
+        x_star = [2.5_real64]
+        mean_S = [1.0_real64, 2.0_real64, 3.0_real64]
+
+        mean_S_perm = [1, 2, 7]
+        call construct_neighborhoods_ranged_expert(n_points, x_star, n_genes_S, mean_S, mean_S_perm, n_neighbors, &
+                                                    neighborhood_indices, neighborhood_range, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"entry 7 > n_genes_S is rejected", arg_pos=5_int32)
+
+        mean_S_perm = [0, 2, 3]
+        call construct_neighborhoods_ranged_expert(n_points, x_star, n_genes_S, mean_S, mean_S_perm, n_neighbors, &
+                                                    neighborhood_indices, neighborhood_range, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"entry 0 is rejected", arg_pos=5_int32)
+    end subroutine test_construct_neighborhoods_ranged_expert_rejects_bad_perm
 
     !> `calc_pmf` is the counts-to-pmf half of `build_residual_histograms`, factored out; feeding
     !| it the exact `counts`/`included_n_reps` that routine's own basic fixture produces must
@@ -10428,6 +10459,59 @@ contains
 
         call assert_err(ierr, ERR_INVALID_INPUT, name//"upper quantile below lower quantile is rejected", 41_int32)
     end subroutine test_run_js_comp_test_rejects_reversed_residual_range_quantiles
+
+    !> A NaN reference point is rejected by run_js_comp_test with ERR_NAN_INF at `x_star`'s
+    !| position (9). Before the check the NaN point silently took the first `n_neighbors` genes in
+    !| sorted order, the lowest means, and the call returned OK. Two studies with the same 4 genes
+    !| (means 1..4, residuals `[-1, 1]`, `[-2, 2]`, ...), as in
+    !| assert_run_js_comp_test_rejects_empty_study, with `x_star = [1.5, NaN]`.
+    subroutine test_run_js_comp_test_rejects_nan_x_star()
+        character(len=*), parameter :: name = "test_run_js_comp_test_rejects_nan_x_star: "
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 4, max_n_reps_all_studies = 2
+        integer(int32), parameter :: n_points = 2, n_neighbors = 2
+        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
+        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
+        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+        real(real64) :: x_star(n_points)
+        integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
+        integer(int32) :: neighborhood_range(2, n_points, n_studies)
+        integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
+        real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
+        logical(c_bool) :: occupancy_failed(n_points)
+        integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
+        real(real64) :: mean_bin_occupancy(n_points)
+        integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
+        real(real64) :: pmfs(256, n_points, n_studies)
+        integer(int32) :: counts(256, n_points, n_studies)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: mean_pmf(256, n_points)
+        integer(int32) :: mean_pmf_counts(256, n_points)
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
+        real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
+        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
+        real(real64) :: p_values_observed_consensus(n_studies)
+        integer(int32) :: ierr
+
+        gene_means(:, 1) = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
+        gene_means(:, 2) = gene_means(:, 1)
+        gene_means_perms = reshape([1, 2, 3, 4, 1, 2, 3, 4], [4, 2])
+        residuals(:, :, 1) = reshape([-1.0_real64, 1.0_real64, -2.0_real64, 2.0_real64, &
+                                      -1.0_real64, 1.0_real64, -2.0_real64, 2.0_real64], [2, 4])
+        residuals(:, :, 2) = residuals(:, :, 1)
+        x_star = [1.5_real64, ieee_value(1.0_real64, ieee_quiet_nan)]
+
+        call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
+                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                              max_n_bins_per_point, occupancy_failed, &
+                              n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
+                              sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
+                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
+                              p_values_observed_consensus, ierr=ierr, n_permutations=0_int32, random_seed=1_int32, &
+                              min_residuals_per_bin=1_int32)
+
+        call assert_err(ierr, ERR_NAN_INF, name//"a NaN reference point is rejected", arg_pos=9_int32)
+    end subroutine test_run_js_comp_test_rejects_nan_x_star
 
     !> determine_bin_count_occupancy rejects a reversed residual-range quantile pair (lower 0.95,
     !| upper 0.05) at the upper quantile's position (20 in the plain wrapper), on

@@ -4028,7 +4028,6 @@ contains
             !! DM_ALLOW_NAN
         real(real64), dimension(n_points), intent(in) :: x_star
             !! Mean-expression reference points
-            !! DM_ALLOW_NAN
         integer(int32), dimension(n_neighbors, n_points, n_studies), intent(out) :: neighborhood_indices
             !! Gene indices of the selected neighborhood, per reference point, per study (Pass A)
         integer(int32), dimension(2, n_points, n_studies), intent(out) :: neighborhood_range

@@ -182,6 +182,8 @@ contains
             !! NaN is permitted for this value.
         integer(c_int), dimension(pool_size), intent(in), target :: pooled_means_perm
             !! Sorting permutation for `pooled_means`
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `pool_size`.
         integer(c_int), intent(out), target :: n_pool
             !! Total number of included (non-NaN) pooled mean-expression values
         real(c_double), dimension(n_points), intent(out), target :: x_star
@@ -593,6 +595,8 @@ contains
             !! NaN is permitted for this value.
         integer(c_int), dimension(n_genes_S), intent(in), target :: mean_S_perm
             !! Sorting permutation for `mean_S`
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_genes_S`.
         integer(c_int), dimension(n_neighbors, n_points), intent(out), target :: neighborhood_indices
             !! Indices of selected neighborhood genes per reference point.
             !!

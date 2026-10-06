@@ -851,6 +851,27 @@ test_run_js_comp_test_rejects_reversed_residual_range_quantiles <- function() {
               "expected the error on upper_residual_range_quantile")
 }
 
+test_run_js_comp_test_rejects_nan_x_star <- function() {
+  # A NaN reference point is rejected with ERR_NAN_INF on x_star, instead of silently taking the
+  # lowest-mean genes as its neighborhood (test_run_js_comp_test_rejects_nan_x_star in the
+  # Fortran suite).
+  gene_means <- matrix(c(1.0, 5.0, 1.0, 5.0), nrow = 2)
+  gene_means_perms <- matrix(c(1L, 2L, 1L, 2L), nrow = 2)
+  residuals <- array(NaN, dim = c(2, 2, 2))
+  residuals[, 1, 1] <- c(-1.0, 1.0)
+  residuals[, 1, 2] <- c(-3.0, 3.0)
+  x_star <- c(1.0, NaN)
+
+  call <- function() {
+    run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = gene_means_perms,
+                     residuals = residuals, x_star = x_star, n_permutations = 0L, random_seed = 1L,
+                     min_residuals_per_bin = 1L)
+  }
+  assert_error(call(), "expected ERR_NAN_INF for a NaN reference point", ERR_NAN_INF)
+  err <- tryCatch({ call(); NULL }, error = function(e) e)
+  assert_true(identical(err$argument, "x_star"), "expected the error on x_star")
+}
+
 test_run_js_comp_test_rejects_empty_study <- function() {
   # A study whose gene means and residuals are all missing includes no residual at the reference
   # point, so the equal-weight consensus is undefined and the call fails with invalid input, not

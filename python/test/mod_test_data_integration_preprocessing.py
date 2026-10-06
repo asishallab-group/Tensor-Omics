@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from test_helpers import run_all_tests
+from test_helpers import run_all_tests, assert_error
 from tensor_omics import euclidean_distance, distance_to_centroid
 
 # Import your functions
@@ -24,7 +24,9 @@ from tensor_omics import (
     construct_neighborhoods,
     construct_neighborhoods_ranged,
     construct_neighborhoods_ranged_expert,
+    ToxError,
 )
+from tensor_omics.error_handling import ERR_INVALID_INPUT
 
 
 def test_compute_gene_means():
@@ -264,6 +266,38 @@ def test_construct_neighborhoods_ranged_fewer_genes_than_neighbors():
     np.testing.assert_array_almost_equal(result['neighborhood_indices'][:, 0], [2, 1, 3], decimal=10)
     np.testing.assert_array_almost_equal(result['neighborhood_range'][:, 0], [1, 2], decimal=10)
 
+
+def test_pool_means_expert_rejects_out_of_range_perm():
+    """pool_means_expert rejects a pooled_means_perm entry outside 1..pool_size with
+    ERR_INVALID_INPUT on pooled_means_perm, instead of reading outside pooled_means
+    (test_pool_means_expert_rejects_out_of_range_perm in the Fortran suite)."""
+    pool = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float64)
+
+    for bad_entry in (0, 5):
+        perm = np.array([1, 2, 3, bad_entry], dtype=np.int32)
+        assert_error(lambda: pool_means_expert(pool, perm, 1),
+                     f"expected ERR_INVALID_INPUT for pooled_means_perm entry {bad_entry}", ERR_INVALID_INPUT)
+        try:
+            pool_means_expert(pool, perm, 1)
+        except ToxError as error:
+            assert error.argument == "pooled_means_perm", \
+                f"expected the error on pooled_means_perm, got {error.argument!r}"
+
+
+def test_construct_neighborhoods_ranged_expert_rejects_bad_perm():
+    """construct_neighborhoods_ranged_expert rejects a mean_S_perm entry outside 1..n_genes_S
+    with ERR_INVALID_INPUT on mean_S_perm, instead of reading outside mean_S
+    (test_construct_neighborhoods_ranged_expert_rejects_bad_perm in the Fortran suite)."""
+    x_star = np.array([2.5], dtype=np.float64)
+    mean_S = np.array([1.0, 2.0, 3.0], dtype=np.float64)
+    mean_S_perm = np.array([1, 2, 7], dtype=np.int32)
+
+    assert_error(lambda: construct_neighborhoods_ranged_expert(x_star, mean_S, mean_S_perm, 2),
+                 "expected ERR_INVALID_INPUT for mean_S_perm entry 7 > n_genes_S", ERR_INVALID_INPUT)
+    try:
+        construct_neighborhoods_ranged_expert(x_star, mean_S, mean_S_perm, 2)
+    except ToxError as error:
+        assert error.argument == "mean_S_perm", f"expected the error on mean_S_perm, got {error.argument!r}"
 
 
 def test_integration():

@@ -92,6 +92,8 @@ pool_means <- function(pooled_means, n_points) {
 #' @param pooled_means a numeric vector. Pooled means
 #'   NaN is permitted for this value.
 #' @param pooled_means_perm a integer vector. Sorting permutation for `pooled_means`
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `pool_size`.
 #' @param n_points a integer scalar. Number of reference points to define
 #' @return a named list with elements:
 #'   \item{n_pool}{a integer scalar. Total number of included (non-NaN) pooled mean-expression values}
@@ -261,6 +263,8 @@ construct_neighborhoods_ranged <- function(x_star, mean_S, n_neighbors) {
 #' @param mean_S a numeric vector. Per-gene mean expression values
 #'   NaN is permitted for this value.
 #' @param mean_S_perm a integer vector. Sorting permutation for `mean_S`
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_genes_S`.
 #' @param n_neighbors a integer scalar. Number of neighbors to select per reference point
 #'   The minimum valid value is `1`.
 #' @return a named list with elements:

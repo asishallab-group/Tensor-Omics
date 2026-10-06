@@ -41,7 +41,7 @@ from tensor_omics import (
     run_js_comp_test_adaptive,
     run_js_comp_test_adaptive_parameter_search,
 )
-from tensor_omics.error_handling import ERR_INVALID_INPUT
+from tensor_omics.error_handling import ERR_INVALID_INPUT, ERR_NAN_INF
 
 TOL = 1e-12
 
@@ -923,6 +923,29 @@ def test_run_js_comp_test_rejects_reversed_residual_range_quantiles():
     except ToxError as error:
         assert error.argument == "upper_residual_range_quantile", \
             f"expected the error on upper_residual_range_quantile, got {error.argument!r}"
+
+
+def test_run_js_comp_test_rejects_nan_x_star():
+    # A NaN reference point is rejected with ERR_NAN_INF on x_star, instead of silently taking the
+    # lowest-mean genes as its neighborhood (test_run_js_comp_test_rejects_nan_x_star in the
+    # Fortran suite).
+    gene_means = np.array([[1.0, 1.0], [5.0, 5.0]], dtype=np.float64, order='F')
+    gene_means_perms = np.array([[1, 1], [2, 2]], dtype=np.int32, order='F')
+    residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
+    residuals[:, 0, 0] = [-1.0, 1.0]
+    residuals[:, 0, 1] = [-3.0, 3.0]
+    x_star = np.array([1.0, np.nan], dtype=np.float64)
+
+    def call():
+        return run_js_comp_test(n_neighbors=1, gene_means=gene_means, gene_means_perms=gene_means_perms,
+                                residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
+                                min_residuals_per_bin=1)
+
+    assert_error(call, "expected ERR_NAN_INF for a NaN reference point", ERR_NAN_INF)
+    try:
+        call()
+    except ToxError as error:
+        assert error.argument == "x_star", f"expected the error on x_star, got {error.argument!r}"
 
 
 def test_run_js_comp_test_rejects_empty_study():

@@ -103,6 +103,8 @@ contains
             !! DM_ALLOW_NAN
         integer(int32), intent(in) :: pooled_means_perm(pool_size)
             !! Sorting permutation for `pooled_means`
+            !! DM_MIN(1_int32)
+            !! DM_MAX(pool_size)
         real(real64), intent(out) :: x_star(n_points)
             !! Mean-expression reference points
 
@@ -334,6 +336,8 @@ contains
             !! DM_ALLOW_NAN
         integer(int32), intent(in) :: mean_S_perm(n_genes_S)
             !! Sorting permutation for `mean_S`
+            !! DM_MIN(1_int32)
+            !! DM_MAX(n_genes_S)
         integer(int32), intent(out) :: neighborhood_indices(n_neighbors, n_points)
             !! Indices of selected neighborhood genes per reference point.
             !!
@@ -363,7 +367,8 @@ contains
                 )
                 x_star_val = x_star(i_point)
 
-                ! If x_star is NaN, all gene expressions/residuals are NaN -> first element
+                ! A NaN reference point takes the first `n_neighbors` genes in sorted order. The
+                ! pipeline passes one only when every mean is NaN, which its empty-study checks reject
                 if (ieee_is_nan(x_star_val)) then
                     x_star_idx = 1
                 else

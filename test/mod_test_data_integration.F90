@@ -17,7 +17,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(23))
+        allocate (all_tests(24))
         all_tests(1) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
         all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(3) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
@@ -51,6 +51,8 @@ contains
                                   test_build_residual_histograms_zero_padding_safe_for_jsd)
         all_tests(23) = test_case("test_compute_weighted_global_divergence_large_counts", &
                                   test_compute_weighted_global_divergence_large_counts)
+        all_tests(24) = test_case("test_pool_means_expert_rejects_out_of_range_perm", &
+                                  test_pool_means_expert_rejects_out_of_range_perm)
     end function get_all_tests_data_integration
 
     !> Test the fjct_compute_jsd function.
@@ -1222,6 +1224,31 @@ contains
         call assert_equal_real(x_star(216), 333.99999999999994_real64, 1.0d-15, &
                                "test_pool_means_matches_125_quantile_rounding: x_star(216) should match 125's rounding")
     end subroutine test_pool_means_matches_125_quantile_rounding
+
+    !> pool_means_expert takes the caller's `pooled_means_perm` and indexes `pooled_means` with it,
+    !| so an entry outside `1..pool_size` is rejected with ERR_INVALID_INPUT at its position (2).
+    !| The bad entry sits last, where the trailing-NaN scan reads it first. Before the check the call
+    !| returned OK after reading `pooled_means(0)` or `pooled_means(5)`, outside the array.
+    subroutine test_pool_means_expert_rejects_out_of_range_perm()
+        character(len=*), parameter :: name = "test_pool_means_expert_rejects_out_of_range_perm: "
+        integer(int32), parameter :: pool_size = 4, n_points = 1
+        real(real64) :: pooled_means(pool_size), x_star(n_points)
+        integer(int32) :: pooled_means_perm(pool_size), n_pool, ierr
+
+        pooled_means = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
+
+        pooled_means_perm = [1, 2, 3, 4]
+        call pool_means_expert(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star, ierr)
+        call assert_err(ierr, ERR_OK, name//"an in-range permutation is accepted")
+
+        pooled_means_perm = [1, 2, 3, 0]
+        call pool_means_expert(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"entry 0 is rejected", arg_pos=2_int32)
+
+        pooled_means_perm = [1, 2, 3, 5]
+        call pool_means_expert(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"entry pool_size + 1 is rejected", arg_pos=2_int32)
+    end subroutine test_pool_means_expert_rejects_out_of_range_perm
 
     !> Test the construct_neighborhoods function with simple synthetic examples.
     subroutine test_construct_neighborhoods_basic()

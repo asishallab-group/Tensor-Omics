@@ -2987,7 +2987,6 @@ contains
             !! NaN is permitted for this value.
         real(real64), dimension(n_points), intent(in) :: x_star
             !! Mean-expression reference points
-            !! NaN is permitted for this value.
         integer(int32), dimension(n_neighbors, n_points, n_studies), intent(out) :: neighborhood_indices
             !! Gene indices of the selected neighborhood, per reference point, per study (Pass A)
         integer(int32), dimension(2, n_points, n_studies), intent(out) :: neighborhood_range
@@ -3181,7 +3180,7 @@ contains
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(gene_means_perms, max_n_genes_all_studies * n_studies, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, allow_nan=.true._c_bool)
-        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=9_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=9_int32)
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=42_int32); end if
         if (is_err(ierr)) return
 #endif
@@ -3477,7 +3476,6 @@ contains
             !! NaN is permitted for this value.
         real(real64), dimension(n_points), intent(in) :: x_star
             !! Mean-expression reference points
-            !! NaN is permitted for this value.
         integer(int32), dimension(n_neighbors, n_points, n_studies), intent(out) :: neighborhood_indices
             !! Gene indices of the selected neighborhood, per reference point, per study (Pass A)
         integer(int32), dimension(2, n_points, n_studies), intent(out) :: neighborhood_range
@@ -3704,7 +3702,7 @@ contains
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(gene_means_perms, max_n_genes_all_studies * n_studies, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, allow_nan=.true._c_bool)
-        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=9_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=9_int32)
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=58_int32); end if
         if (is_err(ierr)) return
 #endif

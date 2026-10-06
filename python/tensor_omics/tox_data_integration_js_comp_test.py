@@ -3581,7 +3581,6 @@ def run_js_comp_test(
         NaN is permitted for this value.
     x_star : np.ndarray[np.float64] of shape (n_points,)
         Mean-expression reference points
-        NaN is permitted for this value.
     n_permutations : int, optional, default 1000
         Number of permutations, forwarded to gjct_permutation_test_impl
         The minimum valid value is `0`.

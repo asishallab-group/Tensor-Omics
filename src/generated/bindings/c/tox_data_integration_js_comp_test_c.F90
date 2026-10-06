@@ -3089,7 +3089,6 @@ contains
             !! NaN is permitted for this value.
         real(c_double), dimension(n_points), intent(in), target :: x_star
             !! Mean-expression reference points
-            !! NaN is permitted for this value.
         integer(c_int), dimension(n_neighbors, n_points, n_studies), intent(out), target :: neighborhood_indices
             !! Gene indices of the selected neighborhood, per reference point, per study (Pass A)
         integer(c_int), dimension(2, n_points, n_studies), intent(out), target :: neighborhood_range
@@ -3575,7 +3574,6 @@ contains
             !! NaN is permitted for this value.
         real(c_double), dimension(n_points), intent(in), target :: x_star
             !! Mean-expression reference points
-            !! NaN is permitted for this value.
         integer(c_int), dimension(n_neighbors, n_points, n_studies), intent(out), target :: neighborhood_indices
             !! Gene indices of the selected neighborhood, per reference point, per study (Pass A)
         integer(c_int), dimension(2, n_points, n_studies), intent(out), target :: neighborhood_range

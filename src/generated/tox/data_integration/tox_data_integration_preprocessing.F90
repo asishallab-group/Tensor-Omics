@@ -19,7 +19,7 @@ module tox_data_integration_preprocessing
     use f42_sort_impl, only: init_perm, sort_array_heapsort
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
-    use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int
+    use tox_errors, only: validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size, validate_in_range_int
     M_IMPLICIT_NONE
     private
 
@@ -183,6 +183,8 @@ contains
             !! NaN is permitted for this value.
         integer(int32), dimension(pool_size), intent(in) :: pooled_means_perm
             !! Sorting permutation for `pooled_means`
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `pool_size`.
         integer(int32), intent(out) :: n_pool
             !! Total number of included (non-NaN) pooled mean-expression values
         real(real64), dimension(n_points), intent(out) :: x_star
@@ -195,6 +197,7 @@ contains
         call validate_dimension_size(pool_size, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(pooled_means, pool_size, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_int(pooled_means_perm, pool_size, ierr, arg_pos=2_int32, min=1_int32, max=pool_size)
         if (is_err(ierr)) return
 #endif
 
@@ -591,6 +594,8 @@ contains
             !! NaN is permitted for this value.
         integer(int32), dimension(n_genes_S), intent(in) :: mean_S_perm
             !! Sorting permutation for `mean_S`
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_genes_S`.
         integer(int32), dimension(n_neighbors, n_points), intent(out) :: neighborhood_indices
             !! Indices of selected neighborhood genes per reference point.
             !!
@@ -617,6 +622,7 @@ contains
         call validate_in_range_int(n_neighbors, ierr, arg_pos=6_int32, min=1_int32)
         call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(mean_S, n_genes_S, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_int(mean_S_perm, n_genes_S, ierr, arg_pos=5_int32, min=1_int32, max=n_genes_S)
         if (is_err(ierr)) return
 #endif
 
