@@ -5459,7 +5459,17 @@ contains
                 call gather_pooled_neighborhood_residuals(residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
                     n_neighbors, n_studies, tmp_neighborhood_indices_all_studies(1:n_neighbors, i_point, 1:n_studies), &
                     tmp_pooled_residuals(1:max_n_reps_all_studies*n_neighbors*n_studies), gather_ierr)
-                if (is_err(gather_ierr)) call set_err_once(ierr, get_err_code(gather_ierr))
+                ! Defensive: gather_pooled_neighborhood_residuals fails only on an out-of-range gene
+                ! index or a dimension below 1. Every index here comes from
+                ! construct_neighborhoods_ranged_impl on permutations this routine builds itself,
+                ! and the wrapper's DM_MIN(1) rules out the dimensions, so this branch cannot be
+                ! reached through the wrapper. It is kept for direct callers, since Pass B would
+                ! otherwise bin an unfilled pool and Pass C read residuals out of bounds, and has no
+                ! test.
+                if (is_err(gather_ierr)) then
+                    call set_err_once(ierr, get_err_code(gather_ierr))
+                    return
+                end if
 
                 call init_perm(tmp_pooled_residuals_perm(1:max_n_reps_all_studies*n_neighbors*n_studies))
                 call sort_array_heapsort(tmp_pooled_residuals(1:max_n_reps_all_studies*n_neighbors*n_studies), &
