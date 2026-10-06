@@ -110,7 +110,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(208))
+        allocate (all_tests(212))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -536,6 +536,14 @@ contains
                                   test_occupancy_expert_rejects_reversed_residual_range_quantiles)
         all_tests(208) = test_case("test_occupancy_known_limitation_lower_only_above_default_upper", &
                                   test_occupancy_known_limitation_lower_only_above_default_upper)
+        all_tests(209) = test_case("test_run_js_comp_test_empty_study_sets_ierr", &
+                                  test_run_js_comp_test_empty_study_sets_ierr)
+        all_tests(210) = test_case("test_run_js_comp_test_nan_residuals_only_study_sets_ierr", &
+                                  test_run_js_comp_test_nan_residuals_only_study_sets_ierr)
+        all_tests(211) = test_case("test_param_search_empty_study_not_admissible", &
+                                  test_param_search_empty_study_not_admissible)
+        all_tests(212) = test_case("test_run_js_comp_test_single_empty_point_sets_ierr", &
+                                  test_run_js_comp_test_single_empty_point_sets_ierr)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -10508,5 +10516,185 @@ contains
         call assert_true(shared_residual_range_low > shared_residual_range_high, &
                          name//"and the range is reversed (R_low > R_high)")
     end subroutine test_occupancy_known_limitation_lower_only_above_default_upper
+
+    ! ---------------------------------------------------------------------------------------------
+    ! A study with no included (non-NaN) residual at some reference point. The equal-weight
+    ! consensus pmf divides by n_studies, so such a study would leave it summing to less than 1
+    ! and every study's JSD would be measured against an unnormalised distribution. The final run
+    ! rejects it as a runtime error; the fixed-k search treats such a candidate as not admissible.
+    ! ---------------------------------------------------------------------------------------------
+
+    !> Test helper: run_js_comp_test on 4 genes, 2 replicates, 2 studies, 2 reference points
+    !| (`x_star = [1.5, 3.5]`), 2 neighbors, `min_residuals_per_bin = 1`, 10 permutations. Study 1
+    !| has means 1..4 and residuals `[-1, 1]`, `[-2, 2]`, `[-1, 1]`, `[-2, 2]`; study 2 is the
+    !| caller's. Asserts ERR_INVALID_INPUT without an argument position, that Pass C ran
+    !| (`included_n_reps` equals the caller's expectation), and that every output written after
+    !| Pass C, pre-filled with the sentinel -7, is untouched.
+    subroutine assert_run_js_comp_test_rejects_empty_study(name, study_2_means, study_2_residuals, &
+                                                           expected_included_n_reps)
+        character(len=*), intent(in) :: name
+            !! Message prefix
+        real(real64), intent(in) :: study_2_means(4)
+            !! Gene means of study 2
+        real(real64), intent(in) :: study_2_residuals(2, 4)
+            !! Residuals of study 2
+        integer(int32), intent(in) :: expected_included_n_reps(2, 2)
+            !! Expected `included_n_reps` (point, study) after Pass C
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 4, max_n_reps_all_studies = 2
+        integer(int32), parameter :: n_points = 2, n_neighbors = 2
+        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
+        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
+        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+        real(real64) :: x_star(n_points)
+        integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
+        integer(int32) :: neighborhood_range(2, n_points, n_studies)
+        integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
+        real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
+        logical(c_bool) :: occupancy_failed(n_points)
+        integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
+        real(real64) :: mean_bin_occupancy(n_points)
+        integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
+        real(real64) :: pmfs(256, n_points, n_studies)
+        integer(int32) :: counts(256, n_points, n_studies)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: mean_pmf(256, n_points)
+        integer(int32) :: mean_pmf_counts(256, n_points)
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
+        real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
+        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
+        real(real64) :: p_values_observed_consensus(n_studies)
+        integer(int32) :: ierr
+
+        gene_means(:, 1) = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
+        gene_means(:, 2) = study_2_means
+        gene_means_perms = reshape([1, 2, 3, 4, 1, 2, 3, 4], [4, 2])
+        residuals(:, :, 1) = reshape([-1.0_real64, 1.0_real64, -2.0_real64, 2.0_real64, &
+                                      -1.0_real64, 1.0_real64, -2.0_real64, 2.0_real64], [2, 4])
+        residuals(:, :, 2) = study_2_residuals
+        x_star = [1.5_real64, 3.5_real64]
+
+        mean_pmf = -7.0_real64
+        mean_pmf_counts = -7_int32
+        mean_pmf_included_n_reps = -7_int32
+        js_divergences = -7.0_real64
+        weights = -7.0_real64
+        global_js_divergence = -7.0_real64
+        p_values = -7.0_real64
+        p_values_observed_consensus = -7.0_real64
+
+        call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
+                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                              max_n_bins_per_point, occupancy_failed, &
+                              n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
+                              sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
+                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
+                              p_values_observed_consensus, ierr=ierr, n_permutations=10_int32, &
+                              min_residuals_per_bin=1_int32)
+
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"a study without an included residual is rejected", &
+                        arg_pos=0_int32)
+        call assert_equal_array_int(included_n_reps, expected_included_n_reps, 4_int32, n_rows=2_int32, msg=&
+                                    name//"Pass C ran: included_n_reps per (point, study)")
+        call assert_true(all(mean_pmf == -7.0_real64), name//"mean_pmf untouched")
+        call assert_true(all(mean_pmf_counts == -7_int32), name//"mean_pmf_counts untouched")
+        call assert_true(all(mean_pmf_included_n_reps == -7_int32), name//"mean_pmf_included_n_reps untouched")
+        call assert_true(all(js_divergences == -7.0_real64), name//"js_divergences untouched")
+        call assert_true(all(weights == -7.0_real64), name//"weights untouched")
+        call assert_true(all(global_js_divergence == -7.0_real64), name//"global_js_divergence untouched")
+        call assert_true(all(p_values == -7.0_real64), name//"p_values untouched")
+        call assert_true(all(p_values_observed_consensus == -7.0_real64), name//"p_values_observed_consensus untouched")
+    end subroutine assert_run_js_comp_test_rejects_empty_study
+
+    !> run_js_comp_test with study 2 entirely missing (every gene mean and residual NaN): study 2
+    !| includes no residual at either reference point, so the consensus pmf is undefined and the call
+    !| fails with ERR_INVALID_INPUT, argument position 0 (a runtime error, no single argument to
+    !| blame). Before the check it returned OK with JSDs measured against a consensus summing to 1/2.
+    subroutine test_run_js_comp_test_empty_study_sets_ierr()
+        real(real64) :: study_2_means(4), study_2_residuals(2, 4)
+
+        study_2_means = ieee_value(1.0_real64, ieee_quiet_nan)
+        study_2_residuals = ieee_value(1.0_real64, ieee_quiet_nan)
+        call assert_run_js_comp_test_rejects_empty_study("test_run_js_comp_test_empty_study_sets_ierr: ", &
+                                                         study_2_means, study_2_residuals, &
+                                                         reshape([4, 4, 0, 0], [2, 2]))
+    end subroutine test_run_js_comp_test_empty_study_sets_ierr
+
+    !> run_js_comp_test with study 2's gene means valid (1..4, so its neighborhoods are real genes)
+    !| but every residual NaN: the same empty-study case reached through the residuals alone, which
+    !| a check on the gene means could not see. Same expectation as the all-NaN study.
+    subroutine test_run_js_comp_test_nan_residuals_only_study_sets_ierr()
+        real(real64) :: study_2_residuals(2, 4)
+
+        study_2_residuals = ieee_value(1.0_real64, ieee_quiet_nan)
+        call assert_run_js_comp_test_rejects_empty_study("test_run_js_comp_test_nan_residuals_only_study_sets_ierr: ", &
+                                                         [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64], &
+                                                         study_2_residuals, reshape([4, 4, 0, 0], [2, 2]))
+    end subroutine test_run_js_comp_test_nan_residuals_only_study_sets_ierr
+
+    !> run_js_comp_test where only one (point, study) pair is empty: study 2 has valid means 1..4,
+    !| NaN residuals for genes 1 and 2 (the neighbors of the first reference point, 1.5) and valid
+    !| residuals `[-1, 1]`, `[-2, 2]` for genes 3 and 4 (the neighbors of the second, 3.5). So
+    !| `included_n_reps` is 4 everywhere except (point 1, study 2), and that single empty pair is
+    !| enough for ERR_INVALID_INPUT, argument position 0.
+    subroutine test_run_js_comp_test_single_empty_point_sets_ierr()
+        real(real64) :: study_2_residuals(2, 4)
+
+        study_2_residuals(:, 1:2) = ieee_value(1.0_real64, ieee_quiet_nan)
+        study_2_residuals(:, 3) = [-1.0_real64, 1.0_real64]
+        study_2_residuals(:, 4) = [-2.0_real64, 2.0_real64]
+        call assert_run_js_comp_test_rejects_empty_study("test_run_js_comp_test_single_empty_point_sets_ierr: ", &
+                                                         [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64], &
+                                                         study_2_residuals, reshape([4, 4, 0, 4], [2, 2]))
+    end subroutine test_run_js_comp_test_single_empty_point_sets_ierr
+
+    !> The fixed-k search on 300 genes, 2 studies, 3 replicates (grid (300, 4) and (300, 2), see
+    !| the bounds tests above), `min_residuals_per_bin = 0` so the second gate cannot reject
+    !| anything, overlap 0 and the effect-size plateau with unreachable thresholds
+    !| (run_fixed_k_search). Study 1 has means 1..300 and residuals `[-0.5, 0, 0.5]`.
+    !| - Control, study 2 a copy of study 1: both candidates are admissible.
+    !| - Study 2 all NaN, or study 2 with valid means but NaN residuals: study 2 includes no
+    !|   residual anywhere, so no candidate is admissible. The search takes its no-admissible
+    !|   fallback: the first candidate (300, 4), `m_min = 3` bins and a zero range at every point,
+    !|   the confidence interval `-1`, `plateau_established` false, ierr OK.
+    subroutine test_param_search_empty_study_not_admissible()
+        character(len=*), parameter :: name = "test_param_search_empty_study_not_admissible: "
+        real(real64) :: gene_means(300, 2), residuals(3, 300, 2)
+        type(fixed_k_search_outputs) :: out
+        integer(int32) :: ierr, i_gene, i_case
+        character(len=24) :: case_text
+
+        do i_gene = 1, 300
+            gene_means(i_gene, 1) = real(i_gene, real64)
+            residuals(:, i_gene, 1) = [-0.5_real64, 0.0_real64, 0.5_real64]
+        end do
+
+        gene_means(:, 2) = gene_means(:, 1)
+        residuals(:, :, 2) = residuals(:, :, 1)
+        call run_fixed_k_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32)
+        call assert_err(ierr, ERR_OK, name//"control: ierr")
+        call assert_equal_int(out%n_admissible, 2_int32, name//"control: both candidates admissible")
+
+        do i_case = 1, 2
+            if (i_case == 1) then
+                case_text = "all-NaN study"
+                gene_means(:, 2) = ieee_value(1.0_real64, ieee_quiet_nan)
+            else
+                case_text = "NaN residuals only"
+                gene_means(:, 2) = gene_means(:, 1)
+            end if
+            residuals(:, :, 2) = ieee_value(1.0_real64, ieee_quiet_nan)
+            call run_fixed_k_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32)
+            call assert_err(ierr, ERR_OK, name//trim(case_text)//": ierr")
+            call assert_equal_int(out%n_admissible, 0_int32, name//trim(case_text)//": no candidate admissible")
+            call assert_false(out%plateau, name//trim(case_text)//": plateau_established")
+            call assert_equal_array_int([out%n_points, out%n_neighbors], [300_int32, 4_int32], 2_int32, &
+                                        name//trim(case_text)//": first candidate returned")
+            call assert_true(all(out%n_bins(1:300) == 3_int32), name//trim(case_text)//": m_min bins at every point")
+            call assert_true(all(out%range_low(1:300) == 0.0_real64) .and. all(out%range_high(1:300) == 0.0_real64), &
+                             name//trim(case_text)//": zero range at every point")
+            call assert_true(all(out%ci == -1.0_real64), name//trim(case_text)//": confidence interval -1")
+        end do
+    end subroutine test_param_search_empty_study_not_admissible
 
 end module mod_test_data_integration_js_comp_test

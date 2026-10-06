@@ -910,6 +910,29 @@ def test_run_js_comp_test_rejects_reversed_residual_range_quantiles():
             f"expected the error on upper_residual_range_quantile, got {error.argument!r}"
 
 
+def test_run_js_comp_test_rejects_empty_study():
+    # A study whose gene means and residuals are all missing includes no residual at the reference
+    # point, so the equal-weight consensus is undefined and the call fails with invalid input, not
+    # tied to any one argument (test_run_js_comp_test_empty_study_sets_ierr in the Fortran suite).
+    gene_means = np.array([[1.0, np.nan], [5.0, np.nan]], dtype=np.float64, order='F')
+    gene_means_perms = np.array([[1, 1], [2, 2]], dtype=np.int32, order='F')
+    residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
+    residuals[:, 0, 0] = [-1.0, 1.0]
+    residuals[:, 1, 0] = [-3.0, 3.0]
+    x_star = np.array([1.0], dtype=np.float64)
+
+    def call():
+        return run_js_comp_test(n_neighbors=1, gene_means=gene_means, gene_means_perms=gene_means_perms,
+                                residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
+                                min_residuals_per_bin=1)
+
+    assert_error(call, "expected ERR_INVALID_INPUT for a study without any non-NaN residual", ERR_INVALID_INPUT)
+    try:
+        call()
+    except ToxError as error:
+        assert error.argument is None, f"expected no argument named, got {error.argument!r}"
+
+
 def test_generate_adaptive_js_comp_test_candidates():
     # Call-ability, return type/shape and non-error only -- the hand-derived sequences are the
     # Fortran suite's job (test_adaptive_candidates_*). G=2000, S=2 must not collapse to a single

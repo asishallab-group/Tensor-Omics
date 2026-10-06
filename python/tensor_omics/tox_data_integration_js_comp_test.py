@@ -3474,6 +3474,12 @@ def run_js_comp_test(
     one ever fall outside, reports `ERR_INVALID_INPUT` and returns before Pass C could read
     `residuals` out of bounds -- a safeguard that valid input cannot reach.
 
+    Every study needs at least one non-NaN residual in every reference point's neighborhood,
+    because the consensus pmf weights every study equally. If some study has none at some point
+    (for example a study whose gene means are all missing, or whose neighbors' residuals are
+    all NaN), the call fails with invalid input after Pass C, not tied to any one argument. In
+    Fortran, the consensus, JSD, weight and p-value outputs are then not filled.
+
     After Pass C, the pipeline continues exactly as before: pools the per-study pmfs into the
     consensus pmf
     (:func:`tensor_omics.create_mean_pmf`), computes
@@ -3495,10 +3501,12 @@ def run_js_comp_test(
     :func:`tensor_omics.run_js_comp_test_parameter_search`
     -- read before using this entry point where inadequately-supported neighborhoods must be
     rejected:** unlike that routine, THIS one has NO multi-candidate fallback and NO
-    admissibility gate at all (no
+    admissibility gate (no
     :func:`tensor_omics.check_neighborhood_overlaps`,
-    no :func:`tensor_omics.check_mean_pmf_min_counts`,
-    no early exit). A reference point whose Pass B bin-count search fails (per `bin_count_mode`)
+    no :func:`tensor_omics.check_mean_pmf_min_counts`).
+    Apart from the neighbor-index safeguard, its only stop on the data is the empty-study error
+    described above, which the search treats as an inadmissible candidate instead. A reference
+    point whose Pass B bin-count search fails (per `bin_count_mode`)
     (`occupancy_failed(i_point) = True_c_bool`) still gets a real histogram built, at
     `n_bins_per_point(i_point) == m_min`, and that point still contributes to
     `global_js_divergence` exactly like every other point -- its contribution is down-weighted
@@ -4379,8 +4387,14 @@ def run_js_comp_test_parameter_search(
     then walks it from finest to coarsest resolution: for each candidate, builds every study's
     neighborhoods and checks the first admissibility gate
     (:func:`tensor_omics.check_neighborhood_overlaps`);
-    once every study passes, pools the consensus pmf and checks the second gate
-    (:func:`tensor_omics.check_mean_pmf_min_counts`);
+    once every study passes, pools the consensus pmf and checks the second gate: every consensus
+    bin reaches the minimum count
+    (:func:`tensor_omics.check_mean_pmf_min_counts`),
+    and every study has at least one non-NaN residual at every reference point, since the
+    consensus weights every study equally (a candidate where some study has none, for example a
+    study whose gene means are all missing, is not admissible, whereas
+    :func:`tensor_omics.run_js_comp_test` fails
+    with invalid input instead);
     once that passes too, seeds a confidence interval with the observed JSD, bootstraps it
     (:func:`tensor_omics.bootstrap_histogram`), and
     tests it against the running best candidate for a plateau

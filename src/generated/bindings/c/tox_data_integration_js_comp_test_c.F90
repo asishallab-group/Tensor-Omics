@@ -2925,6 +2925,12 @@ contains
     !| one ever fall outside, reports `ERR_INVALID_INPUT` and returns before Pass C could read
     !| `residuals` out of bounds -- a safeguard that valid input cannot reach.
     !|
+    !| Every study needs at least one non-NaN residual in every reference point's neighborhood,
+    !| because the consensus pmf weights every study equally. If some study has none at some point
+    !| (for example a study whose gene means are all missing, or whose neighbors' residuals are
+    !| all NaN), the call fails with invalid input after Pass C, not tied to any one argument. In
+    !| Fortran, the consensus, JSD, weight and p-value outputs are then not filled.
+    !|
     !| After Pass C, the pipeline continues exactly as before: pools the per-study pmfs into the
     !| consensus pmf
     !| ([[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]), computes
@@ -2946,10 +2952,12 @@ contains
     !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
     !| -- read before using this entry point where inadequately-supported neighborhoods must be
     !| rejected:** unlike that routine, THIS one has NO multi-candidate fallback and NO
-    !| admissibility gate at all (no
+    !| admissibility gate (no
     !| [[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]],
-    !| no [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]],
-    !| no early exit). A reference point whose Pass B bin-count search fails (per `bin_count_mode`)
+    !| no [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]).
+    !| Apart from the neighbor-index safeguard, its only stop on the data is the empty-study error
+    !| described above, which the search treats as an inadmissible candidate instead. A reference
+    !| point whose Pass B bin-count search fails (per `bin_count_mode`)
     !| (`occupancy_failed(i_point) = .true._c_bool`) still gets a real histogram built, at
     !| `n_bins_per_point(i_point) == m_min`, and that point still contributes to
     !| `global_js_divergence` exactly like every other point -- its contribution is down-weighted
@@ -3234,8 +3242,10 @@ contains
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                                           | [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `'bin_count_occupancy'`.
         integer(c_int), intent(out), target :: ierr
-            !! Error code; ERR_INVALID_INPUT if a neighbor gene index is out of range (a safeguard
-            !! valid input cannot reach, see above), ERR_ALLOC_FAIL if GSL could not allocate the random number generator for the
+            !! Error code; ERR_INVALID_INPUT if some study has no non-NaN residual in some reference
+            !! point's neighborhood (for example a study whose gene means are all missing; see
+            !! above), or if a neighbor gene index is out of range (a safeguard valid input cannot
+            !! reach, see above); ERR_ALLOC_FAIL if GSL could not allocate the random number generator for the
             !! permutation test
         integer(int32) :: bin_count_mode_mode_f
 
@@ -3385,6 +3395,12 @@ contains
     !| one ever fall outside, reports `ERR_INVALID_INPUT` and returns before Pass C could read
     !| `residuals` out of bounds -- a safeguard that valid input cannot reach.
     !|
+    !| Every study needs at least one non-NaN residual in every reference point's neighborhood,
+    !| because the consensus pmf weights every study equally. If some study has none at some point
+    !| (for example a study whose gene means are all missing, or whose neighbors' residuals are
+    !| all NaN), the call fails with invalid input after Pass C, not tied to any one argument. In
+    !| Fortran, the consensus, JSD, weight and p-value outputs are then not filled.
+    !|
     !| After Pass C, the pipeline continues exactly as before: pools the per-study pmfs into the
     !| consensus pmf
     !| ([[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]), computes
@@ -3406,10 +3422,12 @@ contains
     !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
     !| -- read before using this entry point where inadequately-supported neighborhoods must be
     !| rejected:** unlike that routine, THIS one has NO multi-candidate fallback and NO
-    !| admissibility gate at all (no
+    !| admissibility gate (no
     !| [[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]],
-    !| no [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]],
-    !| no early exit). A reference point whose Pass B bin-count search fails (per `bin_count_mode`)
+    !| no [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]).
+    !| Apart from the neighbor-index safeguard, its only stop on the data is the empty-study error
+    !| described above, which the search treats as an inadmissible candidate instead. A reference
+    !| point whose Pass B bin-count search fails (per `bin_count_mode`)
     !| (`occupancy_failed(i_point) = .true._c_bool`) still gets a real histogram built, at
     !| `n_bins_per_point(i_point) == m_min`, and that point still contributes to
     !| `global_js_divergence` exactly like every other point -- its contribution is down-weighted
@@ -3759,8 +3777,10 @@ contains
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                                           | [[tox_data_integration_js_comp_test_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `'bin_count_occupancy'`.
         integer(c_int), intent(out), target :: ierr
-            !! Error code; ERR_INVALID_INPUT if a neighbor gene index is out of range (a safeguard
-            !! valid input cannot reach, see above), ERR_ALLOC_FAIL if GSL could not allocate the random number generator for the
+            !! Error code; ERR_INVALID_INPUT if some study has no non-NaN residual in some reference
+            !! point's neighborhood (for example a study whose gene means are all missing; see
+            !! above), or if a neighbor gene index is out of range (a safeguard valid input cannot
+            !! reach, see above); ERR_ALLOC_FAIL if GSL could not allocate the random number generator for the
             !! permutation test
         integer(int32) :: bin_count_mode_mode_f
 
@@ -4738,8 +4758,14 @@ contains
     !| then walks it from finest to coarsest resolution: for each candidate, builds every study's
     !| neighborhoods and checks the first admissibility gate
     !| ([[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]]);
-    !| once every study passes, pools the consensus pmf and checks the second gate
-    !| ([[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]);
+    !| once every study passes, pools the consensus pmf and checks the second gate: every consensus
+    !| bin reaches the minimum count
+    !| ([[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]),
+    !| and every study has at least one non-NaN residual at every reference point, since the
+    !| consensus weights every study equally (a candidate where some study has none, for example a
+    !| study whose gene means are all missing, is not admissible, whereas
+    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_impl(interface)]] fails
+    !| with invalid input instead);
     !| once that passes too, seeds a confidence interval with the observed JSD, bootstraps it
     !| ([[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]), and
     !| tests it against the running best candidate for a plateau
@@ -5393,8 +5419,14 @@ contains
     !| then walks it from finest to coarsest resolution: for each candidate, builds every study's
     !| neighborhoods and checks the first admissibility gate
     !| ([[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]]);
-    !| once every study passes, pools the consensus pmf and checks the second gate
-    !| ([[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]);
+    !| once every study passes, pools the consensus pmf and checks the second gate: every consensus
+    !| bin reaches the minimum count
+    !| ([[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]),
+    !| and every study has at least one non-NaN residual at every reference point, since the
+    !| consensus weights every study equally (a candidate where some study has none, for example a
+    !| study whose gene means are all missing, is not admissible, whereas
+    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_impl(interface)]] fails
+    !| with invalid input instead);
     !| once that passes too, seeds a confidence interval with the observed JSD, bootstraps it
     !| ([[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]), and
     !| tests it against the running best candidate for a plateau

@@ -835,6 +835,27 @@ test_run_js_comp_test_rejects_reversed_residual_range_quantiles <- function() {
               "expected the error on upper_residual_range_quantile")
 }
 
+test_run_js_comp_test_rejects_empty_study <- function() {
+  # A study whose gene means and residuals are all missing includes no residual at the reference
+  # point, so the equal-weight consensus is undefined and the call fails with invalid input, not
+  # tied to any one argument (test_run_js_comp_test_empty_study_sets_ierr in the Fortran suite).
+  gene_means <- matrix(c(1.0, 5.0, NaN, NaN), nrow = 2)
+  gene_means_perms <- matrix(c(1L, 2L, 1L, 2L), nrow = 2)
+  residuals <- array(NaN, dim = c(2, 2, 2))
+  residuals[, 1, 1] <- c(-1.0, 1.0)
+  residuals[, 2, 1] <- c(-3.0, 3.0)
+  x_star <- c(1.0)
+
+  call <- function() {
+    run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = gene_means_perms,
+                     residuals = residuals, x_star = x_star, n_permutations = 0L, random_seed = 1L,
+                     min_residuals_per_bin = 1L)
+  }
+  assert_error(call(), "expected ERR_INVALID_INPUT for a study without any non-NaN residual", ERR_INVALID_INPUT)
+  err <- tryCatch({ call(); NULL }, error = function(e) e)
+  assert_true(is.na(err$argument), "expected no argument named")
+}
+
 test_generate_adaptive_js_comp_test_candidates <- function() {
   # Call-ability, return type/shape and non-error only -- the hand-derived sequences are the
   # Fortran suite's job (test_adaptive_candidates_*). G=2000, S=2 must not collapse to a single
