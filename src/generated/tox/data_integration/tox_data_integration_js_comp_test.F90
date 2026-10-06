@@ -3817,6 +3817,13 @@ contains
     !| average over all studies, meaningless. A range a construction produced passes the first two
     !| checks by construction, and the third whenever its status was not an empty-study one.
     !|
+    !| Every study also needs at least one non-NaN residual in every reference point's
+    !| neighborhood, because the consensus pmf weights every study equally. A study can have genes
+    !| at a point and still none there, when those genes' residuals are all NaN, which the gene
+    !| count above cannot see. If some study has none at some point, the call fails with invalid
+    !| input after Pass C, not tied to any one argument. In Fortran, the consensus, JSD, weight and
+    !| p-value outputs are then not filled.
+    !|
     !| **Memory.** The work arrays are sized by the per-study gene bound `max_n_genes_all_studies`,
     !| the largest number of genes one study can have in one neighborhood, not by a caller-supplied
     !| neighbor count. The pooling buffers `tmp_pooled_residuals`/`tmp_pooled_residuals_perm`
@@ -4025,7 +4032,8 @@ contains
             !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT for a range that is reversed, reaches past the non-NaN
-            !! pooled means or leaves a study without a gene (see above), ERR_ALLOC_FAIL if GSL
+            !! pooled means or leaves a study without a gene, or if some study has no non-NaN
+            !! residual in some reference point's neighborhood (see above); ERR_ALLOC_FAIL if GSL
             !! could not allocate the random number generator for the permutation test
         integer(int32), dimension(:), allocatable :: tmp_gene_means_perm_all
         integer(int32), dimension(:, :), allocatable :: tmp_point_neighborhood_indices
@@ -4188,6 +4196,13 @@ contains
     !| study has no gene in it, which would leave that study's pmf empty and the consensus pmf, an
     !| average over all studies, meaningless. A range a construction produced passes the first two
     !| checks by construction, and the third whenever its status was not an empty-study one.
+    !|
+    !| Every study also needs at least one non-NaN residual in every reference point's
+    !| neighborhood, because the consensus pmf weights every study equally. A study can have genes
+    !| at a point and still none there, when those genes' residuals are all NaN, which the gene
+    !| count above cannot see. If some study has none at some point, the call fails with invalid
+    !| input after Pass C, not tied to any one argument. In Fortran, the consensus, JSD, weight and
+    !| p-value outputs are then not filled.
     !|
     !| **Memory.** The work arrays are sized by the per-study gene bound `max_n_genes_all_studies`,
     !| the largest number of genes one study can have in one neighborhood, not by a caller-supplied
@@ -4454,7 +4469,8 @@ contains
             !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT for a range that is reversed, reaches past the non-NaN
-            !! pooled means or leaves a study without a gene (see above), ERR_ALLOC_FAIL if GSL
+            !! pooled means or leaves a study without a gene, or if some study has no non-NaN
+            !! residual in some reference point's neighborhood (see above); ERR_ALLOC_FAIL if GSL
             !! could not allocate the random number generator for the permutation test
 
         call set_ok(ierr)
@@ -6090,8 +6106,13 @@ contains
     !| 4. Per point, decode the range into per-study gene lists and run the bin-count search
     !| `bin_count_mode` names (Issue #187's occupancy search by default, or Stone's rule) on the
     !| pooled residuals (Pass B). Then build each study's histogram per point
-    !| (Pass C), the consensus pmf, and apply the second gate,
-    !| [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]].
+    !| (Pass C), the consensus pmf, and apply the second gate: every study has at least one
+    !| non-NaN residual at every reference point, since the consensus weights every study
+    !| equally (a study whose genes at a point all have NaN residuals passes the construction's
+    !| gene count but not this; such a candidate is logged as an empty-study one, whereas
+    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_adaptive_impl(interface)]]
+    !| fails with invalid input instead), and every consensus bin reaches the minimum count
+    !| ([[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]).
     !| This is the pipeline of
     !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_adaptive_impl(interface)]].
     !| 5. From here on everything is the fixed-k search's post-gate bookkeeping, keyed on the
@@ -6109,15 +6130,20 @@ contains
     !| (`1_int32`): construction status too few means or too
     !| few residuals, so the growth could not run as specified;
     !| - [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_CANDIDATE_EMPTY_STUDY(variable)]]
-    !| (`2_int32`): construction status empty study neighborhood;
+    !| (`2_int32`): a study neighborhood below `min_study_neighbors`
+    !| (a construction status, checked first), or a study with no non-NaN residual at some point
+    !| (checked at the start of the second gate, after the overlap gate);
     !| - [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED(variable)]]
     !| (`3_int32`): more than `max_n_points_candidate` points;
     !| - [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_CANDIDATE_OVERLAP_FAILED(variable)]]
     !| (`4_int32`): the first gate failed;
     !| - [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED(variable)]]
-    !| (`5_int32`): the second gate failed.
+    !| (`5_int32`): the second gate's minimum count failed.
     !|
-    !| The checks run in that order and the first failing one is logged. `candidate_n_points` is the
+    !| The checks run in this order: the construction status (too few means or residuals, or a
+    !| study neighborhood below `min_study_neighbors`), the capacity, the first gate, then the second
+    !| gate (first a study with no non-NaN residual at some point, then the minimum count). The
+    !| first failing one is logged. `candidate_n_points` is the
     !| number of reference points the construction produced (0 for too few means), whatever the
     !| status.
     !|
@@ -6388,7 +6414,8 @@ contains
         integer(int32), dimension(16), intent(out) :: candidate_status
             !! What happened to every tried candidate: `0_int32` evaluated,
             !! `1_int32` construction failed,
-            !! `2_int32` a study neighborhood below `min_study_neighbors`,
+            !! `2_int32` a study neighborhood below `min_study_neighbors`
+            !! or a study without a non-NaN residual at some point,
             !! `3_int32` capacity exceeded,
             !! `4_int32` overlap gate failed,
             !! `5_int32` consensus-pmf count gate failed
@@ -6791,8 +6818,13 @@ contains
     !| 4. Per point, decode the range into per-study gene lists and run the bin-count search
     !| `bin_count_mode` names (Issue #187's occupancy search by default, or Stone's rule) on the
     !| pooled residuals (Pass B). Then build each study's histogram per point
-    !| (Pass C), the consensus pmf, and apply the second gate,
-    !| [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]].
+    !| (Pass C), the consensus pmf, and apply the second gate: every study has at least one
+    !| non-NaN residual at every reference point, since the consensus weights every study
+    !| equally (a study whose genes at a point all have NaN residuals passes the construction's
+    !| gene count but not this; such a candidate is logged as an empty-study one, whereas
+    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_adaptive_impl(interface)]]
+    !| fails with invalid input instead), and every consensus bin reaches the minimum count
+    !| ([[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]).
     !| This is the pipeline of
     !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_adaptive_impl(interface)]].
     !| 5. From here on everything is the fixed-k search's post-gate bookkeeping, keyed on the
@@ -6810,15 +6842,20 @@ contains
     !| (`1_int32`): construction status too few means or too
     !| few residuals, so the growth could not run as specified;
     !| - [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_CANDIDATE_EMPTY_STUDY(variable)]]
-    !| (`2_int32`): construction status empty study neighborhood;
+    !| (`2_int32`): a study neighborhood below `min_study_neighbors`
+    !| (a construction status, checked first), or a study with no non-NaN residual at some point
+    !| (checked at the start of the second gate, after the overlap gate);
     !| - [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED(variable)]]
     !| (`3_int32`): more than `max_n_points_candidate` points;
     !| - [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_CANDIDATE_OVERLAP_FAILED(variable)]]
     !| (`4_int32`): the first gate failed;
     !| - [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED(variable)]]
-    !| (`5_int32`): the second gate failed.
+    !| (`5_int32`): the second gate's minimum count failed.
     !|
-    !| The checks run in that order and the first failing one is logged. `candidate_n_points` is the
+    !| The checks run in this order: the construction status (too few means or residuals, or a
+    !| study neighborhood below `min_study_neighbors`), the capacity, the first gate, then the second
+    !| gate (first a study with no non-NaN residual at some point, then the minimum count). The
+    !| first failing one is logged. `candidate_n_points` is the
     !| number of reference points the construction produced (0 for too few means), whatever the
     !| status.
     !|
@@ -7140,7 +7177,8 @@ contains
         integer(int32), dimension(16), intent(out) :: candidate_status
             !! What happened to every tried candidate: `0_int32` evaluated,
             !! `1_int32` construction failed,
-            !! `2_int32` a study neighborhood below `min_study_neighbors`,
+            !! `2_int32` a study neighborhood below `min_study_neighbors`
+            !! or a study without a non-NaN residual at some point,
             !! `3_int32` capacity exceeded,
             !! `4_int32` overlap gate failed,
             !! `5_int32` consensus-pmf count gate failed

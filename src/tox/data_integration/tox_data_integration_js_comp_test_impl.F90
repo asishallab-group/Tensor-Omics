@@ -221,7 +221,8 @@ module tox_data_integration_js_comp_test_impl
     integer(int32), parameter :: ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED = CM_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED
         !! Candidate status: the construction reported too few means or too few residuals
     integer(int32), parameter :: ADAPTIVE_CANDIDATE_EMPTY_STUDY = CM_ADAPTIVE_CANDIDATE_EMPTY_STUDY
-        !! Candidate status: some neighborhood has fewer than `min_study_neighbors` entries of some study
+        !! Candidate status: some neighborhood has fewer than `min_study_neighbors` entries of some
+        !! study, or some study has no non-NaN residual in some neighborhood
     integer(int32), parameter :: ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED = CM_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED
         !! Candidate status: more reference points emerged than `max_n_points_candidate`
     integer(int32), parameter :: ADAPTIVE_CANDIDATE_OVERLAP_FAILED = CM_ADAPTIVE_CANDIDATE_OVERLAP_FAILED
@@ -4382,6 +4383,13 @@ contains
     !| average over all studies, meaningless. A range a construction produced passes the first two
     !| checks by construction, and the third whenever its status was not an empty-study one.
     !|
+    !| Every study also needs at least one non-NaN residual in every reference point's
+    !| neighborhood, because the consensus pmf weights every study equally. A study can have genes
+    !| at a point and still none there, when those genes' residuals are all NaN, which the gene
+    !| count above cannot see. If some study has none at some point, the call fails with invalid
+    !| input after Pass C, not tied to any one argument. In Fortran, the consensus, JSD, weight and
+    !| p-value outputs are then not filled.
+    !|
     !| **Memory.** The work arrays are sized by the per-study gene bound `max_n_genes_all_studies`,
     !| the largest number of genes one study can have in one neighborhood, not by a caller-supplied
     !| neighbor count. The pooling buffers `tmp_pooled_residuals`/`tmp_pooled_residuals_perm`
@@ -4612,7 +4620,8 @@ contains
             !! DM_DEFAULT(CM_MODE_BIN_COUNT_OCCUPANCY)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT for a range that is reversed, reaches past the non-NaN
-            !! pooled means or leaves a study without a gene (see above), ERR_ALLOC_FAIL if GSL
+            !! pooled means or leaves a study without a gene, or if some study has no non-NaN
+            !! residual in some reference point's neighborhood (see above); ERR_ALLOC_FAIL if GSL
             !! could not allocate the random number generator for the permutation test
 
         integer(int32) :: i_point, i_study, n_valid_means, n_study_neighbors, actual_n_permutations, point_ierr, &
@@ -4694,6 +4703,17 @@ contains
                                                  tmp_neighbor_residuals(:, 1:n_study_neighbors))
             end do
         end do
+
+        ! The gene-count check above cannot see a study whose genes at a point all have NaN
+        ! residuals, so check the included residuals too: the equal-weight consensus divides every
+        ! point's pooled pmf by n_studies, so a study with no included residual at a point would
+        ! leave that point's consensus summing to less than 1, and every study's JSD would be
+        ! measured against an unnormalised distribution. Which study is empty depends on
+        ! gene_means and residuals together, so no single argument is to blame (no arg_pos).
+        if (any(included_n_reps(1:n_points, 1:n_studies) == 0_int32)) then
+            call set_err_once(ierr, ERR_INVALID_INPUT)
+            return
+        end if
 
         call finish_js_comp_test(n_studies, n_points, max_n_bins_per_point, pmfs, counts, included_n_reps, mean_pmf, &
                                  mean_pmf_counts, mean_pmf_included_n_reps, js_divergences, weights, &
@@ -5712,8 +5732,13 @@ contains
     !| 4. Per point, decode the range into per-study gene lists and run the bin-count search
     !|    `bin_count_mode` names (Issue #187's occupancy search by default, or Stone's rule) on the
     !|    pooled residuals (Pass B). Then build each study's histogram per point
-    !|    (Pass C), the consensus pmf, and apply the second gate,
-    !|    [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]].
+    !|    (Pass C), the consensus pmf, and apply the second gate: every study has at least one
+    !|    non-NaN residual at every reference point, since the consensus weights every study
+    !|    equally (a study whose genes at a point all have NaN residuals passes the construction's
+    !|    gene count but not this; such a candidate is logged as an empty-study one, whereas
+    !|    [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_adaptive_impl(interface)]]
+    !|    fails with invalid input instead), and every consensus bin reaches the minimum count
+    !|    ([[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]).
     !|    This is the pipeline of
     !|    [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_adaptive_impl(interface)]].
     !| 5. From here on everything is the fixed-k search's post-gate bookkeeping, keyed on the
@@ -5731,15 +5756,20 @@ contains
     !|   (`CM_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED`): construction status too few means or too
     !|   few residuals, so the growth could not run as specified;
     !| - [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_CANDIDATE_EMPTY_STUDY(variable)]]
-    !|   (`CM_ADAPTIVE_CANDIDATE_EMPTY_STUDY`): construction status empty study neighborhood;
+    !|   (`CM_ADAPTIVE_CANDIDATE_EMPTY_STUDY`): a study neighborhood below `min_study_neighbors`
+    !|   (a construction status, checked first), or a study with no non-NaN residual at some point
+    !|   (checked at the start of the second gate, after the overlap gate);
     !| - [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED(variable)]]
     !|   (`CM_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED`): more than `max_n_points_candidate` points;
     !| - [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_CANDIDATE_OVERLAP_FAILED(variable)]]
     !|   (`CM_ADAPTIVE_CANDIDATE_OVERLAP_FAILED`): the first gate failed;
     !| - [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED(variable)]]
-    !|   (`CM_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED`): the second gate failed.
+    !|   (`CM_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED`): the second gate's minimum count failed.
     !|
-    !| The checks run in that order and the first failing one is logged. `candidate_n_points` is the
+    !| The checks run in this order: the construction status (too few means or residuals, or a
+    !| study neighborhood below `min_study_neighbors`), the capacity, the first gate, then the second
+    !| gate (first a study with no non-NaN residual at some point, then the minimum count). The
+    !| first failing one is logged. `candidate_n_points` is the
     !| number of reference points the construction produced (0 for too few means), whatever the
     !| status.
     !|
@@ -5997,7 +6027,8 @@ contains
         integer(int32), dimension(16), intent(out) :: candidate_status
             !! What happened to every tried candidate: `CM_ADAPTIVE_CANDIDATE_EVALUATED` evaluated,
             !! `CM_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED` construction failed,
-            !! `CM_ADAPTIVE_CANDIDATE_EMPTY_STUDY` a study neighborhood below `min_study_neighbors`,
+            !! `CM_ADAPTIVE_CANDIDATE_EMPTY_STUDY` a study neighborhood below `min_study_neighbors`
+            !! or a study without a non-NaN residual at some point,
             !! `CM_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED` capacity exceeded,
             !! `CM_ADAPTIVE_CANDIDATE_OVERLAP_FAILED` overlap gate failed,
             !! `CM_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED` consensus-pmf count gate failed
@@ -6383,8 +6414,17 @@ contains
                 end do
             end do
 
-            ! Second admissibility gate: every bin of the consensus pmf must reach the minimum
-            ! count, scoped to each point's own tmp_n_bins_per_point.
+            ! Second admissibility gate. First, every study must include at least one residual at
+            ! every point: a study whose genes there all have NaN residuals passes the
+            ! construction's gene count, but the equal-weight consensus divides by n_studies, so it
+            ! would leave that consensus unnormalised (the case run_js_comp_test_adaptive_impl
+            ! rejects as invalid input). Such a candidate is logged as an empty-study one. Then
+            ! every bin of the consensus pmf must reach the minimum count, scoped to each point's
+            ! own tmp_n_bins_per_point.
+            if (any(tmp_included_n_reps(1:n_points, 1:n_studies) == 0_int32)) then
+                candidate_status(i_candidate) = ADAPTIVE_CANDIDATE_EMPTY_STUDY
+                cycle
+            end if
             call create_mean_pmf_impl(tmp_pmfs(1:max_n_bins, 1:n_points, 1:n_studies), &
                                       tmp_counts(1:max_n_bins, 1:n_points, 1:n_studies), &
                                       max_n_bins, n_points, n_studies, tmp_included_n_reps(1:n_points, 1:n_studies), &

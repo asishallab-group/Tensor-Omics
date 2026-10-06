@@ -1002,6 +1002,26 @@ test_run_js_comp_test_adaptive <- function() {
                "expected ERR_INVALID_INPUT for a reversed pooled range", ERR_INVALID_INPUT)
 }
 
+test_run_js_comp_test_adaptive_rejects_empty_study <- function() {
+  # Study 2 has valid gene means, so both pooled ranges hold one of its genes, but all its
+  # residuals are missing: it includes no residual at either reference point, so the
+  # equal-weight consensus is undefined and the call fails with invalid input, not tied to any
+  # one argument (test_run_adaptive_nan_residuals_only_study_sets_ierr in the Fortran suite).
+  gene_means <- matrix(c(0.0, 2.0, 4.0, 1.0, 3.0, NaN), nrow = 3)
+  residuals <- array(NaN, dim = c(2, 3, 2))
+  residuals[, 1, 1] <- c(-1.0, 1.0)
+  residuals[, 2, 1] <- c(0.5, NaN)
+  residuals[, 3, 1] <- c(-0.5, 0.5)
+  ranges <- matrix(c(1L, 3L, 4L, 5L), nrow = 2)
+
+  call <- function() {
+    run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations = 0L, min_residuals_per_bin = 1L)
+  }
+  assert_error(call(), "expected ERR_INVALID_INPUT for a study without any non-NaN residual", ERR_INVALID_INPUT)
+  err <- tryCatch({ call(); NULL }, error = function(e) e)
+  assert_true(is.na(err$argument), "expected no argument named")
+}
+
 test_run_js_comp_test_adaptive_parameter_search <- function() {
   # Call-ability, return types/shapes and non-error only -- plateau selection, fallbacks,
   # candidate statuses and the construct + run round trip are the Fortran suite's job

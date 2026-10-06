@@ -4006,6 +4006,13 @@ def run_js_comp_test_adaptive(
     average over all studies, meaningless. A range a construction produced passes the first two
     checks by construction, and the third whenever its status was not an empty-study one.
 
+    Every study also needs at least one non-NaN residual in every reference point's
+    neighborhood, because the consensus pmf weights every study equally. A study can have genes
+    at a point and still none there, when those genes' residuals are all NaN, which the gene
+    count above cannot see. If some study has none at some point, the call fails with invalid
+    input after Pass C, not tied to any one argument. In Fortran, the consensus, JSD, weight and
+    p-value outputs are then not filled.
+
     **Memory.** The work arrays are sized by the per-study gene bound `max_n_genes_all_studies`,
     the largest number of genes one study can have in one neighborhood, not by a caller-supplied
     neighbor count. The pooling buffers `tmp_pooled_residuals`/`tmp_pooled_residuals_perm`
@@ -5049,8 +5056,13 @@ def run_js_comp_test_adaptive_parameter_search(
     4. Per point, decode the range into per-study gene lists and run the bin-count search
     `bin_count_mode` names (Issue #187's occupancy search by default, or Stone's rule) on the
     pooled residuals (Pass B). Then build each study's histogram per point
-    (Pass C), the consensus pmf, and apply the second gate,
-    :func:`tensor_omics.check_mean_pmf_min_counts`.
+    (Pass C), the consensus pmf, and apply the second gate: every study has at least one
+    non-NaN residual at every reference point, since the consensus weights every study
+    equally (a study whose genes at a point all have NaN residuals passes the construction's
+    gene count but not this; such a candidate is logged as an empty-study one, whereas
+    :func:`tensor_omics.run_js_comp_test_adaptive`
+    fails with invalid input instead), and every consensus bin reaches the minimum count
+    (:func:`tensor_omics.check_mean_pmf_min_counts`).
     This is the pipeline of
     :func:`tensor_omics.run_js_comp_test_adaptive`.
     5. From here on everything is the fixed-k search's post-gate bookkeeping, keyed on the
@@ -5068,15 +5080,20 @@ def run_js_comp_test_adaptive_parameter_search(
     (`1`): construction status too few means or too
     few residuals, so the growth could not run as specified;
     - ``ADAPTIVE_CANDIDATE_EMPTY_STUDY``
-    (`2`): construction status empty study neighborhood;
+    (`2`): a study neighborhood below `min_study_neighbors`
+    (a construction status, checked first), or a study with no non-NaN residual at some point
+    (checked at the start of the second gate, after the overlap gate);
     - ``ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED``
     (`3`): more than `max_n_points_candidate` points;
     - ``ADAPTIVE_CANDIDATE_OVERLAP_FAILED``
     (`4`): the first gate failed;
     - ``ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED``
-    (`5`): the second gate failed.
+    (`5`): the second gate's minimum count failed.
 
-    The checks run in that order and the first failing one is logged. `candidate_n_points` is the
+    The checks run in this order: the construction status (too few means or residuals, or a
+    study neighborhood below `min_study_neighbors`), the capacity, the first gate, then the second
+    gate (first a study with no non-NaN residual at some point, then the minimum count). The
+    first failing one is logged. `candidate_n_points` is the
     number of reference points the construction produced (0 for too few means), whatever the
     status.
 
@@ -5411,7 +5428,8 @@ def run_js_comp_test_adaptive_parameter_search(
         candidate_status : np.ndarray[np.int32] of shape (16,), read-only
             What happened to every tried candidate: `0` evaluated,
             `1` construction failed,
-            `2` a study neighborhood below `min_study_neighbors`,
+            `2` a study neighborhood below `min_study_neighbors`
+            or a study without a non-NaN residual at some point,
             `3` capacity exceeded,
             `4` overlap gate failed,
             `5` consensus-pmf count gate failed

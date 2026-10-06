@@ -1068,6 +1068,28 @@ def test_run_js_comp_test_adaptive():
                  "expected ERR_INVALID_INPUT for a reversed pooled range", ERR_INVALID_INPUT)
 
 
+def test_run_js_comp_test_adaptive_rejects_empty_study():
+    # Study 2 has valid gene means, so both pooled ranges hold one of its genes, but all its
+    # residuals are missing: it includes no residual at either reference point, so the
+    # equal-weight consensus is undefined and the call fails with invalid input, not tied to any
+    # one argument (test_run_adaptive_nan_residuals_only_study_sets_ierr in the Fortran suite).
+    gene_means = np.array([[0.0, 1.0], [2.0, 3.0], [4.0, np.nan]], dtype=np.float64, order='F')
+    residuals = np.full((2, 3, 2), np.nan, dtype=np.float64, order='F')
+    residuals[:, 0, 0] = [-1.0, 1.0]
+    residuals[:, 1, 0] = [0.5, np.nan]
+    residuals[:, 2, 0] = [-0.5, 0.5]
+    ranges = np.array([[1, 4], [3, 5]], dtype=np.int32, order='F')
+
+    def call():
+        return run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations=0, min_residuals_per_bin=1)
+
+    assert_error(call, "expected ERR_INVALID_INPUT for a study without any non-NaN residual", ERR_INVALID_INPUT)
+    try:
+        call()
+    except ToxError as error:
+        assert error.argument is None, f"expected no argument named, got {error.argument!r}"
+
+
 def test_run_js_comp_test_adaptive_parameter_search():
     # Call-ability, return types/shapes and non-error only -- plateau selection, fallbacks,
     # candidate statuses and the construct + run round trip are the Fortran suite's job

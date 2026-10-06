@@ -110,7 +110,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(215))
+        allocate (all_tests(219))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -550,6 +550,14 @@ contains
                                   test_param_search_lone_inadmissible_candidate_not_established)
         all_tests(215) = test_case("test_param_search_lone_admissible_candidate_established", &
                                   test_param_search_lone_admissible_candidate_established)
+        all_tests(216) = test_case("test_run_adaptive_nan_residuals_only_study_sets_ierr", &
+                                  test_run_adaptive_nan_residuals_only_study_sets_ierr)
+        all_tests(217) = test_case("test_run_adaptive_single_empty_point_sets_ierr", &
+                                  test_run_adaptive_single_empty_point_sets_ierr)
+        all_tests(218) = test_case("test_adaptive_search_nan_residuals_study_not_admissible", &
+                                  test_adaptive_search_nan_residuals_study_not_admissible)
+        all_tests(219) = test_case("test_final_runs_accept_partly_different_gene_sets", &
+                                  test_final_runs_accept_partly_different_gene_sets)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -10850,5 +10858,234 @@ contains
         call assert_equal_array_int(out%n_bins(1:300), out%trace_n_bins(1:300, 1), 300_int32, name//"bins from the trace")
         call assert_true(all(out%ci >= 0.0_real64), name//"a real confidence interval, not -1")
     end subroutine test_param_search_lone_admissible_candidate_established
+
+    ! ---------------------------------------------------------------------------------------------
+    ! The adaptive routines with a study that has genes at a reference point but no non-NaN
+    ! residual there. The gene-count check of run_js_comp_test_adaptive cannot see this, so the
+    ! final run rejects it after Pass C, and the adaptive search treats such a candidate as an
+    ! empty-study one. The control below shows that legitimately missing genes (NaN in both
+    ! gene_means and residuals) trigger neither check.
+    ! ---------------------------------------------------------------------------------------------
+
+    !> Test helper: run_js_comp_test_adaptive on build_adaptive_final_fixture with study 2's
+    !| residuals replaced by the caller's, ranges [1,3] (study 1 genes {1, 2}, study 2 gene {1})
+    !| and [4,5] (study 2 gene 2, study 1 gene 3), `min_residuals_per_bin = 1`. Asserts
+    !| ERR_INVALID_INPUT without an argument position, that Pass B and Pass C ran (the decoded
+    !| counts are [2, 1] and [1, 1], the bin counts are set, `included_n_reps` equals the caller's
+    !| expectation), and that every output written after Pass C, pre-filled with the sentinel -7,
+    !| is untouched.
+    subroutine assert_run_adaptive_rejects_empty_study(name, study_2_residuals, expected_included_n_reps)
+        character(len=*), intent(in) :: name
+            !! Message prefix
+        real(real64), intent(in) :: study_2_residuals(2, 3)
+            !! Residuals of study 2
+        integer(int32), intent(in) :: expected_included_n_reps(2, 2)
+            !! Expected `included_n_reps` (point, study) after Pass C
+        real(real64) :: gene_means(3, 2), residuals(2, 3, 2)
+        integer(int32) :: ierr
+        type(adaptive_run_outputs) :: out
+
+        call build_adaptive_final_fixture(gene_means, residuals)
+        residuals(:, :, 2) = study_2_residuals
+        call run_adaptive_final(gene_means, residuals, reshape([1, 3, 4, 5], [2, 2]), out, ierr, &
+                                n_permutations=10_int32, min_residuals_per_bin=1_int32)
+
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"a study without an included residual is rejected", &
+                        arg_pos=0_int32)
+        call assert_equal_array_int(out%n_per_point, [2, 1, 1, 1], 4_int32, name//"decoded counts, every study has a gene", &
+                                    n_rows=2_int32)
+        call assert_true(all(out%n_bins /= -7_int32), name//"Pass B ran")
+        call assert_equal_array_int(out%included, expected_included_n_reps, 4_int32, n_rows=2_int32, msg=&
+                                    name//"Pass C ran: included_n_reps per (point, study)")
+        call assert_true(all(out%mean_pmf == -7.0_real64), name//"mean_pmf untouched")
+        call assert_true(all(out%mean_pmf_counts == -7_int32), name//"mean_pmf_counts untouched")
+        call assert_true(all(out%mean_included == -7_int32), name//"mean_pmf_included_n_reps untouched")
+        call assert_true(all(out%js == -7.0_real64), name//"js_divergences untouched")
+        call assert_true(all(out%weights == -7.0_real64), name//"weights untouched")
+        call assert_true(all(out%global_jsd == -7.0_real64), name//"global_js_divergence untouched")
+        call assert_true(all(out%p_values == -7.0_real64), name//"p_values untouched")
+        call assert_true(all(out%p_values_observed_consensus == -7.0_real64), name//"p_values_observed_consensus untouched")
+    end subroutine assert_run_adaptive_rejects_empty_study
+
+    !> run_js_comp_test_adaptive with study 2's gene means valid (so both ranges decode to at least
+    !| one study 2 gene and the gene-count check passes) but every residual of study 2 NaN: study 2
+    !| includes no residual at either point, so the consensus pmf is undefined and the call fails
+    !| with ERR_INVALID_INPUT, argument position 0. Before the check it returned OK.
+    subroutine test_run_adaptive_nan_residuals_only_study_sets_ierr()
+        real(real64) :: study_2_residuals(2, 3)
+
+        study_2_residuals = ieee_value(1.0_real64, ieee_quiet_nan)
+        call assert_run_adaptive_rejects_empty_study("test_run_adaptive_nan_residuals_only_study_sets_ierr: ", &
+                                                     study_2_residuals, reshape([3, 2, 0, 0], [2, 2]))
+    end subroutine test_run_adaptive_nan_residuals_only_study_sets_ierr
+
+    !> run_js_comp_test_adaptive where only one (point, study) pair is empty: study 2's gene 1 (its
+    !| only gene at point 1) has NaN residuals, its gene 2 (its only gene at point 2) keeps
+    !| `[-1.5, 1.5]`. So `included_n_reps` is [3, 2] for study 1 and [0, 2] for study 2, and that
+    !| single empty pair is enough for ERR_INVALID_INPUT, argument position 0.
+    subroutine test_run_adaptive_single_empty_point_sets_ierr()
+        real(real64) :: study_2_residuals(2, 3)
+
+        study_2_residuals = ieee_value(1.0_real64, ieee_quiet_nan)
+        study_2_residuals(:, 2) = [-1.5_real64, 1.5_real64]
+        call assert_run_adaptive_rejects_empty_study("test_run_adaptive_single_empty_point_sets_ierr: ", &
+                                                     study_2_residuals, reshape([3, 2, 0, 2], [2, 2]))
+    end subroutine test_run_adaptive_single_empty_point_sets_ierr
+
+    !> The adaptive search on fixture A (`min_residuals_per_bin = 0`, so the consensus-count gate
+    !| cannot reject anything) with some of study 2's residuals NaN and every gene mean valid.
+    !| Study 1's residuals stay 0, so every neighborhood still pools at least 3k/2 >= 15 valid
+    !| residuals, keeps zero dispersion and is exactly fixture A's (71/91/125/166 points, k/2
+    !| entries of each study, construction status ok, overlaps 0.3-0.4 above the default 0.1).
+    !| - Every study 2 residual NaN: study 2 includes no residual anywhere, so every candidate is
+    !|   logged as an empty study and the search takes its no-admissible fallback (candidate 1's
+    !|   knobs, `m_min` bins, zero ranges, CI -1, `plateau_established` false).
+    !| - Only study 2's genes 1..8 NaN (pooled positions 1..16): every candidate's first
+    !|   neighborhood is [1, k], holding study 2's genes 1..k/2. For k = 20 that includes the valid
+    !|   genes 9 and 10, so candidate 1 stays admissible; for k = 16, 12, 10 study 2 has no residual
+    !|   at the first point, so candidates 2-4 are empty-study ones. One admissible candidate and
+    !|   no plateau: the smallest-uncertainty fallback returns candidate 1 with its [0,0] interval.
+    !| - Every study 2 residual NaN with the default `min_residuals_per_bin = 10`: fixture A then also
+    !|   fails the minimum count at every candidate (test_adaptive_search_status_min_count_failed),
+    !|   but the empty-residual check runs first, so every candidate is still logged as an empty
+    !|   study, not as a minimum-count failure.
+    !| Before the check every candidate was evaluated in the first two cases, and the third logged
+    !| minimum-count failures.
+    subroutine test_adaptive_search_nan_residuals_study_not_admissible()
+        character(len=*), parameter :: name = "test_adaptive_search_nan_residuals_study_not_admissible: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
+        residuals(:, :, 2) = ieee_value(0.0_real64, ieee_quiet_nan)
+        call run_adaptive_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"all NaN: ierr")
+        call assert_adaptive_nothing_admissible(out, [71_int32, 91_int32, 125_int32, 166_int32], &
+                                                ADAPTIVE_CANDIDATE_EMPTY_STUDY, name//"all NaN: ")
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
+        residuals(:, 1:8, 2) = ieee_value(0.0_real64, ieee_quiet_nan)
+        call run_adaptive_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"genes 1..8 NaN: ierr")
+        call assert_false(out%plateau, name//"genes 1..8 NaN: no plateau")
+        call assert_equal_int(out%n_admissible, 1_int32, name//"genes 1..8 NaN: only candidate 1 admissible")
+        call assert_adaptive_selection(out, [20_int32, 5_int32, 80_int32], 71_int32, &
+                                       [71_int32, 91_int32, 125_int32, 166_int32], &
+                                       [ADAPTIVE_CANDIDATE_EVALUATED, ADAPTIVE_CANDIDATE_EMPTY_STUDY, &
+                                        ADAPTIVE_CANDIDATE_EMPTY_STUDY, ADAPTIVE_CANDIDATE_EMPTY_STUDY], &
+                                       name//"genes 1..8 NaN: ")
+        call assert_equal_array_real(out%ci, reshape([0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64], [2, 2]), &
+                                     4_int32, 0.0_real64, name//"genes 1..8 NaN: candidate 1's real [0,0] interval")
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
+        residuals(:, :, 2) = ieee_value(0.0_real64, ieee_quiet_nan)
+        call run_adaptive_search(gene_means, residuals, out, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"all NaN, default min count: ierr")
+        call assert_adaptive_nothing_admissible(out, [71_int32, 91_int32, 125_int32, 166_int32], &
+                                                ADAPTIVE_CANDIDATE_EMPTY_STUDY, &
+                                                name//"all NaN, default min count: empty study before min count: ")
+    end subroutine test_adaptive_search_nan_residuals_study_not_admissible
+
+    !> Control: two studies with partly different gene sets, the case `max_n_genes_all_studies`
+    !| exists for. G = 12, R = 3. Study 1 has means g and lacks gene 4; study 2 has means g + 0.4
+    !| and lacks gene 9. A missing gene is NaN in both `gene_means` and `residuals`; the others
+    !| have residuals (0.5 + 0.1g) sin(1.7r + 0.9g + 1.3s), all non-NaN.
+    !| - Fixed-k, 3 neighbors at x* = [3.7, 6.2, 9.3] (no distance ties). Each missing gene would be
+    !|   a study's nearest gene at some point: study 1's gene 4 (distance 0.3) at 3.7, study 2's
+    !|   gene 9 (mean 9.4, distance 0.1) at 9.3. Each study takes its 3 nearest genes that have a
+    !|   mean instead: study 1 {3, 5, 2} at 3.7, study 2 {8, 10, 7} at 9.3, so no neighborhood
+    !|   holds a missing gene.
+    !| - Adaptive: construct_adaptive_neighborhoods with k_start 6, k_step 2, k_max 10 on the 22
+    !|   pooled means. Its status is ok, so every neighborhood has at least one gene of each study
+    !|   (default `min_study_neighbors = 1`), and every gene there has valid residuals.
+    !| Both final runs therefore return ierr OK, every (point, study) includes residuals, and every
+    !| JSD is finite and in [0, 1]: the empty-study checks do not fire on legitimately missing genes.
+    subroutine test_final_runs_accept_partly_different_gene_sets()
+        integer(int32), parameter :: n_studies = 2, n_genes = 12, n_reps = 3, n_points = 3, n_neighbors = 3
+        integer(int32), parameter :: pool = n_genes*n_studies
+        real(real64) :: gene_means(n_genes, n_studies), residuals(n_reps, n_genes, n_studies), x_star(n_points)
+        integer(int32) :: gene_means_perms(n_genes, n_studies)
+        integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies), neighborhood_range(2, n_points, n_studies)
+        integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point, n_pooled_residuals(n_points)
+        integer(int32) :: min_bin_occupancy(n_points), max_bin_occupancy(n_points), sturges_bins(n_points)
+        integer(int32) :: fd_bins(n_points), counts(256, n_points, n_studies), included_n_reps(n_points, n_studies)
+        integer(int32) :: mean_pmf_counts(256, n_points), mean_pmf_included_n_reps(n_points)
+        real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
+        real(real64) :: mean_bin_occupancy(n_points), pmfs(256, n_points, n_studies), mean_pmf(256, n_points)
+        real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
+        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
+        real(real64) :: p_values_observed_consensus(n_studies)
+        logical(c_bool) :: occupancy_failed(n_points)
+        real(real64) :: adaptive_x_star(pool), dispersion(pool), mads(pool)
+        integer(int32) :: ranges(2, pool), n_per_point(n_studies, pool), stops(pool)
+        integer(int32) :: n_adaptive_points, max_nn, status
+        type(adaptive_run_outputs) :: out
+        integer(int32) :: ierr, i_gene, i_study, i_rep
+        character(len=*), parameter :: name = "test_final_runs_accept_partly_different_gene_sets: "
+
+        do i_study = 1, n_studies
+            do i_gene = 1, n_genes
+                gene_means(i_gene, i_study) = real(i_gene, real64) + 0.4_real64*real(i_study - 1, real64)
+                do i_rep = 1, n_reps
+                    residuals(i_rep, i_gene, i_study) = (0.5_real64 + 0.1_real64*real(i_gene, real64))* &
+                                                        sin(1.7_real64*real(i_rep, real64) + 0.9_real64*real(i_gene, real64) &
+                                                            + 1.3_real64*real(i_study, real64))
+                end do
+            end do
+        end do
+        gene_means(4, 1) = ieee_value(0.0_real64, ieee_quiet_nan)
+        residuals(:, 4, 1) = ieee_value(0.0_real64, ieee_quiet_nan)
+        gene_means(9, 2) = ieee_value(0.0_real64, ieee_quiet_nan)
+        residuals(:, 9, 2) = ieee_value(0.0_real64, ieee_quiet_nan)
+
+        ! Fixed-k final run.
+        do i_study = 1, n_studies
+            call init_perm(gene_means_perms(:, i_study))
+            call sort_array_heapsort(gene_means(:, i_study), gene_means_perms(:, i_study))
+        end do
+        x_star = [3.7_real64, 6.2_real64, 9.3_real64]
+        call run_js_comp_test(n_studies, n_genes, n_reps, n_points, n_neighbors, gene_means, gene_means_perms, residuals, &
+                              x_star, neighborhood_indices, neighborhood_range, n_bins_per_point, &
+                              shared_residual_range_low, shared_residual_range_high, max_n_bins_per_point, &
+                              occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                              max_bin_occupancy, sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, &
+                              mean_pmf_counts, mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, &
+                              p_values, p_values_observed_consensus, ierr=ierr, n_permutations=20_int32, &
+                              random_seed=3_int32, m_min=2_int32, m_max=6_int32, min_residuals_per_bin=1_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"fixed-k ierr")
+        call assert_false(any(neighborhood_indices(:, :, 1) == 4_int32), name//"fixed-k: study 1 never uses its missing gene 4")
+        call assert_false(any(neighborhood_indices(:, :, 2) == 9_int32), name//"fixed-k: study 2 never uses its missing gene 9")
+        call assert_true(any(neighborhood_indices(:, 1, 1) == 2_int32) .and. any(neighborhood_indices(:, 1, 1) == 3_int32) &
+                         .and. any(neighborhood_indices(:, 1, 1) == 5_int32), &
+                         name//"fixed-k: study 1 takes {2, 3, 5} at 3.7 in place of its missing nearest gene 4")
+        call assert_true(any(neighborhood_indices(:, 3, 2) == 7_int32) .and. any(neighborhood_indices(:, 3, 2) == 8_int32) &
+                         .and. any(neighborhood_indices(:, 3, 2) == 10_int32), &
+                         name//"fixed-k: study 2 takes {7, 8, 10} at 9.3 in place of its missing nearest gene 9")
+        call assert_true(all(included_n_reps == n_neighbors*n_reps), name//"fixed-k: every (point, study) includes 9 residuals")
+        call assert_true(all(.not. ieee_is_nan(js_divergences)) .and. all(js_divergences >= 0.0_real64) .and. &
+                         all(js_divergences <= 1.0_real64), name//"fixed-k: JSDs finite, in [0, 1]")
+        call assert_true(all(.not. ieee_is_nan(global_js_divergence)) .and. all(global_js_divergence >= 0.0_real64) .and. &
+                         all(global_js_divergence <= 1.0_real64), name//"fixed-k: global JSDs finite, in [0, 1]")
+
+        ! Adaptive construction, then the adaptive final run on its ranges.
+        call run_adaptive_construction(gene_means, residuals, 6_int32, 2_int32, 10_int32, n_adaptive_points, &
+                                       adaptive_x_star, ranges, n_per_point, stops, dispersion, mads, max_nn, status)
+        call assert_equal_int(status, ADAPTIVE_STATUS_OK, name//"adaptive construction status ok")
+        call assert_true(n_adaptive_points >= 2_int32, name//"several adaptive reference points")
+        call assert_true(all(n_per_point(:, 1:n_adaptive_points) >= 1_int32), &
+                         name//"the construction gives every study a gene at every point")
+
+        call run_adaptive_final(gene_means, residuals, ranges(:, 1:n_adaptive_points), out, ierr, n_permutations=20_int32, &
+                                random_seed=3_int32, m_min=2_int32, m_max=6_int32, min_residuals_per_bin=1_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"adaptive ierr")
+        call assert_equal_array_int(out%n_per_point, n_per_point(:, 1:n_adaptive_points), n_studies*n_adaptive_points, &
+                                    name//"adaptive: decoded counts equal the construction's", n_rows=n_studies)
+        call assert_true(all(out%included > 0_int32), name//"adaptive: every (point, study) includes residuals")
+        call assert_true(all(.not. ieee_is_nan(out%js)) .and. all(out%js >= 0.0_real64) .and. all(out%js <= 1.0_real64), &
+                         name//"adaptive: JSDs finite, in [0, 1]")
+        call assert_true(all(.not. ieee_is_nan(out%global_jsd)) .and. all(out%global_jsd >= 0.0_real64) .and. &
+                         all(out%global_jsd <= 1.0_real64), name//"adaptive: global JSDs finite, in [0, 1]")
+    end subroutine test_final_runs_accept_partly_different_gene_sets
 
 end module mod_test_data_integration_js_comp_test
