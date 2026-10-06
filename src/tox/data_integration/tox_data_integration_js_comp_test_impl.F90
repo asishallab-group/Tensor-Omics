@@ -371,7 +371,8 @@ contains
     !| arguments, so the error names neither.
     !|
     !| Rejects a `max_n_genes_all_studies` or `n_studies` below 1, or a pair beyond that
-    !| representability bound, with invalid input; the output is then left undefined.
+    !| representability bound, with invalid input; the output is then left undefined. A pair is
+    !| also invalid when `max_n_genes_all_studies * n_studies` does not fit in a 32-bit integer.
     pure subroutine calc_adaptive_js_comp_test_bounds(max_n_genes_all_studies, n_studies, max_n_points_candidate, ierr)
         integer(int32), intent(in) :: max_n_genes_all_studies
             !! Maximum number of genes across all studies
@@ -392,15 +393,18 @@ contains
         call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=1_int32, min=1_int32)
         call validate_in_range_int(n_studies, ierr, arg_pos=2_int32, min=1_int32)
         if (is_err(ierr)) return
-        ! Joint bound on (G, S): no arg_pos, because tox_errors' position 0 means "not one
+        n_pool = int(max_n_genes_all_studies, int64)*int(n_studies, int64)
+        ! Joint bounds on (G, S): no arg_pos, because tox_errors' position 0 means "not one
         ! argument", and blaming either one alone would name the wrong argument half the time.
+        ! The pool size must fit a 32-bit integer (every per-point array extent derived from it
+        ! is one), and so must the first candidate's k_max = 4*k_start_1.
+        if (n_pool > int(huge(1_int32), int64)) call set_err_once(ierr, ERR_INVALID_INPUT)
         if (adaptive_k_start_1(max_n_genes_all_studies, n_studies) > int(huge(1_int32)/4_int32, int64)) &
             call set_err_once(ierr, ERR_INVALID_INPUT)
         if (is_err(ierr)) return
 
         call compute_adaptive_k_starts(max_n_genes_all_studies, n_studies, k_starts, n_k_starts)
 
-        n_pool = int(max_n_genes_all_studies, int64)*int(n_studies, int64)
         capacity = ceiling(ADAPTIVE_POINT_CAPACITY_FACTOR*real(n_pool, real64)/ &
                            real(k_starts(n_k_starts), real64), kind=int64) + 1_int64
         max_n_points_candidate = int(min(n_pool, capacity), kind=int32)

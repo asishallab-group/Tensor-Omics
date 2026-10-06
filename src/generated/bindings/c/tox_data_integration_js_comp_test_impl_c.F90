@@ -127,7 +127,8 @@ contains
     !| arguments, so the error names neither.
     !|
     !| Rejects a `max_n_genes_all_studies` or `n_studies` below 1, or a pair beyond that
-    !| representability bound, with invalid input; the output is then left undefined.
+    !| representability bound, with invalid input; the output is then left undefined. A pair is
+    !| also invalid when `max_n_genes_all_studies * n_studies` does not fit in a 32-bit integer.
     subroutine calc_adaptive_js_comp_test_bounds_c(&
             max_n_genes_all_studies,&
             n_studies,&

@@ -1044,6 +1044,9 @@ def test_calc_adaptive_js_comp_test_bounds():
                  "expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
     assert_error(lambda: calc_adaptive_js_comp_test_bounds(2000, 0),
                  "expected ERR_INVALID_INPUT for n_studies=0", ERR_INVALID_INPUT)
+    # 50000 * 50000 = 2.5e9 does not fit a 32-bit integer (the pool size is a 32-bit extent downstream).
+    assert_error(lambda: calc_adaptive_js_comp_test_bounds(50000, 50000),
+                 "expected ERR_INVALID_INPUT for a pool size beyond int32", ERR_INVALID_INPUT)
 
 
 def test_construct_adaptive_neighborhoods():

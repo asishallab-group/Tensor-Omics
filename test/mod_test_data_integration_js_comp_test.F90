@@ -110,7 +110,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(225))
+        allocate (all_tests(226))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -570,6 +570,8 @@ contains
                                   test_gjct_permutation_test_zero_permutations_gives_nan_p_values)
         all_tests(225) = test_case("test_run_js_comp_test_zero_permutations_gives_nan_p_values", &
                                   test_run_js_comp_test_zero_permutations_gives_nan_p_values)
+        all_tests(226) = test_case("test_adaptive_bounds_rejects_pool_beyond_int32", &
+                                  test_adaptive_bounds_rejects_pool_beyond_int32)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -6085,8 +6087,9 @@ contains
 
     !> Issue #217: the producer enforces the generator's representability bound
     !| `k_start_1 <= huge(1_int32)/4 = 536870911` (hand-derived cases):
-    !| - `G = S = huge(1_int32)`: `N ~ 4.6e18` (fits int64), `k_start_1 = ceiling(0.02*N) ~ 9.2e16`
-    !|   -> rejected
+    !| - `G = S = huge(1_int32)`: `N ~ 4.6e18` (fits int64) -> rejected, by the pool bound
+    !|   `N <= huge(1_int32)` (`test_adaptive_bounds_rejects_pool_beyond_int32`), which now fires
+    !|   before the `k_start_1` bound, so the `ceiling(0.02*N)` branch of that bound is unreachable
     !| - exact boundary on the `2*S` floor, `G = 1`: `S = 268435456` gives `k_start_1 = 2*S =
     !|   536870912` -> rejected; `S = 268435455` gives `536870910` -> accepted, a single candidate,
     !|   capacity `min(N, ceiling(2*N/k_start_1) + 1) = min(268435455, 1 + 1) = 2`
@@ -6114,6 +6117,42 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_adaptive_bounds_rejects_unrepresentable_k_start: G=huge, S=1 accepted")
     end subroutine test_adaptive_bounds_rejects_unrepresentable_k_start
+
+    !> The pool size `N = max_n_genes_all_studies * n_studies` is formed in 64 bits, but every
+    !| per-point array extent derived from it is 32-bit, so a pool beyond `huge(1_int32)` is
+    !| rejected even though `k_start_1 = ceiling(0.02*N)` is far below its own bound there:
+    !| - `G = S = 50000`: `N = 2.5e9 > 2147483647` -> rejected, no argument position (0), since
+    !|   the bound is joint in both arguments (without the check this pair was accepted)
+    !| - `G = 46341`, `S = 46341`: `N = 2147488281`, one pair past the limit -> rejected
+    !| - `G = 46340`, `S = 46340`: `N = 2147395600 < 2147483647` -> accepted, capacity within `[1, N]`
+    !| - `G = 2000`, `S = 2`: normal size -> accepted (control)
+    !| The products are written as `int(.., int64)` so the test itself cannot overflow.
+    subroutine test_adaptive_bounds_rejects_pool_beyond_int32()
+        integer(int32) :: max_n_points_candidate, ierr
+
+        call calc_adaptive_js_comp_test_bounds(50000_int32, 50000_int32, max_n_points_candidate, ierr)
+        call assert_true(int(50000_int32, int64)*int(50000_int32, int64) > int(huge(1_int32), int64), &
+                         "test_adaptive_bounds_rejects_pool_beyond_int32: fixture pool really exceeds int32")
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_adaptive_bounds_rejects_pool_beyond_int32: G=S=50000 rejected", arg_pos=0_int32)
+
+        call calc_adaptive_js_comp_test_bounds(46341_int32, 46341_int32, max_n_points_candidate, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_adaptive_bounds_rejects_pool_beyond_int32: G=S=46341 one past the limit rejected", &
+                        arg_pos=0_int32)
+
+        call calc_adaptive_js_comp_test_bounds(46340_int32, 46340_int32, max_n_points_candidate, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_adaptive_bounds_rejects_pool_beyond_int32: G=S=46340 within the limit accepted")
+        call assert_true(max_n_points_candidate >= 1_int32, &
+                         "test_adaptive_bounds_rejects_pool_beyond_int32: G=S=46340 capacity is positive")
+
+        call calc_adaptive_js_comp_test_bounds(2000_int32, 2_int32, max_n_points_candidate, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_adaptive_bounds_rejects_pool_beyond_int32: normal size accepted")
+        call assert_equal_int(max_n_points_candidate, 801_int32, &
+                              "test_adaptive_bounds_rejects_pool_beyond_int32: normal size capacity 801")
+    end subroutine test_adaptive_bounds_rejects_pool_beyond_int32
 
     !> The hand-validating candidate-grid producer backs its documented `DM_MIN(1_int32)` on
     !| `max_n_genes_all_studies` (argument 1) itself: zero and a negative gene count are both
