@@ -708,6 +708,10 @@ def estimate_bin_count(
     `sturges_bins`/`fd_bins` for diagnostics, with their maximum returned as `n_bins`. When the
     interquartile range is too close to zero to safely divide by, the Freedman-Diaconis term is
     skipped and `fd_bins` falls back to the (clamped) Sturges estimate instead of blowing up.
+    Both estimates take the sample size to be `max_n_reps_all_studies*n_neighbors`, the padded
+    number of slots of one study, not the number of pooled non-NaN residuals, so they are
+    diagnostics that can differ from the textbook rules. The JS-Comp-Test searches use them only
+    as diagnostics, never to decide the bin count.
 
     Parameters
     ----------
@@ -732,11 +736,15 @@ def estimate_bin_count(
         n_bins : int
             Estimated number of histogram bins, at least 1 and at most MAX_N_BINS: max(sturges_bins, fd_bins)
         sturges_bins : int
-            Sturges' rule estimate alone, at least 1 and at most MAX_N_BINS
+            Sturges' rule estimate alone, at least 1 and at most MAX_N_BINS. Its sample size is
+            `max_n_reps_all_studies*n_neighbors` (one study's padded slot count), not the pooled
+            count of non-NaN residuals, so it can differ from the textbook rule
         fd_bins : int
             Freedman-Diaconis rule estimate alone, at least 1 and at most MAX_N_BINS; falls back
             to the (clamped) sturges_bins when the interquartile range is too close to zero to
-            divide by (see the is_close guard below)
+            divide by (see the is_close guard below), and for a ratio that is not a number. A
+            ratio beyond MAX_N_BINS, however large, gives MAX_N_BINS. Its sample size is `max_n_reps_all_studies*n_neighbors` (one study's
+            padded slot count), not the pooled count of non-NaN residuals
 
     Raises
     ------
@@ -806,6 +814,10 @@ def estimate_bin_count_expert(
     `sturges_bins`/`fd_bins` for diagnostics, with their maximum returned as `n_bins`. When the
     interquartile range is too close to zero to safely divide by, the Freedman-Diaconis term is
     skipped and `fd_bins` falls back to the (clamped) Sturges estimate instead of blowing up.
+    Both estimates take the sample size to be `max_n_reps_all_studies*n_neighbors`, the padded
+    number of slots of one study, not the number of pooled non-NaN residuals, so they are
+    diagnostics that can differ from the textbook rules. The JS-Comp-Test searches use them only
+    as diagnostics, never to decide the bin count.
 
     Parameters
     ----------
@@ -834,11 +846,15 @@ def estimate_bin_count_expert(
         n_bins : int
             Estimated number of histogram bins, at least 1 and at most MAX_N_BINS: max(sturges_bins, fd_bins)
         sturges_bins : int
-            Sturges' rule estimate alone, at least 1 and at most MAX_N_BINS
+            Sturges' rule estimate alone, at least 1 and at most MAX_N_BINS. Its sample size is
+            `max_n_reps_all_studies*n_neighbors` (one study's padded slot count), not the pooled
+            count of non-NaN residuals, so it can differ from the textbook rule
         fd_bins : int
             Freedman-Diaconis rule estimate alone, at least 1 and at most MAX_N_BINS; falls back
             to the (clamped) sturges_bins when the interquartile range is too close to zero to
-            divide by (see the is_close guard below)
+            divide by (see the is_close guard below), and for a ratio that is not a number. A
+            ratio beyond MAX_N_BINS, however large, gives MAX_N_BINS. Its sample size is `max_n_reps_all_studies*n_neighbors` (one study's
+            padded slot count), not the pooled count of non-NaN residuals
 
     Raises
     ------
@@ -1037,11 +1053,11 @@ def determine_bin_count_occupancy(
         max_bin_occupancy : int
             Maximum bin count at selected_n_bins; 0 when occupancy_failed
         sturges_bins : int
-            Sturges' rule estimate for this neighborhood's own pooled residuals, from
-            estimate_bin_count_impl -- a diagnostic only, never part of the search's own decision
+            Sturges' rule estimate from estimate_bin_count_impl (with its padded-slot sample size)
+            -- a diagnostic only, never part of the search's own decision
         fd_bins : int
-            Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
-            estimate_bin_count_impl -- a diagnostic only, never part of the search's own decision
+            Freedman-Diaconis rule estimate from estimate_bin_count_impl (with its padded-slot
+            sample size) -- a diagnostic only, never part of the search's own decision
 
     Raises
     ------
@@ -1258,11 +1274,11 @@ def determine_bin_count_occupancy_expert(
         max_bin_occupancy : int
             Maximum bin count at selected_n_bins; 0 when occupancy_failed
         sturges_bins : int
-            Sturges' rule estimate for this neighborhood's own pooled residuals, from
-            estimate_bin_count_impl -- a diagnostic only, never part of the search's own decision
+            Sturges' rule estimate from estimate_bin_count_impl (with its padded-slot sample size)
+            -- a diagnostic only, never part of the search's own decision
         fd_bins : int
-            Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
-            estimate_bin_count_impl -- a diagnostic only, never part of the search's own decision
+            Freedman-Diaconis rule estimate from estimate_bin_count_impl (with its padded-slot
+            sample size) -- a diagnostic only, never part of the search's own decision
 
     Raises
     ------
@@ -1823,11 +1839,11 @@ def determine_bin_count_stone(
         max_bin_occupancy : int
             Maximum bin count of the pooled clamped histogram at selected_n_bins; 0 when stone_failed
         sturges_bins : int
-            Sturges' rule estimate for this neighborhood's own pooled residuals, from
-            estimate_bin_count_impl -- a diagnostic only, never part of the decision
+            Sturges' rule estimate from estimate_bin_count_impl (with its padded-slot sample size)
+            -- a diagnostic only, never part of the decision
         fd_bins : int
-            Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
-            estimate_bin_count_impl -- a diagnostic only, never part of the decision
+            Freedman-Diaconis rule estimate from estimate_bin_count_impl (with its padded-slot
+            sample size) -- a diagnostic only, never part of the decision
 
     Raises
     ------
@@ -2066,11 +2082,11 @@ def determine_bin_count_stone_expert(
         max_bin_occupancy : int
             Maximum bin count of the pooled clamped histogram at selected_n_bins; 0 when stone_failed
         sturges_bins : int
-            Sturges' rule estimate for this neighborhood's own pooled residuals, from
-            estimate_bin_count_impl -- a diagnostic only, never part of the decision
+            Sturges' rule estimate from estimate_bin_count_impl (with its padded-slot sample size)
+            -- a diagnostic only, never part of the decision
         fd_bins : int
-            Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
-            estimate_bin_count_impl -- a diagnostic only, never part of the decision
+            Freedman-Diaconis rule estimate from estimate_bin_count_impl (with its padded-slot
+            sample size) -- a diagnostic only, never part of the decision
 
     Raises
     ------

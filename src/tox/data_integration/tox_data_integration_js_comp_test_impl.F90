@@ -421,6 +421,10 @@ contains
     !| `sturges_bins`/`fd_bins` for diagnostics, with their maximum returned as `n_bins`. When the
     !| interquartile range is too close to zero to safely divide by, the Freedman-Diaconis term is
     !| skipped and `fd_bins` falls back to the (clamped) Sturges estimate instead of blowing up.
+    !| Both estimates take the sample size to be `max_n_reps_all_studies*n_neighbors`, the padded
+    !| number of slots of one study, not the number of pooled non-NaN residuals, so they are
+    !| diagnostics that can differ from the textbook rules. The JS-Comp-Test searches use them only
+    !| as diagnostics, never to decide the bin count.
     pure subroutine estimate_bin_count_impl(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, &
                                             shared_residual_range, n_bins, sturges_bins, fd_bins)
         integer(int32), intent(in) :: n_residuals
@@ -444,14 +448,18 @@ contains
         integer(int32), intent(out) :: n_bins
             !! Estimated number of histogram bins, at least 1 and at most MAX_N_BINS: max(sturges_bins, fd_bins)
         integer(int32), intent(out) :: sturges_bins
-            !! Sturges' rule estimate alone, at least 1 and at most MAX_N_BINS
+            !! Sturges' rule estimate alone, at least 1 and at most MAX_N_BINS. Its sample size is
+            !! `max_n_reps_all_studies*n_neighbors` (one study's padded slot count), not the pooled
+            !! count of non-NaN residuals, so it can differ from the textbook rule
         integer(int32), intent(out) :: fd_bins
             !! Freedman-Diaconis rule estimate alone, at least 1 and at most MAX_N_BINS; falls back
             !! to the (clamped) sturges_bins when the interquartile range is too close to zero to
-            !! divide by (see the is_close guard below)
+            !! divide by (see the is_close guard below), and for a ratio that is not a number. A
+            !! ratio beyond MAX_N_BINS, however large, gives MAX_N_BINS. Its sample size is `max_n_reps_all_studies*n_neighbors` (one study's
+            !! padded slot count), not the pooled count of non-NaN residuals
 
         integer(int32) :: i_pool, n_pool, sturges_raw, fd_raw
-        real(real64) :: half_bin_width, quartile_25, quartile_75, n_reps_neighborhood
+        real(real64) :: half_bin_width, quartile_25, quartile_75, n_reps_neighborhood, fd_ratio
 
         ! NaN sorts last under the ascending permutation -- find the last non-NaN position by
         ! scanning back from the end, exactly as the already-shipped
@@ -474,7 +482,10 @@ contains
 
         n_reps_neighborhood = real(max_n_reps_all_studies*n_neighbors, kind=real64)
 
-        ! Sturges
+        ! Sturges. Known deviation of this diagnostic, which never feeds the chosen bin count: n is
+        ! max_n_reps_all_studies*n_neighbors, the padded slot count of ONE study, not the pooled
+        ! non-NaN residual count, and the textbook rule rounds up, ceil(1 + log2 n), where this uses
+        ! 1 + nint(log2 n).
         sturges_raw = 1_int32 + nint(log(n_reps_neighborhood)/LOG_2, kind=int32)
         sturges_bins = max(1_int32, min(sturges_raw, MAX_N_BINS))
 
@@ -484,7 +495,16 @@ contains
 
         half_bin_width = (quartile_75 - quartile_25)/(n_reps_neighborhood**(1.0_real64/3.0_real64))
         if (.not. is_close(half_bin_width, 0.0_real64)) then
-            fd_raw = nint(shared_residual_range/half_bin_width, kind=int32)
+            ! A tiny but non-zero interquartile range makes this ratio exceed the int32 range, and
+            ! nint to int32 of such a number is processor-dependent. Clamp the real ratio to
+            ! MAX_N_BINS first (+Infinity clamps too); a NaN ratio, which min would pass through
+            ! unpredictably, falls back to the Sturges estimate like the is_close branch.
+            fd_ratio = shared_residual_range/half_bin_width
+            if (ieee_is_nan(fd_ratio)) then
+                fd_raw = sturges_raw
+            else
+                fd_raw = nint(min(fd_ratio, real(MAX_N_BINS, kind=real64)), kind=int32)
+            end if
         else
             fd_raw = sturges_raw
         end if
@@ -584,11 +604,11 @@ contains
         integer(int32), intent(out) :: max_bin_occupancy
             !! Maximum bin count at selected_n_bins; 0 when occupancy_failed
         integer(int32), intent(out) :: sturges_bins
-            !! Sturges' rule estimate for this neighborhood's own pooled residuals, from
-            !! estimate_bin_count_impl -- a diagnostic only, never part of the search's own decision
+            !! Sturges' rule estimate from estimate_bin_count_impl (with its padded-slot sample size)
+            !! -- a diagnostic only, never part of the search's own decision
         integer(int32), intent(out) :: fd_bins
-            !! Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
-            !! estimate_bin_count_impl -- a diagnostic only, never part of the search's own decision
+            !! Freedman-Diaconis rule estimate from estimate_bin_count_impl (with its padded-slot
+            !! sample size) -- a diagnostic only, never part of the search's own decision
         integer(int32), intent(out) :: tmp_bin_counts(256)
             !! Working array: per-bin counts of whichever candidate bin count is currently being
             !! tested, reused throughout the search (256 = MAX_N_BINS, written as a literal since a
@@ -1628,11 +1648,11 @@ contains
         integer(int32), intent(out) :: max_bin_occupancy
             !! Maximum bin count of the pooled clamped histogram at selected_n_bins; 0 when stone_failed
         integer(int32), intent(out) :: sturges_bins
-            !! Sturges' rule estimate for this neighborhood's own pooled residuals, from
-            !! estimate_bin_count_impl -- a diagnostic only, never part of the decision
+            !! Sturges' rule estimate from estimate_bin_count_impl (with its padded-slot sample size)
+            !! -- a diagnostic only, never part of the decision
         integer(int32), intent(out) :: fd_bins
-            !! Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
-            !! estimate_bin_count_impl -- a diagnostic only, never part of the decision
+            !! Freedman-Diaconis rule estimate from estimate_bin_count_impl (with its padded-slot
+            !! sample size) -- a diagnostic only, never part of the decision
         integer(int32), intent(out) :: tmp_bin_counts(256)
             !! Working array: one study's bin counts at the bin count under test (256 = MAX_N_BINS,
             !! written as a literal since a generated wrapper's dummy dimension cannot reference a

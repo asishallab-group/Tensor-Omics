@@ -110,7 +110,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(226))
+        allocate (all_tests(227))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -572,6 +572,8 @@ contains
                                   test_run_js_comp_test_zero_permutations_gives_nan_p_values)
         all_tests(226) = test_case("test_adaptive_bounds_rejects_pool_beyond_int32", &
                                   test_adaptive_bounds_rejects_pool_beyond_int32)
+        all_tests(227) = test_case("test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins", &
+                                  test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -939,6 +941,44 @@ contains
         call assert_equal_int(n_bins, 4_int32, &
                               "test_estimate_bin_count_near_zero_iqr_guard_falls_back_to_sturges: n_bins should be 4")
     end subroutine test_estimate_bin_count_near_zero_iqr_falls_back_to_sturges
+
+    !> A tiny but non-zero interquartile range must not overflow the Freedman-Diaconis ratio.
+    !| Ten residuals, six equal to `0` and four equal to `1e-6`, give Q25 = 0 and Q75 = 1e-6, so
+    !| the IQR is `1e-6`; with `max_n_reps_all_studies=1, n_neighbors=1` the half-width is
+    !| `1e-6/1^(1/3) = 1e-6`, well above the `1e-12` floor of `is_close`, so the guard does not
+    !| fire. With `shared_residual_range=1e6` the ratio is `1e12 > 2^31`. Converting that to a
+    !| 32-bit integer directly is processor-dependent (gfortran keeps the low 32 bits, giving
+    !| `-727379968`, which the old code clamped to `1`); the ratio must instead be clamped as a
+    !| real, so `fd_bins` (and `n_bins`) must be 256. A second call with `shared_residual_range=1e308`
+    !| makes the ratio overflow to +Infinity and must give 256 as well.
+    subroutine test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins()
+        integer(int32), parameter :: n_residuals = 10
+        real(real64) :: residuals(n_residuals)
+        integer(int32) :: n_bins, sturges_bins, fd_bins, ierr
+
+        residuals = [0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64, &
+                    1.0e-6_real64, 1.0e-6_real64, 1.0e-6_real64, 1.0e-6_real64]
+
+        call estimate_bin_count(residuals, n_residuals, 1_int32, 1_int32, 1.0e6_real64, n_bins, sturges_bins, fd_bins, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins: ierr should be OK (ratio 1e12)")
+        call assert_equal_int(sturges_bins, 1_int32, &
+                              "test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins: sturges_bins should be 1 (ratio 1e12)")
+        call assert_equal_int(fd_bins, 256_int32, &
+                              "test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins: fd_bins should be 256 (ratio 1e12)")
+        call assert_equal_int(n_bins, 256_int32, &
+                              "test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins: n_bins should be 256 (ratio 1e12)")
+
+        call estimate_bin_count(residuals, n_residuals, 1_int32, 1_int32, 1.0e308_real64, n_bins, sturges_bins, fd_bins, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins: ierr should be OK (infinite ratio)")
+        call assert_equal_int(fd_bins, 256_int32, &
+                              "test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins: fd_bins should be 256 (infinite ratio)")
+        call assert_equal_int(n_bins, 256_int32, &
+                              "test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins: n_bins should be 256 (infinite ratio)")
+    end subroutine test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins
 
     !> The documented small-N candidate-grid collapse, bracketed at its exact threshold: with
     !| `max_n_genes_all_studies=8742`, `n_points_high = clamp(ceil(4*sqrt(8742)), 300, 1500) = 374`

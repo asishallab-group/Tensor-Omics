@@ -11,6 +11,10 @@
 #' `sturges_bins`/`fd_bins` for diagnostics, with their maximum returned as `n_bins`. When the
 #' interquartile range is too close to zero to safely divide by, the Freedman-Diaconis term is
 #' skipped and `fd_bins` falls back to the (clamped) Sturges estimate instead of blowing up.
+#' Both estimates take the sample size to be `max_n_reps_all_studies*n_neighbors`, the padded
+#' number of slots of one study, not the number of pooled non-NaN residuals, so they are
+#' diagnostics that can differ from the textbook rules. The JS-Comp-Test searches use them only
+#' as diagnostics, never to decide the bin count.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::estimate_bin_count}, whose argument names
 #' are the ones an error message reports.
@@ -28,10 +32,14 @@
 #'   The minimum valid value is `0.0`.
 #' @return a named list with elements:
 #'   \item{n_bins}{a integer scalar. Estimated number of histogram bins, at least 1 and at most MAX_N_BINS: max(sturges_bins, fd_bins)}
-#'   \item{sturges_bins}{a integer scalar. Sturges' rule estimate alone, at least 1 and at most MAX_N_BINS}
+#'   \item{sturges_bins}{a integer scalar. Sturges' rule estimate alone, at least 1 and at most MAX_N_BINS. Its sample size is
+#'     `max_n_reps_all_studies*n_neighbors` (one study's padded slot count), not the pooled
+#'     count of non-NaN residuals, so it can differ from the textbook rule}
 #'   \item{fd_bins}{a integer scalar. Freedman-Diaconis rule estimate alone, at least 1 and at most MAX_N_BINS; falls back
 #'     to the (clamped) sturges_bins when the interquartile range is too close to zero to
-#'     divide by (see the is_close guard below)}
+#'     divide by (see the is_close guard below), and for a ratio that is not a number. A
+#'     ratio beyond MAX_N_BINS, however large, gives MAX_N_BINS. Its sample size is `max_n_reps_all_studies*n_neighbors` (one study's
+#'     padded slot count), not the pooled count of non-NaN residuals}
 #' @export
 estimate_bin_count <- function(residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range) {
     residuals <- .tox_as_double_vector(residuals, "residuals")
@@ -61,6 +69,10 @@ estimate_bin_count <- function(residuals, max_n_reps_all_studies, n_neighbors, s
 #' `sturges_bins`/`fd_bins` for diagnostics, with their maximum returned as `n_bins`. When the
 #' interquartile range is too close to zero to safely divide by, the Freedman-Diaconis term is
 #' skipped and `fd_bins` falls back to the (clamped) Sturges estimate instead of blowing up.
+#' Both estimates take the sample size to be `max_n_reps_all_studies*n_neighbors`, the padded
+#' number of slots of one study, not the number of pooled non-NaN residuals, so they are
+#' diagnostics that can differ from the textbook rules. The JS-Comp-Test searches use them only
+#' as diagnostics, never to decide the bin count.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::estimate_bin_count_expert}, whose argument names
 #' are the ones an error message reports.
@@ -81,10 +93,14 @@ estimate_bin_count <- function(residuals, max_n_reps_all_studies, n_neighbors, s
 #'   The minimum valid value is `0.0`.
 #' @return a named list with elements:
 #'   \item{n_bins}{a integer scalar. Estimated number of histogram bins, at least 1 and at most MAX_N_BINS: max(sturges_bins, fd_bins)}
-#'   \item{sturges_bins}{a integer scalar. Sturges' rule estimate alone, at least 1 and at most MAX_N_BINS}
+#'   \item{sturges_bins}{a integer scalar. Sturges' rule estimate alone, at least 1 and at most MAX_N_BINS. Its sample size is
+#'     `max_n_reps_all_studies*n_neighbors` (one study's padded slot count), not the pooled
+#'     count of non-NaN residuals, so it can differ from the textbook rule}
 #'   \item{fd_bins}{a integer scalar. Freedman-Diaconis rule estimate alone, at least 1 and at most MAX_N_BINS; falls back
 #'     to the (clamped) sturges_bins when the interquartile range is too close to zero to
-#'     divide by (see the is_close guard below)}
+#'     divide by (see the is_close guard below), and for a ratio that is not a number. A
+#'     ratio beyond MAX_N_BINS, however large, gives MAX_N_BINS. Its sample size is `max_n_reps_all_studies*n_neighbors` (one study's
+#'     padded slot count), not the pooled count of non-NaN residuals}
 #' @export
 estimate_bin_count_expert <- function(residuals, residuals_perm, max_n_reps_all_studies, n_neighbors, shared_residual_range) {
     residuals <- .tox_as_double_vector(residuals, "residuals")
@@ -211,10 +227,10 @@ estimate_bin_count_expert <- function(residuals, residuals_perm, max_n_reps_all_
 #'   \item{mean_bin_occupancy}{a numeric scalar. Mean bin count at selected_n_bins (== n_pooled_residuals / selected_n_bins); 0 when
 #'     occupancy_failed}
 #'   \item{max_bin_occupancy}{a integer scalar. Maximum bin count at selected_n_bins; 0 when occupancy_failed}
-#'   \item{sturges_bins}{a integer scalar. Sturges' rule estimate for this neighborhood's own pooled residuals, from
-#'     estimate_bin_count_impl -- a diagnostic only, never part of the search's own decision}
-#'   \item{fd_bins}{a integer scalar. Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
-#'     estimate_bin_count_impl -- a diagnostic only, never part of the search's own decision}
+#'   \item{sturges_bins}{a integer scalar. Sturges' rule estimate from estimate_bin_count_impl (with its padded-slot sample size)
+#'     -- a diagnostic only, never part of the search's own decision}
+#'   \item{fd_bins}{a integer scalar. Freedman-Diaconis rule estimate from estimate_bin_count_impl (with its padded-slot
+#'     sample size) -- a diagnostic only, never part of the search's own decision}
 #' @export
 determine_bin_count_occupancy <- function(pooled_residuals, max_n_reps_all_studies, n_neighbors, m_min = 3L, m_max = 120L, min_residuals_per_bin = 10L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95) {
     pooled_residuals <- .tox_as_double_vector(pooled_residuals, "pooled_residuals")
@@ -352,10 +368,10 @@ determine_bin_count_occupancy <- function(pooled_residuals, max_n_reps_all_studi
 #'   \item{mean_bin_occupancy}{a numeric scalar. Mean bin count at selected_n_bins (== n_pooled_residuals / selected_n_bins); 0 when
 #'     occupancy_failed}
 #'   \item{max_bin_occupancy}{a integer scalar. Maximum bin count at selected_n_bins; 0 when occupancy_failed}
-#'   \item{sturges_bins}{a integer scalar. Sturges' rule estimate for this neighborhood's own pooled residuals, from
-#'     estimate_bin_count_impl -- a diagnostic only, never part of the search's own decision}
-#'   \item{fd_bins}{a integer scalar. Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
-#'     estimate_bin_count_impl -- a diagnostic only, never part of the search's own decision}
+#'   \item{sturges_bins}{a integer scalar. Sturges' rule estimate from estimate_bin_count_impl (with its padded-slot sample size)
+#'     -- a diagnostic only, never part of the search's own decision}
+#'   \item{fd_bins}{a integer scalar. Freedman-Diaconis rule estimate from estimate_bin_count_impl (with its padded-slot
+#'     sample size) -- a diagnostic only, never part of the search's own decision}
 #' @export
 determine_bin_count_occupancy_expert <- function(pooled_residuals, pooled_residuals_perm, max_n_reps_all_studies, n_neighbors, m_min = 3L, m_max = 120L, min_residuals_per_bin = 10L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95) {
     pooled_residuals <- .tox_as_double_vector(pooled_residuals, "pooled_residuals")
@@ -695,10 +711,10 @@ determine_bin_count_occupancy_exhaustive_expert <- function(pooled_residuals, po
 #'   \item{mean_bin_occupancy}{a numeric scalar. Mean bin count at selected_n_bins (== n_pooled_residuals / selected_n_bins); 0 when
 #'     stone_failed}
 #'   \item{max_bin_occupancy}{a integer scalar. Maximum bin count of the pooled clamped histogram at selected_n_bins; 0 when stone_failed}
-#'   \item{sturges_bins}{a integer scalar. Sturges' rule estimate for this neighborhood's own pooled residuals, from
-#'     estimate_bin_count_impl -- a diagnostic only, never part of the decision}
-#'   \item{fd_bins}{a integer scalar. Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
-#'     estimate_bin_count_impl -- a diagnostic only, never part of the decision}
+#'   \item{sturges_bins}{a integer scalar. Sturges' rule estimate from estimate_bin_count_impl (with its padded-slot sample size)
+#'     -- a diagnostic only, never part of the decision}
+#'   \item{fd_bins}{a integer scalar. Freedman-Diaconis rule estimate from estimate_bin_count_impl (with its padded-slot
+#'     sample size) -- a diagnostic only, never part of the decision}
 #' @export
 determine_bin_count_stone <- function(pooled_residuals, residual_to_study, n_studies, max_n_reps_all_studies, n_neighbors, bin_count_mode = "bin_count_stone_equal", m_min = 3L, m_max = 120L, min_residuals_per_bin = 10L, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95) {
     pooled_residuals <- .tox_as_double_vector(pooled_residuals, "pooled_residuals")
@@ -844,10 +860,10 @@ determine_bin_count_stone <- function(pooled_residuals, residual_to_study, n_stu
 #'   \item{mean_bin_occupancy}{a numeric scalar. Mean bin count at selected_n_bins (== n_pooled_residuals / selected_n_bins); 0 when
 #'     stone_failed}
 #'   \item{max_bin_occupancy}{a integer scalar. Maximum bin count of the pooled clamped histogram at selected_n_bins; 0 when stone_failed}
-#'   \item{sturges_bins}{a integer scalar. Sturges' rule estimate for this neighborhood's own pooled residuals, from
-#'     estimate_bin_count_impl -- a diagnostic only, never part of the decision}
-#'   \item{fd_bins}{a integer scalar. Freedman-Diaconis rule estimate for this neighborhood's own pooled residuals, from
-#'     estimate_bin_count_impl -- a diagnostic only, never part of the decision}
+#'   \item{sturges_bins}{a integer scalar. Sturges' rule estimate from estimate_bin_count_impl (with its padded-slot sample size)
+#'     -- a diagnostic only, never part of the decision}
+#'   \item{fd_bins}{a integer scalar. Freedman-Diaconis rule estimate from estimate_bin_count_impl (with its padded-slot
+#'     sample size) -- a diagnostic only, never part of the decision}
 #' @export
 determine_bin_count_stone_expert <- function(pooled_residuals, pooled_residuals_perm, residual_to_study, n_studies, max_n_reps_all_studies, n_neighbors, bin_count_mode = "bin_count_stone_equal", m_min = 3L, m_max = 120L, min_residuals_per_bin = 10L, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95) {
     pooled_residuals <- .tox_as_double_vector(pooled_residuals, "pooled_residuals")
