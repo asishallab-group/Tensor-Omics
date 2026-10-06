@@ -4428,20 +4428,19 @@ def run_js_comp_test_parameter_search(
 
     1. A plateau was found, or the grid collapsed to a single candidate (see
     :func:`tensor_omics.generate_js_comp_test_candidates`'s
-    own small-N collapse note): the best candidate is returned and `plateau_established` is
-    `True`. A lone candidate is used regardless of whether it plateaued or even passed
-    either gate -- the plateau machinery is bypassed entirely, exactly as 125 does. If that
-    lone candidate never passed both gates, no real per-point values exist for it, so every
-    point's bin count is set to `m_min`, both residual ranges to `0.0`, and
-    `best_candidate_pair_confidence_interval` stays `-1.0`.
+    own small-N collapse note) and that candidate passed both gates: the best candidate is
+    returned with its real per-point values and confidence interval, and
+    `plateau_established` is `True`. A lone admissible candidate counts as established
+    whether or not it plateaued, because there is nothing to compare it with -- the plateau
+    criteria are not consulted, as in 125.
     2. No plateau, but at least one candidate was admissible: the admissible candidate with the
     smallest bootstrapped uncertainty (median confidence-interval width across studies) is
     returned, with its real confidence interval, and `plateau_established` is `False`. This
     applies to every `plateau_mode`.
-    3. No plateau, and no candidate was ever admissible: the search falls back to the FIRST
-    (finest-resolution) candidate, resets `best_candidate_pair_confidence_interval` to
-    `-1.0`, sets every point's bin count to `m_min` and both residual ranges to `0.0`, and
-    `plateau_established` is `False`.
+    3. No plateau, and no candidate was ever admissible, including a lone candidate that failed
+    either gate: the search falls back to the FIRST (finest-resolution) candidate, resets
+    `best_candidate_pair_confidence_interval` to `-1.0`, sets every point's bin count to
+    `m_min` and both residual ranges to `0.0`, and `plateau_established` is `False`.
 
     **Pass B, per candidate that passed the first gate.** For every reference point,
     :func:`tensor_omics.gather_pooled_neighborhood_residuals`
@@ -4648,8 +4647,8 @@ def run_js_comp_test_parameter_search(
             The finally chosen candidate's per-point lower residual-range bound (R_low), one per
             reference point (Step 3: every neighborhood may use a different, asymmetric range).
             Only the leading `n_points` entries are meaningful, mirroring `n_bins_per_point`
-            above; `0.0` throughout in the two genuinely-degenerate cases where Pass B
-            never ran for the returned candidate (cases 1 and 3 of the routine description)
+            above; `0.0` throughout when no candidate was admissible (case 3 of the
+            routine description), since no per-point range was kept for the returned candidate
             A result is a value; call `.copy()` to obtain a modifiable array.
         shared_residual_range_high : np.ndarray[np.float64] of shape (max_n_points_candidate,), read-only
             The finally chosen candidate's per-point upper residual-range bound (R_high),
@@ -4657,17 +4656,17 @@ def run_js_comp_test_parameter_search(
             A result is a value; call `.copy()` to obtain a modifiable array.
         best_candidate_pair_confidence_interval : np.ndarray[np.float64] of shape (2, n_studies,), column-major (order='F'), read-only
             The bootstrapped JSD confidence interval for the finally chosen candidate pair;
-            `-1.0` throughout when no candidate was ever admissible: either the lone
-            candidate of a collapsed grid never passed both gates (`plateau_established` is
-            `True`), or no plateau was found and no smallest-bootstrap-uncertainty candidate
-            could be substituted (`plateau_established` is `False`)
+            `-1.0` throughout when no candidate was ever admissible, including the lone
+            candidate of a collapsed grid that failed either gate (`plateau_established` is
+            then `False`)
             A result is a value; call `.copy()` to obtain a modifiable array.
         plateau_established : bool
             `True` when a real plateau was found (by whichever criterion
-            `plateau_mode` selected) or the candidate grid never had more than one candidate to
-            begin with. `False` when the search exhausted every admissible candidate
-            without ever finding one -- Issue #178's own "report that parameter stability could
-            not be established". When `False` and at least one candidate was admissible, the
+            `plateau_mode` selected), or when the candidate grid had only one candidate and it
+            passed both gates. `False` when the search exhausted every admissible candidate
+            without ever finding one, or when no candidate was admissible at all (a lone
+            candidate that failed a gate included) -- Issue #178's own "report that parameter
+            stability could not be established". When `False` and at least one candidate was admissible, the
             routine still returns a real (non-`-1.0`) candidate and confidence interval: the
             admissible candidate with the smallest bootstrapped uncertainty, per the issue's own
             fallback recommendation -- `plateau_established` is what distinguishes that case from
@@ -5083,15 +5082,15 @@ def run_js_comp_test_adaptive_parameter_search(
 
     **Result**, one of three cases, as in the fixed-k search:
 
-    1. A plateau was found, or the sequence had a single candidate: that candidate's knobs,
-    `plateau_established = True`.
+    1. A plateau was found, or the sequence had a single candidate and it passed both gates:
+    that candidate's knobs, `plateau_established = True`.
     2. No plateau but at least one admissible candidate: the admissible candidate with the
     smallest median confidence-interval width, `plateau_established = False`.
-    3. Nothing admissible: candidate 1's knobs, confidence interval `-1.0`,
-    `plateau_established = False`.
+    3. Nothing admissible, including a single candidate that was rejected: candidate 1's knobs,
+    confidence interval `-1.0`, `plateau_established = False`.
 
     `n_points` is the selected candidate's own logged point count. Where no admissible candidate
-    backs the result (case 3, or case 1 with a single, rejected candidate), every
+    backs the result (case 3), every
     `n_bins_per_point` entry up to `min(n_points, max_n_points_candidate)` is `m_min` and both
     ranges are `0.0`, as in the fixed-k search. To rebuild the selected neighborhoods, call
     `construct_adaptive_neighborhoods` with the returned knobs and the same construction
@@ -5291,9 +5290,10 @@ def run_js_comp_test_adaptive_parameter_search(
             A result is a value; call `.copy()` to obtain a modifiable array.
         plateau_established : bool
             `True` when a plateau was found (by the criterion `plateau_mode` selects) or the
-            sequence had a single candidate; `False` when the search exhausted the sequence
-            without one, in which case the smallest-uncertainty admissible candidate is
-            returned if there is one
+            sequence had a single candidate and it passed both gates; `False` when the search
+            exhausted the sequence without one, in which case the smallest-uncertainty
+            admissible candidate is returned if there is one, and also when no candidate was
+            admissible at all, a single rejected candidate included
         trace_k_start : np.ndarray[np.int32] of shape (16,), read-only
             Per-admissible-candidate `k_start`. `16` = MAX_CANDIDATE_PAIRS, the adaptive
             sequence's cap

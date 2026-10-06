@@ -110,7 +110,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(213))
+        allocate (all_tests(215))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -546,6 +546,10 @@ contains
                                   test_run_js_comp_test_single_empty_point_sets_ierr)
         all_tests(213) = test_case("test_neighborhood_overlaps_counts_inclusive_positions", &
                                   test_neighborhood_overlaps_counts_inclusive_positions)
+        all_tests(214) = test_case("test_param_search_lone_inadmissible_candidate_not_established", &
+                                  test_param_search_lone_inadmissible_candidate_not_established)
+        all_tests(215) = test_case("test_param_search_lone_admissible_candidate_established", &
+                                  test_param_search_lone_admissible_candidate_established)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -2780,10 +2784,10 @@ contains
     !| (`min_neighbor_overlap=0.0`, `min_residuals_per_bin=0`) so the sole candidate exercises the
     !| full pipeline -- both gates pass, `bootstrap_histogram` and `check_plateau_condition` really
     !| do run -- yet the search must still return that one candidate regardless of whatever
-    !| `plateau_found` comes out as, because `n_candidates < 2` bypasses the plateau machinery
-    !| entirely (the same fallback branch `run_js_comp_test_parameter_search_no_plateau_falls_back_to_finest`
-    !| reaches by forcing every candidate to fail a gate instead of there only being one to begin
-    !| with).
+    !| `plateau_found` comes out as, because an admissible lone candidate (`n_candidates < 2`)
+    !| bypasses the plateau machinery entirely (case 1). A lone candidate that fails a gate instead
+    !| takes case 3, the same fallback `test_param_search_no_plateau_falls_back_to_finest` reaches,
+    !| see `test_param_search_lone_inadmissible_candidate_not_established`.
     subroutine test_param_search_single_candidate_bypasses_plateau()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 100, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
@@ -7914,13 +7918,17 @@ contains
         character(len=*), parameter :: name = "test_adaptive_search_single_candidate_bypasses_plateau: "
         real(real64) :: gene_means(10, 1), residuals(1, 10, 1)
         type(adaptive_search_outputs) :: out
-        integer(int32) :: ierr
+        integer(int32) :: ierr, candidates(3, 16), n_candidates
+
+        call generate_adaptive_js_comp_test_candidates(10_int32, 1_int32, candidates, n_candidates, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"candidate sequence ierr")
+        call assert_equal_int(n_candidates, 1_int32, name//"the sequence has exactly one candidate")
 
         call build_adaptive_search_fixture(10_int32, 1_int32, 1_int32, .false._c_bool, 10_int32, gene_means, residuals)
         call run_adaptive_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
-        call assert_true(out%plateau, name//"single candidate counts as established")
+        call assert_true(out%plateau, name//"single admissible candidate counts as established")
         call assert_equal_array_int([out%k_start, out%k_step, out%k_max, out%n_points], [10_int32, 3_int32, 40_int32, 1_int32], &
                                     4_int32, name//"knobs and point count")
         call assert_equal_int(out%n_tried, 1_int32, name//"one candidate tried")
@@ -7932,20 +7940,25 @@ contains
 
     !> E6b: the E6 data with the default `min_residuals_per_bin = 10`. All 10 residuals are 0, so the
     !| point's range is degenerate and every residual lands in bin 1: even `m_min = 3` bins leave
-    !| bins 2 and 3 empty, the consensus-pmf gate fails, and the single rejected candidate still
-    !| wins the plateau-or-single branch -- with `m_min` bins, a zero range and the -1 interval,
-    !| because no admissible candidate backs it.
+    !| bins 2 and 3 empty and the consensus-pmf gate fails. The single rejected candidate is
+    !| therefore not a plateau: the search takes its no-admissible fallback, which returns that
+    !| same candidate with `m_min` bins, a zero range, the -1 interval and `plateau_established`
+    !| false.
     subroutine test_adaptive_search_single_rejected_candidate_m_min()
         character(len=*), parameter :: name = "test_adaptive_search_single_rejected_candidate_m_min: "
         real(real64) :: gene_means(10, 1), residuals(1, 10, 1)
         type(adaptive_search_outputs) :: out
-        integer(int32) :: ierr
+        integer(int32) :: ierr, candidates(3, 16), n_candidates
+
+        call generate_adaptive_js_comp_test_candidates(10_int32, 1_int32, candidates, n_candidates, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"candidate sequence ierr")
+        call assert_equal_int(n_candidates, 1_int32, name//"the sequence has exactly one candidate")
 
         call build_adaptive_search_fixture(10_int32, 1_int32, 1_int32, .false._c_bool, 10_int32, gene_means, residuals)
         call run_adaptive_search(gene_means, residuals, out, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
-        call assert_true(out%plateau, name//"single candidate counts as established")
+        call assert_false(out%plateau, name//"a single rejected candidate is not established")
         call assert_equal_array_int([out%k_start, out%k_step, out%k_max, out%n_points], [10_int32, 3_int32, 40_int32, 1_int32], &
                                     4_int32, name//"knobs and point count")
         call assert_equal_int(out%cand_status(1), ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED, name//"min-count failed")
@@ -8288,8 +8301,9 @@ contains
     !| (10, 3, 40) (k_start_1 = max(10, ceiling(4)) = 10, then 8 < 10). With zero residuals every
     !| neighborhood holds exactly 10 entries and advances by the stride 6 of fixture A's k = 10, so
     !| 10 + 6*(n - 1) >= 200 gives 33 points. With `max_n_points_candidate = 20` it is rejected for
-    !| capacity; as the single candidate it still wins the plateau-or-single branch, with the first
-    !| 20 entries at `m_min` bins and a zero range, and the -1 interval.
+    !| capacity, so nothing admissible backs it and the search takes its no-admissible fallback:
+    !| that candidate with its logged point count, the first 20 entries at `m_min` bins and a zero
+    !| range, the -1 interval and `plateau_established` false.
     subroutine test_adaptive_search_single_rejected_clamped_to_capacity()
         character(len=*), parameter :: name = "test_adaptive_search_single_rejected_clamped_to_capacity: "
         real(real64) :: gene_means(100, 2), residuals(3, 100, 2)
@@ -8300,7 +8314,8 @@ contains
         call run_adaptive_search(gene_means, residuals, out, ierr, capacity=20_int32, min_residuals_per_bin=0_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
-        call assert_true(out%plateau, name//"single candidate counts as established")
+        call assert_false(out%plateau, name//"a single rejected candidate is not established")
+        call assert_equal_int(out%n_admissible, 0_int32, name//"nothing admissible")
         call assert_equal_array_int([out%k_start, out%k_step, out%k_max, out%n_points], &
                                     [10_int32, 3_int32, 40_int32, 33_int32], 4_int32, name//"knobs and logged point count")
         call assert_equal_int(out%n_tried, 1_int32, name//"one candidate")
@@ -10760,5 +10775,80 @@ contains
             call assert_true(all(out%ci == -1.0_real64), name//trim(case_text)//": confidence interval -1")
         end do
     end subroutine test_param_search_empty_study_not_admissible
+
+    !> Test helper: the lone-candidate fixture, 100 genes, 2 studies, 3 replicates, means 1..100 and
+    !| residuals `[-0.5, 0, 0.5]` in both studies. With `max_n_genes_all_studies = 100` the fixed-k
+    !| grid collapses to the single candidate (300, 1), see
+    !| test_param_search_single_candidate_bypasses_plateau; this helper asserts that through
+    !| generate_js_comp_test_candidates, so the tests using it really have one candidate.
+    subroutine build_lone_candidate_fixture(name, gene_means, residuals)
+        character(len=*), intent(in) :: name
+            !! Message prefix
+        real(real64), intent(out) :: gene_means(100, 2)
+            !! Fixture mean expression
+        real(real64), intent(out) :: residuals(3, 100, 2)
+            !! Fixture residuals
+        integer(int32) :: candidates(2, 16), n_candidates, ierr, i_gene
+
+        call generate_js_comp_test_candidates(100_int32, candidates, n_candidates, ierr)
+        call assert_err(ierr, ERR_OK, name//"candidate grid ierr")
+        call assert_equal_int(n_candidates, 1_int32, name//"the grid has exactly one candidate")
+        call assert_equal_array_int(candidates(:, 1), [300_int32, 1_int32], 2_int32, name//"the lone candidate is (300, 1)")
+
+        do i_gene = 1, 100
+            gene_means(i_gene, :) = real(i_gene, real64)
+            residuals(:, i_gene, 1) = [-0.5_real64, 0.0_real64, 0.5_real64]
+            residuals(:, i_gene, 2) = [-0.5_real64, 0.0_real64, 0.5_real64]
+        end do
+    end subroutine build_lone_candidate_fixture
+
+    !> A grid with a single candidate that fails the second gate (`min_residuals_per_bin` far above
+    !| the 6 pooled residuals per point) is not a plateau: nothing admissible backs it, so the
+    !| search takes its no-admissible fallback. It returns that candidate (300, 1) with `m_min = 3`
+    !| bins and a zero range at every point, the confidence interval `-1`, and
+    !| `plateau_established` false, ierr OK.
+    subroutine test_param_search_lone_inadmissible_candidate_not_established()
+        character(len=*), parameter :: name = "test_param_search_lone_inadmissible_candidate_not_established: "
+        real(real64) :: gene_means(100, 2), residuals(3, 100, 2)
+        type(fixed_k_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_lone_candidate_fixture(name, gene_means, residuals)
+        call run_fixed_k_search(gene_means, residuals, out, ierr, min_residuals_per_bin=1000000_int32)
+
+        call assert_err(ierr, ERR_OK, name//"ierr")
+        call assert_equal_int(out%n_admissible, 0_int32, name//"the lone candidate is not admissible")
+        call assert_false(out%plateau, name//"plateau_established")
+        call assert_equal_array_int([out%n_points, out%n_neighbors], [300_int32, 1_int32], 2_int32, &
+                                    name//"the lone candidate is returned")
+        call assert_true(all(out%n_bins(1:300) == 3_int32), name//"m_min bins at every point")
+        call assert_true(all(out%range_low(1:300) == 0.0_real64) .and. all(out%range_high(1:300) == 0.0_real64), &
+                         name//"zero range at every point")
+        call assert_true(all(out%ci == -1.0_real64), name//"confidence interval -1")
+    end subroutine test_param_search_lone_inadmissible_candidate_not_established
+
+    !> Control for the test above: the same single-candidate grid with both gates relaxed
+    !| (`min_residuals_per_bin = 0`, overlap 0 in run_fixed_k_search), so the lone candidate is
+    !| admissible. The search runs with the effect-size plateau and unreachable thresholds, so no
+    !| plateau is detected; a lone admissible candidate still counts as established, because there
+    !| is nothing to compare it with. It is returned with its traced bin counts and a real
+    !| confidence interval.
+    subroutine test_param_search_lone_admissible_candidate_established()
+        character(len=*), parameter :: name = "test_param_search_lone_admissible_candidate_established: "
+        real(real64) :: gene_means(100, 2), residuals(3, 100, 2)
+        type(fixed_k_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_lone_candidate_fixture(name, gene_means, residuals)
+        call run_fixed_k_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32)
+
+        call assert_err(ierr, ERR_OK, name//"ierr")
+        call assert_equal_int(out%n_admissible, 1_int32, name//"the lone candidate is admissible")
+        call assert_true(out%plateau, name//"plateau_established")
+        call assert_equal_array_int([out%n_points, out%n_neighbors], [300_int32, 1_int32], 2_int32, &
+                                    name//"the lone candidate is returned")
+        call assert_equal_array_int(out%n_bins(1:300), out%trace_n_bins(1:300, 1), 300_int32, name//"bins from the trace")
+        call assert_true(all(out%ci >= 0.0_real64), name//"a real confidence interval, not -1")
+    end subroutine test_param_search_lone_admissible_candidate_established
 
 end module mod_test_data_integration_js_comp_test

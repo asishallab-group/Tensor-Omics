@@ -4761,20 +4761,19 @@ contains
     !|
     !| 1. A plateau was found, or the grid collapsed to a single candidate (see
     !|    [[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]'s
-    !|    own small-N collapse note): the best candidate is returned and `plateau_established` is
-    !|    `.true.`. A lone candidate is used regardless of whether it plateaued or even passed
-    !|    either gate -- the plateau machinery is bypassed entirely, exactly as 125 does. If that
-    !|    lone candidate never passed both gates, no real per-point values exist for it, so every
-    !|    point's bin count is set to `m_min`, both residual ranges to `0.0`, and
-    !|    `best_candidate_pair_confidence_interval` stays `-1.0`.
+    !|    own small-N collapse note) and that candidate passed both gates: the best candidate is
+    !|    returned with its real per-point values and confidence interval, and
+    !|    `plateau_established` is `.true.`. A lone admissible candidate counts as established
+    !|    whether or not it plateaued, because there is nothing to compare it with -- the plateau
+    !|    criteria are not consulted, as in 125.
     !| 2. No plateau, but at least one candidate was admissible: the admissible candidate with the
     !|    smallest bootstrapped uncertainty (median confidence-interval width across studies) is
     !|    returned, with its real confidence interval, and `plateau_established` is `.false.`. This
     !|    applies to every `plateau_mode`.
-    !| 3. No plateau, and no candidate was ever admissible: the search falls back to the FIRST
-    !|    (finest-resolution) candidate, resets `best_candidate_pair_confidence_interval` to
-    !|    `-1.0`, sets every point's bin count to `m_min` and both residual ranges to `0.0`, and
-    !|    `plateau_established` is `.false.`.
+    !| 3. No plateau, and no candidate was ever admissible, including a lone candidate that failed
+    !|    either gate: the search falls back to the FIRST (finest-resolution) candidate, resets
+    !|    `best_candidate_pair_confidence_interval` to `-1.0`, sets every point's bin count to
+    !|    `m_min` and both residual ranges to `0.0`, and `plateau_established` is `.false.`.
     !|
     !| **Pass B, per candidate that passed the first gate.** For every reference point,
     !| [[tox_data_integration_js_comp_test_impl(module):gather_pooled_neighborhood_residuals(interface)]]
@@ -4924,23 +4923,23 @@ contains
             !! The finally chosen candidate's per-point lower residual-range bound (R_low), one per
             !! reference point (Step 3: every neighborhood may use a different, asymmetric range).
             !! Only the leading `n_points` entries are meaningful, mirroring `n_bins_per_point`
-            !! above; `0.0_real64` throughout in the two genuinely-degenerate cases where Pass B
-            !! never ran for the returned candidate (cases 1 and 3 of the routine description)
+            !! above; `0.0_real64` throughout when no candidate was admissible (case 3 of the
+            !! routine description), since no per-point range was kept for the returned candidate
         real(real64), dimension(max_n_points_candidate), intent(out) :: shared_residual_range_high
             !! The finally chosen candidate's per-point upper residual-range bound (R_high),
             !! mirroring `shared_residual_range_low` above in every respect
         real(real64), dimension(2, n_studies), intent(out) :: best_candidate_pair_confidence_interval
             !! The bootstrapped JSD confidence interval for the finally chosen candidate pair;
-            !! `-1.0_real64` throughout when no candidate was ever admissible: either the lone
-            !! candidate of a collapsed grid never passed both gates (`plateau_established` is
-            !! `.true.`), or no plateau was found and no smallest-bootstrap-uncertainty candidate
-            !! could be substituted (`plateau_established` is `.false.`)
+            !! `-1.0_real64` throughout when no candidate was ever admissible, including the lone
+            !! candidate of a collapsed grid that failed either gate (`plateau_established` is
+            !! then `.false.`)
         logical(c_bool), intent(out) :: plateau_established
             !! `.true.` when a real plateau was found (by whichever criterion
-            !! `plateau_mode` selected) or the candidate grid never had more than one candidate to
-            !! begin with. `.false.` when the search exhausted every admissible candidate
-            !! without ever finding one -- Issue #178's own "report that parameter stability could
-            !! not be established". When `.false.` and at least one candidate was admissible, the
+            !! `plateau_mode` selected), or when the candidate grid had only one candidate and it
+            !! passed both gates. `.false.` when the search exhausted every admissible candidate
+            !! without ever finding one, or when no candidate was admissible at all (a lone
+            !! candidate that failed a gate included) -- Issue #178's own "report that parameter
+            !! stability could not be established". When `.false.` and at least one candidate was admissible, the
             !! routine still returns a real (non-`-1.0`) candidate and confidence interval: the
             !! admissible candidate with the smallest bootstrapped uncertainty, per the issue's own
             !! fallback recommendation -- `plateau_established` is what distinguishes that case from
@@ -5629,9 +5628,13 @@ contains
         end do
 
         ! Final candidate pair, one of three cases:
-        ! 1. A plateau was reached, or the grid never had more than one candidate to begin with (the
-        !    single-candidate/collapsed-grid path bypasses the plateau machinery entirely, exactly
-        !    as 125 does): use the best candidate found, plateau_established = .true.
+        ! 1. A plateau was reached, or the grid never had more than one candidate to begin with and
+        !    that lone candidate was admissible (the single-candidate/collapsed-grid path bypasses
+        !    the plateau machinery, as 125 does, since there is nothing to compare it with): use the
+        !    best candidate found, plateau_established = .true. Either way at least one candidate
+        !    was admissible, so tmp_best_n_bins_per_point was genuinely snapshotted for it. A lone
+        !    candidate that failed a gate falls through to case 3, which returns that same
+        !    candidate.
         ! 2. No plateau, and at least one candidate was ever admissible: Issue #178's own fallback --
         !    the admissible candidate with the smallest bootstrapped uncertainty, a real (non--1.0)
         !    confidence interval, plateau_established = .false. Applies to every plateau_mode -- the
@@ -5645,31 +5648,12 @@ contains
         !    admissible" -- nothing exists for case 2 to select from here): fall back to the
         !    finest-resolution (first) candidate and reset the confidence interval to -1.0, exactly
         !    as before this change, plateau_established = .false.
-        if (plateau_found .or. n_candidates < 2_int32) then
+        if (plateau_found .or. (n_candidates < 2_int32 .and. n_admissible_evaluated >= 1_int32)) then
             n_points = candidates_n_points_n_neighbors(1, best_candidate_index)
             n_neighbors = candidates_n_points_n_neighbors(2, best_candidate_index)
-            if (n_admissible_evaluated >= 1_int32) then
-                ! The normal case: best_candidate_index became admissible at some point during the
-                ! loop, so tmp_best_n_bins_per_point was genuinely snapshotted for it.
-                n_bins_per_point(1:n_points) = tmp_best_n_bins_per_point(1:n_points)
-                shared_residual_range_low(1:n_points) = tmp_best_shared_residual_range_low(1:n_points)
-                shared_residual_range_high(1:n_points) = tmp_best_shared_residual_range_high(1:n_points)
-            else
-                ! Degenerate: n_candidates < 2 and that lone candidate never passed gate 1, so
-                ! Pass B never ran for it and tmp_best_n_bins_per_point was never snapshotted.
-                ! generate_js_comp_test_candidates_impl no longer computes any bin estimate at all
-                ! (Issue #187, Step 2.7) -- there is no real per-neighborhood value available for
-                ! this candidate, so fall back to actual_m_min, the smallest bin count the
-                ! bin-count search would ever try, as the most conservative available choice. This
-                ! mirrors the bin-count search's own FAILURE case (occupancy or Stone), which uses m_min
-                ! as its fallback for exactly the same "we don't have enough information" reason.
-                ! The range has no equivalent fallback value -- Pass B never ran, so there is no
-                ! data to derive a percentile from -- so it is zeroed, matching
-                ! the bin-count search's own all-NaN degenerate convention.
-                n_bins_per_point(1:n_points) = actual_m_min
-                shared_residual_range_low(1:n_points) = 0.0_real64
-                shared_residual_range_high(1:n_points) = 0.0_real64
-            end if
+            n_bins_per_point(1:n_points) = tmp_best_n_bins_per_point(1:n_points)
+            shared_residual_range_low(1:n_points) = tmp_best_shared_residual_range_low(1:n_points)
+            shared_residual_range_high(1:n_points) = tmp_best_shared_residual_range_high(1:n_points)
             plateau_established = logical(.true., kind=c_bool)
         else if (n_admissible_evaluated >= 1_int32) then
             n_points = candidates_n_points_n_neighbors(1, best_uncertainty_candidate_index)
@@ -5684,16 +5668,17 @@ contains
         else
             n_points = candidates_n_points_n_neighbors(1, 1)
             n_neighbors = candidates_n_points_n_neighbors(2, 1)
-            ! Case 3, Issue #178's own "fall back to the finest-resolution (first) candidate":
-            ! candidate 1 may never have passed gate 1 (this branch has no cheap way to know
-            ! without re-running Pass A/B, and it is not worth it for an already-degenerate,
-            ! CI-reset-to--1.0 fallback path), so there is no real per-neighborhood bin count
-            ! available for it either. generate_js_comp_test_candidates_impl no longer computes any
-            ! bin estimate at all (Issue #187, Step 2.7), so fall back to actual_m_min -- the
-            ! smallest bin count the bin-count search would ever try -- exactly as the other
-            ! degenerate branch above does, and consistent with
-            ! the bin-count search's own FAILURE case using m_min for the same reason.
-            ! The range is zeroed for the same reason as the other genuinely-degenerate branch above.
+            ! Case 3, Issue #178's own "fall back to the finest-resolution (first) candidate"; this
+            ! also covers a lone candidate of a collapsed grid that failed a gate. No candidate was
+            ! admissible, so candidate 1 failed gate 1 (Pass B never ran) or gate 2 (Pass B ran but
+            ! was not snapshotted), and no real per-neighborhood bin count is available for it.
+            ! generate_js_comp_test_candidates_impl no longer computes any bin estimate at all
+            ! (Issue #187, Step 2.7), so fall back to actual_m_min -- the smallest bin count the
+            ! bin-count search would ever try, as the most conservative available choice --
+            ! consistent with the bin-count search's own FAILURE case (occupancy or Stone) using
+            ! m_min for the same "not enough information" reason. The range has no equivalent
+            ! fallback value, so it is zeroed, matching the bin-count search's own all-NaN
+            ! degenerate convention.
             n_bins_per_point(1:n_points) = actual_m_min
             shared_residual_range_low(1:n_points) = 0.0_real64
             shared_residual_range_high(1:n_points) = 0.0_real64
@@ -5760,15 +5745,15 @@ contains
     !|
     !| **Result**, one of three cases, as in the fixed-k search:
     !|
-    !| 1. A plateau was found, or the sequence had a single candidate: that candidate's knobs,
-    !|    `plateau_established = .true.`.
+    !| 1. A plateau was found, or the sequence had a single candidate and it passed both gates:
+    !|    that candidate's knobs, `plateau_established = .true.`.
     !| 2. No plateau but at least one admissible candidate: the admissible candidate with the
     !|    smallest median confidence-interval width, `plateau_established = .false.`.
-    !| 3. Nothing admissible: candidate 1's knobs, confidence interval `-1.0`,
-    !|    `plateau_established = .false.`.
+    !| 3. Nothing admissible, including a single candidate that was rejected: candidate 1's knobs,
+    !|    confidence interval `-1.0`, `plateau_established = .false.`.
     !|
     !| `n_points` is the selected candidate's own logged point count. Where no admissible candidate
-    !| backs the result (case 3, or case 1 with a single, rejected candidate), every
+    !| backs the result (case 3), every
     !| `n_bins_per_point` entry up to `min(n_points, max_n_points_candidate)` is `m_min` and both
     !| ranges are `0.0`, as in the fixed-k search. To rebuild the selected neighborhoods, call
     !| `construct_adaptive_neighborhoods` with the returned knobs and the same construction
@@ -5908,9 +5893,10 @@ contains
             !! `-1.0_real64` throughout where no admissible candidate backs the result
         logical(c_bool), intent(out) :: plateau_established
             !! `.true.` when a plateau was found (by the criterion `plateau_mode` selects) or the
-            !! sequence had a single candidate; `.false.` when the search exhausted the sequence
-            !! without one, in which case the smallest-uncertainty admissible candidate is
-            !! returned if there is one
+            !! sequence had a single candidate and it passed both gates; `.false.` when the search
+            !! exhausted the sequence without one, in which case the smallest-uncertainty
+            !! admissible candidate is returned if there is one, and also when no candidate was
+            !! admissible at all, a single rejected candidate included
         integer(int32), intent(out) :: n_admissible_evaluated
             !! Number of candidates that passed both admissibility gates and got a JSD and
             !! confidence interval before the search stopped: the number of leading, valid
@@ -6528,24 +6514,17 @@ contains
         end do
 
         ! Final candidate, the fixed-k search's three cases (see the doc comment). The point count
-        ! is the chosen candidate's logged one; the knobs come from the sequence.
-        if (plateau_found .or. n_candidates < 2_int32) then
+        ! is the chosen candidate's logged one; the knobs come from the sequence. A single
+        ! candidate counts as established only when it was admissible; a rejected one falls
+        ! through to case 3, which returns that same candidate.
+        if (plateau_found .or. (n_candidates < 2_int32 .and. n_admissible_evaluated >= 1_int32)) then
             k_start = candidates_k_start_k_step_k_max(1, best_candidate_index)
             k_step = candidates_k_start_k_step_k_max(2, best_candidate_index)
             k_max = candidates_k_start_k_step_k_max(3, best_candidate_index)
             n_points = candidate_n_points(best_candidate_index)
-            if (n_admissible_evaluated >= 1_int32) then
-                n_bins_per_point(1:n_points) = tmp_best_n_bins_per_point(1:n_points)
-                shared_residual_range_low(1:n_points) = tmp_best_shared_residual_range_low(1:n_points)
-                shared_residual_range_high(1:n_points) = tmp_best_shared_residual_range_high(1:n_points)
-            else
-                ! A single candidate that was rejected: Pass B never ran for it (or ran without
-                ! passing the second gate), so m_min and a zero range, as in the fixed-k search.
-                ! Its point count may exceed the capacity, hence the clamp.
-                n_bins_per_point(1:min(n_points, max_n_points_candidate)) = actual_m_min
-                shared_residual_range_low(1:min(n_points, max_n_points_candidate)) = 0.0_real64
-                shared_residual_range_high(1:min(n_points, max_n_points_candidate)) = 0.0_real64
-            end if
+            n_bins_per_point(1:n_points) = tmp_best_n_bins_per_point(1:n_points)
+            shared_residual_range_low(1:n_points) = tmp_best_shared_residual_range_low(1:n_points)
+            shared_residual_range_high(1:n_points) = tmp_best_shared_residual_range_high(1:n_points)
             plateau_established = logical(.true., kind=c_bool)
         else if (n_admissible_evaluated >= 1_int32) then
             k_start = candidates_k_start_k_step_k_max(1, best_uncertainty_candidate_index)
@@ -6558,7 +6537,9 @@ contains
             best_candidate_confidence_interval = tmp_best_uncertainty_confidence_interval
             plateau_established = logical(.false., kind=c_bool)
         else
-            ! Nothing admissible: candidate 1, whose point count may exceed the capacity.
+            ! Nothing admissible (including a single, rejected candidate): candidate 1, with m_min
+            ! and a zero range as in the fixed-k search. Its point count may exceed the capacity,
+            ! hence the clamp.
             k_start = candidates_k_start_k_step_k_max(1, 1)
             k_step = candidates_k_start_k_step_k_max(2, 1)
             k_max = candidates_k_start_k_step_k_max(3, 1)
