@@ -217,7 +217,12 @@ contains
                                                  min_val=shared_residual_range_low(i_point), &
                                                  max_val=shared_residual_range_high(i_point))
 
-                        ! assign bin to residual, clamped to this point's own bin count
+                        ! assign bin to residual, clamped to this point's own bin count.
+                        ! Known limitation, not guarded: if the range width is not finite
+                        ! (residuals near +-1e308) or so small that bin_width underflows to 0, the
+                        ! quotient is not finite and bin_idx can leave [1, n_bins_per_point], so
+                        ! the write below goes out of bounds. Real residuals are far from this;
+                        ! histogram_bin_counts has the same limitation.
                         bin_idx = min(n_bins_per_point(i_point), &
                                      int((clamped_residual - shared_residual_range_low(i_point))/bin_width) + 1)
                         counts(i_point, bin_idx) = counts(i_point, bin_idx) + 1

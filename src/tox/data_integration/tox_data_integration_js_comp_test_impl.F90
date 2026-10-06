@@ -826,6 +826,10 @@ contains
         do i_pool = 1, n_pool
             clamped_residual = clamp(pooled_residuals(pooled_residuals_perm(i_pool)), min_val=shared_residual_range_low, &
                                      max_val=shared_residual_range_high)
+            ! Known limitation, not guarded: if the range width is not finite (residuals near
+            ! +-1e308) or so small that bin_width underflows to 0, the quotient below is not finite
+            ! and bin_idx can leave [1, trial_m], so the next line writes out of bounds. Real
+            ! residuals are far from this; build_residual_histograms_impl has the same limitation.
             bin_idx = min(trial_m, int((clamped_residual - shared_residual_range_low)/bin_width) + 1_int32)
             bin_counts(bin_idx) = bin_counts(bin_idx) + 1_int32
         end do
