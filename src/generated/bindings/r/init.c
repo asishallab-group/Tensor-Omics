@@ -109,6 +109,15 @@ SEXP compute_family_scaling_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_rdi_call(SEXP, SEXP, SEXP);
 SEXP identify_outliers_call(SEXP, SEXP, SEXP, SEXP);
 SEXP detect_outliers_call(SEXP, SEXP, SEXP, SEXP);
+SEXP compute_family_direction_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP compute_angular_deviations_call(SEXP, SEXP, SEXP);
+SEXP compute_family_direction_rap_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP compute_angular_deviations_rap_call(SEXP, SEXP, SEXP);
+SEXP compute_relative_angular_deviations_call(SEXP, SEXP, SEXP);
+SEXP compute_angle_outlier_threshold_call(SEXP, SEXP);
+SEXP flag_angle_outliers_call(SEXP, SEXP);
+SEXP detect_angle_outliers_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP detect_angle_outliers_rap_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP loess_fit_plain_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP loess_fit_robust_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP tox_loess_required_workspace_call(SEXP, SEXP, SEXP);
@@ -219,6 +228,15 @@ static const R_CallMethodDef CallEntries[] = {
     {"compute_rdi_call", (DL_FUNC) &compute_rdi_call, 3},
     {"identify_outliers_call", (DL_FUNC) &identify_outliers_call, 4},
     {"detect_outliers_call", (DL_FUNC) &detect_outliers_call, 4},
+    {"compute_family_direction_call", (DL_FUNC) &compute_family_direction_call, 5},
+    {"compute_angular_deviations_call", (DL_FUNC) &compute_angular_deviations_call, 3},
+    {"compute_family_direction_rap_call", (DL_FUNC) &compute_family_direction_rap_call, 5},
+    {"compute_angular_deviations_rap_call", (DL_FUNC) &compute_angular_deviations_rap_call, 3},
+    {"compute_relative_angular_deviations_call", (DL_FUNC) &compute_relative_angular_deviations_call, 3},
+    {"compute_angle_outlier_threshold_call", (DL_FUNC) &compute_angle_outlier_threshold_call, 2},
+    {"flag_angle_outliers_call", (DL_FUNC) &flag_angle_outliers_call, 2},
+    {"detect_angle_outliers_call", (DL_FUNC) &detect_angle_outliers_call, 6},
+    {"detect_angle_outliers_rap_call", (DL_FUNC) &detect_angle_outliers_rap_call, 6},
     {"loess_fit_plain_call", (DL_FUNC) &loess_fit_plain_call, 9},
     {"loess_fit_robust_call", (DL_FUNC) &loess_fit_robust_call, 10},
     {"tox_loess_required_workspace_call", (DL_FUNC) &tox_loess_required_workspace_call, 3},

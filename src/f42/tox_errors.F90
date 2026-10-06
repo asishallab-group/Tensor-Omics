@@ -87,6 +87,23 @@ module tox_errors
         !! null pointer dereference
 
     !------------------------------
+    ! 4xx: Status codes
+    ! Outcomes, not failures: a procedure reports one in a `status` output for a result it could
+    ! not give, and never in `ierr`, so none of them ever raises. A status of zero (`set_ok`) means
+    ! there is nothing to report.
+    !------------------------------
+    integer(int32), parameter :: STAT_NO_STABLE_DIRECTION = 401
+        !! no stable direction: the unit vectors cancel out, exactly or up to rounding, or their angular dispersion exceeds the maximum
+    integer(int32), parameter :: STAT_NO_ANGULAR_VARIATION = 402
+        !! no angular variation: the angular dispersion is too small to tell from rounding, or below the minimum
+    integer(int32), parameter :: STAT_TOO_FEW_MEMBERS = 403
+        !! too few members: fewer than three genes of the family have a direction
+    integer(int32), parameter :: STAT_NO_FAMILY = 404
+        !! no family: the gene is assigned to no family
+    integer(int32), parameter :: STAT_ZERO_VECTOR = 405
+        !! zero vector: the gene's expression vector is zero (or all its components subnormal), so it has no direction
+
+    !------------------------------
     ! 5xxx: Fortran runtime / Unit state
     ! (Keep 5002 for compatibility with existing R mapping)
     !------------------------------

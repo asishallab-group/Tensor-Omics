@@ -239,6 +239,74 @@ contains
         degrees = modulo(radians, 2*PI)*180/PI
     end function degrees
 
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Returns the given angle wrapped into \( (-\pi, \pi] \), the same direction on the circle:
+    !| \( \pi \) stays \( \pi \), \( -\pi \Rightarrow \pi \), \( \frac{3\cdot \pi}{2} \Rightarrow -\frac{\pi}{2} \).
+    !| An angle already in \( (-\pi, \pi] \) is returned unchanged, to the last bit.
+    !| The angle must be finite; a NaN or infinite one gives NaN.
+    pure elemental real(real64) function wrap_angle(angle) result(wrapped)
+        real(real64), intent(in) :: angle
+            !! angle to be wrapped, in radians
+
+        if (angle > -PI .and. angle <= PI) then
+            wrapped = angle
+            return
+        end if
+
+        ! `modulo` lies in [0, 2*PI), so `PI - modulo` lies in (-PI, PI]. Rounding can still land
+        ! a value a hair beyond PI on exactly -PI, which is the same direction as PI.
+        wrapped = PI - modulo(PI - angle, 2*PI)
+        if (wrapped <= -PI) wrapped = PI
+    end function wrap_angle
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Returns the absolute distance around the circle between two angles, in \( [0, \pi] \): an
+    !| angle just below \( \pi \) and one just above \( -\pi \) are close. Their difference is
+    !| wrapped by [[f42_math_impl(module):wrap_angle(function)]], so it must be finite.
+    pure elemental real(real64) function angular_distance(angle, reference_angle) result(distance)
+        real(real64), intent(in) :: angle
+            !! An angle in radians
+        real(real64), intent(in) :: reference_angle
+            !! The angle it is measured from, in radians
+
+        distance = abs(wrap_angle(angle - reference_angle))
+    end function angular_distance
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Returns \( 1 - \cos x \), computed as \( 2\sin^2(x/2) \), which keeps its full relative
+    !| precision for small \( x \), where \( 1 - \cos x \) cancels.
+    pure elemental real(real64) function one_minus_cosine(angle)
+        real(real64), intent(in) :: angle
+            !! Angle in radians
+
+        one_minus_cosine = 2.0_real64*sin(0.5_real64*angle)**2
+    end function one_minus_cosine
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Returns \( \ln(1 - x) \), accurate also where \( x \) is small and \( 1 - x \) would round
+    !| away its digits. Below \( x = 10^{-3} \) it sums the series \( -(x + x^2/2 + \dots + x^6/6) \),
+    !| whose truncation error for \( |x| < 10^{-3} \) is under \( x^6/7 < 1.5 \times 10^{-19} \)
+    !| relative to its value: the result is within about an ulp. From \( 10^{-3} \) on it takes
+    !| `log(1 - x)`, whose only extra error is the rounding of \( 1 - x \), at most \( 2^{-54} \):
+    !| under \( 5.6 \times 10^{-14} \) relative at \( x = 10^{-3} \), falling as \( x \) grows, and
+    !| none from \( x = 1/2 \) on, where \( 1 - x \) is exact.
+    !|
+    !| (no input validation) Ensure \( -10^{-3} < x < 1 \) for the accuracy above. For
+    !| \( -1 < x \le -10^{-3} \) the series still converges, but cut after six terms it is off by
+    !| about \( |x|^6/7 \) relative (\( 2 \times 10^{-3} \) at \( x = -1/2 \)); `x >= 1` yields an
+    !| infinite or NaN result.
+    pure elemental real(real64) function log_one_minus(x)
+        real(real64), intent(in) :: x
+            !! Argument, in `(-1e-3, 1)`
+
+        if (x < 1.0e-3_real64) then
+            log_one_minus = -x*(1.0_real64 + x*(0.5_real64 + x*(1.0_real64/3.0_real64 &
+                            + x*(0.25_real64 + x*(0.2_real64 + x/6.0_real64)))))
+        else
+            log_one_minus = log(1.0_real64 - x)
+        end if
+    end function log_one_minus
+
     !> AUTHOR_AARON_SCHROEDER
     !| Find the next power of two greater than or equal to n
     function next_power_of_two(n) result(power)
