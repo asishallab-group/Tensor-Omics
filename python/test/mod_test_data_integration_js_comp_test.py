@@ -561,6 +561,26 @@ def test_bootstrap_histogram():
     np.testing.assert_array_almost_equal(confidence_interval_deg, np.zeros((2, 2)), decimal=12)
 
 
+def test_bootstrap_histogram_rejects_draws_from_empty_pool():
+    # A study drawing from a point whose pool is empty (counts [0, 0], 0 included replicates) fails
+    # with invalid input, not tied to any one argument
+    # (test_bootstrap_histogram_rejects_draws_from_empty_pool in the Fortran suite).
+    mean_pmf_counts = np.array([[0], [0]], dtype=np.int32, order='F')
+    mean_pmf_included_n_reps = np.array([0], dtype=np.int32)
+    included_n_reps = np.array([[3, 3]], dtype=np.int32, order='F')
+
+    def call():
+        confidence_interval = np.zeros((2, 2), dtype=np.float64, order='F')
+        bootstrap_histogram(3, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps,
+                            confidence_interval, random_seed=7)
+
+    assert_error(call, "expected ERR_INVALID_INPUT for draws from an empty pool", ERR_INVALID_INPUT)
+    try:
+        call()
+    except ToxError as error:
+        assert error.argument is None, f"expected no argument named, got {error.argument!r}"
+
+
 def test_calc_js_comp_test_candidate_bounds():
     # Cross-check against the already-verified candidate-grid collapse fixture: with
     # max_n_genes_all_studies=8742 the grid's first (largest) n_points candidate is 374

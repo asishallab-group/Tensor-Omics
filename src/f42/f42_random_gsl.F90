@@ -292,7 +292,7 @@ contains
         integer(int32), intent(in) :: total_population
             !! The total population size -> `sum(population_sizes)`
         integer(int32), intent(in) :: n_to_draw
-            !! Number of elements to draw in total; must be non-negative
+            !! Number of elements to draw in total; must be non-negative, and 0 when `total_population` is 0
         integer(int32), dimension(n_populations), intent(out) :: drawn
             !! Drawn sample for `population_sizes` with `sum(drawn) == n_to_draw`
         integer(int32), intent(out) :: ierr
@@ -315,6 +315,10 @@ contains
                 ! supposed to summarize.
                 if (sum(population_sizes) /= total_population) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
             end if
+            ! An empty population has nothing to draw from: without this, every draw would land
+            ! in the last, empty population.
+            if (total_population == 0_int32 .and. n_to_draw > 0_int32) &
+                call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         end if
         if (is_err(ierr)) then
             drawn = 0_int32
@@ -363,7 +367,7 @@ contains
         integer(int32), intent(in) :: total_population
             !! The total population size -> `sum(population_sizes)`
         integer(int32), intent(in) :: n_to_draw
-            !! Number of elements to draw in total; must be non-negative
+            !! Number of elements to draw in total; must be non-negative and must not exceed `total_population`
         integer(int32), dimension(n_populations), intent(out) :: drawn
             !! Drawn sample for `population_sizes` with `sum(drawn) == n_to_draw`
         integer(int32), intent(out) :: ierr
@@ -385,6 +389,9 @@ contains
                 ! supposed to summarize.
                 if (sum(population_sizes) /= total_population) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
             end if
+            ! Without replacement, a draw larger than the pool is impossible; reject it rather
+            ! than cap it, so `sum(drawn) == n_to_draw` holds whenever `ierr` is OK.
+            if (n_to_draw > total_population) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         end if
         if (is_err(ierr)) then
             drawn = 0_int32
@@ -392,7 +399,7 @@ contains
         end if
 
         remaining_population = total_population
-        remaining_draws = min(total_population, n_to_draw)
+        remaining_draws = n_to_draw
         drawn = 0_int32
 
         ! Draw for each population, last one gets rest

@@ -2518,11 +2518,15 @@ contains
     !| under it (which would scramble every non-square `(n_bins, n_points)` histogram).
     !|
     !| A GSL allocation failure in `create_rng` is a genuine runtime error no input check could
-    !| have foreseen (codegen_guide.md Sec 5.14): every work array and `confidence_interval` are
-    !| then left untouched (arrays not yet written to keep their caller-visible defined state) and
-    !| `ierr` reports `ERR_ALLOC_FAIL`. A `random_multinomial` draw failing (which validated,
+    !| have foreseen (codegen_guide.md Sec 5.14): `confidence_interval` is then left unchanged
+    !| and `ierr` reports `ERR_ALLOC_FAIL`. A `random_multinomial` draw failing (which validated,
     !| internally-consistent inputs should never trigger) is likewise folded into `ierr`, first
     !| failure only, without stopping the resampling already in flight.
+    !|
+    !| Inconsistent inputs are rejected before any draw: when a point's pool is empty
+    !| (`mean_pmf_included_n_reps` 0) but a study still draws from it (`included_n_reps` above 0),
+    !| the call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no bootstrap runs.
+    !| No interval is computed then (a Fortran caller gets `confidence_interval` back unchanged).
     subroutine bootstrap_histogram(&
             n_bootstraps,&
             n_bins,&
@@ -2575,7 +2579,8 @@ contains
             !! Seed for the GSL random number generator
             !! The default value is `42_int32`.
         integer(int32), intent(out) :: ierr
-            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator
+            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator;
+            !! ERR_INVALID_INPUT, before any draw, if a study draws from a point whose pool is empty (see above)
         integer(int32) :: n_bootstrapping_top_k_jsds
         real(real64), dimension(:, :, :), allocatable :: tmp_bootstrapping_top_k_jsds
         integer(int32), dimension(:, :), allocatable :: tmp_counts
@@ -2666,11 +2671,15 @@ contains
     !| under it (which would scramble every non-square `(n_bins, n_points)` histogram).
     !|
     !| A GSL allocation failure in `create_rng` is a genuine runtime error no input check could
-    !| have foreseen (codegen_guide.md Sec 5.14): every work array and `confidence_interval` are
-    !| then left untouched (arrays not yet written to keep their caller-visible defined state) and
-    !| `ierr` reports `ERR_ALLOC_FAIL`. A `random_multinomial` draw failing (which validated,
+    !| have foreseen (codegen_guide.md Sec 5.14): `confidence_interval` is then left unchanged
+    !| and `ierr` reports `ERR_ALLOC_FAIL`. A `random_multinomial` draw failing (which validated,
     !| internally-consistent inputs should never trigger) is likewise folded into `ierr`, first
     !| failure only, without stopping the resampling already in flight.
+    !|
+    !| Inconsistent inputs are rejected before any draw: when a point's pool is empty
+    !| (`mean_pmf_included_n_reps` 0) but a study still draws from it (`included_n_reps` above 0),
+    !| the call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no bootstrap runs.
+    !| No interval is computed then (a Fortran caller gets `confidence_interval` back unchanged).
     subroutine bootstrap_histogram_expert(&
             n_bootstraps,&
             n_bins,&
@@ -2752,7 +2761,8 @@ contains
             !! Seed for the GSL random number generator
             !! The default value is `42_int32`.
         integer(int32), intent(out) :: ierr
-            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator
+            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator;
+            !! ERR_INVALID_INPUT, before any draw, if a study draws from a point whose pool is empty (see above)
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION

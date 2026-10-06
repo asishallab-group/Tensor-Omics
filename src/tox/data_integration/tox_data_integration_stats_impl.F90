@@ -21,7 +21,7 @@ module tox_data_integration_stats_impl
     use f42_random_gsl, only: rng_t, create_rng, destroy_rng, random_multiv_hypergeom
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
                                              compute_weighted_global_divergence_impl, calc_pmf_impl
-    use tox_errors, only: set_ok, set_err_once, is_err, get_err_code
+    use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, ERR_INVALID_INPUT
     M_IMPLICIT_NONE
     private
     public :: gjct_permutation_test_impl
@@ -32,13 +32,18 @@ contains
     !| Ported from 125-stabilize-jscomp's `gjct_permutation_test_helper`, generalized from its
     !| hardcoded 2-study shuffle to a K-study GSL `random_multiv_hypergeom` resample from the
     !| pooled `mean_pmf_counts` (without replacement, per reference point, per study). Impure:
-    !| draws random numbers, so it carries `ierr` for the one genuine runtime failure a validated
+    !| draws random numbers, so it carries `ierr` for the genuine runtime failure a validated
     !| caller cannot foresee -- `create_rng` failing to allocate the GSL generator -- folded in as
-    !| `ERR_ALLOC_FAIL`; a later `random_multiv_hypergeom` failure (which validated,
+    !| `ERR_ALLOC_FAIL` -- and for inconsistent inputs (see below); a later `random_multiv_hypergeom` failure (which validated,
     !| internally-consistent inputs should never trigger) is likewise folded in, first failure
     !| only, without stopping the resampling already in flight, matching
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]'s own
     !| precedent.
+    !|
+    !| Inconsistent inputs are rejected before any draw: when the studies' draws at a point
+    !| (`included_n_reps`) add up to more than that point's pooled counts (`mean_pmf_counts`), the
+    !| call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no permutation runs.
+    !| No p-values are computed then (a Fortran caller gets them zeroed).
     !|
     !| The consensus pmf is recomputed from the permuted pmfs in every permutation, as the
     !| equal-weight mean of all studies' pmfs, exactly as
@@ -127,16 +132,26 @@ contains
             !! Seed for the GSL random number generator
             !! DM_DEFAULT(42_int32)
         integer(int32), intent(out) :: ierr
-            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator
+            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator;
+            !! ERR_INVALID_INPUT, before any draw, if the studies' draws at a point exceed its pooled counts (see above)
 
         integer(int32) :: i_permutation, i_point, i_study, i_bin, draw_ierr
         type(rng_t) :: rng
 
         call set_ok(ierr)
-        rng = create_rng(ierr, random_seed)
+        ! Inconsistent inputs, checked before the generator is created: without replacement, the
+        ! studies' draws at a point cannot exceed that point's pooled counts. Not one argument's
+        ! fault, so no position (codegen_guide.md Sec 5.14).
+        do i_point = 1, n_points
+            if (sum(included_n_reps(i_point, :)) > sum(mean_pmf_counts(:, i_point))) then
+                call set_err_once(ierr, ERR_INVALID_INPUT)
+                exit
+            end if
+        end do
+        if (.not. is_err(ierr)) rng = create_rng(ierr, random_seed)
         if (is_err(ierr)) then
-            ! A genuine runtime failure -- leave every work array in a defined (zeroed) state
-            ! rather than resample with an uninitialized generator.
+            ! Inconsistent inputs or a genuine runtime failure -- leave every output and work
+            ! array in a defined (zeroed) state rather than resample at all.
             p_values = 0.0_real64
             p_values_observed_consensus = 0.0_real64
             tmp_mean_pmf_counts = 0_int32
@@ -190,6 +205,10 @@ contains
             ! accumulation order as create_mean_pmf_impl (start at 0, then add pmf/n_studies study
             ! by study), so it matches that routine bit for bit. Inlined rather than called:
             ! tox_data_integration_js_comp_test_impl already uses this module.
+            ! For some study counts (e.g. 9, 11, 18, 20) this sum exceeds 1.0 by a few ulps (one or
+            ! two up to 41 studies) where every study has all its mass in the same bin. Harmless here,
+            ! as it is never returned, but such a consensus, if fed to the public gjct_permutation_test,
+            ! would trip its DM_MAX(1.0) on mean_pmf. Deliberately not clamped (bit-identical outputs).
             tmp_pmf_point_major = 0.0_real64
             do i_study = 1, n_studies
                 do i_point = 1, n_points

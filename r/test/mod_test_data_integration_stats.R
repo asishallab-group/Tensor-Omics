@@ -53,4 +53,23 @@ test_gjct_permutation_test_seeded_reproducibility <- function() {
   }
 }
 
+# Per-study draws that do not fit the pooled counts (pool c(2, 2), each of two studies drawing 4)
+# fail with invalid input, not tied to any one argument -- mirrors the Fortran test of the same
+# name (test/mod_test_data_integration_js_comp_test.F90).
+test_gjct_permutation_test_rejects_draws_larger_than_pool <- function() {
+  mean_pmf_counts <- matrix(c(2L, 2L), nrow = 2)
+  mean_pmf <- matrix(c(0.5, 0.5), nrow = 2)
+  mean_pmf_included_n_reps <- c(8L)
+  included_n_reps <- matrix(c(4L, 4L), nrow = 1)
+  global_jsd_observed <- c(0.1, 0.1)
+
+  call <- function() {
+    gjct_permutation_test(3L, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps,
+                          included_n_reps, global_jsd_observed, random_seed = 7L)
+  }
+  assert_error(call(), "expected ERR_INVALID_INPUT for draws larger than the pooled counts", ERR_INVALID_INPUT)
+  err <- tryCatch({ call(); NULL }, error = function(e) e)
+  assert_true(is.na(err$argument), "expected no argument named")
+}
+
 run_all_tests()

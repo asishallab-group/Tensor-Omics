@@ -3365,6 +3365,10 @@ contains
         ! across studies, so only the innermost i_bin loop -- which writes distinct elements -- can
         ! run concurrently, exactly matching build_residual_histograms_impl's own accumulation
         ! pattern above.
+        ! For some study counts (e.g. 9, 11, 18, 20) the equal-weight sum exceeds 1.0 by a few ulps
+        ! (one or two up to 41 studies) where every study has all its mass in the same bin. Harmless
+        ! in the pipeline, but such a mean_pmf passed into the public gjct_permutation_test trips its
+        ! DM_MAX(1.0). Deliberately not clamped, so outputs stay bit-identical.
         do i_study = 1, n_studies
             do i_point = 1, n_points
                 do concurrent(i_bin=1:n_bins) shared(mean_pmf, pmfs, i_point, i_study, n_studies, mean_pmf_counts, counts)
@@ -3411,6 +3415,10 @@ contains
 
         mean_pmf = 0.0_real64
 
+        ! For some study counts (e.g. 9, 11, 18, 20) the equal-weight sum exceeds 1.0 by a few ulps
+        ! (one or two up to 41 studies) where every study has all its mass in the same bin. Harmless
+        ! in the pipeline, but such a mean_pmf passed into the public gjct_permutation_test trips its
+        ! DM_MAX(1.0). Deliberately not clamped, so outputs stay bit-identical.
         do i_study = 1, n_studies
             do i_point = 1, n_points
                 do concurrent(i_bin=1:n_bins) shared(mean_pmf, pmfs, i_point, i_study, n_studies)
@@ -3480,11 +3488,15 @@ contains
     !| under it (which would scramble every non-square `(n_bins, n_points)` histogram).
     !|
     !| A GSL allocation failure in `create_rng` is a genuine runtime error no input check could
-    !| have foreseen (codegen_guide.md Sec 5.14): every work array and `confidence_interval` are
-    !| then left untouched (arrays not yet written to keep their caller-visible defined state) and
-    !| `ierr` reports `ERR_ALLOC_FAIL`. A `random_multinomial` draw failing (which validated,
+    !| have foreseen (codegen_guide.md Sec 5.14): `confidence_interval` is then left unchanged
+    !| and `ierr` reports `ERR_ALLOC_FAIL`. A `random_multinomial` draw failing (which validated,
     !| internally-consistent inputs should never trigger) is likewise folded into `ierr`, first
     !| failure only, without stopping the resampling already in flight.
+    !|
+    !| Inconsistent inputs are rejected before any draw: when a point's pool is empty
+    !| (`mean_pmf_included_n_reps` 0) but a study still draws from it (`included_n_reps` above 0),
+    !| the call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no bootstrap runs.
+    !| No interval is computed then (a Fortran caller gets `confidence_interval` back unchanged).
     subroutine bootstrap_histogram_impl(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, &
                                         mean_pmf_included_n_reps, included_n_reps, n_bootstrapping_top_k_jsds, &
                                         confidence_interval, tmp_bootstrapping_top_k_jsds, tmp_counts, tmp_pmfs, &
@@ -3550,17 +3562,27 @@ contains
             !! Seed for the GSL random number generator
             !! DM_DEFAULT(42_int32)
         integer(int32), intent(out) :: ierr
-            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator
+            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator;
+            !! ERR_INVALID_INPUT, before any draw, if a study draws from a point whose pool is empty (see above)
 
         integer(int32) :: i_bootstrap, i_study, i_point, i_bin, draw_ierr
         type(rng_t) :: rng
 
         call set_ok(ierr)
-        rng = create_rng(ierr, random_seed)
+        ! Inconsistent inputs, checked before the generator is created: a point with an empty pool
+        ! (the multinomial total, mean_pmf_included_n_reps, is 0) has nothing a study could draw.
+        ! Not one argument's fault, so no position (codegen_guide.md Sec 5.14).
+        do i_point = 1, n_points
+            if (mean_pmf_included_n_reps(i_point) == 0_int32 .and. any(included_n_reps(i_point, :) > 0_int32)) then
+                call set_err_once(ierr, ERR_INVALID_INPUT)
+                exit
+            end if
+        end do
+        if (.not. is_err(ierr)) rng = create_rng(ierr, random_seed)
         if (is_err(ierr)) then
-            ! A genuine runtime failure -- leave every work array in a defined (zeroed) state and
-            ! the caller's confidence_interval untouched, rather than bootstrap with an
-            ! uninitialized generator.
+            ! Inconsistent inputs or a genuine runtime failure -- leave every work array in a
+            ! defined (zeroed) state and the caller's confidence_interval untouched, rather than
+            ! bootstrap at all.
             tmp_bootstrapping_top_k_jsds = 0.0_real64
             tmp_counts = 0_int32
             tmp_pmfs = 0.0_real64

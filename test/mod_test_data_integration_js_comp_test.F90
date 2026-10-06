@@ -110,7 +110,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(221))
+        allocate (all_tests(223))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -562,6 +562,10 @@ contains
                                   test_construct_neighborhoods_ranged_expert_rejects_bad_perm)
         all_tests(221) = test_case("test_run_js_comp_test_rejects_nan_x_star", &
                                   test_run_js_comp_test_rejects_nan_x_star)
+        all_tests(222) = test_case("test_gjct_permutation_test_rejects_draws_larger_than_pool", &
+                                  test_gjct_permutation_test_rejects_draws_larger_than_pool)
+        all_tests(223) = test_case("test_bootstrap_histogram_rejects_draws_from_empty_pool", &
+                                  test_bootstrap_histogram_rejects_draws_from_empty_pool)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -1849,6 +1853,37 @@ contains
                                      "a single-bin histogram always has JSD=0, so the CI must collapse to [0,0]")
     end subroutine test_bootstrap_histogram_degenerate_single_bin_zero_ci
 
+    !> The public `bootstrap_histogram` with a study drawing from an empty pool: one point whose
+    !| pooled counts are `[0, 0]` (`mean_pmf_included_n_reps = 0`), while both studies ask for
+    !| `included_n_reps = 3`. That is rejected as invalid input before any draw. It used to put
+    !| every draw into the last bin, with `ierr` OK. A runtime error of the implementation carries
+    !| no argument position (the wrapper clears it). The incoming `confidence_interval` comes back
+    !| unchanged, which shows that no bootstrap ran.
+    subroutine test_bootstrap_histogram_rejects_draws_from_empty_pool()
+        integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 3
+        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
+        integer(int32) :: ierr
+
+        mean_pmf_counts(:, 1) = [0_int32, 0_int32]
+        mean_pmf_included_n_reps = [0_int32]
+        included_n_reps(1, :) = [3_int32, 3_int32]
+        confidence_interval = reshape([0.25_real64, 0.75_real64, 0.25_real64, 0.75_real64], [2, n_studies])
+        expected = confidence_interval
+
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf_included_n_reps, &
+                                 included_n_reps, confidence_interval, ierr=ierr, random_seed=7_int32)
+
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_bootstrap_histogram_rejects_draws_from_empty_pool: "// &
+                        "draws from an empty pool are invalid input, with no argument position", &
+                        arg_pos=0_int32)
+        call assert_equal_array_real(confidence_interval, expected, size(confidence_interval, kind=int32), TOL, &
+                                     "test_bootstrap_histogram_rejects_draws_from_empty_pool: "// &
+                                     "confidence_interval comes back unchanged, so no bootstrap ran")
+    end subroutine test_bootstrap_histogram_rejects_draws_from_empty_pool
+
     !> Basic conservation-of-counts: a single reference point, single study, single permutation --
     !| `tmp_counts` (the last permutation's resampled histogram for the last study processed) must
     !| sum to exactly `included_n_reps` for that study/point, since `random_multiv_hypergeom` draws
@@ -2196,6 +2231,46 @@ contains
                                "test_permutation_pvalue_laplace_corrected_never_exactly_zero: "// &
                                "Laplace correction of p_values_observed_consensus: 1/11, not 0.0")
     end subroutine test_permutation_pvalue_laplace_corrected_never_exactly_zero
+
+    !> The public `gjct_permutation_test` with per-study draws that do not fit the pooled counts:
+    !| one point, pool `mean_pmf_counts = [2, 2]` (4 elements), and each of the two studies asking
+    !| for `included_n_reps = 4`. The first study would take the whole pool, so the second would
+    !| draw 4 from an empty one. That is rejected as invalid input before any draw. It used to be
+    !| capped silently: the second study got an all-zero pmf and `ierr` stayed OK. A runtime error
+    !| of the implementation carries no argument position (the wrapper clears it). The p-values come
+    !| back zeroed: a run of the permutation loop could never give 0, because of the Laplace
+    !| correction, so this also shows that no permutation ran.
+    subroutine test_gjct_permutation_test_rejects_draws_larger_than_pool()
+        integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_permutations = 3
+        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: p_values_observed_consensus(n_studies)
+        integer(int32) :: ierr
+
+        mean_pmf_counts(:, 1) = [2_int32, 2_int32]
+        mean_pmf_included_n_reps = [8_int32]
+        included_n_reps(1, :) = [4_int32, 4_int32]
+        mean_pmf(:, 1) = [0.5_real64, 0.5_real64]
+        global_jsd_observed = 0.1_real64
+        p_values = -1.0_real64
+        p_values_observed_consensus = -1.0_real64
+
+        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
+                                   mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
+                                   p_values_observed_consensus, ierr=ierr, random_seed=7_int32)
+
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_gjct_permutation_test_rejects_draws_larger_than_pool: "// &
+                        "draws larger than the pooled counts are invalid input, with no argument position", &
+                        arg_pos=0_int32)
+        call assert_equal_array_real(p_values, [0.0_real64, 0.0_real64], n_studies, TOL, &
+                                     "test_gjct_permutation_test_rejects_draws_larger_than_pool: "// &
+                                     "p_values are zeroed, so no permutation ran")
+        call assert_equal_array_real(p_values_observed_consensus, [0.0_real64, 0.0_real64], n_studies, TOL, &
+                                     "test_gjct_permutation_test_rejects_draws_larger_than_pool: "// &
+                                     "p_values_observed_consensus are zeroed, so no permutation ran")
+    end subroutine test_gjct_permutation_test_rejects_draws_larger_than_pool
 
     !> End-to-end 2-study case run through `run_js_comp_test` with `n_permutations=0`: GSL's
     !| `create_rng` still runs (so `ierr` is genuinely exercised), but the permutation loop itself

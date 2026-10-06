@@ -33,13 +33,18 @@ contains
     !| Ported from 125-stabilize-jscomp's `gjct_permutation_test_helper`, generalized from its
     !| hardcoded 2-study shuffle to a K-study GSL `random_multiv_hypergeom` resample from the
     !| pooled `mean_pmf_counts` (without replacement, per reference point, per study). Impure:
-    !| draws random numbers, so it carries `ierr` for the one genuine runtime failure a validated
+    !| draws random numbers, so it carries `ierr` for the genuine runtime failure a validated
     !| caller cannot foresee -- `create_rng` failing to allocate the GSL generator -- folded in as
-    !| `ERR_ALLOC_FAIL`; a later `random_multiv_hypergeom` failure (which validated,
+    !| `ERR_ALLOC_FAIL` -- and for inconsistent inputs (see below); a later `random_multiv_hypergeom` failure (which validated,
     !| internally-consistent inputs should never trigger) is likewise folded in, first failure
     !| only, without stopping the resampling already in flight, matching
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]'s own
     !| precedent.
+    !|
+    !| Inconsistent inputs are rejected before any draw: when the studies' draws at a point
+    !| (`included_n_reps`) add up to more than that point's pooled counts (`mean_pmf_counts`), the
+    !| call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no permutation runs.
+    !| No p-values are computed then (a Fortran caller gets them zeroed).
     !|
     !| The consensus pmf is recomputed from the permuted pmfs in every permutation, as the
     !| equal-weight mean of all studies' pmfs, exactly as
@@ -120,7 +125,8 @@ contains
             !! Seed for the GSL random number generator
             !! The default value is `42_int32`.
         integer(c_int), intent(out), target :: ierr
-            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator
+            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator;
+            !! ERR_INVALID_INPUT, before any draw, if the studies' draws at a point exceed its pooled counts (see above)
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -158,13 +164,18 @@ contains
     !| Ported from 125-stabilize-jscomp's `gjct_permutation_test_helper`, generalized from its
     !| hardcoded 2-study shuffle to a K-study GSL `random_multiv_hypergeom` resample from the
     !| pooled `mean_pmf_counts` (without replacement, per reference point, per study). Impure:
-    !| draws random numbers, so it carries `ierr` for the one genuine runtime failure a validated
+    !| draws random numbers, so it carries `ierr` for the genuine runtime failure a validated
     !| caller cannot foresee -- `create_rng` failing to allocate the GSL generator -- folded in as
-    !| `ERR_ALLOC_FAIL`; a later `random_multiv_hypergeom` failure (which validated,
+    !| `ERR_ALLOC_FAIL` -- and for inconsistent inputs (see below); a later `random_multiv_hypergeom` failure (which validated,
     !| internally-consistent inputs should never trigger) is likewise folded in, first failure
     !| only, without stopping the resampling already in flight, matching
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]'s own
     !| precedent.
+    !|
+    !| Inconsistent inputs are rejected before any draw: when the studies' draws at a point
+    !| (`included_n_reps`) add up to more than that point's pooled counts (`mean_pmf_counts`), the
+    !| call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no permutation runs.
+    !| No p-values are computed then (a Fortran caller gets them zeroed).
     !|
     !| The consensus pmf is recomputed from the permuted pmfs in every permutation, as the
     !| equal-weight mean of all studies' pmfs, exactly as
@@ -273,7 +284,8 @@ contains
             !! Seed for the GSL random number generator
             !! The default value is `42_int32`.
         integer(c_int), intent(out), target :: ierr
-            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator
+            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator;
+            !! ERR_INVALID_INPUT, before any draw, if the studies' draws at a point exceed its pooled counts (see above)
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)

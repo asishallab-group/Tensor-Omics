@@ -8,8 +8,9 @@ import os
 
 # Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from test_helpers import run_all_tests
-from tensor_omics import gjct_permutation_test
+from test_helpers import run_all_tests, assert_error
+from tensor_omics import ToxError, gjct_permutation_test
+from tensor_omics.error_handling import ERR_INVALID_INPUT
 
 TOL = 1e-12
 
@@ -66,6 +67,27 @@ def test_gjct_permutation_test_seeded_reproducibility():
 
     for key in ("p_values", "p_values_observed_consensus"):
         np.testing.assert_allclose(p_first[key], p_second[key], atol=TOL, err_msg=key)
+
+
+def test_gjct_permutation_test_rejects_draws_larger_than_pool():
+    """Per-study draws that do not fit the pooled counts (pool [2, 2], each of two studies drawing
+    4) fail with invalid input, not tied to any one argument -- mirrors the Fortran test of the
+    same name (test/mod_test_data_integration_js_comp_test.F90)."""
+    mean_pmf_counts = np.array([[2], [2]], dtype=np.int32, order="F")
+    mean_pmf = np.array([[0.5], [0.5]], dtype=np.float64, order="F")
+    mean_pmf_included_n_reps = np.array([8], dtype=np.int32)
+    included_n_reps = np.array([[4, 4]], dtype=np.int32, order="F")
+    global_jsd_observed = np.array([0.1, 0.1], dtype=np.float64)
+
+    def call():
+        gjct_permutation_test(3, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps,
+                              included_n_reps, global_jsd_observed, random_seed=7)
+
+    assert_error(call, "expected ERR_INVALID_INPUT for draws larger than the pooled counts", ERR_INVALID_INPUT)
+    try:
+        call()
+    except ToxError as error:
+        assert error.argument is None, f"expected no argument named, got {error.argument!r}"
 
 
 if __name__ == '__main__':
