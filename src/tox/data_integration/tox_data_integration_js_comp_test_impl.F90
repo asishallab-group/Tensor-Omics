@@ -2977,11 +2977,13 @@ contains
     !| admissibility gate a candidate `(n_points, n_neighbors)` pair must pass, using the
     !| `[min_idx, max_idx]` neighborhood spans
     !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_ranged_impl(interface)]]
-    !| produces. Named `check_*` rather than 125's `test_*`, a deliberate deviation from the
-    !| verbatim port: the generated R binding is published under the Fortran name, and the R test
-    !| harness (`r/test_helpers.R`'s `run_all_tests`) discovers every `test_`-prefixed name in the
-    !| environment as a test case to run with no arguments -- a `test_`-prefixed export would be
-    !| swept up and fail every R suite that sources the package, not just this module's own.
+    !| produces. The overlap of two consecutive spans is the number of positions they share,
+    !| divided by the number of positions in the earlier span. Named `check_*` rather than 125's
+    !| `test_*`, a deliberate deviation from the verbatim port: the generated R binding is
+    !| published under the Fortran name, and the R test harness (`r/test_helpers.R`'s
+    !| `run_all_tests`) discovers every `test_`-prefixed name in the environment as a test case to
+    !| run with no arguments -- a `test_`-prefixed export would be swept up and fail every R suite
+    !| that sources the package, not just this module's own.
     pure subroutine check_neighborhood_overlaps_impl(neighborhood_range, n_points, min_neighbor_overlap, &
                                                       all_have_min_neighbor_overlap)
         integer(int32), intent(in) :: n_points
@@ -3005,9 +3007,8 @@ contains
         all_pass = .true.
         do concurrent(i_point=1:n_points - 1) local(overlap) shared(neighborhood_range, min_neighbor_overlap) &
                 reduce(.and.:all_pass)
-            overlap = compute_fractional_overlap( &
-                     real(neighborhood_range(1, i_point), real64), real(neighborhood_range(2, i_point), real64), &
-                     real(neighborhood_range(1, i_point + 1), real64), real(neighborhood_range(2, i_point + 1), real64))
+            overlap = compute_index_span_overlap(neighborhood_range(1, i_point), neighborhood_range(2, i_point), &
+                                                 neighborhood_range(1, i_point + 1), neighborhood_range(2, i_point + 1))
             all_pass = all_pass .and. (overlap >= min_neighbor_overlap)
         end do
         all_have_min_neighbor_overlap = logical(all_pass, kind=c_bool)
@@ -3064,9 +3065,8 @@ contains
     !> Calculates the fractional overlap between two intervals: the fraction of the overlap over
     !| the total range of the first interval, so for `a_min < b_min`,
     !| \[ \frac{\min(\texttt{a\_max}, \texttt{b\_max}) - \texttt{b\_min}}{\texttt{a\_max} - \texttt{a\_min}} \]
-    !| Not published: a private helper for
-    !| [[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]]
-    !| and
+    !| It is for continuous intervals; inclusive integer index spans use `compute_index_span_overlap`
+    !| instead. Not published: a private helper for
     !| [[tox_data_integration_js_comp_test_impl(module):check_plateau_condition_impl(interface)]],
     !| ported from 125-stabilize-jscomp's `compute_fractional_overlap_helper`.
     pure real(real64) function compute_fractional_overlap(a_min, a_max, b_min, b_max) result(overlap_percent)
@@ -3095,6 +3095,28 @@ contains
             overlap_percent = max(0.0_real64, (left_max - right_min)/(a_max - a_min))
         end if
     end function compute_fractional_overlap
+
+    !> Counts the positions two inclusive integer runs `[a_min, a_max]` and `[b_min, b_max]` share,
+    !| relative to the number of positions in the first run:
+    !| \[ \frac{\max(0, \min(\texttt{a\_max}, \texttt{b\_max}) - \max(\texttt{a\_min}, \texttt{b\_min}) + 1)}{\texttt{a\_max} - \texttt{a\_min} + 1} \]
+    !| For example `[5,6]` and `[6,7]` share position 6, one of the first run's 2 positions, so
+    !| the result is 0.5. Not published: a private helper for
+    !| [[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]].
+    pure real(real64) function compute_index_span_overlap(a_min, a_max, b_min, b_max) result(overlap_fraction)
+        integer(int32), intent(in) :: a_min
+            !! First position of the first run
+        integer(int32), intent(in) :: a_max
+            !! Last position of the first run, assumed >= a_min
+        integer(int32), intent(in) :: b_min
+            !! First position of the second run
+        integer(int32), intent(in) :: b_max
+            !! Last position of the second run, assumed >= b_min
+
+        integer(int32) :: n_shared
+
+        n_shared = max(0_int32, min(a_max, b_max) - max(a_min, b_min) + 1_int32)
+        overlap_fraction = real(n_shared, real64)/real(a_max - a_min + 1_int32, real64)
+    end function compute_index_span_overlap
 
     !> summary: Test one candidate pair's bootstrapped confidence intervals against the current best, and detect a JSD plateau
     !| AUTHOR_LASZLO_LANG

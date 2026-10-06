@@ -1161,11 +1161,13 @@ construct_adaptive_neighborhoods <- function(gene_means, residuals, k_start, k_s
 #' admissibility gate a candidate `(n_points, n_neighbors)` pair must pass, using the
 #' `[min_idx, max_idx]` neighborhood spans
 #' \code{\link{construct_neighborhoods_ranged}}
-#' produces. Named `check_*` rather than 125's `test_*`, a deliberate deviation from the
-#' verbatim port: the generated R binding is published under the Fortran name, and the R test
-#' harness (`r/test_helpers.R`'s `run_all_tests`) discovers every `test_`-prefixed name in the
-#' environment as a test case to run with no arguments -- a `test_`-prefixed export would be
-#' swept up and fail every R suite that sources the package, not just this module's own.
+#' produces. The overlap of two consecutive spans is the number of positions they share,
+#' divided by the number of positions in the earlier span. Named `check_*` rather than 125's
+#' `test_*`, a deliberate deviation from the verbatim port: the generated R binding is
+#' published under the Fortran name, and the R test harness (`r/test_helpers.R`'s
+#' `run_all_tests`) discovers every `test_`-prefixed name in the environment as a test case to
+#' run with no arguments -- a `test_`-prefixed export would be swept up and fail every R suite
+#' that sources the package, not just this module's own.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::check_neighborhood_overlaps}, whose argument names
 #' are the ones an error message reports.

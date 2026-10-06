@@ -110,7 +110,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(212))
+        allocate (all_tests(213))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -544,6 +544,8 @@ contains
                                   test_param_search_empty_study_not_admissible)
         all_tests(212) = test_case("test_run_js_comp_test_single_empty_point_sets_ierr", &
                                   test_run_js_comp_test_single_empty_point_sets_ierr)
+        all_tests(213) = test_case("test_neighborhood_overlaps_counts_inclusive_positions", &
+                                  test_neighborhood_overlaps_counts_inclusive_positions)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -971,8 +973,8 @@ contains
         call assert_true(all_pass, "test_neighborhood_overlaps_all_pass: identical ranges should always pass")
     end subroutine test_neighborhood_overlaps_all_pass
 
-    !> Two points with ranges `[1,10]` and `[6,10]`: `left_max=min(10,10)=10`,
-    !| `right_min=max(1,6)=6`, so the overlap is exactly `(10-6)/(10-1) = 4/9`. Setting
+    !> Two points with the inclusive position ranges `[1,10]` and `[6,10]`: they share the 5
+    !| positions 6..10 of the first range's 10, so the overlap is exactly `5/10 = 0.5`. Setting
     !| `min_neighbor_overlap` to that exact fraction must still pass, since the gate is `overlap
     !| >= min_neighbor_overlap`, not a strict `>`.
     subroutine test_neighborhood_overlaps_exactly_at_threshold_passes()
@@ -984,7 +986,7 @@ contains
         neighborhood_range(:, 1) = [1, 10]
         neighborhood_range(:, 2) = [6, 10]
 
-        call check_neighborhood_overlaps(neighborhood_range, n_points, 4.0_real64/9.0_real64, all_pass, ierr)
+        call check_neighborhood_overlaps(neighborhood_range, n_points, 0.5_real64, all_pass, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_neighborhood_overlaps_exactly_at_threshold_passes: ierr should be OK")
@@ -992,7 +994,7 @@ contains
                          "overlap exactly at threshold must pass")
     end subroutine test_neighborhood_overlaps_exactly_at_threshold_passes
 
-    !> The same `4/9` overlap as above, but with `min_neighbor_overlap=0.5 > 4/9`: the gate must
+    !> The same `5/10` overlap as above, but with `min_neighbor_overlap=0.51 > 0.5`: the gate must
     !| fail.
     subroutine test_neighborhood_overlaps_below_threshold_fails()
         integer(int32), parameter :: n_points = 2
@@ -1003,13 +1005,74 @@ contains
         neighborhood_range(:, 1) = [1, 10]
         neighborhood_range(:, 2) = [6, 10]
 
-        call check_neighborhood_overlaps(neighborhood_range, n_points, 0.5_real64, all_pass, ierr)
+        call check_neighborhood_overlaps(neighborhood_range, n_points, 0.51_real64, all_pass, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_neighborhood_overlaps_below_threshold_fails: ierr should be OK")
         call assert_false(all_pass, "test_neighborhood_overlaps_below_threshold_fails: "// &
                           "overlap below threshold must fail")
     end subroutine test_neighborhood_overlaps_below_threshold_fails
+
+    !> Neighborhood ranges are inclusive runs of positions, so the overlap counts shared positions:
+    !| `[5,6]` and `[6,7]` share position 6, one of the first range's 2 positions (0.5), and
+    !| `[1,100]` and `[91,190]` share positions 91..100, 10 of 100 (exactly 0.1, the default
+    !| threshold). Both must pass at those exact thresholds. Measuring the ranges as continuous
+    !| intervals instead (length `max - min`) would give 0 and 9/99 and wrongly reject both. Just
+    !| above the exact value (0.11 > 0.1) the gate must still fail. The remaining cases: the
+    !| disjoint `[1,5]`/`[7,10]` and the adjacent `[1,5]`/`[6,10]` share no position (overlap 0,
+    !| so they fail at 0.1 and the disjoint pair passes at 0); a single-position first run
+    !| `[5,5]` is fully covered by `[5,6]` (overlap 1, passes at 1.0) and not at all by `[6,7]`
+    !| (overlap 0, fails at 0.1).
+    subroutine test_neighborhood_overlaps_counts_inclusive_positions()
+        character(len=*), parameter :: name = "test_neighborhood_overlaps_counts_inclusive_positions: "
+        integer(int32), parameter :: n_points = 2
+        integer(int32) :: neighborhood_range(2, n_points)
+        logical(c_bool) :: all_pass
+        integer(int32) :: ierr
+
+        neighborhood_range(:, 1) = [5, 6]
+        neighborhood_range(:, 2) = [6, 7]
+        call check_neighborhood_overlaps(neighborhood_range, n_points, 0.5_real64, all_pass, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"[5,6]/[6,7] ierr should be OK")
+        call assert_true(all_pass, name//"[5,6]/[6,7] share 1 of 2 positions, must pass at 0.5")
+
+        neighborhood_range(:, 1) = [1, 100]
+        neighborhood_range(:, 2) = [91, 190]
+        call check_neighborhood_overlaps(neighborhood_range, n_points, 0.1_real64, all_pass, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"[1,100]/[91,190] ierr should be OK")
+        call assert_true(all_pass, name//"[1,100]/[91,190] share 10 of 100 positions, must pass at 0.1")
+
+        call check_neighborhood_overlaps(neighborhood_range, n_points, 0.11_real64, all_pass, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"[1,100]/[91,190] at 0.11 ierr should be OK")
+        call assert_false(all_pass, name//"[1,100]/[91,190] share only 10 of 100 positions, must fail at 0.11")
+
+        neighborhood_range(:, 1) = [1, 5]
+        neighborhood_range(:, 2) = [7, 10]
+        call check_neighborhood_overlaps(neighborhood_range, n_points, 0.1_real64, all_pass, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"[1,5]/[7,10] at 0.1 ierr should be OK")
+        call assert_false(all_pass, name//"[1,5]/[7,10] are disjoint, must fail at 0.1")
+        call check_neighborhood_overlaps(neighborhood_range, n_points, 0.0_real64, all_pass, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"[1,5]/[7,10] at 0 ierr should be OK")
+        call assert_true(all_pass, name//"[1,5]/[7,10] overlap 0, must pass at 0")
+
+        neighborhood_range(:, 1) = [1, 5]
+        neighborhood_range(:, 2) = [6, 10]
+        call check_neighborhood_overlaps(neighborhood_range, n_points, 0.1_real64, all_pass, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"[1,5]/[6,10] ierr should be OK")
+        call assert_false(all_pass, name//"[1,5]/[6,10] are adjacent but share no position, must fail at 0.1")
+
+        neighborhood_range(:, 1) = [5, 5]
+        neighborhood_range(:, 2) = [5, 6]
+        call check_neighborhood_overlaps(neighborhood_range, n_points, 1.0_real64, all_pass, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"[5,5]/[5,6] ierr should be OK")
+        call assert_true(all_pass, name//"[5,5] lies inside [5,6], must pass at 1.0")
+
+        neighborhood_range(:, 1) = [5, 5]
+        neighborhood_range(:, 2) = [6, 7]
+        call check_neighborhood_overlaps(neighborhood_range, n_points, 0.1_real64, all_pass, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"[5,5]/[6,7] ierr should be OK")
+        call assert_false(all_pass, name//"[5,5] shares no position with [6,7], must fail at 0.1")
+    end subroutine test_neighborhood_overlaps_counts_inclusive_positions
 
     !> Every bin comfortably exceeds the minimum count. `n_bins_per_point` is uniformly `n_bins`
     !| here, so the per-point guard is a no-op and this exercises the same behavior the old
@@ -7449,8 +7512,9 @@ contains
     ! goes to the lower, position 12), and the k nearest entries around it (ties to the lower mean)
     ! are [15,34] / [12,27] / [9,20] / [7,16]. So consecutive neighborhoods advance by a stride of
     ! 14 / 11 / 8 / 6 positions, and covering 1000 positions takes 71 / 91 / 125 / 166 points
-    ! (k + stride*(n-1) >= 1000). Their consecutive overlap (last_1 - first_2)/(k - 1) is
-    ! 5/19, 4/15, 3/11, 3/9 (0.263, 0.267, 0.273, 0.333); each study has k/2 entries per
+    ! (k + stride*(n-1) >= 1000). Their consecutive overlap, the shared positions over the
+    ! earlier neighborhood's k positions, (last_1 - first_2 + 1)/k = (k - stride)/k, is
+    ! 6/20, 5/16, 4/12, 4/10 (0.300, 0.3125, 0.333, 0.400); each study has k/2 entries per
     ! neighborhood. Every histogram puts all mass in one bin, so every JSD is 0 and every
     ! bootstrapped confidence interval is exactly [0, 0] (as in the fixed-k plateau tests).
     !
@@ -7824,7 +7888,7 @@ contains
     end subroutine assert_adaptive_nothing_admissible
 
     !> E5: fixture A with `min_neighbor_overlap = 0.5`: every candidate's consecutive overlap is
-    !| at most 1/3 (see the section comment), so every one fails the first gate and the result is
+    !| at most 0.4 (see the section comment), so every one fails the first gate and the result is
     !| candidate 1 with 71 points.
     subroutine test_adaptive_search_nothing_admissible_falls_back_to_first()
         character(len=*), parameter :: name = "test_adaptive_search_nothing_admissible_falls_back_to_first: "
@@ -7982,8 +8046,8 @@ contains
                                         ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED], name)
     end subroutine test_adaptive_search_status_capacity_exceeded
 
-    !> E7c: fixture A with `min_neighbor_overlap = 0.3`: the overlaps 0.263, 0.267, 0.273 of
-    !| candidates 1-3 fail, candidate 4's 1/3 passes (the section comment derives them), so the
+    !> E7c: fixture A with `min_neighbor_overlap = 0.35`: the overlaps 0.300, 0.3125, 0.333 of
+    !| candidates 1-3 fail, candidate 4's 0.400 passes (the section comment derives them), so the
     !| single admissible candidate 4 is the smallest-uncertainty fallback.
     subroutine test_adaptive_search_status_overlap_failed()
         character(len=*), parameter :: name = "test_adaptive_search_status_overlap_failed: "
@@ -7993,7 +8057,7 @@ contains
 
         call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
         call run_adaptive_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32, &
-                                 min_neighbor_overlap=0.3_real64)
+                                 min_neighbor_overlap=0.35_real64)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_false(out%plateau, name//"no plateau from one admissible candidate")

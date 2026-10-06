@@ -314,20 +314,35 @@ def test_check_neighborhood_overlaps():
 
     # ============================================================
     # Test 2 -- overlap exactly at threshold passes (test_neighborhood_overlaps_exactly_at_threshold_passes):
-    # ranges [1,10] and [6,10]: left_max=min(10,10)=10, right_min=max(1,6)=6, overlap=(10-6)/(10-1)=4/9.
-    # The gate is overlap >= min_neighbor_overlap, so setting the threshold to that exact
-    # fraction must still pass.
+    # inclusive position ranges [1,10] and [6,10] share the 5 positions 6..10 of the first
+    # range's 10, so overlap = 5/10 = 0.5. The gate is overlap >= min_neighbor_overlap, so setting
+    # the threshold to that exact fraction must still pass.
     # ============================================================
     neighborhood_range_2 = np.array([[1, 6], [10, 10]], dtype=np.int32, order='F')
-    all_pass_2 = check_neighborhood_overlaps(neighborhood_range_2, min_neighbor_overlap=4.0 / 9.0)
+    all_pass_2 = check_neighborhood_overlaps(neighborhood_range_2, min_neighbor_overlap=0.5)
     assert all_pass_2, "Test 2 failed: overlap exactly at threshold must pass"
 
     # ============================================================
-    # Test 3 -- same 4/9 overlap, threshold 0.5 > 4/9, must fail
+    # Test 3 -- same 5/10 overlap, threshold 0.51 > 0.5, must fail
     # (test_neighborhood_overlaps_below_threshold_fails)
     # ============================================================
-    all_fail = check_neighborhood_overlaps(neighborhood_range_2, min_neighbor_overlap=0.5)
+    all_fail = check_neighborhood_overlaps(neighborhood_range_2, min_neighbor_overlap=0.51)
     assert not all_fail, "Test 3 failed: overlap below threshold must fail"
+
+    # ============================================================
+    # Test 4 -- the overlap counts shared positions of inclusive ranges
+    # (test_neighborhood_overlaps_counts_inclusive_positions): [5,6] and [6,7] share 1 of 2
+    # positions (0.5), [1,100] and [91,190] share 10 of 100 (exactly 0.1); both pass at those
+    # exact thresholds, and the second still fails just above, at 0.11.
+    # ============================================================
+    neighborhood_range_3 = np.array([[5, 6], [6, 7]], dtype=np.int32, order='F')
+    assert check_neighborhood_overlaps(neighborhood_range_3, min_neighbor_overlap=0.5), \
+        "Test 4 failed: [5,6]/[6,7] share 1 of 2 positions, must pass at 0.5"
+    neighborhood_range_4 = np.array([[1, 91], [100, 190]], dtype=np.int32, order='F')
+    assert check_neighborhood_overlaps(neighborhood_range_4, min_neighbor_overlap=0.1), \
+        "Test 4 failed: [1,100]/[91,190] share 10 of 100 positions, must pass at 0.1"
+    assert not check_neighborhood_overlaps(neighborhood_range_4, min_neighbor_overlap=0.11), \
+        "Test 4 failed: [1,100]/[91,190] share only 10 of 100 positions, must fail at 0.11"
 
 
 def test_check_mean_pmf_min_counts():
