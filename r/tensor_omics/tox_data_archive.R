@@ -27,17 +27,17 @@ create_zip_archive <- function(zip_filename, keys, filenames) {
 #' are the ones an error message reports.
 #'
 #' @param zip_filename a string. Zip filename
-#' @param gene_ids a character vector. Gene ids array, will be saved if provided
+#' @param gene_ids a character vector. Gene ids array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
 #' @param gene_ids_file a string. Name of the gene ids file
-#' @param expression a numeric matrix. Expression vectors array, will be saved if provided
+#' @param expression a numeric matrix. Expression vectors array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
 #' @param expression_file a string. Name of the expression file
-#' @param gene_to_family a integer vector. Gene to family mapping array, will be saved if provided
+#' @param gene_to_family a integer vector. Gene to family mapping array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
 #' @param gene_to_family_file a string. Name of the gene to family mapping file
-#' @param family_ids a character vector. Family ids array, will be saved if provided
+#' @param family_ids a character vector. Family ids array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
 #' @param family_ids_file a string. Name of the family ids file
-#' @param family_centroids a numeric matrix. Family centroids array, will be saved if provided
+#' @param family_centroids a numeric matrix. Family centroids array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
 #' @param family_centroids_file a string. Name of the family centroids file
-#' @param shift_vectors a numeric matrix. Shift vectors array, will be saved if provided
+#' @param shift_vectors a numeric matrix. Shift vectors array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
 #' @param shift_vectors_file a string. Name of the shift vectors file
 #' @return invisibly `NULL`; called for its effect.
 #' @export

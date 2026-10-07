@@ -33,12 +33,17 @@ euclidean_distance <- function(vec1, vec2) {
 #' are the ones an error message reports.
 #'
 #' @param genes a numeric matrix. Gene expression matrix (n_tissues × n_genes), column-major
-#' @param centroids a numeric matrix. Family centroid matrix (n_tissues × n_families), column-major, `-1.0` for unassigned genes
+#' @param centroids a numeric matrix. Family centroid matrix (n_tissues × n_families), column-major
 #' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `genes`, using `0` for unassigned genes
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_families`.
 #'   The value `0` is additionally accepted.
-#' @return a numeric vector. Output distances array
+#' @return a numeric vector. Euclidean distance from each gene to its own family's centroid. A gene carrying
+#'   `0` in `gene_to_fam` has no centroid to measure against and
+#'   receives `-1.0` instead of a distance -- a value no Euclidean
+#'   distance can take, so that summarising this array without excluding those genes is
+#'   visibly wrong rather than quietly biased. Which genes those are is `gene_to_fam`,
+#'   not a negative entry here.
 #' @export
 distance_to_centroid <- function(genes, centroids, gene_to_fam) {
     genes <- .tox_as_double_matrix(genes, "genes")

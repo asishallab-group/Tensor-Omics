@@ -34,7 +34,9 @@ test_k_means_clustering <- function() {
   trajectories <- array(c(
     1, 2, 3, 4, 5, 6, 7, 8
   ), dim = c(n_factors, n_samples, n_timepoints))
-  centroids <- matrix(runif(n_factors * n_clusters), nrow = n_factors, ncol = n_clusters)
+  # one sample is one point, its trajectory flattened over factors and time
+  n_traj_dims <- n_factors * n_timepoints
+  centroids <- matrix(runif(n_traj_dims * n_clusters), nrow = n_traj_dims, ncol = n_clusters)
   max_iterations <- 5
   # the extents come from the arrays, so the trajectories keep their shape
   res <- cluster_factor_trajectories_k_means(
@@ -42,8 +44,8 @@ test_k_means_clustering <- function() {
     centroids = centroids,
     max_iterations = max_iterations
   )
-  assert_true(isTRUE(all.equal(dim(res$centroids), c(n_factors, n_clusters))))
-  assert_true(length(res$labels) == n_samples * n_timepoints)
+  assert_true(isTRUE(all.equal(dim(res$centroids), c(n_traj_dims, n_clusters))))
+  assert_true(length(res$labels) == n_samples)
   assert_true(length(res$label_counts) == n_clusters)
 }
 

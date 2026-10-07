@@ -705,17 +705,17 @@ contains
         character(len=*), intent(in) :: zip_filename
         !! Zip filename
         character(len=*), intent(in), optional :: gene_ids(:)
-        !! Gene ids array, will be saved if provided
+        !! Gene ids array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
         character(len=*), intent(in), optional :: family_ids(:)
-        !! Family ids array, will be saved if provided
+        !! Family ids array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
         real(real64), intent(in), optional :: expression(:, :)
-        !! Expression vectors array, will be saved if provided
+        !! Expression vectors array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
         real(real64), intent(in), optional :: family_centroids(:, :)
-        !! Family centroids array, will be saved if provided
+        !! Family centroids array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
         real(real64), intent(in), optional :: shift_vectors(:, :)
-        !! Shift vectors array, will be saved if provided
+        !! Shift vectors array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
         integer(int32), intent(in), optional :: gene_to_family(:)
-        !! Gene to family mapping array, will be saved if provided
+        !! Gene to family mapping array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
         character(len=*), intent(in), optional :: gene_ids_file
         !! Name of the gene ids file
         character(len=*), intent(in), optional :: expression_file
@@ -741,6 +741,18 @@ contains
 
         call set_ok(ierr)
         call set_ok(temp_ierr)
+
+        ! An array and its member name are one argument in two halves: with only the array, the
+        ! `.and.` below silently drops it from the archive, and the caller gets a well-formed
+        ! archive that is missing the data it was asked to store. Reject that here, naming the
+        ! half that is missing, before any member is written.
+        call require_paired_helper(present(gene_ids), present(gene_ids_file), 3_int32, 4_int32, ierr)
+        call require_paired_helper(present(expression), present(expression_file), 5_int32, 6_int32, ierr)
+        call require_paired_helper(present(gene_to_family), present(gene_to_family_file), 7_int32, 8_int32, ierr)
+        call require_paired_helper(present(family_ids), present(family_ids_file), 9_int32, 10_int32, ierr)
+        call require_paired_helper(present(family_centroids), present(family_centroids_file), 11_int32, 12_int32, ierr)
+        call require_paired_helper(present(shift_vectors), present(shift_vectors_file), 13_int32, 14_int32, ierr)
+        if (is_err(ierr)) return
 
         ! Determine which arrays are present
         gene_ids_present = present(gene_ids) .and. present(gene_ids_file)
@@ -884,6 +896,32 @@ contains
             end if
         end subroutine cleanup_temporary_files
     end subroutine save_tox_data
+
+    !> summary: Requires an array argument and its member-name argument to be given together.
+    !| AUTHOR_FRANZ_ERIC_SILL
+    !| `arg_pos` values are positions in the caller's own dummy argument list, which is what an
+    !| error code carries so a binding can name the argument. Whichever half is absent is the one
+    !| reported.
+    pure subroutine require_paired_helper(has_array, has_name, array_pos, name_pos, ierr)
+        logical, intent(in) :: has_array
+            !! Whether the array argument was given
+        logical, intent(in) :: has_name
+            !! Whether its member-name argument was given
+        integer(int32), intent(in) :: array_pos
+            !! Position of the array argument
+        integer(int32), intent(in) :: name_pos
+            !! Position of the member-name argument
+        integer(int32), intent(inout) :: ierr
+            !! Error code
+
+        if (has_array .eqv. has_name) return
+
+        if (has_array) then
+            call set_err_once(ierr, ERR_INVALID_INPUT, name_pos)
+        else
+            call set_err_once(ierr, ERR_INVALID_INPUT, array_pos)
+        end if
+    end subroutine require_paired_helper
 
     !> AUTHOR_AARON_SCHROEDER
     !| Read standard tox from a zip archive

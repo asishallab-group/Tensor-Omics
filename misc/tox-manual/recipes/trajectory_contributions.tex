@@ -1,0 +1,206 @@
+%% trajectory_contributions.tex -- which factors co-move with a dependent
+%% variable over time, and at which time points.
+
+\begin{recipe}[label=rec:trajectory-contributions]{Trajectory-Based Signed Contribution Analysis}
+
+\recipepurpose{For entities measured repeatedly over time --- countries,
+  patients, cell lines --- find which measured factors move together with a
+  chosen dependent variable, how strongly over the whole trajectory, and at
+  which individual time points. Contributions are signed, so co-movement and
+  divergence are distinguished rather than conflated.}
+
+\nomaintainer
+
+\begin{requiredinputs}
+  \item Repeated measurements arranged as
+        \code{(n\_factors, n\_samples, n\_timepoints)} --- indicators first,
+        entities second, \emph{time last}. Every entity must be measured at the
+        same time points.
+  \item Which indices are factors and which is the dependent. Both are
+        positions in the first axis: a dependent is simply an indicator you
+        chose to explain.
+  \item Regularly spaced time points, if you intend to use the velocity or
+        acceleration variants. Interpolating irregular sampling is not part of
+        the library.
+\end{requiredinputs}
+
+\begin{prerequisites}
+  \item None beyond having your measurements in that layout.
+\end{prerequisites}
+
+\begin{workflow}
+  \step{Optionally min--max each series to $[0,1]$ with
+        \code{normalize\_all\_trajectories}, so entities of very different
+        magnitude become comparable. It rescales each series independently and
+        so preserves shape; check its \code{status} output, which reports
+        per-series problems rather than raising them.}
+  \step{Choose a baseline. Deviations are measured from it, so it decides what
+        ``co-movement'' means: \optn{baseline\_min} for growth-like variables,
+        \optn{baseline\_mean} for oscillating ones, \optn{baseline\_raw} when
+        zero is itself meaningful.}
+  \step{Compute contributions with \code{compute\_all\_contributions}: one
+        signed number per (factor, dependent, entity) plus the per-timepoint
+        series behind it. This is descriptive --- it ranks factors, it does not
+        test them.}
+  \step{Test a pair with \code{perform\_permutation\_test} and
+        \code{compute\_p\_values}. The test replaces the dependent with another
+        entity's, keeping time order intact, and so asks whether \emph{this}
+        entity's pairing is unusual within your panel.}
+  \step{Optionally repeat on the dynamics with
+        \code{compute\_velocity\_acceleration\_contributions}, which answers
+        whether the two variables change, and change their rate of change,
+        together.}
+\end{workflow}
+
+\examplescript{python/examples/trajectory_contributions.py}{%
+  Builds a synthetic panel in which one entity's dependent really is driven by
+  one of its factors and every other entity is unrelated, then runs the whole
+  chain so the planted answer can be checked against the output. The repository
+  ships no time-series data, which is why the example generates its own.}
+
+\begin{codefragment}[language=Python,caption={Fragments to edit: the layout, the baseline, the pair you test}]
+import numpy as np
+from tensor_omics import (compute_all_contributions,
+                          compute_contributions,
+                          perform_permutation_test,
+                          compute_p_values)
+
+# --- indicators first, entities second, TIME LAST ----------
+traj = np.asfortranarray(panel)   # (n_factors, n_samples,
+                                  #  n_timepoints)
+
+# --- 1-based indices into the first axis -------------------
+factors   = np.array([1, 2, 3], dtype=np.int32)
+dependent = np.array([4], dtype=np.int32)
+
+res = compute_all_contributions(
+    traj, factors, dependent,
+    "baseline_mean")        # or _min / _raw
+totals = res["total_contributions"]   # (n_f, n_d, n_s)
+
+# --- is entity 1's pairing unusual in THIS panel? ----------
+obs = compute_contributions(
+    traj[0, 0, :].copy(), traj[3, 0, :].copy(),
+    "baseline_mean")
+perm = perform_permutation_test(
+    traj, 1, 4, 1,          # factor, dependent, sample
+    "baseline_mean", 2000, random_seed=5)
+p = compute_p_values(
+    obs["local_contributions"], obs["total_contribution"],
+    perm["local_contributions"], perm["total_contributions"])
+\end{codefragment}
+
+\begin{parameters}
+  \param{baseline\_mode}{Where each variable's deviations are measured from,
+    and therefore what a positive contribution means}{%
+    \optn{baseline\_min} for monotone growth variables, so deviations are
+    improvements above the historical minimum; \optn{baseline\_mean} for
+    oscillating ones; \optn{baseline\_raw} only when zero is a real reference}
+  \param{n\_permutations}{Size of the null distribution, and with it the
+    smallest reportable p}{A p can never fall below $1/n$; use at least
+    \code{1000} if you intend to report values near 0.01}
+  \param{random\_seed}{Makes the permutation draw reproducible}{Always set it
+    for anything you will report, otherwise the p changes between runs}
+  \param{factor\_indices / dependent\_indices}{Which rows of the first axis are
+    treated as explaining and explained}{1-based. Nothing distinguishes a
+    ``factor'' from a ``dependent'' in the data --- the roles are yours}
+\end{parameters}
+
+\begin{expectedresults}
+  On the example's planted panel, the driving factor separates cleanly from the
+  rest: total contribution $12.7$ against $0.85$ and $-0.56$ for the two
+  unrelated factors, with $p < 0.0005$ against $0.37$ and $0.55$. If a factor
+  you know to be unrelated scores comparably to one you expect to matter, look
+  first at whether the tested entity's \emph{dependent} differs from the other
+  entities' --- see the pitfall below --- before concluding anything about the
+  factor.
+\end{expectedresults}
+
+\begin{pitfall}[Pitfall: the test only ever looks at the upper tail]
+  The p-value counts permutations whose contribution is $\geq$ the observed
+  one. A strongly \emph{negative} contribution --- the two variables reliably
+  diverging, which is a finding --- therefore lands near $p = 1$, not near
+  $0$: a total of $-3.76$ scores $p = 0.63$. Divergence cannot be declared
+  significant this way. Test the negated factor if you need it.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: a p-value of exactly zero]
+  The p is the raw fraction $(\text{permuted} \geq \text{observed})/n$, with no
+  correction, so when no permutation reaches the observed value it is reported
+  as exactly $0$. No permutation test can support that. Report it as
+  $< 1/n$ instead, and remember it is a resolution limit, not evidence: with
+  $2000$ permutations nothing below $0.0005$ is measurable.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: what the permutation actually holds fixed]
+  The null swaps in \emph{another entity's dependent}. So the question is
+  never ``are these two variables related?'' but ``is this entity's pairing
+  unusual among the entities I supplied?''. Where every entity shares the same
+  temporal trend, a real and strong relationship correctly scores around
+  $p = 0.5$, because a swapped-in dependent carries that trend too. The panel
+  is the null; choose it deliberately.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: an entity whose dependent is unlike the rest]
+  The mirror image of the previous trap, and easier to fall into. If the tested
+  entity's dependent behaves differently from the others --- a strong trend
+  where the rest are flat --- then \emph{every} factor in that entity is being
+  compared against a null built from unlike dependents, and unrelated factors
+  come out significant. In a panel built that way, a pure-noise factor reached
+  $p = 0.022$ and outranked the genuine driver. Check that the dependent is
+  exchangeable across entities before believing any of the p-values.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: feeding velocities back into the contribution routines]
+  \code{compute\_velocity\_trajectories} returns
+  \code{(n\_timepoints-1, n\_factors, n\_samples)} --- the axes reordered
+  relative to its own input. Passing that to
+  \code{compute\_all\_contributions}, which expects
+  \code{(n\_factors, n\_samples, n\_timepoints)}, raises no error: the extents
+  are simply read in the wrong roles and plausible numbers come back computed
+  over the wrong axes entirely. Use
+  \code{compute\_velocity\_acceleration\_contributions}, which starts from
+  positions and keeps the layout, unless you are transposing deliberately.
+\end{pitfall}
+
+\begin{note}
+  The methods document also describes weighted combinations of factors and of
+  dependents, $F^{\ast} = \sum_j \alpha_j F_j$. There is no separate routine
+  for these: build the combined series yourself and pass it as another row of
+  the first axis. Group-level comparisons between sets of entities are likewise
+  left to the user, on the totals this recipe produces.
+\end{note}
+
+\begin{interpretation}
+  A total contribution is a \emph{descriptive} quantity: its sign says whether
+  the factor and the dependent deviate from their baselines together or in
+  opposition, and its magnitude how consistently. Ranking factors by it is the
+  primary result, and it stands on its own without any p-value.
+
+  The per-timepoint series is where the method earns its name. A total built
+  from one enormous spike and twenty quiet points means something quite
+  different from the same total spread evenly across the trajectory, and only
+  the series distinguishes them --- read it before interpreting the total.
+
+  Velocity contributions say whether the two variables \emph{change} together,
+  which is a different claim from moving together: two variables can sit at
+  consistently high levels without their year-to-year increments aligning at
+  all. Acceleration contributions mark shared turning points. Both are
+  answers to narrower questions than the ambient contribution, not refinements
+  of it.
+
+  Finally, keep the descriptive and the inferential parts apart when reporting.
+  The contribution describes your data; the p-value describes how your entity
+  compares with the other entities you happened to supply.
+\end{interpretation}
+
+\begin{references}
+  \reference{Good (2005). \emph{Permutation, Parametric, and Bootstrap Tests
+    of Hypotheses}. 3rd ed., Springer.}
+  \reference{Phipson \& Smyth (2010). Permutation p-values should never be
+    zero: calculating exact p-values when permutations are randomly drawn.
+    \emph{Statistical Applications in Genetics and Molecular Biology}
+    9(1):Article 39.}
+\end{references}
+
+\end{recipe}
