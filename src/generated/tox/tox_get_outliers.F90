@@ -482,8 +482,8 @@ contains
             perm,&
             is_outlier,&
             threshold,&
-            quantile,&
-            percentile,&
+            tail_probability,&
+            quantile_level,&
             ierr&
         )
         integer(int32), intent(in) :: n_genes
@@ -502,13 +502,13 @@ contains
             !! Output boolean array indicating outliers
         real(real64), intent(out) :: threshold
             !! Output threshold value used for detection
-        real(real64), dimension(n_genes), intent(out) :: quantile
-            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+        real(real64), dimension(n_genes), intent(out) :: tail_probability
+            !! Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-            !! upper-tail quantile is used.
-        real(real64), intent(in), optional :: percentile
-            !! Percentile threshold as a fraction in [0,1] (top 5% for the default).
+            !! upper-tail probability is used.
+        real(real64), intent(in), optional :: quantile_level
+            !! Quantile level of the threshold, as a fraction in [0,1] (the top 5% for the default).
             !! The default value is `0.95_real64`.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
@@ -518,7 +518,7 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
-        call validate_in_range_real(percentile, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(quantile_level, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 #endif
 
@@ -529,8 +529,8 @@ contains
             perm = perm,&
             is_outlier = is_outlier,&
             threshold = threshold,&
-            quantile = quantile,&
-            percentile = percentile&
+            tail_probability = tail_probability,&
+            quantile_level = quantile_level&
         )
     end subroutine identify_outliers
 
@@ -548,9 +548,9 @@ contains
             loess_x,&
             loess_y,&
             loess_n,&
-            quantile,&
+            tail_probability,&
             ierr,&
-            percentile&
+            quantile_level&
         )
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
@@ -570,15 +570,15 @@ contains
             !! Reference y-coordinates (length n_total).
         integer(int32), dimension(n_families), intent(out) :: loess_n
             !! Indices of reference points used for smoothing.
-        real(real64), dimension(n_genes), intent(out) :: quantile
-            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+        real(real64), dimension(n_genes), intent(out) :: tail_probability
+            !! Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-            !! upper-tail quantile is used.
+            !! upper-tail probability is used.
         integer(int32), intent(out) :: ierr
             !! Error code
-        real(real64), intent(in), optional :: percentile
-            !! Percentile threshold as a fraction in [0,1] for outlier detection.
+        real(real64), intent(in), optional :: quantile_level
+            !! Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
             !! The default value is `0.95_real64`.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
@@ -609,7 +609,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
-        call validate_in_range_real(percentile, ierr, arg_pos=11_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(quantile_level, ierr, arg_pos=11_int32, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 #endif
 
@@ -670,9 +670,9 @@ contains
             loess_x = loess_x,&
             loess_y = loess_y,&
             loess_n = loess_n,&
-            quantile = quantile,&
+            tail_probability = tail_probability,&
             ierr = ierr,&
-            percentile = percentile&
+            quantile_level = quantile_level&
         )
         call clear_err_arg_pos(ierr)
     end subroutine detect_outliers
@@ -713,9 +713,9 @@ contains
             loess_x,&
             loess_y,&
             loess_n,&
-            quantile,&
+            tail_probability,&
             ierr,&
-            percentile&
+            quantile_level&
         )
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
@@ -793,15 +793,15 @@ contains
             !! Reference y-coordinates (length n_total).
         integer(int32), dimension(n_families), intent(out) :: loess_n
             !! Indices of reference points used for smoothing.
-        real(real64), dimension(n_genes), intent(out) :: quantile
-            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+        real(real64), dimension(n_genes), intent(out) :: tail_probability
+            !! Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-            !! upper-tail quantile is used.
+            !! upper-tail probability is used.
         integer(int32), intent(out) :: ierr
             !! Error code
-        real(real64), intent(in), optional :: percentile
-            !! Percentile threshold as a fraction in [0,1] for outlier detection.
+        real(real64), intent(in), optional :: quantile_level
+            !! Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
             !! The default value is `0.95_real64`.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
@@ -812,7 +812,7 @@ contains
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=9_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=11_int32)
-        call validate_in_range_real(percentile, ierr, arg_pos=33_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(quantile_level, ierr, arg_pos=33_int32, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 #endif
 
@@ -847,9 +847,9 @@ contains
             loess_x = loess_x,&
             loess_y = loess_y,&
             loess_n = loess_n,&
-            quantile = quantile,&
+            tail_probability = tail_probability,&
             ierr = ierr,&
-            percentile = percentile&
+            quantile_level = quantile_level&
         )
         call clear_err_arg_pos(ierr)
     end subroutine detect_outliers_expert

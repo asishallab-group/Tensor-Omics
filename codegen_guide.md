@@ -747,13 +747,13 @@ and `ierr`.
 
 **A dummy the implementation does not have becomes an argument of `foo`.** What the prologue
 derives *from* is usually no business of the implementation's: a threshold comes from a
-`percentile`, and the implementation takes the threshold. So `percentile` joins the plain
+`quantile_level`, and the implementation takes the threshold. So `quantile_level` joins the plain
 wrapper's signature — that one alone, since only it runs the prologue — and is validated there
 like any other argument, its range macros included. `foo_expert` takes the derived value directly
 and never sees it:
 
 ```
-foo         (values, n, result, percentile, ierr)               ← you supply the percentile
+foo         (values, n, result, quantile_level, ierr)           ← you supply the quantile level
 foo_expert  (values, n, threshold, tmp_scratch, result, ierr)   ← you supply the threshold
 ```
 

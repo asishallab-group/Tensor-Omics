@@ -17,9 +17,9 @@ source("r/test_helpers.R")
   list(sorted_rdi = sorted_rdi, perm = order(sorted_rdi))
 }
 
-outliers_of <- function(rdi, percentile) {
+outliers_of <- function(rdi, quantile_level) {
   prep <- .sort_prep(rdi)
-  identify_outliers(rdi, prep$sorted_rdi, prep$perm, percentile)
+  identify_outliers(rdi, prep$sorted_rdi, prep$perm, quantile_level)
 }
 
 # =====================
@@ -168,9 +168,9 @@ test_compute_rdi_negative_distances <- function() {
 # Test 9: Simple outlier identification
 test_identify_outliers_simple <- function() {
   rdi <- c(0.3, 0.1, 0.5, 0.2, 0.4)
-  percentile <- 0.5
+  quantile_level <- 0.5
   
-  result <- outliers_of(rdi, percentile)
+  result <- outliers_of(rdi, quantile_level)
   
   # Verify outlier detection logic
   assert_true(length(result$is_outlier) == length(rdi))
@@ -182,9 +182,9 @@ test_identify_outliers_simple <- function() {
 # Test 10: All zeros RDI
 test_identify_outliers_all_zeros <- function() {
   rdi <- c(0, 0, 0, 0, 0)
-  percentile <- 0.9
+  quantile_level <- 0.9
   
-  result <- outliers_of(rdi, percentile)
+  result <- outliers_of(rdi, quantile_level)
   
   # Verify no outliers detected when all RDI are zero
   assert_true(!any(result$is_outlier))
@@ -195,9 +195,9 @@ test_identify_outliers_all_zeros <- function() {
 # Test 11: Percentile 0 (all outliers)
 test_identify_outliers_percentile_0 <- function() {
   rdi <- c(0.3, 0.1, 0.5, 0.2, 0.4)
-  percentile <- 0.0
+  quantile_level <- 0.0
   
-  result <- outliers_of(rdi, percentile)
+  result <- outliers_of(rdi, quantile_level)
 
   # Verify all are outliers at 0% percentile
   assert_true(all(result$is_outlier))
@@ -207,9 +207,9 @@ test_identify_outliers_percentile_0 <- function() {
 # Test 12: Percentile 100 (minimal outliers)
 test_identify_outliers_percentile_100 <- function() {
   rdi <- c(0.3, 0.1, 0.5, 0.2, 0.4)
-  percentile <- 1.0
+  quantile_level <- 1.0
   
-  result <- outliers_of(rdi, percentile)
+  result <- outliers_of(rdi, quantile_level)
   
   # Verify only highest RDI values are outliers
   assert_true(sum(result$is_outlier) >= 0)  # At least 0 outliers
@@ -227,13 +227,13 @@ test_detect_outliers_typical <- function() {
   n_families <- 8
   genes_per_fam <- 6
   n_genes <- n_families * genes_per_fam
-  percentile <- 0.8
+  quantile_level <- 0.8
 
   # Generate distances and gene-to-family mapping
   distances <- runif(n_genes, 1, 10)  # Random distances
   gene_to_fam <- rep(1:n_families, each = genes_per_fam)
 
-  result <- detect_outliers(n_families, distances, gene_to_fam, percentile)
+  result <- detect_outliers(n_families, distances, gene_to_fam, quantile_level)
 
   # Verify typical workflow
   assert_true(length(result$is_outlier) == length(distances))
@@ -248,11 +248,11 @@ test_detect_outliers_invalid_families <- function() {
   distances <- c(1, 2, 3, 4, 5, 6)
   gene_to_fam <- c(1, 3, 2, 2, 2, 2)  # family 3 doesn't exist
   n_families <- 2
-  percentile <- 0.8
+  quantile_level <- 0.8
   
   error_caught <- FALSE
   tryCatch({
-    detect_outliers(n_families, distances, gene_to_fam, percentile)
+    detect_outliers(n_families, distances, gene_to_fam, quantile_level)
   }, error = function(e) {
     error_caught <<- TRUE
     # Check that the error message contains expected text
@@ -267,9 +267,9 @@ test_detect_outliers_single_families <- function() {
   distances <- c(1, 10, 100)  # Each gene in different family
   gene_to_fam <- c(1, 2, 3)
   n_families <- 3
-  percentile <- 0.9
+  quantile_level <- 0.9
   
-  result <- detect_outliers(n_families, distances, gene_to_fam, percentile)
+  result <- detect_outliers(n_families, distances, gene_to_fam, quantile_level)
   
   # Verify single gene families don't cause errors
   assert_true(length(result$is_outlier) == length(distances))
@@ -303,9 +303,9 @@ test_detect_outliers_mixed_sizes <- function() {
     rep(8, 5)    # Family 8
   )
   n_families <- 8
-  percentile <- 0.95
+  quantile_level <- 0.95
 
-  result <- detect_outliers(n_families, distances, gene_to_fam, percentile)
+  result <- detect_outliers(n_families, distances, gene_to_fam, quantile_level)
 
   # Verify mixed family sizes work
   assert_true(length(result$is_outlier) == length(distances))
@@ -335,9 +335,9 @@ test_detect_outliers_large_dataset <- function() {
   # Map each distance to a family index. The constructed distances vector has
   # 10+10+10+10+10+10+10+10+2 = 92 elements, so create a matching mapping of length 92.
   gene_to_fam <- c(rep(1:10, each = 9), 9, 10)
-  percentile <- 0.9
+  quantile_level <- 0.9
 
-  result <- detect_outliers(n_families, distances, gene_to_fam, percentile)
+  result <- detect_outliers(n_families, distances, gene_to_fam, quantile_level)
   # Verify large dataset handling
   assert_true(length(result$is_outlier) == n_genes)
   assert_true(sum(result$is_outlier) >= 0)  # At least 0 outliers detected

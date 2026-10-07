@@ -1,11 +1,11 @@
-!> @file mod_test_empirical_pvalue.f90
+!> @file mod_test_tail_probability.f90
 !> Unit test suite for EDF (Empirical Distribution Function)
 !> Contains dedicated tests for compute_edf from f42_stats.
 
-module mod_test_empirical_pvalue
+module mod_test_tail_probability
   use asserts
   use f42_sort_impl, only: binary_search_insertion
-  use f42_stats_impl, only: compute_scaled_distance_quantile_impl
+  use f42_stats_impl, only: compute_scaled_distance_tail_probability_impl
   use tox_errors
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use test_suite
@@ -15,23 +15,23 @@ module mod_test_empirical_pvalue
 contains
 
   !> Get array of all available EPV tests.
-  function get_all_tests_empirical_pvalue() result(all_tests)
+  function get_all_tests_tail_probability() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
     allocate(all_tests(9))
 
     all_tests(1) = test_case("test_lower_bound_ge_singleton", test_lower_bound_ge_singleton)
     all_tests(2) = test_case("test_lower_bound_ge_increasing", test_lower_bound_ge_increasing)
     all_tests(3) = test_case("test_lower_bound_ge_duplicates", test_lower_bound_ge_duplicates)
-    all_tests(4) = test_case("test_empirical_pvalues_denom_le_zero", test_empirical_pvalues_denom_le_zero)
-    all_tests(5) = test_case("test_empirical_pvalues_negative_is_one", test_empirical_pvalues_negative_is_one)
-    all_tests(6) = test_case("test_empirical_pvalues_extremes", test_empirical_pvalues_extremes)
-    all_tests(7) = test_case("test_empirical_pvalues_duplicates", test_empirical_pvalues_duplicates)
-    all_tests(8) = test_case("test_empirical_pvalues_matches_naive_all", test_empirical_pvalues_matches_naive_all)
-    all_tests(9) = test_case("test_empirical_pvalues_monotonicity", test_empirical_pvalues_monotonicity)
-  end function get_all_tests_empirical_pvalue
+    all_tests(4) = test_case("test_tail_probability_denom_le_zero", test_tail_probability_denom_le_zero)
+    all_tests(5) = test_case("test_tail_probability_negative_is_one", test_tail_probability_negative_is_one)
+    all_tests(6) = test_case("test_tail_probability_extremes", test_tail_probability_extremes)
+    all_tests(7) = test_case("test_tail_probability_duplicates", test_tail_probability_duplicates)
+    all_tests(8) = test_case("test_tail_probability_matches_naive_all", test_tail_probability_matches_naive_all)
+    all_tests(9) = test_case("test_tail_probability_monotonicity", test_tail_probability_monotonicity)
+  end function get_all_tests_tail_probability
 
         ! ==========================================================================
-    ! TESTS: lower_bound_ge + compute_scaled_distance_quantile_impl
+    ! TESTS: lower_bound_ge + compute_scaled_distance_tail_probability_impl
     ! ==========================================================================
 
     !> Helper: naive count of elements >= d in the perm-sorted distribution
@@ -134,11 +134,11 @@ contains
 
 
     ! ==========================================================================
-    ! compute_scaled_distance_quantile_impl
+    ! compute_scaled_distance_tail_probability_impl
     ! ==========================================================================
 
-    !> Edge: denom <= 0 => quantile = 1
-    subroutine test_empirical_pvalues_denom_le_zero()
+    !> Edge: denom <= 0 => tail probability = 1
+    subroutine test_tail_probability_denom_le_zero()
       use, intrinsic :: iso_fortran_env, only: int32, real64
       implicit none
       integer(int32), parameter :: n = 4
@@ -152,17 +152,17 @@ contains
       rdi = [0.0_real64, 1.0_real64, 2.0_real64, 3.0_real64]
 
       ! choose c so denom = n + c <= 0
-      call compute_scaled_distance_quantile_impl(n, rdi, s, perm, p, -4.0_real64)
+      call compute_scaled_distance_tail_probability_impl(n, rdi, s, perm, p, -4.0_real64)
 
       call assert_equal_real(p(1), 1.0_real64, 1d-12, "denom<=0 -> p=1 (1)")
       call assert_equal_real(p(2), 1.0_real64, 1d-12, "denom<=0 -> p=1 (2)")
       call assert_equal_real(p(3), 1.0_real64, 1d-12, "denom<=0 -> p=1 (3)")
       call assert_equal_real(p(4), 1.0_real64, 1d-12, "denom<=0 -> p=1 (4)")
-    end subroutine test_empirical_pvalues_denom_le_zero
+    end subroutine test_tail_probability_denom_le_zero
 
 
     !> Negative rdi => p=1, regardless of distribution
-    subroutine test_empirical_pvalues_negative_is_one()
+    subroutine test_tail_probability_negative_is_one()
       use, intrinsic :: iso_fortran_env, only: int32, real64
       implicit none
       integer(int32), parameter :: n = 5
@@ -175,15 +175,15 @@ contains
 
       rdi = [-1.0_real64, 0.0_real64, 2.0_real64, -5.0_real64, 4.0_real64]
 
-      call compute_scaled_distance_quantile_impl(n, rdi, s, perm, p, c)
+      call compute_scaled_distance_tail_probability_impl(n, rdi, s, perm, p, c)
 
       call assert_equal_real(p(1), 1.0_real64, 1d-12, "negative rdi -> p=1")
       call assert_equal_real(p(4), 1.0_real64, 1d-12, "negative rdi -> p=1")
-    end subroutine test_empirical_pvalues_negative_is_one
+    end subroutine test_tail_probability_negative_is_one
 
 
     !> Extremes: d below min => p=1; d above max => p = c/(n+c)
-    subroutine test_empirical_pvalues_extremes()
+    subroutine test_tail_probability_extremes()
       use, intrinsic :: iso_fortran_env, only: int32, real64
       implicit none
       integer(int32), parameter :: n = 4
@@ -201,7 +201,7 @@ contains
       ! gene values: negative, equal min, above max, equal max
       rdi = [-0.5_real64, 0.0_real64, 10.0_real64, 3.0_real64]
 
-      call compute_scaled_distance_quantile_impl(n, rdi, s, perm, p, c)
+      call compute_scaled_distance_tail_probability_impl(n, rdi, s, perm, p, c)
 
       call assert_equal_real(p(1), 1.0_real64, 1d-12, "negative -> p=1")
 
@@ -215,11 +215,11 @@ contains
       ! d=3: count=1 => (1+c)/(n+c)
       expected = (1.0_real64 + c) / denom
       call assert_equal_real(p(4), expected, 1d-12, "d==max -> p=(1+c)/(n+c)")
-    end subroutine test_empirical_pvalues_extremes
+    end subroutine test_tail_probability_extremes
 
 
-    !> Duplicates: all genes with same d get same quantile; counts include equals (>=)
-    subroutine test_empirical_pvalues_duplicates()
+    !> Duplicates: all genes with same d get same tail probability; counts include equals (>=)
+    subroutine test_tail_probability_duplicates()
       use, intrinsic :: iso_fortran_env, only: int32, real64
       implicit none
       integer(int32), parameter :: n = 6
@@ -237,19 +237,19 @@ contains
       ! genes include several 2's
       rdi = [2.0_real64, 9.0_real64, 1.0_real64, 2.0_real64, 5.0_real64, 2.0_real64]
 
-      call compute_scaled_distance_quantile_impl(n, rdi, s, perm, p, c)
+      call compute_scaled_distance_tail_probability_impl(n, rdi, s, perm, p, c)
 
       ! for d=2: values >=2 are [2,2,2,5,9] => count=5 => (5+c)/(n+c)
       expected_for_2 = (5.0_real64 + c) / denom
 
       call assert_equal_real(p(1), expected_for_2, 1d-12, "d=2 -> (5+c)/(n+c)")
-      call assert_equal_real(p(4), expected_for_2, 1d-12, "d=2 -> same quantile")
-      call assert_equal_real(p(6), expected_for_2, 1d-12, "d=2 -> same quantile")
-    end subroutine test_empirical_pvalues_duplicates
+      call assert_equal_real(p(4), expected_for_2, 1d-12, "d=2 -> same tail probability")
+      call assert_equal_real(p(6), expected_for_2, 1d-12, "d=2 -> same tail probability")
+    end subroutine test_tail_probability_duplicates
 
 
     !> Exhaustive correctness vs naive counting for all genes (fixed values)
-    subroutine test_empirical_pvalues_matches_naive_all()
+    subroutine test_tail_probability_matches_naive_all()
       use, intrinsic :: iso_fortran_env, only: int32, real64
       implicit none
       integer(int32), parameter :: n = 7
@@ -269,7 +269,7 @@ contains
 
       rdi = [-1.0_real64, 0.0_real64, 1.0_real64, 1.7_real64, 2.0_real64, 10.0_real64, 99.0_real64]
 
-      call compute_scaled_distance_quantile_impl(n, rdi, s, perm, p, c)
+      call compute_scaled_distance_tail_probability_impl(n, rdi, s, perm, p, c)
 
       do i = 1, n
         if (rdi(i) < 0.0_real64) then
@@ -278,13 +278,13 @@ contains
           k = naive_count_ge(s, perm, n, rdi(i))
           expected = (real(k, real64) + c) / denom
         end if
-        call assert_equal_real(p(i), expected, 1d-12, "quantile must match naive counting for each gene")
+        call assert_equal_real(p(i), expected, 1d-12, "tail probability must match naive counting for each gene")
       end do
-    end subroutine test_empirical_pvalues_matches_naive_all
+    end subroutine test_tail_probability_matches_naive_all
 
 
     !> Monotonicity sanity: if d1 < d2 then p(d1) >= p(d2) for non-negative d
-    subroutine test_empirical_pvalues_monotonicity()
+    subroutine test_tail_probability_monotonicity()
       use, intrinsic :: iso_fortran_env, only: int32, real64
       implicit none
       integer(int32), parameter :: n = 5
@@ -298,14 +298,14 @@ contains
 
       rdi = [0.0_real64, 1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
 
-      call compute_scaled_distance_quantile_impl(n, rdi, s, perm, p, c)
+      call compute_scaled_distance_tail_probability_impl(n, rdi, s, perm, p, c)
 
       call assert_true(p(1) >= p(2), "monotonic: p(0) >= p(1)")
       call assert_true(p(2) >= p(3), "monotonic: p(1) >= p(2)")
       call assert_true(p(3) >= p(4), "monotonic: p(2) >= p(3)")
       call assert_true(p(4) >= p(5), "monotonic: p(3) >= p(4)")
-    end subroutine test_empirical_pvalues_monotonicity
+    end subroutine test_tail_probability_monotonicity
 
 
 
-end module mod_test_empirical_pvalue
+end module mod_test_tail_probability
