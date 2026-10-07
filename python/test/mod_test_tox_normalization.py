@@ -107,6 +107,14 @@ def test_quantile_normalization():
     _assert_matrix(result["rank_means"], (N_GENES,), "rank_means")
 
 
+def test_quantile_normalization_near_huge():
+    # one replicate [1e308, 1e308], a tie near the largest float64; the values themselves are the
+    # Fortran suite's job
+    result = quantile_normalization(np.full((1, 2), 1e308, dtype=np.float64))
+    _assert_matrix(result["normalized_expr"], (1, 2), "normalized_expr")
+    _assert_matrix(result["rank_means"], (2,), "rank_means")
+
+
 def test_log2_transformation():
     tissue_averages = calc_tiss_avg(REPS_PER_TISSUE, _expr())
     _assert_matrix(log2_transformation(tissue_averages), (len(REPS_PER_TISSUE), N_GENES), "log2_transformation")

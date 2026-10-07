@@ -490,7 +490,11 @@ contains
     !| Computes average expression per rank across tissues.
     !| Tied values within a replicate share the mean of the rank means their ranks span, so values
     !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
-    !| `normalizeQuantiles`. The rank means themselves do not depend on ties.
+    !| `normalizeQuantiles`. Where those rank means are all equal, the tie gets exactly that value.
+    !| The rank means themselves do not depend on ties.
+    !|
+    !| No mean overflows for finite input, however close to the largest real64 (about 1.8e308) the
+    !| values are, and a single replicate comes back exactly as it was, ties included.
     pure subroutine quantile_normalization_impl(n_genes, n_replicates, expr, normalized_expr, rank_means, tmp_genes_row, tmp_perm)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
@@ -513,7 +517,11 @@ contains
 
     !> AUTHOR_VIVIAN_BASS
     !| Quantile normalization of a gene expression matrix (F42-compliant).
-    !| Computes average expression per rank across tissues.
+    !| Computes average expression per rank across tissues, each value divided by the number of
+    !| replicates before it is added, so no rank mean overflows for finite input; a rank mean that
+    !| still rounds past `huge` is `huge`, with its sign. A tie gets the
+    !| [[f42_math_impl(module):mean(function)]] of the rank means it spans, or their common value
+    !| exactly where they are equal, so a single replicate comes back unchanged.
     pure subroutine quantile_normalization_inplace_helper(n_genes, n_replicates, expr, rank_means, tmp_genes_row, tmp_perm)
         use f42_sort_impl, only: sort_array_heapsort
 
@@ -552,15 +560,18 @@ contains
             ! Sort current column with index tracking
             call sort_array_heapsort(tmp_genes_row, tmp_perm)
 
-            ! Accumulate values for each rank
+            ! Accumulate the mean of each rank. Each value is divided before it is added, so no
+            ! partial sum outgrows the largest value: the rank means of values near huge do not
+            ! overflow where their plain sum would, and one replicate is its own rank means exactly.
             do i_gene = 1, n_genes
-                rank_means(i_gene) = rank_means(i_gene) + tmp_genes_row(tmp_perm(i_gene))
+                rank_means(i_gene) = rank_means(i_gene) + tmp_genes_row(tmp_perm(i_gene))/real(n_replicates, real64)
             end do
         end do
 
-        ! Average the rank values
-        do concurrent (i_gene = 1:n_genes) shared(rank_means, n_replicates)
-            rank_means(i_gene) = rank_means(i_gene) / real(n_replicates, real64)
+        ! The divided terms can still round past huge where every one of them lies within about
+        ! n_replicates*epsilon of it; such a rank mean is huge, with its sign.
+        do concurrent (i_gene = 1:n_genes) shared(rank_means)
+            if (.not. ieee_is_finite(rank_means(i_gene))) rank_means(i_gene) = sign(huge(1.0_real64), rank_means(i_gene))
         end do
 
         ! === Second pass: give each value the mean of its rank ===
@@ -582,7 +593,13 @@ contains
                     last_rank = last_rank + 1
                 end do
 
-                tied_mean = sum(rank_means(first_rank:last_rank))/real(last_rank - first_rank + 1, real64)
+                ! The rank means are sorted, so equal ends mean an equal group, which keeps that value
+                ! exactly; a computed mean of equal values can round away from it.
+                if (rank_means(first_rank) == rank_means(last_rank)) then
+                    tied_mean = rank_means(first_rank)
+                else
+                    tied_mean = mean(rank_means(first_rank:last_rank))
+                end if
                 do concurrent (i_rank = first_rank:last_rank) shared(expr, tmp_perm, i_tissue, tied_mean)
                     expr(i_tissue, tmp_perm(i_rank)) = tied_mean
                 end do

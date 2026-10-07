@@ -1,9 +1,9 @@
 !> The `quantile_normalization` cases: hand-derived rank means and the exact matrix each replicate
-!| becomes, ties, the degenerate shapes, and the input checks.
+!| becomes, ties, the degenerate shapes, values near the largest real64, and the input checks.
 module mod_test_quantile_normalization
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf, ieee_is_finite
     use tox_normalization
     use test_suite, only: test_case
     use tox_errors
@@ -17,7 +17,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_quantile_normalization() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(9))
+        allocate (all_tests(13))
 
         all_tests(1) = test_case("test_quantile_different_rank_orders", test_quantile_different_rank_orders)
         all_tests(2) = test_case("test_quantile_proportional_replicates", test_quantile_proportional_replicates)
@@ -29,6 +29,10 @@ contains
         all_tests(7) = test_case("test_quantile_trivial_1x1", test_quantile_trivial_1x1)
         all_tests(8) = test_case("test_quantile_rejects_nan_and_inf", test_quantile_rejects_nan_and_inf)
         all_tests(9) = test_case("test_quantile_dimensions", test_quantile_dimensions)
+        all_tests(10) = test_case("test_quantile_single_replicate_near_huge", test_quantile_single_replicate_near_huge)
+        all_tests(11) = test_case("test_quantile_replicates_near_huge", test_quantile_replicates_near_huge)
+        all_tests(12) = test_case("test_quantile_all_huge", test_quantile_all_huge)
+        all_tests(13) = test_case("test_quantile_single_replicate_ties", test_quantile_single_replicate_ties)
     end function get_all_tests_quantile_normalization
 
     !> The essence of quantile normalization: replicates that rank the genes differently. The
@@ -215,5 +219,101 @@ contains
         call quantile_normalization_expert(1, -5, expr, normalized, means, tmp, perm, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_quantile_dimensions: n_replicates = -5")
     end subroutine test_quantile_dimensions
+
+    !> A single replicate [1e308, 1e308] is one tie of two values near the largest real64: it comes
+    !| back exactly as it was. Summing the tie's rank means before dividing overflowed to Inf.
+    subroutine test_quantile_single_replicate_near_huge()
+        integer(int32), parameter :: n_genes = 2, n_replicates = 1
+        real(real64), dimension(n_replicates, n_genes) :: expr, normalized
+        real(real64) :: means(n_genes), tmp(n_genes)
+        integer(int32) :: perm(n_genes), ierr
+
+        expr = 1.0e308_real64
+
+        call quantile_normalization_expert(n_genes, n_replicates, expr, normalized, means, tmp, perm, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_quantile_single_replicate_near_huge: ierr")
+        call assert_equal_array_real(normalized, expr, n_genes, 0.0_real64, &
+                                     "test_quantile_single_replicate_near_huge: [1e308, 1e308] must stay unchanged")
+    end subroutine test_quantile_single_replicate_near_huge
+
+    !> Three replicates of [1.0e308, 1.5e308]: summed across replicates before dividing, each rank
+    !| overflowed. Divided first, every value comes back to 4 ulps, and finite.
+    subroutine test_quantile_replicates_near_huge()
+        integer(int32), parameter :: n_genes = 2, n_replicates = 3
+        real(real64), dimension(n_replicates, n_genes) :: expr, normalized
+        real(real64) :: means(n_genes), tmp(n_genes)
+        integer(int32) :: perm(n_genes), ierr, i_gene, i_replicate
+
+        expr(:, 1) = 1.0e308_real64
+        expr(:, 2) = 1.5e308_real64
+
+        call quantile_normalization_expert(n_genes, n_replicates, expr, normalized, means, tmp, perm, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_quantile_replicates_near_huge: ierr")
+        call assert_no_inf_real(normalized, n_genes*n_replicates, "test_quantile_replicates_near_huge: no Inf")
+        do i_gene = 1, n_genes
+            do i_replicate = 1, n_replicates
+                call assert_equal_real(normalized(i_replicate, i_gene), expr(i_replicate, i_gene), &
+                                       4*spacing(expr(i_replicate, i_gene)), &
+                                       "test_quantile_replicates_near_huge: each value to 4 ulps")
+            end do
+        end do
+    end subroutine test_quantile_replicates_near_huge
+
+    !> Three replicates whose values are all huge: the rank means, though divided before they are
+    !| added, can round past huge, and are then huge itself. Every value comes back finite and
+    !| within 1 ulp of huge.
+    subroutine test_quantile_all_huge()
+        integer(int32), parameter :: n_genes = 2, n_replicates = 3
+        real(real64), dimension(n_replicates, n_genes) :: expr, normalized, expected
+        real(real64) :: means(n_genes), tmp(n_genes)
+        integer(int32) :: perm(n_genes), ierr, i_gene, i_replicate
+
+        expr = huge(1.0_real64)
+        expected = huge(1.0_real64)
+
+        call quantile_normalization_expert(n_genes, n_replicates, expr, normalized, means, tmp, perm, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_quantile_all_huge: ierr")
+        do i_gene = 1, n_genes
+            do i_replicate = 1, n_replicates
+                call assert_true(ieee_is_finite(normalized(i_replicate, i_gene)), "test_quantile_all_huge: finite")
+            end do
+        end do
+        call assert_equal_array_real(normalized, expected, n_genes*n_replicates, spacing(huge(1.0_real64)), &
+                                     "test_quantile_all_huge: every value within 1 ulp of huge")
+    end subroutine test_quantile_all_huge
+
+    !> A single replicate comes back exactly as it was, whatever its ties: a 3-way tie at 1e308,
+    !| whose sum overflowed; a tie of 1989 copies of 0.1 among other values, whose computed mean is
+    !| 0.0999999999999965; and a 3-way tie at 1.57e307, a precision check that also passed before
+    !| equal rank means kept their value, as three times 1.57e307 stays finite and divides back.
+    subroutine test_quantile_single_replicate_ties()
+        integer(int32), parameter :: n_tenths = 1989
+        real(real64) :: near_huge(1, 4), near_huge_out(1, 4), near_huge_means(4), near_huge_tmp(4)
+        real(real64) :: tenths(1, n_tenths + 3), tenths_out(1, n_tenths + 3), tenths_means(n_tenths + 3)
+        real(real64) :: tenths_tmp(n_tenths + 3)
+        integer(int32) :: near_huge_perm(4), tenths_perm(n_tenths + 3), ierr
+
+        near_huge(1, :) = [1.0e308_real64, 2.0_real64, 1.0e308_real64, 1.0e308_real64]
+        call quantile_normalization_expert(4, 1, near_huge, near_huge_out, near_huge_means, near_huge_tmp, &
+                                           near_huge_perm, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_quantile_single_replicate_ties: 1e308 tie, ierr")
+        call assert_equal_array_real(near_huge_out, near_huge, 4, 0.0_real64, &
+                                     "test_quantile_single_replicate_ties: a 3-way tie at 1e308 must stay unchanged")
+
+        ! the tenths with a smaller value before them and two larger ones after them
+        tenths(1, 1:n_tenths) = 0.1_real64
+        tenths(1, n_tenths + 1:) = [0.05_real64, 0.3_real64, 7.0_real64]
+        call quantile_normalization_expert(n_tenths + 3, 1, tenths, tenths_out, tenths_means, tenths_tmp, tenths_perm, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_quantile_single_replicate_ties: 0.1 tie, ierr")
+        call assert_equal_array_real(tenths_out, tenths, n_tenths + 3, 0.0_real64, &
+                                     "test_quantile_single_replicate_ties: 1989 tied copies of 0.1 must stay unchanged")
+
+        near_huge(1, :) = [1.57e307_real64, 1.57e307_real64, -3.0_real64, 1.57e307_real64]
+        call quantile_normalization_expert(4, 1, near_huge, near_huge_out, near_huge_means, near_huge_tmp, &
+                                           near_huge_perm, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_quantile_single_replicate_ties: 1.57e307 tie, ierr")
+        call assert_equal_array_real(near_huge_out, near_huge, 4, 0.0_real64, &
+                                     "test_quantile_single_replicate_ties: a 3-way tie at 1.57e307 must stay unchanged")
+    end subroutine test_quantile_single_replicate_ties
 
 end module mod_test_quantile_normalization

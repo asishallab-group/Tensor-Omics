@@ -80,6 +80,14 @@ test_quantile_normalization <- function() {
               "rank_means: expected a double vector, one per gene")
 }
 
+test_quantile_normalization_near_huge <- function() {
+  # one replicate c(1e308, 1e308), a tie near the largest double; the values themselves are the
+  # Fortran suite's job
+  result <- quantile_normalization(matrix(1e308, nrow = 1L, ncol = 2L))
+  .assert_matrix(result$normalized_expr, c(1L, 2L), "normalized_expr")
+  assert_true(all(is.finite(result$rank_means)), "rank_means: non-finite values")
+}
+
 test_log2_transformation <- function() {
   tissue_averages <- calc_tiss_avg(REPS_PER_TISSUE, .expr())
   .assert_matrix(log2_transformation(tissue_averages), c(length(REPS_PER_TISSUE), N_GENES), "log2_transformation")

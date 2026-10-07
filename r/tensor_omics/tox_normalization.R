@@ -120,7 +120,11 @@ root_mean_sq_normalization <- function(expr) {
 #' Computes average expression per rank across tissues.
 #' Tied values within a replicate share the mean of the rank means their ranks span, so values
 #' that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
-#' `normalizeQuantiles`. The rank means themselves do not depend on ties.
+#' `normalizeQuantiles`. Where those rank means are all equal, the tie gets exactly that value.
+#' The rank means themselves do not depend on ties.
+#'
+#' No mean overflows for finite input, however close to the largest real64 (about 1.8e308) the
+#' values are, and a single replicate comes back exactly as it was, ties included.
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::quantile_normalization}, whose argument names
 #' are the ones an error message reports.
