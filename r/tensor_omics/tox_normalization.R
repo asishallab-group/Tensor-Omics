@@ -98,6 +98,9 @@ normalize_by_std_dev <- function(expr, span = 0.7, degree = 2L) {
 #' Normalizes each gene's expression vector using `sqrt(mean(x^2))`
 #'
 #' across tissues (not classical standard deviation).
+#' Only a gene whose values are all exactly zero has no root mean square, and is left as it is;
+#' every other gene is divided by it, however small or large its values, up to the largest
+#' real64 (about 1.8e308).
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::root_mean_sq_normalization}, whose argument names
 #' are the ones an error message reports.

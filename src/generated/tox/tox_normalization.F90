@@ -587,6 +587,9 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):root_mean_sq_normalization_impl]].
     !| across tissues (not classical standard deviation).
+    !| Only a gene whose values are all exactly zero has no root mean square, and is left as it is;
+    !| every other gene is divided by it, however small or large its values, up to the largest
+    !| real64 (about 1.8e308).
     pure subroutine root_mean_sq_normalization(&
             n_genes,&
             n_replicates,&

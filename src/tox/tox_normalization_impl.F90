@@ -18,7 +18,7 @@ module tox_normalization_impl
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, &
                           validate_all_in_range_real, ERR_NAN_INF
     use f42_math_impl, only: is_close, log1p, LOG_2, above, mean, std_dev
-    use f42_vector_impl, only: norm, scaled_length
+    use f42_vector_impl, only: scaled_length
     use tox_loess_impl, only: loess_fit_robust_impl, EPS_LOESS
 
 #define CM_LOESS_SPAN_DEFAULT 0.7_real64
@@ -442,6 +442,9 @@ contains
     !> summary: Normalizes each gene's expression vector using `sqrt(mean(x^2))`
     !| AUTHOR_VIVIAN_BASS
     !| across tissues (not classical standard deviation).
+    !| Only a gene whose values are all exactly zero has no root mean square, and is left as it is;
+    !| every other gene is divided by it, however small or large its values, up to the largest
+    !| real64 (about 1.8e308).
     pure subroutine root_mean_sq_normalization_impl(n_genes, n_replicates, expr, normalized_expr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
@@ -459,6 +462,8 @@ contains
     !> AUTHOR_VIVIAN_BASS
     !| Normalizes each gene's expression vector using `sqrt(mean(x^2))`
     !| across tissues (not classical standard deviation).
+    !| A gene is left unchanged only where its root mean square is exactly zero, which makes it the
+    !| zero gene (or, where subnormals are flushed, one made only of subnormal values).
     pure subroutine root_mean_sq_normalization_inplace_helper(n_genes, n_replicates, expr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
@@ -468,18 +473,21 @@ contains
             !! Gene Expression matrix
 
         ! Local variables
-        integer(int32) :: i_gene, i_tissue
-        real(real64) :: rms
+        integer(int32) :: i_gene, i_tissue, exponent
+        real(real64) :: scaled_norm, scaled_rms
 
         ! Loop over each gene
-        do concurrent (i_gene = 1:n_genes) local(rms) shared(n_replicates, expr)
-            ! sqrt(mean(x**2)) is norm(x)/sqrt(n), and f42's norm is scaled: squares past the real64
-            ! range neither overflow, which divided the gene by Inf into zeros, nor underflow.
-            rms = norm(expr(:, i_gene))/sqrt(real(n_replicates, real64))
+        do concurrent (i_gene = 1:n_genes) local(exponent, scaled_norm, scaled_rms) shared(n_replicates, expr)
+            ! sqrt(mean(x**2)) is the gene's length over sqrt(n). The division happens in scaled
+            ! coordinates: for values near huge the rms itself overflows, or its reciprocal is
+            ! subnormal, and dividing by either zeroed the gene.
+            call scaled_length(n_replicates, expr(:, i_gene), exponent, scaled_norm)
 
-            if (.not. is_close(rms, 0.0_real64)) then
-                do concurrent (i_tissue = 1:n_replicates) shared(expr, i_gene, rms)
-                    expr(i_tissue, i_gene) = expr(i_tissue, i_gene) / rms
+            ! A length is never negative, so `>` is the exact test for non-zero.
+            if (scaled_norm > 0.0_real64) then
+                scaled_rms = scaled_norm/sqrt(real(n_replicates, real64))
+                do concurrent (i_tissue = 1:n_replicates) shared(expr, i_gene, exponent, scaled_rms)
+                    expr(i_tissue, i_gene) = scale(expr(i_tissue, i_gene), exponent)/scaled_rms
                 end do
             end if
         end do

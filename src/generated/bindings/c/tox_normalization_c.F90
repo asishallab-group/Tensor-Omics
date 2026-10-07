@@ -508,6 +508,9 @@ contains
 
     !> summary: C-wrapper for [[tox_normalization(module):root_mean_sq_normalization(subroutine)]]
     !| across tissues (not classical standard deviation).
+    !| Only a gene whose values are all exactly zero has no root mean square, and is left as it is;
+    !| every other gene is divided by it, however small or large its values, up to the largest
+    !| real64 (about 1.8e308).
     subroutine root_mean_sq_normalization_c(&
             n_genes,&
             n_replicates,&
