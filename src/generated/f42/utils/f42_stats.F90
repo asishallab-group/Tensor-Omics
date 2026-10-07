@@ -1,12 +1,12 @@
 #include <src/macros.h>
 
-!> Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.
+!> Descriptive statistics: quantiles, empirical distribution functions, and 2-D LOESS smoothing.
 !|
 !| One of the modules the `f42_utils` family gathers.
 !|
 !| Generated from [[f42_stats_impl(module)]]; do not edit -- regenerate instead.
 module f42_stats
-    use f42_stats_impl, only: calc_percentile_impl, compute_edf_impl, compute_scaled_distance_quantile_impl, loess_smooth_2d_impl
+    use f42_stats_impl, only: calc_quantile_impl, compute_edf_impl, compute_scaled_distance_tail_probability_impl, loess_smooth_2d_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_sort_impl, only: init_perm, sort_array_heapsort
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
@@ -18,10 +18,10 @@ module f42_stats
     public :: loess_smooth_2d
     public :: compute_edf
     public :: compute_edf_expert
-    public :: calc_percentile
-    public :: calc_percentile_expert
-    public :: compute_scaled_distance_quantile
-    public :: compute_scaled_distance_quantile_expert
+    public :: calc_quantile
+    public :: calc_quantile_expert
+    public :: compute_scaled_distance_tail_probability
+    public :: compute_scaled_distance_tail_probability_expert
 
 contains
 
@@ -194,12 +194,12 @@ contains
         )
     end subroutine compute_edf_expert
 
-    !> summary: Validates its inputs, prepares what [[f42_stats_impl(module):calc_percentile_impl]] needs, then calls it. The entry point to reach for first; see [[f42_stats(module):calc_percentile_expert]] to prepare it yourself.
+    !> summary: Validates its inputs, prepares what [[f42_stats_impl(module):calc_quantile_impl]] needs, then calls it. The entry point to reach for first; see [[f42_stats(module):calc_quantile_expert]] to prepare it yourself.
     !| Uses linear interpolation between adjacent values.
-    pure subroutine calc_percentile(&
+    pure subroutine calc_quantile(&
             array,&
             n_array,&
-            percentile,&
+            level,&
             value,&
             n_considered,&
             ierr&
@@ -208,15 +208,15 @@ contains
             !! number of elements in `array`
         real(real64), dimension(n_array), intent(in) :: array
             !! input array
-        real(real64), intent(in) :: percentile
-            !! desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
+        real(real64), intent(in) :: level
+            !! quantile level as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
         real(real64), intent(out) :: value
-            !! output percentile value
+            !! the quantile: the value a fraction `level` of the considered entries lies at or below
         integer(int32), intent(in), optional :: n_considered
-            !! How many leading entries of `array_perm` the percentile is taken over, for a
-            !! percentile of a subset -- the trailing entries are ignored rather than sliced
+            !! How many leading entries of `array_perm` the quantile is taken over, for a
+            !! quantile of a subset -- the trailing entries are ignored rather than sliced
             !! off, so the permutation stays the shape the sort produced. Zero, the default,
             !! considers all `n_array` of them.
             !! The default value is `0_int32`.
@@ -229,7 +229,7 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_array, ierr, arg_pos=2_int32)
-        call validate_in_range_real(percentile, ierr, arg_pos=3_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(level, ierr, arg_pos=3_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_int(n_considered, ierr, arg_pos=5_int32, min=0_int32, max=n_array)
         call validate_all_in_range_real(array, n_array, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
@@ -239,23 +239,23 @@ contains
         call init_perm(array_perm)
         call sort_array_heapsort(array, array_perm)
 
-        call calc_percentile_impl(&
+        call calc_quantile_impl(&
             array = array,&
             n_array = n_array,&
             array_perm = array_perm,&
-            percentile = percentile,&
+            level = level,&
             value = value,&
             n_considered = n_considered&
         )
-    end subroutine calc_percentile
+    end subroutine calc_quantile
 
-    !> summary: Validates its inputs, then calls [[f42_stats_impl(module):calc_percentile_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[f42_stats(module):calc_percentile]] does both.
+    !> summary: Validates its inputs, then calls [[f42_stats_impl(module):calc_quantile_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[f42_stats(module):calc_quantile]] does both.
     !| Uses linear interpolation between adjacent values.
-    pure subroutine calc_percentile_expert(&
+    pure subroutine calc_quantile_expert(&
             array,&
             n_array,&
             array_perm,&
-            percentile,&
+            level,&
             value,&
             n_considered,&
             ierr&
@@ -269,15 +269,15 @@ contains
             !! heapsorts it for you; the expert one takes whatever order you supply.
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_array`.
-        real(real64), intent(in) :: percentile
-            !! desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
+        real(real64), intent(in) :: level
+            !! quantile level as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
         real(real64), intent(out) :: value
-            !! output percentile value
+            !! the quantile: the value a fraction `level` of the considered entries lies at or below
         integer(int32), intent(in), optional :: n_considered
-            !! How many leading entries of `array_perm` the percentile is taken over, for a
-            !! percentile of a subset -- the trailing entries are ignored rather than sliced
+            !! How many leading entries of `array_perm` the quantile is taken over, for a
+            !! quantile of a subset -- the trailing entries are ignored rather than sliced
             !! off, so the permutation stays the shape the sort produced. Zero, the default,
             !! considers all `n_array` of them.
             !! The default value is `0_int32`.
@@ -289,41 +289,41 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_array, ierr, arg_pos=2_int32)
-        call validate_in_range_real(percentile, ierr, arg_pos=4_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(level, ierr, arg_pos=4_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_int(n_considered, ierr, arg_pos=6_int32, min=0_int32, max=n_array)
         call validate_all_in_range_real(array, n_array, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(array_perm, n_array, ierr, arg_pos=3_int32, min=1_int32, max=n_array)
         if (is_err(ierr)) return
 #endif
 
-        call calc_percentile_impl(&
+        call calc_quantile_impl(&
             array = array,&
             n_array = n_array,&
             array_perm = array_perm,&
-            percentile = percentile,&
+            level = level,&
             value = value,&
             n_considered = n_considered&
         )
-    end subroutine calc_percentile_expert
+    end subroutine calc_quantile_expert
 
-    !> summary: Validates its inputs, prepares what [[f42_stats_impl(module):compute_scaled_distance_quantile_impl]] needs, then calls it. The entry point to reach for first; see [[f42_stats(module):compute_scaled_distance_quantile_expert]] to prepare it yourself.
+    !> summary: Validates its inputs, prepares what [[f42_stats_impl(module):compute_scaled_distance_tail_probability_impl]] needs, then calls it. The entry point to reach for first; see [[f42_stats(module):compute_scaled_distance_tail_probability_expert]] to prepare it yourself.
     !| This is NOT a null-hypothesis-testing p-value: each distance is compared against the
     !| observed distribution it was drawn from, not an independently generated null distribution.
     !| It instead measures how extreme an observed distance is relative to all observed distances.
     !|
     !| Implements:
-    !| Q(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+    !| T(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
     !|
-    !| Because distances are non-negative, a one-sided upper-tail quantile is used.
+    !| Because distances are non-negative, a one-sided upper-tail probability is used.
     !|
     !| Assumptions / preconditions:
     !| - sorted_rdi(1:n_genes) contains the empirical distribution D.
     !| - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
-    pure subroutine compute_scaled_distance_quantile(&
+    pure subroutine compute_scaled_distance_tail_probability(&
             n_genes,&
             rdi,&
             sorted_rdi,&
-            quantile,&
+            tail_probability,&
             c_const,&
             ierr&
         )
@@ -337,8 +337,8 @@ contains
             !! empirical distribution D with non negative values
             !! NaN is permitted for this value.
             !! Infinite values are permitted for this value.
-        real(real64), dimension(n_genes), intent(out) :: quantile
-            !! Output array to store the computed quantile for each gene.
+        real(real64), dimension(n_genes), intent(out) :: tail_probability
+            !! Output array to store the computed upper-tail probability for each gene.
         real(real64), intent(in) :: c_const
             !! Constant used in the computation, typically 1
         integer(int32), intent(out) :: ierr
@@ -356,35 +356,35 @@ contains
         call init_perm(sorted_rdi_perm)
         call sort_array_heapsort(sorted_rdi, sorted_rdi_perm)
 
-        call compute_scaled_distance_quantile_impl(&
+        call compute_scaled_distance_tail_probability_impl(&
             n_genes = n_genes,&
             rdi = rdi,&
             sorted_rdi = sorted_rdi,&
             sorted_rdi_perm = sorted_rdi_perm,&
-            quantile = quantile,&
+            tail_probability = tail_probability,&
             c_const = c_const&
         )
-    end subroutine compute_scaled_distance_quantile
+    end subroutine compute_scaled_distance_tail_probability
 
-    !> summary: Validates its inputs, then calls [[f42_stats_impl(module):compute_scaled_distance_quantile_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[f42_stats(module):compute_scaled_distance_quantile]] does both.
+    !> summary: Validates its inputs, then calls [[f42_stats_impl(module):compute_scaled_distance_tail_probability_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[f42_stats(module):compute_scaled_distance_tail_probability]] does both.
     !| This is NOT a null-hypothesis-testing p-value: each distance is compared against the
     !| observed distribution it was drawn from, not an independently generated null distribution.
     !| It instead measures how extreme an observed distance is relative to all observed distances.
     !|
     !| Implements:
-    !| Q(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+    !| T(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
     !|
-    !| Because distances are non-negative, a one-sided upper-tail quantile is used.
+    !| Because distances are non-negative, a one-sided upper-tail probability is used.
     !|
     !| Assumptions / preconditions:
     !| - sorted_rdi(1:n_genes) contains the empirical distribution D.
     !| - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
-    pure subroutine compute_scaled_distance_quantile_expert(&
+    pure subroutine compute_scaled_distance_tail_probability_expert(&
             n_genes,&
             rdi,&
             sorted_rdi,&
             sorted_rdi_perm,&
-            quantile,&
+            tail_probability,&
             c_const,&
             ierr&
         )
@@ -403,8 +403,8 @@ contains
             !! and heapsorts it for you; the expert one takes whatever order you supply.
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_genes`.
-        real(real64), dimension(n_genes), intent(out) :: quantile
-            !! Output array to store the computed quantile for each gene.
+        real(real64), dimension(n_genes), intent(out) :: tail_probability
+            !! Output array to store the computed upper-tail probability for each gene.
         real(real64), intent(in) :: c_const
             !! Constant used in the computation, typically 1
         integer(int32), intent(out) :: ierr
@@ -418,14 +418,14 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call compute_scaled_distance_quantile_impl(&
+        call compute_scaled_distance_tail_probability_impl(&
             n_genes = n_genes,&
             rdi = rdi,&
             sorted_rdi = sorted_rdi,&
             sorted_rdi_perm = sorted_rdi_perm,&
-            quantile = quantile,&
+            tail_probability = tail_probability,&
             c_const = c_const&
         )
-    end subroutine compute_scaled_distance_quantile_expert
+    end subroutine compute_scaled_distance_tail_probability_expert
 
 end module f42_stats
