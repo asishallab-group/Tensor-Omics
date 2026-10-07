@@ -6,7 +6,8 @@ module mod_test_f42_reductions
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
-    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite, ieee_support_underflow_control, ieee_get_underflow_mode, &
+                                             ieee_set_underflow_mode
     use f42_math_impl, only: scaling_exponent, mean, std_dev
     use f42_vector_impl, only: norm, scaled_length
     use test_suite, only: test_case
@@ -21,16 +22,17 @@ contains
     function get_all_tests_f42_reductions() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(9))
+        allocate (all_tests(10))
         all_tests(1) = test_case("test_scaling_exponent_range_edges", test_scaling_exponent_range_edges)
         all_tests(2) = test_case("test_mean_values", test_mean_values)
         all_tests(3) = test_case("test_mean_extreme_magnitudes", test_mean_extreme_magnitudes)
         all_tests(4) = test_case("test_std_dev_centered", test_std_dev_centered)
         all_tests(5) = test_case("test_std_dev_equal_values", test_std_dev_equal_values)
         all_tests(6) = test_case("test_std_dev_extreme_magnitudes", test_std_dev_extreme_magnitudes)
-        all_tests(7) = test_case("test_scaled_length_zero_vector", test_scaled_length_zero_vector)
-        all_tests(8) = test_case("test_norm_values", test_norm_values)
-        all_tests(9) = test_case("test_norm_extreme_magnitudes", test_norm_extreme_magnitudes)
+        all_tests(7) = test_case("test_std_dev_close_values_flushed", test_std_dev_close_values_flushed)
+        all_tests(8) = test_case("test_scaled_length_zero_vector", test_scaled_length_zero_vector)
+        all_tests(9) = test_case("test_norm_values", test_norm_values)
+        all_tests(10) = test_case("test_norm_extreme_magnitudes", test_norm_extreme_magnitudes)
     end function get_all_tests_f42_reductions
 
     !> Values whose largest magnitude lies in [2**-470, 2**496] are not scaled (exponent 0); one ulp
@@ -141,6 +143,74 @@ contains
         call assert_true(sample > huge(1.0_real64) .and. .not. ieee_is_finite(sample), &
                          "test_std_dev_extreme_magnitudes: [huge, -huge], sample (Bessel) is past huge, Inf")
     end subroutine test_std_dev_extreme_magnitudes
+
+    !> Distinct values close together keep their spread where results below `tiny` are flushed to
+    !| zero: [2**-470, 2**-470 + 2**-520] has the population standard deviation 2**-521 exactly and
+    !| the sample one 2**-520.5, and [2**-465, 2**-465 + 2**-515] has 2**-516 and 2**-515.5 (the
+    !| sample ones to 4 eps, relative). Their squared distances lie far below `tiny`. With gradual
+    !| underflow those squares are exact subnormals, so the spread comes out right either way; the
+    !| run with underflow set to flush to zero, where the host supports switching, is the one that
+    !| shows the distances are scaled before they are squared. The default mode must agree.
+    subroutine test_std_dev_close_values_flushed()
+        integer(int32), parameter :: N_BASES = 2, DEFAULT_MODE = 1, FLUSHED_MODE = 2
+        real(real64), parameter :: bases(N_BASES) = [2.0_real64**(-470), 2.0_real64**(-465)]
+        real(real64), parameter :: gaps(N_BASES) = [2.0_real64**(-520), 2.0_real64**(-515)]
+        character(len=*), parameter :: base_names(N_BASES) = [character(len=7) :: "2**-470", "2**-465"]
+        character(len=*), parameter :: mode_names(2) = [character(len=24) :: "default underflow mode", &
+                                                        "underflow flushed to 0"]
+        real(real64) :: values(2), population(N_BASES, 2), sample(N_BASES, 2)
+        real(real64), volatile :: smallest_normal
+        real(real64) :: half_of_smallest_normal
+        logical :: can_flush, gradual_mode
+        integer(int32) :: i_base, i_mode, n_modes
+        character(len=96) :: label
+
+        call measure_spreads(DEFAULT_MODE)
+
+        ! Nothing between switching to flush-to-zero and switching back may return early, so the
+        ! results are only stored here and checked after the saved mode is restored.
+        n_modes = DEFAULT_MODE
+        can_flush = ieee_support_underflow_control(1.0_real64)
+        if (can_flush) then
+            n_modes = FLUSHED_MODE
+            smallest_normal = tiny(1.0_real64)
+            call ieee_get_underflow_mode(gradual_mode)
+            call ieee_set_underflow_mode(.false.)
+            call measure_spreads(FLUSHED_MODE)
+            half_of_smallest_normal = smallest_normal/2.0_real64
+            call ieee_set_underflow_mode(gradual_mode)
+            call assert_equal_real(half_of_smallest_normal, 0.0_real64, 0.0_real64, &
+                                   "test_std_dev_close_values_flushed: flush-to-zero is in force, tiny/2 reads as 0")
+        end if
+
+        do i_mode = 1, n_modes
+            do i_base = 1, N_BASES
+                label = "test_std_dev_close_values_flushed: "//trim(base_names(i_base))//", "//trim(mode_names(i_mode))
+                call assert_equal_real(population(i_base, i_mode), gaps(i_base)/2.0_real64, 0.0_real64, &
+                                       trim(label)//", population")
+                call assert_equal_real(sample(i_base, i_mode), gaps(i_base)/sqrt(2.0_real64), &
+                                       4*EPS*gaps(i_base)/sqrt(2.0_real64), &
+                                       trim(label)//", sample (Bessel)")
+            end do
+        end do
+
+    contains
+
+        !> Both spreads of each pair of values, in the underflow mode now in force.
+        subroutine measure_spreads(i_mode_now)
+            integer(int32), intent(in) :: i_mode_now
+                !! Column of `population` and `sample` the results go to
+
+            integer(int32) :: i_pair
+
+            do i_pair = 1, N_BASES
+                values(1) = bases(i_pair)
+                values(2) = bases(i_pair) + gaps(i_pair)
+                population(i_pair, i_mode_now) = std_dev(values)
+                sample(i_pair, i_mode_now) = std_dev(values, do_bessel_correction=.true._c_bool)
+            end do
+        end subroutine measure_spreads
+    end subroutine test_std_dev_close_values_flushed
 
     !> The zero vector, and only it, has a scaled length of exactly 0; the smallest normal vector
     !| still has a positive one.

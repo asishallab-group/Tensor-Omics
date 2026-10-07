@@ -11,7 +11,7 @@ module f42_math_impl
     use tox_errors, only: is_err
     use, intrinsic :: ieee_arithmetic, only: ieee_next_after, ieee_value, ieee_positive_inf, ieee_negative_inf, ieee_is_finite
     M_IMPLICIT_NONE
-    private :: scaled_mean
+    private :: scaled_mean, scaling_exponent_for_largest
 
     !> Generic clamp of a scalar into `[min_val, max_val]`, dispatches on the value's type.
     interface clamp
@@ -61,9 +61,6 @@ contains
         real(real64), dimension(:), intent(in) :: values
             !! The set of values, of any magnitude
 
-        real(real64), parameter :: LARGEST_UNSCALED = 2.0_real64**496
-        real(real64), parameter :: SMALLEST_UNSCALED = 2.0_real64**(-470)
-        integer(int32), parameter :: SCALE_DOWN = -600_int32, SCALE_UP = 600_int32
         integer(int32) :: i_value
         real(real64) :: largest
 
@@ -71,6 +68,19 @@ contains
         do concurrent(i_value=1:size(values, kind=int32)) shared(values) reduce(max:largest)
             largest = max(largest, abs(values(i_value)))
         end do
+        exponent = scaling_exponent_for_largest(largest)
+    end function scaling_exponent
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| The power of two [[f42_math_impl(module):scaling_exponent(function)]] picks for a set whose
+    !| largest magnitude is `largest`, for callers that know that magnitude already.
+    pure integer(int32) function scaling_exponent_for_largest(largest) result(exponent)
+        real(real64), intent(in) :: largest
+            !! The largest magnitude in the set, never negative
+
+        real(real64), parameter :: LARGEST_UNSCALED = 2.0_real64**496
+        real(real64), parameter :: SMALLEST_UNSCALED = 2.0_real64**(-470)
+        integer(int32), parameter :: SCALE_DOWN = -600_int32, SCALE_UP = 600_int32
 
         ! An exponent rather than a factor 2**exponent to multiply by: an optimizer that does not
         ! keep to the source may hoist a factor out of a sum, and 2**-exponent(x) is subnormal
@@ -78,7 +88,7 @@ contains
         exponent = 0_int32
         if (largest > LARGEST_UNSCALED) exponent = SCALE_DOWN
         if (largest < SMALLEST_UNSCALED) exponent = SCALE_UP
-    end function scaling_exponent
+    end function scaling_exponent_for_largest
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Calculates the arithmetic mean of vector. The values are summed scaled by the power of two
@@ -96,10 +106,14 @@ contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Calculates the standard deviation of vector, with or without Bessel's correction, in the
-    !| centered two-pass form: the mean first, then the squared distances from it. Both are computed
-    !| scaled by the power of two [[f42_math_impl(module):scaling_exponent(function)]] picks, so
-    !| neither overflows for finite values; the result is Inf only where the true spread exceeds
-    !| `huge`, as Bessel's correction gives for `[huge, -huge]`.
+    !| centered two-pass form: the mean first, then the squared distances from it. The mean is
+    !| computed with the values scaled by the power of two
+    !| [[f42_math_impl(module):scaling_exponent(function)]] picks for them, and the squares with the
+    !| distances scaled once more, by the power of two picked for the largest distance. So no sum
+    !| overflows for finite values, and the squares of distances far smaller than the values, as
+    !| between distinct values close together, do not underflow even where the build flushes
+    !| subnormal numbers to zero. The result is Inf only where the true spread exceeds `huge`, as
+    !| Bessel's correction gives for `[huge, -huge]`.
     !|
     !| Values that are all equal, a single value included, have no spread: their standard deviation
     !| is exactly 0 in either mode, decided on the values themselves rather than on their computed
@@ -117,8 +131,8 @@ contains
             !! |  `.false.`  | \(\sqrt{\frac{1}{n} \sum_{i=1}^{n} (vec(i) - \bar{x})^{2}}\)     |
 
         logical(c_bool) :: bessel
-        integer(int32) :: n_elements, i_element, exponent
-        real(real64) :: mean_scaled, squares_sum_scaled, divisor
+        integer(int32) :: n_elements, i_element, exponent, distance_exponent
+        real(real64) :: mean_scaled, largest_distance, squares_sum_scaled, divisor
 
         M_DEFAULT_VAL(do_bessel_correction, bessel, .false.)
 
@@ -137,9 +151,20 @@ contains
         exponent = scaling_exponent(vec)
         mean_scaled = scaled_mean(vec, exponent)
 
+        ! The distances from the mean get their own exponent: picked for the values, it leaves
+        ! distances far smaller than the values (distinct values close together near 2**-470, say)
+        ! with squares below tiny, which a build that flushes subnormals turns into a spread of 0.
+        largest_distance = 0.0_real64
+        do concurrent(i_element=1:n_elements) shared(vec, exponent, mean_scaled) reduce(max:largest_distance)
+            largest_distance = max(largest_distance, abs(scale(vec(i_element), exponent) - mean_scaled))
+        end do
+        distance_exponent = scaling_exponent_for_largest(largest_distance)
+
         squares_sum_scaled = 0.0_real64
-        do concurrent(i_element=1:n_elements) shared(vec, exponent, mean_scaled) reduce(+:squares_sum_scaled)
-            squares_sum_scaled = squares_sum_scaled + (scale(vec(i_element), exponent) - mean_scaled)**2
+        do concurrent(i_element=1:n_elements) shared(vec, exponent, mean_scaled, distance_exponent) &
+            reduce(+:squares_sum_scaled)
+            squares_sum_scaled = squares_sum_scaled &
+                                 + scale(scale(vec(i_element), exponent) - mean_scaled, distance_exponent)**2
         end do
 
         if (bessel) then
@@ -147,7 +172,9 @@ contains
         else
             divisor = real(n_elements, kind=real64)
         end if
-        std_dev = scale(sqrt(squares_sum_scaled/divisor), -exponent)
+        ! One exponent at a time: together they can reach 1200, more than scale() takes safely
+        ! on every compiler.
+        std_dev = scale(scale(sqrt(squares_sum_scaled/divisor), -distance_exponent), -exponent)
     end function std_dev
 
     !> AUTHOR_FRANZ_ERIC_SILL
