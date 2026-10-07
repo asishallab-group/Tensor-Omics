@@ -56,7 +56,10 @@ contains
     !|
     !| Inside the range, the squares of any `int32` count of values sum to a finite number, and a
     !| value whose square falls below `tiny` is too small, next to the largest one, to change the
-    !| sum. Outside it, the shifted values land inside it.
+    !| sum. A largest magnitude above the range always lands inside it once scaled, and so does a
+    !| non-zero one below the range, unless it lies below about \(2^{-1070}\), among the smallest
+    !| subnormal numbers: there it lands just short of the range, at \(2^{-474}\) or more, where its
+    !| square is still a normal number.
     pure integer(int32) function scaling_exponent(values) result(exponent)
         real(real64), dimension(:), intent(in) :: values
             !! The set of values, of any magnitude

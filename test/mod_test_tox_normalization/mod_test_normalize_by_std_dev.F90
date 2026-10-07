@@ -125,10 +125,12 @@ contains
   !| unchanged, while the genes on the trend are normalized as usual. Constant genes of 1 and of 0.1:
   !| the mean of six copies of 0.1 is not exactly 0.1, and their spread must still be exactly 0.
   !|
-  !| The span is 1. The seven genes lie on the line to the last bit or one ulp off it, so the robust
-  !| fit's residuals are rounding noise, and its reweighting can zero out enough of a smaller
-  !| neighbourhood (four genes at the default span) to leave the local quadratic underdetermined.
-  !| With every gene in every neighbourhood, the line is reproduced whatever the weights.
+  !| The span is 1, not the default, because of a known defect of the netlib LOESS, tracked in
+  !| issue #200 and not covered here. The seven genes' spreads follow an exactly linear trend, so
+  !| the robust fit's residuals are zero or rounding noise and their MAD can be 0; the bisquare
+  !| step then zeroes the weights of a whole neighbourhood (four genes at the default span),
+  !| netlib falls back to a pseudoinverse, and the fit returns wrong values with `ierr` OK. With
+  !| every gene in every neighbourhood, the line is reproduced whatever the weights.
   subroutine test_std_dev_zero_variance_genes()
     integer(int32), parameter :: n_genes = 10, n_replicates = 6, n_varying = 7
     real(real64), parameter :: constants(2) = [1.0_real64, 0.1_real64]

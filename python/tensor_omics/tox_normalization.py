@@ -153,10 +153,11 @@ def normalize_unit_length(
     r"""Normalizes an input vector to unit length in-place
 
     Only the zero vector has no direction, and is rejected with ERR_DIVISION_BY_ZERO. Any other
-    vector becomes its unit vector, however short or long: its own length is never formed, so it
-    may underflow or overflow, as it does for entries near the smallest normal number (about
-    2.2e-308) or near the largest number (about 1.8e308). Where subnormal numbers are flushed to
-    zero, by a fast floating-point model or by the host program, a vector made only of
+    vector becomes its unit vector, however short or long. Its entries are divided in scaled
+    coordinates, and the vector's own length is never formed, so it does no harm that this
+    length can be subnormal or overflow, as it does for entries near the smallest normal number
+    (about 2.2e-308) or near the largest number (about 1.8e308). Where subnormal numbers are
+    flushed to zero, by a fast floating-point model or by the host program, a vector made only of
     subnormals reads as the zero vector.
 
     Parameters
@@ -376,9 +377,11 @@ def root_mean_sq_normalization(
     r"""Normalizes each gene's expression vector using `sqrt(mean(x^2))`
 
     across tissues (not classical standard deviation).
-    Only a gene whose values are all exactly zero has no root mean square, and is left as it is;
-    every other gene is divided by it, however small or large its values, up to the largest
-    real64 (about 1.8e308).
+    Only a gene whose values are all exactly zero has a root mean square of 0, and is left as it
+    is; every other gene is divided by its root mean square, however small or large its values,
+    up to the largest real64 (about 1.8e308). Where subnormal numbers are flushed to zero, by a
+    fast floating-point model or by the host program, a gene made only of subnormals reads as
+    the zero gene.
 
     Parameters
     ----------
