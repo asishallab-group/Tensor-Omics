@@ -100,7 +100,7 @@ def test_gjct_permutation_test_rejects_draws_larger_than_pool():
     same name (test/mod_test_data_integration_js_comp_test.F90)."""
     mean_pmf_counts = np.array([[2], [2]], dtype=np.int32, order="F")
     mean_pmf = np.array([[0.5], [0.5]], dtype=np.float64, order="F")
-    mean_pmf_included_n_reps = np.array([8], dtype=np.int32)
+    mean_pmf_included_n_reps = np.array([4], dtype=np.int32)  # consistent pool: only the draws exceed it
     included_n_reps = np.array([[4, 4]], dtype=np.int32, order="F")
     global_jsd_observed = np.array([0.1, 0.1], dtype=np.float64)
 
@@ -113,6 +113,27 @@ def test_gjct_permutation_test_rejects_draws_larger_than_pool():
         call()
     except ToxError as error:
         assert error.argument is None, f"expected no argument named, got {error.argument!r}"
+
+
+def test_gjct_permutation_test_rejects_zero_included_n_reps():
+    """Every study needs at least one included residual at every reference point, so a single 0 in
+    included_n_reps is rejected on that argument, even where the counts otherwise add up --
+    mirrors the Fortran test of the same name (test/mod_test_data_integration_js_comp_test.F90)."""
+    mean_pmf_counts = np.array([[2], [2]], dtype=np.int32, order="F")
+    mean_pmf = np.array([[0.5], [0.5]], dtype=np.float64, order="F")
+    mean_pmf_included_n_reps = np.array([4], dtype=np.int32)
+    included_n_reps = np.array([[0, 4]], dtype=np.int32, order="F")
+    global_jsd_observed = np.array([0.1, 0.1], dtype=np.float64)
+
+    def call():
+        gjct_permutation_test(3, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps,
+                              included_n_reps, global_jsd_observed, random_seed=7)
+
+    assert_error(call, "expected ERR_INVALID_INPUT for a study without a residual at a point", ERR_INVALID_INPUT)
+    try:
+        call()
+    except ToxError as error:
+        assert error.argument == "included_n_reps", f"expected the error on included_n_reps, got {error.argument!r}"
 
 
 if __name__ == '__main__':

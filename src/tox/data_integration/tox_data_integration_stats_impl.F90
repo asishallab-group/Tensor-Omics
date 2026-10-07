@@ -41,10 +41,13 @@ contains
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]'s own
     !| precedent.
     !|
-    !| Inconsistent inputs are rejected before any draw: when the studies' draws at a point
-    !| (`included_n_reps`) add up to more than that point's pooled counts (`mean_pmf_counts`), the
-    !| call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no permutation runs.
-    !| No p-values are computed then (a Fortran caller gets them zeroed).
+    !| Inconsistent inputs are rejected before any draw. At every reference point, the studies'
+    !| counts (`included_n_reps`) must add up to the pool's total (`mean_pmf_included_n_reps`), and
+    !| that total must equal the sum of the pool's bin counts (`mean_pmf_counts`), as
+    !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]] produces
+    !| them: a permutation splits the pool exactly between the studies. Otherwise the call fails
+    !| with `ERR_INVALID_INPUT`, not tied to any one argument, and no permutation runs. No p-values
+    !| are computed then (a Fortran caller gets them as NaN).
     !|
     !| The consensus pmf is recomputed from the permuted pmfs in every permutation, as the
     !| equal-weight mean of all studies' pmfs, exactly as
@@ -98,8 +101,9 @@ contains
             !! DM_MIN(0_int32)
         integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point, per study -- how
-            !! many elements are drawn (without replacement) from the pooled pool per study
-            !! DM_MIN(0_int32)
+            !! many elements are drawn (without replacement) from the pooled pool per study. Every
+            !! study needs at least one at every reference point
+            !! DM_MIN(1_int32)
         real(real64), dimension(n_studies), intent(in) :: global_jsd_observed
             !! Observed weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_studies), intent(out) :: p_values
@@ -139,27 +143,31 @@ contains
             !! DM_DEFAULT(42_int32)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator;
-            !! ERR_INVALID_INPUT, before any draw, if the studies' draws at a point exceed its pooled counts (see above)
+            !! ERR_INVALID_INPUT, before any draw, if at some point the studies' counts do not add
+            !! up to the pool's total, or that total is not the sum of the pool's bin counts (see above)
 
         integer(int32) :: i_permutation, i_point, i_study, i_bin, draw_ierr
         type(rng_t) :: rng
 
         call set_ok(ierr)
-        ! Inconsistent inputs, checked before the generator is created: without replacement, the
-        ! studies' draws at a point cannot exceed that point's pooled counts. Not one argument's
-        ! fault, so no position (codegen_guide.md Sec 5.14).
+        ! Inconsistent inputs, checked before the generator is created: at every point the studies'
+        ! draws must add up to the pool's total, and that total must be the sum of its bin counts,
+        ! so that a permutation splits the pool exactly. Not one argument's fault, so no position
+        ! (codegen_guide.md Sec 5.14).
         do i_point = 1, n_points
-            if (sum(included_n_reps(i_point, :)) > sum(mean_pmf_counts(:, i_point))) then
+            if (sum(included_n_reps(i_point, :)) /= mean_pmf_included_n_reps(i_point) .or. &
+                mean_pmf_included_n_reps(i_point) /= sum(mean_pmf_counts(:, i_point))) then
                 call set_err_once(ierr, ERR_INVALID_INPUT)
                 exit
             end if
         end do
         if (.not. is_err(ierr)) rng = create_rng(ierr, random_seed)
         if (is_err(ierr)) then
-            ! Inconsistent inputs or a genuine runtime failure -- leave every output and work
-            ! array in a defined (zeroed) state rather than resample at all.
-            p_values = 0.0_real64
-            p_values_observed_consensus = 0.0_real64
+            ! Inconsistent inputs or a genuine runtime failure -- nothing was tested, so the
+            ! p-values are NaN ("not computed"), not 0.0 (which would read as maximally
+            ! significant); every work array is left in a defined (zeroed) state.
+            p_values = M_NAN
+            p_values_observed_consensus = M_NAN
             tmp_mean_pmf_counts = 0_int32
             tmp_counts = 0_int32
             tmp_pmfs = 0.0_real64
@@ -248,7 +256,7 @@ contains
             end do
         else
             ! No permutation ran, so nothing was tested: "not computed", not 0.0 (which would read as
-            ! maximally significant). The error branches above still return zeroed p-values.
+            ! maximally significant), as in the error branch above.
             p_values = M_NAN
             p_values_observed_consensus = M_NAN
         end if

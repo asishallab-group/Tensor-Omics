@@ -83,7 +83,7 @@ test_gjct_permutation_test_seeded_reproducibility <- function() {
 test_gjct_permutation_test_rejects_draws_larger_than_pool <- function() {
   mean_pmf_counts <- matrix(c(2L, 2L), nrow = 2)
   mean_pmf <- matrix(c(0.5, 0.5), nrow = 2)
-  mean_pmf_included_n_reps <- c(8L)
+  mean_pmf_included_n_reps <- c(4L) # consistent pool: only the draws exceed it
   included_n_reps <- matrix(c(4L, 4L), nrow = 1)
   global_jsd_observed <- c(0.1, 0.1)
 
@@ -94,6 +94,25 @@ test_gjct_permutation_test_rejects_draws_larger_than_pool <- function() {
   assert_error(call(), "expected ERR_INVALID_INPUT for draws larger than the pooled counts", ERR_INVALID_INPUT)
   err <- tryCatch({ call(); NULL }, error = function(e) e)
   assert_true(is.na(err$argument), "expected no argument named")
+}
+
+# Every study needs at least one included residual at every reference point, so a single 0 in
+# included_n_reps is rejected on that argument, even where the counts otherwise add up -- mirrors
+# the Fortran test of the same name (test/mod_test_data_integration_js_comp_test.F90).
+test_gjct_permutation_test_rejects_zero_included_n_reps <- function() {
+  mean_pmf_counts <- matrix(c(2L, 2L), nrow = 2)
+  mean_pmf <- matrix(c(0.5, 0.5), nrow = 2)
+  mean_pmf_included_n_reps <- c(4L)
+  included_n_reps <- matrix(c(0L, 4L), nrow = 1)
+  global_jsd_observed <- c(0.1, 0.1)
+
+  call <- function() {
+    gjct_permutation_test(3L, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps,
+                          included_n_reps, global_jsd_observed, random_seed = 7L)
+  }
+  assert_error(call(), "expected ERR_INVALID_INPUT for a study without a residual at a point", ERR_INVALID_INPUT)
+  err <- tryCatch({ call(); NULL }, error = function(e) e)
+  assert_true(identical(err$argument, "included_n_reps"), "expected the error on included_n_reps")
 }
 
 run_all_tests()

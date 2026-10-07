@@ -73,10 +73,13 @@ def gjct_permutation_test(
     :func:`tensor_omics.bootstrap_histogram`'s own
     precedent.
 
-    Inconsistent inputs are rejected before any draw: when the studies' draws at a point
-    (`included_n_reps`) add up to more than that point's pooled counts (`mean_pmf_counts`), the
-    call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no permutation runs.
-    No p-values are computed then (a Fortran caller gets them zeroed).
+    Inconsistent inputs are rejected before any draw. At every reference point, the studies'
+    counts (`included_n_reps`) must add up to the pool's total (`mean_pmf_included_n_reps`), and
+    that total must equal the sum of the pool's bin counts (`mean_pmf_counts`), as
+    :func:`tensor_omics.create_mean_pmf` produces
+    them: a permutation splits the pool exactly between the studies. Otherwise the call fails
+    with `ERR_INVALID_INPUT`, not tied to any one argument, and no permutation runs. No p-values
+    are computed then (a Fortran caller gets them as NaN).
 
     The consensus pmf is recomputed from the permuted pmfs in every permutation, as the
     equal-weight mean of all studies' pmfs, exactly as
@@ -119,8 +122,9 @@ def gjct_permutation_test(
         The minimum valid value is `0`.
     included_n_reps : np.ndarray[np.int32] of shape (n_points, n_studies,), column-major (order='F')
         Count of non-NaN replicates (included ones) per reference point, per study -- how
-        many elements are drawn (without replacement) from the pooled pool per study
-        The minimum valid value is `0`.
+        many elements are drawn (without replacement) from the pooled pool per study. Every
+        study needs at least one at every reference point
+        The minimum valid value is `1`.
     global_jsd_observed : np.ndarray[np.float64] of shape (n_studies,)
         Observed weighted global JSD of each study against the consensus pmf
     random_seed : int, optional, default 42

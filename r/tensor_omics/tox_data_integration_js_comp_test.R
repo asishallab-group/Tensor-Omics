@@ -1434,8 +1434,10 @@ check_effect_size_plateau_condition <- function(global_js_divergence, prev_globa
 #'   The maximum valid value is `1.0`.
 #' @param counts a integer array of rank 3. Absolute counts of a residual per bin for `pmfs`
 #'   The minimum valid value is `0`.
-#' @param included_n_reps a integer matrix. Count of non-NaN replicates (included ones) per reference point, per study
-#'   The minimum valid value is `0`.
+#' @param included_n_reps a integer matrix. Count of non-NaN replicates (included ones) per reference point, per study. Every
+#'   study needs at least one at every reference point, since the consensus weights all
+#'   studies equally
+#'   The minimum valid value is `1`.
 #' @return a named list with elements:
 #'   \item{mean_pmf}{a numeric matrix. The consensus pmf, built as `mean_pmf = sum(pmfs, dim=3) / n_studies` -- see the
 #'     known-limitation note above}
@@ -1537,10 +1539,13 @@ create_mean_pmf_only <- function(pmfs) {
 #' internally-consistent inputs should never trigger) is likewise folded into `ierr`, first
 #' failure only, without stopping the resampling already in flight.
 #'
-#' Inconsistent inputs are rejected before any draw: when a point's pool is empty
-#' (`mean_pmf_included_n_reps` 0) but a study still draws from it (`included_n_reps` above 0),
-#' the call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no bootstrap runs.
-#' No interval is computed then (a Fortran caller gets `confidence_interval` back unchanged).
+#' Inconsistent inputs are rejected before any draw. At every reference point, the studies'
+#' counts (`included_n_reps`) must add up to the pool's total (`mean_pmf_included_n_reps`), and
+#' that total must equal the sum of the pool's bin counts (`mean_pmf_counts`), as
+#' \code{\link{create_mean_pmf}} produces
+#' them. Otherwise the call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no
+#' bootstrap runs. No interval is computed then (a Fortran caller gets `confidence_interval`
+#' back unchanged).
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::bootstrap_histogram}, whose argument names
 #' are the ones an error message reports.
@@ -1553,8 +1558,9 @@ create_mean_pmf_only <- function(pmfs) {
 #' @param mean_pmf_included_n_reps a integer vector. Count of non-NaN replicates (included ones) per reference point for the pooled pmf
 #'   The minimum valid value is `0`.
 #' @param included_n_reps a integer matrix. Count of non-NaN replicates (included ones) per reference point, per study --
-#'   how many elements are drawn (with replacement) from the pooled pool per study
-#'   The minimum valid value is `0`.
+#'   how many elements are drawn (with replacement) from the pooled pool per study. Every
+#'   study needs at least one at every reference point
+#'   The minimum valid value is `1`.
 #' @param confidence_interval a numeric matrix. Confidence interval to be bootstrapped -- incoming values are the reference values
 #'   that seed the top-k/bottom-k heaps (see above); overwritten with the bootstrapped
 #'   `[lower, upper]` interval per study

@@ -603,6 +603,50 @@ def test_bootstrap_histogram_rejects_draws_from_empty_pool():
         assert error.argument is None, f"expected no argument named, got {error.argument!r}"
 
 
+def test_create_mean_pmf_rejects_zero_included_n_reps():
+    # Every study needs at least one included residual at every reference point, so a single 0 in
+    # included_n_reps is rejected on that argument
+    # (test_create_mean_pmf_rejects_zero_included_n_reps in the Fortran suite).
+    pmfs = np.zeros((2, 2, 2), dtype=np.float64, order='F')
+    pmfs[:, 0, 0] = [0.5, 0.5]
+    pmfs[:, 1, 0] = [0.25, 0.75]
+    pmfs[:, 0, 1] = [1.0, 0.0]
+    counts = np.zeros((2, 2, 2), dtype=np.int32, order='F')
+    counts[:, 0, 0] = [1, 1]
+    counts[:, 1, 0] = [1, 3]
+    counts[:, 0, 1] = [2, 0]
+    included_n_reps = np.array([[2, 2], [4, 0]], dtype=np.int32, order='F')
+
+    def call():
+        create_mean_pmf(pmfs, counts, included_n_reps)
+
+    assert_error(call, "expected ERR_INVALID_INPUT for a study without a residual at a point", ERR_INVALID_INPUT)
+    try:
+        call()
+    except ToxError as error:
+        assert error.argument == "included_n_reps", f"expected the error on included_n_reps, got {error.argument!r}"
+
+
+def test_bootstrap_histogram_rejects_zero_included_n_reps():
+    # Every study needs at least one included residual at every reference point, so a single 0 in
+    # included_n_reps is rejected on that argument, even where the counts otherwise add up
+    # (test_bootstrap_histogram_rejects_zero_included_n_reps in the Fortran suite).
+    mean_pmf_counts = np.array([[2], [2]], dtype=np.int32, order='F')
+    mean_pmf_included_n_reps = np.array([4], dtype=np.int32)
+    included_n_reps = np.array([[0, 4]], dtype=np.int32, order='F')
+
+    def call():
+        confidence_interval = np.full((2, 2), 0.5, dtype=np.float64, order='F')
+        bootstrap_histogram(3, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps,
+                            confidence_interval, random_seed=7)
+
+    assert_error(call, "expected ERR_INVALID_INPUT for a study without a residual at a point", ERR_INVALID_INPUT)
+    try:
+        call()
+    except ToxError as error:
+        assert error.argument == "included_n_reps", f"expected the error on included_n_reps, got {error.argument!r}"
+
+
 def test_calc_js_comp_test_candidate_bounds():
     # Cross-check against the already-verified candidate-grid collapse fixture: with
     # max_n_genes_all_studies=8742 the grid's first (largest) n_points candidate is 374

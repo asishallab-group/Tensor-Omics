@@ -13,10 +13,13 @@
 #' \code{\link{bootstrap_histogram}}'s own
 #' precedent.
 #'
-#' Inconsistent inputs are rejected before any draw: when the studies' draws at a point
-#' (`included_n_reps`) add up to more than that point's pooled counts (`mean_pmf_counts`), the
-#' call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no permutation runs.
-#' No p-values are computed then (a Fortran caller gets them zeroed).
+#' Inconsistent inputs are rejected before any draw. At every reference point, the studies'
+#' counts (`included_n_reps`) must add up to the pool's total (`mean_pmf_included_n_reps`), and
+#' that total must equal the sum of the pool's bin counts (`mean_pmf_counts`), as
+#' \code{\link{create_mean_pmf}} produces
+#' them: a permutation splits the pool exactly between the studies. Otherwise the call fails
+#' with `ERR_INVALID_INPUT`, not tied to any one argument, and no permutation runs. No p-values
+#' are computed then (a Fortran caller gets them as NaN).
 #'
 #' The consensus pmf is recomputed from the permuted pmfs in every permutation, as the
 #' equal-weight mean of all studies' pmfs, exactly as
@@ -55,8 +58,9 @@
 #' @param mean_pmf_included_n_reps a integer vector. Count of non-NaN replicates (included ones) per reference point for the consensus pmf
 #'   The minimum valid value is `0`.
 #' @param included_n_reps a integer matrix. Count of non-NaN replicates (included ones) per reference point, per study -- how
-#'   many elements are drawn (without replacement) from the pooled pool per study
-#'   The minimum valid value is `0`.
+#'   many elements are drawn (without replacement) from the pooled pool per study. Every
+#'   study needs at least one at every reference point
+#'   The minimum valid value is `1`.
 #' @param global_jsd_observed a numeric vector. Observed weighted global JSD of each study against the consensus pmf
 #' @param random_seed a integer scalar. Seed for the GSL random number generator
 #'   The default value is `42`.

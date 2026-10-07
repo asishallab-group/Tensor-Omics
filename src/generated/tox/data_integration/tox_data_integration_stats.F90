@@ -42,10 +42,13 @@ contains
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]'s own
     !| precedent.
     !|
-    !| Inconsistent inputs are rejected before any draw: when the studies' draws at a point
-    !| (`included_n_reps`) add up to more than that point's pooled counts (`mean_pmf_counts`), the
-    !| call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no permutation runs.
-    !| No p-values are computed then (a Fortran caller gets them zeroed).
+    !| Inconsistent inputs are rejected before any draw. At every reference point, the studies'
+    !| counts (`included_n_reps`) must add up to the pool's total (`mean_pmf_included_n_reps`), and
+    !| that total must equal the sum of the pool's bin counts (`mean_pmf_counts`), as
+    !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]] produces
+    !| them: a permutation splits the pool exactly between the studies. Otherwise the call fails
+    !| with `ERR_INVALID_INPUT`, not tied to any one argument, and no permutation runs. No p-values
+    !| are computed then (a Fortran caller gets them as NaN).
     !|
     !| The consensus pmf is recomputed from the permuted pmfs in every permutation, as the
     !| equal-weight mean of all studies' pmfs, exactly as
@@ -109,8 +112,9 @@ contains
             !! The minimum valid value is `0_int32`.
         integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point, per study -- how
-            !! many elements are drawn (without replacement) from the pooled pool per study
-            !! The minimum valid value is `0_int32`.
+            !! many elements are drawn (without replacement) from the pooled pool per study. Every
+            !! study needs at least one at every reference point
+            !! The minimum valid value is `1_int32`.
         real(real64), dimension(n_studies), intent(in) :: global_jsd_observed
             !! Observed weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_studies), intent(out) :: p_values
@@ -130,7 +134,8 @@ contains
             !! The default value is `42_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator;
-            !! ERR_INVALID_INPUT, before any draw, if the studies' draws at a point exceed its pooled counts (see above)
+            !! ERR_INVALID_INPUT, before any draw, if at some point the studies' counts do not add
+            !! up to the pool's total, or that total is not the sum of the pool's bin counts (see above)
         integer(int32), dimension(:, :), allocatable :: tmp_mean_pmf_counts
         integer(int32), dimension(:, :), allocatable :: tmp_counts
         real(real64), dimension(:, :, :), allocatable :: tmp_pmfs
@@ -149,7 +154,7 @@ contains
         call validate_all_in_range_int(mean_pmf_counts, n_bins * n_points, ierr, arg_pos=5_int32, min=0_int32)
         call validate_all_in_range_real(mean_pmf, n_bins * n_points, ierr, arg_pos=6_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_int(mean_pmf_included_n_reps, n_points, ierr, arg_pos=7_int32, min=0_int32)
-        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=8_int32, min=0_int32)
+        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=8_int32, min=1_int32)
         call validate_all_in_range_real(global_jsd_observed, n_studies, ierr, arg_pos=9_int32)
         if (is_err(ierr)) return
 #endif
@@ -201,10 +206,13 @@ contains
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]'s own
     !| precedent.
     !|
-    !| Inconsistent inputs are rejected before any draw: when the studies' draws at a point
-    !| (`included_n_reps`) add up to more than that point's pooled counts (`mean_pmf_counts`), the
-    !| call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no permutation runs.
-    !| No p-values are computed then (a Fortran caller gets them zeroed).
+    !| Inconsistent inputs are rejected before any draw. At every reference point, the studies'
+    !| counts (`included_n_reps`) must add up to the pool's total (`mean_pmf_included_n_reps`), and
+    !| that total must equal the sum of the pool's bin counts (`mean_pmf_counts`), as
+    !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]] produces
+    !| them: a permutation splits the pool exactly between the studies. Otherwise the call fails
+    !| with `ERR_INVALID_INPUT`, not tied to any one argument, and no permutation runs. No p-values
+    !| are computed then (a Fortran caller gets them as NaN).
     !|
     !| The consensus pmf is recomputed from the permuted pmfs in every permutation, as the
     !| equal-weight mean of all studies' pmfs, exactly as
@@ -276,8 +284,9 @@ contains
             !! The minimum valid value is `0_int32`.
         integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point, per study -- how
-            !! many elements are drawn (without replacement) from the pooled pool per study
-            !! The minimum valid value is `0_int32`.
+            !! many elements are drawn (without replacement) from the pooled pool per study. Every
+            !! study needs at least one at every reference point
+            !! The minimum valid value is `1_int32`.
         real(real64), dimension(n_studies), intent(in) :: global_jsd_observed
             !! Observed weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_studies), intent(out) :: p_values
@@ -317,7 +326,8 @@ contains
             !! The default value is `42_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator;
-            !! ERR_INVALID_INPUT, before any draw, if the studies' draws at a point exceed its pooled counts (see above)
+            !! ERR_INVALID_INPUT, before any draw, if at some point the studies' counts do not add
+            !! up to the pool's total, or that total is not the sum of the pool's bin counts (see above)
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -328,7 +338,7 @@ contains
         call validate_all_in_range_int(mean_pmf_counts, n_bins * n_points, ierr, arg_pos=5_int32, min=0_int32)
         call validate_all_in_range_real(mean_pmf, n_bins * n_points, ierr, arg_pos=6_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_int(mean_pmf_included_n_reps, n_points, ierr, arg_pos=7_int32, min=0_int32)
-        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=8_int32, min=0_int32)
+        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=8_int32, min=1_int32)
         call validate_all_in_range_real(global_jsd_observed, n_studies, ierr, arg_pos=9_int32)
         if (is_err(ierr)) return
 #endif

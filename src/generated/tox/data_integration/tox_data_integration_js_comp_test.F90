@@ -2422,8 +2422,10 @@ contains
             !! Absolute counts of a residual per bin for `pmfs`
             !! The minimum valid value is `0_int32`.
         integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
-            !! Count of non-NaN replicates (included ones) per reference point, per study
-            !! The minimum valid value is `0_int32`.
+            !! Count of non-NaN replicates (included ones) per reference point, per study. Every
+            !! study needs at least one at every reference point, since the consensus weights all
+            !! studies equally
+            !! The minimum valid value is `1_int32`.
         real(real64), dimension(n_bins, n_points), intent(out) :: mean_pmf
             !! The consensus pmf, built as `mean_pmf = sum(pmfs, dim=3) / n_studies` -- see the
             !! known-limitation note above
@@ -2442,7 +2444,7 @@ contains
         call validate_dimension_size(n_studies, ierr, arg_pos=5_int32)
         call validate_all_in_range_real(pmfs, n_bins * n_points * n_studies, ierr, arg_pos=1_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_int(counts, n_bins * n_points * n_studies, ierr, arg_pos=2_int32, min=0_int32)
-        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=6_int32, min=0_int32)
+        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=6_int32, min=1_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -2551,10 +2553,13 @@ contains
     !| internally-consistent inputs should never trigger) is likewise folded into `ierr`, first
     !| failure only, without stopping the resampling already in flight.
     !|
-    !| Inconsistent inputs are rejected before any draw: when a point's pool is empty
-    !| (`mean_pmf_included_n_reps` 0) but a study still draws from it (`included_n_reps` above 0),
-    !| the call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no bootstrap runs.
-    !| No interval is computed then (a Fortran caller gets `confidence_interval` back unchanged).
+    !| Inconsistent inputs are rejected before any draw. At every reference point, the studies'
+    !| counts (`included_n_reps`) must add up to the pool's total (`mean_pmf_included_n_reps`), and
+    !| that total must equal the sum of the pool's bin counts (`mean_pmf_counts`), as
+    !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]] produces
+    !| them. Otherwise the call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no
+    !| bootstrap runs. No interval is computed then (a Fortran caller gets `confidence_interval`
+    !| back unchanged).
     subroutine bootstrap_histogram(&
             n_bootstraps,&
             n_bins,&
@@ -2589,8 +2594,9 @@ contains
             !! The minimum valid value is `0_int32`.
         integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point, per study --
-            !! how many elements are drawn (with replacement) from the pooled pool per study
-            !! The minimum valid value is `0_int32`.
+            !! how many elements are drawn (with replacement) from the pooled pool per study. Every
+            !! study needs at least one at every reference point
+            !! The minimum valid value is `1_int32`.
         real(real64), dimension(2, n_studies), intent(inout) :: confidence_interval
             !! Confidence interval to be bootstrapped -- incoming values are the reference values
             !! that seed the top-k/bottom-k heaps (see above); overwritten with the bootstrapped
@@ -2608,7 +2614,8 @@ contains
             !! The default value is `42_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator;
-            !! ERR_INVALID_INPUT, before any draw, if a study draws from a point whose pool is empty (see above)
+            !! ERR_INVALID_INPUT, before any draw, if at some point the studies' counts do not add
+            !! up to the pool's total, or that total is not the sum of the pool's bin counts (see above)
         integer(int32) :: n_bootstrapping_top_k_jsds
         real(real64), dimension(:, :, :), allocatable :: tmp_bootstrapping_top_k_jsds
         integer(int32), dimension(:, :), allocatable :: tmp_counts
@@ -2627,7 +2634,7 @@ contains
         call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=9_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_int(mean_pmf_counts, n_bins * n_points, ierr, arg_pos=5_int32, min=0_int32)
         call validate_all_in_range_int(mean_pmf_included_n_reps, n_points, ierr, arg_pos=6_int32, min=0_int32)
-        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=7_int32, min=0_int32)
+        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=7_int32, min=1_int32)
         call validate_all_in_range_real(confidence_interval, 2 * n_studies, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 #endif
@@ -2704,10 +2711,13 @@ contains
     !| internally-consistent inputs should never trigger) is likewise folded into `ierr`, first
     !| failure only, without stopping the resampling already in flight.
     !|
-    !| Inconsistent inputs are rejected before any draw: when a point's pool is empty
-    !| (`mean_pmf_included_n_reps` 0) but a study still draws from it (`included_n_reps` above 0),
-    !| the call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no bootstrap runs.
-    !| No interval is computed then (a Fortran caller gets `confidence_interval` back unchanged).
+    !| Inconsistent inputs are rejected before any draw. At every reference point, the studies'
+    !| counts (`included_n_reps`) must add up to the pool's total (`mean_pmf_included_n_reps`), and
+    !| that total must equal the sum of the pool's bin counts (`mean_pmf_counts`), as
+    !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]] produces
+    !| them. Otherwise the call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no
+    !| bootstrap runs. No interval is computed then (a Fortran caller gets `confidence_interval`
+    !| back unchanged).
     subroutine bootstrap_histogram_expert(&
             n_bootstraps,&
             n_bins,&
@@ -2755,8 +2765,9 @@ contains
             !! The minimum valid value is `0_int32`.
         integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point, per study --
-            !! how many elements are drawn (with replacement) from the pooled pool per study
-            !! The minimum valid value is `0_int32`.
+            !! how many elements are drawn (with replacement) from the pooled pool per study. Every
+            !! study needs at least one at every reference point
+            !! The minimum valid value is `1_int32`.
         real(real64), dimension(2, n_studies), intent(inout) :: confidence_interval
             !! Confidence interval to be bootstrapped -- incoming values are the reference values
             !! that seed the top-k/bottom-k heaps (see above); overwritten with the bootstrapped
@@ -2790,7 +2801,8 @@ contains
             !! The default value is `42_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator;
-            !! ERR_INVALID_INPUT, before any draw, if a study draws from a point whose pool is empty (see above)
+            !! ERR_INVALID_INPUT, before any draw, if at some point the studies' counts do not add
+            !! up to the pool's total, or that total is not the sum of the pool's bin counts (see above)
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -2802,7 +2814,7 @@ contains
         call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=17_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_int(mean_pmf_counts, n_bins * n_points, ierr, arg_pos=5_int32, min=0_int32)
         call validate_all_in_range_int(mean_pmf_included_n_reps, n_points, ierr, arg_pos=6_int32, min=0_int32)
-        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=7_int32, min=0_int32)
+        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=7_int32, min=1_int32)
         call validate_all_in_range_real(confidence_interval, 2 * n_studies, ierr, arg_pos=9_int32, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 #endif

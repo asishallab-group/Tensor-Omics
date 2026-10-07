@@ -113,7 +113,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(231))
+        allocate (all_tests(238))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -585,6 +585,20 @@ contains
                                    test_neighborhood_overlaps_reversed_first_span_counts_as_empty)
         all_tests(231) = test_case("test_construct_neighborhoods_ranged_impl_nan_x_star", &
                                    test_construct_neighborhoods_ranged_impl_nan_x_star)
+        all_tests(232) = test_case("test_create_mean_pmf_rejects_zero_included_n_reps", &
+                                   test_create_mean_pmf_rejects_zero_included_n_reps)
+        all_tests(233) = test_case("test_bootstrap_histogram_rejects_zero_included_n_reps", &
+                                   test_bootstrap_histogram_rejects_zero_included_n_reps)
+        all_tests(234) = test_case("test_gjct_permutation_test_rejects_zero_included_n_reps", &
+                                   test_gjct_permutation_test_rejects_zero_included_n_reps)
+        all_tests(235) = test_case("test_gjct_permutation_test_rejects_pool_total_not_bin_sum", &
+                                   test_gjct_permutation_test_rejects_pool_total_not_bin_sum)
+        all_tests(236) = test_case("test_gjct_permutation_test_rejects_draws_fewer_than_pool", &
+                                   test_gjct_permutation_test_rejects_draws_fewer_than_pool)
+        all_tests(237) = test_case("test_bootstrap_histogram_rejects_pool_total_not_bin_sum", &
+                                   test_bootstrap_histogram_rejects_pool_total_not_bin_sum)
+        all_tests(238) = test_case("test_bootstrap_histogram_rejects_study_sum_not_pool_total", &
+                                   test_bootstrap_histogram_rejects_study_sum_not_pool_total)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -1953,6 +1967,35 @@ contains
                         arg_pos=2_int32)
     end subroutine test_create_mean_pmf_validation
 
+    !> Every study needs at least one included residual at every reference point, so the public
+    !| `create_mean_pmf` rejects a single 0 in `included_n_reps` (here study 2 at point 2) as invalid
+    !| input on that argument, position 6 of the plain wrapper.
+    subroutine test_create_mean_pmf_rejects_zero_included_n_reps()
+        integer(int32), parameter :: n_bins = 2, n_points = 2, n_studies = 2
+        real(real64) :: pmfs(n_bins, n_points, n_studies), mean_pmf(n_bins, n_points)
+        integer(int32) :: counts(n_bins, n_points, n_studies), mean_pmf_counts(n_bins, n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: ierr
+
+        pmfs(:, 1, 1) = [0.5_real64, 0.5_real64]
+        pmfs(:, 2, 1) = [0.25_real64, 0.75_real64]
+        pmfs(:, 1, 2) = [1.0_real64, 0.0_real64]
+        pmfs(:, 2, 2) = [0.0_real64, 0.0_real64]
+        counts(:, 1, 1) = [1, 1]
+        counts(:, 2, 1) = [1, 3]
+        counts(:, 1, 2) = [2, 0]
+        counts(:, 2, 2) = [0, 0]
+        included_n_reps(:, 1) = [2, 4]
+        included_n_reps(:, 2) = [2, 0]
+
+        call create_mean_pmf(pmfs, counts, n_bins, n_points, n_studies, included_n_reps, mean_pmf, &
+                             mean_pmf_included_n_reps, mean_pmf_counts, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_create_mean_pmf_rejects_zero_included_n_reps: "// &
+                        "a study without a residual at a point is rejected on included_n_reps", &
+                        arg_pos=6_int32)
+    end subroutine test_create_mean_pmf_rejects_zero_included_n_reps
+
     !> Hand-computed: `n_bootstraps=1000` with the default significance level (2.5%, not passed)
     !| gives `n_top_k = max(1, floor(0.025 * 1000)) = 25`.
     subroutine test_calc_js_comp_test_n_top_k_jsds_default_hand_computed()
@@ -2089,12 +2132,98 @@ contains
                                      "confidence_interval comes back unchanged, so no bootstrap ran")
     end subroutine test_bootstrap_histogram_rejects_draws_from_empty_pool
 
-    !> Basic conservation-of-counts: a single reference point, single study, single permutation --
+    !> Every study needs at least one included residual at every reference point, so the public
+    !| `bootstrap_histogram` rejects a single 0 in `included_n_reps` as invalid input on that
+    !| argument, position 7 of the plain wrapper. The rest of the input is consistent (the studies'
+    !| counts `[0, 4]` add up to the pool's total 4, which is also the sum of its bin counts), so
+    !| the 0 is the only fault; it used to be accepted with `ierr` OK.
+    subroutine test_bootstrap_histogram_rejects_zero_included_n_reps()
+        integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 3
+        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: confidence_interval(2, n_studies)
+        integer(int32) :: ierr
+
+        mean_pmf_counts(:, 1) = [2_int32, 2_int32]
+        mean_pmf_included_n_reps = [4_int32]
+        included_n_reps(1, :) = [0_int32, 4_int32]
+        confidence_interval = 0.5_real64
+
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf_included_n_reps, &
+                                 included_n_reps, confidence_interval, ierr=ierr, random_seed=7_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_bootstrap_histogram_rejects_zero_included_n_reps: "// &
+                        "a study without a residual at a point is rejected on included_n_reps", &
+                        arg_pos=7_int32)
+    end subroutine test_bootstrap_histogram_rejects_zero_included_n_reps
+
+    !> The pool's total (`mean_pmf_included_n_reps = 3`) is not the sum of its bin counts
+    !| (`[1, 1]`, so 2), while the studies' counts `[1, 2]` do add up to the total. That is
+    !| rejected as invalid input before any draw, with no argument position (not one argument's
+    !| fault), and `confidence_interval` comes back unchanged. It used to run the bootstrap: every
+    !| draw failed and drew nothing, which gave a JSD of 0 and moved the lower bound of the
+    !| interval to 0. The failing draws already set `ERR_INVALID_INPUT` then, so only the
+    !| unchanged-interval check fails on that code.
+    subroutine test_bootstrap_histogram_rejects_pool_total_not_bin_sum()
+        integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 20
+        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
+        integer(int32) :: ierr
+
+        mean_pmf_counts(:, 1) = [1_int32, 1_int32]
+        mean_pmf_included_n_reps = [3_int32]
+        included_n_reps(1, :) = [1_int32, 2_int32]
+        confidence_interval = 0.5_real64
+        expected = confidence_interval
+
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf_included_n_reps, &
+                                 included_n_reps, confidence_interval, ierr=ierr, random_seed=7_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_bootstrap_histogram_rejects_pool_total_not_bin_sum: "// &
+                        "a pool total that is not its bin-count sum is invalid input, with no argument position", &
+                        arg_pos=0_int32)
+        call assert_equal_array_real(confidence_interval, expected, size(confidence_interval, kind=int32), TOL, &
+                                     "test_bootstrap_histogram_rejects_pool_total_not_bin_sum: "// &
+                                     "confidence_interval comes back unchanged, so no bootstrap ran")
+    end subroutine test_bootstrap_histogram_rejects_pool_total_not_bin_sum
+
+    !> The pool is consistent in itself (total 4, bin counts `[2, 2]`), but the studies' counts
+    !| `[1, 1]` add up to 2, not to the pool's total. That is rejected as invalid input before any
+    !| draw, with no argument position, and `confidence_interval` comes back unchanged. It used to
+    !| run with `ierr` OK and weights that did not add up.
+    subroutine test_bootstrap_histogram_rejects_study_sum_not_pool_total()
+        integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 20
+        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
+        integer(int32) :: ierr
+
+        mean_pmf_counts(:, 1) = [2_int32, 2_int32]
+        mean_pmf_included_n_reps = [4_int32]
+        included_n_reps(1, :) = [1_int32, 1_int32]
+        confidence_interval = 0.5_real64
+        expected = confidence_interval
+
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf_included_n_reps, &
+                                 included_n_reps, confidence_interval, ierr=ierr, random_seed=7_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_bootstrap_histogram_rejects_study_sum_not_pool_total: "// &
+                        "study counts that do not add up to the pool total are invalid input, with no argument position", &
+                        arg_pos=0_int32)
+        call assert_equal_array_real(confidence_interval, expected, size(confidence_interval, kind=int32), TOL, &
+                                     "test_bootstrap_histogram_rejects_study_sum_not_pool_total: "// &
+                                     "confidence_interval comes back unchanged, so no bootstrap ran")
+    end subroutine test_bootstrap_histogram_rejects_study_sum_not_pool_total
+
+    !> Basic conservation-of-counts: a single reference point, two studies, single permutation --
     !| `tmp_counts` (the last permutation's resampled histogram for the last study processed) must
     !| sum to exactly `included_n_reps` for that study/point, since `random_multiv_hypergeom` draws
-    !| without replacement and every drawn element must land in exactly one bin.
+    !| without replacement and every drawn element must land in exactly one bin. The first study's
+    !| resampled pmf (its counts divided by its draw size) must sum to 1 for the same reason. The
+    !| two draw sizes (4 and 6) add up to the pool's 10, as the routine requires.
     subroutine test_gjct_permutation_test_conservation_of_counts()
-        integer(int32), parameter :: n_bins = 3, n_points = 1, n_studies = 1, n_permutations = 1
+        integer(int32), parameter :: n_bins = 3, n_points = 1, n_studies = 2, n_permutations = 1
         integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
         real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
@@ -2109,7 +2238,7 @@ contains
 
         mean_pmf_counts(:, 1) = [5, 3, 2]
         mean_pmf_included_n_reps = [10]
-        included_n_reps(1, :) = [4]
+        included_n_reps(1, :) = [4, 6]
         mean_pmf(:, 1) = real(mean_pmf_counts(:, 1), real64)/10.0_real64
         global_jsd_observed = 0.0_real64
 
@@ -2121,9 +2250,12 @@ contains
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_gjct_permutation_test_conservation_of_counts: ierr should be OK")
-        call assert_equal_int(sum(tmp_counts(:, 1)), included_n_reps(1, 1), &
+        call assert_equal_int(sum(tmp_counts(:, 1)), included_n_reps(1, n_studies), &
                               "test_gjct_permutation_test_conservation_of_counts: "// &
-                              "resampled counts must sum to the study's per-point draw size")
+                              "resampled counts must sum to the last study's per-point draw size")
+        call assert_equal_real(sum(tmp_pmfs(:, 1, 1)), 1.0_real64, TOL, &
+                               "test_gjct_permutation_test_conservation_of_counts: "// &
+                               "the first study's resampled counts must sum to its draw size, so its pmf sums to 1")
     end subroutine test_gjct_permutation_test_conservation_of_counts
 
     !> One permutation must partition every reference point's pooled consensus counts exactly
@@ -2419,7 +2551,7 @@ contains
 
         mean_pmf_counts(1, 1) = 10_int32
         mean_pmf_included_n_reps = [10_int32]
-        included_n_reps(1, :) = [5_int32]
+        included_n_reps(1, :) = [10_int32] ! the only study's draws add up to the pool, as required
         mean_pmf(1, 1) = 1.0_real64
         global_jsd_observed = 0.5_real64 ! strictly greater than the always-0.0 resampled JSD
 
@@ -2438,23 +2570,23 @@ contains
     end subroutine test_permutation_pvalue_laplace_corrected_never_exactly_zero
 
     !> The public `gjct_permutation_test` with per-study draws that do not fit the pooled counts:
-    !| one point, pool `mean_pmf_counts = [2, 2]` (4 elements), and each of the two studies asking
+    !| one point, a consistent pool `mean_pmf_counts = [2, 2]` (total 4), and each of the two studies asking
     !| for `included_n_reps = 4`. The first study would take the whole pool, so the second would
     !| draw 4 from an empty one. That is rejected as invalid input before any draw. It used to be
     !| capped silently: the second study got an all-zero pmf and `ierr` stayed OK. A runtime error
     !| of the implementation carries no argument position (the wrapper clears it). The p-values come
-    !| back zeroed: a run of the permutation loop could never give 0, because of the Laplace
-    !| correction, so this also shows that no permutation ran.
+    !| back NaN ("not computed"), element by element; they used to come back zeroed, which reads as
+    !| maximally significant.
     subroutine test_gjct_permutation_test_rejects_draws_larger_than_pool()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_permutations = 3
         integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
         real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
         real(real64) :: p_values_observed_consensus(n_studies)
-        integer(int32) :: ierr
+        integer(int32) :: ierr, i_study
 
         mean_pmf_counts(:, 1) = [2_int32, 2_int32]
-        mean_pmf_included_n_reps = [8_int32]
+        mean_pmf_included_n_reps = [4_int32] ! consistent pool: only the draws exceed it
         included_n_reps(1, :) = [4_int32, 4_int32]
         mean_pmf(:, 1) = [0.5_real64, 0.5_real64]
         global_jsd_observed = 0.1_real64
@@ -2469,13 +2601,105 @@ contains
                         "test_gjct_permutation_test_rejects_draws_larger_than_pool: "// &
                         "draws larger than the pooled counts are invalid input, with no argument position", &
                         arg_pos=0_int32)
-        call assert_equal_array_real(p_values, [0.0_real64, 0.0_real64], n_studies, TOL, &
-                                     "test_gjct_permutation_test_rejects_draws_larger_than_pool: "// &
-                                     "p_values are zeroed, so no permutation ran")
-        call assert_equal_array_real(p_values_observed_consensus, [0.0_real64, 0.0_real64], n_studies, TOL, &
-                                     "test_gjct_permutation_test_rejects_draws_larger_than_pool: "// &
-                                     "p_values_observed_consensus are zeroed, so no permutation ran")
+        do i_study = 1, n_studies
+            call assert_true(ieee_is_nan(p_values(i_study)), &
+                             "test_gjct_permutation_test_rejects_draws_larger_than_pool: "// &
+                             "p_values are NaN (not computed)")
+            call assert_true(ieee_is_nan(p_values_observed_consensus(i_study)), &
+                             "test_gjct_permutation_test_rejects_draws_larger_than_pool: "// &
+                             "p_values_observed_consensus are NaN (not computed)")
+        end do
     end subroutine test_gjct_permutation_test_rejects_draws_larger_than_pool
+
+    !> Every study needs at least one included residual at every reference point, so the public
+    !| `gjct_permutation_test` rejects a single 0 in `included_n_reps` as invalid input on that
+    !| argument, position 8 of the plain wrapper. The rest of the input is consistent (the studies'
+    !| counts `[0, 4]` add up to the pool's total 4, which is also the sum of its bin counts), so
+    !| the 0 is the only fault; it used to be accepted with `ierr` OK.
+    subroutine test_gjct_permutation_test_rejects_zero_included_n_reps()
+        integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_permutations = 3
+        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: p_values_observed_consensus(n_studies)
+        integer(int32) :: ierr
+
+        mean_pmf_counts(:, 1) = [2_int32, 2_int32]
+        mean_pmf_included_n_reps = [4_int32]
+        included_n_reps(1, :) = [0_int32, 4_int32]
+        mean_pmf(:, 1) = [0.5_real64, 0.5_real64]
+        global_jsd_observed = 0.1_real64
+
+        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
+                                   mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
+                                   p_values_observed_consensus, ierr=ierr, random_seed=7_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_gjct_permutation_test_rejects_zero_included_n_reps: "// &
+                        "a study without a residual at a point is rejected on included_n_reps", &
+                        arg_pos=8_int32)
+    end subroutine test_gjct_permutation_test_rejects_zero_included_n_reps
+
+    !> The pool's total (`mean_pmf_included_n_reps = 3`) is not the sum of its bin counts
+    !| (`[1, 1]`, so 2), while the studies' counts `[1, 1]` fit into the bins. That is rejected as
+    !| invalid input before any draw, with no argument position (not one argument's fault). It used
+    !| to run with `ierr` OK, and the global-JSD weights were taken against the wrong total 3. Both
+    !| p-value arrays come back NaN ("not computed"), checked element by element.
+    subroutine test_gjct_permutation_test_rejects_pool_total_not_bin_sum()
+        integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_permutations = 3
+        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: p_values_observed_consensus(n_studies)
+        integer(int32) :: ierr, i_study
+        character(len=*), parameter :: name = "test_gjct_permutation_test_rejects_pool_total_not_bin_sum: "
+
+        mean_pmf_counts(:, 1) = [1_int32, 1_int32]
+        mean_pmf_included_n_reps = [3_int32]
+        included_n_reps(1, :) = [1_int32, 1_int32]
+        mean_pmf(:, 1) = [0.5_real64, 0.5_real64]
+        global_jsd_observed = 0.1_real64
+        p_values = -1.0_real64
+        p_values_observed_consensus = -1.0_real64
+
+        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
+                                   mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
+                                   p_values_observed_consensus, ierr=ierr, random_seed=7_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        name//"a pool total that is not its bin-count sum is invalid input, with no argument position", &
+                        arg_pos=0_int32)
+        do i_study = 1, n_studies
+            call assert_true(ieee_is_nan(p_values(i_study)), name//"p_values are NaN (not computed)")
+            call assert_true(ieee_is_nan(p_values_observed_consensus(i_study)), &
+                             name//"p_values_observed_consensus are NaN (not computed)")
+        end do
+    end subroutine test_gjct_permutation_test_rejects_pool_total_not_bin_sum
+
+    !> The pool is consistent in itself (total 4, bin counts `[2, 2]`), but the studies' counts
+    !| `[1, 1]` add up to 2, fewer than the pool holds. A permutation must split the pool exactly
+    !| between the studies, so this is rejected as invalid input before any draw, with no argument
+    !| position. It used to run with `ierr` OK.
+    subroutine test_gjct_permutation_test_rejects_draws_fewer_than_pool()
+        integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_permutations = 3
+        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: p_values_observed_consensus(n_studies)
+        integer(int32) :: ierr
+
+        mean_pmf_counts(:, 1) = [2_int32, 2_int32]
+        mean_pmf_included_n_reps = [4_int32]
+        included_n_reps(1, :) = [1_int32, 1_int32]
+        mean_pmf(:, 1) = [0.5_real64, 0.5_real64]
+        global_jsd_observed = 0.1_real64
+
+        call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
+                                   mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
+                                   p_values_observed_consensus, ierr=ierr, random_seed=7_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_gjct_permutation_test_rejects_draws_fewer_than_pool: "// &
+                        "study counts that do not add up to the pool total are invalid input, with no argument position", &
+                        arg_pos=0_int32)
+    end subroutine test_gjct_permutation_test_rejects_draws_fewer_than_pool
 
     !> `n_permutations = 0` skips the permutation test: nothing is tested, so both p-value arrays
     !| come back NaN ("not computed") with `ierr` OK, not `0.0`, which would read as "maximally

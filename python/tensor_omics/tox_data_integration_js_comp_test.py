@@ -3121,8 +3121,10 @@ def create_mean_pmf(
         Absolute counts of a residual per bin for `pmfs`
         The minimum valid value is `0`.
     included_n_reps : np.ndarray[np.int32] of shape (n_points, n_studies,), column-major (order='F')
-        Count of non-NaN replicates (included ones) per reference point, per study
-        The minimum valid value is `0`.
+        Count of non-NaN replicates (included ones) per reference point, per study. Every
+        study needs at least one at every reference point, since the consensus weights all
+        studies equally
+        The minimum valid value is `1`.
 
     Returns
     -------
@@ -3347,10 +3349,13 @@ def bootstrap_histogram(
     internally-consistent inputs should never trigger) is likewise folded into `ierr`, first
     failure only, without stopping the resampling already in flight.
 
-    Inconsistent inputs are rejected before any draw: when a point's pool is empty
-    (`mean_pmf_included_n_reps` 0) but a study still draws from it (`included_n_reps` above 0),
-    the call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no bootstrap runs.
-    No interval is computed then (a Fortran caller gets `confidence_interval` back unchanged).
+    Inconsistent inputs are rejected before any draw. At every reference point, the studies'
+    counts (`included_n_reps`) must add up to the pool's total (`mean_pmf_included_n_reps`), and
+    that total must equal the sum of the pool's bin counts (`mean_pmf_counts`), as
+    :func:`tensor_omics.create_mean_pmf` produces
+    them. Otherwise the call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no
+    bootstrap runs. No interval is computed then (a Fortran caller gets `confidence_interval`
+    back unchanged).
 
     Parameters
     ----------
@@ -3366,8 +3371,9 @@ def bootstrap_histogram(
         The minimum valid value is `0`.
     included_n_reps : np.ndarray[np.int32] of shape (n_points, n_studies,), column-major (order='F')
         Count of non-NaN replicates (included ones) per reference point, per study --
-        how many elements are drawn (with replacement) from the pooled pool per study
-        The minimum valid value is `0`.
+        how many elements are drawn (with replacement) from the pooled pool per study. Every
+        study needs at least one at every reference point
+        The minimum valid value is `1`.
     confidence_interval : np.ndarray[np.float64] of shape (2, n_studies,), column-major (order='F'), modified in place
         Confidence interval to be bootstrapped -- incoming values are the reference values
         that seed the top-k/bottom-k heaps (see above); overwritten with the bootstrapped

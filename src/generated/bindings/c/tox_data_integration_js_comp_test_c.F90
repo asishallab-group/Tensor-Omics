@@ -2540,8 +2540,10 @@ contains
             !! Absolute counts of a residual per bin for `pmfs`
             !! The minimum valid value is `0_int32`.
         integer(c_int), dimension(n_points, n_studies), intent(in), target :: included_n_reps
-            !! Count of non-NaN replicates (included ones) per reference point, per study
-            !! The minimum valid value is `0_int32`.
+            !! Count of non-NaN replicates (included ones) per reference point, per study. Every
+            !! study needs at least one at every reference point, since the consensus weights all
+            !! studies equally
+            !! The minimum valid value is `1_int32`.
         real(c_double), dimension(n_bins, n_points), intent(out), target :: mean_pmf
             !! The consensus pmf, built as `mean_pmf = sum(pmfs, dim=3) / n_studies` -- see the
             !! known-limitation note above
@@ -2673,10 +2675,13 @@ contains
     !| internally-consistent inputs should never trigger) is likewise folded into `ierr`, first
     !| failure only, without stopping the resampling already in flight.
     !|
-    !| Inconsistent inputs are rejected before any draw: when a point's pool is empty
-    !| (`mean_pmf_included_n_reps` 0) but a study still draws from it (`included_n_reps` above 0),
-    !| the call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no bootstrap runs.
-    !| No interval is computed then (a Fortran caller gets `confidence_interval` back unchanged).
+    !| Inconsistent inputs are rejected before any draw. At every reference point, the studies'
+    !| counts (`included_n_reps`) must add up to the pool's total (`mean_pmf_included_n_reps`), and
+    !| that total must equal the sum of the pool's bin counts (`mean_pmf_counts`), as
+    !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]] produces
+    !| them. Otherwise the call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no
+    !| bootstrap runs. No interval is computed then (a Fortran caller gets `confidence_interval`
+    !| back unchanged).
     subroutine bootstrap_histogram_c(&
             n_bootstraps,&
             n_bins,&
@@ -2713,8 +2718,9 @@ contains
             !! The minimum valid value is `0_int32`.
         integer(c_int), dimension(n_points, n_studies), intent(in), target :: included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point, per study --
-            !! how many elements are drawn (with replacement) from the pooled pool per study
-            !! The minimum valid value is `0_int32`.
+            !! how many elements are drawn (with replacement) from the pooled pool per study. Every
+            !! study needs at least one at every reference point
+            !! The minimum valid value is `1_int32`.
         real(c_double), dimension(2, n_studies), intent(inout), target :: confidence_interval
             !! Confidence interval to be bootstrapped -- incoming values are the reference values
             !! that seed the top-k/bottom-k heaps (see above); overwritten with the bootstrapped
@@ -2732,7 +2738,8 @@ contains
             !! The default value is `42_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator;
-            !! ERR_INVALID_INPUT, before any draw, if a study draws from a point whose pool is empty (see above)
+            !! ERR_INVALID_INPUT, before any draw, if at some point the studies' counts do not add
+            !! up to the pool's total, or that total is not the sum of the pool's bin counts (see above)
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -2797,10 +2804,13 @@ contains
     !| internally-consistent inputs should never trigger) is likewise folded into `ierr`, first
     !| failure only, without stopping the resampling already in flight.
     !|
-    !| Inconsistent inputs are rejected before any draw: when a point's pool is empty
-    !| (`mean_pmf_included_n_reps` 0) but a study still draws from it (`included_n_reps` above 0),
-    !| the call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no bootstrap runs.
-    !| No interval is computed then (a Fortran caller gets `confidence_interval` back unchanged).
+    !| Inconsistent inputs are rejected before any draw. At every reference point, the studies'
+    !| counts (`included_n_reps`) must add up to the pool's total (`mean_pmf_included_n_reps`), and
+    !| that total must equal the sum of the pool's bin counts (`mean_pmf_counts`), as
+    !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]] produces
+    !| them. Otherwise the call fails with `ERR_INVALID_INPUT`, not tied to any one argument, and no
+    !| bootstrap runs. No interval is computed then (a Fortran caller gets `confidence_interval`
+    !| back unchanged).
     subroutine bootstrap_histogram_expert_c(&
             n_bootstraps,&
             n_bins,&
@@ -2850,8 +2860,9 @@ contains
             !! The minimum valid value is `0_int32`.
         integer(c_int), dimension(n_points, n_studies), intent(in), target :: included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point, per study --
-            !! how many elements are drawn (with replacement) from the pooled pool per study
-            !! The minimum valid value is `0_int32`.
+            !! how many elements are drawn (with replacement) from the pooled pool per study. Every
+            !! study needs at least one at every reference point
+            !! The minimum valid value is `1_int32`.
         real(c_double), dimension(2, n_studies), intent(inout), target :: confidence_interval
             !! Confidence interval to be bootstrapped -- incoming values are the reference values
             !! that seed the top-k/bottom-k heaps (see above); overwritten with the bootstrapped
@@ -2885,7 +2896,8 @@ contains
             !! The default value is `42_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator;
-            !! ERR_INVALID_INPUT, before any draw, if a study draws from a point whose pool is empty (see above)
+            !! ERR_INVALID_INPUT, before any draw, if at some point the studies' counts do not add
+            !! up to the pool's total, or that total is not the sum of the pool's bin counts (see above)
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
