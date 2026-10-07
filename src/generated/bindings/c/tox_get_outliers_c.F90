@@ -578,8 +578,8 @@ contains
             loess_y,&
             loess_n,&
             tail_probability,&
-            ierr,&
-            quantile_level&
+            quantile_level,&
+            ierr&
         ) bind(C, name="detect_outliers_c")
         use tox_get_outliers, only: detect_outliers
 
@@ -606,13 +606,13 @@ contains
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
             !! upper-tail probability is used.
-        integer(c_int), intent(out), target :: ierr
-            !! Error code
         real(c_double), intent(in), target :: quantile_level
             !! Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
             !! The default value is `0.95_real64`.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
+        integer(c_int), intent(out), target :: ierr
+            !! Error code
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -637,8 +637,8 @@ contains
             loess_y = loess_y,&
             loess_n = loess_n,&
             tail_probability = tail_probability,&
-            ierr = ierr,&
-            quantile_level = quantile_level&
+            quantile_level = quantile_level,&
+            ierr = ierr&
         )
     end subroutine detect_outliers_c
 
@@ -679,8 +679,8 @@ contains
             loess_y,&
             loess_n,&
             tail_probability,&
-            ierr,&
-            quantile_level&
+            quantile_level,&
+            ierr&
         ) bind(C, name="detect_outliers_expert_c")
         use tox_get_outliers, only: detect_outliers_expert
 
@@ -765,13 +765,13 @@ contains
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
             !! upper-tail probability is used.
-        integer(c_int), intent(out), target :: ierr
-            !! Error code
         real(c_double), intent(in), target :: quantile_level
             !! Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
             !! The default value is `0.95_real64`.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
+        integer(c_int), intent(out), target :: ierr
+            !! Error code
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -840,8 +840,8 @@ contains
             loess_y = loess_y,&
             loess_n = loess_n,&
             tail_probability = tail_probability,&
-            ierr = ierr,&
-            quantile_level = quantile_level&
+            quantile_level = quantile_level,&
+            ierr = ierr&
         )
     end subroutine detect_outliers_expert_c
 

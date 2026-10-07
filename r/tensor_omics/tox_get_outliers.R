@@ -183,7 +183,7 @@ detect_outliers <- function(n_families, distances, gene_to_fam, quantile_level =
         .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
 
     .result <- .Call("detect_outliers_call", n_families, distances, gene_to_fam, quantile_level)
-    .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "is_outlier", "loess_x", "loess_y", "loess_n", "tail_probability", "ierr", "quantile_level")
+    .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "is_outlier", "loess_x", "loess_y", "loess_n", "tail_probability", "quantile_level", "ierr")
     .sources <- c("distances", "loess_x", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
