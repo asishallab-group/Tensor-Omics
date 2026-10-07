@@ -121,24 +121,35 @@ contains
   end subroutine test_std_dev_off_trend_gene
 
   !> Genes without variance say nothing about the trend: they are left out of the fit and returned
-  !| unchanged, while the genes on the trend are normalized as usual.
+  !| unchanged, while the genes on the trend are normalized as usual. Constant genes of 1 and of 0.1:
+  !| the mean of six copies of 0.1 is not exactly 0.1, and their spread must still be exactly 0.
+  !|
+  !| The span is 1. The seven genes lie on the line to the last bit or one ulp off it, so the robust
+  !| fit's residuals are rounding noise, and its reweighting can zero out enough of a smaller
+  !| neighbourhood (four genes at the default span) to leave the local quadratic underdetermined.
+  !| With every gene in every neighbourhood, the line is reproduced whatever the weights.
   subroutine test_std_dev_zero_variance_genes()
     integer(int32), parameter :: n_genes = 10, n_replicates = 6, n_varying = 7
+    real(real64), parameter :: constants(2) = [1.0_real64, 0.1_real64]
     real(real64), dimension(n_replicates, n_genes) :: expr, normalized, expected
-    integer(int32) :: ierr, i_replicate
+    integer(int32) :: ierr, i_replicate, i_constant
+    character(len=64) :: label
 
-    call fill_linear_trend(expr(:, 1:n_varying))
-    expr(:, n_varying + 1:) = 1.0_real64
-    expected(:, n_varying + 1:) = 1.0_real64
-    do i_replicate = 1, n_replicates
-      expected(i_replicate, 1:n_varying) = (10.0_real64 + linear_trend_offset(i_replicate, n_replicates)) &
-                                           /linear_trend_sd(n_replicates)
+    do i_constant = 1, size(constants)
+      write (label, '(a, f3.1)') "test_std_dev_zero_variance_genes: constant ", constants(i_constant)
+      call fill_linear_trend(expr(:, 1:n_varying))
+      expr(:, n_varying + 1:) = constants(i_constant)
+      expected(:, n_varying + 1:) = constants(i_constant)
+      do i_replicate = 1, n_replicates
+        expected(i_replicate, 1:n_varying) = (10.0_real64 + linear_trend_offset(i_replicate, n_replicates)) &
+                                             /linear_trend_sd(n_replicates)
+      end do
+
+      call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, span=1.0_real64, ierr=ierr)
+      call assert_equal_int(get_err_code(ierr), ERR_OK, trim(label)//", ierr")
+      call assert_equal_array_real(normalized, expected, n_genes*n_replicates, TOL, &
+                                   trim(label)//": constant genes unchanged, the rest normalized")
     end do
-
-    call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, ierr=ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_std_dev_zero_variance_genes: ierr")
-    call assert_equal_array_real(normalized, expected, n_genes*n_replicates, TOL, &
-                                 "test_std_dev_zero_variance_genes: constant genes unchanged, the rest normalized")
   end subroutine test_std_dev_zero_variance_genes
 
   !> The fit needs five genes that vary: four is ERR_INVALID_INPUT, five is enough. The span is 1

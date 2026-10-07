@@ -11,6 +11,7 @@ module f42_math_impl
     use tox_errors, only: is_err
     use, intrinsic :: ieee_arithmetic, only: ieee_next_after, ieee_value, ieee_positive_inf, ieee_negative_inf, ieee_is_finite
     M_IMPLICIT_NONE
+    private :: scaled_mean
 
     !> Generic clamp of a scalar into `[min_val, max_val]`, dispatches on the value's type.
     interface clamp
@@ -80,55 +81,95 @@ contains
     end function scaling_exponent
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Calculates the arithmetic mean of vector
+    !| Calculates the arithmetic mean of vector. The values are summed scaled by the power of two
+    !| [[f42_math_impl(module):scaling_exponent(function)]] picks, so the sum overflows for no
+    !| finite values: the mean of `[huge, huge, huge]` is `huge`. Ordinary data is summed unscaled.
     pure real(real64) function mean(vec)
         real(real64), dimension(:), intent(in) :: vec
             !! Vector to compute the mean value from
 
-        mean = sum(vec)/real(size(vec, kind=int32), real64)
+        integer(int32) :: exponent
+
+        exponent = scaling_exponent(vec)
+        mean = scale(scaled_mean(vec, exponent), -exponent)
     end function mean
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Calculates the standard deviation of vector, with or without Bessel's correction
+    !| Calculates the standard deviation of vector, with or without Bessel's correction, in the
+    !| centered two-pass form: the mean first, then the squared distances from it. Both are computed
+    !| scaled by the power of two [[f42_math_impl(module):scaling_exponent(function)]] picks, so
+    !| neither overflows for finite values; the result is Inf only where the true spread exceeds
+    !| `huge`, as Bessel's correction gives for `[huge, -huge]`.
+    !|
+    !| Values that are all equal, a single value included, have no spread: their standard deviation
+    !| is exactly 0 in either mode, decided on the values themselves rather than on their computed
+    !| mean, which can round away from them.
     pure real(real64) function std_dev(vec, do_bessel_correction)
         real(real64), dimension(:), intent(in) :: vec
             !! Vector to compute the standard deviation value from
         logical(c_bool), intent(in), optional :: do_bessel_correction
-            !! Tells whether to apply the bessel's correction or not, default: `.false.`. A single
-            !! value has no spread, so its standard deviation is 0 in either mode.
+            !! Tells whether to apply the bessel's correction or not, default: `.false.`. With
+            !! \(n = \texttt{size}(vec)\) and \(\bar{x} = \texttt{mean}(vec)\):
             !!
-            !! |    Case     |                                                Formula                                                      |
-            !! |-------------|-------------------------------------------------------------------------------------------------------------|
-            !! |  `.true.`   | \(\frac{1}{\texttt{size}(vec) - 1} \cdot \sum_{i=1}^{\texttt{size}(vec)} (vec(i) - \texttt{mean}(i))^{2}\)  |
-            !! |  `.false.`  |  \(\frac{1}{\texttt{size}(vec)} \cdot \sum_{i=1}^{\texttt{size}(vec)} vec(i)^{2} - \texttt{mean}(i)^{2}\)   |
+            !! |    Case     |                          Formula                                  |
+            !! |-------------|-------------------------------------------------------------------|
+            !! |  `.true.`   | \(\sqrt{\frac{1}{n - 1} \sum_{i=1}^{n} (vec(i) - \bar{x})^{2}}\) |
+            !! |  `.false.`  | \(\sqrt{\frac{1}{n} \sum_{i=1}^{n} (vec(i) - \bar{x})^{2}}\)     |
 
         logical(c_bool) :: bessel
-        integer(int32) :: n_elements, i_element
-        real(real64) :: mean_val, squares_sum
+        integer(int32) :: n_elements, i_element, exponent
+        real(real64) :: mean_scaled, squares_sum_scaled, divisor
 
         M_DEFAULT_VAL(do_bessel_correction, bessel, .false.)
 
-        mean_val = mean(vec)
         n_elements = size(vec, kind=int32)
-        if (bessel) then
-            ! a single value has no spread: Bessel's n - 1 would divide 0 by 0
-            if (n_elements <= 1) then
-                std_dev = 0.0_real64
-                return
-            end if
-            squares_sum = 0.0_real64
-            do concurrent(i_element=1:n_elements) shared(vec, mean_val) reduce(+:squares_sum)
-                squares_sum = squares_sum + (vec(i_element) - mean_val)**2
-            end do
-            std_dev = sqrt(squares_sum/real(n_elements - 1, kind=real64))
-        else
-            squares_sum = 0.0_real64
-            do concurrent(i_element=1:n_elements) shared(vec) reduce(+:squares_sum)
-                squares_sum = squares_sum + vec(i_element)**2
-            end do
-            std_dev = sqrt(max(0.0_real64, squares_sum/real(n_elements, kind=real64) - mean_val**2))
+
+        ! Values that all equal the first have no spread. The loop runs past its end only then,
+        ! which also covers a single value, where Bessel's n - 1 would divide 0 by 0.
+        do i_element = 2, n_elements
+            if (vec(i_element) /= vec(1)) exit
+        end do
+        if (i_element > n_elements) then
+            std_dev = 0.0_real64
+            return
         end if
+
+        exponent = scaling_exponent(vec)
+        mean_scaled = scaled_mean(vec, exponent)
+
+        squares_sum_scaled = 0.0_real64
+        do concurrent(i_element=1:n_elements) shared(vec, exponent, mean_scaled) reduce(+:squares_sum_scaled)
+            squares_sum_scaled = squares_sum_scaled + (scale(vec(i_element), exponent) - mean_scaled)**2
+        end do
+
+        if (bessel) then
+            divisor = real(n_elements - 1, kind=real64)
+        else
+            divisor = real(n_elements, kind=real64)
+        end if
+        std_dev = scale(sqrt(squares_sum_scaled/divisor), -exponent)
     end function std_dev
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| The mean of `scale(vec, exponent)`, for [[f42_math_impl(module):mean(function)]] and
+    !| [[f42_math_impl(module):std_dev(function)]], which keep working in those scaled
+    !| coordinates.
+    pure real(real64) function scaled_mean(vec, exponent)
+        real(real64), dimension(:), intent(in) :: vec
+            !! The values
+        integer(int32), intent(in) :: exponent
+            !! Power of two the values are scaled by, from
+            !! [[f42_math_impl(module):scaling_exponent(function)]]
+
+        integer(int32) :: i_element
+        real(real64) :: scaled_sum
+
+        scaled_sum = 0.0_real64
+        do concurrent(i_element=1:size(vec, kind=int32)) shared(vec, exponent) reduce(+:scaled_sum)
+            scaled_sum = scaled_sum + scale(vec(i_element), exponent)
+        end do
+        scaled_mean = scaled_sum/real(size(vec, kind=int32), real64)
+    end function scaled_mean
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Clamps a value into a range `min_val <= val <= max_val`. If `max_val < min_val`, `min_val` is returned
