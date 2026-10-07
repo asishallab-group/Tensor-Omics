@@ -46,6 +46,40 @@ module f42_math_impl
 contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
+    !| The power of two a set of values is scaled by, as `scale(value, exponent)`, before their sum
+    !| or their sum of squares is formed, so that neither overflows nor underflows: 0 while the
+    !| largest magnitude lies in \([2^{-470}, 2^{496}]\), so ordinary data is not scaled at all;
+    !| `-600` above that range, and `600` below it, the zero set included. Scaling by a power of two
+    !| is exact, and `scale(result, -exponent)` brings a sum, a mean or a length back to the values'
+    !| own magnitude.
+    !|
+    !| Inside the range, the squares of any `int32` count of values sum to a finite number, and a
+    !| value whose square falls below `tiny` is too small, next to the largest one, to change the
+    !| sum. Outside it, the shifted values land inside it.
+    pure integer(int32) function scaling_exponent(values) result(exponent)
+        real(real64), dimension(:), intent(in) :: values
+            !! The set of values, of any magnitude
+
+        real(real64), parameter :: LARGEST_UNSCALED = 2.0_real64**496
+        real(real64), parameter :: SMALLEST_UNSCALED = 2.0_real64**(-470)
+        integer(int32), parameter :: SCALE_DOWN = -600_int32, SCALE_UP = 600_int32
+        integer(int32) :: i_value
+        real(real64) :: largest
+
+        largest = 0.0_real64
+        do concurrent(i_value=1:size(values, kind=int32)) shared(values) reduce(max:largest)
+            largest = max(largest, abs(values(i_value)))
+        end do
+
+        ! An exponent rather than a factor 2**exponent to multiply by: an optimizer that does not
+        ! keep to the source may hoist a factor out of a sum, and 2**-exponent(x) is subnormal
+        ! for x near huge, so it reads as zero where subnormals are flushed.
+        exponent = 0_int32
+        if (largest > LARGEST_UNSCALED) exponent = SCALE_DOWN
+        if (largest < SMALLEST_UNSCALED) exponent = SCALE_UP
+    end function scaling_exponent
+
+    !> AUTHOR_FRANZ_ERIC_SILL
     !| Calculates the arithmetic mean of vector
     pure real(real64) function mean(vec)
         real(real64), dimension(:), intent(in) :: vec

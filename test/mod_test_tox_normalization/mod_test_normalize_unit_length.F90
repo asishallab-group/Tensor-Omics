@@ -1,10 +1,12 @@
 !> The `normalize_unit_length` cases: hand-derived unit vectors, the only norm it rejects (exactly
-!| zero), magnitudes whose squares leave the real64 range, and the input checks.
+!| zero), magnitudes whose squares leave the real64 range, subnormal inputs, and the input checks.
 module mod_test_normalize_unit_length
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
     use tox_normalization, only: normalize_unit_length
+    use mod_test_tox_normalization_fixtures, only: subnormal_from_bits, flushes_subnormals, SMALLEST_SUBNORMAL_BITS, &
+                                                   NINE_TENTHS_OF_TINY_BITS
     use tox_errors
     use test_suite, only: test_case
     implicit none
@@ -17,7 +19,7 @@ contains
     function get_all_tests_normalize_unit_length() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(7))
+        allocate (all_tests(11))
         all_tests(1) = test_case("test_normalize_unit_length_values", test_normalize_unit_length_values)
         all_tests(2) = test_case("test_normalize_unit_length_already_unit", test_normalize_unit_length_already_unit)
         all_tests(3) = test_case("test_normalize_unit_length_zero_vector", test_normalize_unit_length_zero_vector)
@@ -25,6 +27,11 @@ contains
         all_tests(5) = test_case("test_normalize_unit_length_extreme_magnitudes", test_normalize_unit_length_extreme_magnitudes)
         all_tests(6) = test_case("test_normalize_unit_length_rejects_nan_and_inf", test_normalize_unit_length_rejects_nan_and_inf)
         all_tests(7) = test_case("test_normalize_unit_length_dimensions", test_normalize_unit_length_dimensions)
+        all_tests(8) = test_case("test_normalize_unit_length_huge_entries", test_normalize_unit_length_huge_entries)
+        all_tests(9) = test_case("test_normalize_unit_length_subnormal_squares", test_normalize_unit_length_subnormal_squares)
+        all_tests(10) = test_case("test_normalize_unit_length_smallest_subnormal", &
+                                  test_normalize_unit_length_smallest_subnormal)
+        all_tests(11) = test_case("test_normalize_unit_length_subnormal_entry", test_normalize_unit_length_subnormal_entry)
     end function get_all_tests_normalize_unit_length
 
     !> [3, 4, -12] has norm 13, so it becomes [3, 4, -12]/13; a single entry keeps only its sign.
@@ -139,5 +146,83 @@ contains
         call normalize_unit_length(vector, -1, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_normalize_unit_length_dimensions: n_dims = -1")
     end subroutine test_normalize_unit_length_dimensions
+
+    !> Entries whose norm exceeds huge still have a direction: [huge, huge] becomes
+    !| [1/sqrt(2), 1/sqrt(2)], as the division happens in scaled coordinates.
+    subroutine test_normalize_unit_length_huge_entries()
+        integer(int32) :: ierr
+        real(real64) :: vector(2), expected(2)
+
+        vector = huge(1.0_real64)
+        expected = 1.0_real64/sqrt(2.0_real64)
+        call normalize_unit_length(vector, 2, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_unit_length_huge_entries: [huge, huge] ierr")
+        call assert_equal_array_real(vector, expected, 2, 2*TOL, &
+                                     "test_normalize_unit_length_huge_entries: [huge, huge] becomes [1, 1]/sqrt(2)")
+    end subroutine test_normalize_unit_length_huge_entries
+
+    !> [v, v] for normal v whose square is subnormal (below about 1.5e-154 squared falls under
+    !| tiny): the result is [1, 1]/sqrt(2) and has length 1 in every build, whether or not it
+    !| flushes subnormals, as the scaled squares stay normal.
+    subroutine test_normalize_unit_length_subnormal_squares()
+        integer(int32) :: ierr, i_value
+        real(real64) :: vector(2), expected(2), values(3)
+        character(len=96) :: label
+
+        values = [1.572e-162_real64, 2.5e-162_real64, 2.722e-162_real64]
+        expected = 0.7071067811865476_real64
+        do i_value = 1, size(values)
+            write (label, '(a, es10.4, a)') "test_normalize_unit_length_subnormal_squares: [", values(i_value), &
+                ", same]"
+            vector = values(i_value)
+            call normalize_unit_length(vector, 2, ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, trim(label)//" ierr")
+            call assert_equal_array_real(vector, expected, 2, 2*TOL, trim(label)//" becomes [1, 1]/sqrt(2)")
+            call assert_equal_real(sqrt(vector(1)**2 + vector(2)**2), 1.0_real64, 2*TOL, trim(label)//" has length 1")
+        end do
+    end subroutine test_normalize_unit_length_subnormal_squares
+
+    !> [s, s] for the smallest subnormal s: [1, 1]/sqrt(2), where the build keeps subnormals. Where
+    !| it flushes them, s reads as 0 and [s, s] is the zero vector: ERR_DIVISION_BY_ZERO.
+    subroutine test_normalize_unit_length_smallest_subnormal()
+        integer(int32) :: ierr
+        real(real64) :: vector(2), expected(2)
+
+        vector = subnormal_from_bits(SMALLEST_SUBNORMAL_BITS)
+        call normalize_unit_length(vector, 2, ierr)
+        if (flushes_subnormals()) then
+            call assert_equal_int(get_err_code(ierr), ERR_DIVISION_BY_ZERO, &
+                                  "test_normalize_unit_length_smallest_subnormal: flushed [s, s] is the zero vector")
+        else
+            expected = 0.7071067811865476_real64
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_unit_length_smallest_subnormal: [s, s] ierr")
+            call assert_equal_array_real(vector, expected, 2, 2*TOL, &
+                                         "test_normalize_unit_length_smallest_subnormal: [s, s] becomes [1, 1]/sqrt(2)")
+        end if
+    end subroutine test_normalize_unit_length_smallest_subnormal
+
+    !> [tiny, 0.9*tiny], whose second entry is subnormal: about [0.74329, 0.66896], of length 1 and
+    !| with the entries' ratio, where the build keeps subnormals. Where it flushes them, the second
+    !| entry reads as 0 and the vector becomes [1, 0].
+    subroutine test_normalize_unit_length_subnormal_entry()
+        integer(int32) :: ierr
+        real(real64) :: vector(2), expected(2), input_ratio
+
+        vector(1) = tiny(1.0_real64)
+        vector(2) = subnormal_from_bits(NINE_TENTHS_OF_TINY_BITS)
+        input_ratio = vector(2)/vector(1)
+        call normalize_unit_length(vector, 2, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_unit_length_subnormal_entry: ierr")
+        if (flushes_subnormals()) then
+            expected = [1.0_real64, 0.0_real64]
+            call assert_equal_array_real(vector, expected, 2, 0.0_real64, &
+                                         "test_normalize_unit_length_subnormal_entry: flushed, it becomes [1, 0]")
+        else
+            call assert_equal_real(sqrt(vector(1)**2 + vector(2)**2), 1.0_real64, 2*TOL, &
+                                   "test_normalize_unit_length_subnormal_entry: has length 1")
+            call assert_equal_real(vector(2)/vector(1), input_ratio, 2*TOL, &
+                                   "test_normalize_unit_length_subnormal_entry: keeps the ratio of its entries")
+        end if
+    end subroutine test_normalize_unit_length_subnormal_entry
 
 end module mod_test_normalize_unit_length

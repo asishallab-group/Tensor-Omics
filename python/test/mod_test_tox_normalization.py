@@ -54,6 +54,15 @@ def test_normalize_unit_length():
     assert np.isclose(np.linalg.norm(vector), 1.0), "the caller's array was not normalized in place"
 
 
+def test_normalize_unit_length_smallest_subnormal():
+    # [s, s] for the smallest subnormal s still has a direction; the values themselves are the
+    # Fortran suite's job
+    smallest_subnormal = np.nextafter(0.0, 1.0)
+    vector = np.array([smallest_subnormal, smallest_subnormal], dtype=np.float64)
+    normalize_unit_length(vector)
+    assert np.all(np.isfinite(vector)), "non-finite values in the result"
+
+
 def test_normalize_unit_length_rejects_zero_vector():
     assert_error(lambda: normalize_unit_length(np.zeros(3, dtype=np.float64)),
                  "a zero vector has no direction", ERR_DIVISION_BY_ZERO)

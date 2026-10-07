@@ -16,9 +16,9 @@ module tox_normalization_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, &
-                          validate_in_range_real, validate_all_in_range_real, ERR_NAN_INF
+                          validate_all_in_range_real, ERR_NAN_INF
     use f42_math_impl, only: is_close, log1p, LOG_2, above, mean, std_dev
-    use f42_vector_impl, only: norm
+    use f42_vector_impl, only: norm, scaled_length
     use tox_loess_impl, only: loess_fit_robust_impl, EPS_LOESS
 
 #define CM_LOESS_SPAN_DEFAULT 0.7_real64
@@ -29,6 +29,12 @@ contains
 
     !> summary: Normalizes an input vector to unit length in-place
     !| AUTHOR_FRANZ_ERIC_SILL
+    !| Only the zero vector has no direction, and is rejected with ERR_DIVISION_BY_ZERO. Any other
+    !| vector becomes its unit vector, however short or long: its own length is never formed, so it
+    !| may underflow or overflow, as it does for entries near the smallest normal number (about
+    !| 2.2e-308) or near the largest number (about 1.8e308). Where subnormal numbers are flushed to
+    !| zero, by a fast floating-point model or by the host program, a vector made only of
+    !| subnormals reads as the zero vector.
     pure subroutine normalize_unit_length_impl(vector, n_dims, ierr)
         integer(int32), intent(in) :: n_dims
             !! number of elements in `vector`
@@ -37,26 +43,22 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        integer(int32) :: i_dim
-        real(real64) :: vector_norm
+        integer(int32) :: i_dim, exponent
+        real(real64) :: scaled_norm
 
         call set_ok(ierr)
 
-        ! The norm is a derived quantity, so its non-finite / zero guards are runtime checks here.
-        vector_norm = norm(vector)
-        call validate_in_range_real(vector_norm, ierr)
-        if (is_err(ierr)) return
-
-        ! Only an exactly zero norm is rejected: the zero vector alone has no direction, and any
-        ! other norm, however tiny, still divides the vector into a unit one. A finite norm is
-        ! never negative, so `<=` is that exact test without comparing reals for equality.
-        if (vector_norm <= 0.0_real64) then
+        ! The division happens in scaled coordinates, so the vector's own length, which may
+        ! overflow or be subnormal, is never formed. A length is never negative, so `<=` is the
+        ! exact test for zero without comparing reals for equality.
+        call scaled_length(n_dims, vector, exponent, scaled_norm)
+        if (scaled_norm <= 0.0_real64) then
             call set_err(ierr, ERR_DIVISION_BY_ZERO)
             return
         end if
 
-        do concurrent (i_dim = 1:n_dims) shared(vector, vector_norm)
-            vector(i_dim) = vector(i_dim)/vector_norm
+        do concurrent (i_dim = 1:n_dims) shared(vector, exponent, scaled_norm)
+            vector(i_dim) = scale(vector(i_dim), exponent)/scaled_norm
         end do
     end subroutine normalize_unit_length_impl
 

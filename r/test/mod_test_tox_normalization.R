@@ -31,6 +31,15 @@ test_normalize_unit_length <- function() {
   assert_true(all(is.finite(result)), "non-finite values in the result")
 }
 
+test_normalize_unit_length_smallest_subnormal <- function() {
+  # c(s, s) for the smallest subnormal s still has a direction; the values themselves are the
+  # Fortran suite's job
+  smallest_subnormal <- 2^-1074
+  result <- normalize_unit_length(c(smallest_subnormal, smallest_subnormal))
+  assert_true(is.double(result) && length(result) == 2L, "expected a double vector of length 2")
+  assert_true(all(is.finite(result)), "non-finite values in the result")
+}
+
 test_normalize_unit_length_rejects_zero_vector <- function() {
   assert_error(normalize_unit_length(c(0, 0, 0)), "a zero vector has no direction", ERR_DIVISION_BY_ZERO)
 }

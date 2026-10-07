@@ -2,6 +2,13 @@
 
 #' Normalizes an input vector to unit length in-place
 #'
+#' Only the zero vector has no direction, and is rejected with ERR_DIVISION_BY_ZERO. Any other
+#' vector becomes its unit vector, however short or long: its own length is never formed, so it
+#' may underflow or overflow, as it does for entries near the smallest normal number (about
+#' 2.2e-308) or near the largest number (about 1.8e308). Where subnormal numbers are flushed to
+#' zero, by a fast floating-point model or by the host program, a vector made only of
+#' subnormals reads as the zero vector.
+#'
 #' Generated from the Fortran procedure \code{tox_normalization::normalize_unit_length}, whose argument names
 #' are the ones an error message reports.
 #'

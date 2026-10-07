@@ -40,6 +40,12 @@ module tox_normalization
 contains
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):normalize_unit_length_impl]].
+    !| Only the zero vector has no direction, and is rejected with ERR_DIVISION_BY_ZERO. Any other
+    !| vector becomes its unit vector, however short or long: its own length is never formed, so it
+    !| may underflow or overflow, as it does for entries near the smallest normal number (about
+    !| 2.2e-308) or near the largest number (about 1.8e308). Where subnormal numbers are flushed to
+    !| zero, by a fast floating-point model or by the host program, a vector made only of
+    !| subnormals reads as the zero vector.
     pure subroutine normalize_unit_length(&
             vector,&
             n_dims,&
