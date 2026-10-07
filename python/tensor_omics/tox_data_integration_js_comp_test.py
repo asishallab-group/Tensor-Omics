@@ -4542,8 +4542,8 @@ def run_js_comp_test_parameter_search(
 
     Impure: calls the impure
     :func:`tensor_omics.bootstrap_histogram`. A GSL
-    failure it reports is folded into `ierr` (first failure only) without aborting the search,
-    matching that routine's own tolerant precedent.
+    failure it reports (a failed allocation of the random number generator) is returned in
+    `ierr`, and the search stops there; its outputs are then undefined.
 
     Parameters
     ----------
@@ -5210,8 +5210,8 @@ def run_js_comp_test_adaptive_parameter_search(
 
     Impure: calls the impure
     :func:`tensor_omics.bootstrap_histogram`. A GSL
-    failure it reports is folded into `ierr` (first failure only) without aborting the search,
-    as in the fixed-k search.
+    failure it reports (a failed allocation of the random number generator) is returned in
+    `ierr`, and the search stops there; its outputs are then undefined, as in the fixed-k search.
 
     Parameters
     ----------

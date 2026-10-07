@@ -4729,8 +4729,8 @@ contains
     !|
     !| Impure: calls the impure
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]. A GSL
-    !| failure it reports is folded into `ierr` (first failure only) without aborting the search,
-    !| matching that routine's own tolerant precedent.
+    !| failure it reports (a failed allocation of the random number generator) is returned in
+    !| `ierr`, and the search stops there; its outputs are then undefined.
     subroutine run_js_comp_test_parameter_search(&
             n_studies,&
             max_n_genes_all_studies,&
@@ -5462,8 +5462,8 @@ contains
     !|
     !| Impure: calls the impure
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]. A GSL
-    !| failure it reports is folded into `ierr` (first failure only) without aborting the search,
-    !| matching that routine's own tolerant precedent.
+    !| failure it reports (a failed allocation of the random number generator) is returned in
+    !| `ierr`, and the search stops there; its outputs are then undefined.
     subroutine run_js_comp_test_parameter_search_expert(&
             n_studies,&
             max_n_genes_all_studies,&
@@ -6289,8 +6289,8 @@ contains
     !|
     !| Impure: calls the impure
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]. A GSL
-    !| failure it reports is folded into `ierr` (first failure only) without aborting the search,
-    !| as in the fixed-k search.
+    !| failure it reports (a failed allocation of the random number generator) is returned in
+    !| `ierr`, and the search stops there; its outputs are then undefined, as in the fixed-k search.
     subroutine run_js_comp_test_adaptive_parameter_search(&
             n_studies,&
             max_n_genes_all_studies,&
@@ -7012,8 +7012,8 @@ contains
     !|
     !| Impure: calls the impure
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]. A GSL
-    !| failure it reports is folded into `ierr` (first failure only) without aborting the search,
-    !| as in the fixed-k search.
+    !| failure it reports (a failed allocation of the random number generator) is returned in
+    !| `ierr`, and the search stops there; its outputs are then undefined, as in the fixed-k search.
     subroutine run_js_comp_test_adaptive_parameter_search_expert(&
             n_studies,&
             max_n_genes_all_studies,&

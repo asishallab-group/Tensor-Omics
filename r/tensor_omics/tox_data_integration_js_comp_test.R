@@ -2245,8 +2245,8 @@ run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood
 #'
 #' Impure: calls the impure
 #' \code{\link{bootstrap_histogram}}. A GSL
-#' failure it reports is folded into `ierr` (first failure only) without aborting the search,
-#' matching that routine's own tolerant precedent.
+#' failure it reports (a failed allocation of the random number generator) is returned in
+#' `ierr`, and the search stops there; its outputs are then undefined.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::run_js_comp_test_parameter_search}, whose argument names
 #' are the ones an error message reports.
@@ -2679,8 +2679,8 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstrap
 #'
 #' Impure: calls the impure
 #' \code{\link{bootstrap_histogram}}. A GSL
-#' failure it reports is folded into `ierr` (first failure only) without aborting the search,
-#' as in the fixed-k search.
+#' failure it reports (a failed allocation of the random number generator) is returned in
+#' `ierr`, and the search stops there; its outputs are then undefined, as in the fixed-k search.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::run_js_comp_test_adaptive_parameter_search}, whose argument names
 #' are the ones an error message reports.

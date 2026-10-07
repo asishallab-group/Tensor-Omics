@@ -4923,8 +4923,8 @@ contains
     !|
     !| Impure: calls the impure
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]. A GSL
-    !| failure it reports is folded into `ierr` (first failure only) without aborting the search,
-    !| matching that routine's own tolerant precedent.
+    !| failure it reports (a failed allocation of the random number generator) is returned in
+    !| `ierr`, and the search stops there; its outputs are then undefined.
     subroutine run_js_comp_test_parameter_search_impl(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, &
                                                        gene_means, residuals, n_bootstraps, &
                                                        join_method, max_n_points_candidate, max_n_neighbors_candidate, &
@@ -5697,7 +5697,19 @@ contains
                                           tmp_js_divergences(1:n_points, 1:n_studies), tmp_weights(1:n_points, 1:n_studies), &
                                           tmp_global_js_divergence, two_sided_bootstrapping_significance_level, random_seed, &
                                           bootstrap_ierr)
-            if (is_err(bootstrap_ierr)) call set_err_once(ierr, get_err_code(bootstrap_ierr))
+            ! Defensive: this search built the counts itself, so they add up by construction
+            ! (each study's histogram counts every included residual once, and
+            ! create_mean_pmf_impl sums them), and the second admissibility
+            ! gate above already rejected an empty study. The bootstrap's consistency check then
+            ! passes and no draw can fail; the only remaining trigger is GSL failing to allocate
+            ! the random number generator, which no test can force, so this branch has no test.
+            ! Without the return the candidate's interval would stay at its [J, J] seed, of width
+            ! 0, and could win the smallest-uncertainty ranking. The outputs are then undefined,
+            ! as in the sibling routines.
+            if (is_err(bootstrap_ierr)) then
+                call set_err_once(ierr, get_err_code(bootstrap_ierr))
+                return
+            end if
 
             trace_ci_lower(1:n_studies, n_admissible_evaluated) = tmp_confidence_interval(1, 1:n_studies)
             trace_ci_upper(1:n_studies, n_admissible_evaluated) = tmp_confidence_interval(2, 1:n_studies)
@@ -5931,8 +5943,8 @@ contains
     !|
     !| Impure: calls the impure
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]. A GSL
-    !| failure it reports is folded into `ierr` (first failure only) without aborting the search,
-    !| as in the fixed-k search.
+    !| failure it reports (a failed allocation of the random number generator) is returned in
+    !| `ierr`, and the search stops there; its outputs are then undefined, as in the fixed-k search.
     subroutine run_js_comp_test_adaptive_parameter_search_impl(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, &
                                                                 gene_means, residuals, n_bootstraps, join_method, &
                                                                 max_n_points_candidate, n_bootstrapping_top_k_jsds, &
@@ -6627,7 +6639,19 @@ contains
                                           tmp_js_divergences(1:n_points, 1:n_studies), tmp_weights(1:n_points, 1:n_studies), &
                                           tmp_global_js_divergence, two_sided_bootstrapping_significance_level, random_seed, &
                                           bootstrap_ierr)
-            if (is_err(bootstrap_ierr)) call set_err_once(ierr, get_err_code(bootstrap_ierr))
+            ! Defensive: this search built the counts itself, so they add up by construction
+            ! (each study's histogram counts every included residual once, and
+            ! create_mean_pmf_impl sums them), and the second admissibility
+            ! gate above already rejected an empty study. The bootstrap's consistency check then
+            ! passes and no draw can fail; the only remaining trigger is GSL failing to allocate
+            ! the random number generator, which no test can force, so this branch has no test.
+            ! Without the return the candidate's interval would stay at its [J, J] seed, of width
+            ! 0, and could win the smallest-uncertainty ranking. The outputs are then undefined,
+            ! as in the sibling routines.
+            if (is_err(bootstrap_ierr)) then
+                call set_err_once(ierr, get_err_code(bootstrap_ierr))
+                return
+            end if
 
             trace_ci_lower(1:n_studies, n_admissible_evaluated) = tmp_confidence_interval(1, 1:n_studies)
             trace_ci_upper(1:n_studies, n_admissible_evaluated) = tmp_confidence_interval(2, 1:n_studies)
