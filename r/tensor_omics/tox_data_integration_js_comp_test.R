@@ -1178,7 +1178,8 @@ construct_adaptive_neighborhoods <- function(gene_means, residuals, k_start, k_s
 #' `[min_idx, max_idx]` neighborhood spans
 #' \code{\link{construct_neighborhoods_ranged}}
 #' produces. The overlap of two consecutive spans is the number of positions they share,
-#' divided by the number of positions in the earlier span. Named `check_*` rather than 125's
+#' divided by the number of positions in the earlier span. A reversed span (`max < min`) counts
+#' as empty, so its overlap is 0. Named `check_*` rather than 125's
 #' `test_*`, a deliberate deviation from the verbatim port: the generated R binding is
 #' published under the Fortran name, and the R test harness (`r/test_helpers.R`'s
 #' `run_all_tests`) discovers every `test_`-prefixed name in the environment as a test case to

@@ -313,7 +313,8 @@ def pool_means(
         n_pool : int
             Total number of included (non-NaN) pooled mean-expression values
         x_star : np.ndarray[np.float64] of shape (n_points,), read-only
-            Mean-expression reference points
+            Mean-expression reference points. If every pooled mean is NaN, every reference
+            point is NaN, and `construct_neighborhoods_ranged` rejects such points.
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -394,7 +395,8 @@ def pool_means_expert(
         n_pool : int
             Total number of included (non-NaN) pooled mean-expression values
         x_star : np.ndarray[np.float64] of shape (n_points,), read-only
-            Mean-expression reference points
+            Mean-expression reference points. If every pooled mean is NaN, every reference
+            point is NaN, and `construct_neighborhoods_ranged` rejects such points.
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -487,7 +489,8 @@ def pool_study_means(
         n_pool : int
             Total number of included (non-NaN) pooled mean-expression values
         x_star : np.ndarray[np.float64] of shape (n_points,), read-only
-            Mean-expression reference points
+            Mean-expression reference points. If every mean of both studies is NaN, every
+            reference point is NaN, and `construct_neighborhoods_ranged` rejects such points.
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -673,7 +676,6 @@ def construct_neighborhoods_ranged(
     ----------
     x_star : np.ndarray[np.float64] of shape (n_points,)
         Mean-expression reference points
-        NaN is permitted for this value.
     mean_S : np.ndarray[np.float64] of shape (n_genes_S,)
         Per-gene mean expression values
         NaN is permitted for this value.
@@ -782,7 +784,6 @@ def construct_neighborhoods_ranged_expert(
     ----------
     x_star : np.ndarray[np.float64] of shape (n_points,)
         Mean-expression reference points
-        NaN is permitted for this value.
     mean_S : np.ndarray[np.float64] of shape (n_genes_S,)
         Per-gene mean expression values
         NaN is permitted for this value.

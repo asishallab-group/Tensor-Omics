@@ -26,7 +26,7 @@ from tensor_omics import (
     construct_neighborhoods_ranged_expert,
     ToxError,
 )
-from tensor_omics.error_handling import ERR_INVALID_INPUT
+from tensor_omics.error_handling import ERR_INVALID_INPUT, ERR_NAN_INF
 
 
 def test_compute_gene_means():
@@ -298,6 +298,23 @@ def test_construct_neighborhoods_ranged_expert_rejects_bad_perm():
         construct_neighborhoods_ranged_expert(x_star, mean_S, mean_S_perm, 2)
     except ToxError as error:
         assert error.argument == "mean_S_perm", f"expected the error on mean_S_perm, got {error.argument!r}"
+
+
+def test_construct_neighborhoods_ranged_rejects_nan_x_star():
+    """construct_neighborhoods_ranged and its expert tier reject a NaN reference point with
+    ERR_NAN_INF on x_star, instead of silently taking the lowest-mean genes as its neighborhood
+    (test_construct_neighborhoods_ranged_rejects_nan_x_star in the Fortran suite)."""
+    x_star = np.array([2.5, np.nan], dtype=np.float64)
+    mean_S = np.array([1.0, 2.0, 3.0], dtype=np.float64)
+    mean_S_perm = np.array([1, 2, 3], dtype=np.int32)
+
+    for call in (lambda: construct_neighborhoods_ranged(x_star, mean_S, 2),
+                 lambda: construct_neighborhoods_ranged_expert(x_star, mean_S, mean_S_perm, 2)):
+        assert_error(call, "expected ERR_NAN_INF for a NaN reference point", ERR_NAN_INF)
+        try:
+            call()
+        except ToxError as error:
+            assert error.argument == "x_star", f"expected the error on x_star, got {error.argument!r}"
 
 
 def test_integration():

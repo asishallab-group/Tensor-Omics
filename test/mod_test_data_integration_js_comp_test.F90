@@ -50,6 +50,7 @@ module mod_test_data_integration_js_comp_test
     use f42_sort_impl, only: init_perm, sort_array_heapsort
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
                                              compute_weighted_global_divergence_impl
+    use tox_data_integration_preprocessing_impl, only: construct_neighborhoods_ranged_impl
     use tox_errors
     use test_suite, only: test_case
 
@@ -112,7 +113,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(228))
+        allocate (all_tests(231))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -578,6 +579,12 @@ contains
                                   test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins)
         all_tests(228) = test_case("test_check_plateau_condition_ci_overlap_fractional_values", &
                                    test_check_plateau_condition_ci_overlap_fractional_values)
+        all_tests(229) = test_case("test_construct_neighborhoods_ranged_rejects_nan_x_star", &
+                                   test_construct_neighborhoods_ranged_rejects_nan_x_star)
+        all_tests(230) = test_case("test_neighborhood_overlaps_reversed_first_span_counts_as_empty", &
+                                   test_neighborhood_overlaps_reversed_first_span_counts_as_empty)
+        all_tests(231) = test_case("test_construct_neighborhoods_ranged_impl_nan_x_star", &
+                                   test_construct_neighborhoods_ranged_impl_nan_x_star)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -756,6 +763,75 @@ contains
                                                     neighborhood_indices, neighborhood_range, ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, name//"entry 0 is rejected", arg_pos=5_int32)
     end subroutine test_construct_neighborhoods_ranged_expert_rejects_bad_perm
+
+    !> Both tiers of construct_neighborhoods_ranged reject a NaN reference point with ERR_NAN_INF
+    !| at `x_star`'s position (2 in both). Before the check, `x_star = [2.5, NaN]` returned OK, and
+    !| the NaN point silently took the lowest-mean genes as its neighborhood.
+    subroutine test_construct_neighborhoods_ranged_rejects_nan_x_star()
+        character(len=*), parameter :: name = "test_construct_neighborhoods_ranged_rejects_nan_x_star: "
+        integer(int32), parameter :: n_points = 2, n_genes_S = 3, n_neighbors = 2
+        real(real64) :: x_star(n_points), mean_S(n_genes_S)
+        integer(int32) :: mean_S_perm(n_genes_S)
+        integer(int32) :: neighborhood_indices(n_neighbors, n_points)
+        integer(int32) :: neighborhood_range(2, n_points)
+        integer(int32) :: ierr
+
+        x_star = [2.5_real64, ieee_value(1.0_real64, ieee_quiet_nan)]
+        mean_S = [1.0_real64, 2.0_real64, 3.0_real64]
+        mean_S_perm = [1, 2, 3]
+
+        call construct_neighborhoods_ranged(n_points, x_star, n_genes_S, mean_S, n_neighbors, &
+                                            neighborhood_indices, neighborhood_range, ierr)
+        call assert_err(ierr, ERR_NAN_INF, name//"plain tier rejects a NaN x_star", arg_pos=2_int32)
+
+        call construct_neighborhoods_ranged_expert(n_points, x_star, n_genes_S, mean_S, mean_S_perm, n_neighbors, &
+                                                    neighborhood_indices, neighborhood_range, ierr)
+        call assert_err(ierr, ERR_NAN_INF, name//"expert tier rejects a NaN x_star", arg_pos=2_int32)
+    end subroutine test_construct_neighborhoods_ranged_rejects_nan_x_star
+
+    !> A NaN reference point takes the first `n_neighbors` genes in sorted order, range
+    !| `[1, min(n_genes_S, n_neighbors)]`, then the usual tie extension. Only a direct caller of
+    !| the implementation can reach this branch, since both generated tiers reject a NaN `x_star`.
+    !| Case 1: sorted means `[1, 2, 3, 5]`; the NaN point takes genes `[2, 3]`, range `[1, 2]`,
+    !| and the point 4.0 beside it is unaffected: insertion position 4, then the equal distances
+    !| to 3 and 5 go to the left (gene 1), then 5 (gene 4) is closer than 2, range `[3, 4]`.
+    !| Case 2: sorted means `[1, 2, 2, 4]`; the NaN point's range `[1, 2]` ends on a 2 that ties
+    !| with position 3, so it extends to `[1, 3]`, while the indices stay the first two genes.
+    subroutine test_construct_neighborhoods_ranged_impl_nan_x_star()
+        character(len=*), parameter :: name = "test_construct_neighborhoods_ranged_impl_nan_x_star: "
+        integer(int32), parameter :: n_genes_S = 4, n_neighbors = 2
+        real(real64) :: nan_val
+        real(real64) :: x_star_two(2), x_star_one(1), mean_S(n_genes_S)
+        integer(int32) :: mean_S_perm(n_genes_S)
+        integer(int32) :: indices_two(n_neighbors, 2), indices_one(n_neighbors, 1)
+        integer(int32) :: range_two(2, 2), range_one(2, 1)
+
+        nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
+
+        ! Case 1: NaN point beside a finite one
+        x_star_two = [nan_val, 4.0_real64]
+        mean_S = [3.0_real64, 1.0_real64, 2.0_real64, 5.0_real64]
+        mean_S_perm = [2, 3, 1, 4] ! ascending: 1.0, 2.0, 3.0, 5.0
+
+        call construct_neighborhoods_ranged_impl(2_int32, x_star_two, n_genes_S, mean_S, mean_S_perm, n_neighbors, &
+                                                 indices_two, range_two)
+
+        call assert_equal_array_int(indices_two(:, 1), [2, 3], n_neighbors, name//"NaN point takes the two lowest means")
+        call assert_equal_array_int(range_two(:, 1), [1, 2], 2_int32, name//"NaN point range")
+        call assert_equal_array_int(indices_two(:, 2), [1, 4], n_neighbors, name//"point 4.0 indices")
+        call assert_equal_array_int(range_two(:, 2), [3, 4], 2_int32, name//"point 4.0 range")
+
+        ! Case 2: the NaN point's range edge ties with the next sorted position
+        x_star_one = [nan_val]
+        mean_S = [2.0_real64, 4.0_real64, 1.0_real64, 2.0_real64]
+        mean_S_perm = [3, 1, 4, 2] ! ascending: 1.0, 2.0, 2.0, 4.0
+
+        call construct_neighborhoods_ranged_impl(1_int32, x_star_one, n_genes_S, mean_S, mean_S_perm, n_neighbors, &
+                                                 indices_one, range_one)
+
+        call assert_equal_array_int(indices_one(:, 1), [3, 1], n_neighbors, name//"tied case: first two sorted genes")
+        call assert_equal_array_int(range_one(:, 1), [1, 3], 2_int32, name//"tied case: range extended over the tie")
+    end subroutine test_construct_neighborhoods_ranged_impl_nan_x_star
 
     !> `calc_pmf` is the counts-to-pmf half of `build_residual_histograms`, factored out; feeding
     !| it the exact `counts`/`included_n_reps` that routine's own basic fixture produces must
@@ -1170,6 +1246,30 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"[5,5]/[6,7] ierr should be OK")
         call assert_false(all_pass, name//"[5,5] shares no position with [6,7], must fail at 0.1")
     end subroutine test_neighborhood_overlaps_counts_inclusive_positions
+
+    !> A reversed first span (`max < min`) holds no position, so it shares none with the next span
+    !| and its overlap is 0. `[5,4]` then `[4,9]` must therefore pass at threshold 0 and `[5,2]`
+    !| then `[2,9]` must fail at 0.1. Before the fix, `[5,4]` divided 0 shared positions by
+    !| `4 - 5 + 1 = 0` positions, the 0/0 gave NaN, and NaN failed even the threshold 0.
+    subroutine test_neighborhood_overlaps_reversed_first_span_counts_as_empty()
+        character(len=*), parameter :: name = "test_neighborhood_overlaps_reversed_first_span_counts_as_empty: "
+        integer(int32), parameter :: n_points = 2
+        integer(int32) :: neighborhood_range(2, n_points)
+        logical(c_bool) :: all_pass
+        integer(int32) :: ierr
+
+        neighborhood_range(:, 1) = [5, 4]
+        neighborhood_range(:, 2) = [4, 9]
+        call check_neighborhood_overlaps(neighborhood_range, n_points, 0.0_real64, all_pass, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"[5,4]/[4,9] ierr should be OK")
+        call assert_true(all_pass, name//"reversed [5,4] has overlap 0, must pass at 0")
+
+        neighborhood_range(:, 1) = [5, 2]
+        neighborhood_range(:, 2) = [2, 9]
+        call check_neighborhood_overlaps(neighborhood_range, n_points, 0.1_real64, all_pass, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"[5,2]/[2,9] ierr should be OK")
+        call assert_false(all_pass, name//"reversed [5,2] has overlap 0, must fail at 0.1")
+    end subroutine test_neighborhood_overlaps_reversed_first_span_counts_as_empty
 
     !> Every bin comfortably exceeds the minimum count. `n_bins_per_point` is uniformly `n_bins`
     !| here, so the per-point guard is a no-op and this exercises the same behavior the old

@@ -106,7 +106,8 @@ contains
             !! DM_MIN(1_int32)
             !! DM_MAX(pool_size)
         real(real64), intent(out) :: x_star(n_points)
-            !! Mean-expression reference points
+            !! Mean-expression reference points. If every pooled mean is NaN, every reference
+            !! point is NaN, and `construct_neighborhoods_ranged` rejects such points.
 
         integer(int32) :: i_gene, i_point
         real(real64) :: quantile_level
@@ -170,7 +171,8 @@ contains
         integer(int32), intent(out) :: n_pool
             !! Total number of included (non-NaN) pooled mean-expression values
         real(real64), intent(out) :: x_star(n_points)
-            !! Mean-expression reference points
+            !! Mean-expression reference points. If every mean of both studies is NaN, every
+            !! reference point is NaN, and `construct_neighborhoods_ranged` rejects such points.
 
         integer(int32) :: i_gene, pool_idx, pool_size
 
@@ -330,7 +332,6 @@ contains
             !! DM_MIN(1_int32)
         real(real64), intent(in) :: x_star(n_points)
             !! Mean-expression reference points
-            !! DM_ALLOW_NAN
         real(real64), intent(in) :: mean_S(n_genes_S)
             !! Per-gene mean expression values
             !! DM_ALLOW_NAN
@@ -368,7 +369,9 @@ contains
                 x_star_val = x_star(i_point)
 
                 ! A NaN reference point takes the first `n_neighbors` genes in sorted order. The
-                ! pipeline passes one only when every mean is NaN, which its empty-study checks reject
+                ! generated wrappers reject a NaN `x_star`, so only a direct caller of this
+                ! implementation can pass one: the pipeline does so only when every mean is NaN,
+                ! which its empty-study checks reject
                 if (ieee_is_nan(x_star_val)) then
                     x_star_idx = 1
                 else

@@ -135,7 +135,8 @@ contains
         integer(int32), intent(out) :: n_pool
             !! Total number of included (non-NaN) pooled mean-expression values
         real(real64), dimension(n_points), intent(out) :: x_star
-            !! Mean-expression reference points
+            !! Mean-expression reference points. If every pooled mean is NaN, every reference
+            !! point is NaN, and `construct_neighborhoods_ranged` rejects such points.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
         integer(int32), dimension(:), allocatable :: pooled_means_perm
@@ -188,7 +189,8 @@ contains
         integer(int32), intent(out) :: n_pool
             !! Total number of included (non-NaN) pooled mean-expression values
         real(real64), dimension(n_points), intent(out) :: x_star
-            !! Mean-expression reference points
+            !! Mean-expression reference points. If every pooled mean is NaN, every reference
+            !! point is NaN, and `construct_neighborhoods_ranged` rejects such points.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -239,7 +241,8 @@ contains
         integer(int32), intent(out) :: n_pool
             !! Total number of included (non-NaN) pooled mean-expression values
         real(real64), dimension(n_points), intent(out) :: x_star
-            !! Mean-expression reference points
+            !! Mean-expression reference points. If every mean of both studies is NaN, every
+            !! reference point is NaN, and `construct_neighborhoods_ranged` rejects such points.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
         real(real64), dimension(:), allocatable :: tmp_pooled_means
@@ -305,7 +308,8 @@ contains
         integer(int32), intent(out) :: n_pool
             !! Total number of included (non-NaN) pooled mean-expression values
         real(real64), dimension(n_points), intent(out) :: x_star
-            !! Mean-expression reference points
+            !! Mean-expression reference points. If every mean of both studies is NaN, every
+            !! reference point is NaN, and `construct_neighborhoods_ranged` rejects such points.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -509,7 +513,6 @@ contains
             !! The minimum valid value is `1_int32`.
         real(real64), dimension(n_points), intent(in) :: x_star
             !! Mean-expression reference points
-            !! NaN is permitted for this value.
         real(real64), dimension(n_genes_S), intent(in) :: mean_S
             !! Per-gene mean expression values
             !! NaN is permitted for this value.
@@ -538,7 +541,7 @@ contains
         call validate_dimension_size(n_points, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_genes_S, ierr, arg_pos=3_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
-        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(mean_S, n_genes_S, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
@@ -588,7 +591,6 @@ contains
             !! The minimum valid value is `1_int32`.
         real(real64), dimension(n_points), intent(in) :: x_star
             !! Mean-expression reference points
-            !! NaN is permitted for this value.
         real(real64), dimension(n_genes_S), intent(in) :: mean_S
             !! Per-gene mean expression values
             !! NaN is permitted for this value.
@@ -620,7 +622,7 @@ contains
         call validate_dimension_size(n_points, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_genes_S, ierr, arg_pos=3_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=6_int32, min=1_int32)
-        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(mean_S, n_genes_S, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(mean_S_perm, n_genes_S, ierr, arg_pos=5_int32, min=1_int32, max=n_genes_S)
         if (is_err(ierr)) return

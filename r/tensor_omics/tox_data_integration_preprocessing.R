@@ -62,7 +62,8 @@ compute_residuals <- function(expr, means) {
 #' @param n_points a integer scalar. Number of reference points to define
 #' @return a named list with elements:
 #'   \item{n_pool}{a integer scalar. Total number of included (non-NaN) pooled mean-expression values}
-#'   \item{x_star}{a numeric vector. Mean-expression reference points}
+#'   \item{x_star}{a numeric vector. Mean-expression reference points. If every pooled mean is NaN, every reference
+#'     point is NaN, and `construct_neighborhoods_ranged` rejects such points.}
 #' @export
 pool_means <- function(pooled_means, n_points) {
     pooled_means <- .tox_as_double_vector(pooled_means, "pooled_means")
@@ -97,7 +98,8 @@ pool_means <- function(pooled_means, n_points) {
 #' @param n_points a integer scalar. Number of reference points to define
 #' @return a named list with elements:
 #'   \item{n_pool}{a integer scalar. Total number of included (non-NaN) pooled mean-expression values}
-#'   \item{x_star}{a numeric vector. Mean-expression reference points}
+#'   \item{x_star}{a numeric vector. Mean-expression reference points. If every pooled mean is NaN, every reference
+#'     point is NaN, and `construct_neighborhoods_ranged` rejects such points.}
 #' @export
 pool_means_expert <- function(pooled_means, pooled_means_perm, n_points) {
     pooled_means <- .tox_as_double_vector(pooled_means, "pooled_means")
@@ -132,7 +134,8 @@ pool_means_expert <- function(pooled_means, pooled_means_perm, n_points) {
 #' @param n_points a integer scalar. Number of reference points to define
 #' @return a named list with elements:
 #'   \item{n_pool}{a integer scalar. Total number of included (non-NaN) pooled mean-expression values}
-#'   \item{x_star}{a numeric vector. Mean-expression reference points}
+#'   \item{x_star}{a numeric vector. Mean-expression reference points. If every mean of both studies is NaN, every
+#'     reference point is NaN, and `construct_neighborhoods_ranged` rejects such points.}
 #' @export
 pool_study_means <- function(mean_S1, mean_S2, n_points) {
     mean_S1 <- .tox_as_double_vector(mean_S1, "mean_S1")
@@ -207,7 +210,6 @@ construct_neighborhoods <- function(x_star, mean_S, resid_S, n_neighbors) {
 #' Call \code{construct_neighborhoods_ranged_expert} to do that yourself.
 #'
 #' @param x_star a numeric vector. Mean-expression reference points
-#'   NaN is permitted for this value.
 #' @param mean_S a numeric vector. Per-gene mean expression values
 #'   NaN is permitted for this value.
 #' @param n_neighbors a integer scalar. Number of neighbors to select per reference point
@@ -259,7 +261,6 @@ construct_neighborhoods_ranged <- function(x_star, mean_S, n_neighbors) {
 #' \code{construct_neighborhoods_ranged} seeds \code{mean_S_perm} and sorts it by \code{mean_S}.
 #'
 #' @param x_star a numeric vector. Mean-expression reference points
-#'   NaN is permitted for this value.
 #' @param mean_S a numeric vector. Per-gene mean expression values
 #'   NaN is permitted for this value.
 #' @param mean_S_perm a integer vector. Sorting permutation for `mean_S`

@@ -269,4 +269,21 @@ test_construct_neighborhoods_ranged_expert_rejects_bad_perm <- function() {
   assert_true(identical(err$argument, "mean_S_perm"), "expected the error on mean_S_perm")
 }
 
+# Test: construct_neighborhoods_ranged and its expert tier reject a NaN reference point with
+# ERR_NAN_INF on x_star, instead of silently taking the lowest-mean genes as its neighborhood
+# (test_construct_neighborhoods_ranged_rejects_nan_x_star in the Fortran suite).
+test_construct_neighborhoods_ranged_rejects_nan_x_star <- function() {
+  x_star <- c(2.5, NaN)
+  mean_S <- c(1.0, 2.0, 3.0)
+  mean_S_perm <- c(1L, 2L, 3L)
+
+  calls <- list(function() construct_neighborhoods_ranged(x_star, mean_S, 2L),
+                function() construct_neighborhoods_ranged_expert(x_star, mean_S, mean_S_perm, 2L))
+  for (call in calls) {
+    assert_error(call(), "expected ERR_NAN_INF for a NaN reference point", ERR_NAN_INF)
+    err <- tryCatch({ call(); NULL }, error = function(e) e)
+    assert_true(identical(err$argument, "x_star"), "expected the error on x_star")
+  }
+}
+
 run_all_tests()

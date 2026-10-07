@@ -137,7 +137,8 @@ contains
         integer(c_int), intent(out), target :: n_pool
             !! Total number of included (non-NaN) pooled mean-expression values
         real(c_double), dimension(n_points), intent(out), target :: x_star
-            !! Mean-expression reference points
+            !! Mean-expression reference points. If every pooled mean is NaN, every reference
+            !! point is NaN, and `construct_neighborhoods_ranged` rejects such points.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -187,7 +188,8 @@ contains
         integer(c_int), intent(out), target :: n_pool
             !! Total number of included (non-NaN) pooled mean-expression values
         real(c_double), dimension(n_points), intent(out), target :: x_star
-            !! Mean-expression reference points
+            !! Mean-expression reference points. If every pooled mean is NaN, every reference
+            !! point is NaN, and `construct_neighborhoods_ranged` rejects such points.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -241,7 +243,8 @@ contains
         integer(c_int), intent(out), target :: n_pool
             !! Total number of included (non-NaN) pooled mean-expression values
         real(c_double), dimension(n_points), intent(out), target :: x_star
-            !! Mean-expression reference points
+            !! Mean-expression reference points. If every mean of both studies is NaN, every
+            !! reference point is NaN, and `construct_neighborhoods_ranged` rejects such points.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -303,7 +306,8 @@ contains
         integer(c_int), intent(out), target :: n_pool
             !! Total number of included (non-NaN) pooled mean-expression values
         real(c_double), dimension(n_points), intent(out), target :: x_star
-            !! Mean-expression reference points
+            !! Mean-expression reference points. If every mean of both studies is NaN, every
+            !! reference point is NaN, and `construct_neighborhoods_ranged` rejects such points.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -513,7 +517,6 @@ contains
             !! The minimum valid value is `1_int32`.
         real(c_double), dimension(n_points), intent(in), target :: x_star
             !! Mean-expression reference points
-            !! NaN is permitted for this value.
         real(c_double), dimension(n_genes_S), intent(in), target :: mean_S
             !! Per-gene mean expression values
             !! NaN is permitted for this value.
@@ -589,7 +592,6 @@ contains
             !! The minimum valid value is `1_int32`.
         real(c_double), dimension(n_points), intent(in), target :: x_star
             !! Mean-expression reference points
-            !! NaN is permitted for this value.
         real(c_double), dimension(n_genes_S), intent(in), target :: mean_S
             !! Per-gene mean expression values
             !! NaN is permitted for this value.
