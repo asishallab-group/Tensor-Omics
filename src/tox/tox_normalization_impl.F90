@@ -17,7 +17,7 @@ module tox_normalization_impl
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, &
                           validate_all_in_range_real, ERR_NAN_INF
-    use f42_math_impl, only: is_close, log1p, LOG_2, above, mean, std_dev
+    use f42_math_impl, only: log1p, LOG_2, above, mean, std_dev
     use f42_vector_impl, only: scaled_length
     use tox_loess_impl, only: loess_fit_robust_impl, EPS_LOESS
 
@@ -218,9 +218,11 @@ contains
     !| AUTHOR_VIVIAN_BASS
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
-    !| Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
-    !| non-negative data -- a gene is divided by its own standard deviation instead, so no gene
-    !| changes sign.
+    !| Genes whose standard deviation is exactly zero carry no information about the trend: they
+    !| are left out of the fit and returned unchanged. Where the fitted trend is at or below zero
+    !| -- a LOESS fit can dip below zero even on non-negative data -- a gene is divided by its own
+    !| standard deviation instead, so no gene changes sign. A spread or a fit that is merely small
+    !| is used as it is.
     subroutine normalize_by_std_dev_impl(n_genes, n_replicates, expr, normalized_expr, &
                                     tmp_loess_x, tmp_loess_y, tmp_indices_used, tmp_yhat_global, &
                                     tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, &
@@ -388,9 +390,11 @@ contains
 
             ! Genes with zero variance across replicates carry no information about the mean-vs-sd
             ! trend and would only produce a degenerate (division-by-zero) target for LOESS, so they
-            ! are dropped from the fit here. Since n_valid <= i_gene always, this compacts the arrays
-            ! in place (overwriting already-consumed slots) rather than needing a separate buffer.
-            if (is_close(tmp_loess_y(i_gene), 0.0_real64)) cycle
+            ! are dropped from the fit here. Only an exactly zero sd counts: a small one is still a
+            ! spread. An sd is never negative, so `<=` is that exact test. Since n_valid <= i_gene
+            ! always, this compacts the arrays in place (overwriting already-consumed slots) rather
+            ! than needing a separate buffer.
+            if (tmp_loess_y(i_gene) <= 0.0_real64) cycle
 
             n_valid = n_valid + 1
             tmp_loess_x(n_valid) = tmp_loess_x(i_gene)
@@ -428,9 +432,10 @@ contains
         do concurrent (i_valid = 1:n_valid) local(fitted_sd, gene_idx) shared(tmp_yhat_global, tmp_loess_y, tmp_indices_used, expr)
             fitted_sd = tmp_yhat_global(i_valid)
             ! A LOESS fit can dip below zero even on non-negative data, and dividing by a negative
-            ! fitted sd would flip the gene's sign. So a fit at or below zero, like one near it,
-            ! falls back to the gene's own sd, which is positive for every gene in the fit.
-            if (fitted_sd <= 0.0_real64 .or. is_close(fitted_sd, 0.0_real64)) fitted_sd = tmp_loess_y(i_valid)
+            ! fitted sd would flip the gene's sign. So a fit at or below zero falls back to the
+            ! gene's own sd, which is positive for every gene in the fit; a small positive fit is
+            ! the trend's value there and is used as it is.
+            if (fitted_sd <= 0.0_real64) fitted_sd = tmp_loess_y(i_valid)
 
             gene_idx = tmp_indices_used(i_valid)
             do concurrent (i_tissue = 1:n_replicates) shared (expr, gene_idx, fitted_sd)

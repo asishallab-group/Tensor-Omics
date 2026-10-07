@@ -23,7 +23,7 @@ contains
   !> Get array of all available tests.
   function get_all_tests_normalize_by_std_dev() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
-    allocate(all_tests(10))
+    allocate(all_tests(12))
 
     all_tests(1) = test_case("test_std_dev", test_std_dev)
     all_tests(2) = test_case("test_std_dev_linear_trend", test_std_dev_linear_trend)
@@ -35,13 +35,14 @@ contains
     all_tests(8) = test_case("test_std_dev_rejects_nan_and_inf", test_std_dev_rejects_nan_and_inf)
     all_tests(9) = test_case("test_std_dev_dimensions", test_std_dev_dimensions)
     all_tests(10) = test_case("test_std_dev_negative_fit_keeps_sign", test_std_dev_negative_fit_keeps_sign)
+    all_tests(11) = test_case("test_std_dev_small_spread_is_not_zero", test_std_dev_small_spread_is_not_zero)
+    all_tests(12) = test_case("test_std_dev_off_trend_gene_small_spread", test_std_dev_off_trend_gene_small_spread)
   end function get_all_tests_normalize_by_std_dev
 
   !> A LOESS fit can dip below zero on non-negative data, and dividing a gene by a negative fitted
   !| sd flips its sign. Fifteen genes whose sd stays near 0 and then climbs steeply, fitted with the
   !| default span and degree, do exactly that for genes 4 to 6. Every value here is positive, so
-  !| every normalized value must be too: a non-positive fit falls back to the gene's own sd, as a
-  !| fit near zero already did.
+  !| every normalized value must be too: a non-positive fit falls back to the gene's own sd.
   subroutine test_std_dev_negative_fit_keeps_sign()
     integer(int32), parameter :: n_genes = 15, n_replicates = 2
     real(real64), dimension(n_replicates, n_genes) :: expr, normalized
@@ -241,5 +242,52 @@ contains
     call normalize_by_std_dev(-1, 1, expr, normalized, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_std_dev_dimensions: n_genes = -1")
   end subroutine test_std_dev_dimensions
+
+  !> Only a spread of exactly zero leaves a gene out of the fit. Four genes on the linear trend and
+  !| a fifth, 50 + 1e-13*d_j, whose spread is about 1.7e-13: it varies, so there are five genes to
+  !| fit, as the span of 1 needs. Its mean stays ordinary, so the fit itself has an x range.
+  subroutine test_std_dev_small_spread_is_not_zero()
+    integer(int32), parameter :: n_genes = 5, n_replicates = 6
+    real(real64), dimension(n_replicates, n_genes) :: expr, normalized
+    integer(int32) :: ierr, i_replicate
+
+    call fill_linear_trend(expr(:, 1:4))
+    do i_replicate = 1, n_replicates
+      expr(i_replicate, 5) = 50.0_real64 + 1.0e-13_real64*linear_trend_offset(i_replicate, n_replicates)
+    end do
+
+    call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, span=1.0_real64, ierr=ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                          "test_std_dev_small_spread_is_not_zero: a spread of 1.7e-13 is not zero, five genes to fit")
+  end subroutine test_std_dev_small_spread_is_not_zero
+
+  !> A small fitted trend is used as it is. The trend of test_std_dev_off_trend_gene scaled down to
+  !| spreads of about 1e-14: gene i is i*(1e-3 + 1e-14*d_j), and gene 10 has three times the spread,
+  !| 10*(1e-3 + 3e-14*d_j). Every gene is divided by the trend's sd at its mean, i*1e-14*s, so every
+  !| value is about 1e11/s; divided by its own sd, gene 10 would come out about a third of that.
+  subroutine test_std_dev_off_trend_gene_small_spread()
+    integer(int32), parameter :: n_genes = 20, n_replicates = 6, off_trend = 10
+    real(real64), dimension(n_replicates, n_genes) :: expr, normalized, expected
+    real(real64) :: offset, s
+    integer(int32) :: ierr, i_replicate, i_gene
+
+    s = linear_trend_sd(n_replicates)
+    do i_gene = 1, n_genes
+      do i_replicate = 1, n_replicates
+        offset = linear_trend_offset(i_replicate, n_replicates)
+        expr(i_replicate, i_gene) = real(i_gene, real64)*(1.0e-3_real64 + 1.0e-14_real64*offset)
+        expected(i_replicate, i_gene) = 1.0e11_real64/s
+      end do
+    end do
+    do i_replicate = 1, n_replicates
+      offset = linear_trend_offset(i_replicate, n_replicates)
+      expr(i_replicate, off_trend) = real(off_trend, real64)*(1.0e-3_real64 + 3.0e-14_real64*offset)
+    end do
+
+    call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, ierr=ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_std_dev_off_trend_gene_small_spread: ierr")
+    call assert_equal_array_real(normalized, expected, n_genes*n_replicates, 1.0e-4_real64*1.0e11_real64/s, &
+                                 "test_std_dev_off_trend_gene_small_spread: every value must be about 1e11/s")
+  end subroutine test_std_dev_off_trend_gene_small_spread
 
 end module mod_test_normalize_by_std_dev
