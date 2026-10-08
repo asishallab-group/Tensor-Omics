@@ -18,9 +18,10 @@ module tox_normalization
     use tox_normalization_impl, only: normalize_by_std_dev_impl, normalize_unit_length_impl, quantile_normalization_impl, root_mean_sq_normalization_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_loess_impl, only: tox_loess_required_workspace
+    use tox_loess_impl, only: EPS_LOESS, tox_loess_required_workspace
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
-    use tox_errors, only: set_err, validate_all_in_range_int, validate_dimension_size, validate_in_range_real
+    use tox_errors, only: set_err, validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size
+    use tox_errors, only: validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -39,6 +40,13 @@ module tox_normalization
 contains
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):normalize_unit_length_impl]].
+    !| Only the zero vector has no direction, and is rejected with ERR_DIVISION_BY_ZERO. Any other
+    !| vector becomes its unit vector, however short or long. Its entries are divided in scaled
+    !| coordinates, and the vector's own length is never formed, so it does no harm that this
+    !| length can be subnormal or overflow, as it does for entries near the smallest normal number
+    !| (about 2.2e-308) or near the largest number (about 1.8e308). Where subnormal numbers are
+    !| flushed to zero, by a fast floating-point model or by the host program, a vector made only of
+    !| subnormals reads as the zero vector.
     pure subroutine normalize_unit_length(&
             vector,&
             n_dims,&
@@ -48,14 +56,13 @@ contains
             !! number of elements in `vector`
         real(real64), dimension(n_dims), intent(inout) :: vector
             !! Vector that will be normalized to unit length
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), intent(out) :: ierr
             !! Error code
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_dims, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(vector, n_dims, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -84,13 +91,13 @@ contains
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
         integer(int32), intent(in) :: n_replicates
-            !! Number of replicates per gene
+            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
+            !! The minimum valid value is `sum(reps_per_tissue)`.
+            !! The maximum valid value is `sum(reps_per_tissue)`.
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_tissues, n_genes), intent(out) :: log_transformed_expr
             !! Log-transformed grouped `expr`
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
@@ -99,9 +106,13 @@ contains
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         logical(c_bool), intent(in), optional :: use_quantile
             !! Use quantile normalization.
             !! The default value is `.false.`.
@@ -126,9 +137,11 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
-        call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
+        call validate_in_range_int(n_replicates, ierr, arg_pos=2_int32, min=sum(reps_per_tissue), max=sum(reps_per_tissue))
         call validate_dimension_size(n_tissues, ierr, arg_pos=6_int32)
-        call validate_in_range_real(span, ierr, arg_pos=7_int32)
+        call validate_in_range_real(span, ierr, arg_pos=7_int32, min=EPS_LOESS, max=1.0_real64)
+        call validate_in_range_int(degree, ierr, arg_pos=8_int32, min=0_int32, max=2_int32)
+        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -215,7 +228,9 @@ contains
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
         integer(int32), intent(in) :: n_replicates
-            !! Number of replicates per gene
+            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
+            !! The minimum valid value is `sum(reps_per_tissue)`.
+            !! The maximum valid value is `sum(reps_per_tissue)`.
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         integer(int32), intent(in) :: int_workspace_size
@@ -238,8 +253,6 @@ contains
             !! | save_factorization    | .false.     |
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_tissues, n_genes), intent(out) :: log_transformed_expr
             !! Log-transformed grouped `expr`
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
@@ -274,9 +287,13 @@ contains
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         logical(c_bool), intent(in), optional :: use_quantile
             !! Use quantile normalization.
             !! The default value is `.false.`.
@@ -286,11 +303,13 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
-        call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
+        call validate_in_range_int(n_replicates, ierr, arg_pos=2_int32, min=sum(reps_per_tissue), max=sum(reps_per_tissue))
         call validate_dimension_size(n_tissues, ierr, arg_pos=6_int32)
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=12_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=14_int32)
-        call validate_in_range_real(span, ierr, arg_pos=22_int32)
+        call validate_in_range_real(span, ierr, arg_pos=22_int32, min=EPS_LOESS, max=1.0_real64)
+        call validate_in_range_int(degree, ierr, arg_pos=23_int32, min=0_int32, max=2_int32)
+        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -327,6 +346,11 @@ contains
     !> summary: Validates its inputs, prepares what [[tox_normalization_impl(module):normalize_by_std_dev_impl]] needs, then calls it. The entry point to reach for first; see [[tox_normalization(module):normalize_by_std_dev_expert]] to prepare it yourself.
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
+    !| Genes whose standard deviation is exactly zero carry no information about the trend: they
+    !| are left out of the fit and returned unchanged. Where the fitted trend is at or below zero
+    !| -- a LOESS fit can dip below zero even on non-negative data -- a gene is divided by its own
+    !| standard deviation instead, so no gene changes sign. A spread or a fit that is merely small
+    !| is used as it is.
     subroutine normalize_by_std_dev(&
             n_genes,&
             n_replicates,&
@@ -342,16 +366,18 @@ contains
             !! Number of replicates per gene
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code
         real(real64), dimension(:), allocatable :: tmp_loess_x
@@ -374,7 +400,9 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
-        call validate_in_range_real(span, ierr, arg_pos=5_int32)
+        call validate_in_range_real(span, ierr, arg_pos=5_int32, min=EPS_LOESS, max=1.0_real64)
+        call validate_in_range_int(degree, ierr, arg_pos=6_int32, min=0_int32, max=2_int32)
+        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -429,6 +457,11 @@ contains
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):normalize_by_std_dev_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_normalization(module):normalize_by_std_dev]] does both.
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
+    !| Genes whose standard deviation is exactly zero carry no information about the trend: they
+    !| are left out of the fit and returned unchanged. Where the fitted trend is at or below zero
+    !| -- a LOESS fit can dip below zero even on non-negative data -- a gene is divided by its own
+    !| standard deviation instead, so no gene changes sign. A spread or a fit that is merely small
+    !| is used as it is.
     subroutine normalize_by_std_dev_expert(&
             n_genes,&
             n_replicates,&
@@ -477,8 +510,6 @@ contains
             !! | save_factorization    | .false.     |
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
         real(real64), dimension(n_genes), intent(out) :: tmp_loess_x
@@ -510,9 +541,13 @@ contains
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -522,7 +557,9 @@ contains
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=10_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=12_int32)
-        call validate_in_range_real(span, ierr, arg_pos=20_int32)
+        call validate_in_range_real(span, ierr, arg_pos=20_int32, min=EPS_LOESS, max=1.0_real64)
+        call validate_in_range_int(degree, ierr, arg_pos=21_int32, min=0_int32, max=2_int32)
+        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -555,6 +592,11 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):root_mean_sq_normalization_impl]].
     !| across tissues (not classical standard deviation).
+    !| Only a gene whose values are all exactly zero has a root mean square of 0, and is left as it
+    !| is; every other gene is divided by its root mean square, however small or large its values,
+    !| up to the largest real64 (about 1.8e308). Where subnormal numbers are flushed to zero, by a
+    !| fast floating-point model or by the host program, a gene made only of subnormals reads as
+    !| the zero gene.
     pure subroutine root_mean_sq_normalization(&
             n_genes,&
             n_replicates,&
@@ -568,8 +610,6 @@ contains
             !! Number of replicates per gene
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
         integer(int32), intent(out) :: ierr
@@ -579,6 +619,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -592,6 +633,13 @@ contains
 
     !> summary: Validates its inputs, prepares what [[tox_normalization_impl(module):quantile_normalization_impl]] needs, then calls it. The entry point to reach for first; see [[tox_normalization(module):quantile_normalization_expert]] to prepare it yourself.
     !| Computes average expression per rank across tissues.
+    !| Tied values within a replicate share the mean of the rank means their ranks span, so values
+    !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
+    !| `normalizeQuantiles`. Where those rank means are all equal, the tie gets exactly that value.
+    !| The rank means themselves do not depend on ties.
+    !|
+    !| No mean overflows for finite input, however close to the largest real64 (about 1.8e308) the
+    !| values are, and a single replicate comes back exactly as it was, ties included.
     pure subroutine quantile_normalization(&
             n_genes,&
             n_replicates,&
@@ -606,8 +654,6 @@ contains
             !! Number of replicates per gene
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
         real(real64), dimension(n_genes), intent(out) :: rank_means
@@ -621,6 +667,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -640,6 +687,13 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):quantile_normalization_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_normalization(module):quantile_normalization]] does both.
     !| Computes average expression per rank across tissues.
+    !| Tied values within a replicate share the mean of the rank means their ranks span, so values
+    !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
+    !| `normalizeQuantiles`. Where those rank means are all equal, the tie gets exactly that value.
+    !| The rank means themselves do not depend on ties.
+    !|
+    !| No mean overflows for finite input, however close to the largest real64 (about 1.8e308) the
+    !| values are, and a single replicate comes back exactly as it was, ties included.
     pure subroutine quantile_normalization_expert(&
             n_genes,&
             n_replicates,&
@@ -656,8 +710,6 @@ contains
             !! Number of replicates per gene
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
         real(real64), dimension(n_genes), intent(out) :: rank_means
@@ -673,6 +725,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -689,9 +742,9 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):log2_transformation_impl]].
     !| This subroutine performs element-wise `log2(x + 1)` transformation on a
-    !| matrix flattened in column-major order. The `log2` is computed via:
-    !| `log(x + 1) / log(2)`, which is numerically equivalent and avoids the
-    !| non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
+    !| matrix flattened in column-major order. The `log2` is computed as `log1p(x)/log(2)`:
+    !| `log1p` keeps the digits of a tiny `x` that forming `x + 1` would round away, and dividing
+    !| by `log(2)` avoids the non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
     pure subroutine log2_transformation(&
             n_genes,&
             n_tissues,&
@@ -705,8 +758,6 @@ contains
             !! Number of tissues
         real(real64), dimension(n_tissues, n_genes), intent(in) :: expr
             !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_tissues, n_genes), intent(out) :: transformed_expr
             !! Log-transformed `expr`
         integer(int32), intent(out) :: ierr
@@ -716,6 +767,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_tissues, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(expr, n_tissues * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -734,6 +786,7 @@ contains
     !| expression per gene.
     pure subroutine calc_tiss_avg(&
             n_genes,&
+            n_replicates,&
             n_tissues,&
             reps_per_tissue,&
             expr,&
@@ -742,16 +795,18 @@ contains
         )
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
+        integer(int32), intent(in) :: n_replicates
+            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
+            !! The minimum valid value is `sum(reps_per_tissue)`.
+            !! The maximum valid value is `sum(reps_per_tissue)`.
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
             !! The minimum valid value is `1_int32`.
-        real(real64), dimension(sum(reps_per_tissue), n_genes), intent(in) :: expr
+        real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_tissues, n_genes), intent(out) :: tissue_averages
             !! Tissue averages per gene
         integer(int32), intent(out) :: ierr
@@ -760,13 +815,16 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
-        call validate_dimension_size(n_tissues, ierr, arg_pos=2_int32)
-        call validate_all_in_range_int(reps_per_tissue, n_tissues, ierr, arg_pos=3_int32, min=1_int32)
+        call validate_in_range_int(n_replicates, ierr, arg_pos=2_int32, min=sum(reps_per_tissue), max=sum(reps_per_tissue))
+        call validate_dimension_size(n_tissues, ierr, arg_pos=3_int32)
+        call validate_all_in_range_int(reps_per_tissue, n_tissues, ierr, arg_pos=4_int32, min=1_int32)
+        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=5_int32)
         if (is_err(ierr)) return
 #endif
 
         call calc_tiss_avg_impl(&
             n_genes = n_genes,&
+            n_replicates = n_replicates,&
             n_tissues = n_tissues,&
             reps_per_tissue = reps_per_tissue,&
             expr = expr,&
@@ -778,6 +836,8 @@ contains
     !| For each control-condition pair, this subroutine computes the `log2 fold change`
     !| by subtracting the expression value in the control group from the corresponding
     !| value in the condition group, for all genes.
+    !| A difference too large for real64 -- possible only near `huge`, as in `huge - (-huge)` -- is
+    !| reported as ERR_NAN_INF instead of being written into the result as Inf.
     pure subroutine calc_fchange(&
             n_genes,&
             n_tissues,&
@@ -804,12 +864,10 @@ contains
             !! The maximum valid value is `n_tissues`.
         real(real64), dimension(n_tissues, n_genes), intent(in) :: expr
             !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_pairs, n_genes), intent(out) :: fold_changes
             !! Output matrix for fold changes
         integer(int32), intent(out) :: ierr
-            !! Error code; zero on success, non-zero on failure.
+            !! Error code
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -818,6 +876,7 @@ contains
         call validate_dimension_size(n_pairs, ierr, arg_pos=3_int32)
         call validate_all_in_range_int(control_tissues, n_pairs, ierr, arg_pos=4_int32, min=1_int32, max=n_tissues)
         call validate_all_in_range_int(condition_tissues, n_pairs, ierr, arg_pos=5_int32, min=1_int32, max=n_tissues)
+        call validate_all_in_range_real(expr, n_tissues * n_genes, ierr, arg_pos=6_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -828,8 +887,10 @@ contains
             control_tissues = control_tissues,&
             condition_tissues = condition_tissues,&
             expr = expr,&
-            fold_changes = fold_changes&
+            fold_changes = fold_changes,&
+            ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine calc_fchange
 
 end module tox_normalization

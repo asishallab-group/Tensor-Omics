@@ -343,7 +343,8 @@ contains
 
             call linkage_clustering(passed_dist, n_points, merge_i, merge_j, heights, cluster_sizes, methods(i_method), ierr)
             call assert_equal_int(ierr, create_err_code(ERR_NAN_INF, arg_pos=1_int32), "test_linkage_methods: "//method_name//": NaN case should trigger ERR_NAN_INF")
-            call assert_equal_array_real(passed_dist, orig_dist, size(orig_dist, kind=int32), 0.0_real64, "test_linkage_methods: "//method_name//": NaN case should output matrix doesn't match input matrix")
+            ! identical rather than equal: the rejected matrix must come back unchanged, NaN included
+            call assert_identical_array_real(passed_dist, orig_dist, size(orig_dist, kind=int32), "test_linkage_methods: "//method_name//": NaN case should output matrix doesn't match input matrix")
 
             ! -------------------------------
             ! Case 6: Negative value in distance matrix

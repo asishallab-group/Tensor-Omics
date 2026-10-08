@@ -12,7 +12,7 @@ void normalize_by_std_dev_c(const int*, const int*, const double*, double*, cons
 void root_mean_sq_normalization_c(const int*, const int*, const double*, double*, int*);
 void quantile_normalization_c(const int*, const int*, const double*, double*, double*, int*);
 void log2_transformation_c(const int*, const int*, const double*, double*, int*);
-void calc_tiss_avg_c(const int*, const int*, const int*, const double*, double*, int*);
+void calc_tiss_avg_c(const int*, const int*, const int*, const int*, const double*, double*, int*);
 void calc_fchange_c(const int*, const int*, const int*, const int*, const int*, const double*, double*, int*);
 
 SEXP normalize_unit_length_call(SEXP vector) {
@@ -218,6 +218,7 @@ SEXP calc_tiss_avg_call(SEXP reps_per_tissue, SEXP expr) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_genes = INTEGER(Rf_getAttrib(expr, R_DimSymbol))[1];
+    int n_replicates = INTEGER(Rf_getAttrib(expr, R_DimSymbol))[0];
     int n_tissues = (int) Rf_length(reps_per_tissue);
 
     // outputs and work space
@@ -227,6 +228,7 @@ SEXP calc_tiss_avg_call(SEXP reps_per_tissue, SEXP expr) {
 
     calc_tiss_avg_c(
         &n_genes,
+        &n_replicates,
         &n_tissues,
         INTEGER(reps_per_tissue),
         REAL(expr),

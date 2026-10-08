@@ -6,7 +6,7 @@
 module f42_vector_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: ERR_DIVISION_BY_ZERO, set_ok, set_err
-    use f42_math_impl, only: clamp, is_close
+    use f42_math_impl, only: clamp, is_close, scaling_exponent
     M_IMPLICIT_NONE
 
 contains
@@ -51,20 +51,58 @@ contains
     end subroutine angle_between
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Calculates the euclidean norm of a vector
+    !| Calculates the euclidean norm of a vector, as
+    !| [[f42_vector_impl(module):scaled_length(subroutine)]] scaled back: squaring an entry neither
+    !| overflows (past about 1e154) nor underflows to zero (below about 1e-162), so a vector of any
+    !| finite magnitude gets its norm. The result is Inf only where the true norm exceeds `huge`, as
+    !| for `[huge, huge]`; the zero vector has norm 0.
     pure real(real64) function norm(vector)
-        real(real64), dimension(:), intent(in) :: vector
-            !! Input vector the norm will be calcuated for
+        real(real64), dimension(:), contiguous, intent(in) :: vector
+            !! Input vector the norm will be calculated for
+
+        integer(int32) :: exponent
+        real(real64) :: scaled_norm
+
+        call scaled_length(size(vector, kind=int32), vector, exponent, scaled_norm)
+        norm = scale(scaled_norm, -exponent)
+    end function norm
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Length of a vector in scaled coordinates: `scaled_norm` is the euclidean length of
+    !| `scale(vector, exponent)`, and `scale(scaled_norm, -exponent)` the vector's own length. The
+    !| exponent comes from [[f42_math_impl(module):scaling_exponent(function)]], so it is 0 for
+    !| ordinary data, and the sum of squares overflows or underflows for no finite vector.
+    !|
+    !| `scale(vector(i), exponent)/scaled_norm` is the unit vector's component. Computed that way,
+    !| it never passes through the vector's length itself, which may overflow or be subnormal.
+    !| `scaled_norm` is exactly 0 for the zero vector, and positive for every other one -- but see
+    !| the next paragraph for a vector made only of subnormal numbers.
+    !|
+    !| An input made only of subnormal numbers can give different results in builds that flush
+    !| subnormals to zero (a fast floating-point model, or a host program that sets flush-to-zero or
+    !| denormals-are-zero): there it reads as the zero vector, with a `scaled_norm` of 0.
+    pure subroutine scaled_length(n_dims, vector, exponent, scaled_norm)
+        integer(int32), intent(in) :: n_dims
+            !! Number of elements in `vector`
+        real(real64), dimension(n_dims), intent(in) :: vector
+            !! The vector, of any finite magnitude
+        integer(int32), intent(out) :: exponent
+            !! Power of two the vector is scaled by before its length is taken; meaningless for
+            !! the zero vector
+        real(real64), intent(out) :: scaled_norm
+            !! Euclidean length of `scale(vector, exponent)`; exactly 0 for the zero vector
 
         integer(int32) :: i_dim
-        real(real64) :: norm_val
+        real(real64) :: scaled_squares_sum
 
-        norm_val = 0.0_real64
-        do concurrent(i_dim=1:size(vector)) shared(vector) reduce(+:norm_val)
-            norm_val = norm_val + vector(i_dim)**2
+        exponent = scaling_exponent(vector)
+
+        scaled_squares_sum = 0.0_real64
+        do concurrent(i_dim=1:n_dims) shared(vector, exponent) reduce(+:scaled_squares_sum)
+            scaled_squares_sum = scaled_squares_sum + scale(vector(i_dim), exponent)**2
         end do
-        norm = sqrt(norm_val)
-    end function norm
+        scaled_norm = sqrt(scaled_squares_sum)
+    end subroutine scaled_length
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Adds two vectors in-place
