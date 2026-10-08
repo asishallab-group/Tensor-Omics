@@ -404,10 +404,10 @@ NUL-terminated -- and because nothing in `src/` ever reads `len()` of a boundary
 
 **The published C ABI is byte-identical and its semantics are not.** The symbol set and the
 prototypes do not move, but a direct C caller must now blank-pad rather than NUL-terminate:
-`char buf[16] = "genes.tsv"` used to work and now yields a filename with embedded NULs, and a
-`method` buffer holding `"ward\0\0\0\0"` now matches no `case` and returns
-`ERR_INVALID_INPUT`. Nothing in-tree does that -- Python and R are the only callers -- but it
-is the one thing `NO_R_BINDING`'s direct-C audience has to be told.
+`char buf[16] = "genes.tsv"` used to work and now yields a filename with embedded NULs. Nothing
+in-tree does that -- Python and R are the only callers -- but it is the one thing
+`NO_R_BINDING`'s direct-C audience has to be told. Mode strings are the exception and accept
+either convention; see below.
 
 **A nullable optional needs a target and an explicit `nullify`.** `c_loc` requires TARGET,
 which an optional was deliberately not given; the eight optional characters of
@@ -427,14 +427,27 @@ zero-size/zero-length view on gfortran 16.1 and ifx 2026.1 under `-fcheck=all` /
 A guard would not have helped anyway: a non-optional dummy cannot receive a disassociated
 pointer. This is the same class of formal-only objection as the `len>1` point above.
 
-**Only `Conversion.MODE` still converts.** It is a fixed-width `select case` lookup, and
-`c_char_1d_as_string` on a blank-padded buffer simply returns the full width, which
-`select case` matches because a Fortran character comparison blank-pads the shorter operand.
-So the mode path was left exactly as it was. That, and one hand-written caller, are why
-`c_char_1d_as_string` survives: `get_zip_entry_name` maps a fixed 4096-byte window over
-libzip's `zip_get_name` and has no bound to remap against, so the NUL scan is the only thing
-that can find the length. The other three -- `c_char_2d_as_string` and
-`string_as_c_char_{1d,2d}` -- are gone, with their 42 call sites.
+**A mode string is viewed up to its first NUL, so it accepts either convention.** A mode
+(`mode`, `method`) is a fixed-width `select case` lookup with no `strlen` argument, and the
+wrapper views it with `c_char_as_view` (`src/f42/tox_conversions.F90`), which ends the string
+at the first NUL if there is one and otherwise takes the whole buffer. A plain fixed-width view
+would have served both bindings -- a blank-padded buffer compares equal to the shorter `case`
+literal, because a Fortran character comparison blank-pads the shorter operand -- but a
+hand-written C caller that writes `"ward"` into a zeroed `char[8]` sends `"ward\0\0\0\0"`,
+which compares unequal and returns `ERR_INVALID_INPUT`. Both bindings blank-pad, so every suite
+would have stayed green while the C ABI silently narrowed to blank-padded callers only. FES
+caught that in review (`b103ab69`, 2026-08-14); `test_c_char_as_view` in
+`test/mod_test_conversions.F90` pins both conventions, since only one of them is reachable end
+to end.
+
+*Rejected:* the plain fixed-width view, for exactly that reason.
+
+`c_char_as_view` also replaced `c_char_1d_as_string`, the last conversion. Its one other caller,
+`get_zip_entry_name`, maps a fixed 4096-byte window over libzip's `zip_get_name` and has no
+bound to remap against, so it needs the NUL scan too; it now returns a view into libzip's
+memory rather than a copy (see [`impl-layer.md`](impl-layer.md)). The other three conversions
+-- `c_char_2d_as_string` and `string_as_c_char_{1d,2d}` -- went with the pointer view, with
+their 42 call sites.
 
 The probe, reduced to the case that decides it:
 
