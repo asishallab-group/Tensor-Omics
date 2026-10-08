@@ -175,9 +175,9 @@ criterion asked for, so the same matrix can be re-clustered without recomputing 
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
-                  <li class="list-inline-item"><a href='tox_conversions.html'>tox_conversions</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='tox_conversions.html'>tox_conversions</a></li>
               </ul>
             </li>
         </ul>
@@ -233,7 +233,7 @@ The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~2"></span>
+              <span class="anchor" id="variable-trajectories"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -248,7 +248,7 @@ The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~3"></span>
+              <span class="anchor" id="variable-n_factors"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -263,7 +263,7 @@ The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~2"></span>
+              <span class="anchor" id="variable-n_samples"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -278,7 +278,7 @@ The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~3"></span>
+              <span class="anchor" id="variable-n_timepoints"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -293,7 +293,7 @@ The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroids~3"></span>
+              <span class="anchor" id="variable-centroids"></span>
               real(kind=c_double),
             </td>
 <td>intent(inout),</td>
@@ -304,7 +304,7 @@ The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
             <td><strong>centroids</strong></td>
             <td>
 <p>matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-The centroids should be unique. This is not checked in this routine.</p><a href="../proc/cluster_factor_trajectories_k_means_c.html#variable-centroids~3" class="pull-right"><emph>Read more&hellip;</emph></a>
+The centroids should be unique. This is not checked in this routine.</p><a href="../proc/cluster_factor_trajectories_k_means_c.html#variable-centroids" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
@@ -354,7 +354,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~51"></span>
+              <span class="anchor" id="variable-ierr~42"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -426,7 +426,7 @@ The maximum valid value is <code>n_points</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~6"></span>
+              <span class="anchor" id="variable-n_points~10"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -441,7 +441,7 @@ The maximum valid value is <code>n_points</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~5"></span>
+              <span class="anchor" id="variable-n_dims~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -456,7 +456,7 @@ The maximum valid value is <code>n_points</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroids~4"></span>
+              <span class="anchor" id="variable-centroids~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(inout),</td>
@@ -467,7 +467,7 @@ The maximum valid value is <code>n_points</code>.</p>
             <td><strong>centroids</strong></td>
             <td>
 <p>matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-The centroids should be unique. This is not checked in this routine.</p><a href="../proc/k_means_clustering_c.html#variable-centroids~4" class="pull-right"><emph>Read more&hellip;</emph></a>
+The centroids should be unique. This is not checked in this routine.</p><a href="../proc/k_means_clustering_c.html#variable-centroids~2" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
@@ -518,7 +518,7 @@ The default value is <code>300_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~52"></span>
+              <span class="anchor" id="variable-ierr~43"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -558,7 +558,7 @@ The default value is <code>300_int32</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~3"></span>
+              <span class="anchor" id="variable-distances"></span>
               real(kind=c_double),
             </td>
 <td>intent(inout),</td>
@@ -568,12 +568,12 @@ The default value is <code>300_int32</code>.</p>
             <td>::</td>
             <td><strong>distances</strong></td>
             <td>
-<p>symmetric distance matrix, holding the positive distances between points. Distance of X-&gt;X is always zero.</p><a href="../proc/linkage_clustering_c.html#variable-distances~3" class="pull-right"><emph>Read more&hellip;</emph></a>
+<p>symmetric distance matrix, holding the positive distances between points. Distance of X-&gt;X is always zero.</p><a href="../proc/linkage_clustering_c.html#variable-distances" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~7"></span>
+              <span class="anchor" id="variable-n_points~11"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -665,7 +665,7 @@ The maximum valid value is <code>2_int32</code>.</p><a href="../proc/linkage_clu
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~53"></span>
+              <span class="anchor" id="variable-ierr~44"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -708,7 +708,7 @@ The maximum valid value is <code>2_int32</code>.</p><a href="../proc/linkage_clu
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-09-14 09:28 +0000             </p>
+ on 2026-10-08 18:38 +0000             </p>
           </div>
         </div>
         <br>

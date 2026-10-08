@@ -10,7 +10,7 @@
     <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
-    <title>compute_scaled_distance_quantile_impl &ndash; TensorOmics</title>
+    <title>calc_quantile_c &ndash; TensorOmics</title>
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
@@ -77,7 +77,7 @@
 
     <div class="container">
   <div class="row">
-    <h1>compute_scaled_distance_quantile_impl
+    <h1>calc_quantile_c
       <small>Subroutine</small>
       
     </h1>
@@ -85,26 +85,25 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">29 statements</a>
+                 title=" 0.2% of total for procedures.">34 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/f42_stats_impl.F90"> Source File</a>
+              <a href="../src/f42_stats_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/f42_stats_impl.f90.html'>f42_stats_impl.F90</a></li>
-                <li class="breadcrumb-item"><a href='../module/f42_stats_impl.html'>f42_stats_impl</a></li>
-            <li class="breadcrumb-item active" aria-current="page">compute_scaled_distance_quantile_impl</li>
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_stats_c.f90.html'>f42_stats_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/f42_stats_c.html'>f42_stats_c</a></li>
+            <li class="breadcrumb-item active" aria-current="page">calc_quantile_c</li>
           </ol>
         </nav>
       </div>
@@ -151,19 +150,23 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine compute_scaled_distance_quantile_impl(n_genes, rdi, sorted_rdi, sorted_rdi_perm, quantile, c_const)  
+    <h2>public  subroutine calc_quantile_c(array, n_array, level, value, n_considered, ierr) bind(C, name="calc_quantile_c")  
 </h2>
-    
+        <div class="card mb-4">
+      <h3 class="card-header card-title bg-light">Uses</h3>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item">
+              <ul class="list-inline">
+                  <li class="list-inline-item"><a href='../module/f42_stats.html'>f42_stats</a></li>
+              </ul>
+            </li>
+        </ul>
+      </div>
+    </div>
 
-    <p>This is NOT a null-hypothesis-testing p-value: each distance is compared against the
-observed distribution it was drawn from, not an independently generated null distribution.
-It instead measures how extreme an observed distance is relative to all observed distances.</p>
-<p>Implements:
-  Q(d) = ( #{di in D | di &gt;= d} + c ) / ( |D| + c )</p>
-<p>Because distances are non-negative, a one-sided upper-tail quantile is used.</p>
-<p>Assumptions / preconditions:
-- sorted_rdi(1:n_genes) contains the empirical distribution D.
-- If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution</p>
+
+    <p>Uses linear interpolation between adjacent values.</p>
 
 
     <h3>Arguments</h3>
@@ -179,99 +182,100 @@ It instead measures how extreme an observed distance is relative to all observed
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~57"></span>
-              integer(kind=int32),
+              <span class="anchor" id="variable-array~23"></span>
+              real(kind=c_double),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_array), target
             </td>
             <td>::</td>
-            <td><strong>n_genes</strong></td>
+            <td><strong>array</strong></td>
             <td>
-                <p>Number of genes being processed.</p>
+                <p>input array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi~5"></span>
-              real(kind=real64),
+              <span class="anchor" id="variable-n_array~4"></span>
+              integer(kind=c_int),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
-            <td><strong>rdi</strong>(n_genes)</td>
+            <td><strong>n_array</strong></td>
             <td>
-                <p>empirical distribution D
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+                <p>number of elements in <code>array</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi~5"></span>
-              real(kind=real64),
+              <span class="anchor" id="variable-level~5"></span>
+              real(kind=c_double),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
-            <td><strong>sorted_rdi</strong>(n_genes)</td>
+            <td><strong>level</strong></td>
             <td>
-                <p>empirical distribution D with non negative values
-NaN is permitted for this value.
-Infinite values are permitted for this value.</p>
+                <p>quantile level as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
+The minimum valid value is <code>0.0_real64</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi_perm~2"></span>
-              integer(kind=int32),
+              <span class="anchor" id="variable-value~10"></span>
+              real(kind=c_double),
             </td>
-<td>intent(in)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
-            <td><strong>sorted_rdi_perm</strong>(n_genes)</td>
+            <td><strong>value</strong></td>
             <td>
-                <p>Permutation of <code>sorted_rdi</code> in ascending order. The allocating entry point builds
-and heapsorts it for you; the expert one takes whatever order you supply.
-The minimum valid value is <code>1_int32</code>.
-The maximum valid value is <code>n_genes</code>.</p>
+                <p>the quantile: the value a fraction <code>level</code> of the considered entries lies at or below</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-quantile~5"></span>
-              real(kind=real64),
+              <span class="anchor" id="variable-n_considered~4"></span>
+              integer(kind=c_int),
             </td>
-<td>intent(out)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
-            <td><strong>quantile</strong>(n_genes)</td>
+            <td><strong>n_considered</strong></td>
             <td>
-                <p>Output array to store the computed quantile for each gene.</p>
+                <p>How many leading entries of <code>array_perm</code> the quantile is taken over, for a
+quantile of a subset -- the trailing entries are ignored rather than sliced
+off, so the permutation stays the shape the sort produced. Zero, the default,
+considers all <code>n_array</code> of them.
+The default value is <code>0_int32</code>.
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>n_array</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-c_const~3"></span>
-              real(kind=real64),
+              <span class="anchor" id="variable-ierr~389"></span>
+              integer(kind=c_int),
             </td>
-<td>intent(in)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              target
             </td>
             <td>::</td>
-            <td><strong>c_const</strong></td>
+            <td><strong>ierr</strong></td>
             <td>
-                <p>Constant used in the computation, typically 1</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -308,7 +312,7 @@ The maximum valid value is <code>n_genes</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-09-14 09:28 +0000             </p>
+ on 2026-10-08 18:38 +0000             </p>
           </div>
         </div>
         <br>

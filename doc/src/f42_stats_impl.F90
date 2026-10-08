@@ -1,6 +1,6 @@
 #include <src/macros.h>
 
-!> Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.
+!> Descriptive statistics: quantiles, empirical distribution functions, and 2-D LOESS smoothing.
 !|
 !| One of the modules the `f42_utils` family gathers.
 module f42_stats_impl
@@ -158,19 +158,19 @@ contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Calculate the fractional index using linear interpolation method
-    pure real(real64) function calc_percentile_rank(percentile, n) result(rank)
+    pure real(real64) function calc_quantile_rank(level, n) result(rank)
         integer(int32), intent(in) :: n
             !! Sample size
-        real(real64), intent(in) :: percentile
-            !! desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
+        real(real64), intent(in) :: level
+            !! quantile level as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
 
-        rank = percentile*real(n - 1, real64) + 1.0_real64
-    end function calc_percentile_rank
+        rank = level*real(n - 1, real64) + 1.0_real64
+    end function calc_quantile_rank
 
-    !> summary: Calculate the percentile of an array given a sorted permutation
+    !> summary: Calculate the quantile of an array at a given level, given a sorted permutation
     !| AUTHOR_AARON_SCHROEDER
     !| Uses linear interpolation between adjacent values.
-    pure subroutine calc_percentile_impl(array, n_array, array_perm, percentile, value, n_considered)
+    pure subroutine calc_quantile_impl(array, n_array, array_perm, level, value, n_considered)
         integer(int32), intent(in) :: n_array
             !! number of elements in `array`
         real(real64), intent(in) :: array(n_array)
@@ -180,15 +180,15 @@ contains
             !! heapsorts it for you; the expert one takes whatever order you supply.
             !! DM_MIN(1_int32)
             !! DM_MAX(n_array)
-        real(real64), intent(in) :: percentile
-            !! desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
+        real(real64), intent(in) :: level
+            !! quantile level as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
         real(real64), intent(out) :: value
-            !! output percentile value
+            !! the quantile: the value a fraction `level` of the considered entries lies at or below
         integer(int32), intent(in), optional :: n_considered
-            !! How many leading entries of `array_perm` the percentile is taken over, for a
-            !! percentile of a subset -- the trailing entries are ignored rather than sliced
+            !! How many leading entries of `array_perm` the quantile is taken over, for a
+            !! quantile of a subset -- the trailing entries are ignored rather than sliced
             !! off, so the permutation stays the shape the sort produced. Zero, the default,
             !! considers all `n_array` of them.
             !! DM_DEFAULT(0_int32)
@@ -209,7 +209,7 @@ contains
             return
         end if
 
-        index = calc_percentile_rank(percentile, n)
+        index = calc_quantile_rank(level, n)
         lower_index = floor(index)
         fraction = index - real(lower_index, real64)
 
@@ -224,25 +224,25 @@ contains
             upper_value = array(array_perm(lower_index + 1))
             value = lower_value + fraction*(upper_value - lower_value)
         end if
-    end subroutine calc_percentile_impl
+    end subroutine calc_quantile_impl
 
 
-    !> summary: Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)
+    !> summary: Calculate the empirical upper-tail probability (effect-size measure) of scaled expression distances (RDI)
     !| AUTHOR_VIVIAN_BASS
     !| This is NOT a null-hypothesis-testing p-value: each distance is compared against the
     !| observed distribution it was drawn from, not an independently generated null distribution.
     !| It instead measures how extreme an observed distance is relative to all observed distances.
     !|
     !| Implements:
-    !|   Q(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+    !|   T(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
     !|
-    !| Because distances are non-negative, a one-sided upper-tail quantile is used.
+    !| Because distances are non-negative, a one-sided upper-tail probability is used.
     !|
     !| Assumptions / preconditions:
     !| - sorted_rdi(1:n_genes) contains the empirical distribution D.
     !| - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
-    pure subroutine compute_scaled_distance_quantile_impl(n_genes, rdi, sorted_rdi, sorted_rdi_perm, &
-                                                          quantile, c_const)
+    pure subroutine compute_scaled_distance_tail_probability_impl(n_genes, rdi, sorted_rdi, sorted_rdi_perm, &
+                                                                  tail_probability, c_const)
         integer(int32), intent(in) :: n_genes
             !! Number of genes being processed.
         real(real64), intent(in) :: rdi(n_genes)
@@ -253,8 +253,8 @@ contains
             !! empirical distribution D with non negative values
             !! DM_ALLOW_NAN
             !! DM_ALLOW_INFINITE
-        real(real64), intent(out) :: quantile(n_genes)
-            !! Output array to store the computed quantile for each gene.
+        real(real64), intent(out) :: tail_probability(n_genes)
+            !! Output array to store the computed upper-tail probability for each gene.
         real(real64), intent(in) :: c_const
             !! Constant used in the computation, typically 1
         integer(int32), intent(in) :: sorted_rdi_perm(n_genes)
@@ -268,16 +268,16 @@ contains
 
         denom = real(n_genes, real64) + c_const
         if (denom <= 0.0_real64) then
-            quantile = 1.0_real64
+            tail_probability = 1.0_real64
             return
         end if
 
         do i = 1, n_genes
             d = rdi(i)
 
-            ! Invalid / negative => not an outlier: quantile = 1
+            ! Invalid / negative => not an outlier: tail probability = 1
             if (d < 0.0_real64) then
-                quantile(i) = 1.0_real64
+                tail_probability(i) = 1.0_real64
                 cycle
             end if
 
@@ -289,8 +289,8 @@ contains
                 count_ge = 0_int32
             end if
 
-            quantile(i) = (real(count_ge, real64) + c_const)/denom
+            tail_probability(i) = (real(count_ge, real64) + c_const)/denom
         end do
 
-    end subroutine compute_scaled_distance_quantile_impl
+    end subroutine compute_scaled_distance_tail_probability_impl
 end module f42_stats_impl

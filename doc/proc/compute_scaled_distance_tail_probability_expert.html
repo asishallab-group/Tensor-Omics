@@ -10,7 +10,7 @@
     <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
-    <title>compute_scaled_distance_quantile_expert_c &ndash; TensorOmics</title>
+    <title>compute_scaled_distance_tail_probability_expert &ndash; TensorOmics</title>
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
@@ -77,7 +77,7 @@
 
     <div class="container">
   <div class="row">
-    <h1>compute_scaled_distance_quantile_expert_c
+    <h1>compute_scaled_distance_tail_probability_expert
       <small>Subroutine</small>
       
     </h1>
@@ -89,21 +89,21 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">45 statements</a>
+                 title=" 0.1% of total for procedures.">15 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/f42_stats_c.F90"> Source File</a>
+              <a href="../src/f42_stats.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/f42_stats_c.f90.html'>f42_stats_c.F90</a></li>
-                <li class="breadcrumb-item"><a href='../module/f42_stats_c.html'>f42_stats_c</a></li>
-            <li class="breadcrumb-item active" aria-current="page">compute_scaled_distance_quantile_expert_c</li>
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_stats.f90.html'>f42_stats.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/f42_stats.html'>f42_stats</a></li>
+            <li class="breadcrumb-item active" aria-current="page">compute_scaled_distance_tail_probability_expert</li>
           </ol>
         </nav>
       </div>
@@ -150,28 +150,16 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public  subroutine compute_scaled_distance_quantile_expert_c(n_genes, rdi, sorted_rdi, sorted_rdi_perm, quantile, c_const, ierr) bind(C, name="compute_scaled_distance_quantile_expert_c")  
+    <h2>public pure subroutine compute_scaled_distance_tail_probability_expert(n_genes, rdi, sorted_rdi, sorted_rdi_perm, tail_probability, c_const, ierr)  
 </h2>
-        <div class="card mb-4">
-      <h3 class="card-header card-title bg-light">Uses</h3>
-      <div class="card-body">
-        <ul class="list-group list-group-flush">
-            <li class="list-group-item">
-              <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/f42_stats.html'>f42_stats</a></li>
-              </ul>
-            </li>
-        </ul>
-      </div>
-    </div>
-
+    
 
     <p>This is NOT a null-hypothesis-testing p-value: each distance is compared against the
 observed distribution it was drawn from, not an independently generated null distribution.
 It instead measures how extreme an observed distance is relative to all observed distances.</p>
 <p>Implements:
-Q(d) = ( #{di in D | di &gt;= d} + c ) / ( |D| + c )</p>
-<p>Because distances are non-negative, a one-sided upper-tail quantile is used.</p>
+T(d) = ( #{di in D | di &gt;= d} + c ) / ( |D| + c )</p>
+<p>Because distances are non-negative, a one-sided upper-tail probability is used.</p>
 <p>Assumptions / preconditions:
 - sorted_rdi(1:n_genes) contains the empirical distribution D.
 - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution</p>
@@ -190,12 +178,12 @@ Q(d) = ( #{di in D | di &gt;= d} + c ) / ( |D| + c )</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~4"></span>
-              integer(kind=c_int),
+              <span class="anchor" id="variable-n_genes~31"></span>
+              integer(kind=int32),
             </td>
-<td>intent(in),</td>
+<td>intent(in)</td>
               <td></td>            <td>
-              target
+              
             </td>
             <td>::</td>
             <td><strong>n_genes</strong></td>
@@ -205,12 +193,12 @@ Q(d) = ( #{di in D | di &gt;= d} + c ) / ( |D| + c )</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi~2"></span>
-              real(kind=c_double),
+              <span class="anchor" id="variable-rdi~5"></span>
+              real(kind=real64),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_genes), target
+              dimension(n_genes)
             </td>
             <td>::</td>
             <td><strong>rdi</strong></td>
@@ -222,12 +210,12 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi~2"></span>
-              real(kind=c_double),
+              <span class="anchor" id="variable-sorted_rdi~5"></span>
+              real(kind=real64),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_genes), target
+              dimension(n_genes)
             </td>
             <td>::</td>
             <td><strong>sorted_rdi</strong></td>
@@ -239,12 +227,12 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi_perm"></span>
-              integer(kind=c_int),
+              <span class="anchor" id="variable-sorted_rdi_perm~2"></span>
+              integer(kind=int32),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_genes), target
+              dimension(n_genes)
             </td>
             <td>::</td>
             <td><strong>sorted_rdi_perm</strong></td>
@@ -257,27 +245,27 @@ The maximum valid value is <code>n_genes</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-quantile~2"></span>
-              real(kind=c_double),
+              <span class="anchor" id="variable-tail_probability~5"></span>
+              real(kind=real64),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_genes), target
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>quantile</strong></td>
+            <td><strong>tail_probability</strong></td>
             <td>
-                <p>Output array to store the computed quantile for each gene.</p>
+                <p>Output array to store the computed upper-tail probability for each gene.</p>
             </td>
         </tr>
         <tr>
             <td>
               <span class="anchor" id="variable-c_const~2"></span>
-              real(kind=c_double),
+              real(kind=real64),
             </td>
-<td>intent(in),</td>
+<td>intent(in)</td>
               <td></td>            <td>
-              target
+              
             </td>
             <td>::</td>
             <td><strong>c_const</strong></td>
@@ -287,12 +275,12 @@ The maximum valid value is <code>n_genes</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~15"></span>
-              integer(kind=c_int),
+              <span class="anchor" id="variable-ierr~81"></span>
+              integer(kind=int32),
             </td>
-<td>intent(out),</td>
+<td>intent(out)</td>
               <td></td>            <td>
-              target
+              
             </td>
             <td>::</td>
             <td><strong>ierr</strong></td>
@@ -334,7 +322,7 @@ The maximum valid value is <code>n_genes</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-09-14 09:28 +0000             </p>
+ on 2026-10-08 18:38 +0000             </p>
           </div>
         </div>
         <br>

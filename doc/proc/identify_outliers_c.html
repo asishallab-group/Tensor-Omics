@@ -150,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public  subroutine identify_outliers_c(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, percentile, ierr) bind(C, name="identify_outliers_c")  
+    <h2>public  subroutine identify_outliers_c(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, tail_probability, quantile_level, ierr) bind(C, name="identify_outliers_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -183,7 +183,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~79"></span>
+              <span class="anchor" id="variable-n_genes~106"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -198,7 +198,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi~10"></span>
+              <span class="anchor" id="variable-rdi~13"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -215,7 +215,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi~10"></span>
+              <span class="anchor" id="variable-sorted_rdi~13"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -232,7 +232,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~24"></span>
+              <span class="anchor" id="variable-perm~27"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -247,7 +247,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-is_outlier~3"></span>
+              <span class="anchor" id="variable-is_outlier~6"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(out),</td>
@@ -262,7 +262,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-threshold~7"></span>
+              <span class="anchor" id="variable-threshold~8"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -277,7 +277,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-quantile~8"></span>
+              <span class="anchor" id="variable-tail_probability~11"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -285,17 +285,17 @@ Infinite values are permitted for this value.</p>
               dimension(n_genes), target
             </td>
             <td>::</td>
-            <td><strong>quantile</strong></td>
+            <td><strong>tail_probability</strong></td>
             <td>
-                <p>Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+                <p>Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
 observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
 Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-upper-tail quantile is used.</p>
+upper-tail probability is used.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile~9"></span>
+              <span class="anchor" id="variable-quantile_level~7"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -303,9 +303,9 @@ upper-tail quantile is used.</p>
               target
             </td>
             <td>::</td>
-            <td><strong>percentile</strong></td>
+            <td><strong>quantile_level</strong></td>
             <td>
-                <p>Percentile threshold as a fraction in [0,1] (top 5% for the default).
+                <p>Quantile level of the threshold, as a fraction in [0,1] (the top 5% for the default).
 The default value is <code>0.95_real64</code>.
 The minimum valid value is <code>0.0_real64</code>.
 The maximum valid value is <code>1.0_real64</code>.</p>
@@ -313,7 +313,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~304"></span>
+              <span class="anchor" id="variable-ierr~397"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -360,7 +360,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-09-14 09:28 +0000             </p>
+ on 2026-10-08 18:38 +0000             </p>
           </div>
         </div>
         <br>

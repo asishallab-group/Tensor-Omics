@@ -10,7 +10,7 @@
     <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
-    <title>calc_percentile_impl &ndash; TensorOmics</title>
+    <title>compute_scaled_distance_tail_probability &ndash; TensorOmics</title>
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
@@ -77,7 +77,7 @@
 
     <div class="container">
   <div class="row">
-    <h1>calc_percentile_impl
+    <h1>compute_scaled_distance_tail_probability
       <small>Subroutine</small>
       
     </h1>
@@ -85,26 +85,25 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">30 statements</a>
+                 title=" 0.1% of total for procedures.">21 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/f42_stats_impl.F90"> Source File</a>
+              <a href="../src/f42_stats.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/f42_stats_impl.f90.html'>f42_stats_impl.F90</a></li>
-                <li class="breadcrumb-item"><a href='../module/f42_stats_impl.html'>f42_stats_impl</a></li>
-            <li class="breadcrumb-item active" aria-current="page">calc_percentile_impl</li>
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_stats.f90.html'>f42_stats.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/f42_stats.html'>f42_stats</a></li>
+            <li class="breadcrumb-item active" aria-current="page">compute_scaled_distance_tail_probability</li>
           </ol>
         </nav>
       </div>
@@ -151,11 +150,19 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine calc_percentile_impl(array, n_array, array_perm, percentile, value, n_considered)  
+    <h2>public pure subroutine compute_scaled_distance_tail_probability(n_genes, rdi, sorted_rdi, tail_probability, c_const, ierr)  
 </h2>
     
 
-    <p>Uses linear interpolation between adjacent values.</p>
+    <p>This is NOT a null-hypothesis-testing p-value: each distance is compared against the
+observed distribution it was drawn from, not an independently generated null distribution.
+It instead measures how extreme an observed distance is relative to all observed distances.</p>
+<p>Implements:
+T(d) = ( #{di in D | di &gt;= d} + c ) / ( |D| + c )</p>
+<p>Because distances are non-negative, a one-sided upper-tail probability is used.</p>
+<p>Assumptions / preconditions:
+- sorted_rdi(1:n_genes) contains the empirical distribution D.
+- If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution</p>
 
 
     <h3>Arguments</h3>
@@ -171,22 +178,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~19"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>array</strong>(n_array)</td>
-            <td>
-                <p>input array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_array~3"></span>
+              <span class="anchor" id="variable-n_genes~30"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -194,80 +186,88 @@
               
             </td>
             <td>::</td>
-            <td><strong>n_array</strong></td>
+            <td><strong>n_genes</strong></td>
             <td>
-                <p>number of elements in <code>array</code></p>
+                <p>Number of genes being processed.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-array_perm~2"></span>
+              <span class="anchor" id="variable-rdi~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>rdi</strong></td>
+            <td>
+                <p>empirical distribution D
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-sorted_rdi~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>sorted_rdi</strong></td>
+            <td>
+                <p>empirical distribution D with non negative values
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tail_probability~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>tail_probability</strong></td>
+            <td>
+                <p>Output array to store the computed upper-tail probability for each gene.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-c_const"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>c_const</strong></td>
+            <td>
+                <p>Constant used in the computation, typically 1</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~80"></span>
               integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>array_perm</strong>(n_array)</td>
-            <td>
-                <p>Permutation of <code>array</code> in ascending order. The allocating entry point builds and
-heapsorts it for you; the expert one takes whatever order you supply.
-The minimum valid value is <code>1_int32</code>.
-The maximum valid value is <code>n_array</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-percentile~6"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>percentile</strong></td>
-            <td>
-                <p>desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
-The minimum valid value is <code>0.0_real64</code>.
-The maximum valid value is <code>1.0_real64</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-value~5"></span>
-              real(kind=real64),
             </td>
 <td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>value</strong></td>
+            <td><strong>ierr</strong></td>
             <td>
-                <p>output percentile value</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_considered~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td>optional</td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_considered</strong></td>
-            <td>
-                <p>How many leading entries of <code>array_perm</code> the percentile is taken over, for a
-percentile of a subset -- the trailing entries are ignored rather than sliced
-off, so the permutation stays the shape the sort produced. Zero, the default,
-considers all <code>n_array</code> of them.
-The default value is <code>0_int32</code>.
-The minimum valid value is <code>0_int32</code>.
-The maximum valid value is <code>n_array</code>.</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -304,7 +304,7 @@ The maximum valid value is <code>n_array</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-09-14 09:28 +0000             </p>
+ on 2026-10-08 18:38 +0000             </p>
           </div>
         </div>
         <br>
