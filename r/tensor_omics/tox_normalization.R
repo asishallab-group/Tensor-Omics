@@ -192,6 +192,10 @@ calc_tiss_avg <- function(reps_per_tissue, expr) {
 #' by subtracting the expression value in the control group from the corresponding
 #' value in the condition group, for all genes.
 #'
+#' That subtraction is a `log2 fold change` only because `expr` is already on a
+#' `log2` scale. Passing tissue averages that have not been log-transformed yields a
+#' plain difference of expression levels instead, which is not a fold change.
+#'
 #' Generated from the Fortran procedure \code{tox_normalization::calc_fchange}, whose argument names
 #' are the ones an error message reports.
 #'
@@ -201,7 +205,9 @@ calc_tiss_avg <- function(reps_per_tissue, expr) {
 #' @param condition_tissues a integer vector. Condition tissue indices
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_tissues`.
-#' @param expr a numeric matrix. Gene Expression matrix, from \code{\link{calc_tiss_avg}}
+#' @param expr a numeric matrix. Gene Expression matrix on a `log2` scale, i.e. the result of
+#'   \code{\link{normalization_pipeline}} or of
+#'   \code{\link{log2_transformation}}
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
 #' @return a numeric matrix. Output matrix for fold changes

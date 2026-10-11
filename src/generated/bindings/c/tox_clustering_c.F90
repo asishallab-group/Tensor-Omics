@@ -18,12 +18,18 @@ module tox_clustering_c
     private
 
     public :: cluster_factor_trajectories_k_means_c
+    public :: cluster_factor_trajectories_k_means_expert_c
     public :: k_means_clustering_c
     public :: linkage_clustering_c
 
 contains
 
     !> summary: C-wrapper for [[tox_clustering(module):cluster_factor_trajectories_k_means(subroutine)]]
+    !| One sample is one point: its trajectory is flattened over factors and time into a single
+    !| vector, `factor1_t1, factor2_t1, ..., factor1_t2, ...`, so the clustering answers which
+    !| samples follow a similar course. Clustering the individual `(sample, timepoint)` states
+    !| instead is [[tox_clustering_impl(module):k_means_clustering_impl(subroutine)]] on the same
+    !| array read as `(n_factors, n_samples*n_timepoints)`, which is a different question.
     subroutine cluster_factor_trajectories_k_means_c(&
             n_clusters,&
             trajectories,&
@@ -41,7 +47,7 @@ contains
         integer(c_int), intent(in), target :: n_clusters
             !! number (`k`) of clusters
             !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_samples*n_timepoints`.
+            !! The maximum valid value is `n_samples`.
         integer(c_int), intent(in), target :: n_factors
             !! number of factors
         integer(c_int), intent(in), target :: n_samples
@@ -49,18 +55,20 @@ contains
         integer(c_int), intent(in), target :: n_timepoints
             !! number of timepoints
         real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in), target :: trajectories
-            !! matrix with data points to cluster
-        real(c_double), dimension(n_factors, n_clusters), intent(inout), target :: centroids
+            !! matrix with the trajectories to cluster
+        real(c_double), dimension(n_factors*n_timepoints, n_clusters), intent(inout), target :: centroids
             !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
             !! The centroids should be unique. This is not checked in this routine.
             !!
+            !! One centroid is a whole flattened trajectory, so it has `n_factors*n_timepoints` entries.
+            !!
             !! The final values will be the final centroids of the clusters
-        integer(c_int), dimension(n_samples*n_timepoints), intent(out), target :: labels
-            !! array of labels, each index corresponds to the respective point's index, so first label is first point's label.
+        integer(c_int), dimension(n_samples), intent(out), target :: labels
+            !! array of labels, one per sample, so the first label is the first sample's.
             !!
             !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
         integer(c_int), dimension(n_clusters), intent(out), target :: label_counts
-            !! holds the number of points having the respective label assigned
+            !! holds the number of samples having the respective label assigned
         integer(c_int), intent(in), target :: max_iterations
             !! number of maximum iterations of the clustering
         integer(c_int), intent(out), target :: ierr
@@ -74,8 +82,8 @@ contains
         M_CHECK_NON_NULL(n_timepoints)
         M_CHECK_NON_NULL(max_iterations)
         M_CHECK_ARRAY_NON_NULL(trajectories, n_factors * n_samples * n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(centroids, n_factors * n_clusters)
-        M_CHECK_ARRAY_NON_NULL(labels, (n_samples*n_timepoints))
+        M_CHECK_ARRAY_NON_NULL(centroids, (n_factors*n_timepoints) * n_clusters)
+        M_CHECK_ARRAY_NON_NULL(labels, n_samples)
         M_CHECK_ARRAY_NON_NULL(label_counts, n_clusters)
 
         call cluster_factor_trajectories_k_means(&
@@ -91,6 +99,87 @@ contains
             ierr = ierr&
         )
     end subroutine cluster_factor_trajectories_k_means_c
+
+    !> summary: C-wrapper for [[tox_clustering(module):cluster_factor_trajectories_k_means_expert(subroutine)]]
+    !| One sample is one point: its trajectory is flattened over factors and time into a single
+    !| vector, `factor1_t1, factor2_t1, ..., factor1_t2, ...`, so the clustering answers which
+    !| samples follow a similar course. Clustering the individual `(sample, timepoint)` states
+    !| instead is [[tox_clustering_impl(module):k_means_clustering_impl(subroutine)]] on the same
+    !| array read as `(n_factors, n_samples*n_timepoints)`, which is a different question.
+    subroutine cluster_factor_trajectories_k_means_expert_c(&
+            n_clusters,&
+            trajectories,&
+            n_factors,&
+            n_samples,&
+            n_timepoints,&
+            centroids,&
+            labels,&
+            label_counts,&
+            tmp_flattened_trajectories,&
+            max_iterations,&
+            ierr&
+        ) bind(C, name="cluster_factor_trajectories_k_means_expert_c")
+        use tox_clustering, only: cluster_factor_trajectories_k_means_expert
+
+        integer(c_int), intent(in), target :: n_clusters
+            !! number (`k`) of clusters
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_samples`.
+        integer(c_int), intent(in), target :: n_factors
+            !! number of factors
+        integer(c_int), intent(in), target :: n_samples
+            !! number of samples
+        integer(c_int), intent(in), target :: n_timepoints
+            !! number of timepoints
+        real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in), target :: trajectories
+            !! matrix with the trajectories to cluster
+        real(c_double), dimension(n_factors*n_timepoints, n_clusters), intent(inout), target :: centroids
+            !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
+            !! The centroids should be unique. This is not checked in this routine.
+            !!
+            !! One centroid is a whole flattened trajectory, so it has `n_factors*n_timepoints` entries.
+            !!
+            !! The final values will be the final centroids of the clusters
+        integer(c_int), dimension(n_samples), intent(out), target :: labels
+            !! array of labels, one per sample, so the first label is the first sample's.
+            !!
+            !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
+        integer(c_int), dimension(n_clusters), intent(out), target :: label_counts
+            !! holds the number of samples having the respective label assigned
+        real(c_double), dimension(n_factors*n_timepoints, n_samples), intent(out), target :: tmp_flattened_trajectories
+            !! Work matrix holding each sample's trajectory as one column
+        integer(c_int), intent(in), target :: max_iterations
+            !! number of maximum iterations of the clustering
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_clusters)
+        M_CHECK_NON_NULL(n_factors)
+        M_CHECK_NON_NULL(n_samples)
+        M_CHECK_NON_NULL(n_timepoints)
+        M_CHECK_NON_NULL(max_iterations)
+        M_CHECK_ARRAY_NON_NULL(trajectories, n_factors * n_samples * n_timepoints)
+        M_CHECK_ARRAY_NON_NULL(centroids, (n_factors*n_timepoints) * n_clusters)
+        M_CHECK_ARRAY_NON_NULL(labels, n_samples)
+        M_CHECK_ARRAY_NON_NULL(label_counts, n_clusters)
+        M_CHECK_ARRAY_NON_NULL(tmp_flattened_trajectories, (n_factors*n_timepoints) * n_samples)
+
+        call cluster_factor_trajectories_k_means_expert(&
+            n_clusters = n_clusters,&
+            trajectories = trajectories,&
+            n_factors = n_factors,&
+            n_samples = n_samples,&
+            n_timepoints = n_timepoints,&
+            centroids = centroids,&
+            labels = labels,&
+            label_counts = label_counts,&
+            tmp_flattened_trajectories = tmp_flattened_trajectories,&
+            max_iterations = max_iterations,&
+            ierr = ierr&
+        )
+    end subroutine cluster_factor_trajectories_k_means_expert_c
 
     !> summary: C-wrapper for [[tox_clustering(module):k_means_clustering(subroutine)]]
     !| 1. Assigns each data point to one of `k` clusters whose centroid is clostest

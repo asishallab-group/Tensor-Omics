@@ -24,13 +24,18 @@ module tox_clustering_impl
 #define DEFAULT_MAX_ITER_K_MEANS 300_int32
 contains
 
-    !> summary: Performs k-means clustering on factor trajectories, so factor evolution over time
+    !> summary: Performs k-means clustering on whole factor trajectories, so which samples evolve alike
     !| AUTHOR_FRANZ_ERIC_SILL
-    pure subroutine cluster_factor_trajectories_k_means_impl(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, max_iterations)
+    !| One sample is one point: its trajectory is flattened over factors and time into a single
+    !| vector, `factor1_t1, factor2_t1, ..., factor1_t2, ...`, so the clustering answers which
+    !| samples follow a similar course. Clustering the individual `(sample, timepoint)` states
+    !| instead is [[tox_clustering_impl(module):k_means_clustering_impl(subroutine)]] on the same
+    !| array read as `(n_factors, n_samples*n_timepoints)`, which is a different question.
+    pure subroutine cluster_factor_trajectories_k_means_impl(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, tmp_flattened_trajectories, max_iterations)
         integer(int32), intent(in) :: n_clusters
             !! number (`k`) of clusters
             !! DM_MIN(1_int32)
-            !! DM_MAX(n_samples*n_timepoints)
+            !! DM_MAX(n_samples)
         integer(int32), intent(in) :: n_factors
             !! number of factors
         integer(int32), intent(in) :: n_timepoints
@@ -38,22 +43,41 @@ contains
         integer(int32), intent(in) :: n_samples
             !! number of samples
         real(real64), dimension(n_factors, n_samples, n_timepoints), intent(in) :: trajectories
-            !! matrix with data points to cluster
-        real(real64), dimension(n_factors, n_clusters), intent(inout) :: centroids
+            !! matrix with the trajectories to cluster
+        real(real64), dimension(n_factors*n_timepoints, n_clusters), intent(inout) :: centroids
             !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
             !! The centroids should be unique. This is not checked in this routine.
             !!
+            !! One centroid is a whole flattened trajectory, so it has `n_factors*n_timepoints` entries.
+            !!
             !! The final values will be the final centroids of the clusters
-        integer(int32), dimension(n_samples*n_timepoints), intent(out) :: labels
-            !! array of labels, each index corresponds to the respective point's index, so first label is first point's label.
+        integer(int32), dimension(n_samples), intent(out) :: labels
+            !! array of labels, one per sample, so the first label is the first sample's.
             !!
             !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
         integer(int32), dimension(n_clusters), intent(out) :: label_counts
-            !! holds the number of points having the respective label assigned
+            !! holds the number of samples having the respective label assigned
+        real(real64), dimension(n_factors*n_timepoints, n_samples), intent(out) :: tmp_flattened_trajectories
+            !! Work matrix holding each sample's trajectory as one column
         integer(int32), intent(in) :: max_iterations
             !! number of maximum iterations of the clustering
 
-        call k_means_clustering_impl(n_clusters, trajectories, n_samples*n_timepoints, n_factors, centroids, labels, label_counts, max_iterations)
+        integer(int32) :: i_sample, i_time, i_factor
+
+        ! A sample's values are not contiguous in `trajectories` -- factor varies fastest, then
+        ! sample, then time -- so the flattening is a copy, not a reshape. Factor-major within each
+        ! timepoint keeps the two axes of a trajectory adjacent in the order they are read in.
+        do concurrent (i_sample = 1:n_samples) shared(trajectories, tmp_flattened_trajectories, n_timepoints, n_factors)
+            do i_time = 1, n_timepoints
+                do i_factor = 1, n_factors
+                    tmp_flattened_trajectories((i_time - 1)*n_factors + i_factor, i_sample) = &
+                        trajectories(i_factor, i_sample, i_time)
+                end do
+            end do
+        end do
+
+        call k_means_clustering_impl(n_clusters, tmp_flattened_trajectories, n_samples, n_factors*n_timepoints, &
+                                     centroids, labels, label_counts, max_iterations)
     end subroutine cluster_factor_trajectories_k_means_impl
 
     !> summary: k-means clustering algorithm

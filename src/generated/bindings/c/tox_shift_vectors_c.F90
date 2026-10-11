@@ -48,7 +48,7 @@ contains
             !! The maximum valid value is `n_families`.
             !! The value `0_int32` is additionally accepted.
         real(c_double), dimension(n_tissues, 2, n_genes), intent(out), target :: shift_vectors
-            !! Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first (a zero vector if no family is assigned), then the shift vector
+            !! Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first, then the shift vector from that centroid to the gene. A gene with no family assigned has no centroid to shift from, so both of its vectors are zero
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
