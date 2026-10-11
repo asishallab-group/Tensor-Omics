@@ -343,7 +343,10 @@ contains
         character(len=:), pointer, intent(out) :: entry_name
             !! Name of the entry, ending at libzip's NUL. Unassociated if the entry has no name.
 
-        character(kind=c_char, len=1), pointer :: name_ptr(:)
+        ! `contiguous`, or c_char_as_view may be handed a copy: a pointer array not declared
+        ! contiguous is not *simply* contiguous, so the compiler may copy it into a temporary for
+        ! the contiguous dummy -- nvfortran does -- and the returned view then dangles into it.
+        character(kind=c_char, len=1), pointer, contiguous :: name_ptr(:)
         type(c_ptr) :: name_cptr
         integer(int32), parameter :: MAX_NAME_LENGTH = 4096  ! Reasonable maximum
 

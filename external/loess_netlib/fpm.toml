@@ -11,6 +11,9 @@ type = "static"
 [features]
 
 netlib.gfortran.flags = "-O2 -std=legacy -ffixed-line-length-none -fallow-argument-mismatch -fPIC -w"
+# the archives are linked into libtensor_omics.so, so they must be position-independent, and
+# nvfortran does not default to it
+netlib.nvfortran.flags = "-O2 -fPIC"
 netlib.fortran.implicit-typing = true
 netlib.fortran.source-form = "fixed"
 

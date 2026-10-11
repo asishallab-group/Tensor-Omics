@@ -9,7 +9,7 @@ module mod_test_trajectory_contribution_analysis
     ! the baseline-mode parameters stayed in the kernel module
     use tox_trajectory_contribution_analysis_impl, only: MODE_BASELINE_RAW, MODE_BASELINE_MIN, MODE_BASELINE_MEAN, select_random_sample
     use tox_errors
-    use f42_random_impl, only: init_random, rand_range
+    use f42_random_impl, only: init_random
     use tox_trajectory_normalization
     use test_suite, only: test_case
     implicit none
@@ -267,12 +267,16 @@ contains
                                      "compute_velocity_acceleration_contributions (plain tier): acceleration series")
     end subroutine test_compute_velocity_acceleration_contribs_plain
 
-    !> initializes random number generator with a randomly selected seed
+    !> initializes random number generator with a seed that differs between runs, and prints it
+    !| so that a failing run can be repeated. The seed comes from the clock rather than from
+    !| `random_init(.false., .false.)`: that is F2018, and nvfortran does not provide it.
     subroutine setup_random
+        use, intrinsic :: iso_fortran_env, only: int64
+        integer(int64) :: clock_count
         integer(int32) :: seed
 
-        call random_init(.false., .false.) ! reset random number generator to non-reproducible
-        seed = int(rand_range(0.0_real64, real(huge(1_int32), kind=real64)), kind=int32) ! pick random seed
+        call system_clock(clock_count)
+        seed = int(mod(clock_count, int(huge(1_int32), kind=int64)), kind=int32)
         call init_random(seed) ! set random number generator to seed
         write (*, "('Using random seed: ', I0)") seed
     end subroutine setup_random
