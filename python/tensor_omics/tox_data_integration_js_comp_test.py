@@ -940,7 +940,7 @@ def determine_bin_count_occupancy(
     studies): find the largest bin count `M` in `[m_min, m_max]` whose equal-width histogram
     over `[shared_residual_range_low, shared_residual_range_high]` -- this neighborhood's own
     asymmetric range, the `lower_residual_range_quantile`/`upper_residual_range_quantile`
-    percentiles of its own pooled signed residuals, rather than a single dataset-wide symmetric
+    quantiles of its own pooled signed residuals, rather than a single dataset-wide symmetric
     range -- has every bin at or above `min_residuals_per_bin` (the occupancy criterion), rather
     than the generic
     Sturges/Freedman-Diaconis rule
@@ -1038,12 +1038,12 @@ def determine_bin_count_occupancy(
             selected_n_bins
         shared_residual_range_low : float
             This neighborhood's own lower residual-range bound (R_low): the
-            lower_residual_range_quantile percentile of its own pooled signed residuals --
+            lower_residual_range_quantile quantile of its own pooled signed residuals --
             replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
             occupancy_failed because every pooled residual is NaN
         shared_residual_range_high : float
             This neighborhood's own upper residual-range bound (R_high): the
-            upper_residual_range_quantile percentile of its own pooled signed residuals --
+            upper_residual_range_quantile quantile of its own pooled signed residuals --
             replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
             occupancy_failed because every pooled residual is NaN
         n_pooled_residuals : int
@@ -1157,7 +1157,7 @@ def determine_bin_count_occupancy_expert(
     studies): find the largest bin count `M` in `[m_min, m_max]` whose equal-width histogram
     over `[shared_residual_range_low, shared_residual_range_high]` -- this neighborhood's own
     asymmetric range, the `lower_residual_range_quantile`/`upper_residual_range_quantile`
-    percentiles of its own pooled signed residuals, rather than a single dataset-wide symmetric
+    quantiles of its own pooled signed residuals, rather than a single dataset-wide symmetric
     range -- has every bin at or above `min_residuals_per_bin` (the occupancy criterion), rather
     than the generic
     Sturges/Freedman-Diaconis rule
@@ -1259,12 +1259,12 @@ def determine_bin_count_occupancy_expert(
             selected_n_bins
         shared_residual_range_low : float
             This neighborhood's own lower residual-range bound (R_low): the
-            lower_residual_range_quantile percentile of its own pooled signed residuals --
+            lower_residual_range_quantile quantile of its own pooled signed residuals --
             replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
             occupancy_failed because every pooled residual is NaN
         shared_residual_range_high : float
             This neighborhood's own upper residual-range bound (R_high): the
-            upper_residual_range_quantile percentile of its own pooled signed residuals --
+            upper_residual_range_quantile quantile of its own pooled signed residuals --
             replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
             occupancy_failed because every pooled residual is NaN
         n_pooled_residuals : int
@@ -1727,7 +1727,7 @@ def determine_bin_count_stone(
     occupancy search, with the same range, floor and diagnostics.
 
     The range `[shared_residual_range_low, shared_residual_range_high]` is the
-    `lower_residual_range_quantile`/`upper_residual_range_quantile` percentiles of all non-NaN
+    `lower_residual_range_quantile`/`upper_residual_range_quantile` quantiles of all non-NaN
     pooled residuals, as in the occupancy search, so `h = (R_high - R_low)/m`. The score counts
     only the residuals **inside** the range (`n` is their number): the JSD histograms clamp the
     residuals outside it into the edge bins, but scored that way Stone's rule reads the clamped
@@ -1826,11 +1826,11 @@ def determine_bin_count_stone(
             this neighborhood rather than build a histogram from selected_n_bins
         shared_residual_range_low : float
             This neighborhood's own lower residual-range bound (R_low): the
-            lower_residual_range_quantile percentile of its own pooled signed residuals. 0.0
+            lower_residual_range_quantile quantile of its own pooled signed residuals. 0.0
             when every pooled residual is NaN
         shared_residual_range_high : float
             This neighborhood's own upper residual-range bound (R_high): the
-            upper_residual_range_quantile percentile of its own pooled signed residuals. 0.0
+            upper_residual_range_quantile quantile of its own pooled signed residuals. 0.0
             when every pooled residual is NaN
         n_pooled_residuals : int
             Count of non-NaN pooled residuals (N_j)
@@ -1965,7 +1965,7 @@ def determine_bin_count_stone_expert(
     occupancy search, with the same range, floor and diagnostics.
 
     The range `[shared_residual_range_low, shared_residual_range_high]` is the
-    `lower_residual_range_quantile`/`upper_residual_range_quantile` percentiles of all non-NaN
+    `lower_residual_range_quantile`/`upper_residual_range_quantile` quantiles of all non-NaN
     pooled residuals, as in the occupancy search, so `h = (R_high - R_low)/m`. The score counts
     only the residuals **inside** the range (`n` is their number): the JSD histograms clamp the
     residuals outside it into the edge bins, but scored that way Stone's rule reads the clamped
@@ -2069,11 +2069,11 @@ def determine_bin_count_stone_expert(
             this neighborhood rather than build a histogram from selected_n_bins
         shared_residual_range_low : float
             This neighborhood's own lower residual-range bound (R_low): the
-            lower_residual_range_quantile percentile of its own pooled signed residuals. 0.0
+            lower_residual_range_quantile quantile of its own pooled signed residuals. 0.0
             when every pooled residual is NaN
         shared_residual_range_high : float
             This neighborhood's own upper residual-range bound (R_high): the
-            upper_residual_range_quantile percentile of its own pooled signed residuals. 0.0
+            upper_residual_range_quantile quantile of its own pooled signed residuals. 0.0
             when every pooled residual is NaN
         n_pooled_residuals : int
             Count of non-NaN pooled residuals (N_j)

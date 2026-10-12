@@ -130,7 +130,7 @@ estimate_bin_count_expert <- function(residuals, residuals_perm, max_n_reps_all_
 #' studies): find the largest bin count `M` in `[m_min, m_max]` whose equal-width histogram
 #' over `[shared_residual_range_low, shared_residual_range_high]` -- this neighborhood's own
 #' asymmetric range, the `lower_residual_range_quantile`/`upper_residual_range_quantile`
-#' percentiles of its own pooled signed residuals, rather than a single dataset-wide symmetric
+#' quantiles of its own pooled signed residuals, rather than a single dataset-wide symmetric
 #' range -- has every bin at or above `min_residuals_per_bin` (the occupancy criterion), rather
 #' than the generic
 #' Sturges/Freedman-Diaconis rule
@@ -215,11 +215,11 @@ estimate_bin_count_expert <- function(residuals, residuals_perm, max_n_reps_all_
 #'     caller should reject this neighborhood rather than build a histogram from
 #'     selected_n_bins}
 #'   \item{shared_residual_range_low}{a numeric scalar. This neighborhood's own lower residual-range bound (R_low): the
-#'     lower_residual_range_quantile percentile of its own pooled signed residuals --
+#'     lower_residual_range_quantile quantile of its own pooled signed residuals --
 #'     replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
 #'     occupancy_failed because every pooled residual is NaN}
 #'   \item{shared_residual_range_high}{a numeric scalar. This neighborhood's own upper residual-range bound (R_high): the
-#'     upper_residual_range_quantile percentile of its own pooled signed residuals --
+#'     upper_residual_range_quantile quantile of its own pooled signed residuals --
 #'     replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
 #'     occupancy_failed because every pooled residual is NaN}
 #'   \item{n_pooled_residuals}{a integer scalar. Count of non-NaN pooled residuals (N_j)}
@@ -268,7 +268,7 @@ determine_bin_count_occupancy <- function(pooled_residuals, max_n_reps_all_studi
 #' studies): find the largest bin count `M` in `[m_min, m_max]` whose equal-width histogram
 #' over `[shared_residual_range_low, shared_residual_range_high]` -- this neighborhood's own
 #' asymmetric range, the `lower_residual_range_quantile`/`upper_residual_range_quantile`
-#' percentiles of its own pooled signed residuals, rather than a single dataset-wide symmetric
+#' quantiles of its own pooled signed residuals, rather than a single dataset-wide symmetric
 #' range -- has every bin at or above `min_residuals_per_bin` (the occupancy criterion), rather
 #' than the generic
 #' Sturges/Freedman-Diaconis rule
@@ -356,11 +356,11 @@ determine_bin_count_occupancy <- function(pooled_residuals, max_n_reps_all_studi
 #'     caller should reject this neighborhood rather than build a histogram from
 #'     selected_n_bins}
 #'   \item{shared_residual_range_low}{a numeric scalar. This neighborhood's own lower residual-range bound (R_low): the
-#'     lower_residual_range_quantile percentile of its own pooled signed residuals --
+#'     lower_residual_range_quantile quantile of its own pooled signed residuals --
 #'     replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
 #'     occupancy_failed because every pooled residual is NaN}
 #'   \item{shared_residual_range_high}{a numeric scalar. This neighborhood's own upper residual-range bound (R_high): the
-#'     upper_residual_range_quantile percentile of its own pooled signed residuals --
+#'     upper_residual_range_quantile quantile of its own pooled signed residuals --
 #'     replaces the old dataset-wide symmetric shared_residual_range. 0.0 when
 #'     occupancy_failed because every pooled residual is NaN}
 #'   \item{n_pooled_residuals}{a integer scalar. Count of non-NaN pooled residuals (N_j)}
@@ -617,7 +617,7 @@ determine_bin_count_occupancy_exhaustive_expert <- function(pooled_residuals, po
 #' occupancy search, with the same range, floor and diagnostics.
 #'
 #' The range `[shared_residual_range_low, shared_residual_range_high]` is the
-#' `lower_residual_range_quantile`/`upper_residual_range_quantile` percentiles of all non-NaN
+#' `lower_residual_range_quantile`/`upper_residual_range_quantile` quantiles of all non-NaN
 #' pooled residuals, as in the occupancy search, so `h = (R_high - R_low)/m`. The score counts
 #' only the residuals **inside** the range (`n` is their number): the JSD histograms clamp the
 #' residuals outside it into the edge bins, but scored that way Stone's rule reads the clamped
@@ -701,10 +701,10 @@ determine_bin_count_occupancy_exhaustive_expert <- function(pooled_residuals, po
 #'   \item{stone_failed}{a logical scalar. `TRUE` iff no bin count could be chosen (see above); the caller should then reject
 #'     this neighborhood rather than build a histogram from selected_n_bins}
 #'   \item{shared_residual_range_low}{a numeric scalar. This neighborhood's own lower residual-range bound (R_low): the
-#'     lower_residual_range_quantile percentile of its own pooled signed residuals. 0.0
+#'     lower_residual_range_quantile quantile of its own pooled signed residuals. 0.0
 #'     when every pooled residual is NaN}
 #'   \item{shared_residual_range_high}{a numeric scalar. This neighborhood's own upper residual-range bound (R_high): the
-#'     upper_residual_range_quantile percentile of its own pooled signed residuals. 0.0
+#'     upper_residual_range_quantile quantile of its own pooled signed residuals. 0.0
 #'     when every pooled residual is NaN}
 #'   \item{n_pooled_residuals}{a integer scalar. Count of non-NaN pooled residuals (N_j)}
 #'   \item{min_bin_occupancy}{a integer scalar. Minimum bin count of the pooled clamped histogram at selected_n_bins; 0 when stone_failed}
@@ -762,7 +762,7 @@ determine_bin_count_stone <- function(pooled_residuals, residual_to_study, n_stu
 #' occupancy search, with the same range, floor and diagnostics.
 #'
 #' The range `[shared_residual_range_low, shared_residual_range_high]` is the
-#' `lower_residual_range_quantile`/`upper_residual_range_quantile` percentiles of all non-NaN
+#' `lower_residual_range_quantile`/`upper_residual_range_quantile` quantiles of all non-NaN
 #' pooled residuals, as in the occupancy search, so `h = (R_high - R_low)/m`. The score counts
 #' only the residuals **inside** the range (`n` is their number): the JSD histograms clamp the
 #' residuals outside it into the edge bins, but scored that way Stone's rule reads the clamped
@@ -850,10 +850,10 @@ determine_bin_count_stone <- function(pooled_residuals, residual_to_study, n_stu
 #'   \item{stone_failed}{a logical scalar. `TRUE` iff no bin count could be chosen (see above); the caller should then reject
 #'     this neighborhood rather than build a histogram from selected_n_bins}
 #'   \item{shared_residual_range_low}{a numeric scalar. This neighborhood's own lower residual-range bound (R_low): the
-#'     lower_residual_range_quantile percentile of its own pooled signed residuals. 0.0
+#'     lower_residual_range_quantile quantile of its own pooled signed residuals. 0.0
 #'     when every pooled residual is NaN}
 #'   \item{shared_residual_range_high}{a numeric scalar. This neighborhood's own upper residual-range bound (R_high): the
-#'     upper_residual_range_quantile percentile of its own pooled signed residuals. 0.0
+#'     upper_residual_range_quantile quantile of its own pooled signed residuals. 0.0
 #'     when every pooled residual is NaN}
 #'   \item{n_pooled_residuals}{a integer scalar. Count of non-NaN pooled residuals (N_j)}
 #'   \item{min_bin_occupancy}{a integer scalar. Minimum bin count of the pooled clamped histogram at selected_n_bins; 0 when stone_failed}
