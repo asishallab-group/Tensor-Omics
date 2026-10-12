@@ -33,7 +33,7 @@ contains
             abs_residual_pool,&
             pool_size,&
             shared_residual_range,&
-            residual_range_quantile,&
+            residual_range_quantile_level,&
             ierr&
         ) bind(C, name="determine_shared_residual_range_c")
         use tox_data_integration_jsd, only: determine_shared_residual_range
@@ -45,8 +45,8 @@ contains
             !! NaN is permitted for this value.
         real(c_double), intent(out), target :: shared_residual_range
             !! Computed residual range (R)
-        real(c_double), intent(in), target :: residual_range_quantile
-            !! Quantile in [0,1] for determining the residual range
+        real(c_double), intent(in), target :: residual_range_quantile_level
+            !! Quantile level in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
@@ -57,14 +57,14 @@ contains
         call set_ok(ierr)
         M_CHECK_NON_NULL(pool_size)
         M_CHECK_NON_NULL(shared_residual_range)
-        M_CHECK_NON_NULL(residual_range_quantile)
+        M_CHECK_NON_NULL(residual_range_quantile_level)
         M_CHECK_ARRAY_NON_NULL(abs_residual_pool, pool_size)
 
         call determine_shared_residual_range(&
             abs_residual_pool = abs_residual_pool,&
             pool_size = pool_size,&
             shared_residual_range = shared_residual_range,&
-            residual_range_quantile = residual_range_quantile,&
+            residual_range_quantile_level = residual_range_quantile_level,&
             ierr = ierr&
         )
     end subroutine determine_shared_residual_range_c
@@ -77,7 +77,7 @@ contains
             abs_residual_pool_perm,&
             pool_size,&
             shared_residual_range,&
-            residual_range_quantile,&
+            residual_range_quantile_level,&
             ierr&
         ) bind(C, name="determine_shared_residual_range_expert_c")
         use tox_data_integration_jsd, only: determine_shared_residual_range_expert
@@ -93,8 +93,8 @@ contains
             !! The maximum valid value is `pool_size`.
         real(c_double), intent(out), target :: shared_residual_range
             !! Computed residual range (R)
-        real(c_double), intent(in), target :: residual_range_quantile
-            !! Quantile in [0,1] for determining the residual range
+        real(c_double), intent(in), target :: residual_range_quantile_level
+            !! Quantile level in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
@@ -105,7 +105,7 @@ contains
         call set_ok(ierr)
         M_CHECK_NON_NULL(pool_size)
         M_CHECK_NON_NULL(shared_residual_range)
-        M_CHECK_NON_NULL(residual_range_quantile)
+        M_CHECK_NON_NULL(residual_range_quantile_level)
         M_CHECK_ARRAY_NON_NULL(abs_residual_pool, pool_size)
         M_CHECK_ARRAY_NON_NULL(abs_residual_pool_perm, pool_size)
 
@@ -114,7 +114,7 @@ contains
             abs_residual_pool_perm = abs_residual_pool_perm,&
             pool_size = pool_size,&
             shared_residual_range = shared_residual_range,&
-            residual_range_quantile = residual_range_quantile,&
+            residual_range_quantile_level = residual_range_quantile_level,&
             ierr = ierr&
         )
     end subroutine determine_shared_residual_range_expert_c
@@ -130,7 +130,7 @@ contains
             n_neighbors,&
             n_points,&
             shared_residual_range,&
-            residual_range_quantile,&
+            residual_range_quantile_level,&
             ierr&
         ) bind(C, name="determine_study_shared_residual_range_c")
         use tox_data_integration_jsd, only: determine_study_shared_residual_range
@@ -151,8 +151,8 @@ contains
             !! NaN is permitted for this value.
         real(c_double), intent(out), target :: shared_residual_range
             !! Computed residual range (R)
-        real(c_double), intent(in), target :: residual_range_quantile
-            !! Quantile in [0,1] for determining the residual range
+        real(c_double), intent(in), target :: residual_range_quantile_level
+            !! Quantile level in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
@@ -166,7 +166,7 @@ contains
         M_CHECK_NON_NULL(n_neighbors)
         M_CHECK_NON_NULL(n_points)
         M_CHECK_NON_NULL(shared_residual_range)
-        M_CHECK_NON_NULL(residual_range_quantile)
+        M_CHECK_NON_NULL(residual_range_quantile_level)
         M_CHECK_ARRAY_NON_NULL(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points)
         M_CHECK_ARRAY_NON_NULL(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points)
 
@@ -178,7 +178,7 @@ contains
             n_neighbors = n_neighbors,&
             n_points = n_points,&
             shared_residual_range = shared_residual_range,&
-            residual_range_quantile = residual_range_quantile,&
+            residual_range_quantile_level = residual_range_quantile_level,&
             ierr = ierr&
         )
     end subroutine determine_study_shared_residual_range_c
@@ -196,7 +196,7 @@ contains
             tmp_abs_residual_pool,&
             tmp_abs_residual_pool_perm,&
             shared_residual_range,&
-            residual_range_quantile,&
+            residual_range_quantile_level,&
             ierr&
         ) bind(C, name="determine_study_shared_residual_range_expert_c")
         use tox_data_integration_jsd, only: determine_study_shared_residual_range_expert
@@ -221,8 +221,8 @@ contains
             !! Work array for the permutation that sorts `tmp_abs_residual_pool`
         real(c_double), intent(out), target :: shared_residual_range
             !! Computed residual range (R)
-        real(c_double), intent(in), target :: residual_range_quantile
-            !! Quantile in [0,1] for determining the residual range
+        real(c_double), intent(in), target :: residual_range_quantile_level
+            !! Quantile level in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
@@ -236,7 +236,7 @@ contains
         M_CHECK_NON_NULL(n_neighbors)
         M_CHECK_NON_NULL(n_points)
         M_CHECK_NON_NULL(shared_residual_range)
-        M_CHECK_NON_NULL(residual_range_quantile)
+        M_CHECK_NON_NULL(residual_range_quantile_level)
         M_CHECK_ARRAY_NON_NULL(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points)
         M_CHECK_ARRAY_NON_NULL(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points)
         M_CHECK_ARRAY_NON_NULL(tmp_abs_residual_pool, ((n_reps_S1 + n_reps_S2)*n_neighbors*n_points))
@@ -252,7 +252,7 @@ contains
             tmp_abs_residual_pool = tmp_abs_residual_pool,&
             tmp_abs_residual_pool_perm = tmp_abs_residual_pool_perm,&
             shared_residual_range = shared_residual_range,&
-            residual_range_quantile = residual_range_quantile,&
+            residual_range_quantile_level = residual_range_quantile_level,&
             ierr = ierr&
         )
     end subroutine determine_study_shared_residual_range_expert_c

@@ -51,7 +51,7 @@ module tox_data_integration_js_comp_test_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
     use f42_math_impl, only: clamp, is_close, LOG_2
-    use f42_stats_impl, only: calc_percentile_impl
+    use f42_stats_impl, only: calc_quantile_impl
     use f42_sort_impl, only: init_perm, sort_array_heapsort, sort_real_heapsort_expl_size, binary_search_insertion
     use f42_random_gsl, only: rng_t, create_rng, destroy_rng, random_multinomial
     use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, validate_dimension_size, &
@@ -490,8 +490,8 @@ contains
         sturges_bins = max(1_int32, min(sturges_raw, MAX_N_BINS))
 
         ! Freedman-Diaconis
-        call calc_percentile_impl(residuals, n_residuals, residuals_perm, 0.25_real64, quartile_25, n_considered=n_pool)
-        call calc_percentile_impl(residuals, n_residuals, residuals_perm, 0.75_real64, quartile_75, n_considered=n_pool)
+        call calc_quantile_impl(residuals, n_residuals, residuals_perm, 0.25_real64, quartile_25, n_considered=n_pool)
+        call calc_quantile_impl(residuals, n_residuals, residuals_perm, 0.75_real64, quartile_75, n_considered=n_pool)
 
         half_bin_width = (quartile_75 - quartile_25)/(n_reps_neighborhood**(1.0_real64/3.0_real64))
         if (.not. is_close(half_bin_width, 0.0_real64)) then
@@ -689,10 +689,10 @@ contains
             shared_residual_range_low = 0.0_real64
             shared_residual_range_high = 0.0_real64
         else
-            call calc_percentile_impl(pooled_residuals, n_residuals, pooled_residuals_perm, &
+            call calc_quantile_impl(pooled_residuals, n_residuals, pooled_residuals_perm, &
                                       actual_lower_residual_range_quantile, shared_residual_range_low, &
                                       n_considered=n_pooled_residuals)
-            call calc_percentile_impl(pooled_residuals, n_residuals, pooled_residuals_perm, &
+            call calc_quantile_impl(pooled_residuals, n_residuals, pooled_residuals_perm, &
                                       actual_upper_residual_range_quantile, shared_residual_range_high, &
                                       n_considered=n_pooled_residuals)
         end if
@@ -1294,10 +1294,10 @@ contains
             shared_residual_range_low = 0.0_real64
             shared_residual_range_high = 0.0_real64
         else
-            call calc_percentile_impl(pooled_residuals, n_residuals, pooled_residuals_perm, &
+            call calc_quantile_impl(pooled_residuals, n_residuals, pooled_residuals_perm, &
                                       actual_lower_residual_range_quantile, shared_residual_range_low, &
                                       n_considered=n_pooled_residuals)
-            call calc_percentile_impl(pooled_residuals, n_residuals, pooled_residuals_perm, &
+            call calc_quantile_impl(pooled_residuals, n_residuals, pooled_residuals_perm, &
                                       actual_upper_residual_range_quantile, shared_residual_range_high, &
                                       n_considered=n_pooled_residuals)
         end if
@@ -2369,7 +2369,7 @@ contains
     !| Computes the median and the raw (unscaled) median absolute deviation (MAD) of the `k =
     !| last_pos - first_pos + 1` values `values(perm(first_pos:last_pos))`, which `perm` already
     !| orders ascending, with no work buffer and no sort. Both medians follow
-    !| [[f42_stats_impl(module):calc_percentile_impl(interface)]]'s convention: the value at rank
+    !| [[f42_stats_impl(module):calc_quantile_impl(interface)]]'s convention: the value at rank
     !| `0.5*(k-1) + 1`, linearly interpolated between its two neighbors (so the median of an even
     !| count is the mean of the middle pair). The absolute deviations are never stored: those of
     !| the entries up to the median's lower rank grow leftward and those after it grow rightward,
@@ -2407,7 +2407,7 @@ contains
             return
         end if
 
-        ! calc_percentile_impl's rank at percentile 0.5. For n_slice >= 2 it is below n_slice,
+        ! calc_quantile_impl's rank at percentile 0.5. For n_slice >= 2 it is below n_slice,
         ! so both interpolation neighbors lie inside the slice.
         rank = 0.5_real64*real(n_slice - 1_int32, real64) + 1.0_real64
         lower_rank = floor(rank, kind=int32)
@@ -3264,7 +3264,7 @@ contains
     !| `delta(i) = |global_js_divergence(i) - prev_global_js_divergence(i)| / max(prev_global_js_divergence(i),
     !| delta_epsilon)`, summarized across studies by its median (`delta_median`, via the
     !| already-shipped
-    !| [[f42_stats_impl(module):calc_percentile_impl(interface)]]) and maximum (`delta_max`). A
+    !| [[f42_stats_impl(module):calc_quantile_impl(interface)]]) and maximum (`delta_max`). A
     !| plateau is declared once both stay under their respective thresholds for
     !| `delta_min_consecutive_transitions` consecutive transitions in a row -- tracked across calls
     !| via `n_consecutive_ok`, reset the moment either threshold is missed.
@@ -3345,7 +3345,7 @@ contains
 
         call init_perm(tmp_delta_perm)
         call sort_array_heapsort(delta, tmp_delta_perm)
-        call calc_percentile_impl(delta, n_studies, tmp_delta_perm, 0.5_real64, delta_median)
+        call calc_quantile_impl(delta, n_studies, tmp_delta_perm, 0.5_real64, delta_median)
         delta_max = maxval(delta)
 
         if (delta_median < delta_median_threshold .and. delta_max < delta_max_threshold) then
@@ -5724,11 +5724,11 @@ contains
             ! ranking itself doesn't depend on which plateau criterion is selected, only whether the
             ! fallback branch below actually uses it. tmp_delta_perm was just used above to sort
             ! `delta`; it must be re-seeded and re-sorted here for trace_ci_width's own order before
-            ! calc_percentile_impl can use it, since calc_percentile_impl trusts whatever order it's
+            ! calc_quantile_impl can use it, since calc_quantile_impl trusts whatever order it's
             ! handed rather than sorting internally.
             call init_perm(tmp_delta_perm)
             call sort_array_heapsort(trace_ci_width(1:n_studies, n_admissible_evaluated), tmp_delta_perm)
-            call calc_percentile_impl(trace_ci_width(1:n_studies, n_admissible_evaluated), n_studies, tmp_delta_perm, &
+            call calc_quantile_impl(trace_ci_width(1:n_studies, n_admissible_evaluated), n_studies, tmp_delta_perm, &
                                       0.5_real64, median_ci_width)
             if (median_ci_width < best_uncertainty_value) then
                 best_uncertainty_value = median_ci_width
@@ -6665,7 +6665,7 @@ contains
             ! plateau_mode. tmp_delta_perm is re-seeded for trace_ci_width's own order.
             call init_perm(tmp_delta_perm)
             call sort_array_heapsort(trace_ci_width(1:n_studies, n_admissible_evaluated), tmp_delta_perm)
-            call calc_percentile_impl(trace_ci_width(1:n_studies, n_admissible_evaluated), n_studies, tmp_delta_perm, &
+            call calc_quantile_impl(trace_ci_width(1:n_studies, n_admissible_evaluated), n_studies, tmp_delta_perm, &
                                       0.5_real64, median_ci_width)
             if (median_ci_width < best_uncertainty_value) then
                 best_uncertainty_value = median_ci_width

@@ -1600,7 +1600,7 @@
       "    abs_residual_pool=${1:abs_residual_pool}, &",
       "    pool_size=${2:pool_size}, &",
       "    shared_residual_range=${3:shared_residual_range}, &",
-      "    residual_range_quantile=${4:residual_range_quantile}, &",
+      "    residual_range_quantile_level=${4:residual_range_quantile_level}, &",
       "    ierr=${5:ierr})"
     ]
   },
@@ -1612,7 +1612,7 @@
       "    abs_residual_pool=${1:abs_residual_pool}, &",
       "    pool_size=${2:pool_size}, &",
       "    shared_residual_range=${3:shared_residual_range}, &",
-      "    residual_range_quantile=${4:residual_range_quantile}, &",
+      "    residual_range_quantile_level=${4:residual_range_quantile_level}, &",
       "    ierr=${5:ierr})",
       "if (is_err(ierr)) return"
     ]
@@ -1626,7 +1626,7 @@
       "    abs_residual_pool_perm=${2:abs_residual_pool_perm}, &",
       "    pool_size=${3:pool_size}, &",
       "    shared_residual_range=${4:shared_residual_range}, &",
-      "    residual_range_quantile=${5:residual_range_quantile}, &",
+      "    residual_range_quantile_level=${5:residual_range_quantile_level}, &",
       "    ierr=${6:ierr})"
     ]
   },
@@ -1639,7 +1639,7 @@
       "    abs_residual_pool_perm=${2:abs_residual_pool_perm}, &",
       "    pool_size=${3:pool_size}, &",
       "    shared_residual_range=${4:shared_residual_range}, &",
-      "    residual_range_quantile=${5:residual_range_quantile}, &",
+      "    residual_range_quantile_level=${5:residual_range_quantile_level}, &",
       "    ierr=${6:ierr})",
       "if (is_err(ierr)) return"
     ]
@@ -1656,7 +1656,7 @@
       "    n_neighbors=${5:n_neighbors}, &",
       "    n_points=${6:n_points}, &",
       "    shared_residual_range=${7:shared_residual_range}, &",
-      "    residual_range_quantile=${8:residual_range_quantile}, &",
+      "    residual_range_quantile_level=${8:residual_range_quantile_level}, &",
       "    ierr=${9:ierr})"
     ]
   },
@@ -1672,7 +1672,7 @@
       "    n_neighbors=${5:n_neighbors}, &",
       "    n_points=${6:n_points}, &",
       "    shared_residual_range=${7:shared_residual_range}, &",
-      "    residual_range_quantile=${8:residual_range_quantile}, &",
+      "    residual_range_quantile_level=${8:residual_range_quantile_level}, &",
       "    ierr=${9:ierr})",
       "if (is_err(ierr)) return"
     ]
@@ -2800,8 +2800,8 @@
       "    perm=${4:perm}, &",
       "    is_outlier=${5:is_outlier}, &",
       "    threshold=${6:threshold}, &",
-      "    quantile=${7:quantile}, &",
-      "    percentile=${8:percentile}, &",
+      "    tail_probability=${7:tail_probability}, &",
+      "    quantile_level=${8:quantile_level}, &",
       "    ierr=${9:ierr})"
     ]
   },
@@ -2816,8 +2816,8 @@
       "    perm=${4:perm}, &",
       "    is_outlier=${5:is_outlier}, &",
       "    threshold=${6:threshold}, &",
-      "    quantile=${7:quantile}, &",
-      "    percentile=${8:percentile}, &",
+      "    tail_probability=${7:tail_probability}, &",
+      "    quantile_level=${8:quantile_level}, &",
       "    ierr=${9:ierr})",
       "if (is_err(ierr)) return"
     ]
@@ -2835,9 +2835,9 @@
       "    loess_x=${6:loess_x}, &",
       "    loess_y=${7:loess_y}, &",
       "    loess_n=${8:loess_n}, &",
-      "    quantile=${9:quantile}, &",
+      "    tail_probability=${9:tail_probability}, &",
       "    ierr=${10:ierr}, &",
-      "    percentile=${11:percentile})"
+      "    quantile_level=${11:quantile_level})"
     ]
   },
   "detect_outliers (call, checked)": {
@@ -2853,9 +2853,9 @@
       "    loess_x=${6:loess_x}, &",
       "    loess_y=${7:loess_y}, &",
       "    loess_n=${8:loess_n}, &",
-      "    quantile=${9:quantile}, &",
+      "    tail_probability=${9:tail_probability}, &",
       "    ierr=${10:ierr}, &",
-      "    percentile=${11:percentile})",
+      "    quantile_level=${11:quantile_level})",
       "if (is_err(ierr)) return"
     ]
   },

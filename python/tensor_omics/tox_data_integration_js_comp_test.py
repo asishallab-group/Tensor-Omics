@@ -2956,7 +2956,7 @@ def check_effect_size_plateau_condition(
     `delta(i) = |global_js_divergence(i) - prev_global_js_divergence(i)| / max(prev_global_js_divergence(i),
     delta_epsilon)`, summarized across studies by its median (`delta_median`, via the
     already-shipped
-    :func:`tensor_omics.calc_percentile`) and maximum (`delta_max`). A
+    :func:`tensor_omics.calc_quantile`) and maximum (`delta_max`). A
     plateau is declared once both stay under their respective thresholds for
     `delta_min_consecutive_transitions` consecutive transitions in a row -- tracked across calls
     via `n_consecutive_ok`, reset the moment either threshold is missed.

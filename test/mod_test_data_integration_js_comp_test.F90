@@ -1787,7 +1787,7 @@ contains
     !| `prev=[0.10,0.20,0.40]`, `current=[0.11,0.24,0.60]` ->
     !| `delta = [0.01/0.10, 0.04/0.20, 0.20/0.40] = [0.1, 0.2, 0.5]`.
     !| Median of `[0.1,0.2,0.5]` is `0.2`, max is `0.5` -- both hand-computed, independent of
-    !| `calc_percentile_impl`'s own internals.
+    !| `calc_quantile_impl`'s own internals.
     subroutine test_effect_size_plateau_median_max_hand_computed()
         integer(int32), parameter :: n_studies = 3
         real(real64) :: global_js_divergence(n_studies), prev_global_js_divergence(n_studies), delta(n_studies)
@@ -4675,7 +4675,7 @@ contains
 
     !> Residuals are every integer in [-60, 59] (120 values). Unlike the pre-Step-3 dataset-wide
     !| symmetric range, `shared_residual_range_low`/`_high` are now this neighborhood's own
-    !| 5th/95th-percentile bounds: with `calc_percentile_rank(q, n) = q*(n-1)+1` and the sorted
+    !| 5th/95th-percentile bounds: with `calc_quantile_rank(q, n) = q*(n-1)+1` and the sorted
     !| values `value(k) = k - 61` for rank `k = 1..120`,
     !|   rank(0.05, 120) = 0.05*119 + 1 = 6.95 -> interpolate value(6)=-55, value(7)=-54 at
     !|     fraction 0.95 -> R_low = -55 + 0.95*1 = -54.05
@@ -5129,7 +5129,7 @@ contains
     !| arithmetic is unchanged by Step 3 -- it still runs directly on the raw pooled residuals, not
     !| on R_low/R_high -- so its own inputs are exactly as before: sorted ascending, the 120
     !| residuals are `value(i) = i - 61` for rank `i = 1..120`. With
-    !| `calc_percentile_rank(q, n) = q*(n-1)+1`:
+    !| `calc_quantile_rank(q, n) = q*(n-1)+1`:
     !|   rank(0.25, 120) = 0.25*119 + 1 = 30.75 -> interpolate value(30)=-31, value(31)=-30 at
     !|     fraction 0.75 -> quartile_25 = -31 + 0.75*1 = -30.25
     !|   rank(0.75, 120) = 0.75*119 + 1 = 90.25 -> interpolate value(90)=29, value(91)=30 at
@@ -5346,7 +5346,7 @@ contains
     !| genuinely asymmetric -- NOT mirror images of each other -- for a residual distribution whose
     !| core is symmetric around zero but whose tail is not. 12 residuals: -5,-4,-3,-2,-1,0,1,2,3,4,5
     !| (symmetric) plus one extreme positive outlier, 50.0. Sorted, with
-    !| `calc_percentile_rank(q,n) = q*(n-1)+1`:
+    !| `calc_quantile_rank(q,n) = q*(n-1)+1`:
     !|   rank(0.05, 12) = 0.05*11 + 1 = 1.55 -> interpolate value(1)=-5, value(2)=-4 at fraction
     !|     0.55 -> R_low = -5 + 0.55*1 = -4.45
     !|   rank(0.95, 12) = 0.95*11 + 1 = 11.45 -> interpolate value(11)=5, value(12)=50 at fraction
@@ -5388,7 +5388,7 @@ contains
     end subroutine test_occupancy_range_asymmetric_skewed_residuals
 
     !> Step 3 (per-neighborhood residual range): a direct hand-computed check of
-    !| shared_residual_range_low/_high against calc_percentile_impl's own nearest-rank/interpolation
+    !| shared_residual_range_low/_high against calc_quantile_impl's own nearest-rank/interpolation
     !| formula, independent of whatever bin count the occupancy search separately selects (that
     !| search's own output is not asserted here at all -- see the other test_occupancy_range_* and
     !| test_occupancy_* tests for that). 8 residuals, every integer 1..8 (chosen so both quantile
@@ -5417,10 +5417,10 @@ contains
                               "test_occupancy_range_hand_computed_percentile: ierr should be OK")
         call assert_equal_real(shared_residual_range_low, 1.35_real64, TOL, &
                                "test_occupancy_range_hand_computed_percentile: "// &
-                               "shared_residual_range_low == calc_percentile_impl(0.05) nearest-rank interpolation")
+                               "shared_residual_range_low == calc_quantile_impl(0.05) nearest-rank interpolation")
         call assert_equal_real(shared_residual_range_high, 7.65_real64, TOL, &
                                "test_occupancy_range_hand_computed_percentile: "// &
-                               "shared_residual_range_high == calc_percentile_impl(0.95) nearest-rank interpolation")
+                               "shared_residual_range_high == calc_quantile_impl(0.95) nearest-rank interpolation")
     end subroutine test_occupancy_range_hand_computed_percentile
 
     !> Step 3's last missing piece: `determine_bin_count_occupancy_exhaustive` is a brute-force

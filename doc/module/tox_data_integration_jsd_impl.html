@@ -177,12 +177,12 @@ figure for the pair of studies.</p>
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='f42_stats_impl.html'>f42_stats_impl</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
-                  <li class="list-inline-item"><a href='f42_math_impl.html'>f42_math_impl</a></li>
-                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='f42_sort_impl.html'>f42_sort_impl</a></li>
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/ieee_arithmetic'>ieee_arithmetic</a></li>
+                  <li class="list-inline-item"><a href='f42_stats_impl.html'>f42_stats_impl</a></li>
+                  <li class="list-inline-item"><a href='f42_math_impl.html'>f42_math_impl</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -202,7 +202,7 @@ figure for the pair of studies.</p>
         <section>
           <h2>Subroutines</h2>
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-determine_shared_residual_range_impl"></span> <h3>public pure subroutine <a href='../proc/determine_shared_residual_range_impl.html'>determine_shared_residual_range_impl</a>(abs_residual_pool, abs_residual_pool_perm, pool_size, shared_residual_range, residual_range_quantile)  
+    <div class="card-header codesum"><span class="anchor" id="proc-determine_shared_residual_range_impl"></span> <h3>public pure subroutine <a href='../proc/determine_shared_residual_range_impl.html'>determine_shared_residual_range_impl</a>(abs_residual_pool, abs_residual_pool_perm, pool_size, shared_residual_range, residual_range_quantile_level)  
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
@@ -225,7 +225,7 @@ figure for the pair of studies.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-abs_residual_pool"></span>
+              <span class="anchor" id="variable-abs_residual_pool~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -241,7 +241,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-abs_residual_pool_perm"></span>
+              <span class="anchor" id="variable-abs_residual_pool_perm~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -258,7 +258,7 @@ The maximum valid value is <code>pool_size</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-pool_size~4"></span>
+              <span class="anchor" id="variable-pool_size~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -273,7 +273,7 @@ The maximum valid value is <code>pool_size</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shared_residual_range~6"></span>
+              <span class="anchor" id="variable-shared_residual_range~26"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -288,7 +288,7 @@ The maximum valid value is <code>pool_size</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-residual_range_quantile"></span>
+              <span class="anchor" id="variable-residual_range_quantile_level~9"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -296,9 +296,9 @@ The maximum valid value is <code>pool_size</code>.</p>
               
             </td>
             <td>::</td>
-            <td><strong>residual_range_quantile</strong></td>
+            <td><strong>residual_range_quantile_level</strong></td>
             <td>
-<p>Quantile in [0,1] for determining the residual range
+<p>Quantile level in [0,1] for determining the residual range
 The minimum valid value is <code>0.0_real64</code>.
 The maximum valid value is <code>1.0_real64</code>.
 The default value is <code>0.95</code>.</p>
@@ -312,7 +312,7 @@ The default value is <code>0.95</code>.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-determine_study_shared_residual_range_impl"></span> <h3>public pure subroutine <a href='../proc/determine_study_shared_residual_range_impl.html'>determine_study_shared_residual_range_impl</a>(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, tmp_abs_residual_pool, tmp_abs_residual_pool_perm, shared_residual_range, residual_range_quantile)  
+    <div class="card-header codesum"><span class="anchor" id="proc-determine_study_shared_residual_range_impl"></span> <h3>public pure subroutine <a href='../proc/determine_study_shared_residual_range_impl.html'>determine_study_shared_residual_range_impl</a>(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, tmp_abs_residual_pool, tmp_abs_residual_pool_perm, shared_residual_range, residual_range_quantile_level)  
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
@@ -335,7 +335,7 @@ The default value is <code>0.95</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s1~6"></span>
+              <span class="anchor" id="variable-neighborhood_residuals_s1~20"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -351,7 +351,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s2~6"></span>
+              <span class="anchor" id="variable-neighborhood_residuals_s2~20"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -367,7 +367,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s1~7"></span>
+              <span class="anchor" id="variable-n_reps_s1~21"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -382,7 +382,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s2~7"></span>
+              <span class="anchor" id="variable-n_reps_s2~21"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -397,7 +397,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_neighbors~9"></span>
+              <span class="anchor" id="variable-n_neighbors~30"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -412,7 +412,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~34"></span>
+              <span class="anchor" id="variable-n_points~70"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -427,7 +427,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_abs_residual_pool"></span>
+              <span class="anchor" id="variable-tmp_abs_residual_pool~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -442,7 +442,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_abs_residual_pool_perm"></span>
+              <span class="anchor" id="variable-tmp_abs_residual_pool_perm~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -457,7 +457,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shared_residual_range~7"></span>
+              <span class="anchor" id="variable-shared_residual_range~27"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -472,7 +472,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-residual_range_quantile~2"></span>
+              <span class="anchor" id="variable-residual_range_quantile_level~10"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -480,9 +480,9 @@ NaN is permitted for this value.</p>
               
             </td>
             <td>::</td>
-            <td><strong>residual_range_quantile</strong></td>
+            <td><strong>residual_range_quantile_level</strong></td>
             <td>
-<p>Quantile in [0,1] for determining the residual range
+<p>Quantile level in [0,1] for determining the residual range
 The minimum valid value is <code>0.0_real64</code>.
 The maximum valid value is <code>1.0_real64</code>.
 The default value is <code>0.95</code>.</p>
@@ -519,7 +519,7 @@ The default value is <code>0.95</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals~3"></span>
+              <span class="anchor" id="variable-neighborhood_residuals~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -535,7 +535,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps~3"></span>
+              <span class="anchor" id="variable-n_reps~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -550,7 +550,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_neighbors~10"></span>
+              <span class="anchor" id="variable-n_neighbors~31"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -565,7 +565,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~35"></span>
+              <span class="anchor" id="variable-n_points~71"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -580,7 +580,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shared_residual_range~8"></span>
+              <span class="anchor" id="variable-shared_residual_range~28"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -596,7 +596,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_bins~6"></span>
+              <span class="anchor" id="variable-n_bins~20"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -611,7 +611,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-counts"></span>
+              <span class="anchor" id="variable-counts~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -626,7 +626,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-pmf"></span>
+              <span class="anchor" id="variable-pmf~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -641,7 +641,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-included_n_reps"></span>
+              <span class="anchor" id="variable-included_n_reps~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -656,7 +656,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighbor_mask"></span>
+              <span class="anchor" id="variable-neighbor_mask~3"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
@@ -700,7 +700,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-pmf_s1~2"></span>
+              <span class="anchor" id="variable-pmf_s1~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -717,7 +717,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-pmf_s2~2"></span>
+              <span class="anchor" id="variable-pmf_s2~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -734,7 +734,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~36"></span>
+              <span class="anchor" id="variable-n_points~72"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -749,7 +749,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_bins~7"></span>
+              <span class="anchor" id="variable-n_bins~21"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -764,7 +764,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-js_divergences~3"></span>
+              <span class="anchor" id="variable-js_divergences~15"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -808,7 +808,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-js_divergences~4"></span>
+              <span class="anchor" id="variable-js_divergences~16"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -824,7 +824,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~37"></span>
+              <span class="anchor" id="variable-n_points~73"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -839,7 +839,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-included_n_reps_s1~3"></span>
+              <span class="anchor" id="variable-included_n_reps_s1~13"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -855,7 +855,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-included_n_reps_s2~3"></span>
+              <span class="anchor" id="variable-included_n_reps_s2~13"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -871,7 +871,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-global_js_divergence~3"></span>
+              <span class="anchor" id="variable-global_js_divergence~13"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -886,7 +886,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-weights~11"></span>
+              <span class="anchor" id="variable-weights~24"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -930,7 +930,7 @@ The minimum valid value is <code>0_int32</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s1~7"></span>
+              <span class="anchor" id="variable-neighborhood_residuals_s1~21"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -945,7 +945,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s2~7"></span>
+              <span class="anchor" id="variable-neighborhood_residuals_s2~21"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -960,7 +960,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s1~8"></span>
+              <span class="anchor" id="variable-n_reps_s1~22"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -975,7 +975,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s2~8"></span>
+              <span class="anchor" id="variable-n_reps_s2~22"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -990,7 +990,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_neighbors~11"></span>
+              <span class="anchor" id="variable-n_neighbors~32"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1005,7 +1005,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~38"></span>
+              <span class="anchor" id="variable-n_points~74"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1020,7 +1020,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_bins~8"></span>
+              <span class="anchor" id="variable-n_bins~22"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1035,7 +1035,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shared_residual_range~9"></span>
+              <span class="anchor" id="variable-shared_residual_range~29"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1050,7 +1050,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-js_divergences~5"></span>
+              <span class="anchor" id="variable-js_divergences~17"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1065,7 +1065,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-included_n_reps_s1~4"></span>
+              <span class="anchor" id="variable-included_n_reps_s1~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -1080,7 +1080,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-included_n_reps_s2~4"></span>
+              <span class="anchor" id="variable-included_n_reps_s2~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -1095,7 +1095,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-global_js_divergence~4"></span>
+              <span class="anchor" id="variable-global_js_divergence~14"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -1110,7 +1110,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-weights~12"></span>
+              <span class="anchor" id="variable-weights~25"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1125,7 +1125,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-pmf_s1~3"></span>
+              <span class="anchor" id="variable-pmf_s1~9"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1140,7 +1140,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-pmf_s2~3"></span>
+              <span class="anchor" id="variable-pmf_s2~9"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1155,7 +1155,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_counts~5"></span>
+              <span class="anchor" id="variable-tmp_counts~13"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -1170,7 +1170,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighbor_mask_s1~5"></span>
+              <span class="anchor" id="variable-neighbor_mask_s1~11"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
@@ -1185,7 +1185,7 @@ The minimum valid value is <code>0_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighbor_mask_s2~5"></span>
+              <span class="anchor" id="variable-neighbor_mask_s2~11"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
@@ -1228,7 +1228,7 @@ The minimum valid value is <code>0_int32</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-09-14 09:28 +0000             </p>
+ on 2026-10-08 18:38 +0000             </p>
           </div>
         </div>
         <br>

@@ -108,9 +108,9 @@
 
         Distances with small $p$ are therefore unlikely to be explainable by noise and indicate robust biological separation.
 
-        \subsubsection{Noise distribution quantile}
+        \subsubsection{Noise distribution quantile level}
 
-            The noise percentile an observed distance falls into is computed as:
+            The quantile level of the noise distribution at which an observed distance falls is computed as:
             \[
                 q = \frac{1 + \sum_{b=1}^{B} I\!\left(D_{\mathrm{null}}^{(b)} \le D_{\mathrm{obs}}\right)}{B + 1}.
             \]
@@ -189,7 +189,7 @@
             \paragraph{What the plot shows and informs about.}
             This plot shows whether the observed distance is large relative to the noise-only null distribution. If $D_{\mathrm{obs}}$ lies far above the upper tail of the null, the distance is robust and unlikely to be explainable by replicate variability alone. If $D_{\mathrm{obs}}$ overlaps the bulk of the null, the separation is not robust given the replicate structure and should be interpreted cautiously. This plot also reveals cases where replicate imbalance (or mean-dependent variability) leads to broad null distributions, making it clear why p-values become large even when raw distances look substantial.
 
-        \subsubsection{Plot 4: Observed Distance vs Noise Percentile (Global Scatterplot)}\label{ssec:obs_vs_noise_quant_plot}
+        \subsubsection{Plot 4: Observed Distance vs Noise Quantile Level (Global Scatterplot)}\label{ssec:obs_vs_noise_quant_plot}
 
             This is a generalization of Plot 3 (see Section~\ref{ssec:noise_vs_obs_distance_plot}).
 
@@ -198,8 +198,8 @@
 
             \paragraph{How we generate it.}
             \begin{enumerate}
-                \item During the calculation of all Euclidean Distances e.g. while iterating over all gene families, store all observed distances ($D_{\mathrm{obs}}$) and the percentile of the Null noise model ($q$) in which the observed distances fell.
-                \item Plot the points $(D_{\mathrm{obs}}, q)$ as a scatterplot, where the x-axis shows the observed distance and the y-axis shows the noise percentile $q$.
+                \item During the calculation of all Euclidean Distances e.g. while iterating over all gene families, store all observed distances ($D_{\mathrm{obs}}$) and the quantile level of the null noise model ($q$) in which the observed distances fell.
+                \item Plot the points $(D_{\mathrm{obs}}, q)$ as a scatterplot, where the x-axis shows the observed distance and the y-axis shows the noise quantile level $q$.
             \end{enumerate}
 
             \emph{Note} if the number of Euclidean distances is very large, a random subset of observed distances can be stored for visualization.
@@ -207,7 +207,7 @@
             \paragraph{What the plot shows and informs about.}
             Each point summarizes one observed expression distance, either from a pair of genes or from a family centroid to gene: $D_{\mathrm{obs}}$ is the measured separation in semantic expression space, and $q$ indicates where this distance falls within the noise-only null distribution for that specific pair. Values near $q \approx 0.5$ indicate that the observed distance is typical under noise alone, while values near $q \approx 1$ indicate that the observed distance lies in the extreme upper tail of the null and is therefore unlikely to be explainable by replicate variability.
 
-            The overall trend of this scatterplot provides a global calibration check. In well-calibrated settings, larger observed distances should increasingly concentrate at high percentiles. A substantial mass of large distances with only moderate percentiles suggests that replicate variability (biological or technical) is large relative to the measured separation, which may arise from low replication on some axes or high intrinsic inter-individual variability in the sampled conditions.
+            The overall trend of this scatterplot provides a global calibration check. In well-calibrated settings, larger observed distances should increasingly concentrate at high quantile levels. A substantial mass of large distances with only moderate quantile levels suggests that replicate variability (biological or technical) is large relative to the measured separation, which may arise from low replication on some axes or high intrinsic inter-individual variability in the sampled conditions.
 
 \subsection{Adjustment for Log-Transformed Expression Coordinates}
 

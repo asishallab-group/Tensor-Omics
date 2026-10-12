@@ -577,8 +577,8 @@ def prologue_only_arguments(
     """The prologue's own dummies -- the ones the implementation knows nothing about.
 
     A prologue derives something for the implementation, and what it derives it *from* is often
-    not the implementation's business: a threshold comes from a percentile, and the
-    implementation takes the threshold. That percentile has to come from somewhere, so it
+    not the implementation's business: a threshold comes from a quantile level, and the
+    implementation takes the threshold. That level has to come from somewhere, so it
     becomes an argument of the allocating wrapper -- of that one alone, because only it runs
     the prologue. The expert tier takes the derived value directly and would have no use for
     it.

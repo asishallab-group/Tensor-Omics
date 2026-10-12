@@ -18,7 +18,8 @@ runs:
         pacman -Scc --noconfirm
         for i in e5d4469d-33c1-4d48-8b45-48de1e6fb9e9/intel-dpcpp-cpp-compiler-2026.1.1.22.sh 09a1aab3-8441-4a4e-a243-1c1c8e15598c/intel-fortran-compiler-2026.1.1.19.sh
         do
-          curl https://registrationcenter-download.intel.com/akdlm/IRC_NAS/$i -o install_compiler.sh
+          # -f: an HTTP error fails the step instead of saving the error page; --retry: transient ones don't
+          curl -fL --retry 3 --retry-all-errors https://registrationcenter-download.intel.com/akdlm/IRC_NAS/$i -o install_compiler.sh
           bash install_compiler.sh -a -s --eula accept
           rm install_compiler.sh
         done
@@ -41,8 +42,12 @@ runs:
     - name: Install fpm
       shell: bash
       run: |
-        curl -L --output /usr/local/bin/fpm https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
+        # -f: an HTTP error fails the step instead of saving the error page as fpm; --retry: transient
+        # ones don't. A 92-byte error page once passed as fpm, and every build then failed instantly.
+        curl -fL --retry 3 --retry-all-errors --output /usr/local/bin/fpm https://github.com/fortran-lang/fpm/releases/download/v0.13.0/fpm-0.13.0-linux-x86_64-gcc-12
         chmod a+x /usr/local/bin/fpm
+        # whatever was downloaded must run, or this step fails rather than the first build
+        fpm --version
 
     - name: Show version for reproducibility
       shell: bash

@@ -2159,7 +2159,7 @@ contains
     !| `delta(i) = |global_js_divergence(i) - prev_global_js_divergence(i)| / max(prev_global_js_divergence(i),
     !| delta_epsilon)`, summarized across studies by its median (`delta_median`, via the
     !| already-shipped
-    !| [[f42_stats_impl(module):calc_percentile_impl(interface)]]) and maximum (`delta_max`). A
+    !| [[f42_stats_impl(module):calc_quantile_impl(interface)]]) and maximum (`delta_max`). A
     !| plateau is declared once both stay under their respective thresholds for
     !| `delta_min_consecutive_transitions` consecutive transitions in a row -- tracked across calls
     !| via `n_consecutive_ok`, reset the moment either threshold is missed.
@@ -2275,7 +2275,7 @@ contains
     !| `delta(i) = |global_js_divergence(i) - prev_global_js_divergence(i)| / max(prev_global_js_divergence(i),
     !| delta_epsilon)`, summarized across studies by its median (`delta_median`, via the
     !| already-shipped
-    !| [[f42_stats_impl(module):calc_percentile_impl(interface)]]) and maximum (`delta_max`). A
+    !| [[f42_stats_impl(module):calc_quantile_impl(interface)]]) and maximum (`delta_max`). A
     !| plateau is declared once both stay under their respective thresholds for
     !| `delta_min_consecutive_transitions` consecutive transitions in a row -- tracked across calls
     !| via `n_consecutive_ok`, reset the moment either threshold is missed.

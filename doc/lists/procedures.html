@@ -348,37 +348,37 @@ This routine adds a result mask to <code>subsets</code> array.</p></td>
                  <td><p>C-wrapper for <a href="../proc/calc_neighborhood_size.html">calc_neighborhood_size</a></p><a href="../proc/calc_neighborhood_size_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/calc_percentile.html'>calc_percentile</a></td>
+                 <td><a href='../proc/calc_quantile.html'>calc_quantile</a></td>
                  <td><a href='../module/f42_stats.html'>f42_stats</a></td>
                  <td>Subroutine</td>
-                 <td><p>Validates its inputs, prepares what <a href="../proc/calc_percentile_impl.html">calc_percentile_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/calc_percentile_expert.html">calc_percentile_expert</a> to prepare it yourself.</p><a href="../proc/calc_percentile.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Validates its inputs, prepares what <a href="../proc/calc_quantile_impl.html">calc_quantile_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/calc_quantile_expert.html">calc_quantile_expert</a> to prepare it yourself.</p><a href="../proc/calc_quantile.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/calc_percentile_c.html'>calc_percentile_c</a></td>
+                 <td><a href='../proc/calc_quantile_c.html'>calc_quantile_c</a></td>
                  <td><a href='../module/f42_stats_c.html'>f42_stats_c</a></td>
                  <td>Subroutine</td>
-                 <td><p>C-wrapper for <a href="../proc/calc_percentile.html">calc_percentile</a></p><a href="../proc/calc_percentile_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>C-wrapper for <a href="../proc/calc_quantile.html">calc_quantile</a></p><a href="../proc/calc_quantile_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/calc_percentile_expert.html'>calc_percentile_expert</a></td>
+                 <td><a href='../proc/calc_quantile_expert.html'>calc_quantile_expert</a></td>
                  <td><a href='../module/f42_stats.html'>f42_stats</a></td>
                  <td>Subroutine</td>
-                 <td><p>Validates its inputs, then calls <a href="../proc/calc_percentile_impl.html">calc_percentile_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/calc_percentile.html">calc_percentile</a> does both.</p><a href="../proc/calc_percentile_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/calc_quantile_impl.html">calc_quantile_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/calc_quantile.html">calc_quantile</a> does both.</p><a href="../proc/calc_quantile_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/calc_percentile_expert_c.html'>calc_percentile_expert_c</a></td>
+                 <td><a href='../proc/calc_quantile_expert_c.html'>calc_quantile_expert_c</a></td>
                  <td><a href='../module/f42_stats_c.html'>f42_stats_c</a></td>
                  <td>Subroutine</td>
-                 <td><p>C-wrapper for <a href="../proc/calc_percentile_expert.html">calc_percentile_expert</a></p><a href="../proc/calc_percentile_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>C-wrapper for <a href="../proc/calc_quantile_expert.html">calc_quantile_expert</a></p><a href="../proc/calc_quantile_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/calc_percentile_impl.html'>calc_percentile_impl</a></td>
+                 <td><a href='../proc/calc_quantile_impl.html'>calc_quantile_impl</a></td>
                  <td><a href='../module/f42_stats_impl.html'>f42_stats_impl</a></td>
                  <td>Subroutine</td>
-                 <td><p>Calculate the percentile of an array given a sorted permutation</p><a href="../proc/calc_percentile_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Calculate the quantile of an array at a given level, given a sorted permutation</p><a href="../proc/calc_quantile_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/calc_percentile_rank.html'>calc_percentile_rank</a></td>
+                 <td><a href='../proc/calc_quantile_rank.html'>calc_quantile_rank</a></td>
                  <td><a href='../module/f42_stats_impl.html'>f42_stats_impl</a></td>
                  <td>Function</td>
                  <td><p>Calculate the fractional index using linear interpolation method</p></td>
@@ -828,34 +828,34 @@ responsibility to close it.</p></td>
                  <td><p>Compute signed residuals (centering by mean)</p><a href="../proc/compute_residuals_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/compute_scaled_distance_quantile.html'>compute_scaled_distance_quantile</a></td>
+                 <td><a href='../proc/compute_scaled_distance_tail_probability.html'>compute_scaled_distance_tail_probability</a></td>
                  <td><a href='../module/f42_stats.html'>f42_stats</a></td>
                  <td>Subroutine</td>
-                 <td><p>Validates its inputs, prepares what <a href="../proc/compute_scaled_distance_quantile_impl.html">compute_scaled_distance_quantile_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/compute_scaled_distance_quantile_expert.html">compute_scaled_distance_quantile_expert</a> to prepare it yourself.</p><a href="../proc/compute_scaled_distance_quantile.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Validates its inputs, prepares what <a href="../proc/compute_scaled_distance_tail_probability_impl.html">compute_scaled_distance_tail_probability_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/compute_scaled_distance_tail_probability_expert.html">compute_scaled_distance_tail_probability_expert</a> to prepare it yourself.</p><a href="../proc/compute_scaled_distance_tail_probability.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/compute_scaled_distance_quantile_c.html'>compute_scaled_distance_quantile_c</a></td>
+                 <td><a href='../proc/compute_scaled_distance_tail_probability_c.html'>compute_scaled_distance_tail_probability_c</a></td>
                  <td><a href='../module/f42_stats_c.html'>f42_stats_c</a></td>
                  <td>Subroutine</td>
-                 <td><p>C-wrapper for <a href="../proc/compute_scaled_distance_quantile.html">compute_scaled_distance_quantile</a></p><a href="../proc/compute_scaled_distance_quantile_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>C-wrapper for <a href="../proc/compute_scaled_distance_tail_probability.html">compute_scaled_distance_tail_probability</a></p><a href="../proc/compute_scaled_distance_tail_probability_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/compute_scaled_distance_quantile_expert.html'>compute_scaled_distance_quantile_expert</a></td>
+                 <td><a href='../proc/compute_scaled_distance_tail_probability_expert.html'>compute_scaled_distance_tail_probability_expert</a></td>
                  <td><a href='../module/f42_stats.html'>f42_stats</a></td>
                  <td>Subroutine</td>
-                 <td><p>Validates its inputs, then calls <a href="../proc/compute_scaled_distance_quantile_impl.html">compute_scaled_distance_quantile_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/compute_scaled_distance_quantile.html">compute_scaled_distance_quantile</a> does both.</p><a href="../proc/compute_scaled_distance_quantile_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Validates its inputs, then calls <a href="../proc/compute_scaled_distance_tail_probability_impl.html">compute_scaled_distance_tail_probability_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/compute_scaled_distance_tail_probability.html">compute_scaled_distance_tail_probability</a> does both.</p><a href="../proc/compute_scaled_distance_tail_probability_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/compute_scaled_distance_quantile_expert_c.html'>compute_scaled_distance_quantile_expert_c</a></td>
+                 <td><a href='../proc/compute_scaled_distance_tail_probability_expert_c.html'>compute_scaled_distance_tail_probability_expert_c</a></td>
                  <td><a href='../module/f42_stats_c.html'>f42_stats_c</a></td>
                  <td>Subroutine</td>
-                 <td><p>C-wrapper for <a href="../proc/compute_scaled_distance_quantile_expert.html">compute_scaled_distance_quantile_expert</a></p><a href="../proc/compute_scaled_distance_quantile_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>C-wrapper for <a href="../proc/compute_scaled_distance_tail_probability_expert.html">compute_scaled_distance_tail_probability_expert</a></p><a href="../proc/compute_scaled_distance_tail_probability_expert_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/compute_scaled_distance_quantile_impl.html'>compute_scaled_distance_quantile_impl</a></td>
+                 <td><a href='../proc/compute_scaled_distance_tail_probability_impl.html'>compute_scaled_distance_tail_probability_impl</a></td>
                  <td><a href='../module/f42_stats_impl.html'>f42_stats_impl</a></td>
                  <td>Subroutine</td>
-                 <td><p>Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)</p><a href="../proc/compute_scaled_distance_quantile_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Calculate the empirical upper-tail probability (effect-size measure) of scaled expression distances (RDI)</p><a href="../proc/compute_scaled_distance_tail_probability_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/compute_shift_vector_field.html'>compute_shift_vector_field</a></td>
@@ -1910,7 +1910,7 @@ Indirectly sorts <code>array</code> using <code>perm</code>, same algorithm as <
                  <td><a href='../proc/identify_outliers_impl.html'>identify_outliers_impl</a></td>
                  <td><a href='../module/tox_get_outliers_impl.html'>tox_get_outliers_impl</a></td>
                  <td>Subroutine</td>
-                 <td><p>Identify gene outliers based on the top percentile of RDI values</p><a href="../proc/identify_outliers_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Identify gene outliers based on an upper quantile of the RDI values</p><a href="../proc/identify_outliers_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/init_perm.html'>init_perm</a></td>
@@ -3523,7 +3523,7 @@ Closes the connected unit in case of an error</p></td>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-09-14 09:28 +0000             </p>
+ on 2026-10-08 18:38 +0000             </p>
           </div>
         </div>
         <br>

@@ -180,8 +180,8 @@ site, and each routine takes only the thresholds its own pattern needs.</p>
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -220,7 +220,7 @@ site, and each routine takes only the thresholds its own pattern needs.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-bit_mask~4"></span>
+              <span class="anchor" id="variable-bit_mask"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -250,7 +250,7 @@ site, and each routine takes only the thresholds its own pattern needs.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-i_gene~10"></span>
+              <span class="anchor" id="variable-i_gene~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -265,7 +265,7 @@ site, and each routine takes only the thresholds its own pattern needs.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-state~3"></span>
+              <span class="anchor" id="variable-state"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(out),</td>
@@ -280,7 +280,7 @@ site, and each routine takes only the thresholds its own pattern needs.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~140"></span>
+              <span class="anchor" id="variable-ierr~123"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -320,7 +320,7 @@ site, and each routine takes only the thresholds its own pattern needs.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~33"></span>
+              <span class="anchor" id="variable-n_genes~46"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -335,7 +335,7 @@ site, and each routine takes only the thresholds its own pattern needs.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-count~3"></span>
+              <span class="anchor" id="variable-count~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -345,12 +345,12 @@ site, and each routine takes only the thresholds its own pattern needs.</p>
             <td>::</td>
             <td><strong>count</strong></td>
             <td>
-<p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes</p><a href="../proc/mask_chunk_count_c.html#variable-count~3" class="pull-right"><emph>Read more&hellip;</emph></a>
+<p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes</p><a href="../proc/mask_chunk_count_c.html#variable-count~2" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~141"></span>
+              <span class="anchor" id="variable-ierr~124"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -390,7 +390,7 @@ site, and each routine takes only the thresholds its own pattern needs.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_subset_size~7"></span>
+              <span class="anchor" id="variable-max_subset_size"></span>
               integer(kind=c_int),
             </td>
 <td>intent(inout),</td>
@@ -402,12 +402,12 @@ site, and each routine takes only the thresholds its own pattern needs.</p>
             <td>
 <p>maximum size that a subset must not exceed. Zero is in range and means there is
 nothing to size a work array for, which is reported back as a size of zero.
-The minimum valid value is <code>0_int32</code>.</p><a href="../proc/calc_work_arr_paralog_subsets_size_c.html#variable-max_subset_size~7" class="pull-right"><emph>Read more&hellip;</emph></a>
+The minimum valid value is <code>0_int32</code>.</p><a href="../proc/calc_work_arr_paralog_subsets_size_c.html#variable-max_subset_size" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~34"></span>
+              <span class="anchor" id="variable-n_genes~47"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -422,7 +422,7 @@ The minimum valid value is <code>0_int32</code>.</p><a href="../proc/calc_work_a
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-work_array_size~2"></span>
+              <span class="anchor" id="variable-work_array_size"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -437,7 +437,7 @@ The minimum valid value is <code>0_int32</code>.</p><a href="../proc/calc_work_a
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filtered_paralogs_mask~8"></span>
+              <span class="anchor" id="variable-filtered_paralogs_mask"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -452,7 +452,7 @@ The minimum valid value is <code>0_int32</code>.</p><a href="../proc/calc_work_a
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_mask_chunks~14"></span>
+              <span class="anchor" id="variable-n_mask_chunks"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -467,7 +467,7 @@ The minimum valid value is <code>0_int32</code>.</p><a href="../proc/calc_work_a
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~142"></span>
+              <span class="anchor" id="variable-ierr~125"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -510,7 +510,7 @@ The minimum valid value is <code>0_int32</code>.</p><a href="../proc/calc_work_a
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-09-14 09:28 +0000             </p>
+ on 2026-10-08 18:38 +0000             </p>
           </div>
         </div>
         <br>

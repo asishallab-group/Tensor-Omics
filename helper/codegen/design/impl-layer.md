@@ -305,7 +305,7 @@ The `f42_utils` family converted whole: `f42_math`, `f42_sort`, `f42_random`, `f
 `f42_stats` and the `f42_utils` parent are all `_impl` modules now. Four of the six generate
 nothing at all, holding no `*_impl` procedure — which is legal, and is what let them move
 first while the tree stayed green. `f42_stats` generates `compute_edf` / `compute_edf_expert`
-and `calc_percentile` / `calc_percentile_expert`, and `f42_utils_impl`, having no procedures
+and `calc_quantile` / `calc_quantile_expert`, and `f42_utils_impl`, having no procedures
 of its own, generates a re-export parent over whichever children generate — today, just
 `f42_stats`.
 
@@ -323,7 +323,7 @@ no diagnostic.
 conversion had to begin by splitting the module into the part that becomes an implementation
 and the part that stays a hand-written export, because a generated module is whole-file. That
 premise was wrong: an implementation module may hold ordinary exported procedures, exactly as
-the recommend routines already do. `loess_smooth_2d` and `compute_scaled_distance_quantile`
+the recommend routines already do. `loess_smooth_2d` and `compute_scaled_distance_tail_probability`
 simply stayed in `f42_stats_impl` and were published from there, unsplit and unchanged.
 
 That they *could* stay is what made it worth asking whether they should, and both converted a
@@ -342,8 +342,8 @@ framework as the allocating tier while being an ordinary second procedure, the s
 it would put two procedures called `foo_expert` in one module and the emitter would call
 `foo_impl` from the wrong one — wrong code that compiles.
 
-**A bug the conversion surfaced.** `calc_percentile` validated `size(array) <= size(perm)`,
-the inverse of the contract it exists to serve: a percentile over a *slice* of a sorted
+**A bug the conversion surfaced.** `calc_quantile` validated `size(array) <= size(perm)`,
+the inverse of the contract it exists to serve: a quantile over a *slice* of a sorted
 permutation has a shorter permutation than array. Both callers that need that were therefore
 routing around the validated entry point and into the unvalidated helper. The converted
 signature takes the subset as an optional `n_considered` count rather than a second extent,
@@ -352,7 +352,7 @@ and puts the slice case inside the validated API for the first time.
 
 ### Exports that were implementations
 
-`loess_smooth_2d` and `compute_scaled_distance_quantile` survived the family conversion as
+`loess_smooth_2d` and `compute_scaled_distance_tail_probability` survived the family conversion as
 ordinary `M_EXPORT_C` procedures inside `f42_stats_impl`, because nothing in the mechanism
 required them to move. Then they converted too, and the reason is worth keeping: **a hand-written
 export inside an implementation module is only correct when there is no wrapper to generate.**
@@ -368,7 +368,7 @@ reached the smoother. Four `DM_MIN`/`DM_MAX` lines replace it and the finiteness
 free. Its published signature is unchanged — it takes over no work array and has no permutation,
 so it generates a lone wrapper under the plain name.
 
-`compute_scaled_distance_quantile` made the case from the other side: it demanded a `perm` its
+`compute_scaled_distance_tail_probability` made the case from the other side: it demanded a `perm` its
 callers had to build. Both binding test suites opened with the same prep — clamp the negatives,
 `argsort`, add one for 1-based. Renaming the argument to `sorted_rdi_perm` hands the sort to the
 allocating tier; the published call loses the argument, and `..._expert` keeps it for a caller
@@ -538,7 +538,7 @@ list: it drops work arrays, permutations and recommend-sized values, appends `ie
 a mode-split wrapper drops the mode argument too. Worse, a position propagates unchanged
 through every call that does not rewrite it, so what arrives is often not even the
 implementation's own numbering but that of some private helper three frames down —
-`compute_family_scaling_impl` returns `calc_percentile`'s positions 1–3, which in *its*
+`compute_family_scaling_impl` returns `calc_quantile`'s positions 1–3, which in *its*
 signature are `n_genes`, `n_families` and `distances`. Reporting any of that to a caller is
 worse than saying nothing, and "not argument related" is what position 0 means.
 
@@ -734,7 +734,7 @@ values were mistakes:
   looks like when it should have been the procedure's own contract.
 - `EXPERT` contradicts what the expert tier is. FES: *the expert tier is the entry point for
   full control over what reaches the implementation -- a specific threshold, a specific
-  initialised permutation -- while the plain one derives the threshold from a percentile and
+  initialised permutation -- while the plain one derives the threshold from a quantile level and
   sorts with heapsort.* A prologue running in the expert tier would override exactly the
   control that tier exists to give.
 
@@ -787,7 +787,7 @@ wrapper hand an `intent(in)` dummy to something that writes it.
 the caller passes.
 
 **A prologue dummy the implementation does not have becomes an argument of `foo`.** What a
-prologue derives *from* is the allocating tier's own vocabulary -- a threshold's `percentile` --
+prologue derives *from* is the allocating tier's own vocabulary -- a threshold's `quantile_level` --
 and
 the implementation, which takes the threshold, has no use for it. So it joins that wrapper's
 signature, after the implementation's own arguments and before `ierr`, and is validated there
