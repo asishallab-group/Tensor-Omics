@@ -3595,19 +3595,28 @@ compute_scaled_distance_quantile <- function(distribution, c_const) {
 
 #' Compute noise-model p-values
 #'
-#' Baseline model: the null tail is counted by exhaustive pairwise enumeration,
-#' falling back to Monte Carlo sampling for large residual pools. For the exact
+#' Baseline model: the own mean-difference null is bootstrapped from the kNN
+#' residual pools (pooled, or gene-blocked with `null_method = 1`). For the exact
 #' (sorted binary-search, no Monte Carlo) variant see
 #' \code{\link{tox_compute_noise_pvalues_pipeline_exact}}.
 #'
-#' @param case_means Numeric vector of case means.
-#' @param case_replicates Numeric matrix of case replicates
-#'   (samples x genes).
-#' @param control_means Numeric vector of control means.
-#' @param control_replicates Numeric matrix of control replicates
-#'   (samples x genes).
-#' @param obs_own Observed own statistics.
+#' The model computes everything per gene from the replicates: the arithmetic mean
+#' (the kNN matching coordinate) and the observed statistic, case minus control on
+#' the residual scale -- the mean difference for `norm_method = 0`, the difference
+#' of log2 Frechet means `mean_i log2(x_i + 1)` otherwise. The statistic is returned
+#' as `obs_own`.
+#'
+#' @param case_replicates Numeric matrix of case replicates (samples x genes),
+#'   pre-log (the log2 transform is applied internally when `norm_method != 0`).
+#' @param control_replicates Numeric matrix of control replicates (samples x genes),
+#'   same gene columns in the same order.
 #' @param valid_genes_own Integer vector (1 = compute this gene's own p-value).
+#'   \code{NULL} (default) tests all genes.
+#' @param beta_centre 0 = no composition centring (default); 1 = subtract the median
+#'   observed statistic across genes -- median centring of log-ratios, the TPM-side
+#'   analogue of what TMM does for counts. \strong{Must be 0 whenever the R side has
+#'   already normalised}, or the data are centred twice. `delta_hat` is reported
+#'   either way.
 #' @param norm_method Integer normalization method (0 = linear, non-zero = log2).
 #' @param k_start Integer starting neighborhood size.
 #' @param k_step Integer adaptive increment.
@@ -3626,16 +3635,17 @@ compute_scaled_distance_quantile <- function(distribution, c_const) {
 #'   non-zero value.
 #' @param max_pool_size Integer maximum residual pool size.
 #'
-#' @return A list with pvalues_own, n_success, three neighborhood sizes
-#'   (own_case, own_control, case), and ierr.
+#' @return A list with pvalues_own, obs_own (the observed statistic, centred when
+#'   `beta_centre = 1`), log2fc (the effect size: `log2((mean_case + 1) /
+#'   (mean_control + 1))` of the linear group means, the same quantity for every
+#'   `norm_method` and never centred), delta_hat (the median statistic), n_success, three
+#'   neighborhood sizes (own_case, own_control, case), and ierr.
 #' @export
 tox_compute_noise_pvalues_pipeline <- function(
-    case_means,
     case_replicates,
-    control_means,
     control_replicates,
-    obs_own,
-    valid_genes_own,
+    valid_genes_own = NULL,
+    beta_centre = 0L,
     norm_method = 0L,
     k_start = 100L,
     k_step = 100L,
@@ -3644,14 +3654,15 @@ tox_compute_noise_pvalues_pipeline <- function(
     null_method = 0L,
     max_pool_size
 ) {
+    case_replicates <- as.matrix(case_replicates)
+    control_replicates <- as.matrix(control_replicates)
+    if (is.null(valid_genes_own)) valid_genes_own <- rep(1L, ncol(case_replicates))
 
     result <- tox_compute_noise_pvalues_pipeline_rcpp(
-        case_means = case_means,
         case_replicates = case_replicates,
-        control_means = control_means,
         control_replicates = control_replicates,
-        obs_own = obs_own,
         valid_genes_own = as.integer(valid_genes_own),
+        beta_centre = as.integer(beta_centre),
         norm_method = as.integer(norm_method),
         k_start = as.integer(k_start),
         k_step = as.integer(k_step),
@@ -3673,16 +3684,14 @@ tox_compute_noise_pvalues_pipeline <- function(
 #'
 #' @inheritParams tox_compute_noise_pvalues_pipeline
 #'
-#' @return A list with pvalues_own, n_success, three neighborhood sizes
-#'   (own_case, own_control, case), and ierr.
+#' @return A list with pvalues_own, obs_own, log2fc, delta_hat, n_success, three
+#'   neighborhood sizes (own_case, own_control, case), and ierr.
 #' @export
 tox_compute_noise_pvalues_pipeline_exact <- function(
-    case_means,
     case_replicates,
-    control_means,
     control_replicates,
-    obs_own,
-    valid_genes_own,
+    valid_genes_own = NULL,
+    beta_centre = 0L,
     norm_method = 0L,
     k_start = 100L,
     k_step = 100L,
@@ -3691,14 +3700,15 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
     null_method = 0L,
     max_pool_size
 ) {
+    case_replicates <- as.matrix(case_replicates)
+    control_replicates <- as.matrix(control_replicates)
+    if (is.null(valid_genes_own)) valid_genes_own <- rep(1L, ncol(case_replicates))
 
     result <- tox_compute_noise_pvalues_pipeline_exact_rcpp(
-        case_means = case_means,
         case_replicates = case_replicates,
-        control_means = control_means,
         control_replicates = control_replicates,
-        obs_own = obs_own,
         valid_genes_own = as.integer(valid_genes_own),
+        beta_centre = as.integer(beta_centre),
         norm_method = as.integer(norm_method),
         k_start = as.integer(k_start),
         k_step = as.integer(k_step),
@@ -3816,19 +3826,7 @@ tox_md_assert_disjoint_samples <- function(replicate_lists) {
 #'   must be identical and in the same order. Rownames must be the sample IDs.
 #' @param control_replicates List of per-axis control replicate matrices, same
 #'   shape rules.
-#' @param case_means Matrix (n_genes x n_axes) of case means — the kNN matching
-#'   coordinate, not the statistic. \code{NULL} (default) derives it per axis as
-#'   the arithmetic replicate mean.
-#' @param control_means Matrix (n_genes x n_axes) of control means, or \code{NULL}.
-#' @param beta_obs Matrix (n_axes x n_genes) of externally estimated per-axis
-#'   statistics. Only used when \code{beta_mode = 1}.
 #' @param valid_genes_own Integer vector (1 = test this gene). \code{NULL} tests all.
-#' @param beta_mode 0 = compute beta internally (default, scale-coherent with the
-#'   residual pools); 1 = use \code{beta_obs}. In mode 1 the internal estimate is
-#'   still computed and reported against the supplied one through
-#'   \code{beta_check_cor} / \code{beta_check_mad}: correlation near 1 with a large
-#'   MAD is a units problem (edgeR coefficients are natural log, a factor of ln 2,
-#'   and shrunk by default); degraded correlation is shrinkage or non-linearity.
 #' @param beta_centre 0 = no composition centring (default); 1 = subtract the
 #'   per-axis median beta across genes — median centring of log-ratios, the TPM-side
 #'   analogue of what TMM does for counts. \strong{Must be 0 whenever the R side has
@@ -3860,21 +3858,20 @@ tox_md_assert_disjoint_samples <- function(replicate_lists) {
 #'   p-values rest on — do it only when the disjointness is established elsewhere.
 #'
 #' @return A list with \code{pvalues_own}, \code{d_obs}, \code{d_std_obs},
-#'   \code{d_sq_null_mean}, \code{method_used}, \code{n_draws_used}, the (possibly
-#'   filled/centred) \code{beta_obs}, per-axis \code{neighborhood_size_case} /
+#'   \code{d_sq_null_mean}, \code{method_used}, \code{n_draws_used},
+#'   \code{beta_obs} (computed from the replicates, centred when
+#'   \code{beta_centre = 1}), \code{log2fc} (n_axes x n_genes; per-axis effect
+#'   size, log2 ratio of the linear group means + 1, never centred), per-axis
+#'   \code{neighborhood_size_case} /
 #'   \code{neighborhood_size_control} / \code{var_null} (n_axes x n_genes),
-#'   \code{beta_check_cor}, \code{beta_check_mad}, \code{delta_hat},
+#'   \code{delta_hat},
 #'   \code{n_rep_case_per_axis}, \code{n_rep_control_per_axis}, \code{n_success}
 #'   and \code{ierr}. Genes that were not tested carry \code{pvalues_own = -1}.
 #' @export
 tox_compute_noise_pvalues_pipeline_md <- function(
     case_replicates,
     control_replicates,
-    case_means = NULL,
-    control_means = NULL,
-    beta_obs = NULL,
     valid_genes_own = NULL,
-    beta_mode = 0L,
     beta_centre = 0L,
     norm_method = 0L,
     k_start = 20L,
@@ -3919,25 +3916,12 @@ tox_compute_noise_pvalues_pipeline_md <- function(
         tox_md_assert_disjoint_samples(list(case = case_replicates,
                                             control = control_replicates))
 
-    if (is.null(case_means))
-        case_means <- vapply(case_replicates, colMeans, numeric(n_genes))
-    if (is.null(control_means))
-        control_means <- vapply(control_replicates, colMeans, numeric(n_genes))
-    case_means <- matrix(as.numeric(case_means), nrow = n_genes, ncol = n_axes)
-    control_means <- matrix(as.numeric(control_means), nrow = n_genes, ncol = n_axes)
-
     if (is.null(valid_genes_own)) valid_genes_own <- rep(1L, n_genes)
-    if (is.null(beta_obs)) beta_obs <- matrix(0.0, nrow = n_axes, ncol = n_genes)
-    beta_obs <- matrix(as.numeric(beta_obs), nrow = n_axes, ncol = n_genes)
 
     result <- tox_compute_noise_pvalues_pipeline_md_rcpp(
-        case_means = case_means,
         case_replicates = case_replicates,
-        control_means = control_means,
         control_replicates = control_replicates,
-        beta_obs = beta_obs,
         valid_genes_own = as.integer(valid_genes_own),
-        beta_mode = as.integer(beta_mode),
         beta_centre = as.integer(beta_centre),
         norm_method = as.integer(norm_method),
         k_start = as.integer(k_start),

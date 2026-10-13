@@ -1171,16 +1171,14 @@ void validate_all_data_c(
 
 
 void compute_noise_pvalues_pipeline_c(
-  const double* means_case,
   const double* replicates_case,
   const int* n_genes_case,
   const int* n_replicates_case,
-  const double* means_control,
   const double* replicates_control,
   const int* n_genes_control,
   const int* n_replicates_control,
-  const double* observed_statistic_own,
   const int* compute_pvalue_own,
+  const int* beta_centre,
   const int* n_genes,
   const int* norm_method,
   const int* k_start,
@@ -1189,6 +1187,9 @@ void compute_noise_pvalues_pipeline_c(
   const double* tau,
   const int* null_method,
   double* pvalues_own,
+  double* observed_statistic_own,
+  double* log2fc,
+  double* delta_hat,
   int* n_genes_with_pvalue,
   const int* max_pool_size,
   int* neighborhood_size_own_case,
@@ -1200,16 +1201,14 @@ void compute_noise_pvalues_pipeline_c(
 // Exact variant: identical ABI, dispatches to the noise_model_exact module
 // (sorted binary-search exact p-value, no Monte Carlo). See tox_noise_model_exact.F90.
 void compute_noise_pvalues_pipeline_exact_c(
-  const double* means_case,
   const double* replicates_case,
   const int* n_genes_case,
   const int* n_replicates_case,
-  const double* means_control,
   const double* replicates_control,
   const int* n_genes_control,
   const int* n_replicates_control,
-  const double* observed_statistic_own,
   const int* compute_pvalue_own,
+  const int* beta_centre,
   const int* n_genes,
   const int* norm_method,
   const int* k_start,
@@ -1218,6 +1217,9 @@ void compute_noise_pvalues_pipeline_exact_c(
   const double* tau,
   const int* null_method,
   double* pvalues_own,
+  double* observed_statistic_own,
+  double* log2fc,
+  double* delta_hat,
   int* n_genes_with_pvalue,
   const int* max_pool_size,
   int* neighborhood_size_own_case,
@@ -1241,17 +1243,13 @@ void compute_noise_pvalues_pipeline_exact_c(
 // with quite ordinary neighbourhoods, so an int cap could not express the
 // interesting thresholds.
 void compute_noise_pvalues_pipeline_md_c(
-  const double* means_case,
   const double* replicates_case_packed,
   const int* n_packed_case,
   const int* n_rep_case_per_axis,
-  const double* means_control,
   const double* replicates_control_packed,
   const int* n_packed_control,
   const int* n_rep_control_per_axis,
-  double* beta_obs,
   const int* compute_pvalue_own,
-  const int* beta_mode,
   const int* beta_centre,
   const int* n_genes,
   const int* n_axes,
@@ -1276,8 +1274,8 @@ void compute_noise_pvalues_pipeline_md_c(
   int* neighborhood_size_case,
   int* neighborhood_size_control,
   double* var_null,
-  double* beta_check_cor,
-  double* beta_check_mad,
+  double* beta_obs,
+  double* log2fc,
   double* delta_hat,
   int* n_genes_with_pvalue,
   int* ierr
@@ -4787,14 +4785,15 @@ NumericVector tox_scaled_distance_quantile_rcpp(
 // scaling) Fortran entry points have an identical ABI, so only the C function
 // invoked differs — selected by `model_variant` (1 = exact, otherwise baseline).
 // Keeping one driver guarantees both bindings stay in lock-step.
+//
+// The model computes the per-gene means (the kNN coordinate) and the observed
+// statistic from the replicates itself; both come back in the result list.
 static Rcpp::List run_noise_pvalues_pipeline(
     int model_variant,
-    Rcpp::NumericVector case_means,
     Rcpp::NumericMatrix case_replicates,
-    Rcpp::NumericVector control_means,
     Rcpp::NumericMatrix control_replicates,
-    Rcpp::NumericVector obs_own,
     Rcpp::IntegerVector valid_genes_own,
+    int beta_centre,
     int norm_method,
     int k_start,
     int k_step,
@@ -4809,9 +4808,18 @@ static Rcpp::List run_noise_pvalues_pipeline(
     int control_n_samples = control_replicates.nrow();
     int control_n_genes   = control_replicates.ncol();
 
-    int n_genes = obs_own.size();
+    // The gene count now comes from the replicates; the Fortran side cross-checks
+    // both matrices against it (ERR_DIM_MISMATCH). valid_genes_own is read for
+    // n_genes entries, so a shorter vector must never reach it.
+    int n_genes = case_n_genes;
+    if (valid_genes_own.size() != n_genes)
+        Rcpp::stop("valid_genes_own has length %d, expected %d (one entry per gene column).",
+                   (int)valid_genes_own.size(), n_genes);
 
     Rcpp::NumericVector pvalues_own(n_genes);
+    Rcpp::NumericVector obs_own(n_genes);
+    Rcpp::NumericVector log2fc(n_genes);
+    double delta_hat = 0.0;
 
     // The pipeline reports the own-comparison neighbourhood as two separate kNN-pool
     // sizes (case side and control side), plus the case kNN-pool size.
@@ -4824,23 +4832,23 @@ static Rcpp::List run_noise_pvalues_pipeline(
 
     if (model_variant == 1) {
         compute_noise_pvalues_pipeline_exact_c(
-            case_means.begin(), case_replicates.begin(), &case_n_genes, &case_n_samples,
-            control_means.begin(), control_replicates.begin(), &control_n_genes, &control_n_samples,
-            obs_own.begin(), valid_genes_own.begin(),
+            case_replicates.begin(), &case_n_genes, &case_n_samples,
+            control_replicates.begin(), &control_n_genes, &control_n_samples,
+            valid_genes_own.begin(), &beta_centre,
             &n_genes, &norm_method,
             &k_start, &k_step, &k_max, &tau, &null_method,
-            pvalues_own.begin(), &n_success, &max_pool_size,
+            pvalues_own.begin(), obs_own.begin(), log2fc.begin(), &delta_hat, &n_success, &max_pool_size,
             neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
             neighborhood_size_case.begin(),
             &ierr);
     } else {
         compute_noise_pvalues_pipeline_c(
-            case_means.begin(), case_replicates.begin(), &case_n_genes, &case_n_samples,
-            control_means.begin(), control_replicates.begin(), &control_n_genes, &control_n_samples,
-            obs_own.begin(), valid_genes_own.begin(),
+            case_replicates.begin(), &case_n_genes, &case_n_samples,
+            control_replicates.begin(), &control_n_genes, &control_n_samples,
+            valid_genes_own.begin(), &beta_centre,
             &n_genes, &norm_method,
             &k_start, &k_step, &k_max, &tau, &null_method,
-            pvalues_own.begin(), &n_success, &max_pool_size,
+            pvalues_own.begin(), obs_own.begin(), log2fc.begin(), &delta_hat, &n_success, &max_pool_size,
             neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
             neighborhood_size_case.begin(),
             &ierr);
@@ -4848,6 +4856,9 @@ static Rcpp::List run_noise_pvalues_pipeline(
 
     return Rcpp::List::create(
         Rcpp::Named("pvalues_own") = pvalues_own,
+        Rcpp::Named("obs_own") = obs_own,
+        Rcpp::Named("log2fc") = log2fc,
+        Rcpp::Named("delta_hat") = delta_hat,
         Rcpp::Named("n_success") = n_success,
         Rcpp::Named("neighborhood_size_own_case") = neighborhood_size_own_case,
         Rcpp::Named("neighborhood_size_own_control") = neighborhood_size_own_control,
@@ -4857,18 +4868,18 @@ static Rcpp::List run_noise_pvalues_pipeline(
 
 //' Compute noise-model p-values (gene-vs-own comparison)
 //'
-//' Baseline model: the null tail is counted by exhaustive pairwise enumeration,
-//' falling back to Monte Carlo sampling for large residual pools.
+//' Baseline model: the own mean-difference null is bootstrapped from the kNN
+//' residual pools (or, with null_method = 1, gene-blocked). The per-gene means and
+//' the observed statistic are computed from the replicates inside the model.
 //'
-//' @param case_means NumericVector of case gene means (length = case_n_genes)
 //' @param case_replicates NumericMatrix of case replicates
-//'   (case_n_samples x case_n_genes)
-//' @param control_means NumericVector of control gene means
-//'   (length = control_n_genes)
+//'   (case_n_samples x n_genes)
 //' @param control_replicates NumericMatrix of control replicates
-//'   (control_n_samples x control_n_genes)
-//' @param obs_own NumericVector of observed gene-vs-own statistics
-//' @param valid_genes_own IntegerVector indicating which own p-values to compute
+//'   (control_n_samples x n_genes)
+//' @param valid_genes_own IntegerVector (length n_genes) indicating which own
+//'   p-values to compute
+//' @param beta_centre Integer 0 = no composition centring; 1 = subtract the median
+//'   observed statistic across genes. Must be 0 if R has already normalised.
 //' @param norm_method Integer normalization method (0 = linear, non-zero = log2)
 //' @param k_start Integer initial pool size
 //' @param k_step Integer adaptive growth step
@@ -4881,16 +4892,16 @@ static Rcpp::List run_noise_pvalues_pipeline(
 //'   exact model implements only its own null and errors on a non-zero value.
 //' @param max_pool_size Integer maximum neighborhood pool size
 //'
-//' @return List with pvalues_own, success count, three neighborhood sizes
+//' @return List with pvalues_own, obs_own (the observed statistic, centred when
+//'   beta_centre = 1), log2fc (effect size: log2((mean_case + 1)/(mean_control + 1))
+//'   of the linear means, never centred), delta_hat, success count, three neighborhood sizes
 //'   (own_case, own_control, case), and error code.
 // [[Rcpp::export]]
 Rcpp::List tox_compute_noise_pvalues_pipeline_rcpp(
-    Rcpp::NumericVector case_means,
     Rcpp::NumericMatrix case_replicates,
-    Rcpp::NumericVector control_means,
     Rcpp::NumericMatrix control_replicates,
-    Rcpp::NumericVector obs_own,
     Rcpp::IntegerVector valid_genes_own,
+    int beta_centre,
     int norm_method,
     int k_start,
     int k_step,
@@ -4901,8 +4912,7 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_rcpp(
 
     return run_noise_pvalues_pipeline(
         0,  // baseline (mean-difference null)
-        case_means, case_replicates, control_means, control_replicates,
-        obs_own, valid_genes_own,
+        case_replicates, control_replicates, valid_genes_own, beta_centre,
         norm_method, k_start, k_step, k_max, tau, null_method, max_pool_size);
 }
 
@@ -4914,16 +4924,14 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_rcpp(
 //' \code{noise_model_exact} Fortran module.
 //'
 //' @inheritParams tox_compute_noise_pvalues_pipeline_rcpp
-//' @return List with pvalues_own, success count, three neighborhood sizes
-//'   (own_case, own_control, case), and error code.
+//' @return List with pvalues_own, obs_own, log2fc, delta_hat, success count, three
+//'   neighborhood sizes (own_case, own_control, case), and error code.
 // [[Rcpp::export]]
 Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
-    Rcpp::NumericVector case_means,
     Rcpp::NumericMatrix case_replicates,
-    Rcpp::NumericVector control_means,
     Rcpp::NumericMatrix control_replicates,
-    Rcpp::NumericVector obs_own,
     Rcpp::IntegerVector valid_genes_own,
+    int beta_centre,
     int norm_method,
     int k_start,
     int k_step,
@@ -4934,8 +4942,7 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
 
     return run_noise_pvalues_pipeline(
         1,  // exact (sorted binary-search + sqrt(n) scaling)
-        case_means, case_replicates, control_means, control_replicates,
-        obs_own, valid_genes_own,
+        case_replicates, control_replicates, valid_genes_own, beta_centre,
         norm_method, k_start, k_step, k_max, tau, null_method, max_pool_size);
 }
 
@@ -5011,18 +5018,11 @@ static std::vector<double> pack_axis_replicates(
 //' and the R wrapper \code{tox_compute_noise_pvalues_pipeline_md} enforces it by
 //' comparing sample identifiers across the per-axis matrices.
 //'
-//' @param case_means NumericMatrix of case means (n_genes x n_axes); the kNN
-//'   matching coordinate, not the statistic.
 //' @param case_replicates List of per-axis NumericMatrix, each
 //'   (n_replicates_axis x n_genes). Replicate counts may differ between axes.
-//' @param control_means NumericMatrix of control means (n_genes x n_axes)
 //' @param control_replicates List of per-axis NumericMatrix, each
 //'   (n_replicates_axis x n_genes)
-//' @param beta_obs NumericMatrix (n_axes x n_genes) of observed per-axis
-//'   statistics; ignored when beta_mode = 0.
 //' @param valid_genes_own IntegerVector indicating which genes to test
-//' @param beta_mode Integer 0 = compute beta internally (default, scale-coherent);
-//'   1 = use the supplied beta_obs and report beta_check_cor / beta_check_mad.
 //' @param beta_centre Integer 0 = no composition centring; 1 = subtract the
 //'   per-axis median beta across genes. Must be 0 if R has already normalised.
 //' @param norm_method Integer normalization method (0 = linear, non-zero = log2)
@@ -5042,19 +5042,17 @@ static std::vector<double> pack_axis_replicates(
 //' @param max_pool_size Integer maximum residual pool size per axis
 //'
 //' @return List with pvalues_own, d_obs, d_std_obs, d_sq_null_mean, method_used,
-//'   n_draws_used, beta_obs (filled and/or centred), per-axis
-//'   neighborhood_size_case / neighborhood_size_control / var_null
-//'   (n_axes x n_genes), beta_check_cor, beta_check_mad, delta_hat, n_success and
-//'   error code.
+//'   n_draws_used, beta_obs (computed from the replicates, centred when
+//'   beta_centre = 1), log2fc (n_axes x n_genes; per-axis effect size, log2 ratio
+//'   of the linear means + 1, never centred), per-axis neighborhood_size_case /
+//'   neighborhood_size_control / var_null (n_axes x n_genes), delta_hat, n_success and error code. The
+//'   per-axis means (the kNN coordinate) and beta are both computed inside the
+//'   model.
 // [[Rcpp::export]]
 Rcpp::List tox_compute_noise_pvalues_pipeline_md_rcpp(
-    Rcpp::NumericMatrix case_means,
     Rcpp::List case_replicates,
-    Rcpp::NumericMatrix control_means,
     Rcpp::List control_replicates,
-    Rcpp::NumericMatrix beta_obs,
     Rcpp::IntegerVector valid_genes_own,
-    int beta_mode,
     int beta_centre,
     int norm_method,
     int k_start,
@@ -5076,12 +5074,9 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_md_rcpp(
     if (n_axes < 1)
         Rcpp::stop("At least one axis is required.");
 
-    int n_genes = case_means.nrow();
-    if (case_means.ncol() != n_axes || control_means.ncol() != n_axes)
-        Rcpp::stop("case_means / control_means must be (n_genes x n_axes) with n_axes = %d.", n_axes);
-    if (control_means.nrow() != n_genes)
-        Rcpp::stop("case_means and control_means disagree on the gene count (%d vs %d).",
-                   n_genes, control_means.nrow());
+    // The gene count comes from the first case matrix; pack_axis_replicates checks
+    // every other matrix against it.
+    int n_genes = Rcpp::as<Rcpp::NumericMatrix>(case_replicates[0]).ncol();
     if (valid_genes_own.size() != n_genes)
         Rcpp::stop("valid_genes_own has length %d, expected %d.",
                    (int)valid_genes_own.size(), n_genes);
@@ -5104,17 +5099,8 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_md_rcpp(
     int n_packed_case = (int)packed_case.size();
     int n_packed_control = (int)packed_control.size();
 
-    // beta_obs is written by Fortran (filled when beta_mode = 0, centred when
-    // beta_centre = 1), so work on a copy rather than mutating the caller's matrix.
-    Rcpp::NumericMatrix beta_work(n_axes, n_genes);
-    if (beta_mode == 1) {
-        if (beta_obs.nrow() != n_axes || beta_obs.ncol() != n_genes)
-            Rcpp::stop("beta_obs must be (n_axes x n_genes) = (%d x %d) when beta_mode = 1.",
-                       n_axes, n_genes);
-        std::memcpy(beta_work.begin(), beta_obs.begin(),
-                    (std::size_t)n_axes * (std::size_t)n_genes * sizeof(double));
-    }
-
+    Rcpp::NumericMatrix beta_obs(n_axes, n_genes);
+    Rcpp::NumericMatrix log2fc(n_axes, n_genes);
     Rcpp::NumericVector pvalues_own(n_genes);
     Rcpp::NumericVector d_obs(n_genes);
     Rcpp::NumericVector d_std_obs(n_genes);
@@ -5124,25 +5110,22 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_md_rcpp(
     Rcpp::IntegerMatrix neighborhood_size_case(n_axes, n_genes);
     Rcpp::IntegerMatrix neighborhood_size_control(n_axes, n_genes);
     Rcpp::NumericMatrix var_null(n_axes, n_genes);
-    Rcpp::NumericVector beta_check_cor(n_axes);
-    Rcpp::NumericVector beta_check_mad(n_axes);
     Rcpp::NumericVector delta_hat(n_axes);
 
     int n_success = 0;
     int ierr = 0;
 
     compute_noise_pvalues_pipeline_md_c(
-        case_means.begin(), packed_case.data(), &n_packed_case, n_rep_case_per_axis.begin(),
-        control_means.begin(), packed_control.data(), &n_packed_control,
-        n_rep_control_per_axis.begin(),
-        beta_work.begin(), valid_genes_own.begin(), &beta_mode, &beta_centre,
+        packed_case.data(), &n_packed_case, n_rep_case_per_axis.begin(),
+        packed_control.data(), &n_packed_control, n_rep_control_per_axis.begin(),
+        valid_genes_own.begin(), &beta_centre,
         &n_genes, &n_axes, &norm_method,
         &k_start, &k_step, &k_max, &tau, &null_method,
         &sampling_mode, &n_draws_max, &n_exceed_target, &enum_cap, &seed, &max_pool_size,
         pvalues_own.begin(), d_obs.begin(), d_std_obs.begin(), d_sq_null_mean.begin(),
         method_used.begin(), n_draws_used.begin(),
         neighborhood_size_case.begin(), neighborhood_size_control.begin(), var_null.begin(),
-        beta_check_cor.begin(), beta_check_mad.begin(), delta_hat.begin(),
+        beta_obs.begin(), log2fc.begin(), delta_hat.begin(),
         &n_success, &ierr);
 
     return Rcpp::List::create(
@@ -5152,12 +5135,11 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_md_rcpp(
         Rcpp::Named("d_sq_null_mean") = d_sq_null_mean,
         Rcpp::Named("method_used") = method_used,
         Rcpp::Named("n_draws_used") = n_draws_used,
-        Rcpp::Named("beta_obs") = beta_work,
+        Rcpp::Named("beta_obs") = beta_obs,
+        Rcpp::Named("log2fc") = log2fc,
         Rcpp::Named("neighborhood_size_case") = neighborhood_size_case,
         Rcpp::Named("neighborhood_size_control") = neighborhood_size_control,
         Rcpp::Named("var_null") = var_null,
-        Rcpp::Named("beta_check_cor") = beta_check_cor,
-        Rcpp::Named("beta_check_mad") = beta_check_mad,
         Rcpp::Named("delta_hat") = delta_hat,
         Rcpp::Named("n_rep_case_per_axis") = n_rep_case_per_axis,
         Rcpp::Named("n_rep_control_per_axis") = n_rep_control_per_axis,

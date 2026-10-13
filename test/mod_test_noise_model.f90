@@ -32,7 +32,7 @@ contains
     function get_all_tests_noise_model() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate(all_tests(8))
+        allocate(all_tests(9))
         all_tests(1) = test_case("test_prepare_sorted_data",               test_prepare_sorted_data)
         all_tests(2) = test_case("test_gather_residuals_helper",           test_gather_residuals_helper)
         all_tests(3) = test_case("test_compute_pvalue_bootstrap_mean",     test_compute_pvalue_bootstrap_mean)
@@ -41,6 +41,7 @@ contains
         all_tests(6) = test_case("test_residuals_log_transform_centred",   test_residuals_log_transform_centred)
         all_tests(7) = test_case("test_full_pipeline_all_normalizations",  test_full_pipeline_all_normalizations)
         all_tests(8) = test_case("test_pipeline_rejects_gene_dim_mismatch", test_pipeline_rejects_gene_dim_mismatch)
+        all_tests(9) = test_case("test_pipeline_beta_centre",              test_pipeline_beta_centre)
     end function get_all_tests_noise_model
 
     ! =========================================================================
@@ -236,13 +237,15 @@ contains
     !|
     !| Genes 1–5 are overexpressed in case by +2 units and should yield small own
     !| p-values. Genes 6–20 should not be overwhelmingly significant (at most 5 of
-    !| 15 at alpha = 0.05).
+    !| 15 at alpha = 0.05). The pipeline computes the means and the observed
+    !| statistic itself; on the linear branch the returned statistic must be the
+    !| plain replicate-mean difference.
     subroutine test_full_pipeline()
         real(real64)   :: means_case(N_GENES), means_control(N_GENES)
         real(real64)   :: replicates_case(N_SAMPLES, N_GENES)
         real(real64)   :: replicates_control(N_SAMPLES, N_GENES)
         integer(int32) :: compute_own(N_GENES)
-        real(real64)   :: observed_own(N_GENES)
+        real(real64)   :: observed_own(N_GENES), log2fc(N_GENES), delta_hat
         real(real64)   :: pvalues_own(N_GENES)
         integer(int32) :: n_genes_with_pvalue
         integer(int32) :: neigh_own_case(N_GENES), neigh_own_control(N_GENES), neigh_case(N_GENES)
@@ -258,23 +261,32 @@ contains
                                 replicates_case, replicates_control, &
                                 control_noise_scale=0.8_real64)
 
-        do i = 1, N_GENES
-            observed_own(i) = means_case(i) - means_control(i)
-        end do
         compute_own = 1
 
         call compute_noise_pvalue_pipeline( &
-            means_case, replicates_case, N_GENES, N_SAMPLES, &
-            means_control, replicates_control, N_GENES, N_SAMPLES, &
-            observed_own, compute_own, &
+            replicates_case, N_GENES, N_SAMPLES, &
+            replicates_control, N_GENES, N_SAMPLES, &
+            compute_own, BETA_CENTRE_NONE, &
             N_GENES, norm_method, k_start, k_step, k_max, tau, &
             NULL_METHOD_POOLED, &
-            pvalues_own, n_genes_with_pvalue, &
+            pvalues_own, observed_own, log2fc, delta_hat, n_genes_with_pvalue, &
             max_pool_size, &
             neigh_own_case, neigh_own_control, neigh_case, &
             ierr)
 
         call assert_equal_int(ierr, ERR_OK, "pipeline: ierr should be OK")
+        do i = 1, N_GENES
+            call assert_equal_real(observed_own(i), &
+                                   sum(replicates_case(:, i)) / real(N_SAMPLES, real64) &
+                                   - sum(replicates_control(:, i)) / real(N_SAMPLES, real64), TOL, &
+                                   "pipeline: observed statistic of gene "//str(i)//" must be the mean difference")
+            call assert_equal_real(log2fc(i), &
+                                   log(sum(replicates_case(:, i)) / real(N_SAMPLES, real64) + 1.0_real64) &
+                                   / log(2.0_real64) &
+                                   - log(sum(replicates_control(:, i)) / real(N_SAMPLES, real64) + 1.0_real64) &
+                                   / log(2.0_real64), TOL, &
+                                   "pipeline: log2fc of gene "//str(i)//" must be log2((m_case+1)/(m_ctrl+1))")
+        end do
         call assert_true(n_genes_with_pvalue > 0, &
                          "pipeline: at least some genes should receive p-values")
 
@@ -413,8 +425,9 @@ contains
     !| by `prepare_sorted_data_helper` (via `norm_method /= 0`), so residuals stay
     !| defined in pre-log expression space right up to the point they are logged,
     !| centred on the Frechet mean `(1/n) * sum_i log2(r_{i,g} + 1)` of the
-    !| log2-transformed replicates. `observed_own` below is computed on that same
-    !| coordinate for methods with `norm_method /= 0`.
+    !| log2-transformed replicates. The pipeline computes the observed statistic
+    !| itself; `expected_own` below recomputes it independently on that same
+    !| coordinate and the two must agree.
     subroutine test_full_pipeline_all_normalizations()
         real(real64)   :: means_case_raw(N_GENES), means_control_raw(N_GENES)
         real(real64)   :: replicates_case_raw(N_SAMPLES, N_GENES)
@@ -424,7 +437,7 @@ contains
         real(real64)   :: means_case(N_GENES), means_control(N_GENES)
         real(real64)   :: log2_mean_case(N_GENES), log2_mean_control(N_GENES)
         integer(int32) :: compute_own(N_GENES)
-        real(real64)   :: observed_own(N_GENES)
+        real(real64)   :: observed_own(N_GENES), expected_own(N_GENES), log2fc(N_GENES), delta_hat
         real(real64)   :: pvalues_own(N_GENES)
         integer(int32) :: n_genes_with_pvalue
         integer(int32) :: neigh_own_case(N_GENES), neigh_own_control(N_GENES), neigh_case(N_GENES)
@@ -509,7 +522,7 @@ contains
 
             if (method_norm(i_method) == 0) then
                 do i = 1, N_GENES
-                    observed_own(i) = means_case(i) - means_control(i)
+                    expected_own(i) = means_case(i) - means_control(i)
                 end do
             else
                 ! Observed statistic must live on the same log2 coordinate as the null
@@ -520,24 +533,34 @@ contains
                                             * log2_factor / real(N_SAMPLES, real64)
                     log2_mean_control(i) = sum(log(max(replicates_control(:, i), 0.0_real64) + 1.0_real64)) &
                                             * log2_factor / real(N_SAMPLES, real64)
-                    observed_own(i) = log2_mean_case(i) - log2_mean_control(i)
+                    expected_own(i) = log2_mean_case(i) - log2_mean_control(i)
                 end do
             end if
 
             compute_own = 1
 
             call compute_noise_pvalue_pipeline( &
-                means_case, replicates_case, N_GENES, N_SAMPLES, &
-                means_control, replicates_control, N_GENES, N_SAMPLES, &
-                observed_own, compute_own, &
+                replicates_case, N_GENES, N_SAMPLES, &
+                replicates_control, N_GENES, N_SAMPLES, &
+                compute_own, BETA_CENTRE_NONE, &
                 N_GENES, method_norm(i_method), k_start, k_step, k_max, tau, &
                 NULL_METHOD_POOLED, &
-                pvalues_own, n_genes_with_pvalue, &
+                pvalues_own, observed_own, log2fc, delta_hat, n_genes_with_pvalue, &
                 max_pool_size, &
                 neigh_own_case, neigh_own_control, neigh_case, &
                 ierr)
 
             call assert_equal_int(ierr, ERR_OK, trim(method_names(i_method))//": pipeline ierr should be OK")
+            do i = 1, N_GENES
+                call assert_equal_real(observed_own(i), expected_own(i), TOL, &
+                                       trim(method_names(i_method))//": internal observed statistic of gene "// &
+                                       str(i)//" must match the independent recomputation")
+                call assert_equal_real(log2fc(i), &
+                                       (log(max(means_case(i), 0.0_real64) + 1.0_real64) &
+                                        - log(max(means_control(i), 0.0_real64) + 1.0_real64)) * log2_factor, TOL, &
+                                       trim(method_names(i_method))//": log2fc of gene "//str(i)// &
+                                       " must be the log2 ratio of the linear means")
+            end do
             call assert_true(n_genes_with_pvalue > 0, &
                              trim(method_names(i_method))//": at least some genes should receive p-values")
             call assert_no_nan_real(pvalues_own, N_GENES, trim(method_names(i_method))//": NaN in pvalues_own")
@@ -580,13 +603,13 @@ contains
     ! =========================================================================
     ! test_pipeline_rejects_gene_dim_mismatch
     ! =========================================================================
-    !| Both pipelines index means, replicates and the observed statistic with one
+    !| Both pipelines index both replicate matrices and every per-gene array with one
     !| gene index, so a replicate matrix whose gene dimension differs from n_genes
     !| (e.g. one handed over genes x samples instead of samples x genes) must be
     !| rejected with ERR_DIM_MISMATCH rather than scored.
     subroutine test_pipeline_rejects_gene_dim_mismatch()
         integer(int32), parameter :: n_genes = 20, n_rep = 5
-        real(real64)   :: means(n_genes), obs(n_genes), pv(n_genes)
+        real(real64)   :: means(n_genes), obs(n_genes), pv(n_genes), dh, l2(n_genes)
         real(real64)   :: rep_ok(n_rep, n_genes), rep_swapped(n_genes, n_rep)
         integer(int32) :: valid(n_genes), nb1(n_genes), nb2(n_genes), nb3(n_genes)
         integer(int32) :: n_ok, ierr, i, k
@@ -598,21 +621,91 @@ contains
             end do
         end do
         rep_swapped = transpose(rep_ok)
-        obs = 0.0_real64; valid = 1
+        valid = 1
 
         ! correct orientation: accepted
-        call compute_noise_pvalue_pipeline(means, rep_ok, n_genes, n_rep, means, rep_ok, n_genes, n_rep, &
-            obs, valid, n_genes, 0, 10, 2, 30, 0.1_real64, NULL_METHOD_POOLED, pv, n_ok, 500, nb1, nb2, nb3, ierr)
+        call compute_noise_pvalue_pipeline(rep_ok, n_genes, n_rep, rep_ok, n_genes, n_rep, &
+            valid, BETA_CENTRE_NONE, n_genes, 0, 10, 2, 30, 0.1_real64, NULL_METHOD_POOLED, &
+            pv, obs, l2, dh, n_ok, 500, nb1, nb2, nb3, ierr)
         call assert_equal_int(ierr, ERR_OK, "dim check: correct orientation must be accepted")
 
         ! control side handed over genes x samples: n_genes_control = n_rep /= n_genes
-        call compute_noise_pvalue_pipeline(means, rep_ok, n_genes, n_rep, means(1:n_rep), rep_swapped, n_rep, n_genes, &
-            obs, valid, n_genes, 0, 10, 2, 30, 0.1_real64, NULL_METHOD_POOLED, pv, n_ok, 500, nb1, nb2, nb3, ierr)
+        call compute_noise_pvalue_pipeline(rep_ok, n_genes, n_rep, rep_swapped, n_rep, n_genes, &
+            valid, BETA_CENTRE_NONE, n_genes, 0, 10, 2, 30, 0.1_real64, NULL_METHOD_POOLED, &
+            pv, obs, l2, dh, n_ok, 500, nb1, nb2, nb3, ierr)
         call assert_equal_int(ierr, ERR_DIM_MISMATCH, "dim check (bootstrap module): swapped control must be ERR_DIM_MISMATCH")
 
-        call pipeline_exact(means(1:n_rep), rep_swapped, n_rep, n_genes, means, rep_ok, n_genes, n_rep, &
-            obs, valid, n_genes, 0, 10, 2, 30, 0.1_real64, pv, n_ok, 500, nb1, nb2, nb3, ierr)
+        call pipeline_exact(rep_swapped, n_rep, n_genes, rep_ok, n_genes, n_rep, &
+            valid, BETA_CENTRE_NONE, n_genes, 0, 10, 2, 30, 0.1_real64, &
+            pv, obs, l2, dh, n_ok, 500, nb1, nb2, nb3, ierr)
         call assert_equal_int(ierr, ERR_DIM_MISMATCH, "dim check (exact module): swapped case must be ERR_DIM_MISMATCH")
     end subroutine test_pipeline_rejects_gene_dim_mismatch
+
+    ! =========================================================================
+    ! test_pipeline_beta_centre
+    ! =========================================================================
+    !| `beta_centre` in both scalar modules: `delta_hat` is the median of the
+    !| uncentred statistic and is reported whether or not centring is on; centring
+    !| subtracts exactly that value; both modules compute the same statistic (they
+    !| carry byte-identical copies of `compute_gene_centres_helper`); and an
+    !| unknown mode is rejected rather than ignored.
+    subroutine test_pipeline_beta_centre()
+        real(real64)   :: means_case(N_GENES), means_control(N_GENES)
+        real(real64)   :: rep_case(N_SAMPLES, N_GENES), rep_ctrl(N_SAMPLES, N_GENES)
+        real(real64)   :: pv(N_GENES), obs_raw(N_GENES), obs_ctr(N_GENES), obs_exact(N_GENES)
+        real(real64)   :: dh_raw, dh_ctr, dh_exact, sorted_obs(N_GENES), med, l2(N_GENES)
+        integer(int32) :: valid(N_GENES), nb1(N_GENES), nb2(N_GENES), nb3(N_GENES)
+        integer(int32) :: n_ok, ierr, i, j
+
+        call generate_test_data(N_GENES, N_SAMPLES, means_case, means_control, &
+                                rep_case, rep_ctrl, control_noise_scale=0.8_real64)
+        valid = 1
+
+        call compute_noise_pvalue_pipeline(rep_case, N_GENES, N_SAMPLES, rep_ctrl, N_GENES, N_SAMPLES, &
+            valid, BETA_CENTRE_NONE, N_GENES, 1, 10, 5, 50, 0.1_real64, NULL_METHOD_POOLED, &
+            pv, obs_raw, l2, dh_raw, n_ok, 100, nb1, nb2, nb3, ierr)
+        call assert_equal_int(ierr, ERR_OK, "beta_centre: uncentred run ierr")
+
+        call compute_noise_pvalue_pipeline(rep_case, N_GENES, N_SAMPLES, rep_ctrl, N_GENES, N_SAMPLES, &
+            valid, BETA_CENTRE_MEDIAN, N_GENES, 1, 10, 5, 50, 0.1_real64, NULL_METHOD_POOLED, &
+            pv, obs_ctr, l2, dh_ctr, n_ok, 100, nb1, nb2, nb3, ierr)
+        call assert_equal_int(ierr, ERR_OK, "beta_centre: centred run ierr")
+
+        ! Median by insertion sort; N_GENES is even, so average the two middle values.
+        sorted_obs = obs_raw
+        do i = 2, N_GENES
+            med = sorted_obs(i)
+            j = i - 1
+            do while (j >= 1)
+                if (sorted_obs(j) <= med) exit
+                sorted_obs(j + 1) = sorted_obs(j)
+                j = j - 1
+            end do
+            sorted_obs(j + 1) = med
+        end do
+        med = 0.5_real64 * (sorted_obs(N_GENES / 2) + sorted_obs(N_GENES / 2 + 1))
+
+        call assert_equal_real(dh_raw, med, TOL, "beta_centre: delta_hat must be the median statistic")
+        call assert_equal_real(dh_ctr, dh_raw, TOL, "beta_centre: delta_hat must not depend on the mode")
+        do i = 1, N_GENES
+            call assert_equal_real(obs_ctr(i), obs_raw(i) - dh_raw, TOL, &
+                                   "beta_centre: centred statistic of gene "//str(i))
+        end do
+
+        call pipeline_exact(rep_case, N_GENES, N_SAMPLES, rep_ctrl, N_GENES, N_SAMPLES, &
+            valid, BETA_CENTRE_MEDIAN, N_GENES, 1, 10, 5, 50, 0.1_real64, &
+            pv, obs_exact, l2, dh_exact, n_ok, 100, nb1, nb2, nb3, ierr)
+        call assert_equal_int(ierr, ERR_OK, "beta_centre: exact module ierr")
+        call assert_equal_real(dh_exact, dh_ctr, 0.0_real64, "beta_centre: modules must agree on delta_hat")
+        do i = 1, N_GENES
+            call assert_equal_real(obs_exact(i), obs_ctr(i), 0.0_real64, &
+                                   "beta_centre: modules must agree on the statistic of gene "//str(i))
+        end do
+
+        call compute_noise_pvalue_pipeline(rep_case, N_GENES, N_SAMPLES, rep_ctrl, N_GENES, N_SAMPLES, &
+            valid, 2, N_GENES, 1, 10, 5, 50, 0.1_real64, NULL_METHOD_POOLED, &
+            pv, obs_raw, l2, dh_raw, n_ok, 100, nb1, nb2, nb3, ierr)
+        call assert_equal_int(ierr, ERR_INVALID_INPUT, "beta_centre: unknown mode must be rejected")
+    end subroutine test_pipeline_beta_centre
 
 end module mod_test_noise_model

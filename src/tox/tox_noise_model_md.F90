@@ -97,36 +97,12 @@ module noise_model_md
                           validate_dimension_size, validate_all_in_range_real
     use f42_utils, only: sort_real, init_random
     use noise_model, only: sorted_data_t, prepare_sorted_data, &
-                           gather_residuals_helper, &
-                           NULL_METHOD_POOLED, RNG_BUFFER_MAX, NOISE_LOG_OFFSET
+                           gather_residuals_helper, compute_gene_centres_helper, &
+                           compute_log2fc_helper, &
+                           median_of_finite_helper, &
+                           NULL_METHOD_POOLED, RNG_BUFFER_MAX, &
+                           BETA_CENTRE_NONE, BETA_CENTRE_MEDIAN
     implicit none
-
-    integer(int32), parameter :: BETA_MODE_INTERNAL = 0_int32
-        !! `beta_mode`: compute `beta_hat` inside this module from the replicates.
-        !! The default and the only scale-coherent option: the observed statistic is
-        !! then built on exactly the scale the residual pools carry.
-
-    integer(int32), parameter :: BETA_MODE_SUPPLIED = 1_int32
-        !! `beta_mode`: use the caller's `beta_obs`. The internal estimate is still
-        !! computed and reported against it through `beta_check_cor` /
-        !! `beta_check_mad` — this module does NOT refuse a mismatch, it surfaces it.
-        !! Correlation ~1 with a large MAD is a units problem (edgeR's coefficients
-        !! are natural log, a factor of ln 2 against log2 residuals, and shrunk by
-        !! default); degraded correlation is shrinkage or non-linearity.
-
-    integer(int32), parameter :: BETA_CENTRE_NONE = 0_int32
-        !! `beta_centre`: no composition centring.
-
-    integer(int32), parameter :: BETA_CENTRE_MEDIAN = 1_int32
-        !! `beta_centre`: subtract the per-axis MEDIAN of `beta_hat` across genes —
-        !! median centring of log-ratios, the TPM-side analogue of what TMM does for
-        !! counts (not TMM itself: TMM's weights come from count magnitudes, which do
-        !! not exist on TPM). On a compositional scale `log2FC = beta - Delta` with
-        !! `Delta` common to every gene, and the null — built from WITHIN-group
-        !! residuals — cannot contain information about a BETWEEN-group offset.
-        !! Running uncorrected is not the assumption-free option; it is the
-        !! assumption `Delta = 0`. **Must be off whenever the R side has already
-        !! normalised**, or the data are centred twice.
 
     integer(int32), parameter :: SAMPLING_SYSTEMATIC = 0_int32
         !! `sampling_mode`: walk each pool with a fixed coprime stride (default).
@@ -171,152 +147,6 @@ module noise_model_md
         !! at `k = 15`, `n_rep = 3` the joint space is already 4.1e6 at `d = 2`.
 
 contains
-
-    ! =========================================================================
-    ! compute_beta_md
-    ! =========================================================================
-
-    !> Core implementation: per-axis observed mean difference `beta_hat`, from the
-    !| packed replicate matrices.
-    !|
-    !| **Why the replicates and not the means.** The plan sketches this routine as
-    !| taking `means_case` / `means_control`. It cannot: on the log2 branch the
-    !| statistic that is scale-coherent with the residual pools is the difference of
-    !| FRECHET means, `mean_i log2(x_i + c)`, and by Jensen's inequality that is not
-    !| recoverable from the linear-space mean `log2(mean + c)`. The scalar pipelines
-    !| get their `obs_own` from the caller, who computes exactly
-    !| `colMeans(log2(case+1)) - colMeans(log2(ctrl+1))`; reproducing that here
-    !| (unit test 2) requires the replicates. On the linear branch the two
-    !| definitions coincide, so nothing is lost.
-    !|
-    !| The `means` arrays keep their real job — the coordinate the kNN neighbourhood
-    !| is matched in — and are not involved in the statistic.
-    !|
-    !| Matches `prepare_sorted_data_helper`'s centring expression term for term
-    !| (`sum(log(max(x,0) + NOISE_LOG_OFFSET)) * log2_factor / n`), so the observed
-    !| statistic and the residuals it is scored against are built from the same
-    !| arithmetic.
-    !|
-    !| No allocation; `beta_obs` must be pre-shaped `(n_axes, n_genes)` by the caller.
-    pure subroutine compute_beta_md_helper(replicates_case_packed, n_rep_case_per_axis, &
-                                           replicates_control_packed, n_rep_control_per_axis, &
-                                           n_genes, n_axes, norm_method, beta_obs)
-        integer(int32), intent(in) :: n_genes
-        !! Number of genes
-        integer(int32), intent(in) :: n_axes
-        !! Number of axes `d`
-        real(real64), dimension(:), intent(in) :: replicates_case_packed
-        !! Case replicates, axis blocks back to back; block `a` is `(n_rep_case_a, n_genes)`
-        integer(int32), dimension(n_axes), intent(in) :: n_rep_case_per_axis
-        !! Case replicate count per axis (ragged by design)
-        real(real64), dimension(:), intent(in) :: replicates_control_packed
-        !! Control replicates, same packing
-        integer(int32), dimension(n_axes), intent(in) :: n_rep_control_per_axis
-        !! Control replicate count per axis
-        integer(int32), intent(in) :: norm_method
-        !! 0 = linear-scale means; non-zero = log2-space (Frechet) means
-        real(real64), dimension(n_axes, n_genes), intent(out) :: beta_obs
-        !! Output: observed per-axis mean difference, gene-contiguous
-
-        integer(int32) :: i_axis, i_gene, i_rep, n_rep_c, n_rep_t, off_c, off_t, base_c, base_t
-        real(real64) :: sum_c, sum_t, log2_factor
-        logical :: use_log
-
-        use_log = (norm_method /= 0)
-        log2_factor = 1.0_real64 / log(2.0_real64)
-
-        off_c = 0
-        off_t = 0
-        do i_axis = 1, n_axes
-            n_rep_c = n_rep_case_per_axis(i_axis)
-            n_rep_t = n_rep_control_per_axis(i_axis)
-
-            do i_gene = 1, n_genes
-                base_c = off_c + (i_gene - 1) * n_rep_c
-                base_t = off_t + (i_gene - 1) * n_rep_t
-
-                sum_c = 0.0_real64
-                sum_t = 0.0_real64
-                if (use_log) then
-                    do i_rep = 1, n_rep_c
-                        sum_c = sum_c + log(max(replicates_case_packed(base_c + i_rep), 0.0_real64) &
-                                            + NOISE_LOG_OFFSET)
-                    end do
-                    do i_rep = 1, n_rep_t
-                        sum_t = sum_t + log(max(replicates_control_packed(base_t + i_rep), 0.0_real64) &
-                                            + NOISE_LOG_OFFSET)
-                    end do
-                    beta_obs(i_axis, i_gene) = sum_c * log2_factor / real(n_rep_c, real64) &
-                                             - sum_t * log2_factor / real(n_rep_t, real64)
-                else
-                    do i_rep = 1, n_rep_c
-                        sum_c = sum_c + replicates_case_packed(base_c + i_rep)
-                    end do
-                    do i_rep = 1, n_rep_t
-                        sum_t = sum_t + replicates_control_packed(base_t + i_rep)
-                    end do
-                    beta_obs(i_axis, i_gene) = sum_c / real(n_rep_c, real64) &
-                                             - sum_t / real(n_rep_t, real64)
-                end if
-            end do
-
-            off_c = off_c + n_rep_c * n_genes
-            off_t = off_t + n_rep_t * n_genes
-        end do
-    end subroutine compute_beta_md_helper
-
-    !> Validate and compute the per-axis observed `beta_hat` (#185 §1).
-    !|
-    !| Public entry point around `compute_beta_md_helper`. Allocates nothing; it only
-    !| adds argument validation, so it is safe to call standalone (the pipeline calls
-    !| the helper directly, having already validated).
-    subroutine compute_beta_md(replicates_case_packed, n_rep_case_per_axis, &
-                               replicates_control_packed, n_rep_control_per_axis, &
-                               n_genes, n_axes, norm_method, beta_obs, ierr)
-        integer(int32), intent(in) :: n_genes
-        !! Number of genes
-        integer(int32), intent(in) :: n_axes
-        !! Number of axes `d`
-        real(real64), dimension(:), intent(in) :: replicates_case_packed
-        !! Case replicates, packed by axis
-        integer(int32), dimension(n_axes), intent(in) :: n_rep_case_per_axis
-        !! Case replicate count per axis
-        real(real64), dimension(:), intent(in) :: replicates_control_packed
-        !! Control replicates, packed by axis
-        integer(int32), dimension(n_axes), intent(in) :: n_rep_control_per_axis
-        !! Control replicate count per axis
-        integer(int32), intent(in) :: norm_method
-        !! 0 = linear scale; non-zero = log2 (Frechet) scale
-        real(real64), dimension(n_axes, n_genes), intent(out) :: beta_obs
-        !! Output: `(n_axes, n_genes)` observed mean differences
-        integer(int32), intent(out) :: ierr
-        !! Error code
-
-        integer(int32) :: n_packed_case, n_packed_control
-
-        call set_ok(ierr)
-        call validate_dimension_size(n_genes, ierr)
-        call validate_dimension_size(n_axes, ierr)
-        if (is_err(ierr)) return
-
-        call validate_axis_replicates_helper(n_rep_case_per_axis, n_rep_control_per_axis, &
-                                             n_axes, n_genes, n_packed_case, n_packed_control, ierr)
-        if (is_err(ierr)) return
-
-        if (size(replicates_case_packed) < n_packed_case .or. &
-            size(replicates_control_packed) < n_packed_control) then
-            call set_err(ierr, ERR_DIM_MISMATCH)
-            return
-        end if
-
-        call validate_all_in_range_real(replicates_case_packed(1:n_packed_case), n_packed_case, ierr)
-        call validate_all_in_range_real(replicates_control_packed(1:n_packed_control), n_packed_control, ierr)
-        if (is_err(ierr)) return
-
-        call compute_beta_md_helper(replicates_case_packed, n_rep_case_per_axis, &
-                                    replicates_control_packed, n_rep_control_per_axis, &
-                                    n_genes, n_axes, norm_method, beta_obs)
-    end subroutine compute_beta_md
 
     !> Check the per-axis replicate counts and derive the packed array lengths.
     !|
@@ -705,108 +535,6 @@ contains
     end function atom_bsq_helper
 
     ! =========================================================================
-    ! per-axis summaries: median, correlation
-    ! =========================================================================
-
-    !> Median of the finite entries of `values(1:n)`, by indirect sort.
-    !|
-    !| Even counts average the two central order statistics, matching R's `median`.
-    !| Returns 0 and `n_finite = 0` when nothing is finite, which the caller treats as
-    !| "no shift estimable" (centring by 0 is the identity).
-    pure subroutine median_of_finite_helper(values, n, work, perm, stack_left, stack_right, med, n_finite)
-        integer(int32), intent(in) :: n
-        !! Number of candidate values
-        real(real64), dimension(n), intent(in) :: values
-        !! Candidate values (may contain NaN / +-Inf)
-        real(real64), dimension(n), intent(inout) :: work
-        !! Work array: the finite subset, compacted
-        integer(int32), dimension(n), intent(inout) :: perm
-        !! Work array: sort permutation
-        integer(int32), dimension(n), intent(inout) :: stack_left
-        !! Work array: quicksort stack
-        integer(int32), dimension(n), intent(inout) :: stack_right
-        !! Work array: quicksort stack
-        real(real64), intent(out) :: med
-        !! Median of the finite values; 0 when there are none
-        integer(int32), intent(out) :: n_finite
-        !! Number of finite values found
-
-        integer(int32) :: i, half
-
-        n_finite = 0
-        do i = 1, n
-            ! NaN fails the self-comparison; +-Inf fails the magnitude bound.
-            if (values(i) == values(i) .and. abs(values(i)) <= huge(1.0_real64)) then
-                n_finite = n_finite + 1
-                work(n_finite) = values(i)
-            end if
-        end do
-
-        if (n_finite == 0) then
-            med = 0.0_real64
-            return
-        end if
-
-        do i = 1, n_finite
-            perm(i) = i
-        end do
-        call sort_real(work(1:n_finite), perm(1:n_finite), stack_left(1:n_finite), stack_right(1:n_finite))
-
-        half = n_finite / 2
-        if (mod(n_finite, 2) == 1) then
-            med = work(perm(half + 1))
-        else
-            med = 0.5_real64 * (work(perm(half)) + work(perm(half + 1)))
-        end if
-    end subroutine median_of_finite_helper
-
-    !> Pearson correlation of two vectors over the entries where both are finite.
-    !|
-    !| Returns 0 when fewer than two usable pairs exist or either side has zero
-    !| variance — a degenerate correlation is reported as "no agreement measured"
-    !| rather than as NaN, so the diagnostic never contaminates downstream output.
-    pure function finite_correlation_helper(a, b, n) result(corr)
-        integer(int32), intent(in) :: n
-        !! Length of both vectors
-        real(real64), dimension(n), intent(in) :: a
-        !! First vector
-        real(real64), dimension(n), intent(in) :: b
-        !! Second vector
-        real(real64) :: corr
-        !! Pearson correlation over the jointly finite entries; 0 if undefined
-
-        integer(int32) :: i, m
-        real(real64) :: sa, sb, saa, sbb, sab, rm, cov, va, vb
-
-        m = 0
-        sa = 0.0_real64; sb = 0.0_real64
-        saa = 0.0_real64; sbb = 0.0_real64; sab = 0.0_real64
-        do i = 1, n
-            if (a(i) == a(i) .and. abs(a(i)) <= huge(1.0_real64) .and. &
-                b(i) == b(i) .and. abs(b(i)) <= huge(1.0_real64)) then
-                m = m + 1
-                sa = sa + a(i); sb = sb + b(i)
-                saa = saa + a(i) * a(i); sbb = sbb + b(i) * b(i); sab = sab + a(i) * b(i)
-            end if
-        end do
-
-        if (m < 2) then
-            corr = 0.0_real64
-            return
-        end if
-
-        rm = real(m, real64)
-        cov = sab - sa * sb / rm
-        va = saa - sa * sa / rm
-        vb = sbb - sb * sb / rm
-        if (va <= 0.0_real64 .or. vb <= 0.0_real64) then
-            corr = 0.0_real64
-        else
-            corr = cov / sqrt(va * vb)
-        end if
-    end function finite_correlation_helper
-
-    ! =========================================================================
     ! per-gene loop
     ! =========================================================================
 
@@ -1021,56 +749,48 @@ contains
     !| per-gene work to `compute_noise_pvalue_pipeline_md_helper`. Steps:
     !|   1. Validate dimensions, replicate counts and mode arguments.
     !|   2. Seed the RNG with `seed` (only the `SAMPLING_RNG` path consumes it).
-    !|   3. Fill `beta_obs` internally (`beta_mode = 0`) or keep the caller's and
-    !|      report `beta_check_cor` / `beta_check_mad` against the internal estimate.
+    !|   3. Per axis, hand each side's block of the packed buffer to
+    !|      `compute_gene_centres_helper` and `prepare_sorted_data` as an ordinary 2-D
+    !|      matrix by pointer bounds remapping — no copy, and no sequence association
+    !|      (these are module procedures with explicit interfaces, where a rank
+    !|      mismatch is a hard error). That yields the per-axis means (the kNN
+    !|      coordinate) and `beta_obs(a, :) = centre_case - centre_control`, built
+    !|      with the very helper the scalar modules use, so `d = 1` matches
+    !|      `noise_model_exact` by construction.
     !|   4. Estimate `delta_hat` (per-axis median across genes) and, when
     !|      `beta_centre = 1`, subtract it from `beta_obs` IN PLACE — the caller gets
     !|      the centred vector back, which is what direction and per-axis contribution
     !|      shares are computed from.
-    !|   5. Hand each axis's block of the packed buffer to `prepare_sorted_data` as an
-    !|      ordinary 2-D matrix by pointer bounds remapping — no copy, and no
-    !|      sequence association (these are module procedures with explicit
-    !|      interfaces, where a rank mismatch is a hard error).
-    !|   6. Run the gene loop.
+    !|   5. Run the gene loop.
     !|
     subroutine compute_noise_pvalue_pipeline_md( &
-        means_case, replicates_case_packed, n_rep_case_per_axis, &
-        means_control, replicates_control_packed, n_rep_control_per_axis, &
-        beta_obs, compute_pvalue_own, beta_mode, beta_centre, &
+        replicates_case_packed, n_rep_case_per_axis, &
+        replicates_control_packed, n_rep_control_per_axis, &
+        compute_pvalue_own, beta_centre, &
         n_genes, n_axes, norm_method, k_start, k_step, k_max, tau, &
         null_method, sampling_mode, n_draws_max, n_exceed_target, enum_max_product, &
         seed, max_pool_size, &
         pvalues_own, d_obs, d_std_obs, d_sq_null_mean, &
         method_used, n_draws_used, &
         neighborhood_size_case, neighborhood_size_control, var_null, &
-        beta_check_cor, beta_check_mad, delta_hat, &
+        beta_obs, log2fc, delta_hat, &
         n_genes_with_pvalue, ierr)
 
         integer(int32), intent(in) :: n_genes
         !! Number of genes
         integer(int32), intent(in) :: n_axes
         !! Number of axes `d`
-        real(real64), dimension(n_genes, n_axes), intent(in) :: means_case
-        !! Per-axis case means; the kNN matching coordinate, NOT the statistic
         real(real64), dimension(:), intent(in), target, contiguous :: replicates_case_packed
         !! Case replicates, axis blocks back to back; block `a` is `(n_rep_case_a, n_genes)`,
         !! samples-fastest, matching what `prepare_sorted_data` reads
         integer(int32), dimension(n_axes), intent(in) :: n_rep_case_per_axis
         !! Case replicate count per axis (ragged by design; each must be >= 2)
-        real(real64), dimension(n_genes, n_axes), intent(in) :: means_control
-        !! Per-axis control means
         real(real64), dimension(:), intent(in), target, contiguous :: replicates_control_packed
         !! Control replicates, same packing
         integer(int32), dimension(n_axes), intent(in) :: n_rep_control_per_axis
         !! Control replicate count per axis (each must be >= 2)
-        real(real64), dimension(n_axes, n_genes), intent(inout) :: beta_obs
-        !! Observed per-axis statistic, gene-contiguous. Filled here when
-        !! `beta_mode = BETA_MODE_INTERNAL`; read when `BETA_MODE_SUPPLIED`. Returned
-        !! CENTRED when `beta_centre = BETA_CENTRE_MEDIAN`.
         integer(int32), dimension(n_genes), intent(in) :: compute_pvalue_own
         !! 1 if the gene should be tested, 0 otherwise
-        integer(int32), intent(in) :: beta_mode
-        !! `BETA_MODE_INTERNAL` (0) or `BETA_MODE_SUPPLIED` (1)
         integer(int32), intent(in) :: beta_centre
         !! `BETA_CENTRE_NONE` (0) or `BETA_CENTRE_MEDIAN` (1)
         integer(int32), intent(in) :: norm_method
@@ -1122,11 +842,12 @@ contains
         !! Output: per-axis control pool size (-1 if not gathered)
         real(real64), dimension(n_axes, n_genes), intent(out) :: var_null
         !! Output: per-axis null variance (-1 if not computed)
-        real(real64), dimension(n_axes), intent(out) :: beta_check_cor
-        !! Output: per-axis correlation of supplied vs internally recomputed `beta`.
-        !! Exactly 1 when `beta_mode = BETA_MODE_INTERNAL` (the two are the same array).
-        real(real64), dimension(n_axes), intent(out) :: beta_check_mad
-        !! Output: per-axis median absolute difference, same convention (0 when internal)
+        real(real64), dimension(n_axes, n_genes), intent(out) :: beta_obs
+        !! Output: observed per-axis statistic `centre_case - centre_control`,
+        !! gene-contiguous; returned CENTRED when `beta_centre = BETA_CENTRE_MEDIAN`
+        real(real64), dimension(n_axes, n_genes), intent(out) :: log2fc
+        !! Output: per-axis effect size, log2 fold change of the linear group means
+        !! (`compute_log2fc_helper`); never centred
         real(real64), dimension(n_axes), intent(out) :: delta_hat
         !! Output: per-axis median `beta` across genes — the estimated composition
         !! shift, reported whether or not centring is applied
@@ -1136,7 +857,7 @@ contains
         !! Error code
 
         type(sorted_data_t), allocatable :: sorted_case(:), sorted_control(:)
-        real(real64), allocatable :: beta_internal(:, :)
+        real(real64), allocatable :: means_case(:, :), means_control(:, :), centres(:)
         real(real64), allocatable :: tmp_pools_case(:, :), tmp_pools_control(:, :)
         real(real64), allocatable :: tmp_axis_w(:), rbuf(:)
         real(real64), allocatable :: med_values(:), med_work(:)
@@ -1160,8 +881,6 @@ contains
         call validate_dimension_size(max_pool_size, ierr)
         if (n_exceed_target < 0) call set_err(ierr, ERR_INVALID_INPUT)
         if (enum_max_product < 0_int64) call set_err(ierr, ERR_INVALID_INPUT)
-        if (beta_mode /= BETA_MODE_INTERNAL .and. beta_mode /= BETA_MODE_SUPPLIED) &
-            call set_err(ierr, ERR_INVALID_INPUT)
         if (beta_centre /= BETA_CENTRE_NONE .and. beta_centre /= BETA_CENTRE_MEDIAN) &
             call set_err(ierr, ERR_INVALID_INPUT)
         if (sampling_mode /= SAMPLING_SYSTEMATIC .and. sampling_mode /= SAMPLING_RNG) &
@@ -1181,8 +900,6 @@ contains
             return
         end if
 
-        call validate_all_in_range_real(means_case, n_genes * n_axes, ierr)
-        call validate_all_in_range_real(means_control, n_genes * n_axes, ierr)
         call validate_all_in_range_real(replicates_case_packed(1:n_packed_case), n_packed_case, ierr)
         call validate_all_in_range_real(replicates_control_packed(1:n_packed_control), n_packed_control, ierr)
         if (is_err(ierr)) return
@@ -1190,7 +907,9 @@ contains
         ! Only the RNG path consumes this; the systematic walk is seed-independent.
         call init_random(seed)
 
-        M_ALLOCATE(beta_internal(n_axes, n_genes))
+        M_ALLOCATE(means_case(n_genes, n_axes))
+        M_ALLOCATE(means_control(n_genes, n_axes))
+        M_ALLOCATE(centres(n_genes))
         M_ALLOCATE(tmp_pools_case(max_pool_size * 2, n_axes))
         M_ALLOCATE(tmp_pools_control(max_pool_size * 2, n_axes))
         M_ALLOCATE(tmp_n_pool_case(n_axes))
@@ -1206,29 +925,47 @@ contains
         M_ALLOCATE(sorted_case(n_axes))
         M_ALLOCATE(sorted_control(n_axes))
 
-        ! --- observed statistic -------------------------------------------------
-        call compute_beta_md_helper(replicates_case_packed, n_rep_case_per_axis, &
-                                    replicates_control_packed, n_rep_control_per_axis, &
-                                    n_genes, n_axes, norm_method, beta_internal)
+        ! --- means, observed statistic and sorted structures, per (group, axis) --
+        ! Pointer bounds remapping, not a copy and not sequence association: each
+        ! axis block is already (n_rep_a, n_genes) samples-fastest, which is exactly
+        ! what compute_gene_centres_helper and prepare_sorted_data read.
+        off_c = 0
+        off_t = 0
+        do i_axis = 1, n_axes
+            n_rep_c = n_rep_case_per_axis(i_axis)
+            axis_reps(1:n_rep_c, 1:n_genes) => &
+                replicates_case_packed(off_c + 1 : off_c + n_rep_c * n_genes)
+            call compute_gene_centres_helper(axis_reps, n_rep_c, n_genes, norm_method, &
+                                             means_case(:, i_axis), centres)
+            beta_obs(i_axis, :) = centres
+            call prepare_sorted_data(means_case(:, i_axis), axis_reps, &
+                                     n_rep_c, n_genes, norm_method, sorted_case(i_axis), sort_ierr)
+            call set_err(ierr, sort_ierr)
+            off_c = off_c + n_rep_c * n_genes
 
-        if (beta_mode == BETA_MODE_INTERNAL) then
-            beta_obs = beta_internal
-            ! Supplied and internal are the same numbers, so the diagnostic is exact
-            ! by construction rather than unset.
-            beta_check_cor = 1.0_real64
-            beta_check_mad = 0.0_real64
-        else
-            do i_axis = 1, n_axes
-                beta_check_cor(i_axis) = finite_correlation_helper(beta_obs(i_axis, :), &
-                                                                   beta_internal(i_axis, :), n_genes)
-                do i_gene = 1, n_genes
-                    med_values(i_gene) = abs(beta_obs(i_axis, i_gene) - beta_internal(i_axis, i_gene))
-                end do
-                call median_of_finite_helper(med_values, n_genes, med_work, med_perm, &
-                                             med_stack_left, med_stack_right, med, n_finite)
-                beta_check_mad(i_axis) = med
-            end do
-        end if
+            n_rep_t = n_rep_control_per_axis(i_axis)
+            axis_reps(1:n_rep_t, 1:n_genes) => &
+                replicates_control_packed(off_t + 1 : off_t + n_rep_t * n_genes)
+            call compute_gene_centres_helper(axis_reps, n_rep_t, n_genes, norm_method, &
+                                             means_control(:, i_axis), centres)
+            beta_obs(i_axis, :) = beta_obs(i_axis, :) - centres
+            call prepare_sorted_data(means_control(:, i_axis), axis_reps, &
+                                     n_rep_t, n_genes, norm_method, sorted_control(i_axis), sort_ierr)
+            call set_err(ierr, sort_ierr)
+            off_t = off_t + n_rep_t * n_genes
+
+            ! Per-SIDE scaling: each side divided by the root of its OWN replicate
+            ! count. A single per-axis factor would be right only at equal n.
+            scale_case(i_axis) = 1.0_real64 / sqrt(real(n_rep_c, real64))
+            scale_control(i_axis) = 1.0_real64 / sqrt(real(n_rep_t, real64))
+        end do
+        if (is_err(ierr)) return
+
+        ! --- effect size: per-axis log2 fold change of the linear means ----------
+        do i_axis = 1, n_axes
+            call compute_log2fc_helper(means_case(:, i_axis), means_control(:, i_axis), n_genes, centres)
+            log2fc(i_axis, :) = centres
+        end do
 
         ! --- composition shift --------------------------------------------------
         do i_axis = 1, n_axes
@@ -1247,36 +984,6 @@ contains
                 end do
             end do
         end if
-
-        ! --- sorted structures, one per (group, axis) ---------------------------
-        ! Pointer bounds remapping, not a copy and not sequence association: each
-        ! axis block is already (n_rep_a, n_genes) samples-fastest, which is exactly
-        ! what prepare_sorted_data reads.
-        off_c = 0
-        off_t = 0
-        do i_axis = 1, n_axes
-            n_rep_c = n_rep_case_per_axis(i_axis)
-            axis_reps(1:n_rep_c, 1:n_genes) => &
-                replicates_case_packed(off_c + 1 : off_c + n_rep_c * n_genes)
-            call prepare_sorted_data(means_case(:, i_axis), axis_reps, &
-                                     n_rep_c, n_genes, norm_method, sorted_case(i_axis), sort_ierr)
-            call set_err(ierr, sort_ierr)
-            off_c = off_c + n_rep_c * n_genes
-
-            n_rep_t = n_rep_control_per_axis(i_axis)
-            axis_reps(1:n_rep_t, 1:n_genes) => &
-                replicates_control_packed(off_t + 1 : off_t + n_rep_t * n_genes)
-            call prepare_sorted_data(means_control(:, i_axis), axis_reps, &
-                                     n_rep_t, n_genes, norm_method, sorted_control(i_axis), sort_ierr)
-            call set_err(ierr, sort_ierr)
-            off_t = off_t + n_rep_t * n_genes
-
-            ! Per-SIDE scaling: each side divided by the root of its OWN replicate
-            ! count. A single per-axis factor would be right only at equal n.
-            scale_case(i_axis) = 1.0_real64 / sqrt(real(n_rep_c, real64))
-            scale_control(i_axis) = 1.0_real64 / sqrt(real(n_rep_t, real64))
-        end do
-        if (is_err(ierr)) return
 
         ! --- random-number buffer (RNG path only) -------------------------------
         ! Two values per axis per draw: one index per side.
@@ -1326,15 +1033,15 @@ end module noise_model_md
 !| passes 2^31 at `d = 2` with quite ordinary neighbourhoods, so an `int` cap would
 !| be unable to express the interesting thresholds.
 subroutine compute_noise_pvalues_pipeline_md_c( &
-    means_case, replicates_case_packed, n_packed_case, n_rep_case_per_axis, &
-    means_control, replicates_control_packed, n_packed_control, n_rep_control_per_axis, &
-    beta_obs, compute_pvalue_own, beta_mode, beta_centre, &
+    replicates_case_packed, n_packed_case, n_rep_case_per_axis, &
+    replicates_control_packed, n_packed_control, n_rep_control_per_axis, &
+    compute_pvalue_own, beta_centre, &
     n_genes, n_axes, norm_method, k_start, k_step, k_max, tau, &
     null_method, sampling_mode, n_draws_max, n_exceed_target, enum_max_product, &
     seed, max_pool_size, &
     pvalues_own, d_obs, d_std_obs, d_sq_null_mean, method_used, n_draws_used, &
     neighborhood_size_case, neighborhood_size_control, var_null, &
-    beta_check_cor, beta_check_mad, delta_hat, &
+    beta_obs, log2fc, delta_hat, &
     n_genes_with_pvalue, ierr) bind(C, name="compute_noise_pvalues_pipeline_md_c")
 
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_long_long
@@ -1353,25 +1060,16 @@ subroutine compute_noise_pvalues_pipeline_md_c( &
     !! Declared length of `replicates_case_packed`; cross-checked against the derived value
     integer(c_int), intent(in), target :: n_packed_control
     !! Declared length of `replicates_control_packed`; cross-checked likewise
-    real(c_double), dimension(n_genes, n_axes), intent(in), target :: means_case
-    !! Per-axis case means (kNN matching coordinate)
     real(c_double), dimension(n_packed_case), intent(in), target :: replicates_case_packed
     !! Case replicates, axis blocks back to back; block `a` is `(n_rep_case_a, n_genes)`
     integer(c_int), dimension(n_axes), intent(in), target :: n_rep_case_per_axis
     !! Case replicate count per axis (each >= 2)
-    real(c_double), dimension(n_genes, n_axes), intent(in), target :: means_control
-    !! Per-axis control means
     real(c_double), dimension(n_packed_control), intent(in), target :: replicates_control_packed
     !! Control replicates, same packing
     integer(c_int), dimension(n_axes), intent(in), target :: n_rep_control_per_axis
     !! Control replicate count per axis (each >= 2)
-    real(c_double), dimension(n_axes, n_genes), intent(inout), target :: beta_obs
-    !! Observed per-axis statistic; filled here when `beta_mode = 0`, returned centred
-    !! when `beta_centre = 1`
     integer(c_int), dimension(n_genes), intent(in), target :: compute_pvalue_own
     !! 1 if the gene should be tested, 0 otherwise
-    integer(c_int), intent(in), target :: beta_mode
-    !! 0 = compute `beta` internally (default); 1 = use the supplied `beta_obs`
     integer(c_int), intent(in), target :: beta_centre
     !! 0 = no composition centring; 1 = subtract the per-axis median
     integer(c_int), intent(in), target :: norm_method
@@ -1416,10 +1114,11 @@ subroutine compute_noise_pvalues_pipeline_md_c( &
     !! Output: per-axis control pool size (-1 if not gathered)
     real(c_double), dimension(n_axes, n_genes), intent(out), target :: var_null
     !! Output: per-axis null variance; the weights, exposed (-1 if not computed)
-    real(c_double), dimension(n_axes), intent(out), target :: beta_check_cor
-    !! Output: per-axis correlation of supplied vs recomputed `beta` (1 when internal)
-    real(c_double), dimension(n_axes), intent(out), target :: beta_check_mad
-    !! Output: per-axis median absolute difference (0 when internal)
+    real(c_double), dimension(n_axes, n_genes), intent(out), target :: beta_obs
+    !! Output: observed per-axis statistic, computed from the replicates; centred
+    !! when `beta_centre = 1`
+    real(c_double), dimension(n_axes, n_genes), intent(out), target :: log2fc
+    !! Output: per-axis effect size, log2 fold change of the linear group means
     real(c_double), dimension(n_axes), intent(out), target :: delta_hat
     !! Output: per-axis median `beta` across genes (the composition shift)
     integer(c_int), intent(out), target :: n_genes_with_pvalue
@@ -1435,15 +1134,12 @@ subroutine compute_noise_pvalues_pipeline_md_c( &
     M_CHECK_NON_NULL(n_axes)
     M_CHECK_NON_NULL(n_packed_case)
     M_CHECK_NON_NULL(n_packed_control)
-    M_CHECK_NON_NULL(means_case)
     M_CHECK_NON_NULL(replicates_case_packed)
     M_CHECK_NON_NULL(n_rep_case_per_axis)
-    M_CHECK_NON_NULL(means_control)
     M_CHECK_NON_NULL(replicates_control_packed)
     M_CHECK_NON_NULL(n_rep_control_per_axis)
     M_CHECK_NON_NULL(beta_obs)
     M_CHECK_NON_NULL(compute_pvalue_own)
-    M_CHECK_NON_NULL(beta_mode)
     M_CHECK_NON_NULL(beta_centre)
     M_CHECK_NON_NULL(norm_method)
     M_CHECK_NON_NULL(k_start)
@@ -1466,8 +1162,7 @@ subroutine compute_noise_pvalues_pipeline_md_c( &
     M_CHECK_NON_NULL(neighborhood_size_case)
     M_CHECK_NON_NULL(neighborhood_size_control)
     M_CHECK_NON_NULL(var_null)
-    M_CHECK_NON_NULL(beta_check_cor)
-    M_CHECK_NON_NULL(beta_check_mad)
+    M_CHECK_NON_NULL(log2fc)
     M_CHECK_NON_NULL(delta_hat)
     M_CHECK_NON_NULL(n_genes_with_pvalue)
 
@@ -1486,15 +1181,15 @@ subroutine compute_noise_pvalues_pipeline_md_c( &
     end if
 
     call compute_noise_pvalue_pipeline_md( &
-        means_case, replicates_case_packed, n_rep_case_per_axis, &
-        means_control, replicates_control_packed, n_rep_control_per_axis, &
-        beta_obs, compute_pvalue_own, beta_mode, beta_centre, &
+        replicates_case_packed, n_rep_case_per_axis, &
+        replicates_control_packed, n_rep_control_per_axis, &
+        compute_pvalue_own, beta_centre, &
         n_genes, n_axes, norm_method, k_start, k_step, k_max, tau, &
         null_method, sampling_mode, n_draws_max, n_exceed_target, &
         int(enum_max_product, int64), seed, max_pool_size, &
         pvalues_own, d_obs, d_std_obs, d_sq_null_mean, method_used, n_draws_used, &
         neighborhood_size_case, neighborhood_size_control, var_null, &
-        beta_check_cor, beta_check_mad, delta_hat, &
+        beta_obs, log2fc, delta_hat, &
         n_genes_with_pvalue, ierr)
 
 end subroutine compute_noise_pvalues_pipeline_md_c

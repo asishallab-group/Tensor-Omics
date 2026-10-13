@@ -59,6 +59,20 @@ module noise_model_exact
         !! `log2(r + c) - mean_i[log2(r_i + c)]` (see `prepare_sorted_data_helper`),
         !! used when `norm_method /= 0` to keep the logarithm defined at zero expression
 
+    integer(int32), parameter :: BETA_CENTRE_NONE = 0_int32
+        !! `beta_centre`: no composition centring.
+
+    integer(int32), parameter :: BETA_CENTRE_MEDIAN = 1_int32
+        !! `beta_centre`: subtract the MEDIAN of the observed statistic across genes —
+        !! median centring of log-ratios, the TPM-side analogue of what TMM does for
+        !! counts (not TMM itself: TMM's weights come from count magnitudes, which do
+        !! not exist on TPM). On a compositional scale `log2FC = beta - Delta` with
+        !! `Delta` common to every gene, and the null — built from WITHIN-group
+        !! residuals — cannot contain information about a BETWEEN-group offset.
+        !! Running uncorrected is not the assumption-free option; it is the
+        !! assumption `Delta = 0`. **Must be off whenever the R side has already
+        !! normalised**, or the data are centred twice.
+
 contains
 
     ! =========================================================================
@@ -213,6 +227,128 @@ contains
         call prepare_sorted_data_helper(means, replicates, n_samples, n_genes, norm_method, &
                                         sorted_data, tmp_perm, tmp_stack_left, tmp_stack_right)
     end subroutine prepare_sorted_data
+
+    ! =========================================================================
+    ! compute_gene_centres_helper
+    ! =========================================================================
+
+    !> Per-gene location of one group: the kNN coordinate and the residual centre.
+    !|
+    !| `means` is the linear arithmetic mean of the replicates — the coordinate the
+    !| kNN neighbourhood is matched in. `centres` is the value the residuals are
+    !| centred on: the same mean on the linear branch, the log2 Frechet mean
+    !| `mean_i log2(x_i + c)` on the log branch. Both expressions match
+    !| `prepare_sorted_data_helper`'s `gene_mean` / `log2_mean` term for term, so the
+    !| observed statistic `centres_case - centres_control` sits on exactly the scale
+    !| the residual pools carry. By Jensen's inequality the Frechet mean cannot be
+    !| recovered from the linear mean, which is why this reads the replicates.
+    pure subroutine compute_gene_centres_helper(replicates, n_samples, n_genes, norm_method, &
+                                                means, centres)
+        integer(int32), intent(in) :: n_samples
+        !! Number of replicates per gene
+        integer(int32), intent(in) :: n_genes
+        !! Number of genes
+        real(real64), dimension(n_samples, n_genes), intent(in) :: replicates
+        !! Replicate expression matrix (n_samples x n_genes)
+        integer(int32), intent(in) :: norm_method
+        !! 0 = linear scale; non-zero = log2 (Frechet) scale
+        real(real64), dimension(n_genes), intent(out) :: means
+        !! Output: linear arithmetic mean per gene (the kNN coordinate)
+        real(real64), dimension(n_genes), intent(out) :: centres
+        !! Output: residual centre per gene (the observed statistic's scale)
+
+        integer(int32) :: i_gene
+        real(real64) :: log2_factor
+
+        log2_factor = 1.0_real64 / log(2.0_real64)
+
+        do i_gene = 1, n_genes
+            means(i_gene) = sum(replicates(:, i_gene)) / real(n_samples, real64)
+            if (norm_method /= 0) then
+                centres(i_gene) = sum(log(max(replicates(:, i_gene), 0.0_real64) + NOISE_LOG_OFFSET)) &
+                                  * log2_factor / real(n_samples, real64)
+            else
+                centres(i_gene) = means(i_gene)
+            end if
+        end do
+    end subroutine compute_gene_centres_helper
+
+    !> Per-gene log2 fold change of the group means: the reported effect size.
+    !|
+    !| `log2(mean_case + c) - log2(mean_control + c)` on the LINEAR arithmetic means,
+    !| `c = NOISE_LOG_OFFSET`, with negatives clamped to 0 as in the residual
+    !| transform. It is the same quantity whatever `norm_method` is, so it reads as a
+    !| conventional log2 ratio of mean expression. It is NOT the test statistic: on
+    !| the log branch that is the difference of log2 Frechet (geometric) means, which
+    !| sits below this by Jensen's gap.
+    pure subroutine compute_log2fc_helper(means_case, means_control, n_genes, log2fc)
+        integer(int32), intent(in) :: n_genes
+        !! Number of genes
+        real(real64), dimension(n_genes), intent(in) :: means_case
+        !! Linear case means
+        real(real64), dimension(n_genes), intent(in) :: means_control
+        !! Linear control means
+        real(real64), dimension(n_genes), intent(out) :: log2fc
+        !! Output: log2 fold change, case over control
+
+        real(real64) :: log2_factor
+
+        log2_factor = 1.0_real64 / log(2.0_real64)
+        log2fc = (log(max(means_case, 0.0_real64) + NOISE_LOG_OFFSET) &
+                  - log(max(means_control, 0.0_real64) + NOISE_LOG_OFFSET)) * log2_factor
+    end subroutine compute_log2fc_helper
+
+    !> Median of the finite entries of `values(1:n)`, by indirect sort.
+    !|
+    !| Even counts average the two central order statistics, matching R's `median`.
+    !| Returns 0 and `n_finite = 0` when nothing is finite, which the caller treats as
+    !| "no shift estimable" (centring by 0 is the identity).
+    pure subroutine median_of_finite_helper(values, n, work, perm, stack_left, stack_right, med, n_finite)
+        integer(int32), intent(in) :: n
+        !! Number of candidate values
+        real(real64), dimension(n), intent(in) :: values
+        !! Candidate values (may contain NaN / +-Inf)
+        real(real64), dimension(n), intent(inout) :: work
+        !! Work array: the finite subset, compacted
+        integer(int32), dimension(n), intent(inout) :: perm
+        !! Work array: sort permutation
+        integer(int32), dimension(n), intent(inout) :: stack_left
+        !! Work array: quicksort stack
+        integer(int32), dimension(n), intent(inout) :: stack_right
+        !! Work array: quicksort stack
+        real(real64), intent(out) :: med
+        !! Median of the finite values; 0 when there are none
+        integer(int32), intent(out) :: n_finite
+        !! Number of finite values found
+
+        integer(int32) :: i, half
+
+        n_finite = 0
+        do i = 1, n
+            ! NaN fails the self-comparison; +-Inf fails the magnitude bound.
+            if (values(i) == values(i) .and. abs(values(i)) <= huge(1.0_real64)) then
+                n_finite = n_finite + 1
+                work(n_finite) = values(i)
+            end if
+        end do
+
+        if (n_finite == 0) then
+            med = 0.0_real64
+            return
+        end if
+
+        do i = 1, n_finite
+            perm(i) = i
+        end do
+        call sort_real(work(1:n_finite), perm(1:n_finite), stack_left(1:n_finite), stack_right(1:n_finite))
+
+        half = n_finite / 2
+        if (mod(n_finite, 2) == 1) then
+            med = work(perm(half + 1))
+        else
+            med = 0.5_real64 * (work(perm(half)) + work(perm(half + 1)))
+        end if
+    end subroutine median_of_finite_helper
 
     ! =========================================================================
     ! find_closest_helper
@@ -788,11 +924,11 @@ contains
     !|   3. Allocates all per-gene work arrays used by the per-gene loop.
     !|   4. Delegates the per-gene loop to `compute_noise_pvalue_pipeline_helper`.
     subroutine compute_noise_pvalue_pipeline( &
-        means_case, replicates_case, n_genes_case, n_replicates_case, &
-        means_control, replicates_control, n_genes_control, n_replicates_control, &
-        observed_statistic_own, compute_pvalue_own, &
+        replicates_case, n_genes_case, n_replicates_case, &
+        replicates_control, n_genes_control, n_replicates_control, &
+        compute_pvalue_own, beta_centre, &
         n_genes, norm_method, k_start, k_step, k_max, tau, &
-        pvalues_own, n_genes_with_pvalue, &
+        pvalues_own, observed_statistic_own, log2fc, delta_hat, n_genes_with_pvalue, &
         max_pool_size, &
         neighborhood_size_own_case, neighborhood_size_own_control, &
         neighborhood_size_case, &
@@ -808,18 +944,14 @@ contains
         !! Number of control replicates
         integer(int32), intent(in) :: n_genes
         !! Total number of genes for which p-values are computed
-        real(real64), dimension(n_genes_case), intent(in) :: means_case
-        !! Per-gene case expression means
         real(real64), dimension(n_replicates_case, n_genes_case), intent(in) :: replicates_case
         !! Case replicate expression matrix (n_replicates_case x n_genes_case)
-        real(real64), dimension(n_genes_control), intent(in) :: means_control
-        !! Per-gene control expression means
         real(real64), dimension(n_replicates_control, n_genes_control), intent(in) :: replicates_control
         !! Control replicate expression matrix (n_replicates_control x n_genes_control)
-        real(real64), dimension(n_genes), intent(in) :: observed_statistic_own
-        !! Observed gene-vs-own statistic for each gene
         integer(int32), dimension(n_genes), intent(in) :: compute_pvalue_own
         !! 1 if the gene-vs-own p-value should be computed, 0 otherwise
+        integer(int32), intent(in) :: beta_centre
+        !! `BETA_CENTRE_NONE` (0) or `BETA_CENTRE_MEDIAN` (1)
         integer(int32), intent(in) :: norm_method
         !! 0 = linear scale; non-zero = log2(x+1) transform
         integer(int32), intent(in) :: k_start
@@ -834,6 +966,16 @@ contains
         !! Maximum number of residuals in any pool
         real(real64), dimension(n_genes), intent(out) :: pvalues_own
         !! Output: gene-vs-own p-values (-1 if not computed)
+        real(real64), dimension(n_genes), intent(out) :: observed_statistic_own
+        !! Output: observed case-minus-control statistic per gene, computed here from the
+        !! replicates (`compute_gene_centres_helper`); returned CENTRED when
+        !! `beta_centre = BETA_CENTRE_MEDIAN`
+        real(real64), dimension(n_genes), intent(out) :: log2fc
+        !! Output: effect size, log2 fold change of the linear group means
+        !! (`compute_log2fc_helper`); never centred
+        real(real64), intent(out) :: delta_hat
+        !! Output: median observed statistic across genes — the estimated composition
+        !! shift, reported whether or not centring is applied
         integer(int32), intent(out) :: n_genes_with_pvalue
         !! Number of genes for which the own p-value was computed
         integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_own_case
@@ -848,8 +990,15 @@ contains
         type(sorted_data_t) :: sorted_case, sorted_control
         real(real64), allocatable :: tmp_pool_case(:), tmp_pool_control_own(:)
         integer(int32) :: sort_ierr
+        real(real64), allocatable :: means_case(:), means_control(:), centres_control(:)
+        real(real64), allocatable :: med_work(:)
+        integer(int32), allocatable :: med_perm(:), med_stack_left(:), med_stack_right(:)
+        integer(int32) :: n_finite
 
         call set_ok(ierr)
+        observed_statistic_own = 0.0_real64
+        log2fc = 0.0_real64
+        delta_hat = 0.0_real64
 
         call validate_dimension_size(n_genes_case, ierr)
         call validate_dimension_size(n_replicates_case, ierr)
@@ -860,8 +1009,11 @@ contains
         call validate_dimension_size(k_step, ierr)
         call validate_dimension_size(k_max, ierr)
         call validate_dimension_size(max_pool_size, ierr)
-        ! The gene loop indexes means, replicates and the observed statistic with ONE
-        ! index 1..n_genes, so all three must describe the same genes. A replicate
+        if (beta_centre /= BETA_CENTRE_NONE .and. beta_centre /= BETA_CENTRE_MEDIAN) &
+            call set_err(ierr, ERR_INVALID_INPUT)
+        if (is_err(ierr)) return
+        ! The gene loop indexes both replicate matrices and every per-gene array with
+        ! ONE index 1..n_genes, so they must describe the same genes. A replicate
         ! matrix handed over genes x samples (the edgeR/DESeq2 convention) instead of
         ! samples x genes swaps n_genes_* with n_replicates_* -- without this check the
         ! pipeline runs to completion and returns p-values for the wrong matrix.
@@ -869,11 +1021,29 @@ contains
             call set_err(ierr, ERR_DIM_MISMATCH)
             return
         end if
-        call validate_all_in_range_real(means_case, n_genes_case, ierr)
-        call validate_all_in_range_real(means_control, n_genes_control, ierr)
         call validate_all_in_range_real(replicates_case, n_replicates_case * n_genes_case, ierr)
         call validate_all_in_range_real(replicates_control, n_replicates_control * n_genes_control, ierr)
         if (is_err(ierr)) return
+
+        ! --- means and observed statistic, both from the replicates --------------
+        M_ALLOCATE(means_case(n_genes))
+        M_ALLOCATE(means_control(n_genes))
+        M_ALLOCATE(centres_control(n_genes))
+        M_ALLOCATE(med_work(n_genes))
+        M_ALLOCATE(med_perm(n_genes))
+        M_ALLOCATE(med_stack_left(n_genes))
+        M_ALLOCATE(med_stack_right(n_genes))
+
+        call compute_gene_centres_helper(replicates_case, n_replicates_case, n_genes, norm_method, &
+                                         means_case, observed_statistic_own)
+        call compute_gene_centres_helper(replicates_control, n_replicates_control, n_genes, norm_method, &
+                                         means_control, centres_control)
+        observed_statistic_own = observed_statistic_own - centres_control
+        call compute_log2fc_helper(means_case, means_control, n_genes, log2fc)
+
+        call median_of_finite_helper(observed_statistic_own, n_genes, med_work, med_perm, &
+                                     med_stack_left, med_stack_right, delta_hat, n_finite)
+        if (beta_centre == BETA_CENTRE_MEDIAN) observed_statistic_own = observed_statistic_own - delta_hat
 
         call prepare_sorted_data(means_case, replicates_case, &
                                  n_replicates_case, n_genes_case, norm_method, sorted_case, sort_ierr)
@@ -922,11 +1092,11 @@ end module noise_model_exact
 !| then delegates unconditionally to the validated Fortran entry point.
 !| No computation is performed here.
 subroutine compute_noise_pvalues_pipeline_exact_c( &
-    means_case, replicates_case, n_genes_case, n_replicates_case, &
-    means_control, replicates_control, n_genes_control, n_replicates_control, &
-    observed_statistic_own, compute_pvalue_own, &
+    replicates_case, n_genes_case, n_replicates_case, &
+    replicates_control, n_genes_control, n_replicates_control, &
+    compute_pvalue_own, beta_centre, &
     n_genes, norm_method, k_start, k_step, k_max, tau, null_method, &
-    pvalues_own, n_genes_with_pvalue, &
+    pvalues_own, observed_statistic_own, log2fc, delta_hat, n_genes_with_pvalue, &
     max_pool_size, &
     neighborhood_size_own_case, neighborhood_size_own_control, &
     neighborhood_size_case, &
@@ -949,18 +1119,14 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     !! Number of control replicates
     integer(c_int), intent(in), target :: n_genes
     !! Total number of genes for which p-values are computed
-    real(c_double), dimension(n_genes_case), intent(in), target :: means_case
-    !! Per-gene case expression means
     real(c_double), dimension(n_replicates_case, n_genes_case), intent(in), target :: replicates_case
     !! Case replicate expression matrix (n_replicates_case x n_genes_case)
-    real(c_double), dimension(n_genes_control), intent(in), target :: means_control
-    !! Per-gene control expression means
     real(c_double), dimension(n_replicates_control, n_genes_control), intent(in), target :: replicates_control
     !! Control replicate expression matrix (n_replicates_control x n_genes_control)
-    real(c_double), dimension(n_genes), intent(in), target :: observed_statistic_own
-    !! Observed gene-vs-own statistic for each gene
     integer(c_int), dimension(n_genes), intent(in), target :: compute_pvalue_own
     !! 1 if the gene-vs-own p-value should be computed, 0 otherwise
+    integer(c_int), intent(in), target :: beta_centre
+    !! 0 = no composition centring; 1 = subtract the median observed statistic
     integer(c_int), intent(in), target :: norm_method
     !! 0 = linear scale; non-zero = log2(x+1) transform
     integer(c_int), intent(in), target :: k_start
@@ -981,6 +1147,12 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     !! Maximum number of residuals in any pool
     real(c_double), dimension(n_genes), intent(out), target :: pvalues_own
     !! Output: gene-vs-own p-values (-1 if not computed)
+    real(c_double), dimension(n_genes), intent(out), target :: observed_statistic_own
+    !! Output: observed case-minus-control statistic (centred when `beta_centre = 1`)
+    real(c_double), dimension(n_genes), intent(out), target :: log2fc
+    !! Output: effect size, log2 fold change of the linear group means
+    real(c_double), intent(out), target :: delta_hat
+    !! Output: median observed statistic across genes (the composition shift)
     integer(c_int), intent(out), target :: n_genes_with_pvalue
     !! Number of genes for which at least one p-value was computed
     integer(c_int), dimension(n_genes), intent(out), target :: neighborhood_size_own_case
@@ -998,12 +1170,10 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     M_CHECK_NON_NULL(n_genes_control)
     M_CHECK_NON_NULL(n_replicates_control)
     M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(means_case)
     M_CHECK_NON_NULL(replicates_case)
-    M_CHECK_NON_NULL(means_control)
     M_CHECK_NON_NULL(replicates_control)
-    M_CHECK_NON_NULL(observed_statistic_own)
     M_CHECK_NON_NULL(compute_pvalue_own)
+    M_CHECK_NON_NULL(beta_centre)
     M_CHECK_NON_NULL(norm_method)
     M_CHECK_NON_NULL(k_start)
     M_CHECK_NON_NULL(k_step)
@@ -1012,6 +1182,9 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     M_CHECK_NON_NULL(null_method)
     M_CHECK_NON_NULL(max_pool_size)
     M_CHECK_NON_NULL(pvalues_own)
+    M_CHECK_NON_NULL(observed_statistic_own)
+    M_CHECK_NON_NULL(log2fc)
+    M_CHECK_NON_NULL(delta_hat)
     M_CHECK_NON_NULL(n_genes_with_pvalue)
     M_CHECK_NON_NULL(neighborhood_size_own_case)
     M_CHECK_NON_NULL(neighborhood_size_own_control)
@@ -1025,11 +1198,11 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     end if
 
     call compute_noise_pvalue_pipeline( &
-        means_case, replicates_case, n_genes_case, n_replicates_case, &
-        means_control, replicates_control, n_genes_control, n_replicates_control, &
-        observed_statistic_own, compute_pvalue_own, &
+        replicates_case, n_genes_case, n_replicates_case, &
+        replicates_control, n_genes_control, n_replicates_control, &
+        compute_pvalue_own, beta_centre, &
         n_genes, norm_method, k_start, k_step, k_max, tau, &
-        pvalues_own, n_genes_with_pvalue, &
+        pvalues_own, observed_statistic_own, log2fc, delta_hat, n_genes_with_pvalue, &
         max_pool_size, &
         neighborhood_size_own_case, neighborhood_size_own_control, &
         neighborhood_size_case, &
