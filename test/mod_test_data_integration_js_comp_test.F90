@@ -5871,7 +5871,8 @@ contains
     !> Characterization (golden) test for run_js_comp_test, written against the pre-refactor code
     !| before its Pass B/C loops moved onto the per-point helpers (determine_point_bin_count,
     !| build_point_study_histogram): every expected value below was captured from that code's own
-    !| output, printed at full precision (es25.17), and is compared EXACTLY (tolerance 0). This is
+    !| output, printed at full precision (es25.17); integers are compared exactly, reals to a relative
+    !| 1e-13 (an optimised build may contract into FMA and move the last bit). This is
     !| deliberately not a hand-derived test -- it exists purely to prove the refactor is
     !| bit-for-bit behavior-preserving. Exception: `p_values` were re-captured after two fixes to
     !| the permutation test -- the random_multiv_hypergeom last-population depletion fix, and
@@ -5910,6 +5911,10 @@ contains
         real(real64) :: p_values_observed_consensus(n_studies)
         integer(int32) :: ierr
         character(len=*), parameter :: name = "test_run_js_comp_test_golden_regression: "
+        ! Reals are compared to 1e-13 relative: an optimised build (`-O3 -march=native`, CI's
+        ! --max-performance) may contract a*b+c into one FMA and move the last bit. Every integer
+        ! output (bins, counts, indices) stays exact.
+        real(real64), parameter :: GOLDEN_RTOL = 1.0e-13_real64
 
         call build_run_js_comp_test_golden_fixture(gene_means, gene_means_perms, residuals, x_star)
 
@@ -5940,35 +5945,35 @@ contains
         call assert_equal_array_int(neighborhood_range, [2, 5, 6, 9, 6, 9, 1, 4, 1, 4, 3, 6, 1, 4, 1, 4, 4, 7], &
                                     2*n_points*n_studies, name//"neighborhood_range", n_rows=2_int32)
         call assert_false(any(occupancy_failed), name//"no point fails occupancy")
-        call assert_equal_array_real(mean_bin_occupancy, [5.83333333333333304e+00_real64, 7.20000000000000018e+00_real64, &
-                1.16666666666666661e+01_real64], n_points, 0.0_real64, name//"mean_bin_occupancy")
-        call assert_equal_array_real(shared_residual_range_low, [-2.14699999999999980e+00_real64, -2.13749999999999973e+00_real64, &
-                -9.49999999999999956e-01_real64], n_points, 0.0_real64, name//"shared_residual_range_low")
-        call assert_equal_array_real(shared_residual_range_high, [1.94799999999999907e+00_real64, 2.28500000000000014e+00_real64, &
-                2.66599999999999859e+00_real64], n_points, 0.0_real64, name//"shared_residual_range_high")
-        call assert_equal_array_real(js_divergences, [7.15954711919930820e-02_real64, 5.69340969660712404e-02_real64, &
+        call assert_allclose_array_real(mean_bin_occupancy, [5.83333333333333304e+00_real64, 7.20000000000000018e+00_real64, &
+                1.16666666666666661e+01_real64], n_points, GOLDEN_RTOL, 0.0_real64, name//"mean_bin_occupancy")
+        call assert_allclose_array_real(shared_residual_range_low, [-2.14699999999999980e+00_real64, -2.13749999999999973e+00_real64, &
+                -9.49999999999999956e-01_real64], n_points, GOLDEN_RTOL, 0.0_real64, name//"shared_residual_range_low")
+        call assert_allclose_array_real(shared_residual_range_high, [1.94799999999999907e+00_real64, 2.28500000000000014e+00_real64, &
+                2.66599999999999859e+00_real64], n_points, GOLDEN_RTOL, 0.0_real64, name//"shared_residual_range_high")
+        call assert_allclose_array_real(js_divergences, [7.15954711919930820e-02_real64, 5.69340969660712404e-02_real64, &
                 1.53345794194357406e-02_real64, 1.59340812730354997e-01_real64, &
                 7.83994812628129034e-02_real64, 1.55068230944686806e-02_real64, &
                 2.10317408393713295e-01_real64, 2.15286223168920043e-01_real64, &
-                9.71785165582409738e-02_real64], n_points*n_studies, 0.0_real64, &
+                9.71785165582409738e-02_real64], n_points*n_studies, GOLDEN_RTOL, 0.0_real64, &
                                      name//"js_divergences", n_rows=n_points)
-        call assert_equal_array_real(weights, [3.26797385620915037e-01_real64, 3.39869281045751648e-01_real64, &
+        call assert_allclose_array_real(weights, [3.26797385620915037e-01_real64, 3.39869281045751648e-01_real64, &
                 3.33333333333333315e-01_real64, 3.33333333333333315e-01_real64, &
                 3.40425531914893609e-01_real64, 3.26241134751773076e-01_real64, &
                 3.30769230769230760e-01_real64, 3.38461538461538480e-01_real64, &
-                3.30769230769230760e-01_real64], n_points*n_studies, 0.0_real64, &
+                3.30769230769230760e-01_real64], n_points*n_studies, GOLDEN_RTOL, 0.0_real64, &
                                      name//"weights", n_rows=n_points)
-        call assert_equal_array_real(global_js_divergence, [4.78588898838338689e-02_real64, 8.48617529169309465e-02_real64, &
-                1.74576296864357827e-01_real64], n_studies, 0.0_real64, name//"global_js_divergence")
+        call assert_allclose_array_real(global_js_divergence, [4.78588898838338689e-02_real64, 8.48617529169309465e-02_real64, &
+                1.74576296864357827e-01_real64], n_studies, GOLDEN_RTOL, 0.0_real64, name//"global_js_divergence")
         ! p_values re-captured after the random_multiv_hypergeom last-bin depletion fix and the
         ! per-permutation consensus fix (100/301, 32/301, 1/301)
-        call assert_equal_array_real(p_values, [3.32225913621262470e-01_real64, 1.06312292358803989e-01_real64, &
-                3.32225913621262466e-03_real64], n_studies, 0.0_real64, name//"p_values")
+        call assert_allclose_array_real(p_values, [3.32225913621262470e-01_real64, 1.06312292358803989e-01_real64, &
+                3.32225913621262466e-03_real64], n_studies, GOLDEN_RTOL, 0.0_real64, name//"p_values")
         ! p_values_observed_consensus compares the same permutations against the observed
         ! consensus, as p_values did before the per-permutation consensus fix, so it must
         ! reproduce that capture exactly (49/301, 26/301, 8/301)
-        call assert_equal_array_real(p_values_observed_consensus, [1.62790697674418616e-01_real64, &
-                8.63787375415282360e-02_real64, 2.65780730897009973e-02_real64], n_studies, 0.0_real64, &
+        call assert_allclose_array_real(p_values_observed_consensus, [1.62790697674418616e-01_real64, &
+                8.63787375415282360e-02_real64, 2.65780730897009973e-02_real64], n_studies, GOLDEN_RTOL, 0.0_real64, &
                 name//"p_values_observed_consensus")
         ! counts per (point, study), rows 1:max_n_bins_per_point -- rows beyond the point's own
         ! n_bins_per_point are the zero padding build_residual_histograms_impl guarantees
@@ -10627,7 +10632,10 @@ contains
         call assert_equal_array_real(b%trace_jsd(:, 1:a%n_admissible), a%trace_jsd(:, 1:a%n_admissible), &
                                      2_int32*a%n_admissible, 0.0_real64, name//"trace_global_js_divergence")
         call assert_traced_bins_equal(name, a, b)
-        call assert_equal_array_int(b%cand_status, a%cand_status, 16_int32, name//"candidate_status")
+        ! only the first n_candidates_tried entries are defined (DM_RESULT_SIZE_IS); the rest is
+        ! whatever the caller's buffer held, which differs between two calls under -O3
+        call assert_equal_array_int(b%cand_status(1:a%n_tried), a%cand_status(1:a%n_tried), a%n_tried, &
+                                    name//"candidate_status")
     end subroutine test_adaptive_search_bin_count_mode_default_is_occupancy
 
     !> run_js_comp_test_adaptive_parameter_search in every Stone mode (adaptive Stone fixture,
