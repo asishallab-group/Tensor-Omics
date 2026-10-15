@@ -18,6 +18,7 @@ from tensor_omics import (
     compute_divergence_per_reference_point,
     compute_weighted_global_divergence,
     calc_pmf,
+    jct_compute_jsd_pipeline,
 )
 from tensor_omics.error_handling import ERR_INVALID_INPUT
 
@@ -584,6 +585,34 @@ def test_calc_pmf():
     included_n_reps = np.array([1], dtype=np.int32, order="F")
 
     assert_error(lambda: calc_pmf(counts, included_n_reps), "Test 3 failed: expected ERR_INVALID_INPUT", ERR_INVALID_INPUT)
+
+
+def test_jct_compute_jsd_pipeline():
+    """Call-ability, return types/shapes and non-error only; the exact equality with its three
+    steps is the Fortran suite's job (test_jct_compute_jsd_pipeline_matches_its_steps)."""
+    rng = np.random.default_rng(224)
+    n_neighbors, n_points, n_bins = 4, 3, 5
+    residuals_S1 = np.asfortranarray(rng.normal(size=(3, n_neighbors, n_points)))
+    residuals_S2 = np.asfortranarray(rng.normal(size=(4, n_neighbors, n_points)))
+    residuals_S2[1, 2, 1] = np.nan  # NaN marks a missing value and is accepted
+
+    result = jct_compute_jsd_pipeline(residuals_S1, residuals_S2, n_bins, 2.0)
+    assert result["js_divergences"].shape == (n_points,), "js_divergences shape"
+    assert result["weights"].shape == (n_points,), "weights shape"
+    assert result["included_n_reps_S1"].shape == (n_points,), "included_n_reps_S1 shape"
+    assert result["included_n_reps_S2"].shape == (n_points,), "included_n_reps_S2 shape"
+    assert result["pmf_S1"].shape == (n_points, n_bins), "pmf_S1 shape"
+    assert result["pmf_S2"].shape == (n_points, n_bins), "pmf_S2 shape"
+    assert np.isfinite(result["global_js_divergence"]), "global_js_divergence must be finite"
+    assert result["included_n_reps_S2"][1] == 4 * n_neighbors - 1, "the NaN residual is not counted"
+
+    mask_S1 = np.ones((n_neighbors, n_points), dtype=bool, order="F")
+    mask_S1[1, 0] = False
+    masked = jct_compute_jsd_pipeline(residuals_S1, residuals_S2, n_bins, 2.0, neighbor_mask_S1=mask_S1)
+    assert masked["included_n_reps_S1"][0] == 3 * (n_neighbors - 1), "the masked neighbor is not counted"
+
+    assert_error(lambda: jct_compute_jsd_pipeline(residuals_S1, residuals_S2, n_bins, -1.0),
+                 "expected ERR_INVALID_INPUT for a negative shared_residual_range", ERR_INVALID_INPUT)
 
 
 def main():

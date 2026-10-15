@@ -1589,7 +1589,7 @@
     "prefix": "tox:data_integration_jsd.use",
     "description": "use tox_data_integration_jsd, only: ...",
     "body": [
-      "use tox_data_integration_jsd, only: ${1|determine_shared_residual_range,determine_shared_residual_range_expert,determine_study_shared_residual_range,build_residual_histograms,calc_pmf,compute_divergence_per_reference_point,compute_weighted_global_divergence|}"
+      "use tox_data_integration_jsd, only: ${1|determine_shared_residual_range,determine_shared_residual_range_expert,determine_study_shared_residual_range,build_residual_histograms,calc_pmf,compute_divergence_per_reference_point,compute_weighted_global_divergence,jct_compute_jsd_pipeline|}"
     ]
   },
   "determine_shared_residual_range (call)": {
@@ -1798,6 +1798,57 @@
       "    global_js_divergence=${5:global_js_divergence}, &",
       "    weights=${6:weights}, &",
       "    ierr=${7:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "jct_compute_jsd_pipeline (call)": {
+    "prefix": "tox:jct_compute_jsd_pipeline",
+    "description": "Runs [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]] for",
+    "body": [
+      "call jct_compute_jsd_pipeline( &",
+      "    neighborhood_residuals_S1=${1:neighborhood_residuals_S1}, &",
+      "    neighborhood_residuals_S2=${2:neighborhood_residuals_S2}, &",
+      "    n_reps_S1=${3:n_reps_S1}, &",
+      "    n_reps_S2=${4:n_reps_S2}, &",
+      "    n_neighbors=${5:n_neighbors}, &",
+      "    n_points=${6:n_points}, &",
+      "    n_bins=${7:n_bins}, &",
+      "    shared_residual_range=${8:shared_residual_range}, &",
+      "    js_divergences=${9:js_divergences}, &",
+      "    included_n_reps_S1=${10:included_n_reps_S1}, &",
+      "    included_n_reps_S2=${11:included_n_reps_S2}, &",
+      "    global_js_divergence=${12:global_js_divergence}, &",
+      "    weights=${13:weights}, &",
+      "    pmf_S1=${14:pmf_S1}, &",
+      "    pmf_S2=${15:pmf_S2}, &",
+      "    neighbor_mask_S1=${16:neighbor_mask_S1}, &",
+      "    neighbor_mask_S2=${17:neighbor_mask_S2}, &",
+      "    ierr=${18:ierr})"
+    ]
+  },
+  "jct_compute_jsd_pipeline (call, checked)": {
+    "prefix": "tox:jct_compute_jsd_pipeline.checked",
+    "description": "Runs [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]] for (with error check)",
+    "body": [
+      "call jct_compute_jsd_pipeline( &",
+      "    neighborhood_residuals_S1=${1:neighborhood_residuals_S1}, &",
+      "    neighborhood_residuals_S2=${2:neighborhood_residuals_S2}, &",
+      "    n_reps_S1=${3:n_reps_S1}, &",
+      "    n_reps_S2=${4:n_reps_S2}, &",
+      "    n_neighbors=${5:n_neighbors}, &",
+      "    n_points=${6:n_points}, &",
+      "    n_bins=${7:n_bins}, &",
+      "    shared_residual_range=${8:shared_residual_range}, &",
+      "    js_divergences=${9:js_divergences}, &",
+      "    included_n_reps_S1=${10:included_n_reps_S1}, &",
+      "    included_n_reps_S2=${11:included_n_reps_S2}, &",
+      "    global_js_divergence=${12:global_js_divergence}, &",
+      "    weights=${13:weights}, &",
+      "    pmf_S1=${14:pmf_S1}, &",
+      "    pmf_S2=${15:pmf_S2}, &",
+      "    neighbor_mask_S1=${16:neighbor_mask_S1}, &",
+      "    neighbor_mask_S2=${17:neighbor_mask_S2}, &",
+      "    ierr=${18:ierr})",
       "if (is_err(ierr)) return"
     ]
   },

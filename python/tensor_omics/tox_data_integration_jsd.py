@@ -135,6 +135,33 @@ _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENTS = ("js_divergences", "n_points", "
 #: For a derived argument, the one the caller passed it in
 _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENT_SOURCES = (None, "js_divergences", None, None, None, None, None,)
 
+_lib.jct_compute_jsd_pipeline_c.restype = None
+_lib.jct_compute_jsd_pipeline_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_double),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    nullable(np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS')),
+    nullable(np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS')),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_JCT_COMPUTE_JSD_PIPELINE_ARGUMENTS = ("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "n_bins", "shared_residual_range", "js_divergences", "included_n_reps_S1", "included_n_reps_S2", "global_js_divergence", "weights", "pmf_S1", "pmf_S2", "neighbor_mask_S1", "neighbor_mask_S2", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_JCT_COMPUTE_JSD_PIPELINE_ARGUMENT_SOURCES = (None, None, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", "pmf_S1", None, None, None, None, None, None, None, None, None, None, None,)
+
 def determine_shared_residual_range(
         abs_residual_pool,
         residual_range_quantile_level=0.95,
@@ -786,4 +813,169 @@ def compute_weighted_global_divergence(
     return {
         "global_js_divergence": global_js_divergence.value,
         "weights": weights,
+    }
+
+def jct_compute_jsd_pipeline(
+        neighborhood_residuals_S1,
+        neighborhood_residuals_S2,
+        n_bins,
+        shared_residual_range,
+        neighbor_mask_S1=None,
+        neighbor_mask_S2=None,
+):
+    r"""Compute the JSD of two studies from their neighborhood residuals in one call
+
+    Runs :func:`tensor_omics.build_residual_histograms` for
+    each study, :func:`tensor_omics.compute_divergence_per_reference_point`
+    and :func:`tensor_omics.compute_weighted_global_divergence`,
+    with one bin count `n_bins` and one symmetric range `[-shared_residual_range, shared_residual_range]`
+    for every reference point.
+
+    Parameters
+    ----------
+    neighborhood_residuals_S1 : np.ndarray[np.float64] of shape (n_reps_S1, n_neighbors, n_points,), column-major (order='F')
+        Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+        NaN is permitted for this value.
+    neighborhood_residuals_S2 : np.ndarray[np.float64] of shape (n_reps_S2, n_neighbors, n_points,), column-major (order='F')
+        Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+        NaN is permitted for this value.
+    n_bins : int
+        Number of equally sized histogram bins used for the studies
+    shared_residual_range : float
+        Computed residual range for both studies
+        The minimum valid value is `0.0`.
+    neighbor_mask_S1 : np.ndarray[np.bool_] of shape (n_neighbors, n_points,), column-major (order='F'), optional
+        Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
+    neighbor_mask_S2 : np.ndarray[np.bool_] of shape (n_neighbors, n_points,), column-major (order='F'), optional
+        Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        js_divergences : np.ndarray[np.float64] of shape (n_points,), read-only
+            Jensen-Shannon divergence per reference point, computed for studies S1 and S2
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        included_n_reps_S1 : np.ndarray[np.int32] of shape (n_points,), read-only
+            Count of non-NaN residuals (included ones) in study 1
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        included_n_reps_S2 : np.ndarray[np.int32] of shape (n_points,), read-only
+            Count of non-NaN residuals (included ones) in study 2
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        global_js_divergence : float
+            Weighted global Jensen-Shannon divergence
+        weights : np.ndarray[np.float64] of shape (n_points,), read-only
+            Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        pmf_S1 : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F'), read-only
+            Normalized histogram counts for study 1
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        pmf_S2 : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F'), read-only
+            Normalized histogram counts for study 2
+            A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_jsd::jct_compute_jsd_pipeline`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        neighborhood_residuals_S1 = np.asfortranarray(neighborhood_residuals_S1, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'neighborhood_residuals_S1' must be an array of np.float64: {error}") from None
+    if neighborhood_residuals_S1.ndim != 3:
+        raise ValueError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}")
+    try:
+        neighborhood_residuals_S2 = np.asfortranarray(neighborhood_residuals_S2, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'neighborhood_residuals_S2' must be an array of np.float64: {error}") from None
+    if neighborhood_residuals_S2.ndim != 3:
+        raise ValueError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}")
+    if neighbor_mask_S1 is not None:
+        try:
+            neighbor_mask_S1 = np.asfortranarray(neighbor_mask_S1, dtype=np.bool_)
+        except (TypeError, ValueError) as error:
+            raise TypeError(f"'neighbor_mask_S1' must be an array of np.bool_: {error}") from None
+        if neighbor_mask_S1.ndim != 2:
+            raise ValueError(f"'neighbor_mask_S1' must have 2 dimensions, but has {neighbor_mask_S1.ndim}")
+    if neighbor_mask_S2 is not None:
+        try:
+            neighbor_mask_S2 = np.asfortranarray(neighbor_mask_S2, dtype=np.bool_)
+        except (TypeError, ValueError) as error:
+            raise TypeError(f"'neighbor_mask_S2' must be an array of np.bool_: {error}") from None
+        if neighbor_mask_S2.ndim != 2:
+            raise ValueError(f"'neighbor_mask_S2' must have 2 dimensions, but has {neighbor_mask_S2.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_reps_S1 = neighborhood_residuals_S1.shape[0]
+    n_reps_S2 = neighborhood_residuals_S2.shape[0]
+    n_neighbors = neighborhood_residuals_S1.shape[1]
+    n_points = neighborhood_residuals_S1.shape[2]
+
+    # Fortran cannot check that shared extents agree; this can
+    if neighborhood_residuals_S2.shape[1] != n_neighbors:
+        raise ValueError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but "
+            f"'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}"
+        )
+    if neighborhood_residuals_S2.shape[2] != n_points:
+        raise ValueError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but "
+            f"'neighborhood_residuals_S1' implies n_points == {n_points}"
+        )
+
+    # outputs and work arrays, which the caller never sees
+    js_divergences = np.empty((n_points,), dtype=np.float64, order='C')
+    included_n_reps_S1 = np.empty((n_points,), dtype=np.int32, order='C')
+    included_n_reps_S2 = np.empty((n_points,), dtype=np.int32, order='C')
+    global_js_divergence = ctypes.c_double(0)
+    weights = np.empty((n_points,), dtype=np.float64, order='C')
+    pmf_S1 = np.empty((n_points, n_bins,), dtype=np.float64, order='F')
+    pmf_S2 = np.empty((n_points, n_bins,), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+
+    _lib.jct_compute_jsd_pipeline_c(
+        neighborhood_residuals_S1,
+        neighborhood_residuals_S2,
+        ctypes.byref(ctypes.c_int(n_reps_S1)),
+        ctypes.byref(ctypes.c_int(n_reps_S2)),
+        ctypes.byref(ctypes.c_int(n_neighbors)),
+        ctypes.byref(ctypes.c_int(n_points)),
+        ctypes.byref(ctypes.c_int(n_bins)),
+        ctypes.byref(ctypes.c_double(shared_residual_range)),
+        js_divergences,
+        included_n_reps_S1,
+        included_n_reps_S2,
+        ctypes.byref(global_js_divergence),
+        weights,
+        pmf_S1,
+        pmf_S2,
+        neighbor_mask_S1,
+        neighbor_mask_S2,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _JCT_COMPUTE_JSD_PIPELINE_ARGUMENTS, _JCT_COMPUTE_JSD_PIPELINE_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    js_divergences.flags.writeable = False
+    included_n_reps_S1.flags.writeable = False
+    included_n_reps_S2.flags.writeable = False
+    weights.flags.writeable = False
+    pmf_S1.flags.writeable = False
+    pmf_S2.flags.writeable = False
+
+    return {
+        "js_divergences": js_divergences,
+        "included_n_reps_S1": included_n_reps_S1,
+        "included_n_reps_S2": included_n_reps_S2,
+        "global_js_divergence": global_js_divergence.value,
+        "weights": weights,
+        "pmf_S1": pmf_S1,
+        "pmf_S2": pmf_S2,
     }

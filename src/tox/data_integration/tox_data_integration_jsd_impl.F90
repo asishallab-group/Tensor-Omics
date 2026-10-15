@@ -19,7 +19,7 @@ module tox_data_integration_jsd_impl
     public :: determine_shared_residual_range_impl, determine_study_shared_residual_range_impl, &
              build_residual_histograms_impl, calc_pmf_impl, &
              compute_divergence_per_reference_point_impl, compute_weighted_global_divergence_impl, &
-             jct_compute_jsd_pipeline_helper
+             jct_compute_jsd_pipeline_impl
 contains
 
     !> summary: Compute the shared residual range [-R, R] from a pooled set of absolute residuals
@@ -387,10 +387,14 @@ contains
         end if
     end subroutine compute_weighted_global_divergence_impl
 
-    !> summary: Run the pipeline build_residual_histograms => compute_weighted_global_divergence
+    !> summary: Compute the JSD of two studies from their neighborhood residuals in one call
     !| AUTHOR_FRANZ_ERIC_SILL
-    !| Internal helper: the per-family analysis drives this.
-    pure subroutine jct_compute_jsd_pipeline_helper(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, tmp_n_bins_per_point, tmp_shared_residual_range_low, tmp_shared_residual_range_high, neighbor_mask_S1, neighbor_mask_S2)
+    !| Runs [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]] for
+    !| each study, [[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl(interface)]]
+    !| and [[tox_data_integration_jsd_impl(module):compute_weighted_global_divergence_impl(interface)]],
+    !| with one bin count `n_bins` and one symmetric range `[-shared_residual_range, shared_residual_range]`
+    !| for every reference point.
+    pure subroutine jct_compute_jsd_pipeline_impl(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, tmp_n_bins_per_point, tmp_shared_residual_range_low, tmp_shared_residual_range_high, neighbor_mask_S1, neighbor_mask_S2)
         integer(int32), intent(in) :: n_reps_S1
             !! Number of replicates in study 1
         integer(int32), intent(in) :: n_reps_S2
@@ -401,12 +405,15 @@ contains
             !! Number of reference points in the studies
         real(real64), dimension(n_reps_S1, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S1
             !! Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+            !! DM_ALLOW_NAN
         real(real64), dimension(n_reps_S2, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S2
             !! Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+            !! DM_ALLOW_NAN
         integer(int32), intent(in) :: n_bins
             !! Number of equally sized histogram bins used for the studies
         real(real64), intent(in) :: shared_residual_range
             !! Computed residual range for both studies
+            !! DM_MIN(0.0_real64)
         real(real64), dimension(n_points), intent(out) :: js_divergences
             !! Jensen-Shannon divergence per reference point, computed for studies S1 and S2
         integer(int32), dimension(n_points), intent(out) :: included_n_reps_S1
@@ -424,16 +431,14 @@ contains
         integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts
             !! Working array for the histogram counts
         integer(int32), dimension(n_points), intent(out) :: tmp_n_bins_per_point
-            !! Working array: `n_bins` broadcast to every reference point, since per-family
-            !! analysis (this helper's only caller) is out of scope for per-neighborhood binning
-            !! and keeps one uniform bin count -- passed on to
+            !! Working array: `n_bins` broadcast to every reference point, since this routine uses
+            !! one uniform bin count -- passed on to
             !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]'s
             !! own `n_bins_per_point`
         real(real64), dimension(n_points), intent(out) :: tmp_shared_residual_range_low
             !! Working array: `-shared_residual_range` broadcast to every reference point, since
-            !! per-family analysis (this helper's only caller) is out of scope for the
-            !! per-neighborhood asymmetric range Step 3 introduced and keeps one uniform symmetric
-            !! range `[-shared_residual_range, shared_residual_range]` instead -- passed on to
+            !! this routine uses one uniform symmetric range
+            !! `[-shared_residual_range, shared_residual_range]` -- passed on to
             !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]'s
             !! own `shared_residual_range_low`
         real(real64), dimension(n_points), intent(out) :: tmp_shared_residual_range_high
@@ -454,5 +459,5 @@ contains
         call build_residual_histograms_impl(neighborhood_residuals_S2, n_reps_S2, n_neighbors, n_points, tmp_shared_residual_range_low, tmp_shared_residual_range_high, n_bins, tmp_n_bins_per_point, tmp_counts, pmf_S2, included_n_reps_S2, neighbor_mask_S2)
         call compute_divergence_per_reference_point_impl(pmf_S1, pmf_S2, n_points, n_bins, js_divergences)
         call compute_weighted_global_divergence_impl(js_divergences, n_points, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights)
-    end subroutine jct_compute_jsd_pipeline_helper
+    end subroutine jct_compute_jsd_pipeline_impl
 end module tox_data_integration_jsd_impl

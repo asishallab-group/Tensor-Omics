@@ -110,6 +110,7 @@ from .tox_data_integration_jsd import (
     calc_pmf,
     compute_divergence_per_reference_point,
     compute_weighted_global_divergence,
+    jct_compute_jsd_pipeline,
 )
 from .tox_data_integration_per_family import (
     fjct_compute_jsd,
@@ -317,6 +318,7 @@ __all__ = [
     "group_centroid_all",
     "group_centroid_orthologs",
     "identify_outliers",
+    "jct_compute_jsd_pipeline",
     "k_means_clustering",
     "linkage_clustering",
     "loess_fit_plain",

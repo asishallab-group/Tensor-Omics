@@ -106,6 +106,7 @@ SEXP build_residual_histograms_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_pmf_call(SEXP, SEXP);
 SEXP compute_divergence_per_reference_point_call(SEXP, SEXP);
 SEXP compute_weighted_global_divergence_call(SEXP, SEXP, SEXP);
+SEXP jct_compute_jsd_pipeline_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP fjct_compute_jsd_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP fjct_compute_masked_jsd_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP fjct_compute_contribution_scores_call(SEXP, SEXP);
@@ -246,6 +247,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"calc_pmf_call", (DL_FUNC) &calc_pmf_call, 2},
     {"compute_divergence_per_reference_point_call", (DL_FUNC) &compute_divergence_per_reference_point_call, 2},
     {"compute_weighted_global_divergence_call", (DL_FUNC) &compute_weighted_global_divergence_call, 3},
+    {"jct_compute_jsd_pipeline_call", (DL_FUNC) &jct_compute_jsd_pipeline_call, 6},
     {"fjct_compute_jsd_call", (DL_FUNC) &fjct_compute_jsd_call, 9},
     {"fjct_compute_masked_jsd_call", (DL_FUNC) &fjct_compute_masked_jsd_call, 6},
     {"fjct_compute_contribution_scores_call", (DL_FUNC) &fjct_compute_contribution_scores_call, 2},

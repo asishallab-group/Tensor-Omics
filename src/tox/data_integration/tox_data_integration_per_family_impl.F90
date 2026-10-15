@@ -10,7 +10,7 @@ module tox_data_integration_per_family_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use f42_math_impl, only: is_close
-    use tox_data_integration_jsd_impl, only: jct_compute_jsd_pipeline_helper
+    use tox_data_integration_jsd_impl, only: jct_compute_jsd_pipeline_impl
     M_IMPLICIT_NONE
     private
     public :: fjct_compute_jsd_impl, fjct_compute_masked_jsd_impl, fjct_compute_contribution_scores_impl
@@ -162,18 +162,18 @@ contains
             !! Work array for the histogram counts
         integer(int32), dimension(n_points), intent(out) :: tmp_n_bins_per_point
             !! Work array forwarded to
-            !! [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_helper(interface)]],
+            !! [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_impl(interface)]],
             !! which fills it with `n_bins` broadcast to every reference point
         real(real64), dimension(n_points), intent(out) :: tmp_shared_residual_range_low
             !! Work array forwarded to
-            !! [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_helper(interface)]],
+            !! [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_impl(interface)]],
             !! which fills it with `-shared_residual_range` broadcast to every reference point
         real(real64), dimension(n_points), intent(out) :: tmp_shared_residual_range_high
             !! Work array forwarded to
-            !! [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_helper(interface)]],
+            !! [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_impl(interface)]],
             !! which fills it with `shared_residual_range` broadcast to every reference point
 
-        call jct_compute_jsd_pipeline_helper(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, tmp_n_bins_per_point, tmp_shared_residual_range_low, tmp_shared_residual_range_high, neighbor_mask_S1, neighbor_mask_S2)
+        call jct_compute_jsd_pipeline_impl(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, tmp_n_bins_per_point, tmp_shared_residual_range_low, tmp_shared_residual_range_high, neighbor_mask_S1, neighbor_mask_S2)
         total_included_n_reps = sum(included_n_reps_S1) + sum(included_n_reps_S2)
     end subroutine fjct_compute_masked_jsd_impl
 

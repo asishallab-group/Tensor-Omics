@@ -500,6 +500,34 @@ test_calc_pmf <- function() {
   )
 }
 
+test_jct_compute_jsd_pipeline <- function() {
+  # Call-ability, return types/shapes and non-error only; the exact equality with its three steps
+  # is the Fortran suite's job (test_jct_compute_jsd_pipeline_matches_its_steps).
+  set.seed(224)
+  n_neighbors <- 4L; n_points <- 3L; n_bins <- 5L
+  residuals_S1 <- array(rnorm(3 * n_neighbors * n_points), dim = c(3, n_neighbors, n_points))
+  residuals_S2 <- array(rnorm(4 * n_neighbors * n_points), dim = c(4, n_neighbors, n_points))
+  residuals_S2[2, 3, 2] <- NaN # NaN marks a missing value and is accepted
+
+  result <- jct_compute_jsd_pipeline(residuals_S1, residuals_S2, n_bins, 2.0)
+  assert_equal_int(length(result$js_divergences), n_points, "js_divergences length")
+  assert_equal_int(length(result$weights), n_points, "weights length")
+  assert_equal_int(length(result$included_n_reps_S1), n_points, "included_n_reps_S1 length")
+  assert_equal_int(length(result$included_n_reps_S2), n_points, "included_n_reps_S2 length")
+  assert_equal_int(dim(result$pmf_S1), c(n_points, n_bins), "pmf_S1 shape")
+  assert_equal_int(dim(result$pmf_S2), c(n_points, n_bins), "pmf_S2 shape")
+  assert_true(is.finite(result$global_js_divergence), "global_js_divergence must be finite")
+  assert_equal_int(as.integer(result$included_n_reps_S2[2]), 4L * n_neighbors - 1L, "the NaN residual is not counted")
+
+  mask_S1 <- matrix(TRUE, n_neighbors, n_points)
+  mask_S1[2, 1] <- FALSE
+  masked <- jct_compute_jsd_pipeline(residuals_S1, residuals_S2, n_bins, 2.0, neighbor_mask_S1 = mask_S1)
+  assert_equal_int(as.integer(masked$included_n_reps_S1[1]), 3L * (n_neighbors - 1L), "the masked neighbor is not counted")
+
+  assert_error(jct_compute_jsd_pipeline(residuals_S1, residuals_S2, n_bins, -1.0),
+               "expected ERR_INVALID_INPUT for a negative shared_residual_range", ERR_INVALID_INPUT)
+}
+
 # test_gjct_permutation_test was removed here: gjct_permutation_test was replaced by a K-study,
 # consensus-based version (see tox_data_integration_js_comp_test) -- the old 2-study test that
 # lived in this file was removed rather than adapted, since the signature is unrelated. Its own

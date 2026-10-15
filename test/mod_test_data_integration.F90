@@ -17,7 +17,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(24))
+        allocate (all_tests(26))
         all_tests(1) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
         all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(3) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
@@ -53,6 +53,10 @@ contains
                                   test_compute_weighted_global_divergence_large_counts)
         all_tests(24) = test_case("test_pool_means_expert_rejects_out_of_range_perm", &
                                   test_pool_means_expert_rejects_out_of_range_perm)
+        all_tests(25) = test_case("test_jct_compute_jsd_pipeline_matches_its_steps", &
+                                  test_jct_compute_jsd_pipeline_matches_its_steps)
+        all_tests(26) = test_case("test_jct_compute_jsd_pipeline_rejects_negative_range", &
+                                  test_jct_compute_jsd_pipeline_rejects_negative_range)
     end function get_all_tests_data_integration
 
     !> Test the fjct_compute_jsd function.
@@ -1400,4 +1404,97 @@ contains
                                     "test_construct_neighborhoods_nan_means: NaN mean handling incorrect")
     end subroutine test_construct_neighborhoods_nan_means
 
+
+    !> jct_compute_jsd_pipeline gives bit-identical results to calling its three steps one by one
+    !| (build_residual_histograms per study with one bin count and the range [-R, R], then
+    !| compute_divergence_per_reference_point and compute_weighted_global_divergence), both
+    !| without and with the optional neighbor masks. One residual is NaN, which the routine must
+    !| accept (DM_ALLOW_NAN) and leave out of the counts.
+    subroutine test_jct_compute_jsd_pipeline_matches_its_steps()
+        use, intrinsic :: iso_c_binding, only: c_bool
+        integer(int32), parameter :: n_reps_S1 = 3, n_reps_S2 = 4, n_neighbors = 4, n_points = 3, n_bins = 5
+        real(real64), parameter :: R = 2.0_real64
+        real(real64) :: E1(n_reps_S1, n_neighbors, n_points), E2(n_reps_S2, n_neighbors, n_points)
+        logical(c_bool) :: mask1(n_neighbors, n_points), mask2(n_neighbors, n_points)
+        real(real64) :: jsd(n_points), w(n_points), pmf1(n_points, n_bins), pmf2(n_points, n_bins), global_jsd
+        integer(int32) :: inc1(n_points), inc2(n_points)
+        real(real64) :: ref_jsd(n_points), ref_w(n_points), ref_pmf1(n_points, n_bins), ref_pmf2(n_points, n_bins)
+        real(real64) :: ref_global_jsd, r_low(n_points), r_high(n_points)
+        integer(int32) :: ref_inc1(n_points), ref_inc2(n_points), counts(n_points, n_bins), bins_per_point(n_points)
+        integer(int32) :: ierr, i_rep, i_neighbor, i_point, i_case
+
+        do i_point = 1, n_points
+            do i_neighbor = 1, n_neighbors
+                do i_rep = 1, n_reps_S1
+                    E1(i_rep, i_neighbor, i_point) = 0.37_real64*real(i_rep + 2*i_neighbor - 3*i_point, real64) - 0.4_real64
+                end do
+                do i_rep = 1, n_reps_S2
+                    E2(i_rep, i_neighbor, i_point) = 0.29_real64*real(2*i_rep - i_neighbor + i_point, real64) - 0.9_real64
+                end do
+            end do
+        end do
+        E2(2, 3, 2) = ieee_value(1.0_real64, ieee_quiet_nan)
+        mask1 = .true._c_bool
+        mask1(2, 1) = .false._c_bool
+        mask2 = .true._c_bool
+        mask2(4, 3) = .false._c_bool
+
+        r_low = -R
+        r_high = R
+        bins_per_point = n_bins
+        do i_case = 1, 2
+            if (i_case == 1) then
+                call jct_compute_jsd_pipeline(E1, E2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, R, jsd, &
+                                              inc1, inc2, global_jsd, w, pmf1, pmf2, ierr=ierr)
+                call assert_equal_int(get_err_code(ierr), ERR_OK, "pipeline without masks should succeed")
+                call build_residual_histograms(E1, n_reps_S1, n_neighbors, n_points, r_low, r_high, n_bins, &
+                                               bins_per_point, counts, ref_pmf1, ref_inc1, ierr=ierr)
+                call assert_equal_int(get_err_code(ierr), ERR_OK, "reference histograms of study 1 should succeed")
+                call build_residual_histograms(E2, n_reps_S2, n_neighbors, n_points, r_low, r_high, n_bins, &
+                                               bins_per_point, counts, ref_pmf2, ref_inc2, ierr=ierr)
+                call assert_equal_int(get_err_code(ierr), ERR_OK, "reference histograms of study 2 should succeed")
+            else
+                call jct_compute_jsd_pipeline(E1, E2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, R, jsd, &
+                                              inc1, inc2, global_jsd, w, pmf1, pmf2, mask1, mask2, ierr=ierr)
+                call assert_equal_int(get_err_code(ierr), ERR_OK, "pipeline with masks should succeed")
+                call build_residual_histograms(E1, n_reps_S1, n_neighbors, n_points, r_low, r_high, n_bins, &
+                                               bins_per_point, counts, ref_pmf1, ref_inc1, mask1, ierr=ierr)
+                call assert_equal_int(get_err_code(ierr), ERR_OK, "masked reference histograms of study 1 should succeed")
+                call build_residual_histograms(E2, n_reps_S2, n_neighbors, n_points, r_low, r_high, n_bins, &
+                                               bins_per_point, counts, ref_pmf2, ref_inc2, mask2, ierr=ierr)
+                call assert_equal_int(get_err_code(ierr), ERR_OK, "masked reference histograms of study 2 should succeed")
+            end if
+            call compute_divergence_per_reference_point(ref_pmf1, ref_pmf2, n_points, n_bins, ref_jsd, ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "reference divergences should succeed")
+            call compute_weighted_global_divergence(ref_jsd, n_points, ref_inc1, ref_inc2, ref_global_jsd, ref_w, ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "reference global divergence should succeed")
+
+            call assert_equal_array_real(pmf1, ref_pmf1, n_points*n_bins, 0.0_real64, "pmf_S1 equals its step")
+            call assert_equal_array_real(pmf2, ref_pmf2, n_points*n_bins, 0.0_real64, "pmf_S2 equals its step")
+            call assert_equal_array_int(inc1, ref_inc1, n_points, "included_n_reps_S1 equals its step")
+            call assert_equal_array_int(inc2, ref_inc2, n_points, "included_n_reps_S2 equals its step")
+            call assert_equal_array_real(jsd, ref_jsd, n_points, 0.0_real64, "js_divergences equal their step")
+            call assert_equal_array_real(w, ref_w, n_points, 0.0_real64, "weights equal their step")
+            call assert_equal_real(global_jsd, ref_global_jsd, 0.0_real64, "global_js_divergence equals its step")
+        end do
+        ! the NaN residual is left out: point 2 of study 2 has one fewer included residual than unmasked
+        call assert_equal_int(inc2(2), n_reps_S2*n_neighbors - 1_int32, "NaN residual is not counted")
+        ! the masked neighbor is left out: point 1 of study 1 loses n_reps_S1 residuals
+        call assert_equal_int(inc1(1), n_reps_S1*(n_neighbors - 1_int32), "masked neighbor is not counted")
+    end subroutine test_jct_compute_jsd_pipeline_matches_its_steps
+
+    !> jct_compute_jsd_pipeline rejects a negative shared_residual_range (DM_MIN(0.0_real64)) at
+    !| its argument position 8.
+    subroutine test_jct_compute_jsd_pipeline_rejects_negative_range()
+        integer(int32), parameter :: n_reps = 2, n_neighbors = 2, n_points = 1, n_bins = 2
+        real(real64) :: E1(n_reps, n_neighbors, n_points), E2(n_reps, n_neighbors, n_points)
+        real(real64) :: jsd(n_points), w(n_points), pmf1(n_points, n_bins), pmf2(n_points, n_bins), global_jsd
+        integer(int32) :: inc1(n_points), inc2(n_points), ierr
+
+        E1 = 0.5_real64
+        E2 = -0.5_real64
+        call jct_compute_jsd_pipeline(E1, E2, n_reps, n_reps, n_neighbors, n_points, n_bins, -1.0_real64, jsd, &
+                                      inc1, inc2, global_jsd, w, pmf1, pmf2, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "negative shared_residual_range is rejected", arg_pos=8_int32)
+    end subroutine test_jct_compute_jsd_pipeline_rejects_negative_range
 end module mod_test_data_integration

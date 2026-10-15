@@ -528,15 +528,15 @@ contains
             !! Work array for the histogram counts
         integer(int32), dimension(n_points), intent(out) :: tmp_n_bins_per_point
             !! Work array forwarded to
-            !! [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_helper(interface)]],
+            !! [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_impl(interface)]],
             !! which fills it with `n_bins` broadcast to every reference point
         real(real64), dimension(n_points), intent(out) :: tmp_shared_residual_range_low
             !! Work array forwarded to
-            !! [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_helper(interface)]],
+            !! [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_impl(interface)]],
             !! which fills it with `-shared_residual_range` broadcast to every reference point
         real(real64), dimension(n_points), intent(out) :: tmp_shared_residual_range_high
             !! Work array forwarded to
-            !! [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_helper(interface)]],
+            !! [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_impl(interface)]],
             !! which fills it with `shared_residual_range` broadcast to every reference point
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.

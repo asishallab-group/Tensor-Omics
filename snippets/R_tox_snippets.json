@@ -555,6 +555,20 @@
       ")"
     ]
   },
+  "jct_compute_jsd_pipeline (call)": {
+    "prefix": "tox:jct_compute_jsd_pipeline",
+    "description": "Runs [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]] for",
+    "body": [
+      "${1:result} <- jct_compute_jsd_pipeline(",
+      "  neighborhood_residuals_S1 = ${2:neighborhood_residuals_S1},",
+      "  neighborhood_residuals_S2 = ${3:neighborhood_residuals_S2},",
+      "  n_bins = ${4:n_bins},",
+      "  shared_residual_range = ${5:shared_residual_range},",
+      "  neighbor_mask_S1 = ${6:NULL},",
+      "  neighbor_mask_S2 = ${7:NULL}",
+      ")"
+    ]
+  },
   "fjct_compute_jsd (call)": {
     "prefix": "tox:fjct_compute_jsd",
     "description": "Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts",

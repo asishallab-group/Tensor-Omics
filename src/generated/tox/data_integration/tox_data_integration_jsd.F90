@@ -11,7 +11,7 @@
 module tox_data_integration_jsd
     use f42_safeguard
     use tox_data_integration_jsd_impl, only: build_residual_histograms_impl, calc_pmf_impl, compute_divergence_per_reference_point_impl, compute_weighted_global_divergence_impl
-    use tox_data_integration_jsd_impl, only: determine_shared_residual_range_impl, determine_study_shared_residual_range_impl
+    use tox_data_integration_jsd_impl, only: determine_shared_residual_range_impl, determine_study_shared_residual_range_impl, jct_compute_jsd_pipeline_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_sort_impl, only: init_perm, sort_array_heapsort
@@ -28,6 +28,8 @@ module tox_data_integration_jsd
     public :: calc_pmf
     public :: compute_divergence_per_reference_point
     public :: compute_weighted_global_divergence
+    public :: jct_compute_jsd_pipeline
+    public :: jct_compute_jsd_pipeline_expert
 
 contains
 
@@ -499,5 +501,244 @@ contains
             weights = weights&
         )
     end subroutine compute_weighted_global_divergence
+
+    !> summary: Validates its inputs, prepares what [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_jsd(module):jct_compute_jsd_pipeline_expert]] to prepare it yourself.
+    !| Runs [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]] for
+    !| each study, [[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl(interface)]]
+    !| and [[tox_data_integration_jsd_impl(module):compute_weighted_global_divergence_impl(interface)]],
+    !| with one bin count `n_bins` and one symmetric range `[-shared_residual_range, shared_residual_range]`
+    !| for every reference point.
+    pure subroutine jct_compute_jsd_pipeline(&
+            neighborhood_residuals_S1,&
+            neighborhood_residuals_S2,&
+            n_reps_S1,&
+            n_reps_S2,&
+            n_neighbors,&
+            n_points,&
+            n_bins,&
+            shared_residual_range,&
+            js_divergences,&
+            included_n_reps_S1,&
+            included_n_reps_S2,&
+            global_js_divergence,&
+            weights,&
+            pmf_S1,&
+            pmf_S2,&
+            neighbor_mask_S1,&
+            neighbor_mask_S2,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_reps_S1
+            !! Number of replicates in study 1
+        integer(int32), intent(in) :: n_reps_S2
+            !! Number of replicates in study 2
+        integer(int32), intent(in) :: n_neighbors
+            !! Number of neighbors in the studies
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points in the studies
+        integer(int32), intent(in) :: n_bins
+            !! Number of equally sized histogram bins used for the studies
+        real(real64), dimension(n_reps_S1, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S1
+            !! Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+            !! NaN is permitted for this value.
+        real(real64), dimension(n_reps_S2, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S2
+            !! Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+            !! NaN is permitted for this value.
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range for both studies
+            !! The minimum valid value is `0.0_real64`.
+        real(real64), dimension(n_points), intent(out) :: js_divergences
+            !! Jensen-Shannon divergence per reference point, computed for studies S1 and S2
+        integer(int32), dimension(n_points), intent(out) :: included_n_reps_S1
+            !! Count of non-NaN residuals (included ones) in study 1
+        integer(int32), dimension(n_points), intent(out) :: included_n_reps_S2
+            !! Count of non-NaN residuals (included ones) in study 2
+        real(real64), intent(out) :: global_js_divergence
+            !! Weighted global Jensen-Shannon divergence
+        real(real64), dimension(n_points), intent(out) :: weights
+            !! Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`
+        real(real64), dimension(n_points, n_bins), intent(out) :: pmf_S1
+            !! Normalized histogram counts for study 1
+        real(real64), dimension(n_points, n_bins), intent(out) :: pmf_S2
+            !! Normalized histogram counts for study 2
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S1
+            !! Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S2
+            !! Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+        integer(int32), dimension(:, :), allocatable :: tmp_counts
+        integer(int32), dimension(:), allocatable :: tmp_n_bins_per_point
+        real(real64), dimension(:), allocatable :: tmp_shared_residual_range_low
+        real(real64), dimension(:), allocatable :: tmp_shared_residual_range_high
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_reps_S1, ierr, arg_pos=3_int32)
+        call validate_dimension_size(n_reps_S2, ierr, arg_pos=4_int32)
+        call validate_dimension_size(n_neighbors, ierr, arg_pos=5_int32)
+        call validate_dimension_size(n_points, ierr, arg_pos=6_int32)
+        call validate_dimension_size(n_bins, ierr, arg_pos=7_int32)
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=8_int32, min=0.0_real64)
+        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
+        if (is_err(ierr)) return
+#endif
+
+        M_ALLOCATE(tmp_counts(n_points, n_bins))
+        M_ALLOCATE(tmp_n_bins_per_point(n_points))
+        M_ALLOCATE(tmp_shared_residual_range_low(n_points))
+        M_ALLOCATE(tmp_shared_residual_range_high(n_points))
+
+        call jct_compute_jsd_pipeline_impl(&
+            neighborhood_residuals_S1 = neighborhood_residuals_S1,&
+            neighborhood_residuals_S2 = neighborhood_residuals_S2,&
+            n_reps_S1 = n_reps_S1,&
+            n_reps_S2 = n_reps_S2,&
+            n_neighbors = n_neighbors,&
+            n_points = n_points,&
+            n_bins = n_bins,&
+            shared_residual_range = shared_residual_range,&
+            js_divergences = js_divergences,&
+            included_n_reps_S1 = included_n_reps_S1,&
+            included_n_reps_S2 = included_n_reps_S2,&
+            global_js_divergence = global_js_divergence,&
+            weights = weights,&
+            pmf_S1 = pmf_S1,&
+            pmf_S2 = pmf_S2,&
+            tmp_counts = tmp_counts,&
+            tmp_n_bins_per_point = tmp_n_bins_per_point,&
+            tmp_shared_residual_range_low = tmp_shared_residual_range_low,&
+            tmp_shared_residual_range_high = tmp_shared_residual_range_high,&
+            neighbor_mask_S1 = neighbor_mask_S1,&
+            neighbor_mask_S2 = neighbor_mask_S2&
+        )
+    end subroutine jct_compute_jsd_pipeline
+
+    !> summary: Validates its inputs, then calls [[tox_data_integration_jsd_impl(module):jct_compute_jsd_pipeline_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_data_integration_jsd(module):jct_compute_jsd_pipeline]] does both.
+    !| Runs [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]] for
+    !| each study, [[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl(interface)]]
+    !| and [[tox_data_integration_jsd_impl(module):compute_weighted_global_divergence_impl(interface)]],
+    !| with one bin count `n_bins` and one symmetric range `[-shared_residual_range, shared_residual_range]`
+    !| for every reference point.
+    pure subroutine jct_compute_jsd_pipeline_expert(&
+            neighborhood_residuals_S1,&
+            neighborhood_residuals_S2,&
+            n_reps_S1,&
+            n_reps_S2,&
+            n_neighbors,&
+            n_points,&
+            n_bins,&
+            shared_residual_range,&
+            js_divergences,&
+            included_n_reps_S1,&
+            included_n_reps_S2,&
+            global_js_divergence,&
+            weights,&
+            pmf_S1,&
+            pmf_S2,&
+            tmp_counts,&
+            tmp_n_bins_per_point,&
+            tmp_shared_residual_range_low,&
+            tmp_shared_residual_range_high,&
+            neighbor_mask_S1,&
+            neighbor_mask_S2,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_reps_S1
+            !! Number of replicates in study 1
+        integer(int32), intent(in) :: n_reps_S2
+            !! Number of replicates in study 2
+        integer(int32), intent(in) :: n_neighbors
+            !! Number of neighbors in the studies
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points in the studies
+        integer(int32), intent(in) :: n_bins
+            !! Number of equally sized histogram bins used for the studies
+        real(real64), dimension(n_reps_S1, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S1
+            !! Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+            !! NaN is permitted for this value.
+        real(real64), dimension(n_reps_S2, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S2
+            !! Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+            !! NaN is permitted for this value.
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range for both studies
+            !! The minimum valid value is `0.0_real64`.
+        real(real64), dimension(n_points), intent(out) :: js_divergences
+            !! Jensen-Shannon divergence per reference point, computed for studies S1 and S2
+        integer(int32), dimension(n_points), intent(out) :: included_n_reps_S1
+            !! Count of non-NaN residuals (included ones) in study 1
+        integer(int32), dimension(n_points), intent(out) :: included_n_reps_S2
+            !! Count of non-NaN residuals (included ones) in study 2
+        real(real64), intent(out) :: global_js_divergence
+            !! Weighted global Jensen-Shannon divergence
+        real(real64), dimension(n_points), intent(out) :: weights
+            !! Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`
+        real(real64), dimension(n_points, n_bins), intent(out) :: pmf_S1
+            !! Normalized histogram counts for study 1
+        real(real64), dimension(n_points, n_bins), intent(out) :: pmf_S2
+            !! Normalized histogram counts for study 2
+        integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts
+            !! Working array for the histogram counts
+        integer(int32), dimension(n_points), intent(out) :: tmp_n_bins_per_point
+            !! Working array: `n_bins` broadcast to every reference point, since this routine uses
+            !! one uniform bin count -- passed on to
+            !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]'s
+            !! own `n_bins_per_point`
+        real(real64), dimension(n_points), intent(out) :: tmp_shared_residual_range_low
+            !! Working array: `-shared_residual_range` broadcast to every reference point, since
+            !! this routine uses one uniform symmetric range
+            !! `[-shared_residual_range, shared_residual_range]` -- passed on to
+            !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]'s
+            !! own `shared_residual_range_low`
+        real(real64), dimension(n_points), intent(out) :: tmp_shared_residual_range_high
+            !! Working array: `shared_residual_range` broadcast to every reference point, mirroring
+            !! `tmp_shared_residual_range_low` above -- passed on to
+            !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]'s
+            !! own `shared_residual_range_high`
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S1
+            !! Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S2
+            !! Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_reps_S1, ierr, arg_pos=3_int32)
+        call validate_dimension_size(n_reps_S2, ierr, arg_pos=4_int32)
+        call validate_dimension_size(n_neighbors, ierr, arg_pos=5_int32)
+        call validate_dimension_size(n_points, ierr, arg_pos=6_int32)
+        call validate_dimension_size(n_bins, ierr, arg_pos=7_int32)
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=8_int32, min=0.0_real64)
+        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
+        if (is_err(ierr)) return
+#endif
+
+        call jct_compute_jsd_pipeline_impl(&
+            neighborhood_residuals_S1 = neighborhood_residuals_S1,&
+            neighborhood_residuals_S2 = neighborhood_residuals_S2,&
+            n_reps_S1 = n_reps_S1,&
+            n_reps_S2 = n_reps_S2,&
+            n_neighbors = n_neighbors,&
+            n_points = n_points,&
+            n_bins = n_bins,&
+            shared_residual_range = shared_residual_range,&
+            js_divergences = js_divergences,&
+            included_n_reps_S1 = included_n_reps_S1,&
+            included_n_reps_S2 = included_n_reps_S2,&
+            global_js_divergence = global_js_divergence,&
+            weights = weights,&
+            pmf_S1 = pmf_S1,&
+            pmf_S2 = pmf_S2,&
+            tmp_counts = tmp_counts,&
+            tmp_n_bins_per_point = tmp_n_bins_per_point,&
+            tmp_shared_residual_range_low = tmp_shared_residual_range_low,&
+            tmp_shared_residual_range_high = tmp_shared_residual_range_high,&
+            neighbor_mask_S1 = neighbor_mask_S1,&
+            neighbor_mask_S2 = neighbor_mask_S2&
+        )
+    end subroutine jct_compute_jsd_pipeline_expert
 
 end module tox_data_integration_jsd

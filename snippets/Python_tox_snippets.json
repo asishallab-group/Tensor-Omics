@@ -519,7 +519,7 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation",
     "body": [
       "from tensor_omics.tox_data_integration_jsd import (",
-      "    ${1|determine_shared_residual_range,determine_shared_residual_range_expert,determine_study_shared_residual_range,build_residual_histograms,calc_pmf,compute_divergence_per_reference_point,compute_weighted_global_divergence|},",
+      "    ${1|determine_shared_residual_range,determine_shared_residual_range_expert,determine_study_shared_residual_range,build_residual_histograms,calc_pmf,compute_divergence_per_reference_point,compute_weighted_global_divergence,jct_compute_jsd_pipeline|},",
       ")"
     ]
   },
@@ -597,6 +597,20 @@
       "    js_divergences=${2:js_divergences},",
       "    included_n_reps_S1=${3:included_n_reps_S1},",
       "    included_n_reps_S2=${4:included_n_reps_S2},",
+      ")"
+    ]
+  },
+  "jct_compute_jsd_pipeline (call)": {
+    "prefix": "tox:jct_compute_jsd_pipeline",
+    "description": "Runs [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]] for",
+    "body": [
+      "${1:result} = jct_compute_jsd_pipeline(",
+      "    neighborhood_residuals_S1=${2:neighborhood_residuals_S1},",
+      "    neighborhood_residuals_S2=${3:neighborhood_residuals_S2},",
+      "    n_bins=${4:n_bins},",
+      "    shared_residual_range=${5:shared_residual_range},",
+      "    neighbor_mask_S1=${6:None},",
+      "    neighbor_mask_S2=${7:None},",
       ")"
     ]
   },

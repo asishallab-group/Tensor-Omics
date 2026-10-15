@@ -258,3 +258,62 @@ compute_weighted_global_divergence <- function(js_divergences, included_n_reps_S
         weights = .result$weights
     )
 }
+
+#' Compute the JSD of two studies from their neighborhood residuals in one call
+#'
+#' Runs \code{\link{build_residual_histograms}} for
+#' each study, \code{\link{compute_divergence_per_reference_point}}
+#' and \code{\link{compute_weighted_global_divergence}},
+#' with one bin count `n_bins` and one symmetric range `[-shared_residual_range, shared_residual_range]`
+#' for every reference point.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_jsd::jct_compute_jsd_pipeline}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
+#' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
+#' @param n_bins a integer scalar. Number of equally sized histogram bins used for the studies
+#' @param shared_residual_range a numeric scalar. Computed residual range for both studies
+#'   The minimum valid value is `0.0`.
+#' @param neighbor_mask_S1 a logical matrix. Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
+#' @param neighbor_mask_S2 a logical matrix. Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
+#' @return a named list with elements:
+#'   \item{js_divergences}{a numeric vector. Jensen-Shannon divergence per reference point, computed for studies S1 and S2}
+#'   \item{included_n_reps_S1}{a integer vector. Count of non-NaN residuals (included ones) in study 1}
+#'   \item{included_n_reps_S2}{a integer vector. Count of non-NaN residuals (included ones) in study 2}
+#'   \item{global_js_divergence}{a numeric scalar. Weighted global Jensen-Shannon divergence}
+#'   \item{weights}{a numeric vector. Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`}
+#'   \item{pmf_S1}{a numeric matrix. Normalized histogram counts for study 1}
+#'   \item{pmf_S2}{a numeric matrix. Normalized histogram counts for study 2}
+#' @export
+jct_compute_jsd_pipeline <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, n_bins, shared_residual_range, neighbor_mask_S1 = NULL, neighbor_mask_S2 = NULL) {
+    neighborhood_residuals_S1 <- .tox_as_double_array(neighborhood_residuals_S1, "neighborhood_residuals_S1", 3L)
+    neighborhood_residuals_S2 <- .tox_as_double_array(neighborhood_residuals_S2, "neighborhood_residuals_S2", 3L)
+    n_bins <- .tox_as_integer_scalar(n_bins, "n_bins")
+    shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
+    if (!is.null(neighbor_mask_S1))
+        neighbor_mask_S1 <- .tox_as_logical_matrix(neighbor_mask_S1, "neighbor_mask_S1")
+    if (!is.null(neighbor_mask_S2))
+        neighbor_mask_S2 <- .tox_as_logical_matrix(neighbor_mask_S2, "neighbor_mask_S2")
+    if (dim(neighborhood_residuals_S2)[2] != dim(neighborhood_residuals_S1)[2])
+        .tox_shape_error("neighborhood_residuals_S2", dim(neighborhood_residuals_S2)[2], "neighborhood_residuals_S1", dim(neighborhood_residuals_S1)[2])
+    if (dim(neighborhood_residuals_S2)[3] != dim(neighborhood_residuals_S1)[3])
+        .tox_shape_error("neighborhood_residuals_S2", dim(neighborhood_residuals_S2)[3], "neighborhood_residuals_S1", dim(neighborhood_residuals_S1)[3])
+
+    .result <- .Call("jct_compute_jsd_pipeline_call", neighborhood_residuals_S1, neighborhood_residuals_S2, n_bins, shared_residual_range, neighbor_mask_S1, neighbor_mask_S2)
+    .arguments <- c("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "n_bins", "shared_residual_range", "js_divergences", "included_n_reps_S1", "included_n_reps_S2", "global_js_divergence", "weights", "pmf_S1", "pmf_S2", "neighbor_mask_S1", "neighbor_mask_S2", "ierr")
+    .sources <- c(NA_character_, NA_character_, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", "pmf_S1", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        js_divergences = .result$js_divergences,
+        included_n_reps_S1 = .result$included_n_reps_S1,
+        included_n_reps_S2 = .result$included_n_reps_S2,
+        global_js_divergence = .result$global_js_divergence,
+        weights = .result$weights,
+        pmf_S1 = .result$pmf_S1,
+        pmf_S2 = .result$pmf_S2
+    )
+}

@@ -1935,7 +1935,7 @@ contains
     !| AUTHOR_LASZLO_LANG
     !| Pass B of the JSD-Comp-Test for ONE reference point. Each study may have its own neighbor
     !| count `point_n_neighbors(i_study)`. This is an internal helper of this module, not
-    !| published (like `jct_compute_jsd_pipeline_helper` in `tox_data_integration_jsd_impl`).
+    !| published.
     !|
     !| It calls `gather_pooled_neighborhood_residuals` once per study, with `n_studies = 1` and
     !| `n_neighbors = point_n_neighbors(i_study)`, and writes each study's block right after the
