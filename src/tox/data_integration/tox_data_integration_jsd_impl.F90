@@ -304,10 +304,15 @@ contains
 
         real(real64) :: S_mean, s1_val, s2_val
         integer(int32) :: i_bin, i_point
+        ! The absolute tolerance of `is_close` (f42_math_impl): `is_close(S_mean, 0.0_real64)` is
+        ! exactly `abs(S_mean) <= ZERO_MEAN_TOLERANCE`, for every value including NaN and infinity.
+        ! Written out here because ifx 2026.1 at -O3 -xHost miscompiled the `do concurrent` below
+        ! while it called `is_close` (JSDs below 0); keep it equal to `is_close`'s absolute floor.
+        real(real64), parameter :: ZERO_MEAN_TOLERANCE = 1.0e-12_real64
 
         js_divergences = 0.0_real64
 
-        ! 1. compute the Knullback-Leibler (KL) divergences
+        ! 1. compute the Kullback-Leibler (KL) divergences
         ! Note that the J-S divergence is defined as `0.5 * KL_S1 + 0.5 * KL_S2`, equivalent to `0.5 * (KL_S1 + KL_S2)`.
         ! Thus, instead of computing KL_S* independently, it accumulates directly in the `js_divergences` output.
         ! Another thing, switching the loops would enable both to run concurrently and the 0.5*js_divergences step could be done in one go,
@@ -318,7 +323,7 @@ contains
                 s2_val = pmf_S2(i_point, i_bin)
                 S_mean = 0.5_real64*(s1_val + s2_val)
 
-                if (.not. is_close(S_mean, 0.0_real64)) then
+                if (.not. (abs(S_mean) <= ZERO_MEAN_TOLERANCE)) then
                     if (s1_val > 0.0_real64) then
                         js_divergences(i_point) = js_divergences(i_point) + s1_val*log(s1_val/S_mean)
                     end if
