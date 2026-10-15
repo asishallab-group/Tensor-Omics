@@ -321,7 +321,9 @@ contains
                 call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         end if
         if (is_err(ierr)) then
-            drawn = 0_int32
+            ! Guarded: with a negative `n_populations`, ifx (2026.1) segfaults on assigning to
+            ! `drawn` although its extent is then zero.
+            if (n_populations > 0_int32) drawn = 0_int32
             return
         end if
 
@@ -394,7 +396,9 @@ contains
             if (n_to_draw > total_population) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         end if
         if (is_err(ierr)) then
-            drawn = 0_int32
+            ! Guarded: with a negative `n_populations`, ifx (2026.1) segfaults on assigning to
+            ! `drawn` although its extent is then zero.
+            if (n_populations > 0_int32) drawn = 0_int32
             return
         end if
 

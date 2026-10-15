@@ -546,6 +546,10 @@ contains
         call random_multiv_hypergeom(rng, 0_int32, pop, 0_int32, 0_int32, drawn, ierr=ierr)
         call assert_err(ierr, ERR_EMPTY_INPUT, &
             "test_multiv_hypergeom_invalid_n_populations_arg_pos: n_populations == 0 blames argument 2", arg_pos=2_int32)
+
+        call random_multiv_hypergeom(rng, -1_int32, pop, 0_int32, 0_int32, drawn, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+            "test_multiv_hypergeom_invalid_n_populations_arg_pos: n_populations < 0 blames argument 2", arg_pos=2_int32)
     end subroutine test_multiv_hypergeom_invalid_n_populations_arg_pos
 
     !> Same regression as `test_multinomial_invalid_population_sizes_arg_pos`, for the
