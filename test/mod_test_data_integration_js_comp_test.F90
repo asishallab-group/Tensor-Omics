@@ -2395,10 +2395,14 @@ contains
                                                              expected_js_divergences)
             call compute_weighted_global_divergence_impl(expected_js_divergences, n_points, included_n_reps(:, i_study), &
                                                           mean_pmf_included_n_reps, expected_global_jsd, expected_weights)
-            call assert_equal_array_real(tmp_js_divergences(:, i_study), expected_js_divergences, n_points, 0.0_real64, &
-                                         name//"per-point null JSD is taken against the permuted consensus")
-            call assert_equal_real(tmp_global_js_divergence(i_study), expected_global_jsd, 0.0_real64, &
-                                   name//"weighted global null JSD is taken against the permuted consensus")
+            ! relative 1e-13, not exact: ifx's default fast floating-point model may round the
+            ! routine's own computation and this direct one differently in the last bit
+            call assert_allclose_array_real(tmp_js_divergences(:, i_study), expected_js_divergences, n_points, &
+                                            1.0e-13_real64, 0.0_real64, &
+                                            name//"per-point null JSD is taken against the permuted consensus")
+            call assert_allclose_array_real([tmp_global_js_divergence(i_study)], [expected_global_jsd], 1_int32, &
+                                            1.0e-13_real64, 0.0_real64, &
+                                            name//"weighted global null JSD is taken against the permuted consensus")
         end do
     end subroutine test_gjct_null_statistic_uses_permuted_consensus
 
@@ -3892,6 +3896,51 @@ contains
                               "stops at the second candidate's n_neighbors")
     end subroutine test_param_search_both_mode_uses_earlier_trigger
 
+    !> Test helper: the fixed-k search's returned CI is, exactly, the bootstrap CI it traced for the
+    !| selected candidate (the one admissible trace column with the returned `n_points` and
+    !| `n_neighbors`). Both are copied from the same values, so this holds on every compiler and
+    !| floating-point model, unlike a comparison with hard-coded CI values.
+    subroutine assert_selected_ci_matches_trace(ci, n_points, n_neighbors, trace_n_points, trace_n_neighbors, &
+                                                trace_ci_lower, trace_ci_upper, n_studies, n_admissible, name)
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        real(real64), intent(in) :: ci(2, n_studies)
+            !! The returned best_candidate_pair_confidence_interval
+        integer(int32), intent(in) :: n_points
+            !! The selected candidate's n_points
+        integer(int32), intent(in) :: n_neighbors
+            !! The selected candidate's n_neighbors
+        integer(int32), intent(in) :: trace_n_points(16)
+            !! n_points of every admissible candidate, in trace order
+        integer(int32), intent(in) :: trace_n_neighbors(16)
+            !! n_neighbors of every admissible candidate, in trace order
+        real(real64), intent(in) :: trace_ci_lower(n_studies, 16)
+            !! Traced lower CI bounds
+        real(real64), intent(in) :: trace_ci_upper(n_studies, 16)
+            !! Traced upper CI bounds
+        integer(int32), intent(in) :: n_admissible
+            !! Number of valid trace columns
+        character(len=*), intent(in) :: name
+            !! Test name prefix for the messages
+
+        integer(int32) :: i_column, selected_column, n_matches
+
+        n_matches = 0_int32
+        selected_column = 0_int32
+        do i_column = 1, n_admissible
+            if (trace_n_points(i_column) == n_points .and. trace_n_neighbors(i_column) == n_neighbors) then
+                n_matches = n_matches + 1_int32
+                selected_column = i_column
+            end if
+        end do
+        call assert_equal_int(n_matches, 1_int32, name//"the selected candidate has exactly one trace column")
+        if (n_matches /= 1_int32) return
+        call assert_equal_array_real(ci(1, :), trace_ci_lower(:, selected_column), n_studies, 0.0_real64, &
+                                     name//"CI lower bounds are the selected candidate's traced ones")
+        call assert_equal_array_real(ci(2, :), trace_ci_upper(:, selected_column), n_studies, 0.0_real64, &
+                                     name//"CI upper bounds are the selected candidate's traced ones")
+    end subroutine assert_selected_ci_matches_trace
+
     !> Test helper: checks a search's `trace_ci_overlap` against the traced confidence intervals.
     !| Column 1 (the first admissible candidate, no previous best) must be the `-1.0` sentinel.
     !| Every later column must be, per study, the fraction of that candidate's interval
@@ -4061,13 +4110,23 @@ contains
         call assert_true(all(best_candidate_pair_confidence_interval /= -1.0_real64), &
                          "test_param_search_no_plateau_uses_smallest_uncertainty: "// &
                          "a real confidence interval is returned, not the -1.0 sentinel")
-        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), &
-                                     [9.3534521490265630e-04_real64, 1.8753358853084691e-02_real64], 2_int32, TOL, &
-                                     "test_param_search_no_plateau_uses_smallest_uncertainty: study 1 CI")
-        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 2), &
-                                     [9.3509303187972945e-04_real64, 1.8663009912309732e-02_real64], 2_int32, TOL, &
-                                     "test_param_search_no_plateau_uses_smallest_uncertainty: study 2 CI")
+        ! The CI to a relative 1e-2: its bounds are order statistics of the bootstrap JSDs, and under
+        ! ifx's default fast floating-point model a residual on a bin edge can land in the other bin,
+        ! which moved a bound by 0.4%. Which candidate is selected is checked exactly above, and that
+        ! the CI is that candidate's own bootstrap CI is checked exactly below.
+        call assert_allclose_array_real(best_candidate_pair_confidence_interval(:, 1), &
+                                        [9.3534521490265630e-04_real64, 1.8753358853084691e-02_real64], 2_int32, &
+                                        1.0e-2_real64, 0.0_real64, &
+                                        "test_param_search_no_plateau_uses_smallest_uncertainty: study 1 CI")
+        call assert_allclose_array_real(best_candidate_pair_confidence_interval(:, 2), &
+                                        [9.3509303187972945e-04_real64, 1.8663009912309732e-02_real64], 2_int32, &
+                                        1.0e-2_real64, 0.0_real64, &
+                                        "test_param_search_no_plateau_uses_smallest_uncertainty: study 2 CI")
 
+        call assert_selected_ci_matches_trace(best_candidate_pair_confidence_interval, n_points, n_neighbors, &
+                                              trace_n_points, trace_n_neighbors, trace_ci_lower, trace_ci_upper, &
+                                              n_studies, n_admissible_evaluated, &
+                                              "test_param_search_no_plateau_uses_smallest_uncertainty: ")
         call assert_ci_overlap_trace_vs_previous_column(trace_ci_lower, trace_ci_upper, trace_ci_overlap, n_studies, &
                                                         n_admissible_evaluated, &
                                                         "test_param_search_no_plateau_uses_smallest_uncertainty: ")
@@ -4166,12 +4225,23 @@ contains
         call assert_true(all(best_candidate_pair_confidence_interval /= -1.0_real64), &
                          "test_param_search_no_plateau_effect_size_smallest_uncertainty: "// &
                          "a real confidence interval is returned, not the -1.0 sentinel")
-        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), &
-                                     [9.3534521490265630e-04_real64, 1.8753358853084691e-02_real64], 2_int32, TOL, &
-                                     "test_param_search_no_plateau_effect_size_smallest_uncertainty: study 1 CI")
-        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 2), &
-                                     [9.3509303187972945e-04_real64, 1.8663009912309732e-02_real64], 2_int32, TOL, &
-                                     "test_param_search_no_plateau_effect_size_smallest_uncertainty: study 2 CI")
+        ! The CI to a relative 1e-2: its bounds are order statistics of the bootstrap JSDs, and under
+        ! ifx's default fast floating-point model a residual on a bin edge can land in the other bin,
+        ! which moved a bound by 0.4%. Which candidate is selected is checked exactly above, and that
+        ! the CI is that candidate's own bootstrap CI is checked exactly below.
+        call assert_allclose_array_real(best_candidate_pair_confidence_interval(:, 1), &
+                                        [9.3534521490265630e-04_real64, 1.8753358853084691e-02_real64], 2_int32, &
+                                        1.0e-2_real64, 0.0_real64, &
+                                        "test_param_search_no_plateau_effect_size_smallest_uncertainty: study 1 CI")
+        call assert_allclose_array_real(best_candidate_pair_confidence_interval(:, 2), &
+                                        [9.3509303187972945e-04_real64, 1.8663009912309732e-02_real64], 2_int32, &
+                                        1.0e-2_real64, 0.0_real64, &
+                                        "test_param_search_no_plateau_effect_size_smallest_uncertainty: study 2 CI")
+
+        call assert_selected_ci_matches_trace(best_candidate_pair_confidence_interval, n_points, n_neighbors, &
+                                              trace_n_points, trace_n_neighbors, trace_ci_lower, trace_ci_upper, &
+                                              n_studies, n_admissible_evaluated, &
+                                              "test_param_search_no_plateau_effect_size_smallest_uncertainty: ")
     end subroutine test_param_search_no_plateau_effect_size_smallest_uncertainty
 
     !> Same fixture again, `plateau_mode=MODE_PLATEAU_BOTH`. Since CI overlap never plateaus here
@@ -4264,12 +4334,23 @@ contains
         call assert_true(all(best_candidate_pair_confidence_interval /= -1.0_real64), &
                          "test_param_search_no_plateau_both_uses_smallest_uncertainty: "// &
                          "a real confidence interval is returned, not the -1.0 sentinel")
-        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), &
-                                     [9.3534521490265630e-04_real64, 1.8753358853084691e-02_real64], 2_int32, TOL, &
-                                     "test_param_search_no_plateau_both_uses_smallest_uncertainty: study 1 CI")
-        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 2), &
-                                     [9.3509303187972945e-04_real64, 1.8663009912309732e-02_real64], 2_int32, TOL, &
-                                     "test_param_search_no_plateau_both_uses_smallest_uncertainty: study 2 CI")
+        ! The CI to a relative 1e-2: its bounds are order statistics of the bootstrap JSDs, and under
+        ! ifx's default fast floating-point model a residual on a bin edge can land in the other bin,
+        ! which moved a bound by 0.4%. Which candidate is selected is checked exactly above, and that
+        ! the CI is that candidate's own bootstrap CI is checked exactly below.
+        call assert_allclose_array_real(best_candidate_pair_confidence_interval(:, 1), &
+                                        [9.3534521490265630e-04_real64, 1.8753358853084691e-02_real64], 2_int32, &
+                                        1.0e-2_real64, 0.0_real64, &
+                                        "test_param_search_no_plateau_both_uses_smallest_uncertainty: study 1 CI")
+        call assert_allclose_array_real(best_candidate_pair_confidence_interval(:, 2), &
+                                        [9.3509303187972945e-04_real64, 1.8663009912309732e-02_real64], 2_int32, &
+                                        1.0e-2_real64, 0.0_real64, &
+                                        "test_param_search_no_plateau_both_uses_smallest_uncertainty: study 2 CI")
+
+        call assert_selected_ci_matches_trace(best_candidate_pair_confidence_interval, n_points, n_neighbors, &
+                                              trace_n_points, trace_n_neighbors, trace_ci_lower, trace_ci_upper, &
+                                              n_studies, n_admissible_evaluated, &
+                                              "test_param_search_no_plateau_both_uses_smallest_uncertainty: ")
     end subroutine test_param_search_no_plateau_both_uses_smallest_uncertainty
 
     !> Issue #187's occupancy FAILURE policy, end to end through the parameter search: a genuinely

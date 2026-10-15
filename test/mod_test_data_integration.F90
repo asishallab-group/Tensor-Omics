@@ -606,7 +606,6 @@ contains
         real(real64), dimension(n_points, n_bins) :: p, q
         real(real64), dimension(n_points) :: jsd, expected_jsd
         integer(int32) :: ierr
-        real(real64) :: tol
 
         ! ============================================================
         ! Test 1 — Identical PMFs → JSD = 0
