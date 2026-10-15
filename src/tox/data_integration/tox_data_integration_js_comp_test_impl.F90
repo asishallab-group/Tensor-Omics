@@ -1331,6 +1331,9 @@ contains
         do i_study = 1, n_studies
             block_start = block_end + 1_int32
             block_end = block_end + study_block_sizes(i_study)
+            ! An empty study has nothing inside; skipping it also keeps an empty slice that starts
+            ! past the array's end away from ifx's bounds check, which rejects it.
+            if (study_block_sizes(i_study) == 0_int32) cycle
             call sorted_bin_counts(pooled_residuals, n_residuals, residual_to_study_perm(block_start:block_end), &
                                    study_block_sizes(i_study), shared_residual_range_low, shared_residual_range_high, &
                                    1_int32, tmp_bin_counts(1:1), n_study_below, n_study_inside)
@@ -1355,6 +1358,8 @@ contains
             do i_study = 1, n_studies
                 block_start = block_end + 1_int32
                 block_end = block_end + study_block_sizes(i_study)
+                ! An empty study adds no counts and no score (see the eligibility loop above).
+                if (study_block_sizes(i_study) == 0_int32) cycle
                 call sorted_bin_counts(pooled_residuals, n_residuals, residual_to_study_perm(block_start:block_end), &
                                        study_block_sizes(i_study), shared_residual_range_low, &
                                        shared_residual_range_high, trial_m, tmp_bin_counts(1:trial_m), &
