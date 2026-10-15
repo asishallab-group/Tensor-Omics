@@ -37,7 +37,7 @@ contains
         all_tests(14) = test_case("test_pool_means_alloc_with_nan", test_pool_means_alloc_with_nan)
         all_tests(15) = test_case("test_pool_means_alloc_single_study", test_pool_means_alloc_single_study)
         all_tests(16) = test_case("test_pool_means_alloc_invalid_input", test_pool_means_alloc_invalid_input)
-        all_tests(17) = test_case("test_pool_means_matches_125_quantile_rounding", test_pool_means_matches_125_quantile_rounding)
+        all_tests(17) = test_case("test_pool_means_uses_bare_fraction_level", test_pool_means_uses_bare_fraction_level)
 
         all_tests(18) = test_case("test_construct_neighborhoods_basic", test_construct_neighborhoods_basic)
         all_tests(19) = test_case("test_construct_neighborhoods_nan_means", test_construct_neighborhoods_nan_means)
@@ -1206,13 +1206,14 @@ contains
         call assert_not_equal_int(ierr, ERR_OK, "test_pool_means_alloc_invalid_input: zero points should fail")
     end subroutine test_pool_means_alloc_invalid_input
 
-    ! Test case 13: pool_means reproduces 125-stabilize-jscomp's exact quantile_level rounding.
-    ! n_points=647, pool_size=1000, i_point=216 is a confirmed case where the direct-fraction
-    ! formula (216/648 = 0.3333...) and 125's percentage round-trip (216/648*100.0/100.0) round to
-    ! different doubles, which floor() to different ranks (334 vs 333) -- a genuine index flip, not
-    ! epsilon noise. With a sequential pool [1.0, 2.0, ..., 1000.0], the interpolated x_star equals
-    ! the rank itself, so the two formulas' expected outputs are exactly 334.0 vs 333.99999999999994.
-    subroutine test_pool_means_matches_125_quantile_rounding()
+    ! Test case 13: pool_means takes the reference-point level as the bare fraction i/(n+1).
+    ! n_points=647, pool_size=1000, i_point=216 is a case where the bare fraction (216/648) and the
+    ! percentage round trip (216/648*100/100) that 125-stabilize-jscomp used round to different
+    ! doubles, which floor() to different ranks (334 vs 333). With a sequential pool
+    ! [1.0, 2.0, ..., 1000.0] the interpolated x_star equals the rank, so the bare fraction gives
+    ! exactly 334.0 and the round trip 333.99999999999994; this guards against the round trip
+    ! coming back.
+    subroutine test_pool_means_uses_bare_fraction_level()
         integer, parameter :: pool_size = 1000, n_points = 647
         real(real64) :: pooled_means(pool_size), x_star(n_points)
         integer(int32) :: n_pool, ierr, i
@@ -1221,12 +1222,11 @@ contains
 
         call pool_means(pooled_means, pool_size, n_points, n_pool, x_star, ierr)
 
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pool_means_matches_125_quantile_rounding: should succeed")
-        call assert_equal_int(n_pool, pool_size, "test_pool_means_matches_125_quantile_rounding: n_pool should equal pool_size")
-        ! 333.99999999999994, not 334.0 -- the direct-fraction formula's (wrong) answer
-        call assert_equal_real(x_star(216), 333.99999999999994_real64, 1.0d-15, &
-                               "test_pool_means_matches_125_quantile_rounding: x_star(216) should match 125's rounding")
-    end subroutine test_pool_means_matches_125_quantile_rounding
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pool_means_uses_bare_fraction_level: should succeed")
+        call assert_equal_int(n_pool, pool_size, "test_pool_means_uses_bare_fraction_level: n_pool should equal pool_size")
+        call assert_equal_real(x_star(216), 334.0_real64, 1.0d-15, &
+                               "test_pool_means_uses_bare_fraction_level: x_star(216) is the bare fraction's rank")
+    end subroutine test_pool_means_uses_bare_fraction_level
 
     !> pool_means_expert takes the caller's `pooled_means_perm` and indexes `pooled_means` with it,
     !| so an entry outside `1..pool_size` is rejected with ERR_INVALID_INPUT at its position (2).

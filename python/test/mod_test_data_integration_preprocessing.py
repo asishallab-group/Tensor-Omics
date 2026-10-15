@@ -94,16 +94,13 @@ def test_compute_residuals():
 
 
 
-def test_pool_means_matches_125_quantile_rounding():
+def test_pool_means_uses_bare_fraction_level():
     """Test pool_means (the plain, auto-sorting tier) directly.
 
-    n_points=647, pool_size=1000, i_point=216 (1-based) is a confirmed case where 125's
-    percentage-round-trip quantile formula and a naive direct-fraction formula round to different
-    doubles, which floor() to different ranks -- a genuine index flip, not epsilon noise (see the
-    Fortran regression test test_pool_means_matches_125_quantile_rounding in
-    test/mod_test_data_integration.F90). With a sequential pool [1.0, ..., 1000.0], the
-    interpolated x_star equals the rank itself, so the fixed formula's expected value is exactly
-    333.99999999999994, not the direct-fraction formula's (wrong) 334.0.
+    Call-ability and shape, plus the case the Fortran test test_pool_means_uses_bare_fraction_level
+    (test/mod_test_data_integration.F90) pins exactly: n_points=647 on the sequential pool
+    [1.0, ..., 1000.0], where reference point 216 (1-based) lies at rank 334, since the level is
+    the bare fraction 216/648.
     """
     pooled_means = np.arange(1, 1001, dtype=np.float64)
     n_points = 647
@@ -113,7 +110,7 @@ def test_pool_means_matches_125_quantile_rounding():
     assert result['n_pool'] == 1000
     assert len(result['x_star']) == n_points
     # index 216 (1-based, Fortran) == index 215 (0-based, Python)
-    assert abs(result['x_star'][215] - 333.99999999999994) < 1e-12
+    assert abs(result['x_star'][215] - 334.0) < 1e-12
 
 
 def test_pool_study_means():
