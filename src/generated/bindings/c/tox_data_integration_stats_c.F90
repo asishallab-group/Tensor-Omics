@@ -99,11 +99,11 @@ contains
             !! Number of permutations to perform. `0` skips the test: no permutation runs, and
             !! `p_values` and `p_values_observed_consensus` are then NaN ("not computed")
             !! The minimum valid value is `0_int32`.
-        integer(c_int), dimension(n_bins, n_points), intent(in), target :: mean_pmf_counts
+        integer(c_int), dimension(n_points, n_bins), intent(in), target :: mean_pmf_counts
             !! Absolute counts of a residual per bin for the consensus pmf -- the pool each
             !! permutation resamples from without replacement, per reference point
             !! The minimum valid value is `0_int32`.
-        real(c_double), dimension(n_bins, n_points), intent(in), target :: mean_pmf
+        real(c_double), dimension(n_points, n_bins), intent(in), target :: mean_pmf
             !! The consensus pmf built from all studies' pmfs; each permuted study is compared
             !! against it for `p_values_observed_consensus` only
             !! The minimum valid value is `0.0_real64`.
@@ -145,8 +145,8 @@ contains
         M_CHECK_NON_NULL(n_points)
         M_CHECK_NON_NULL(n_studies)
         M_CHECK_NON_NULL(random_seed)
-        M_CHECK_ARRAY_NON_NULL(mean_pmf_counts, n_bins * n_points)
-        M_CHECK_ARRAY_NON_NULL(mean_pmf, n_bins * n_points)
+        M_CHECK_ARRAY_NON_NULL(mean_pmf_counts, n_points * n_bins)
+        M_CHECK_ARRAY_NON_NULL(mean_pmf, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(mean_pmf_included_n_reps, n_points)
         M_CHECK_ARRAY_NON_NULL(included_n_reps, n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(global_jsd_observed, n_studies)
@@ -228,8 +228,9 @@ contains
             tmp_js_divergences,&
             tmp_weights,&
             tmp_global_js_divergence,&
-            tmp_pmf_point_major,&
-            tmp_counts_point_major,&
+            tmp_permuted_mean_pmf,&
+            tmp_point_pool,&
+            tmp_point_draw,&
             random_seed,&
             ierr&
         ) bind(C, name="gjct_permutation_test_expert_c")
@@ -248,11 +249,11 @@ contains
             !! Number of permutations to perform. `0` skips the test: no permutation runs, and
             !! `p_values` and `p_values_observed_consensus` are then NaN ("not computed")
             !! The minimum valid value is `0_int32`.
-        integer(c_int), dimension(n_bins, n_points), intent(in), target :: mean_pmf_counts
+        integer(c_int), dimension(n_points, n_bins), intent(in), target :: mean_pmf_counts
             !! Absolute counts of a residual per bin for the consensus pmf -- the pool each
             !! permutation resamples from without replacement, per reference point
             !! The minimum valid value is `0_int32`.
-        real(c_double), dimension(n_bins, n_points), intent(in), target :: mean_pmf
+        real(c_double), dimension(n_points, n_bins), intent(in), target :: mean_pmf
             !! The consensus pmf built from all studies' pmfs; each permuted study is compared
             !! against it for `p_values_observed_consensus` only
             !! The minimum valid value is `0.0_real64`.
@@ -279,12 +280,12 @@ contains
             !! the consensus per permutation. Kept for comparison only; `p_values` is the primary
             !! result. The same Laplace correction applies. NaN when `n_permutations` is 0: no
             !! permutation was run, so no p-value was computed
-        integer(c_int), dimension(n_bins, n_points), intent(out), target :: tmp_mean_pmf_counts
+        integer(c_int), dimension(n_points, n_bins), intent(out), target :: tmp_mean_pmf_counts
             !! Working array for proper resampling per permutation: the remaining pool to draw
             !! from, reset to `mean_pmf_counts` at the start of every permutation
-        integer(c_int), dimension(n_bins, n_points), intent(out), target :: tmp_counts
+        integer(c_int), dimension(n_points, n_bins), intent(out), target :: tmp_counts
             !! Working array for one study's resampled histogram counts, one permutation at a time
-        real(c_double), dimension(n_bins, n_points, n_studies), intent(out), target :: tmp_pmfs
+        real(c_double), dimension(n_points, n_bins, n_studies), intent(out), target :: tmp_pmfs
             !! Working array that holds one permutation's resampled pmfs, all studies
         real(c_double), dimension(n_points, n_studies), intent(out), target :: tmp_js_divergences
             !! Working array for one permutation's per-point JSD values
@@ -292,13 +293,12 @@ contains
             !! Working array for one permutation's per-point weights
         real(c_double), dimension(n_studies), intent(out), target :: tmp_global_js_divergence
             !! Working array for one permutation's global weighted JSD values
-        real(c_double), dimension(n_points, n_bins), intent(out), target :: tmp_pmf_point_major
-            !! Working array: one study's resampled pmf, point-major, for calc_pmf_impl's
-            !! point-major convention before transposing into tmp_pmfs; then the permuted
-            !! studies' equal-weight consensus pmf, point-major, for the divergence computation
-        integer(c_int), dimension(n_points, n_bins), intent(out), target :: tmp_counts_point_major
-            !! Working array: one study's resampled counts, point-major, transposed from tmp_counts
-            !! before calc_pmf_impl
+        real(c_double), dimension(n_points, n_bins), intent(out), target :: tmp_permuted_mean_pmf
+            !! Working array for one permutation's equal-weight consensus pmf of the permuted studies
+        integer(c_int), dimension(n_bins), intent(out), target :: tmp_point_pool
+            !! Working array: one reference point's remaining pool, drawn from and then written back
+        integer(c_int), dimension(n_bins), intent(out), target :: tmp_point_draw
+            !! Working array: one study's draw at one reference point
         integer(c_int), intent(in), target :: random_seed
             !! Seed for the GSL random number generator
             !! The default value is `42_int32`.
@@ -314,21 +314,22 @@ contains
         M_CHECK_NON_NULL(n_points)
         M_CHECK_NON_NULL(n_studies)
         M_CHECK_NON_NULL(random_seed)
-        M_CHECK_ARRAY_NON_NULL(mean_pmf_counts, n_bins * n_points)
-        M_CHECK_ARRAY_NON_NULL(mean_pmf, n_bins * n_points)
+        M_CHECK_ARRAY_NON_NULL(mean_pmf_counts, n_points * n_bins)
+        M_CHECK_ARRAY_NON_NULL(mean_pmf, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(mean_pmf_included_n_reps, n_points)
         M_CHECK_ARRAY_NON_NULL(included_n_reps, n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(global_jsd_observed, n_studies)
         M_CHECK_ARRAY_NON_NULL(p_values, n_studies)
         M_CHECK_ARRAY_NON_NULL(p_values_observed_consensus, n_studies)
-        M_CHECK_ARRAY_NON_NULL(tmp_mean_pmf_counts, n_bins * n_points)
-        M_CHECK_ARRAY_NON_NULL(tmp_counts, n_bins * n_points)
-        M_CHECK_ARRAY_NON_NULL(tmp_pmfs, n_bins * n_points * n_studies)
+        M_CHECK_ARRAY_NON_NULL(tmp_mean_pmf_counts, n_points * n_bins)
+        M_CHECK_ARRAY_NON_NULL(tmp_counts, n_points * n_bins)
+        M_CHECK_ARRAY_NON_NULL(tmp_pmfs, n_points * n_bins * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_js_divergences, n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_weights, n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_global_js_divergence, n_studies)
-        M_CHECK_ARRAY_NON_NULL(tmp_pmf_point_major, n_points * n_bins)
-        M_CHECK_ARRAY_NON_NULL(tmp_counts_point_major, n_points * n_bins)
+        M_CHECK_ARRAY_NON_NULL(tmp_permuted_mean_pmf, n_points * n_bins)
+        M_CHECK_ARRAY_NON_NULL(tmp_point_pool, n_bins)
+        M_CHECK_ARRAY_NON_NULL(tmp_point_draw, n_bins)
 
         call gjct_permutation_test_expert(&
             n_permutations = n_permutations,&
@@ -348,8 +349,9 @@ contains
             tmp_js_divergences = tmp_js_divergences,&
             tmp_weights = tmp_weights,&
             tmp_global_js_divergence = tmp_global_js_divergence,&
-            tmp_pmf_point_major = tmp_pmf_point_major,&
-            tmp_counts_point_major = tmp_counts_point_major,&
+            tmp_permuted_mean_pmf = tmp_permuted_mean_pmf,&
+            tmp_point_pool = tmp_point_pool,&
+            tmp_point_draw = tmp_point_draw,&
             random_seed = random_seed,&
             ierr = ierr&
         )

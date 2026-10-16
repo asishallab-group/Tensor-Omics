@@ -1228,7 +1228,7 @@ check_neighborhood_overlaps <- function(neighborhood_range, min_neighbor_overlap
 #'
 #' @param mean_pmf_counts a integer matrix. Absolute counts of a residual per bin for the mean pmf
 #'   The minimum valid value is `0`.
-#' @param n_bins_per_point a integer vector. This point's own bin count -- only `mean_pmf_counts(1:n_bins_per_point(i_point), i_point)`
+#' @param n_bins_per_point a integer vector. This point's own bin count -- only `mean_pmf_counts(i_point, 1:n_bins_per_point(i_point))`
 #'   is inspected; columns beyond it are legitimate zero-padding, not failures
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_bins`.
@@ -1241,8 +1241,8 @@ check_mean_pmf_min_counts <- function(mean_pmf_counts, n_bins_per_point, min_cou
     mean_pmf_counts <- .tox_as_integer_matrix(mean_pmf_counts, "mean_pmf_counts")
     n_bins_per_point <- .tox_as_integer_vector(n_bins_per_point, "n_bins_per_point")
     min_count <- .tox_as_integer_scalar(min_count, "min_count")
-    if (length(n_bins_per_point) != dim(mean_pmf_counts)[2])
-        .tox_shape_error("n_bins_per_point", length(n_bins_per_point), "mean_pmf_counts", dim(mean_pmf_counts)[2])
+    if (length(n_bins_per_point) != dim(mean_pmf_counts)[1])
+        .tox_shape_error("n_bins_per_point", length(n_bins_per_point), "mean_pmf_counts", dim(mean_pmf_counts)[1])
 
     .result <- .Call("check_mean_pmf_min_counts_call", mean_pmf_counts, n_bins_per_point, min_count)
     .arguments <- c("mean_pmf_counts", "n_bins", "n_bins_per_point", "n_points", "min_count", "all_bins_have_min_count", "ierr")
@@ -1449,12 +1449,12 @@ create_mean_pmf <- function(pmfs, counts, included_n_reps) {
     pmfs <- .tox_as_double_array(pmfs, "pmfs", 3L)
     counts <- .tox_as_integer_array(counts, "counts", 3L)
     included_n_reps <- .tox_as_integer_matrix(included_n_reps, "included_n_reps")
-    if (dim(counts)[1] != dim(pmfs)[1])
-        .tox_shape_error("counts", dim(counts)[1], "pmfs", dim(pmfs)[1])
     if (dim(counts)[2] != dim(pmfs)[2])
         .tox_shape_error("counts", dim(counts)[2], "pmfs", dim(pmfs)[2])
-    if (dim(included_n_reps)[1] != dim(pmfs)[2])
-        .tox_shape_error("included_n_reps", dim(included_n_reps)[1], "pmfs", dim(pmfs)[2])
+    if (dim(counts)[1] != dim(pmfs)[1])
+        .tox_shape_error("counts", dim(counts)[1], "pmfs", dim(pmfs)[1])
+    if (dim(included_n_reps)[1] != dim(pmfs)[1])
+        .tox_shape_error("included_n_reps", dim(included_n_reps)[1], "pmfs", dim(pmfs)[1])
     if (dim(counts)[3] != dim(pmfs)[3])
         .tox_shape_error("counts", dim(counts)[3], "pmfs", dim(pmfs)[3])
     if (dim(included_n_reps)[2] != dim(pmfs)[3])
@@ -1522,17 +1522,6 @@ create_mean_pmf_only <- function(pmfs) {
 #' return it holds `[largest of the n_bootstrapping_top_k_jsds smallest bootstrap draws,
 #' smallest of the n_bootstrapping_top_k_jsds largest bootstrap draws]`.
 #'
-#' `mean_pmf_counts`/`tmp_pmfs`/`tmp_mean_pmf` are laid out bin-major (`(n_bins, n_points[,
-#' n_studies])`), matching
-#' \code{\link{create_mean_pmf}} and its
-#' own `create_mean_pmf_only_impl` above -- both ported from 125, whose own convention this
-#' is. The already-shipped
-#' \code{\link{compute_divergence_per_reference_point}}
-#' predates 125's own port and instead takes its pmf arguments point-major
-#' (`(n_points, n_bins)`); the two calls below bridge the two conventions with an explicit
-#' `transpose`, rather than picking one shape and silently reinterpreting the other's memory
-#' under it (which would scramble every non-square `(n_bins, n_points)` histogram).
-#'
 #' A GSL allocation failure in `create_rng` is a genuine runtime error no input check could
 #' have foreseen (codegen_guide.md Sec 5.14): `confidence_interval` is then left unchanged
 #' and `ierr` reports `ERR_ALLOC_FAIL`. A `random_multinomial` draw failing (which validated,
@@ -1587,10 +1576,10 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
     confidence_interval <- .tox_as_double_matrix(confidence_interval, "confidence_interval")
     two_sided_bootstrapping_significance_level <- .tox_as_double_scalar(two_sided_bootstrapping_significance_level, "two_sided_bootstrapping_significance_level")
     random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
-    if (length(mean_pmf_included_n_reps) != dim(mean_pmf_counts)[2])
-        .tox_shape_error("mean_pmf_included_n_reps", length(mean_pmf_included_n_reps), "mean_pmf_counts", dim(mean_pmf_counts)[2])
-    if (dim(included_n_reps)[1] != dim(mean_pmf_counts)[2])
-        .tox_shape_error("included_n_reps", dim(included_n_reps)[1], "mean_pmf_counts", dim(mean_pmf_counts)[2])
+    if (length(mean_pmf_included_n_reps) != dim(mean_pmf_counts)[1])
+        .tox_shape_error("mean_pmf_included_n_reps", length(mean_pmf_included_n_reps), "mean_pmf_counts", dim(mean_pmf_counts)[1])
+    if (dim(included_n_reps)[1] != dim(mean_pmf_counts)[1])
+        .tox_shape_error("included_n_reps", dim(included_n_reps)[1], "mean_pmf_counts", dim(mean_pmf_counts)[1])
     if (dim(confidence_interval)[2] != dim(included_n_reps)[2])
         .tox_shape_error("confidence_interval", dim(confidence_interval)[2], "included_n_reps", dim(included_n_reps)[2])
 
@@ -1687,18 +1676,18 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #' count in advance, since it is now genuinely computed inside this routine by Pass B's
 #' bin-count search (per `bin_count_mode`), independently per reference point. Every array
 #' whose bin-sized dimension
-#' used to be sized by that input (`pmfs`, `counts`, `mean_pmf`, `mean_pmf_counts`,
-#' `tmp_counts_point_major`, `tmp_pmf_point_major`, `tmp_permutation_mean_pmf_counts`,
-#' `tmp_permutation_counts`, `tmp_permutation_pmfs`) is now sized to the fixed compile-time
+#' used to be sized by that input (`pmfs`, `counts`, `mean_pmf`, `mean_pmf_counts`, and the
+#' bin-sized `tmp_permutation_*` work arrays) is now sized to the fixed compile-time
 #' ceiling \code{MAX_N_BINS} (`256`)
 #' instead, exactly mirroring how `run_js_comp_test_parameter_search_impl`'s own
-#' `tmp_counts_point_major`/`tmp_pmf_point_major`/`tmp_pmfs`/`tmp_counts` etc. have been sized
+#' `tmp_pmfs`/`tmp_counts` etc. have been sized
 #' since Issue #187's earlier steps. The new `max_n_bins_per_point` output tells a caller how many of the
-#' LEADING bins/rows of each of those arrays are actually meaningful
-#' (`maxval(n_bins_per_point(1:n_points))`); the rest is unused padding. The generator's own
+#' LEADING bins of each of those arrays are actually meaningful
+#' (`maxval(n_bins_per_point(1:n_points))`); the rest is zero padding. The generator's own
 #' result-size trimming directive cannot express this trim, because it only ever trims an
-#' array's LAST declared extent, and bins is the FIRST declared extent of every one of those
-#' arrays -- so a Python/R caller must slice `[:max_n_bins_per_point, ...]` themselves, exactly as a
+#' array's LAST declared extent, and bins is the SECOND declared extent of every one of those
+#' arrays -- so a Python/R caller must slice `[:, :max_n_bins_per_point, ...]` (Python) or
+#' `[, seq_len(max_n_bins_per_point), ]` (R) themselves, exactly as a
 #' caller of `run_js_comp_test_parameter_search_impl`'s own jagged `trace_*` arrays already has
 #' to.
 #'
@@ -1712,17 +1701,8 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #' values (unlike its distance-sort sibling
 #' \code{\link{construct_neighborhoods}}),
 #' so Pass C gathers each neighbor's actual residual values from `residuals` itself
-#' (one slice of `tmp_neighborhood_residuals_gathered` per reference point, reused for every
-#' study) before building that point's histogram with `build_residual_histograms_impl` for
-#' that single point, whose bins are copied straight into the matching column of
-#' `counts`/`pmfs` -- no transpose is needed there. `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts`
-#' here are BIN-major (`(256, n_points, n_studies)`) to match
-#' \code{\link{create_mean_pmf}}'s own
-#' convention, while `compute_divergence_per_reference_point_impl` and `calc_pmf_impl` are
-#' POINT-major (`(n_points, max_n_bins_per_point)`): the calls to those two after Pass C bridge
-#' with an explicit `transpose`, exactly as
-#' \code{\link{bootstrap_histogram}} and
-#' \code{\link{gjct_permutation_test}} already do.
+#' (into `tmp_neighborhood_residuals_gathered`, reused for every study) before building the
+#' study's histograms with one `build_residual_histograms_impl` call over all points.
 #'
 #' Impure: calls the impure `gjct_permutation_test_impl`. A GSL failure it reports is returned
 #' in `ierr`, and the routine returns right there: `pmfs`, `js_divergences`, `weights` and
@@ -1813,14 +1793,14 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #'     asymmetric range (Step 3)}
 #'   \item{max_n_bins_per_point}{a integer scalar. The widest `n_bins_per_point` value across all `n_points` reference points
 #'     (`maxval(n_bins_per_point(1:n_points))`), derived once after Pass B. The number of
-#'     leading, meaningful bins/rows in `pmfs`, `counts`, `mean_pmf` and `mean_pmf_counts`
+#'     leading, meaningful bins in `pmfs`, `counts`, `mean_pmf` and `mean_pmf_counts`
 #'     below (and of the bin-sized work arrays) -- those are all declared
 #'     with a fixed 256-bin ceiling (MAX_N_BINS) rather than a caller-supplied bin count,
 #'     since `n_bins_per_point` can no longer be known by a caller in advance. A Python/R
-#'     caller must slice `[:max_n_bins_per_point, ...]` themselves: the generator's own result-size
-#'     trimming directive cannot express this trim, because it only ever trims an array's
-#'     LAST declared extent, and bins is the FIRST declared extent of every one of those
-#'     arrays}
+#'     caller must slice `[:, :max_n_bins_per_point, ...]` (R: `[, seq_len(max_n_bins_per_point), ]`)
+#'     themselves: the generator's own result-size trimming directive cannot express this
+#'     trim, because it only ever trims an array's LAST declared extent, and bins is the
+#'     SECOND declared extent of every one of those arrays}
 #'   \item{occupancy_failed}{a logical vector. This reference point's `occupancy_failed` flag from Pass B -- `TRUE` iff the
 #'     bin-count search failed for it (occupancy or Stone, per `bin_count_mode`), and the
 #'     point then uses `m_min` bins. See this routine's own doc block above for
@@ -1839,15 +1819,15 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #'     search (per `bin_count_mode`) -- never part of the bin-count search's own decision}
 #'   \item{fd_bins}{a integer vector. This reference point's Freedman-Diaconis rule bin-count diagnostic from Pass B's bin-count
 #'     search (per `bin_count_mode`) -- never part of the bin-count search's own decision}
-#'   \item{pmfs}{a numeric array of rank 3. `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`. The
-#'     bins are a fixed ceiling (see `max_n_bins_per_point` above) -- only rows `1:max_n_bins_per_point`
-#'     are meaningful; a Python/R caller must slice `[:max_n_bins_per_point, ...]` themselves}
-#'   \item{counts}{a integer array of rank 3. Absolute counts of a residual per bin for `pmfs`. Only rows
+#'   \item{pmfs}{a numeric array of rank 3. `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(j, :, i)) == 1`. The
+#'     bins are a fixed ceiling (see `max_n_bins_per_point` above) -- only bins `1:max_n_bins_per_point`
+#'     are meaningful, the rest is zero; a Python/R caller must slice them themselves}
+#'   \item{counts}{a integer array of rank 3. Absolute counts of a residual per bin for `pmfs`. Only bins
 #'     `1:max_n_bins_per_point` are meaningful -- see `pmfs` above}
 #'   \item{included_n_reps}{a integer matrix. Count of non-NaN replicates (included ones) per reference point, per study}
-#'   \item{mean_pmf}{a numeric matrix. The consensus pmf, from create_mean_pmf_impl. Only rows
+#'   \item{mean_pmf}{a numeric matrix. The consensus pmf, from create_mean_pmf_impl. Only bins
 #'     `1:max_n_bins_per_point` are meaningful -- see `pmfs` above}
-#'   \item{mean_pmf_counts}{a integer matrix. Absolute counts of a residual per bin for the consensus pmf. Only rows
+#'   \item{mean_pmf_counts}{a integer matrix. Absolute counts of a residual per bin for the consensus pmf. Only bins
 #'     `1:max_n_bins_per_point` are meaningful -- see `pmfs` above}
 #'   \item{mean_pmf_included_n_reps}{a integer vector. Count of non-NaN replicates (included ones) per reference point for the consensus pmf}
 #'   \item{js_divergences}{a numeric matrix. Per-reference-point JSD of each study against the consensus pmf}
@@ -1983,9 +1963,10 @@ run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residual
 #' `bin_count_mode` need; the plain entry point allocates it in every mode, occupancy included.
 #'
 #' The bin-sized arrays have the same fixed 256-bin
-#' (\code{MAX_N_BINS}) leading extent as in
-#' `run_js_comp_test_impl`, of which only the first `max_n_bins_per_point` rows are
-#' meaningful; a Python/R caller slices `[:max_n_bins_per_point, ...]` themselves.
+#' (\code{MAX_N_BINS}) second extent as in
+#' `run_js_comp_test_impl`, of which only the first `max_n_bins_per_point` bins are
+#' meaningful (the rest is zero); a Python/R caller slices `[:, :max_n_bins_per_point, ...]`
+#' (R: `[, seq_len(max_n_bins_per_point), ]`) themselves.
 #'
 #' Impure: calls the impure `gjct_permutation_test_impl`. A GSL failure it reports is returned
 #' in `ierr`, and the routine returns right there: `pmfs`, `js_divergences`, `weights` and
@@ -2073,14 +2054,14 @@ run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residual
 #'     neighbor count; never part of the bin-count search's decision}
 #'   \item{fd_bins}{a integer vector. Each reference point's Freedman-Diaconis rule diagnostic, with the rounded mean
 #'     per-study neighbor count; never part of the bin-count search's decision}
-#'   \item{pmfs}{a numeric array of rank 3. `counts` normalized per reference point and study. Only rows
-#'     `1:max_n_bins_per_point` are meaningful}
-#'   \item{counts}{a integer array of rank 3. Absolute counts of a residual per bin for `pmfs`. Only rows
-#'     `1:max_n_bins_per_point` are meaningful}
+#'   \item{pmfs}{a numeric array of rank 3. `counts` normalized per reference point and study. Only bins
+#'     `1:max_n_bins_per_point` are meaningful, the rest is zero}
+#'   \item{counts}{a integer array of rank 3. Absolute counts of a residual per bin for `pmfs`. Only bins
+#'     `1:max_n_bins_per_point` are meaningful, the rest is zero}
 #'   \item{included_n_reps}{a integer matrix. Count of non-NaN residuals binned per reference point, per study}
-#'   \item{mean_pmf}{a numeric matrix. The consensus pmf. Only rows `1:max_n_bins_per_point` are meaningful}
-#'   \item{mean_pmf_counts}{a integer matrix. Absolute counts of a residual per bin for the consensus pmf. Only rows
-#'     `1:max_n_bins_per_point` are meaningful}
+#'   \item{mean_pmf}{a numeric matrix. The consensus pmf. Only bins `1:max_n_bins_per_point` are meaningful, the rest is zero}
+#'   \item{mean_pmf_counts}{a integer matrix. Absolute counts of a residual per bin for the consensus pmf. Only bins
+#'     `1:max_n_bins_per_point` are meaningful, the rest is zero}
 #'   \item{mean_pmf_included_n_reps}{a integer vector. Count of non-NaN residuals per reference point for the consensus pmf}
 #'   \item{js_divergences}{a numeric matrix. Per-reference-point JSD of each study against the consensus pmf}
 #'   \item{weights}{a numeric matrix. Per-reference-point weights for `global_js_divergence`}
@@ -2231,7 +2212,7 @@ run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood
 #' Per the plan's work-array translation for this routine specifically: `max_n_bins_all_candidates`
 #' (data-dependent, not cheaply closed-form in 125) is replaced by the fixed
 #' \code{MAX_N_BINS} ceiling, so every
-#' bin-dimensioned work array below is sized to MAX_N_BINS and sliced `(1:max_n_bins, ...)` per
+#' bin-dimensioned work array below is sized to MAX_N_BINS and used at `max_n_bins` bins per
 #' candidate, rather than carrying a separate recommend-sized dimension argument for it.
 #' `max_n_bins` is the widest per-point bin count Pass B's bin-count search (below) chose for
 #' the current candidate, `maxval(tmp_n_bins_per_point(1:n_points))` -- it replaces the old

@@ -1295,12 +1295,12 @@ contains
     !| uniform-`n_bins` signature did.
     subroutine test_mean_pmf_min_counts_all_pass()
         integer(int32), parameter :: n_bins = 2, n_points = 2
-        integer(int32) :: mean_pmf_counts(n_bins, n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins)
         integer(int32) :: n_bins_per_point(n_points)
         logical(c_bool) :: all_pass
         integer(int32) :: ierr
 
-        mean_pmf_counts = reshape([10, 10, 10, 10], [n_bins, n_points])
+        mean_pmf_counts = reshape([10, 10, 10, 10], [n_points, n_bins])
         n_bins_per_point = n_bins
 
         call check_mean_pmf_min_counts(mean_pmf_counts, n_bins, n_bins_per_point, n_points, 5_int32, all_pass, ierr)
@@ -1313,12 +1313,12 @@ contains
     !| so this must still pass. `n_bins_per_point` is uniformly `n_bins`.
     subroutine test_mean_pmf_min_counts_exactly_at_threshold_passes()
         integer(int32), parameter :: n_bins = 2, n_points = 2
-        integer(int32) :: mean_pmf_counts(n_bins, n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins)
         integer(int32) :: n_bins_per_point(n_points)
         logical(c_bool) :: all_pass
         integer(int32) :: ierr
 
-        mean_pmf_counts = reshape([3, 3, 3, 3], [n_bins, n_points])
+        mean_pmf_counts = reshape([3, 3, 3, 3], [n_points, n_bins])
         n_bins_per_point = n_bins
 
         call check_mean_pmf_min_counts(mean_pmf_counts, n_bins, n_bins_per_point, n_points, 3_int32, all_pass, ierr)
@@ -1333,12 +1333,12 @@ contains
     !| uniformly `n_bins`.
     subroutine test_mean_pmf_min_counts_below_threshold_fails()
         integer(int32), parameter :: n_bins = 2, n_points = 2
-        integer(int32) :: mean_pmf_counts(n_bins, n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins)
         integer(int32) :: n_bins_per_point(n_points)
         logical(c_bool) :: all_pass
         integer(int32) :: ierr
 
-        mean_pmf_counts = reshape([3, 3, 3, 2], [n_bins, n_points])
+        mean_pmf_counts = reshape([3, 3, 3, 2], [n_points, n_bins])
         n_bins_per_point = n_bins
 
         call check_mean_pmf_min_counts(mean_pmf_counts, n_bins, n_bins_per_point, n_points, 3_int32, all_pass, ierr)
@@ -1358,16 +1358,16 @@ contains
     !| min_count=5); point 2 has only 1 valid bin (count=10) plus 3 padded columns (count=0).
     subroutine test_mean_pmf_min_counts_per_point_bins_differ_all_pass()
         integer(int32), parameter :: n_bins = 4, n_points = 2
-        integer(int32) :: mean_pmf_counts(n_bins, n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins)
         integer(int32) :: n_bins_per_point(n_points)
         logical(c_bool) :: all_pass
         integer(int32) :: ierr
 
         n_bins_per_point = [3, 1]
         ! Point 1: valid bins 1:3 = 10 (>= min_count), padded bin 4 = 0 (< min_count, must be skipped)
-        mean_pmf_counts(:, 1) = [10, 10, 10, 0]
+        mean_pmf_counts(1, :) = [10, 10, 10, 0]
         ! Point 2: valid bin 1 = 10 (>= min_count), padded bins 2:4 = 0 (< min_count, must be skipped)
-        mean_pmf_counts(:, 2) = [10, 0, 0, 0]
+        mean_pmf_counts(2, :) = [10, 0, 0, 0]
 
         call check_mean_pmf_min_counts(mean_pmf_counts, n_bins, n_bins_per_point, n_points, 5_int32, all_pass, ierr)
 
@@ -1384,16 +1384,16 @@ contains
     !| range still fails the whole gate, even though point 1 is fine.
     subroutine test_mean_pmf_min_counts_per_point_bins_differ_one_point_fails()
         integer(int32), parameter :: n_bins = 4, n_points = 2
-        integer(int32) :: mean_pmf_counts(n_bins, n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins)
         integer(int32) :: n_bins_per_point(n_points)
         logical(c_bool) :: all_pass
         integer(int32) :: ierr
 
         n_bins_per_point = [3, 1]
         ! Point 1: valid bins 1:3 = 10 (>= min_count), padded bin 4 = 0 (must be skipped)
-        mean_pmf_counts(:, 1) = [10, 10, 10, 0]
+        mean_pmf_counts(1, :) = [10, 10, 10, 0]
         ! Point 2: valid bin 1 = 2 (< min_count = 5, a genuine failure), padded bins 2:4 = 0
-        mean_pmf_counts(:, 2) = [2, 0, 0, 0]
+        mean_pmf_counts(2, :) = [2, 0, 0, 0]
 
         call check_mean_pmf_min_counts(mean_pmf_counts, n_bins, n_bins_per_point, n_points, 5_int32, all_pass, ierr)
 
@@ -1832,20 +1832,20 @@ contains
     !| `mean_pmf_included_n_reps = 10+10 = 20`.
     subroutine test_create_mean_pmf_two_studies_hand_computed()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2
-        real(real64) :: pmfs(n_bins, n_points, n_studies), mean_pmf(n_bins, n_points), expected_mean_pmf(n_bins, n_points)
-        integer(int32) :: counts(n_bins, n_points, n_studies), mean_pmf_counts(n_bins, n_points)
-        integer(int32) :: expected_mean_pmf_counts(n_bins, n_points)
+        real(real64) :: pmfs(n_points, n_bins, n_studies), mean_pmf(n_points, n_bins), expected_mean_pmf(n_points, n_bins)
+        integer(int32) :: counts(n_points, n_bins, n_studies), mean_pmf_counts(n_points, n_bins)
+        integer(int32) :: expected_mean_pmf_counts(n_points, n_bins)
         integer(int32) :: included_n_reps(n_points, n_studies), mean_pmf_included_n_reps(n_points)
         integer(int32) :: ierr
 
-        pmfs(:, 1, 1) = [0.3_real64, 0.7_real64]
-        pmfs(:, 1, 2) = [0.5_real64, 0.5_real64]
-        counts(:, 1, 1) = [3, 7]
-        counts(:, 1, 2) = [5, 5]
+        pmfs(1, :, 1) = [0.3_real64, 0.7_real64]
+        pmfs(1, :, 2) = [0.5_real64, 0.5_real64]
+        counts(1, :, 1) = [3, 7]
+        counts(1, :, 2) = [5, 5]
         included_n_reps(1, :) = [10, 10]
 
-        expected_mean_pmf(:, 1) = [0.4_real64, 0.6_real64]
-        expected_mean_pmf_counts(:, 1) = [8, 12]
+        expected_mean_pmf(1, :) = [0.4_real64, 0.6_real64]
+        expected_mean_pmf_counts(1, :) = [8, 12]
 
         call create_mean_pmf(pmfs, counts, n_bins, n_points, n_studies, included_n_reps, mean_pmf, &
                              mean_pmf_included_n_reps, mean_pmf_counts, ierr)
@@ -1872,23 +1872,23 @@ contains
     !| the ALL-STUDIES-INCLUDING-SELF result, not the leave-one-out one.
     subroutine test_create_mean_pmf_three_studies_includes_self()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 3
-        real(real64) :: pmfs(n_bins, n_points, n_studies), mean_pmf(n_bins, n_points), expected_mean_pmf(n_bins, n_points)
+        real(real64) :: pmfs(n_points, n_bins, n_studies), mean_pmf(n_points, n_bins), expected_mean_pmf(n_points, n_bins)
         real(real64) :: leave_one_out_mean_pmf_study1(n_bins)
-        integer(int32) :: counts(n_bins, n_points, n_studies), mean_pmf_counts(n_bins, n_points)
-        integer(int32) :: expected_mean_pmf_counts(n_bins, n_points)
+        integer(int32) :: counts(n_points, n_bins, n_studies), mean_pmf_counts(n_points, n_bins)
+        integer(int32) :: expected_mean_pmf_counts(n_points, n_bins)
         integer(int32) :: included_n_reps(n_points, n_studies), mean_pmf_included_n_reps(n_points)
         integer(int32) :: ierr
 
-        pmfs(:, 1, 1) = [0.2_real64, 0.8_real64]
-        pmfs(:, 1, 2) = [0.4_real64, 0.6_real64]
-        pmfs(:, 1, 3) = [0.9_real64, 0.1_real64]
-        counts(:, 1, 1) = [2, 8]
-        counts(:, 1, 2) = [4, 6]
-        counts(:, 1, 3) = [9, 1]
+        pmfs(1, :, 1) = [0.2_real64, 0.8_real64]
+        pmfs(1, :, 2) = [0.4_real64, 0.6_real64]
+        pmfs(1, :, 3) = [0.9_real64, 0.1_real64]
+        counts(1, :, 1) = [2, 8]
+        counts(1, :, 2) = [4, 6]
+        counts(1, :, 3) = [9, 1]
         included_n_reps(1, :) = [10, 10, 10]
 
-        expected_mean_pmf(:, 1) = [0.5_real64, 0.5_real64]
-        expected_mean_pmf_counts(:, 1) = [15, 15]
+        expected_mean_pmf(1, :) = [0.5_real64, 0.5_real64]
+        expected_mean_pmf_counts(1, :) = [15, 15]
 
         call create_mean_pmf(pmfs, counts, n_bins, n_points, n_studies, included_n_reps, mean_pmf, &
                              mean_pmf_included_n_reps, mean_pmf_counts, ierr)
@@ -1920,16 +1920,16 @@ contains
     !| bookkeeping dropped.
     subroutine test_create_mean_pmf_only_matches_create_mean_pmf()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2
-        real(real64) :: pmfs(n_bins, n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points), mean_pmf_only(n_bins, n_points)
-        integer(int32) :: counts(n_bins, n_points, n_studies), mean_pmf_counts(n_bins, n_points)
+        real(real64) :: pmfs(n_points, n_bins, n_studies)
+        real(real64) :: mean_pmf(n_points, n_bins), mean_pmf_only(n_points, n_bins)
+        integer(int32) :: counts(n_points, n_bins, n_studies), mean_pmf_counts(n_points, n_bins)
         integer(int32) :: included_n_reps(n_points, n_studies), mean_pmf_included_n_reps(n_points)
         integer(int32) :: ierr
 
-        pmfs(:, 1, 1) = [0.3_real64, 0.7_real64]
-        pmfs(:, 1, 2) = [0.5_real64, 0.5_real64]
-        counts(:, 1, 1) = [3, 7]
-        counts(:, 1, 2) = [5, 5]
+        pmfs(1, :, 1) = [0.3_real64, 0.7_real64]
+        pmfs(1, :, 2) = [0.5_real64, 0.5_real64]
+        counts(1, :, 1) = [3, 7]
+        counts(1, :, 2) = [5, 5]
         included_n_reps(1, :) = [10, 10]
 
         call create_mean_pmf(pmfs, counts, n_bins, n_points, n_studies, included_n_reps, mean_pmf, &
@@ -1949,13 +1949,13 @@ contains
     !| generated wrapper must reject a violation of either.
     subroutine test_create_mean_pmf_validation()
         integer(int32), parameter :: n_bins = 1, n_points = 1, n_studies = 1
-        real(real64) :: pmfs(n_bins, n_points, n_studies), mean_pmf(n_bins, n_points)
-        integer(int32) :: counts(n_bins, n_points, n_studies), mean_pmf_counts(n_bins, n_points)
+        real(real64) :: pmfs(n_points, n_bins, n_studies), mean_pmf(n_points, n_bins)
+        integer(int32) :: counts(n_points, n_bins, n_studies), mean_pmf_counts(n_points, n_bins)
         integer(int32) :: included_n_reps(n_points, n_studies), mean_pmf_included_n_reps(n_points)
         integer(int32) :: ierr
 
-        pmfs(:, 1, 1) = [1.5_real64]
-        counts(:, 1, 1) = [1]
+        pmfs(1, :, 1) = [1.5_real64]
+        counts(1, :, 1) = [1]
         included_n_reps(1, :) = [1]
 
         call create_mean_pmf(pmfs, counts, n_bins, n_points, n_studies, included_n_reps, mean_pmf, &
@@ -1963,8 +1963,8 @@ contains
         call assert_err(ierr, ERR_INVALID_INPUT, "test_create_mean_pmf_validation: pmf above 1.0 rejected", &
                         arg_pos=1_int32)
 
-        pmfs(:, 1, 1) = [0.5_real64]
-        counts(:, 1, 1) = [-1]
+        pmfs(1, :, 1) = [0.5_real64]
+        counts(1, :, 1) = [-1]
 
         call create_mean_pmf(pmfs, counts, n_bins, n_points, n_studies, included_n_reps, mean_pmf, &
                              mean_pmf_included_n_reps, mean_pmf_counts, ierr)
@@ -1977,19 +1977,19 @@ contains
     !| input on that argument, position 6 of the plain wrapper.
     subroutine test_create_mean_pmf_rejects_zero_included_n_reps()
         integer(int32), parameter :: n_bins = 2, n_points = 2, n_studies = 2
-        real(real64) :: pmfs(n_bins, n_points, n_studies), mean_pmf(n_bins, n_points)
-        integer(int32) :: counts(n_bins, n_points, n_studies), mean_pmf_counts(n_bins, n_points)
+        real(real64) :: pmfs(n_points, n_bins, n_studies), mean_pmf(n_points, n_bins)
+        integer(int32) :: counts(n_points, n_bins, n_studies), mean_pmf_counts(n_points, n_bins)
         integer(int32) :: included_n_reps(n_points, n_studies), mean_pmf_included_n_reps(n_points)
         integer(int32) :: ierr
 
-        pmfs(:, 1, 1) = [0.5_real64, 0.5_real64]
-        pmfs(:, 2, 1) = [0.25_real64, 0.75_real64]
-        pmfs(:, 1, 2) = [1.0_real64, 0.0_real64]
-        pmfs(:, 2, 2) = [0.0_real64, 0.0_real64]
-        counts(:, 1, 1) = [1, 1]
-        counts(:, 2, 1) = [1, 3]
-        counts(:, 1, 2) = [2, 0]
-        counts(:, 2, 2) = [0, 0]
+        pmfs(1, :, 1) = [0.5_real64, 0.5_real64]
+        pmfs(2, :, 1) = [0.25_real64, 0.75_real64]
+        pmfs(1, :, 2) = [1.0_real64, 0.0_real64]
+        pmfs(2, :, 2) = [0.0_real64, 0.0_real64]
+        counts(1, :, 1) = [1, 1]
+        counts(2, :, 1) = [1, 3]
+        counts(1, :, 2) = [2, 0]
+        counts(2, :, 2) = [0, 0]
         included_n_reps(:, 1) = [2, 4]
         included_n_reps(:, 2) = [2, 0]
 
@@ -2043,13 +2043,13 @@ contains
     !| deterministic once seeded, so nothing here should be able to introduce drift between calls.
     subroutine test_bootstrap_histogram_seeded_reproducibility()
         integer(int32), parameter :: n_bins = 3, n_points = 2, n_studies = 2, n_bootstraps = 15
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
         real(real64) :: ci_first(2, n_studies), ci_second(2, n_studies)
         integer(int32) :: ierr
 
-        mean_pmf_counts(:, 1) = [5, 3, 2]
-        mean_pmf_counts(:, 2) = [2, 2, 6]
+        mean_pmf_counts(1, :) = [5, 3, 2]
+        mean_pmf_counts(2, :) = [2, 2, 6]
         mean_pmf_included_n_reps = [10, 10]
         included_n_reps(:, 1) = [4, 4]
         included_n_reps(:, 2) = [6, 6]
@@ -2084,7 +2084,7 @@ contains
     !| confidence interval must collapse to exactly `[0.0, 0.0]` for every study.
     subroutine test_bootstrap_histogram_degenerate_single_bin_zero_ci()
         integer(int32), parameter :: n_bins = 1, n_points = 1, n_studies = 2, n_bootstraps = 5
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
         real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
         integer(int32) :: ierr
@@ -2114,12 +2114,12 @@ contains
     !| unchanged, which shows that no bootstrap ran.
     subroutine test_bootstrap_histogram_rejects_draws_from_empty_pool()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 3
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
         real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
         integer(int32) :: ierr
 
-        mean_pmf_counts(:, 1) = [0_int32, 0_int32]
+        mean_pmf_counts(1, :) = [0_int32, 0_int32]
         mean_pmf_included_n_reps = [0_int32]
         included_n_reps(1, :) = [3_int32, 3_int32]
         confidence_interval = reshape([0.25_real64, 0.75_real64, 0.25_real64, 0.75_real64], [2, n_studies])
@@ -2144,12 +2144,12 @@ contains
     !| the 0 is the only fault; it used to be accepted with `ierr` OK.
     subroutine test_bootstrap_histogram_rejects_zero_included_n_reps()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 3
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
         real(real64) :: confidence_interval(2, n_studies)
         integer(int32) :: ierr
 
-        mean_pmf_counts(:, 1) = [2_int32, 2_int32]
+        mean_pmf_counts(1, :) = [2_int32, 2_int32]
         mean_pmf_included_n_reps = [4_int32]
         included_n_reps(1, :) = [0_int32, 4_int32]
         confidence_interval = 0.5_real64
@@ -2171,12 +2171,12 @@ contains
     !| unchanged-interval check fails on that code.
     subroutine test_bootstrap_histogram_rejects_pool_total_not_bin_sum()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 20
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
         real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
         integer(int32) :: ierr
 
-        mean_pmf_counts(:, 1) = [1_int32, 1_int32]
+        mean_pmf_counts(1, :) = [1_int32, 1_int32]
         mean_pmf_included_n_reps = [3_int32]
         included_n_reps(1, :) = [1_int32, 2_int32]
         confidence_interval = 0.5_real64
@@ -2199,12 +2199,12 @@ contains
     !| run with `ierr` OK and weights that did not add up.
     subroutine test_bootstrap_histogram_rejects_study_sum_not_pool_total()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 20
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
         real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
         integer(int32) :: ierr
 
-        mean_pmf_counts(:, 1) = [2_int32, 2_int32]
+        mean_pmf_counts(1, :) = [2_int32, 2_int32]
         mean_pmf_included_n_reps = [4_int32]
         included_n_reps(1, :) = [1_int32, 1_int32]
         confidence_interval = 0.5_real64
@@ -2229,36 +2229,36 @@ contains
     !| two draw sizes (4 and 6) add up to the pool's 10, as the routine requires.
     subroutine test_gjct_permutation_test_conservation_of_counts()
         integer(int32), parameter :: n_bins = 3, n_points = 1, n_studies = 2, n_permutations = 1
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
         real(real64) :: p_values_observed_consensus(n_studies)
-        integer(int32) :: tmp_mean_pmf_counts(n_bins, n_points), tmp_counts(n_bins, n_points)
-        real(real64) :: tmp_pmfs(n_bins, n_points, n_studies)
+        integer(int32) :: tmp_mean_pmf_counts(n_points, n_bins), tmp_counts(n_points, n_bins)
+        real(real64) :: tmp_pmfs(n_points, n_bins, n_studies)
         real(real64) :: tmp_js_divergences(n_points, n_studies), tmp_weights(n_points, n_studies)
         real(real64) :: tmp_global_js_divergence(n_studies)
-        real(real64) :: tmp_pmf_point_major(n_points, n_bins)
-        integer(int32) :: tmp_counts_point_major(n_points, n_bins)
+        real(real64) :: tmp_permuted_mean_pmf(n_points, n_bins)
+        integer(int32) :: tmp_point_pool(n_bins), tmp_point_draw(n_bins)
         integer(int32) :: ierr
 
-        mean_pmf_counts(:, 1) = [5, 3, 2]
+        mean_pmf_counts(1, :) = [5, 3, 2]
         mean_pmf_included_n_reps = [10]
         included_n_reps(1, :) = [4, 6]
-        mean_pmf(:, 1) = real(mean_pmf_counts(:, 1), real64)/10.0_real64
+        mean_pmf(1, :) = real(mean_pmf_counts(1, :), real64)/10.0_real64
         global_jsd_observed = 0.0_real64
 
         call gjct_permutation_test_expert(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
                                           mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
                                           p_values_observed_consensus, tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, &
                                           tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
-                                          tmp_pmf_point_major, tmp_counts_point_major, ierr=ierr, random_seed=1_int32)
+                                          tmp_permuted_mean_pmf, tmp_point_pool, tmp_point_draw, ierr=ierr, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_gjct_permutation_test_conservation_of_counts: ierr should be OK")
-        call assert_equal_int(sum(tmp_counts(:, 1)), included_n_reps(1, n_studies), &
+        call assert_equal_int(sum(tmp_counts(1, :)), included_n_reps(1, n_studies), &
                               "test_gjct_permutation_test_conservation_of_counts: "// &
                               "resampled counts must sum to the last study's per-point draw size")
-        call assert_equal_real(sum(tmp_pmfs(:, 1, 1)), 1.0_real64, TOL, &
+        call assert_equal_real(sum(tmp_pmfs(1, :, 1)), 1.0_real64, TOL, &
                                "test_gjct_permutation_test_conservation_of_counts: "// &
                                "the first study's resampled counts must sum to its draw size, so its pmf sums to 1")
     end subroutine test_gjct_permutation_test_conservation_of_counts
@@ -2272,53 +2272,53 @@ contains
     !| then kept its full last-bin count, and later studies drew from an inflated last bin.
     subroutine test_gjct_permutation_depletes_pool_exactly()
         integer(int32), parameter :: n_bins = 4, n_points = 3, n_studies = 3, n_permutations = 1
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
         real(real64) :: p_values_observed_consensus(n_studies)
-        integer(int32) :: tmp_mean_pmf_counts(n_bins, n_points), tmp_counts(n_bins, n_points)
-        real(real64) :: tmp_pmfs(n_bins, n_points, n_studies)
+        integer(int32) :: tmp_mean_pmf_counts(n_points, n_bins), tmp_counts(n_points, n_bins)
+        real(real64) :: tmp_pmfs(n_points, n_bins, n_studies)
         real(real64) :: tmp_js_divergences(n_points, n_studies), tmp_weights(n_points, n_studies)
         real(real64) :: tmp_global_js_divergence(n_studies)
-        real(real64) :: tmp_pmf_point_major(n_points, n_bins)
-        integer(int32) :: tmp_counts_point_major(n_points, n_bins)
+        real(real64) :: tmp_permuted_mean_pmf(n_points, n_bins)
+        integer(int32) :: tmp_point_pool(n_bins), tmp_point_draw(n_bins)
         integer(int32) :: permuted_counts_total(n_bins), ierr, i_point, i_study
         character(len=*), parameter :: name = "test_gjct_permutation_depletes_pool_exactly: "
 
-        mean_pmf_counts(:, 1) = [4_int32, 2_int32, 3_int32, 5_int32]
-        mean_pmf_counts(:, 2) = [1_int32, 6_int32, 2_int32, 3_int32]
-        mean_pmf_counts(:, 3) = [2_int32, 0_int32, 3_int32, 7_int32]
-        mean_pmf_included_n_reps = sum(mean_pmf_counts, dim=1)
+        mean_pmf_counts(1, :) = [4_int32, 2_int32, 3_int32, 5_int32]
+        mean_pmf_counts(2, :) = [1_int32, 6_int32, 2_int32, 3_int32]
+        mean_pmf_counts(3, :) = [2_int32, 0_int32, 3_int32, 7_int32]
+        mean_pmf_included_n_reps = sum(mean_pmf_counts, dim=2)
         included_n_reps(1, :) = [5_int32, 4_int32, 5_int32]
         included_n_reps(2, :) = [4_int32, 4_int32, 4_int32]
         included_n_reps(3, :) = [3_int32, 5_int32, 4_int32]
         do i_point = 1, n_points
-            mean_pmf(:, i_point) = real(mean_pmf_counts(:, i_point), real64) &
+            mean_pmf(i_point, :) = real(mean_pmf_counts(i_point, :), real64) &
                                    /real(mean_pmf_included_n_reps(i_point), real64)
         end do
         global_jsd_observed = 0.0_real64
 
         call assert_equal_array_int(sum(included_n_reps, dim=2), mean_pmf_included_n_reps, n_points, &
                                     name//"fixture draw sizes sum per point to the pool size")
-        call assert_true(all(mean_pmf_counts(n_bins, :) > 0_int32), name//"fixture has a non-empty last bin")
+        call assert_true(all(mean_pmf_counts(:, n_bins) > 0_int32), name//"fixture has a non-empty last bin")
 
         call gjct_permutation_test_expert(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
                                           mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
                                           p_values_observed_consensus, tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, &
                                           tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
-                                          tmp_pmf_point_major, tmp_counts_point_major, ierr=ierr, random_seed=3_int32)
+                                          tmp_permuted_mean_pmf, tmp_point_pool, tmp_point_draw, ierr=ierr, random_seed=3_int32)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr should be OK")
 
         call assert_equal_array_int(tmp_mean_pmf_counts, spread(0_int32, 1, n_bins*n_points), n_bins*n_points, &
-                                    name//"the pool is used up exactly, the last bin included", n_rows=n_bins)
+                                    name//"the pool is used up exactly, the last bin included", n_rows=n_points)
 
         do i_point = 1, n_points
             permuted_counts_total = 0_int32
             do i_study = 1, n_studies
                 permuted_counts_total = permuted_counts_total + &
-                    nint(tmp_pmfs(:, i_point, i_study)*real(included_n_reps(i_point, i_study), real64), kind=int32)
+                    nint(tmp_pmfs(i_point, :, i_study)*real(included_n_reps(i_point, i_study), real64), kind=int32)
             end do
-            call assert_equal_array_int(permuted_counts_total, mean_pmf_counts(:, i_point), n_bins, &
+            call assert_equal_array_int(permuted_counts_total, mean_pmf_counts(i_point, :), n_bins, &
                                         name//"the studies' permuted counts sum per bin to the original pool")
         end do
     end subroutine test_gjct_permutation_depletes_pool_exactly
@@ -2344,28 +2344,28 @@ contains
     !| `tmp_global_js_divergence` holds for any seed as well.
     subroutine test_gjct_null_statistic_uses_permuted_consensus()
         integer(int32), parameter :: n_bins = 3, n_points = 2, n_studies = 3, n_permutations = 1
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: pool_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: pool_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
         real(real64) :: p_values_observed_consensus(n_studies)
-        integer(int32) :: tmp_mean_pmf_counts(n_bins, n_points), tmp_counts(n_bins, n_points)
-        real(real64) :: tmp_pmfs(n_bins, n_points, n_studies)
+        integer(int32) :: tmp_mean_pmf_counts(n_points, n_bins), tmp_counts(n_points, n_bins)
+        real(real64) :: tmp_pmfs(n_points, n_bins, n_studies)
         real(real64) :: tmp_js_divergences(n_points, n_studies), tmp_weights(n_points, n_studies)
         real(real64) :: tmp_global_js_divergence(n_studies)
-        real(real64) :: tmp_pmf_point_major(n_points, n_bins)
-        integer(int32) :: tmp_counts_point_major(n_points, n_bins)
-        real(real64) :: permuted_consensus(n_bins, n_points), expected_js_divergences(n_points)
+        real(real64) :: tmp_permuted_mean_pmf(n_points, n_bins)
+        integer(int32) :: tmp_point_pool(n_bins), tmp_point_draw(n_bins)
+        real(real64) :: permuted_consensus(n_points, n_bins), expected_js_divergences(n_points)
         real(real64) :: expected_weights(n_points), expected_global_jsd
         integer(int32) :: ierr, i_point, i_study, i_bin
         character(len=*), parameter :: name = "test_gjct_null_statistic_uses_permuted_consensus: "
 
-        mean_pmf_counts(:, 1) = [1_int32, 7_int32, 12_int32]
-        mean_pmf_counts(:, 2) = [3_int32, 8_int32, 9_int32]
-        mean_pmf_included_n_reps = sum(mean_pmf_counts, dim=1)
+        mean_pmf_counts(1, :) = [1_int32, 7_int32, 12_int32]
+        mean_pmf_counts(2, :) = [3_int32, 8_int32, 9_int32]
+        mean_pmf_included_n_reps = sum(mean_pmf_counts, dim=2)
         included_n_reps(1, :) = [1_int32, 4_int32, 15_int32]
         included_n_reps(2, :) = [2_int32, 5_int32, 13_int32]
         do i_point = 1, n_points
-            pool_pmf(:, i_point) = real(mean_pmf_counts(:, i_point), real64) &
+            pool_pmf(i_point, :) = real(mean_pmf_counts(i_point, :), real64) &
                                    /real(mean_pmf_included_n_reps(i_point), real64)
         end do
         global_jsd_observed = 0.0_real64
@@ -2377,7 +2377,7 @@ contains
                                           mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
                                           p_values_observed_consensus, tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, &
                                           tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
-                                          tmp_pmf_point_major, tmp_counts_point_major, ierr=ierr, random_seed=5_int32)
+                                          tmp_permuted_mean_pmf, tmp_point_pool, tmp_point_draw, ierr=ierr, random_seed=5_int32)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr should be OK")
 
         ! The equal-weight consensus of the permuted pmfs, in create_mean_pmf_impl's own order.
@@ -2385,8 +2385,8 @@ contains
         do i_study = 1, n_studies
             do i_point = 1, n_points
                 do i_bin = 1, n_bins
-                    permuted_consensus(i_bin, i_point) = permuted_consensus(i_bin, i_point) &
-                                                         + tmp_pmfs(i_bin, i_point, i_study)/real(n_studies, real64)
+                    permuted_consensus(i_point, i_bin) = permuted_consensus(i_point, i_bin) &
+                                                         + tmp_pmfs(i_point, i_bin, i_study)/real(n_studies, real64)
                 end do
             end do
         end do
@@ -2395,8 +2395,8 @@ contains
                          name//"fixture: the replicate-weighted pool pmf differs from the permuted consensus")
 
         do i_study = 1, n_studies
-            call compute_divergence_per_reference_point_impl(transpose(tmp_pmfs(:, :, i_study)), &
-                                                             transpose(permuted_consensus), n_points, n_bins, &
+            call compute_divergence_per_reference_point_impl(tmp_pmfs(:, :, i_study), &
+                                                             permuted_consensus, n_points, n_bins, &
                                                              expected_js_divergences)
             call compute_weighted_global_divergence_impl(expected_js_divergences, n_points, included_n_reps(:, i_study), &
                                                           mean_pmf_included_n_reps, expected_global_jsd, expected_weights)
@@ -2428,29 +2428,29 @@ contains
     !| least one study, which a routine that returned `p_values` twice would fail.
     subroutine test_gjct_observed_consensus_p_value()
         integer(int32), parameter :: n_bins = 3, n_points = 2, n_studies = 3, n_permutations = 1
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies)
+        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies)
         real(real64) :: p_values(n_studies), p_values_observed_consensus(n_studies)
-        integer(int32) :: tmp_mean_pmf_counts(n_bins, n_points), tmp_counts(n_bins, n_points)
-        real(real64) :: tmp_pmfs(n_bins, n_points, n_studies)
+        integer(int32) :: tmp_mean_pmf_counts(n_points, n_bins), tmp_counts(n_points, n_bins)
+        real(real64) :: tmp_pmfs(n_points, n_bins, n_studies)
         real(real64) :: tmp_js_divergences(n_points, n_studies), tmp_weights(n_points, n_studies)
         real(real64) :: tmp_global_js_divergence(n_studies)
-        real(real64) :: tmp_pmf_point_major(n_points, n_bins)
-        integer(int32) :: tmp_counts_point_major(n_points, n_bins)
+        real(real64) :: tmp_permuted_mean_pmf(n_points, n_bins)
+        integer(int32) :: tmp_point_pool(n_bins), tmp_point_draw(n_bins)
         real(real64) :: permuted_consensus_null(n_studies), observed_consensus_null(n_studies)
         real(real64) :: expected_js_divergences(n_points), expected_weights(n_points)
         real(real64) :: expected_p_values(n_studies), expected_p_values_observed_consensus(n_studies)
         integer(int32) :: ierr, i_point, i_study
         character(len=*), parameter :: name = "test_gjct_observed_consensus_p_value: "
 
-        mean_pmf_counts(:, 1) = [1_int32, 7_int32, 12_int32]
-        mean_pmf_counts(:, 2) = [3_int32, 8_int32, 9_int32]
-        mean_pmf_included_n_reps = sum(mean_pmf_counts, dim=1)
+        mean_pmf_counts(1, :) = [1_int32, 7_int32, 12_int32]
+        mean_pmf_counts(2, :) = [3_int32, 8_int32, 9_int32]
+        mean_pmf_included_n_reps = sum(mean_pmf_counts, dim=2)
         included_n_reps(1, :) = [1_int32, 4_int32, 15_int32]
         included_n_reps(2, :) = [2_int32, 5_int32, 13_int32]
         do i_point = 1, n_points
-            mean_pmf(:, i_point) = real(mean_pmf_counts(:, i_point), real64) &
+            mean_pmf(i_point, :) = real(mean_pmf_counts(i_point, :), real64) &
                                    /real(mean_pmf_included_n_reps(i_point), real64)
         end do
         global_jsd_observed = 0.0_real64
@@ -2459,12 +2459,12 @@ contains
                                           mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
                                           p_values_observed_consensus, tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, &
                                           tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
-                                          tmp_pmf_point_major, tmp_counts_point_major, ierr=ierr, random_seed=5_int32)
+                                          tmp_permuted_mean_pmf, tmp_point_pool, tmp_point_draw, ierr=ierr, random_seed=5_int32)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"first call: ierr should be OK")
 
         permuted_consensus_null = tmp_global_js_divergence
         do i_study = 1, n_studies
-            call compute_divergence_per_reference_point_impl(transpose(tmp_pmfs(:, :, i_study)), transpose(mean_pmf), &
+            call compute_divergence_per_reference_point_impl(tmp_pmfs(:, :, i_study), mean_pmf, &
                                                              n_points, n_bins, expected_js_divergences)
             call compute_weighted_global_divergence_impl(expected_js_divergences, n_points, included_n_reps(:, i_study), &
                                                           mean_pmf_included_n_reps, observed_consensus_null(i_study), &
@@ -2476,7 +2476,7 @@ contains
                                           mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
                                           p_values_observed_consensus, tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, &
                                           tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
-                                          tmp_pmf_point_major, tmp_counts_point_major, ierr=ierr, random_seed=5_int32)
+                                          tmp_permuted_mean_pmf, tmp_point_pool, tmp_point_draw, ierr=ierr, random_seed=5_int32)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"second call: ierr should be OK")
         call assert_equal_array_real(tmp_global_js_divergence, permuted_consensus_null, n_studies, 0.0_real64, &
                                      name//"the same seed gives the same draws and the same recomputed-consensus null")
@@ -2502,20 +2502,20 @@ contains
     !| between calls.
     subroutine test_gjct_permutation_test_seeded_reproducibility()
         integer(int32), parameter :: n_bins = 3, n_points = 2, n_studies = 2, n_permutations = 20
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies)
+        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies)
         real(real64) :: p_values_first(n_studies), p_values_second(n_studies)
         real(real64) :: p_values_observed_consensus_first(n_studies), p_values_observed_consensus_second(n_studies)
         integer(int32) :: ierr
 
-        mean_pmf_counts(:, 1) = [5, 3, 2]
-        mean_pmf_counts(:, 2) = [2, 2, 6]
+        mean_pmf_counts(1, :) = [5, 3, 2]
+        mean_pmf_counts(2, :) = [2, 2, 6]
         mean_pmf_included_n_reps = [10, 10]
         included_n_reps(:, 1) = [4, 4]
         included_n_reps(:, 2) = [6, 6]
-        mean_pmf(:, 1) = real(mean_pmf_counts(:, 1), real64)/10.0_real64
-        mean_pmf(:, 2) = real(mean_pmf_counts(:, 2), real64)/10.0_real64
+        mean_pmf(1, :) = real(mean_pmf_counts(1, :), real64)/10.0_real64
+        mean_pmf(2, :) = real(mean_pmf_counts(2, :), real64)/10.0_real64
         global_jsd_observed = 0.3_real64
 
         call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
@@ -2552,9 +2552,9 @@ contains
     !| gives `p_values = anint(0+1)/(10+1) = 1/11`.
     subroutine test_permutation_pvalue_laplace_corrected_never_exactly_zero()
         integer(int32), parameter :: n_bins = 1, n_points = 1, n_studies = 1, n_permutations = 10
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
         real(real64) :: p_values_observed_consensus(n_studies)
         integer(int32) :: ierr
 
@@ -2588,16 +2588,16 @@ contains
     !| maximally significant.
     subroutine test_gjct_permutation_test_rejects_draws_larger_than_pool()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_permutations = 3
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
         real(real64) :: p_values_observed_consensus(n_studies)
         integer(int32) :: ierr, i_study
 
-        mean_pmf_counts(:, 1) = [2_int32, 2_int32]
+        mean_pmf_counts(1, :) = [2_int32, 2_int32]
         mean_pmf_included_n_reps = [4_int32] ! consistent pool: only the draws exceed it
         included_n_reps(1, :) = [4_int32, 4_int32]
-        mean_pmf(:, 1) = [0.5_real64, 0.5_real64]
+        mean_pmf(1, :) = [0.5_real64, 0.5_real64]
         global_jsd_observed = 0.1_real64
         p_values = -1.0_real64
         p_values_observed_consensus = -1.0_real64
@@ -2627,16 +2627,16 @@ contains
     !| the 0 is the only fault; it used to be accepted with `ierr` OK.
     subroutine test_gjct_permutation_test_rejects_zero_included_n_reps()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_permutations = 3
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
         real(real64) :: p_values_observed_consensus(n_studies)
         integer(int32) :: ierr
 
-        mean_pmf_counts(:, 1) = [2_int32, 2_int32]
+        mean_pmf_counts(1, :) = [2_int32, 2_int32]
         mean_pmf_included_n_reps = [4_int32]
         included_n_reps(1, :) = [0_int32, 4_int32]
-        mean_pmf(:, 1) = [0.5_real64, 0.5_real64]
+        mean_pmf(1, :) = [0.5_real64, 0.5_real64]
         global_jsd_observed = 0.1_real64
 
         call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
@@ -2655,17 +2655,17 @@ contains
     !| p-value arrays come back NaN ("not computed"), checked element by element.
     subroutine test_gjct_permutation_test_rejects_pool_total_not_bin_sum()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_permutations = 3
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
         real(real64) :: p_values_observed_consensus(n_studies)
         integer(int32) :: ierr, i_study
         character(len=*), parameter :: name = "test_gjct_permutation_test_rejects_pool_total_not_bin_sum: "
 
-        mean_pmf_counts(:, 1) = [1_int32, 1_int32]
+        mean_pmf_counts(1, :) = [1_int32, 1_int32]
         mean_pmf_included_n_reps = [3_int32]
         included_n_reps(1, :) = [1_int32, 1_int32]
-        mean_pmf(:, 1) = [0.5_real64, 0.5_real64]
+        mean_pmf(1, :) = [0.5_real64, 0.5_real64]
         global_jsd_observed = 0.1_real64
         p_values = -1.0_real64
         p_values_observed_consensus = -1.0_real64
@@ -2689,16 +2689,16 @@ contains
     !| position. It used to run with `ierr` OK.
     subroutine test_gjct_permutation_test_rejects_draws_fewer_than_pool()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_permutations = 3
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
         real(real64) :: p_values_observed_consensus(n_studies)
         integer(int32) :: ierr
 
-        mean_pmf_counts(:, 1) = [2_int32, 2_int32]
+        mean_pmf_counts(1, :) = [2_int32, 2_int32]
         mean_pmf_included_n_reps = [4_int32]
         included_n_reps(1, :) = [1_int32, 1_int32]
-        mean_pmf(:, 1) = [0.5_real64, 0.5_real64]
+        mean_pmf(1, :) = [0.5_real64, 0.5_real64]
         global_jsd_observed = 0.1_real64
 
         call gjct_permutation_test(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
@@ -2717,16 +2717,16 @@ contains
     subroutine test_gjct_permutation_test_zero_permutations_gives_nan_p_values()
         character(len=*), parameter :: name = "test_gjct_permutation_test_zero_permutations_gives_nan_p_values: "
         integer(int32), parameter :: n_bins = 3, n_points = 1, n_studies = 2
-        integer(int32) :: mean_pmf_counts(n_bins, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points), global_jsd_observed(n_studies), p_values(n_studies)
+        real(real64) :: mean_pmf(n_points, n_bins), global_jsd_observed(n_studies), p_values(n_studies)
         real(real64) :: p_values_observed_consensus(n_studies)
         integer(int32) :: ierr
 
-        mean_pmf_counts(:, 1) = [5, 3, 2]
+        mean_pmf_counts(1, :) = [5, 3, 2]
         mean_pmf_included_n_reps = [10]
         included_n_reps(1, :) = [4, 6]
-        mean_pmf(:, 1) = real(mean_pmf_counts(:, 1), real64)/10.0_real64
+        mean_pmf(1, :) = real(mean_pmf_counts(1, :), real64)/10.0_real64
         global_jsd_observed = 0.3_real64
 
         p_values = -1.0_real64
@@ -2772,11 +2772,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
-        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
+        real(real64) :: pmfs(n_points, MAX_N_BINS, n_studies)
+        integer(int32) :: counts(n_points, MAX_N_BINS, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
-        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
+        real(real64) :: mean_pmf(n_points, MAX_N_BINS)
+        integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -2880,11 +2880,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
-        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
+        real(real64) :: pmfs(n_points, MAX_N_BINS, n_studies)
+        integer(int32) :: counts(n_points, MAX_N_BINS, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
-        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
+        real(real64) :: mean_pmf(n_points, MAX_N_BINS)
+        integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -2938,19 +2938,19 @@ contains
                          "test_run_js_comp_test_two_studies_hand_traceable: "// &
                          "occupancy genuinely fails at the default m_min under the new narrower derived range")
 
-        call assert_equal_array_int(counts(1:3, 1, 1), [1, 0, 1], 3_int32, &
+        call assert_equal_array_int(counts(1, 1:3, 1), [1, 0, 1], 3_int32, &
                                     "test_run_js_comp_test_two_studies_hand_traceable: study 1 counts")
-        call assert_equal_array_int(counts(1:3, 1, 2), [1, 0, 1], 3_int32, &
+        call assert_equal_array_int(counts(1, 1:3, 2), [1, 0, 1], 3_int32, &
                                     "test_run_js_comp_test_two_studies_hand_traceable: study 2 counts")
         call assert_equal_int(included_n_reps(1, 1), 2_int32, &
                               "test_run_js_comp_test_two_studies_hand_traceable: study 1 included_n_reps")
         call assert_equal_int(included_n_reps(1, 2), 2_int32, &
                               "test_run_js_comp_test_two_studies_hand_traceable: study 2 included_n_reps")
 
-        call assert_equal_array_real(mean_pmf(1:3, 1), [0.5_real64, 0.0_real64, 0.5_real64], 3_int32, TOL, &
+        call assert_equal_array_real(mean_pmf(1, 1:3), [0.5_real64, 0.0_real64, 0.5_real64], 3_int32, TOL, &
                                      "test_run_js_comp_test_two_studies_hand_traceable: "// &
                                      "mean_pmf equals both studies' own identical pmf")
-        call assert_equal_array_int(mean_pmf_counts(1:3, 1), [2, 0, 2], 3_int32, &
+        call assert_equal_array_int(mean_pmf_counts(1, 1:3), [2, 0, 2], 3_int32, &
                                     "test_run_js_comp_test_two_studies_hand_traceable: mean_pmf_counts")
         call assert_equal_int(mean_pmf_included_n_reps(1), 4_int32, &
                               "test_run_js_comp_test_two_studies_hand_traceable: mean_pmf_included_n_reps")
@@ -3012,11 +3012,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
-        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
+        real(real64) :: pmfs(n_points, MAX_N_BINS, n_studies)
+        integer(int32) :: counts(n_points, MAX_N_BINS, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
-        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
+        real(real64) :: mean_pmf(n_points, MAX_N_BINS)
+        integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -3066,12 +3066,12 @@ contains
                           "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: "// &
                           "min_residuals_per_bin=0 trivially satisfies the occupancy criterion")
 
-        call assert_equal_array_int(counts(1:4, 1, 1), [0, 1, 1, 0], 4_int32, &
+        call assert_equal_array_int(counts(1, 1:4, 1), [0, 1, 1, 0], 4_int32, &
                                     "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: study 1 counts")
-        call assert_equal_array_int(counts(1:4, 1, 2), [1, 0, 0, 1], 4_int32, &
+        call assert_equal_array_int(counts(1, 1:4, 2), [1, 0, 0, 1], 4_int32, &
                                     "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: study 2 counts")
 
-        call assert_equal_array_real(mean_pmf(1:4, 1), [0.25_real64, 0.25_real64, 0.25_real64, 0.25_real64], 4_int32, TOL, &
+        call assert_equal_array_real(mean_pmf(1, 1:4), [0.25_real64, 0.25_real64, 0.25_real64, 0.25_real64], 4_int32, TOL, &
                                      "test_run_js_comp_test_accepts_min_residuals_per_bin_zero: mean_pmf should be uniform")
 
         call assert_equal_real(global_js_divergence(1), EXPECTED_JSD, 1d-9, &
@@ -3121,11 +3121,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
-        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
+        real(real64) :: pmfs(n_points, MAX_N_BINS, n_studies)
+        integer(int32) :: counts(n_points, MAX_N_BINS, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
-        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
+        real(real64) :: mean_pmf(n_points, MAX_N_BINS)
+        integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -3169,7 +3169,7 @@ contains
                          "test_run_js_comp_test_three_studies_outlier_has_small_p_value: "// &
                          "the pooled pool's 2nd bin is always empty, so occupancy fails even at m_min")
 
-        call assert_equal_array_int(mean_pmf_counts(1:4, 1), [4, 0, 4, 4], 4_int32, &
+        call assert_equal_array_int(mean_pmf_counts(1, 1:4), [4, 0, 4, 4], 4_int32, &
                                     "test_run_js_comp_test_three_studies_outlier_has_small_p_value: mean_pmf_counts")
 
         call assert_true(p_values(3) <= 0.05_real64, &
@@ -3255,11 +3255,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
-        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
+        real(real64) :: pmfs(n_points, MAX_N_BINS, n_studies)
+        integer(int32) :: counts(n_points, MAX_N_BINS, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
-        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
+        real(real64) :: mean_pmf(n_points, MAX_N_BINS)
+        integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -6052,11 +6052,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
-        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
+        real(real64) :: pmfs(n_points, MAX_N_BINS, n_studies)
+        integer(int32) :: counts(n_points, MAX_N_BINS, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
-        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
+        real(real64) :: mean_pmf(n_points, MAX_N_BINS)
+        integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -6129,18 +6129,18 @@ contains
                 name//"p_values_observed_consensus")
         ! counts per (point, study), rows 1:max_n_bins_per_point -- rows beyond the point's own
         ! n_bins_per_point are the zero padding build_residual_histograms_impl guarantees
-        call assert_equal_array_int(counts(1:6, 1, 1), [0, 3, 5, 2, 3, 2], 6_int32, name//"counts(1,1)")
-        call assert_equal_array_int(counts(1:6, 2, 1), [0, 4, 5, 4, 3, 0], 6_int32, name//"counts(2,1)")
-        call assert_equal_array_int(counts(1:6, 3, 1), [8, 5, 3, 0, 0, 0], 6_int32, name//"counts(3,1)")
-        call assert_equal_array_int(counts(1:6, 1, 2), [3, 0, 3, 1, 1, 4], 6_int32, name//"counts(1,2)")
-        call assert_equal_array_int(counts(1:6, 2, 2), [3, 2, 2, 2, 3, 0], 6_int32, name//"counts(2,2)")
-        call assert_equal_array_int(counts(1:6, 3, 2), [6, 2, 3, 0, 0, 0], 6_int32, name//"counts(3,2)")
-        call assert_equal_array_int(counts(1:6, 1, 3), [0, 2, 2, 4, 0, 0], 6_int32, name//"counts(1,3)")
-        call assert_equal_array_int(counts(1:6, 2, 3), [0, 3, 5, 0, 0, 0], 6_int32, name//"counts(2,3)")
-        call assert_equal_array_int(counts(1:6, 3, 3), [7, 1, 0, 0, 0, 0], 6_int32, name//"counts(3,3)")
-        call assert_equal_array_int(mean_pmf_counts(1:6, 1), [3, 5, 10, 7, 4, 6], 6_int32, name//"mean_pmf_counts(1)")
-        call assert_equal_array_int(mean_pmf_counts(1:6, 2), [3, 9, 12, 6, 6, 0], 6_int32, name//"mean_pmf_counts(2)")
-        call assert_equal_array_int(mean_pmf_counts(1:6, 3), [21, 8, 6, 0, 0, 0], 6_int32, name//"mean_pmf_counts(3)")
+        call assert_equal_array_int(counts(1, 1:6, 1), [0, 3, 5, 2, 3, 2], 6_int32, name//"counts(1,1)")
+        call assert_equal_array_int(counts(2, 1:6, 1), [0, 4, 5, 4, 3, 0], 6_int32, name//"counts(2,1)")
+        call assert_equal_array_int(counts(3, 1:6, 1), [8, 5, 3, 0, 0, 0], 6_int32, name//"counts(3,1)")
+        call assert_equal_array_int(counts(1, 1:6, 2), [3, 0, 3, 1, 1, 4], 6_int32, name//"counts(1,2)")
+        call assert_equal_array_int(counts(2, 1:6, 2), [3, 2, 2, 2, 3, 0], 6_int32, name//"counts(2,2)")
+        call assert_equal_array_int(counts(3, 1:6, 2), [6, 2, 3, 0, 0, 0], 6_int32, name//"counts(3,2)")
+        call assert_equal_array_int(counts(1, 1:6, 3), [0, 2, 2, 4, 0, 0], 6_int32, name//"counts(1,3)")
+        call assert_equal_array_int(counts(2, 1:6, 3), [0, 3, 5, 0, 0, 0], 6_int32, name//"counts(2,3)")
+        call assert_equal_array_int(counts(3, 1:6, 3), [7, 1, 0, 0, 0, 0], 6_int32, name//"counts(3,3)")
+        call assert_equal_array_int(mean_pmf_counts(1, 1:6), [3, 5, 10, 7, 4, 6], 6_int32, name//"mean_pmf_counts(1)")
+        call assert_equal_array_int(mean_pmf_counts(2, 1:6), [3, 9, 12, 6, 6, 0], 6_int32, name//"mean_pmf_counts(2)")
+        call assert_equal_array_int(mean_pmf_counts(3, 1:6), [21, 8, 6, 0, 0, 0], 6_int32, name//"mean_pmf_counts(3)")
     end subroutine test_run_js_comp_test_golden_regression
 
     !> Exact comparison of two real arrays that may hold NaN: the NaN positions must coincide and
@@ -6167,12 +6167,14 @@ contains
     !| permutation itself, exactly as the helper does). Fixture: the golden fixture's third
     !| reference point, whose per-study neighbor genes (captured from Pass A) are study 1
     !| `[2,9,5,3]`, study 2 `[2,9,4,7]`, study 3 `[7,1,6,3]`, with the golden test's occupancy
-    !| options. Every output and the pooled buffer itself must match exactly.
+    !| options. Every output and the pooled buffer itself must match exactly. The same point as
+    !| the middle one of three in a points-first index array (`i_index_point = 2`, the other
+    !| points holding the out-of-range gene 999) must give the same pool and bin count.
     subroutine test_point_bin_count_uniform_matches_multi_study_gather()
         integer(int32), parameter :: n_studies = 3, n_genes = 10, n_reps = 4, k = 4, n_pool = n_reps*k*n_studies
         real(real64) :: gene_means(n_genes, n_studies), residuals(n_reps, n_genes, n_studies), x_star(3)
         integer(int32) :: gene_means_perms(n_genes, n_studies)
-        integer(int32) :: point_indices(k, n_studies), point_n_neighbors(n_studies)
+        integer(int32) :: point_indices(k, n_studies), point_n_neighbors(n_studies), three_point_indices(k, 3, n_studies)
         real(real64) :: tmp_pooled(n_pool), reference_pool(n_pool)
         integer(int32) :: tmp_perm(n_pool), tmp_bin_counts(MAX_N_BINS), tmp_group_perm(n_pool)
         integer(int32) :: tmp_ends(n_studies), tmp_sizes(n_studies)
@@ -6186,7 +6188,8 @@ contains
         point_indices = reshape([2, 9, 5, 3, 2, 9, 4, 7, 7, 1, 6, 3], [k, n_studies])
         point_n_neighbors = k
 
-        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, k, point_indices, point_n_neighbors, &
+        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, k, 1_int32, point_indices, 1_int32, &
+                                       point_n_neighbors, &
                                        n_bins, failed, low, high, n_pooled, min_occ, mean_occ, max_occ, sturges, fd, &
                                        tmp_pooled, tmp_perm, tmp_bin_counts, tmp_group_perm, tmp_ends, &
                                        tmp_sizes, ierr, m_min=2_int32, m_max=12_int32, &
@@ -6212,11 +6215,23 @@ contains
         call assert_equal_int(max_occ, ref_max_occ, name//"max_bin_occupancy")
         call assert_equal_int(sturges, ref_sturges, name//"sturges_bins")
         call assert_equal_int(fd, ref_fd, name//"fd_bins")
+
+        three_point_indices = 999_int32
+        three_point_indices(:, 2, :) = point_indices
+        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, k, 3_int32, three_point_indices, 2_int32, &
+                                       point_n_neighbors, &
+                                       n_bins, failed, low, high, n_pooled, min_occ, mean_occ, max_occ, sturges, fd, &
+                                       tmp_pooled, tmp_perm, tmp_bin_counts, tmp_group_perm, tmp_ends, &
+                                       tmp_sizes, ierr, m_min=2_int32, m_max=12_int32, &
+                                       min_residuals_per_bin=3_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"middle of three points: ierr")
+        call assert_equal_array_real_nan_exact(tmp_pooled, reference_pool, n_pool, name//"middle of three points: pool")
+        call assert_equal_int(n_bins, ref_n_bins, name//"middle of three points: selected_n_bins")
     end subroutine test_point_bin_count_uniform_matches_multi_study_gather
 
     !> Ragged per-study neighbor counts `(2, 1, 3)`, 2 replicates, 4 genes. The per-study gene lists
     !| are study 1 `[3, 1]`, study 2 `[2]`, study 3 `[4, 2, 1]`; every unused slot of
-    !| `point_neighborhood_indices` holds the out-of-range gene `999`, so reading one would raise
+    !| `neighborhood_indices` holds the out-of-range gene `999`, so reading one would raise
     !| ERR_INVALID_INPUT. Built by hand, the pool is study 1's gene 3 `[-0.5, 0.6]` and gene 1
     !| `[0.1, -0.2]`, then study 2's gene 2 `[-1.3, NaN]`, then study 3's genes 4 `[NaN, 2.8]`,
     !| 2 `[2.3, -2.4]` and 1 `[-2.1, 2.2]`: 12 slots, 10 of them non-NaN. The helper must write
@@ -6259,7 +6274,8 @@ contains
         hand_pool = [-0.5_real64, 0.6_real64, 0.1_real64, -0.2_real64, -1.3_real64, nan_val, &
                      nan_val, 2.8_real64, 2.3_real64, -2.4_real64, -2.1_real64, 2.2_real64]
 
-        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, max_k, point_indices, point_n_neighbors, &
+        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, max_k, 1_int32, point_indices, 1_int32, &
+                                       point_n_neighbors, &
                                        n_bins, failed, low, high, n_pooled, min_occ, mean_occ, max_occ, sturges, fd, &
                                        tmp_pooled, tmp_perm, tmp_bin_counts, tmp_group_perm, tmp_ends, &
                                        tmp_sizes, ierr, m_min=2_int32, m_max=8_int32, &
@@ -6287,7 +6303,8 @@ contains
         ! The same ragged pool (with its NaN slots) in a Stone mode: the result must equal
         ! determine_bin_count_stone on the pool rebuilt study by study, labelled by block --
         ! failure included, should this small fixture not support any bin count.
-        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, max_k, point_indices, point_n_neighbors, &
+        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, max_k, 1_int32, point_indices, 1_int32, &
+                                       point_n_neighbors, &
                                        n_bins, failed, low, high, n_pooled, min_occ, mean_occ, max_occ, sturges, fd, &
                                        tmp_pooled, tmp_perm, tmp_bin_counts, tmp_group_perm, tmp_ends, &
                                        tmp_sizes, ierr, m_min=2_int32, m_max=8_int32, &
@@ -6320,7 +6337,8 @@ contains
         point_indices = reshape([1, 2, 3, 0], [max_k, n_studies])
         point_n_neighbors = [2, 2]
 
-        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, max_k, point_indices, point_n_neighbors, &
+        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, max_k, 1_int32, point_indices, 1_int32, &
+                                       point_n_neighbors, &
                                        n_bins, failed, low, high, n_pooled, min_occ, mean_occ, max_occ, sturges, fd, &
                                        tmp_pooled, tmp_perm, tmp_bin_counts, tmp_group_perm, tmp_ends, &
                                        tmp_sizes, ierr)
@@ -6359,7 +6377,8 @@ contains
         end do
         point_indices = reshape([1, 2, 1, 2, 2, 1], [max_k, n_studies])
 
-        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, max_k, point_indices, [2, 1, 2], &
+        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, max_k, 1_int32, point_indices, 1_int32, &
+                                       [2, 1, 2], &
                                        n_bins, failed, low, high, n_pooled, min_occ, mean_occ, max_occ, sturges, fd, &
                                        tmp_pooled, tmp_perm, tmp_bin_counts, tmp_group_perm, tmp_ends, &
                                        tmp_sizes, ierr, min_residuals_per_bin=1_int32)
@@ -6367,7 +6386,8 @@ contains
         call assert_equal_int(n_pooled, 20_int32, name//"(2,1,2) n_pooled_residuals = 4*5")
         call assert_equal_int(sturges, 4_int32, name//"(2,1,2) Sturges from rounded mean 2")
 
-        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, max_k, point_indices, [2, 1, 1], &
+        call determine_point_bin_count(residuals, n_reps, n_genes, n_studies, max_k, 1_int32, point_indices, 1_int32, &
+                                       [2, 1, 1], &
                                        n_bins, failed, low, high, n_pooled, min_occ, mean_occ, max_occ, sturges, fd, &
                                        tmp_pooled, tmp_perm, tmp_bin_counts, tmp_group_perm, tmp_ends, &
                                        tmp_sizes, ierr, min_residuals_per_bin=1_int32)
@@ -6376,8 +6396,9 @@ contains
         call assert_equal_int(sturges, 3_int32, name//"(2,1,1) Sturges from rounded mean 1")
     end subroutine test_point_bin_count_rounded_mean_diagnostic_count
 
-    !> build_point_study_histogram must return exactly the matching row of one multi-point
-    !| build_residual_histograms call, including the zero padding up to `max_n_bins = 6`. One
+    !> build_point_study_histogram must write exactly the matching row of one multi-point
+    !| build_residual_histograms call, including the zero padding up to `max_n_bins = 6`, and
+    !| leave the other row untouched (prefilled with -7 / -7.0 until its own call). One
     !| study, 3 replicates, 5 genes, 2 reference points with 2 neighbors each.
     !|   Point 1: genes `[2, 4]`, range `[-1, 1]`, 4 bins of width 0.5. Values -0.9, 0.1, 0.6,
     !|     0.95, -0.2 (plus one NaN) land in bins 1, 3, 4, 4, 2 -> counts `[1, 1, 1, 2, 0, 0]`, 5
@@ -6393,8 +6414,8 @@ contains
         real(real64) :: range_low(n_points), range_high(n_points)
         integer(int32) :: multi_counts(n_points, max_n_bins), multi_included(n_points)
         real(real64) :: multi_pmf(n_points, max_n_bins)
-        integer(int32) :: counts(max_n_bins), included, ierr, i_point, i_neighbor
-        real(real64) :: pmf(max_n_bins), tmp_neighbor_residuals(n_reps, k), nan_val
+        integer(int32) :: counts(n_points, max_n_bins), included, ierr, i_point, i_neighbor
+        real(real64) :: pmf(n_points, max_n_bins), tmp_neighbor_residuals(n_reps, k), nan_val
         integer(int32) :: expected_counts(max_n_bins, n_points), expected_included(n_points)
         character(len=*), parameter :: name = "test_point_study_histogram_matches_multi_point_builder: "
 
@@ -6420,18 +6441,24 @@ contains
                                        n_bins_per_point, multi_counts, multi_pmf, multi_included, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"multi-point builder ierr")
 
+        counts = -7_int32
+        pmf = -7.0_real64
         do i_point = 1, n_points
             call build_point_study_histogram(residuals_study, n_reps, n_genes, k, neighbor_indices(:, i_point), &
                                              range_low(i_point), range_high(i_point), n_bins_per_point(i_point), &
-                                             max_n_bins, counts, pmf, included, tmp_neighbor_residuals)
-            call assert_equal_array_int(counts, expected_counts(:, i_point), max_n_bins, &
+                                             n_points, max_n_bins, i_point, counts, pmf, included, tmp_neighbor_residuals)
+            call assert_equal_array_int(counts(i_point, :), expected_counts(:, i_point), max_n_bins, &
                                         name//"counts equal the hand-binned values")
             call assert_equal_int(included, expected_included(i_point), name//"included_n_reps by hand")
-            call assert_equal_array_int(counts, multi_counts(i_point, :), max_n_bins, &
+            call assert_equal_array_int(counts(i_point, :), multi_counts(i_point, :), max_n_bins, &
                                         name//"counts equal the multi-point builder's row")
-            call assert_equal_array_real(pmf, multi_pmf(i_point, :), max_n_bins, 0.0_real64, &
+            call assert_equal_array_real(pmf(i_point, :), multi_pmf(i_point, :), max_n_bins, 0.0_real64, &
                                          name//"pmf equals the multi-point builder's row")
             call assert_equal_int(included, multi_included(i_point), name//"included_n_reps vs multi-point")
+            if (i_point == 1) then
+                call assert_true(all(counts(2, :) == -7_int32) .and. all(pmf(2, :) == -7.0_real64), &
+                                 name//"the other row is untouched")
+            end if
         end do
     end subroutine test_point_study_histogram_matches_multi_point_builder
 
@@ -6443,8 +6470,8 @@ contains
     subroutine test_point_study_histogram_excludes_nan_residuals()
         integer(int32), parameter :: n_reps = 3, n_genes = 3, max_n_bins = 3
         real(real64) :: residuals_study(n_reps, n_genes), nan_val
-        real(real64) :: tmp3(n_reps, 3), tmp1(n_reps, 1), pmf(max_n_bins)
-        integer(int32) :: counts(max_n_bins), included
+        real(real64) :: tmp3(n_reps, 3), tmp1(n_reps, 1), pmf(1, max_n_bins)
+        integer(int32) :: counts(1, max_n_bins), included
         character(len=*), parameter :: name = "test_point_study_histogram_excludes_nan_residuals: "
 
         nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
@@ -6453,16 +6480,16 @@ contains
         residuals_study(:, 3) = [-0.4_real64, 0.8_real64, 0.1_real64]
 
         call build_point_study_histogram(residuals_study, n_reps, n_genes, 3_int32, [1, 2, 3], -1.0_real64, 1.0_real64, &
-                                         2_int32, max_n_bins, counts, pmf, included, tmp3)
+                                         2_int32, 1_int32, max_n_bins, 1_int32, counts, pmf, included, tmp3)
         call assert_equal_int(included, 4_int32, name//"included_n_reps counts only the 4 finite residuals")
-        call assert_equal_array_int(counts, [1, 3, 0], max_n_bins, name//"counts")
-        call assert_equal_array_real(pmf, [0.25_real64, 0.75_real64, 0.0_real64], max_n_bins, TOL, name//"pmf")
+        call assert_equal_array_int(counts(1, :), [1, 3, 0], max_n_bins, name//"counts")
+        call assert_equal_array_real(pmf(1, :), [0.25_real64, 0.75_real64, 0.0_real64], max_n_bins, TOL, name//"pmf")
 
         call build_point_study_histogram(residuals_study, n_reps, n_genes, 1_int32, [2], -1.0_real64, 1.0_real64, &
-                                         2_int32, max_n_bins, counts, pmf, included, tmp1)
+                                         2_int32, 1_int32, max_n_bins, 1_int32, counts, pmf, included, tmp1)
         call assert_equal_int(included, 0_int32, name//"all-NaN neighborhood: included_n_reps")
-        call assert_equal_array_int(counts, [0, 0, 0], max_n_bins, name//"all-NaN neighborhood: counts")
-        call assert_equal_array_real(pmf, [0.0_real64, 0.0_real64, 0.0_real64], max_n_bins, 0.0_real64, &
+        call assert_equal_array_int(counts(1, :), [0, 0, 0], max_n_bins, name//"all-NaN neighborhood: counts")
+        call assert_equal_array_real(pmf(1, :), [0.0_real64, 0.0_real64, 0.0_real64], max_n_bins, 0.0_real64, &
                                      name//"all-NaN neighborhood: pmf")
     end subroutine test_point_study_histogram_excludes_nan_residuals
 
@@ -6492,11 +6519,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
-        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
+        real(real64) :: pmfs(n_points, MAX_N_BINS, n_studies)
+        integer(int32) :: counts(n_points, MAX_N_BINS, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
-        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
+        real(real64) :: mean_pmf(n_points, MAX_N_BINS)
+        integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -8000,10 +8027,10 @@ contains
         if (present(n_points)) n_passed = n_points
 
         allocate (out%n_per_point(n_studies, n_pts), out%n_bins(n_pts), out%n_pooled(n_pts), out%min_occ(n_pts), &
-                  out%max_occ(n_pts), out%sturges(n_pts), out%fd(n_pts), out%counts(MAX_N_BINS, n_pts, n_studies), &
-                  out%included(n_pts, n_studies), out%mean_pmf_counts(MAX_N_BINS, n_pts), out%mean_included(n_pts), &
+                  out%max_occ(n_pts), out%sturges(n_pts), out%fd(n_pts), out%counts(n_pts, MAX_N_BINS, n_studies), &
+                  out%included(n_pts, n_studies), out%mean_pmf_counts(n_pts, MAX_N_BINS), out%mean_included(n_pts), &
                   out%occ_failed(n_pts), out%range_low(n_pts), out%range_high(n_pts), out%mean_occ(n_pts), &
-                  out%pmfs(MAX_N_BINS, n_pts, n_studies), out%mean_pmf(MAX_N_BINS, n_pts), out%js(n_pts, n_studies), &
+                  out%pmfs(n_pts, MAX_N_BINS, n_studies), out%mean_pmf(n_pts, MAX_N_BINS), out%js(n_pts, n_studies), &
                   out%weights(n_pts, n_studies), out%global_jsd(n_studies), out%p_values(n_studies), &
                   out%p_values_observed_consensus(n_studies))
         out%n_per_point = -7_int32
@@ -8114,12 +8141,12 @@ contains
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies), neighborhood_range(2, n_points, n_studies)
         integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point, n_pooled_residuals(n_points)
         integer(int32) :: min_bin_occupancy(n_points), max_bin_occupancy(n_points), sturges_bins(n_points)
-        integer(int32) :: fd_bins(n_points), counts(MAX_N_BINS, n_points, n_studies), &
+        integer(int32) :: fd_bins(n_points), counts(n_points, MAX_N_BINS, n_studies), &
             included_n_reps(n_points, n_studies)
-        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS), mean_pmf_included_n_reps(n_points)
         real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
-        real(real64) :: mean_bin_occupancy(n_points), pmfs(MAX_N_BINS, n_points, n_studies), &
-            mean_pmf(MAX_N_BINS, n_points)
+        real(real64) :: mean_bin_occupancy(n_points), pmfs(n_points, MAX_N_BINS, n_studies), &
+            mean_pmf(n_points, MAX_N_BINS)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
         real(real64) :: p_values_observed_consensus(n_studies)
@@ -8186,15 +8213,15 @@ contains
         call assert_equal_array_real(out%range_high, shared_residual_range_high, n_points, 0.0_real64, &
                                      name//"shared_residual_range_high")
         call assert_equal_array_real(out%mean_occ, mean_bin_occupancy, n_points, 0.0_real64, name//"mean_bin_occupancy")
-        call assert_equal_array_int(out%counts(1:n_bins, :, :), counts(1:n_bins, :, :), n_bins*n_points*n_studies, &
+        call assert_equal_array_int(out%counts(:, 1:n_bins, :), counts(:, 1:n_bins, :), n_bins*n_points*n_studies, &
                                     name//"counts", n_rows=n_bins)
-        call assert_equal_array_real(out%pmfs(1:n_bins, :, :), pmfs(1:n_bins, :, :), n_bins*n_points*n_studies, &
+        call assert_equal_array_real(out%pmfs(:, 1:n_bins, :), pmfs(:, 1:n_bins, :), n_bins*n_points*n_studies, &
                                      0.0_real64, name//"pmfs", n_rows=n_bins)
         call assert_equal_array_int(out%included, included_n_reps, n_points*n_studies, name//"included_n_reps", &
                                     n_rows=n_points)
-        call assert_equal_array_int(out%mean_pmf_counts(1:n_bins, :), mean_pmf_counts(1:n_bins, :), n_bins*n_points, &
+        call assert_equal_array_int(out%mean_pmf_counts(:, 1:n_bins), mean_pmf_counts(:, 1:n_bins), n_bins*n_points, &
                                     name//"mean_pmf_counts", n_rows=n_bins)
-        call assert_equal_array_real(out%mean_pmf(1:n_bins, :), mean_pmf(1:n_bins, :), n_bins*n_points, 0.0_real64, &
+        call assert_equal_array_real(out%mean_pmf(:, 1:n_bins), mean_pmf(:, 1:n_bins), n_bins*n_points, 0.0_real64, &
                                      name//"mean_pmf", n_rows=n_bins)
         call assert_equal_array_int(out%mean_included, mean_pmf_included_n_reps, n_points, name//"mean_pmf_included_n_reps")
         call assert_equal_array_real(out%js, js_divergences, n_points*n_studies, 0.0_real64, name//"js_divergences", &
@@ -8256,16 +8283,16 @@ contains
         call assert_equal_real(out%mean_occ(1), 5.0_real64/3.0_real64, TOL, name//"mean_bin_occupancy")
         call assert_equal_int(out%sturges(1), 3_int32, name//"sturges_bins with the rounded mean count 2")
         call assert_equal_int(out%fd(1), 1_int32, name//"fd_bins")
-        call assert_equal_array_int(out%counts(1:3, 1, 1), [1, 1, 1], 3_int32, name//"study 1 counts")
-        call assert_equal_array_int(out%counts(1:3, 1, 2), [1, 0, 1], 3_int32, name//"study 2 counts")
+        call assert_equal_array_int(out%counts(1, 1:3, 1), [1, 1, 1], 3_int32, name//"study 1 counts")
+        call assert_equal_array_int(out%counts(1, 1:3, 2), [1, 0, 1], 3_int32, name//"study 2 counts")
         call assert_equal_array_int(out%included(1, :), [3, 2], 2_int32, name//"included_n_reps")
-        call assert_equal_array_real(out%pmfs(1:3, 1, 1), [(1.0_real64/3.0_real64, i_bin=1, 3)], 3_int32, TOL, &
+        call assert_equal_array_real(out%pmfs(1, 1:3, 1), [(1.0_real64/3.0_real64, i_bin=1, 3)], 3_int32, TOL, &
                                      name//"study 1 pmf")
-        call assert_equal_array_real(out%pmfs(1:3, 1, 2), [0.5_real64, 0.0_real64, 0.5_real64], 3_int32, TOL, &
+        call assert_equal_array_real(out%pmfs(1, 1:3, 2), [0.5_real64, 0.0_real64, 0.5_real64], 3_int32, TOL, &
                                      name//"study 2 pmf")
-        call assert_equal_array_real(out%mean_pmf(1:3, 1), [5.0_real64/12.0_real64, 1.0_real64/6.0_real64, &
+        call assert_equal_array_real(out%mean_pmf(1, 1:3), [5.0_real64/12.0_real64, 1.0_real64/6.0_real64, &
                                      5.0_real64/12.0_real64], 3_int32, TOL, name//"consensus pmf")
-        call assert_equal_array_int(out%mean_pmf_counts(1:3, 1), [2, 1, 2], 3_int32, name//"consensus counts")
+        call assert_equal_array_int(out%mean_pmf_counts(1, 1:3), [2, 1, 2], 3_int32, name//"consensus counts")
         call assert_equal_int(out%mean_included(1), 5_int32, name//"consensus included_n_reps")
         call assert_equal_array_real(out%js(1, :), expected_js, 2_int32, TOL, name//"js_divergences")
         call assert_equal_array_real(out%global_jsd, expected_js, 2_int32, TOL, name//"global_js_divergence")
@@ -8392,7 +8419,7 @@ contains
             call assert_equal_int(out%n_pooled(i_point), out%mean_included(i_point), name//"pooled = consensus count")
             call assert_equal_int(out%n_pooled(i_point), sum(out%included(i_point, :)), name//"pooled = sum of studies")
             do i_study = 1, n_studies
-                call assert_equal_int(sum(out%counts(1:n_bins, i_point, i_study)), out%included(i_point, i_study), &
+                call assert_equal_int(sum(out%counts(i_point, 1:n_bins, i_study)), out%included(i_point, i_study), &
                                       name//"histogram sums to its included count")
             end do
         end do
@@ -8409,7 +8436,7 @@ contains
                                 random_seed=11_int32, m_min=2_int32, m_max=10_int32, min_residuals_per_bin=2_int32)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"repeat ierr")
         call assert_equal_array_int(again%n_bins, out%n_bins, n_points, name//"repeat n_bins_per_point")
-        call assert_equal_array_int(again%counts(1:n_bins, :, :), out%counts(1:n_bins, :, :), n_bins*n_points*n_studies, &
+        call assert_equal_array_int(again%counts(:, 1:n_bins, :), out%counts(:, 1:n_bins, :), n_bins*n_points*n_studies, &
                                     name//"repeat counts", n_rows=n_bins)
         call assert_equal_array_real(again%range_low, out%range_low, n_points, 0.0_real64, name//"repeat R_low")
         call assert_equal_array_real(again%range_high, out%range_high, n_points, 0.0_real64, name//"repeat R_high")
@@ -10377,9 +10404,9 @@ contains
             !! Per-point Sturges diagnostic
         integer(int32), intent(out) :: fd(3)
             !! Per-point Freedman-Diaconis diagnostic
-        real(real64), intent(out) :: pmfs(MAX_N_BINS, 3, 3)
+        real(real64), intent(out) :: pmfs(3, MAX_N_BINS, 3)
             !! Per-point, per-study pmfs
-        integer(int32), intent(out) :: counts(MAX_N_BINS, 3, 3)
+        integer(int32), intent(out) :: counts(3, MAX_N_BINS, 3)
             !! Per-point, per-study counts
         real(real64), intent(out) :: js(3, 3)
             !! Per-point JSDs
@@ -10401,8 +10428,8 @@ contains
             !! Forwarded to run_js_comp_test
         integer(int32), intent(in), optional :: bin_count_mode
             !! Forwarded to run_js_comp_test
-        real(real64) :: gene_means(10, 3), residuals(4, 10, 3), x_star(3), mean_pmf(MAX_N_BINS, 3)
-        integer(int32) :: gene_means_perms(10, 3), ranges(2, 3, 3), included(3, 3), mean_pmf_counts(MAX_N_BINS, 3)
+        real(real64) :: gene_means(10, 3), residuals(4, 10, 3), x_star(3), mean_pmf(3, MAX_N_BINS)
+        integer(int32) :: gene_means_perms(10, 3), ranges(2, 3, 3), included(3, 3), mean_pmf_counts(3, MAX_N_BINS)
         integer(int32) :: mean_included(3), max_n_bins
 
         call build_run_js_comp_test_golden_fixture(gene_means, gene_means_perms, residuals, x_star)
@@ -10422,10 +10449,10 @@ contains
         character(len=*), parameter :: name = "test_run_js_comp_test_bin_count_mode_default_is_occupancy: "
         integer(int32) :: idx_a(4, 3, 3), idx_b(4, 3, 3), bins_a(3), bins_b(3), pooled_a(3), pooled_b(3)
         integer(int32) :: min_a(3), min_b(3), max_a(3), max_b(3), st_a(3), st_b(3), fd_a(3), fd_b(3)
-        integer(int32) :: counts_a(MAX_N_BINS, 3, 3), counts_b(MAX_N_BINS, 3, 3), ierr_a, ierr_b
+        integer(int32) :: counts_a(3, MAX_N_BINS, 3), counts_b(3, MAX_N_BINS, 3), ierr_a, ierr_b
         logical(c_bool) :: failed_a(3), failed_b(3)
         real(real64) :: low_a(3), low_b(3), high_a(3), high_b(3), mean_a(3), mean_b(3)
-        real(real64) :: pmfs_a(MAX_N_BINS, 3, 3), pmfs_b(MAX_N_BINS, 3, 3), js_a(3, 3), js_b(3, 3), w_a(3, 3), w_b(3, 3)
+        real(real64) :: pmfs_a(3, MAX_N_BINS, 3), pmfs_b(3, MAX_N_BINS, 3), js_a(3, 3), js_b(3, 3), w_a(3, 3), w_b(3, 3)
         real(real64) :: g_a(3), g_b(3), p_a(3), p_b(3), po_a(3), po_b(3)
 
         call run_golden_with_mode(idx_a, bins_a, failed_a, low_a, high_a, pooled_a, min_a, mean_a, max_a, st_a, fd_a, &
@@ -10447,8 +10474,8 @@ contains
         call assert_equal_array_int(st_b, st_a, 3_int32, name//"Sturges")
         call assert_equal_array_int(fd_b, fd_a, 3_int32, name//"Freedman-Diaconis")
         ! Rows past the widest bin count are never written, so only rows 1:6 are compared.
-        call assert_equal_array_int(counts_b(1:6, :, :), counts_a(1:6, :, :), 6_int32*9_int32, name//"counts")
-        call assert_equal_array_real(pmfs_b(1:6, :, :), pmfs_a(1:6, :, :), 6_int32*9_int32, 0.0_real64, name//"pmfs")
+        call assert_equal_array_int(counts_b(:, 1:6, :), counts_a(:, 1:6, :), 6_int32*9_int32, name//"counts")
+        call assert_equal_array_real(pmfs_b(:, 1:6, :), pmfs_a(:, 1:6, :), 6_int32*9_int32, 0.0_real64, name//"pmfs")
         call assert_equal_array_real(js_b, js_a, 9_int32, 0.0_real64, name//"js_divergences")
         call assert_equal_array_real(w_b, w_a, 9_int32, 0.0_real64, name//"weights")
         call assert_equal_array_real(g_b, g_a, 3_int32, 0.0_real64, name//"global_js_divergence")
@@ -10468,10 +10495,10 @@ contains
                                                   MODE_BIN_COUNT_STONE_POOLED]
         integer(int32), parameter :: floors(4) = [0_int32, 3_int32, 5_int32, 50_int32]
         integer(int32) :: idx(4, 3, 3), bins(3), pooled(3), min_occ(3), max_occ(3), st(3), fd(3), &
-            counts(MAX_N_BINS, 3, 3)
+            counts(3, MAX_N_BINS, 3)
         integer(int32) :: ierr, i_mode, i_floor, i_point, bins_floor0(3)
         logical(c_bool) :: failed(3)
-        real(real64) :: low(3), high(3), mean_occ(3), pmfs(MAX_N_BINS, 3, 3), js(3, 3), w(3, 3), g(3), p(3), po(3)
+        real(real64) :: low(3), high(3), mean_occ(3), pmfs(3, MAX_N_BINS, 3), js(3, 3), w(3, 3), g(3), p(3), po(3)
         real(real64) :: gene_means(10, 3), residuals(4, 10, 3), x_star(3)
         integer(int32) :: gene_means_perms(10, 3)
         type(stone_outputs) :: ref
@@ -10519,10 +10546,10 @@ contains
         character(len=*), parameter :: name = "test_run_js_comp_test_stone_ignores_gamma: "
         integer(int32) :: idx_a(4, 3, 3), idx_b(4, 3, 3), bins_a(3), bins_b(3), pooled_a(3), pooled_b(3)
         integer(int32) :: min_a(3), min_b(3), max_a(3), max_b(3), st_a(3), st_b(3), fd_a(3), fd_b(3)
-        integer(int32) :: counts_a(MAX_N_BINS, 3, 3), counts_b(MAX_N_BINS, 3, 3), ierr_a, ierr_b
+        integer(int32) :: counts_a(3, MAX_N_BINS, 3), counts_b(3, MAX_N_BINS, 3), ierr_a, ierr_b
         logical(c_bool) :: failed_a(3), failed_b(3)
         real(real64) :: low_a(3), low_b(3), high_a(3), high_b(3), mean_a(3), mean_b(3)
-        real(real64) :: pmfs_a(MAX_N_BINS, 3, 3), pmfs_b(MAX_N_BINS, 3, 3), js_a(3, 3), js_b(3, 3), w_a(3, 3), w_b(3, 3)
+        real(real64) :: pmfs_a(3, MAX_N_BINS, 3), pmfs_b(3, MAX_N_BINS, 3), js_a(3, 3), js_b(3, 3), w_a(3, 3), w_b(3, 3)
         real(real64) :: g_a(3), g_b(3), p_a(3), p_b(3), po_a(3), po_b(3)
 
         call run_golden_with_mode(idx_a, bins_a, failed_a, low_a, high_a, pooled_a, min_a, mean_a, max_a, st_a, fd_a, &
@@ -10539,7 +10566,7 @@ contains
         call assert_equal_array_int(max_b, max_a, 3_int32, name//"max occupancy")
         ! Rows past the widest bin count are never written, so only those up to it are compared.
         call assert_equal_int(maxval(bins_a), 3_int32, name//"widest bin count")
-        call assert_equal_array_int(counts_b(1:3, :, :), counts_a(1:3, :, :), 3_int32*9_int32, name//"counts")
+        call assert_equal_array_int(counts_b(:, 1:3, :), counts_a(:, 1:3, :), 3_int32*9_int32, name//"counts")
         call assert_equal_array_real(g_b, g_a, 3_int32, 0.0_real64, name//"global_js_divergence")
         call assert_equal_array_real(p_b, p_a, 3_int32, 0.0_real64, name//"p_values")
         call assert_equal_array_real(po_b, po_a, 3_int32, 0.0_real64, name//"p_values_observed_consensus")
@@ -11363,11 +11390,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
-        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
+        real(real64) :: pmfs(n_points, MAX_N_BINS, n_studies)
+        integer(int32) :: counts(n_points, MAX_N_BINS, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
-        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
+        real(real64) :: mean_pmf(n_points, MAX_N_BINS)
+        integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -11424,11 +11451,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
-        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
+        real(real64) :: pmfs(n_points, MAX_N_BINS, n_studies)
+        integer(int32) :: counts(n_points, MAX_N_BINS, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
-        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
+        real(real64) :: mean_pmf(n_points, MAX_N_BINS)
+        integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -11668,11 +11695,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
-        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
+        real(real64) :: pmfs(n_points, MAX_N_BINS, n_studies)
+        integer(int32) :: counts(n_points, MAX_N_BINS, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
-        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
+        real(real64) :: mean_pmf(n_points, MAX_N_BINS)
+        integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -12036,12 +12063,12 @@ contains
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies), neighborhood_range(2, n_points, n_studies)
         integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point, n_pooled_residuals(n_points)
         integer(int32) :: min_bin_occupancy(n_points), max_bin_occupancy(n_points), sturges_bins(n_points)
-        integer(int32) :: fd_bins(n_points), counts(MAX_N_BINS, n_points, n_studies), &
+        integer(int32) :: fd_bins(n_points), counts(n_points, MAX_N_BINS, n_studies), &
             included_n_reps(n_points, n_studies)
-        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: mean_pmf_counts(n_points, MAX_N_BINS), mean_pmf_included_n_reps(n_points)
         real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
-        real(real64) :: mean_bin_occupancy(n_points), pmfs(MAX_N_BINS, n_points, n_studies), &
-            mean_pmf(MAX_N_BINS, n_points)
+        real(real64) :: mean_bin_occupancy(n_points), pmfs(n_points, MAX_N_BINS, n_studies), &
+            mean_pmf(n_points, MAX_N_BINS)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
         real(real64) :: p_values_observed_consensus(n_studies)

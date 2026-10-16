@@ -409,17 +409,17 @@ test_create_mean_pmf <- function() {
   # Test 1 -- two studies, hand-computed (test_create_mean_pmf_two_studies_hand_computed):
   # mean_pmf = ([0.3,0.7]+[0.5,0.5])/2 = [0.4,0.6], mean_pmf_counts=[8,12], included=20.
   # ============================================================
-  pmfs <- array(0, dim = c(2, 1, 2))
-  pmfs[, 1, 1] <- c(0.3, 0.7)
-  pmfs[, 1, 2] <- c(0.5, 0.5)
-  counts <- array(0L, dim = c(2, 1, 2))
-  counts[, 1, 1] <- c(3L, 7L)
-  counts[, 1, 2] <- c(5L, 5L)
+  pmfs <- array(0, dim = c(1, 2, 2))
+  pmfs[1, , 1] <- c(0.3, 0.7)
+  pmfs[1, , 2] <- c(0.5, 0.5)
+  counts <- array(0L, dim = c(1, 2, 2))
+  counts[1, , 1] <- c(3L, 7L)
+  counts[1, , 2] <- c(5L, 5L)
   included_n_reps <- matrix(c(10L, 10L), nrow = 1)
 
   result <- create_mean_pmf(pmfs, counts, included_n_reps)
-  assert_equal_numeric(result$mean_pmf[, 1], c(0.4, 0.6), TOL, "Test 1 failed: mean_pmf mismatch")
-  assert_equal_int(as.integer(result$mean_pmf_counts[, 1]), c(8L, 12L), "Test 1 failed: mean_pmf_counts mismatch")
+  assert_equal_numeric(result$mean_pmf[1, ], c(0.4, 0.6), TOL, "Test 1 failed: mean_pmf mismatch")
+  assert_equal_int(as.integer(result$mean_pmf_counts[1, ]), c(8L, 12L), "Test 1 failed: mean_pmf_counts mismatch")
   assert_equal_int(as.integer(result$mean_pmf_included_n_reps[1]), 20L,
                     "Test 1 failed: mean_pmf_included_n_reps mismatch")
 
@@ -427,19 +427,19 @@ test_create_mean_pmf <- function() {
   # Test 2 -- three studies, DOCUMENTS THE KNOWN LIMITATION: averages over ALL studies including
   # self, not a true leave-one-out background (test_create_mean_pmf_three_studies_includes_self).
   # ============================================================
-  pmfs3 <- array(0, dim = c(2, 1, 3))
-  pmfs3[, 1, 1] <- c(0.2, 0.8)
-  pmfs3[, 1, 2] <- c(0.4, 0.6)
-  pmfs3[, 1, 3] <- c(0.9, 0.1)
-  counts3 <- array(0L, dim = c(2, 1, 3))
-  counts3[, 1, 1] <- c(2L, 8L)
-  counts3[, 1, 2] <- c(4L, 6L)
-  counts3[, 1, 3] <- c(9L, 1L)
+  pmfs3 <- array(0, dim = c(1, 2, 3))
+  pmfs3[1, , 1] <- c(0.2, 0.8)
+  pmfs3[1, , 2] <- c(0.4, 0.6)
+  pmfs3[1, , 3] <- c(0.9, 0.1)
+  counts3 <- array(0L, dim = c(1, 2, 3))
+  counts3[1, , 1] <- c(2L, 8L)
+  counts3[1, , 2] <- c(4L, 6L)
+  counts3[1, , 3] <- c(9L, 1L)
   included_n_reps3 <- matrix(c(10L, 10L, 10L), nrow = 1)
 
   result3 <- create_mean_pmf(pmfs3, counts3, included_n_reps3)
-  assert_equal_numeric(result3$mean_pmf[, 1], c(0.5, 0.5), TOL, "Test 2 failed: mean_pmf mismatch")
-  assert_equal_int(as.integer(result3$mean_pmf_counts[, 1]), c(15L, 15L), "Test 2 failed: mean_pmf_counts mismatch")
+  assert_equal_numeric(result3$mean_pmf[1, ], c(0.5, 0.5), TOL, "Test 2 failed: mean_pmf mismatch")
+  assert_equal_int(as.integer(result3$mean_pmf_counts[1, ]), c(15L, 15L), "Test 2 failed: mean_pmf_counts mismatch")
   assert_equal_int(as.integer(result3$mean_pmf_included_n_reps[1]), 30L,
                     "Test 2 failed: mean_pmf_included_n_reps mismatch")
 
@@ -470,12 +470,12 @@ test_create_mean_pmf <- function() {
 test_create_mean_pmf_only <- function() {
   # `create_mean_pmf_only` must produce exactly the same mean_pmf as `create_mean_pmf`
   # (test_create_mean_pmf_only_matches_create_mean_pmf).
-  pmfs <- array(0, dim = c(2, 1, 2))
-  pmfs[, 1, 1] <- c(0.3, 0.7)
-  pmfs[, 1, 2] <- c(0.5, 0.5)
-  counts <- array(0L, dim = c(2, 1, 2))
-  counts[, 1, 1] <- c(3L, 7L)
-  counts[, 1, 2] <- c(5L, 5L)
+  pmfs <- array(0, dim = c(1, 2, 2))
+  pmfs[1, , 1] <- c(0.3, 0.7)
+  pmfs[1, , 2] <- c(0.5, 0.5)
+  counts <- array(0L, dim = c(1, 2, 2))
+  counts[1, , 1] <- c(3L, 7L)
+  counts[1, , 2] <- c(5L, 5L)
   included_n_reps <- matrix(c(10L, 10L), nrow = 1)
 
   full <- create_mean_pmf(pmfs, counts, included_n_reps)
@@ -489,7 +489,7 @@ test_bootstrap_histogram <- function() {
   # Test 1 -- same random_seed twice must give bit-for-bit identical confidence_interval
   # (test_bootstrap_histogram_seeded_reproducibility).
   # ============================================================
-  mean_pmf_counts <- matrix(c(5, 3, 2, 2, 2, 6), nrow = 3)
+  mean_pmf_counts <- matrix(c(5, 3, 2, 2, 2, 6), nrow = 2, byrow = TRUE)
   mean_pmf_included_n_reps <- c(10L, 10L)
   included_n_reps <- matrix(c(4L, 4L, 6L, 6L), nrow = 2)
 
@@ -523,7 +523,7 @@ test_bootstrap_histogram_rejects_draws_from_empty_pool <- function() {
   # A study drawing from a point whose pool is empty (counts c(0, 0), 0 included replicates) fails
   # with invalid input, not tied to any one argument
   # (test_bootstrap_histogram_rejects_draws_from_empty_pool in the Fortran suite).
-  mean_pmf_counts <- matrix(c(0L, 0L), nrow = 2)
+  mean_pmf_counts <- matrix(c(0L, 0L), nrow = 1)
   mean_pmf_included_n_reps <- c(0L)
   included_n_reps <- matrix(c(3L, 3L), nrow = 1)
 
@@ -541,13 +541,13 @@ test_create_mean_pmf_rejects_zero_included_n_reps <- function() {
   # included_n_reps is rejected on that argument
   # (test_create_mean_pmf_rejects_zero_included_n_reps in the Fortran suite).
   pmfs <- array(0.0, dim = c(2, 2, 2))
-  pmfs[, 1, 1] <- c(0.5, 0.5)
-  pmfs[, 2, 1] <- c(0.25, 0.75)
-  pmfs[, 1, 2] <- c(1.0, 0.0)
+  pmfs[1, , 1] <- c(0.5, 0.5)
+  pmfs[2, , 1] <- c(0.25, 0.75)
+  pmfs[1, , 2] <- c(1.0, 0.0)
   counts <- array(0L, dim = c(2, 2, 2))
-  counts[, 1, 1] <- c(1L, 1L)
-  counts[, 2, 1] <- c(1L, 3L)
-  counts[, 1, 2] <- c(2L, 0L)
+  counts[1, , 1] <- c(1L, 1L)
+  counts[2, , 1] <- c(1L, 3L)
+  counts[1, , 2] <- c(2L, 0L)
   included_n_reps <- matrix(c(2L, 4L, 2L, 0L), nrow = 2)
 
   call <- function() {
@@ -562,7 +562,7 @@ test_bootstrap_histogram_rejects_zero_included_n_reps <- function() {
   # Every study needs at least one included residual at every reference point, so a single 0 in
   # included_n_reps is rejected on that argument, even where the counts otherwise add up
   # (test_bootstrap_histogram_rejects_zero_included_n_reps in the Fortran suite).
-  mean_pmf_counts <- matrix(c(2L, 2L), nrow = 2)
+  mean_pmf_counts <- matrix(c(2L, 2L), nrow = 1)
   mean_pmf_included_n_reps <- c(4L)
   included_n_reps <- matrix(c(0L, 4L), nrow = 1)
 
@@ -637,8 +637,8 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
   # input (the bin count is now decided per reference point by an internal occupancy search) and
   # added `n_bins_per_point`/`max_n_bins_per_point` plus several per-point diagnostics;
   # `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts` are now always sized to the fixed 256-bin ceiling
-  # (MAX_N_BINS), of which only the leading `max_n_bins_per_point` rows are meaningful -- a caller
-  # must slice `[1:max_n_bins_per_point, ...]` themselves.
+  # (MAX_N_BINS) in their second dimension, of which only the leading `max_n_bins_per_point` bins
+  # are meaningful -- a caller must slice `[, seq_len(max_n_bins_per_point), ]` themselves.
   gene_means <- matrix(c(1.0, 5.0, 1.0, 5.0), nrow = 2)
   gene_means_perms <- matrix(c(1L, 2L, 1L, 2L), nrow = 2)
 
@@ -670,11 +670,11 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
   assert_equal_int(length(result$max_bin_occupancy), n_points, "max_bin_occupancy shape")
   assert_equal_int(length(result$sturges_bins), n_points, "sturges_bins shape")
   assert_equal_int(length(result$fd_bins), n_points, "fd_bins shape")
-  assert_equal_int(dim(result$pmfs), c(256L, n_points, n_studies), "pmfs shape")
-  assert_equal_int(dim(result$counts), c(256L, n_points, n_studies), "counts shape")
+  assert_equal_int(dim(result$pmfs), c(n_points, 256L, n_studies), "pmfs shape")
+  assert_equal_int(dim(result$counts), c(n_points, 256L, n_studies), "counts shape")
   assert_equal_int(dim(result$included_n_reps), c(n_points, n_studies), "included_n_reps shape")
-  assert_equal_int(dim(result$mean_pmf), c(256L, n_points), "mean_pmf shape")
-  assert_equal_int(dim(result$mean_pmf_counts), c(256L, n_points), "mean_pmf_counts shape")
+  assert_equal_int(dim(result$mean_pmf), c(n_points, 256L), "mean_pmf shape")
+  assert_equal_int(dim(result$mean_pmf_counts), c(n_points, 256L), "mean_pmf_counts shape")
   assert_equal_int(length(result$mean_pmf_included_n_reps), n_points, "mean_pmf_included_n_reps shape")
   assert_equal_int(dim(result$js_divergences), c(n_points, n_studies), "js_divergences shape")
   assert_equal_int(dim(result$weights), c(n_points, n_studies), "weights shape")
@@ -684,7 +684,7 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
 
   # A caller must be able to slice down to the meaningful leading bins.
   max_n_bins <- as.integer(result$max_n_bins_per_point)
-  assert_equal_int(dim(result$pmfs[1:max_n_bins, , , drop = FALSE]), c(max_n_bins, n_points, n_studies),
+  assert_equal_int(dim(result$pmfs[, seq_len(max_n_bins), , drop = FALSE]), c(n_points, max_n_bins, n_studies),
                     "pmfs slices down to max_n_bins_per_point")
 
   assert_equal_int(as.integer(result$neighborhood_indices[, 1, 1]), 1L, "study 1 neighbor should be gene 1")
@@ -702,7 +702,7 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
                                     min_residuals_per_bin = 1L, bin_count_mode = mode)
     assert_equal_int(length(result_mode$n_bins_per_point), n_points, paste(mode, "n_bins_per_point length"))
     assert_true(is.logical(result_mode$occupancy_failed), paste(mode, "occupancy_failed must be logical"))
-    assert_equal_int(dim(result_mode$pmfs), c(256L, n_points, n_studies), paste(mode, "pmfs shape"))
+    assert_equal_int(dim(result_mode$pmfs), c(n_points, 256L, n_studies), paste(mode, "pmfs shape"))
     assert_equal_int(length(result_mode$global_js_divergence), n_studies, paste(mode, "global_js_divergence length"))
   }
   assert_error(run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = gene_means_perms,
@@ -1102,10 +1102,10 @@ test_run_js_comp_test_adaptive <- function() {
     assert_equal_int(length(result[[key]]), n_points, paste(key, "length"))
   }
   assert_true(is.numeric(result$max_n_bins_per_point), "max_n_bins_per_point must be numeric")
-  assert_equal_int(dim(result$pmfs), c(256L, n_points, n_studies), "pmfs shape")
-  assert_equal_int(dim(result$counts), c(256L, n_points, n_studies), "counts shape")
-  assert_equal_int(dim(result$mean_pmf), c(256L, n_points), "mean_pmf shape")
-  assert_equal_int(dim(result$mean_pmf_counts), c(256L, n_points), "mean_pmf_counts shape")
+  assert_equal_int(dim(result$pmfs), c(n_points, 256L, n_studies), "pmfs shape")
+  assert_equal_int(dim(result$counts), c(n_points, 256L, n_studies), "counts shape")
+  assert_equal_int(dim(result$mean_pmf), c(n_points, 256L), "mean_pmf shape")
+  assert_equal_int(dim(result$mean_pmf_counts), c(n_points, 256L), "mean_pmf_counts shape")
   for (key in c("included_n_reps", "js_divergences", "weights")) {
     assert_equal_int(dim(result[[key]]), c(n_points, n_studies), paste(key, "shape"))
   }

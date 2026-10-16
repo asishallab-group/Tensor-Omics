@@ -108,11 +108,11 @@ def gjct_permutation_test(
         Number of permutations to perform. `0` skips the test: no permutation runs, and
         `p_values` and `p_values_observed_consensus` are then NaN ("not computed")
         The minimum valid value is `0`.
-    mean_pmf_counts : np.ndarray[np.int32] of shape (n_bins, n_points,), column-major (order='F')
+    mean_pmf_counts : np.ndarray[np.int32] of shape (n_points, n_bins,), column-major (order='F')
         Absolute counts of a residual per bin for the consensus pmf -- the pool each
         permutation resamples from without replacement, per reference point
         The minimum valid value is `0`.
-    mean_pmf : np.ndarray[np.float64] of shape (n_bins, n_points,), column-major (order='F')
+    mean_pmf : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F')
         The consensus pmf built from all studies' pmfs; each permuted study is compared
         against it for `p_values_observed_consensus` only
         The minimum valid value is `0.0`.
@@ -194,17 +194,17 @@ def gjct_permutation_test(
         raise ValueError(f"'global_jsd_observed' must have 1 dimension, but has {global_jsd_observed.ndim}")
 
     # what the inputs already say, rather than asking for it again
-    n_bins = mean_pmf_counts.shape[0]
-    n_points = mean_pmf_counts.shape[1]
+    n_bins = mean_pmf_counts.shape[1]
+    n_points = mean_pmf_counts.shape[0]
     n_studies = included_n_reps.shape[1]
 
     # Fortran cannot check that shared extents agree; this can
-    if mean_pmf.shape[0] != n_bins:
-        raise ValueError(f"'mean_pmf' has {mean_pmf.shape[0]} along axis 0, but "
+    if mean_pmf.shape[1] != n_bins:
+        raise ValueError(f"'mean_pmf' has {mean_pmf.shape[1]} along axis 1, but "
             f"'mean_pmf_counts' implies n_bins == {n_bins}"
         )
-    if mean_pmf.shape[1] != n_points:
-        raise ValueError(f"'mean_pmf' has {mean_pmf.shape[1]} along axis 1, but "
+    if mean_pmf.shape[0] != n_points:
+        raise ValueError(f"'mean_pmf' has {mean_pmf.shape[0]} along axis 0, but "
             f"'mean_pmf_counts' implies n_points == {n_points}"
         )
     if mean_pmf_included_n_reps.shape[0] != n_points:

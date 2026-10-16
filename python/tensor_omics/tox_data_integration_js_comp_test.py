@@ -2723,11 +2723,11 @@ def check_mean_pmf_min_counts(
 
     Parameters
     ----------
-    mean_pmf_counts : np.ndarray[np.int32] of shape (n_bins, n_points,), column-major (order='F')
+    mean_pmf_counts : np.ndarray[np.int32] of shape (n_points, n_bins,), column-major (order='F')
         Absolute counts of a residual per bin for the mean pmf
         The minimum valid value is `0`.
     n_bins_per_point : np.ndarray[np.int32] of shape (n_points,)
-        This point's own bin count -- only `mean_pmf_counts(1:n_bins_per_point(i_point), i_point)`
+        This point's own bin count -- only `mean_pmf_counts(i_point, 1:n_bins_per_point(i_point))`
         is inspected; columns beyond it are legitimate zero-padding, not failures
         The minimum valid value is `1`.
         The maximum valid value is `n_bins`.
@@ -2766,8 +2766,8 @@ def check_mean_pmf_min_counts(
         raise ValueError(f"'n_bins_per_point' must have 1 dimension, but has {n_bins_per_point.ndim}")
 
     # what the inputs already say, rather than asking for it again
-    n_bins = mean_pmf_counts.shape[0]
-    n_points = mean_pmf_counts.shape[1]
+    n_bins = mean_pmf_counts.shape[1]
+    n_points = mean_pmf_counts.shape[0]
 
     # Fortran cannot check that shared extents agree; this can
     if n_bins_per_point.shape[0] != n_points:
@@ -3112,12 +3112,12 @@ def create_mean_pmf(
 
     Parameters
     ----------
-    pmfs : np.ndarray[np.float64] of shape (n_bins, n_points, n_studies,), column-major (order='F')
+    pmfs : np.ndarray[np.float64] of shape (n_points, n_bins, n_studies,), column-major (order='F')
         Per-study probabilities of each bin per reference point, from
         :func:`tensor_omics.build_residual_histograms`
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
-    counts : np.ndarray[np.int32] of shape (n_bins, n_points, n_studies,), column-major (order='F')
+    counts : np.ndarray[np.int32] of shape (n_points, n_bins, n_studies,), column-major (order='F')
         Absolute counts of a residual per bin for `pmfs`
         The minimum valid value is `0`.
     included_n_reps : np.ndarray[np.int32] of shape (n_points, n_studies,), column-major (order='F')
@@ -3131,7 +3131,7 @@ def create_mean_pmf(
     dict
         with keys:
 
-        mean_pmf : np.ndarray[np.float64] of shape (n_bins, n_points,), column-major (order='F'), read-only
+        mean_pmf : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F'), read-only
             The consensus pmf, built as `mean_pmf = sum(pmfs, dim=3) / n_studies` -- see the
             known-limitation note above
             A result is a value; call `.copy()` to obtain a modifiable array.
@@ -3139,7 +3139,7 @@ def create_mean_pmf(
             Count of non-NaN replicates (included ones) per reference point for `mean_pmf`,
             summed across all n_studies
             A result is a value; call `.copy()` to obtain a modifiable array.
-        mean_pmf_counts : np.ndarray[np.int32] of shape (n_bins, n_points,), column-major (order='F'), read-only
+        mean_pmf_counts : np.ndarray[np.int32] of shape (n_points, n_bins,), column-major (order='F'), read-only
             Absolute counts of a residual per bin for the mean pmf -> `sum(counts, dim=3)`
             A result is a value; call `.copy()` to obtain a modifiable array.
 
@@ -3174,17 +3174,17 @@ def create_mean_pmf(
         raise ValueError(f"'included_n_reps' must have 2 dimensions, but has {included_n_reps.ndim}")
 
     # what the inputs already say, rather than asking for it again
-    n_bins = pmfs.shape[0]
-    n_points = pmfs.shape[1]
+    n_bins = pmfs.shape[1]
+    n_points = pmfs.shape[0]
     n_studies = pmfs.shape[2]
 
     # Fortran cannot check that shared extents agree; this can
-    if counts.shape[0] != n_bins:
-        raise ValueError(f"'counts' has {counts.shape[0]} along axis 0, but "
+    if counts.shape[1] != n_bins:
+        raise ValueError(f"'counts' has {counts.shape[1]} along axis 1, but "
             f"'pmfs' implies n_bins == {n_bins}"
         )
-    if counts.shape[1] != n_points:
-        raise ValueError(f"'counts' has {counts.shape[1]} along axis 1, but "
+    if counts.shape[0] != n_points:
+        raise ValueError(f"'counts' has {counts.shape[0]} along axis 0, but "
             f"'pmfs' implies n_points == {n_points}"
         )
     if included_n_reps.shape[0] != n_points:
@@ -3201,9 +3201,9 @@ def create_mean_pmf(
         )
 
     # outputs and work arrays, which the caller never sees
-    mean_pmf = np.empty((n_bins, n_points,), dtype=np.float64, order='F')
+    mean_pmf = np.empty((n_points, n_bins,), dtype=np.float64, order='F')
     mean_pmf_included_n_reps = np.empty((n_points,), dtype=np.int32, order='C')
-    mean_pmf_counts = np.empty((n_bins, n_points,), dtype=np.int32, order='F')
+    mean_pmf_counts = np.empty((n_points, n_bins,), dtype=np.int32, order='F')
     ierr = ctypes.c_int(0)
 
     _lib.create_mean_pmf_c(
@@ -3248,7 +3248,7 @@ def create_mean_pmf_only(
 
     Parameters
     ----------
-    pmfs : np.ndarray[np.float64] of shape (n_bins, n_points, n_studies,), column-major (order='F')
+    pmfs : np.ndarray[np.float64] of shape (n_points, n_bins, n_studies,), column-major (order='F')
         Per-study probabilities of each bin per reference point, from
         :func:`tensor_omics.build_residual_histograms`
         The minimum valid value is `0.0`.
@@ -3256,7 +3256,7 @@ def create_mean_pmf_only(
 
     Returns
     -------
-    mean_pmf : np.ndarray[np.float64] of shape (n_bins, n_points,), column-major (order='F'), read-only
+    mean_pmf : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F'), read-only
         The consensus pmf, built as `mean_pmf = sum(pmfs, dim=3) / n_studies` -- see the
         known-limitation note above
         A result is a value; call `.copy()` to obtain a modifiable array.
@@ -3280,12 +3280,12 @@ def create_mean_pmf_only(
         raise ValueError(f"'pmfs' must have 3 dimensions, but has {pmfs.ndim}")
 
     # what the inputs already say, rather than asking for it again
-    n_bins = pmfs.shape[0]
-    n_points = pmfs.shape[1]
+    n_bins = pmfs.shape[1]
+    n_points = pmfs.shape[0]
     n_studies = pmfs.shape[2]
 
     # outputs and work arrays, which the caller never sees
-    mean_pmf = np.empty((n_bins, n_points,), dtype=np.float64, order='F')
+    mean_pmf = np.empty((n_points, n_bins,), dtype=np.float64, order='F')
     ierr = ctypes.c_int(0)
 
     _lib.create_mean_pmf_only_c(
@@ -3332,17 +3332,6 @@ def bootstrap_histogram(
     return it holds `[largest of the n_bootstrapping_top_k_jsds smallest bootstrap draws,
     smallest of the n_bootstrapping_top_k_jsds largest bootstrap draws]`.
 
-    `mean_pmf_counts`/`tmp_pmfs`/`tmp_mean_pmf` are laid out bin-major (`(n_bins, n_points[,
-    n_studies])`), matching
-    :func:`tensor_omics.create_mean_pmf` and its
-    own `create_mean_pmf_only_impl` above -- both ported from 125, whose own convention this
-    is. The already-shipped
-    :func:`tensor_omics.compute_divergence_per_reference_point`
-    predates 125's own port and instead takes its pmf arguments point-major
-    (`(n_points, n_bins)`); the two calls below bridge the two conventions with an explicit
-    `transpose`, rather than picking one shape and silently reinterpreting the other's memory
-    under it (which would scramble every non-square `(n_bins, n_points)` histogram).
-
     A GSL allocation failure in `create_rng` is a genuine runtime error no input check could
     have foreseen (codegen_guide.md Sec 5.14): `confidence_interval` is then left unchanged
     and `ierr` reports `ERR_ALLOC_FAIL`. A `random_multinomial` draw failing (which validated,
@@ -3362,7 +3351,7 @@ def bootstrap_histogram(
     n_bootstraps : int
         Number of bootstrap resamples to perform
         The minimum valid value is `1`.
-    mean_pmf_counts : np.ndarray[np.int32] of shape (n_bins, n_points,), column-major (order='F')
+    mean_pmf_counts : np.ndarray[np.int32] of shape (n_points, n_bins,), column-major (order='F')
         Absolute counts of a residual per bin for the pooled/consensus pmf, from
         create_mean_pmf_impl -- resampled with replacement each bootstrap
         The minimum valid value is `0`.
@@ -3431,8 +3420,8 @@ def bootstrap_histogram(
         raise ValueError("'confidence_interval' is modified in place, so it must already be column-major (order='F')")
 
     # what the inputs already say, rather than asking for it again
-    n_bins = mean_pmf_counts.shape[0]
-    n_points = mean_pmf_counts.shape[1]
+    n_bins = mean_pmf_counts.shape[1]
+    n_points = mean_pmf_counts.shape[0]
     n_studies = included_n_reps.shape[1]
 
     # Fortran cannot check that shared extents agree; this can
@@ -3571,18 +3560,18 @@ def run_js_comp_test(
     count in advance, since it is now genuinely computed inside this routine by Pass B's
     bin-count search (per `bin_count_mode`), independently per reference point. Every array
     whose bin-sized dimension
-    used to be sized by that input (`pmfs`, `counts`, `mean_pmf`, `mean_pmf_counts`,
-    `tmp_counts_point_major`, `tmp_pmf_point_major`, `tmp_permutation_mean_pmf_counts`,
-    `tmp_permutation_counts`, `tmp_permutation_pmfs`) is now sized to the fixed compile-time
+    used to be sized by that input (`pmfs`, `counts`, `mean_pmf`, `mean_pmf_counts`, and the
+    bin-sized `tmp_permutation_*` work arrays) is now sized to the fixed compile-time
     ceiling ``MAX_N_BINS`` (`256`)
     instead, exactly mirroring how `run_js_comp_test_parameter_search_impl`'s own
-    `tmp_counts_point_major`/`tmp_pmf_point_major`/`tmp_pmfs`/`tmp_counts` etc. have been sized
+    `tmp_pmfs`/`tmp_counts` etc. have been sized
     since Issue #187's earlier steps. The new `max_n_bins_per_point` output tells a caller how many of the
-    LEADING bins/rows of each of those arrays are actually meaningful
-    (`maxval(n_bins_per_point(1:n_points))`); the rest is unused padding. The generator's own
+    LEADING bins of each of those arrays are actually meaningful
+    (`maxval(n_bins_per_point(1:n_points))`); the rest is zero padding. The generator's own
     result-size trimming directive cannot express this trim, because it only ever trims an
-    array's LAST declared extent, and bins is the FIRST declared extent of every one of those
-    arrays -- so a Python/R caller must slice `[:max_n_bins_per_point, ...]` themselves, exactly as a
+    array's LAST declared extent, and bins is the SECOND declared extent of every one of those
+    arrays -- so a Python/R caller must slice `[:, :max_n_bins_per_point, ...]` (Python) or
+    `[, seq_len(max_n_bins_per_point), ]` (R) themselves, exactly as a
     caller of `run_js_comp_test_parameter_search_impl`'s own jagged `trace_*` arrays already has
     to.
 
@@ -3596,17 +3585,8 @@ def run_js_comp_test(
     values (unlike its distance-sort sibling
     :func:`tensor_omics.construct_neighborhoods`),
     so Pass C gathers each neighbor's actual residual values from `residuals` itself
-    (one slice of `tmp_neighborhood_residuals_gathered` per reference point, reused for every
-    study) before building that point's histogram with `build_residual_histograms_impl` for
-    that single point, whose bins are copied straight into the matching column of
-    `counts`/`pmfs` -- no transpose is needed there. `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts`
-    here are BIN-major (`(256, n_points, n_studies)`) to match
-    :func:`tensor_omics.create_mean_pmf`'s own
-    convention, while `compute_divergence_per_reference_point_impl` and `calc_pmf_impl` are
-    POINT-major (`(n_points, max_n_bins_per_point)`): the calls to those two after Pass C bridge
-    with an explicit `transpose`, exactly as
-    :func:`tensor_omics.bootstrap_histogram` and
-    :func:`tensor_omics.gjct_permutation_test` already do.
+    (into `tmp_neighborhood_residuals_gathered`, reused for every study) before building the
+    study's histograms with one `build_residual_histograms_impl` call over all points.
 
     Impure: calls the impure `gjct_permutation_test_impl`. A GSL failure it reports is returned
     in `ierr`, and the routine returns right there: `pmfs`, `js_divergences`, `weights` and
@@ -3726,14 +3706,14 @@ def run_js_comp_test(
         max_n_bins_per_point : int
             The widest `n_bins_per_point` value across all `n_points` reference points
             (`maxval(n_bins_per_point(1:n_points))`), derived once after Pass B. The number of
-            leading, meaningful bins/rows in `pmfs`, `counts`, `mean_pmf` and `mean_pmf_counts`
+            leading, meaningful bins in `pmfs`, `counts`, `mean_pmf` and `mean_pmf_counts`
             below (and of the bin-sized work arrays) -- those are all declared
             with a fixed 256-bin ceiling (MAX_N_BINS) rather than a caller-supplied bin count,
             since `n_bins_per_point` can no longer be known by a caller in advance. A Python/R
-            caller must slice `[:max_n_bins_per_point, ...]` themselves: the generator's own result-size
-            trimming directive cannot express this trim, because it only ever trims an array's
-            LAST declared extent, and bins is the FIRST declared extent of every one of those
-            arrays
+            caller must slice `[:, :max_n_bins_per_point, ...]` (R: `[, seq_len(max_n_bins_per_point), ]`)
+            themselves: the generator's own result-size trimming directive cannot express this
+            trim, because it only ever trims an array's LAST declared extent, and bins is the
+            SECOND declared extent of every one of those arrays
         occupancy_failed : np.ndarray[np.bool_] of shape (n_points,), read-only
             This reference point's `occupancy_failed` flag from Pass B -- `True` iff the
             bin-count search failed for it (occupancy or Stone, per `bin_count_mode`), and the
@@ -3766,24 +3746,24 @@ def run_js_comp_test(
             This reference point's Freedman-Diaconis rule bin-count diagnostic from Pass B's bin-count
             search (per `bin_count_mode`) -- never part of the bin-count search's own decision
             A result is a value; call `.copy()` to obtain a modifiable array.
-        pmfs : np.ndarray[np.float64] of shape (256, n_points, n_studies,), column-major (order='F'), read-only
-            `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`. The
-            bins are a fixed ceiling (see `max_n_bins_per_point` above) -- only rows `1:max_n_bins_per_point`
-            are meaningful; a Python/R caller must slice `[:max_n_bins_per_point, ...]` themselves
+        pmfs : np.ndarray[np.float64] of shape (n_points, 256, n_studies,), column-major (order='F'), read-only
+            `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(j, :, i)) == 1`. The
+            bins are a fixed ceiling (see `max_n_bins_per_point` above) -- only bins `1:max_n_bins_per_point`
+            are meaningful, the rest is zero; a Python/R caller must slice them themselves
             A result is a value; call `.copy()` to obtain a modifiable array.
-        counts : np.ndarray[np.int32] of shape (256, n_points, n_studies,), column-major (order='F'), read-only
-            Absolute counts of a residual per bin for `pmfs`. Only rows
+        counts : np.ndarray[np.int32] of shape (n_points, 256, n_studies,), column-major (order='F'), read-only
+            Absolute counts of a residual per bin for `pmfs`. Only bins
             `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
             A result is a value; call `.copy()` to obtain a modifiable array.
         included_n_reps : np.ndarray[np.int32] of shape (n_points, n_studies,), column-major (order='F'), read-only
             Count of non-NaN replicates (included ones) per reference point, per study
             A result is a value; call `.copy()` to obtain a modifiable array.
-        mean_pmf : np.ndarray[np.float64] of shape (256, n_points,), column-major (order='F'), read-only
-            The consensus pmf, from create_mean_pmf_impl. Only rows
+        mean_pmf : np.ndarray[np.float64] of shape (n_points, 256,), column-major (order='F'), read-only
+            The consensus pmf, from create_mean_pmf_impl. Only bins
             `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
             A result is a value; call `.copy()` to obtain a modifiable array.
-        mean_pmf_counts : np.ndarray[np.int32] of shape (256, n_points,), column-major (order='F'), read-only
-            Absolute counts of a residual per bin for the consensus pmf. Only rows
+        mean_pmf_counts : np.ndarray[np.int32] of shape (n_points, 256,), column-major (order='F'), read-only
+            Absolute counts of a residual per bin for the consensus pmf. Only bins
             `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
             A result is a value; call `.copy()` to obtain a modifiable array.
         mean_pmf_included_n_reps : np.ndarray[np.int32] of shape (n_points,), read-only
@@ -3886,11 +3866,11 @@ def run_js_comp_test(
     max_bin_occupancy = np.empty((n_points,), dtype=np.int32, order='C')
     sturges_bins = np.empty((n_points,), dtype=np.int32, order='C')
     fd_bins = np.empty((n_points,), dtype=np.int32, order='C')
-    pmfs = np.empty((256, n_points, n_studies,), dtype=np.float64, order='F')
-    counts = np.empty((256, n_points, n_studies,), dtype=np.int32, order='F')
+    pmfs = np.empty((n_points, 256, n_studies,), dtype=np.float64, order='F')
+    counts = np.empty((n_points, 256, n_studies,), dtype=np.int32, order='F')
     included_n_reps = np.empty((n_points, n_studies,), dtype=np.int32, order='F')
-    mean_pmf = np.empty((256, n_points,), dtype=np.float64, order='F')
-    mean_pmf_counts = np.empty((256, n_points,), dtype=np.int32, order='F')
+    mean_pmf = np.empty((n_points, 256,), dtype=np.float64, order='F')
+    mean_pmf_counts = np.empty((n_points, 256,), dtype=np.int32, order='F')
     mean_pmf_included_n_reps = np.empty((n_points,), dtype=np.int32, order='C')
     js_divergences = np.empty((n_points, n_studies,), dtype=np.float64, order='F')
     weights = np.empty((n_points, n_studies,), dtype=np.float64, order='F')
@@ -4077,9 +4057,10 @@ def run_js_comp_test_adaptive(
     `bin_count_mode` need; the plain entry point allocates it in every mode, occupancy included.
 
     The bin-sized arrays have the same fixed 256-bin
-    (``MAX_N_BINS``) leading extent as in
-    `run_js_comp_test_impl`, of which only the first `max_n_bins_per_point` rows are
-    meaningful; a Python/R caller slices `[:max_n_bins_per_point, ...]` themselves.
+    (``MAX_N_BINS``) second extent as in
+    `run_js_comp_test_impl`, of which only the first `max_n_bins_per_point` bins are
+    meaningful (the rest is zero); a Python/R caller slices `[:, :max_n_bins_per_point, ...]`
+    (R: `[, seq_len(max_n_bins_per_point), ]`) themselves.
 
     Impure: calls the impure `gjct_permutation_test_impl`. A GSL failure it reports is returned
     in `ierr`, and the routine returns right there: `pmfs`, `js_divergences`, `weights` and
@@ -4206,23 +4187,23 @@ def run_js_comp_test_adaptive(
             Each reference point's Freedman-Diaconis rule diagnostic, with the rounded mean
             per-study neighbor count; never part of the bin-count search's decision
             A result is a value; call `.copy()` to obtain a modifiable array.
-        pmfs : np.ndarray[np.float64] of shape (256, n_points, n_studies,), column-major (order='F'), read-only
-            `counts` normalized per reference point and study. Only rows
-            `1:max_n_bins_per_point` are meaningful
+        pmfs : np.ndarray[np.float64] of shape (n_points, 256, n_studies,), column-major (order='F'), read-only
+            `counts` normalized per reference point and study. Only bins
+            `1:max_n_bins_per_point` are meaningful, the rest is zero
             A result is a value; call `.copy()` to obtain a modifiable array.
-        counts : np.ndarray[np.int32] of shape (256, n_points, n_studies,), column-major (order='F'), read-only
-            Absolute counts of a residual per bin for `pmfs`. Only rows
-            `1:max_n_bins_per_point` are meaningful
+        counts : np.ndarray[np.int32] of shape (n_points, 256, n_studies,), column-major (order='F'), read-only
+            Absolute counts of a residual per bin for `pmfs`. Only bins
+            `1:max_n_bins_per_point` are meaningful, the rest is zero
             A result is a value; call `.copy()` to obtain a modifiable array.
         included_n_reps : np.ndarray[np.int32] of shape (n_points, n_studies,), column-major (order='F'), read-only
             Count of non-NaN residuals binned per reference point, per study
             A result is a value; call `.copy()` to obtain a modifiable array.
-        mean_pmf : np.ndarray[np.float64] of shape (256, n_points,), column-major (order='F'), read-only
-            The consensus pmf. Only rows `1:max_n_bins_per_point` are meaningful
+        mean_pmf : np.ndarray[np.float64] of shape (n_points, 256,), column-major (order='F'), read-only
+            The consensus pmf. Only bins `1:max_n_bins_per_point` are meaningful, the rest is zero
             A result is a value; call `.copy()` to obtain a modifiable array.
-        mean_pmf_counts : np.ndarray[np.int32] of shape (256, n_points,), column-major (order='F'), read-only
-            Absolute counts of a residual per bin for the consensus pmf. Only rows
-            `1:max_n_bins_per_point` are meaningful
+        mean_pmf_counts : np.ndarray[np.int32] of shape (n_points, 256,), column-major (order='F'), read-only
+            Absolute counts of a residual per bin for the consensus pmf. Only bins
+            `1:max_n_bins_per_point` are meaningful, the rest is zero
             A result is a value; call `.copy()` to obtain a modifiable array.
         mean_pmf_included_n_reps : np.ndarray[np.int32] of shape (n_points,), read-only
             Count of non-NaN residuals per reference point for the consensus pmf
@@ -4309,11 +4290,11 @@ def run_js_comp_test_adaptive(
     max_bin_occupancy = np.empty((n_points,), dtype=np.int32, order='C')
     sturges_bins = np.empty((n_points,), dtype=np.int32, order='C')
     fd_bins = np.empty((n_points,), dtype=np.int32, order='C')
-    pmfs = np.empty((256, n_points, n_studies,), dtype=np.float64, order='F')
-    counts = np.empty((256, n_points, n_studies,), dtype=np.int32, order='F')
+    pmfs = np.empty((n_points, 256, n_studies,), dtype=np.float64, order='F')
+    counts = np.empty((n_points, 256, n_studies,), dtype=np.int32, order='F')
     included_n_reps = np.empty((n_points, n_studies,), dtype=np.int32, order='F')
-    mean_pmf = np.empty((256, n_points,), dtype=np.float64, order='F')
-    mean_pmf_counts = np.empty((256, n_points,), dtype=np.int32, order='F')
+    mean_pmf = np.empty((n_points, 256,), dtype=np.float64, order='F')
+    mean_pmf_counts = np.empty((n_points, 256,), dtype=np.int32, order='F')
     mean_pmf_included_n_reps = np.empty((n_points,), dtype=np.int32, order='C')
     js_divergences = np.empty((n_points, n_studies,), dtype=np.float64, order='F')
     weights = np.empty((n_points, n_studies,), dtype=np.float64, order='F')
@@ -4528,7 +4509,7 @@ def run_js_comp_test_parameter_search(
     Per the plan's work-array translation for this routine specifically: `max_n_bins_all_candidates`
     (data-dependent, not cheaply closed-form in 125) is replaced by the fixed
     ``MAX_N_BINS`` ceiling, so every
-    bin-dimensioned work array below is sized to MAX_N_BINS and sliced `(1:max_n_bins, ...)` per
+    bin-dimensioned work array below is sized to MAX_N_BINS and used at `max_n_bins` bins per
     candidate, rather than carrying a separate recommend-sized dimension argument for it.
     `max_n_bins` is the widest per-point bin count Pass B's bin-count search (below) chose for
     the current candidate, `maxval(tmp_n_bins_per_point(1:n_points))` -- it replaces the old

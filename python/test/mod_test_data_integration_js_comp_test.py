@@ -477,17 +477,17 @@ def test_create_mean_pmf():
     # S1 pmf=[0.3,0.7] counts=[3,7] included=10; S2 pmf=[0.5,0.5] counts=[5,5] included=10.
     # mean_pmf = ([0.3,0.7]+[0.5,0.5])/2 = [0.4,0.6], mean_pmf_counts=[8,12], included=20.
     # ============================================================
-    pmfs = np.zeros((2, 1, 2), dtype=np.float64, order='F')
-    pmfs[:, 0, 0] = [0.3, 0.7]
-    pmfs[:, 0, 1] = [0.5, 0.5]
-    counts = np.zeros((2, 1, 2), dtype=np.int32, order='F')
-    counts[:, 0, 0] = [3, 7]
-    counts[:, 0, 1] = [5, 5]
+    pmfs = np.zeros((1, 2, 2), dtype=np.float64, order='F')
+    pmfs[0, :, 0] = [0.3, 0.7]
+    pmfs[0, :, 1] = [0.5, 0.5]
+    counts = np.zeros((1, 2, 2), dtype=np.int32, order='F')
+    counts[0, :, 0] = [3, 7]
+    counts[0, :, 1] = [5, 5]
     included_n_reps = np.array([[10, 10]], dtype=np.int32, order='F')
 
     result = create_mean_pmf(pmfs, counts, included_n_reps)
-    np.testing.assert_array_almost_equal(result["mean_pmf"][:, 0], [0.4, 0.6], decimal=12)
-    assert list(result["mean_pmf_counts"][:, 0]) == [8, 12], "Test 1 failed: mean_pmf_counts mismatch"
+    np.testing.assert_array_almost_equal(result["mean_pmf"][0, :], [0.4, 0.6], decimal=12)
+    assert list(result["mean_pmf_counts"][0, :]) == [8, 12], "Test 1 failed: mean_pmf_counts mismatch"
     assert result["mean_pmf_included_n_reps"][0] == 20, "Test 1 failed: mean_pmf_included_n_reps mismatch"
 
     # ============================================================
@@ -495,19 +495,19 @@ def test_create_mean_pmf():
     # including self, not a true leave-one-out background (test_create_mean_pmf_three_studies_includes_self).
     # S1 pmf=[0.2,0.8], S2 pmf=[0.4,0.6], S3 pmf=[0.9,0.1] -> mean_pmf=[0.5,0.5] over all three.
     # ============================================================
-    pmfs3 = np.zeros((2, 1, 3), dtype=np.float64, order='F')
-    pmfs3[:, 0, 0] = [0.2, 0.8]
-    pmfs3[:, 0, 1] = [0.4, 0.6]
-    pmfs3[:, 0, 2] = [0.9, 0.1]
-    counts3 = np.zeros((2, 1, 3), dtype=np.int32, order='F')
-    counts3[:, 0, 0] = [2, 8]
-    counts3[:, 0, 1] = [4, 6]
-    counts3[:, 0, 2] = [9, 1]
+    pmfs3 = np.zeros((1, 2, 3), dtype=np.float64, order='F')
+    pmfs3[0, :, 0] = [0.2, 0.8]
+    pmfs3[0, :, 1] = [0.4, 0.6]
+    pmfs3[0, :, 2] = [0.9, 0.1]
+    counts3 = np.zeros((1, 2, 3), dtype=np.int32, order='F')
+    counts3[0, :, 0] = [2, 8]
+    counts3[0, :, 1] = [4, 6]
+    counts3[0, :, 2] = [9, 1]
     included_n_reps3 = np.array([[10, 10, 10]], dtype=np.int32, order='F')
 
     result3 = create_mean_pmf(pmfs3, counts3, included_n_reps3)
-    np.testing.assert_array_almost_equal(result3["mean_pmf"][:, 0], [0.5, 0.5], decimal=12)
-    assert list(result3["mean_pmf_counts"][:, 0]) == [15, 15], "Test 2 failed: mean_pmf_counts mismatch"
+    np.testing.assert_array_almost_equal(result3["mean_pmf"][0, :], [0.5, 0.5], decimal=12)
+    assert list(result3["mean_pmf_counts"][0, :]) == [15, 15], "Test 2 failed: mean_pmf_counts mismatch"
     assert result3["mean_pmf_included_n_reps"][0] == 30, "Test 2 failed: mean_pmf_included_n_reps mismatch"
 
     # What a true leave-one-out background for study 1 would be, for contrast -- NOT what
@@ -536,12 +536,12 @@ def test_create_mean_pmf():
 def test_create_mean_pmf_only():
     # `create_mean_pmf_only` must produce exactly the same mean_pmf as `create_mean_pmf`
     # (test_create_mean_pmf_only_matches_create_mean_pmf).
-    pmfs = np.zeros((2, 1, 2), dtype=np.float64, order='F')
-    pmfs[:, 0, 0] = [0.3, 0.7]
-    pmfs[:, 0, 1] = [0.5, 0.5]
-    counts = np.zeros((2, 1, 2), dtype=np.int32, order='F')
-    counts[:, 0, 0] = [3, 7]
-    counts[:, 0, 1] = [5, 5]
+    pmfs = np.zeros((1, 2, 2), dtype=np.float64, order='F')
+    pmfs[0, :, 0] = [0.3, 0.7]
+    pmfs[0, :, 1] = [0.5, 0.5]
+    counts = np.zeros((1, 2, 2), dtype=np.int32, order='F')
+    counts[0, :, 0] = [3, 7]
+    counts[0, :, 1] = [5, 5]
     included_n_reps = np.array([[10, 10]], dtype=np.int32, order='F')
 
     full = create_mean_pmf(pmfs, counts, included_n_reps)
@@ -555,7 +555,7 @@ def test_bootstrap_histogram():
     # Test 1 -- same random_seed twice must give bit-for-bit identical confidence_interval
     # (test_bootstrap_histogram_seeded_reproducibility).
     # ============================================================
-    mean_pmf_counts = np.array([[5, 2], [3, 2], [2, 6]], dtype=np.int32, order='F')
+    mean_pmf_counts = np.array([[5, 3, 2], [2, 2, 6]], dtype=np.int32, order='F')
     mean_pmf_included_n_reps = np.array([10, 10], dtype=np.int32)
     included_n_reps = np.array([[4, 6], [4, 6]], dtype=np.int32, order='F')
 
@@ -587,7 +587,7 @@ def test_bootstrap_histogram_rejects_draws_from_empty_pool():
     # A study drawing from a point whose pool is empty (counts [0, 0], 0 included replicates) fails
     # with invalid input, not tied to any one argument
     # (test_bootstrap_histogram_rejects_draws_from_empty_pool in the Fortran suite).
-    mean_pmf_counts = np.array([[0], [0]], dtype=np.int32, order='F')
+    mean_pmf_counts = np.array([[0, 0]], dtype=np.int32, order='F')
     mean_pmf_included_n_reps = np.array([0], dtype=np.int32)
     included_n_reps = np.array([[3, 3]], dtype=np.int32, order='F')
 
@@ -608,13 +608,13 @@ def test_create_mean_pmf_rejects_zero_included_n_reps():
     # included_n_reps is rejected on that argument
     # (test_create_mean_pmf_rejects_zero_included_n_reps in the Fortran suite).
     pmfs = np.zeros((2, 2, 2), dtype=np.float64, order='F')
-    pmfs[:, 0, 0] = [0.5, 0.5]
-    pmfs[:, 1, 0] = [0.25, 0.75]
-    pmfs[:, 0, 1] = [1.0, 0.0]
+    pmfs[0, :, 0] = [0.5, 0.5]
+    pmfs[1, :, 0] = [0.25, 0.75]
+    pmfs[0, :, 1] = [1.0, 0.0]
     counts = np.zeros((2, 2, 2), dtype=np.int32, order='F')
-    counts[:, 0, 0] = [1, 1]
-    counts[:, 1, 0] = [1, 3]
-    counts[:, 0, 1] = [2, 0]
+    counts[0, :, 0] = [1, 1]
+    counts[1, :, 0] = [1, 3]
+    counts[0, :, 1] = [2, 0]
     included_n_reps = np.array([[2, 2], [4, 0]], dtype=np.int32, order='F')
 
     def call():
@@ -631,7 +631,7 @@ def test_bootstrap_histogram_rejects_zero_included_n_reps():
     # Every study needs at least one included residual at every reference point, so a single 0 in
     # included_n_reps is rejected on that argument, even where the counts otherwise add up
     # (test_bootstrap_histogram_rejects_zero_included_n_reps in the Fortran suite).
-    mean_pmf_counts = np.array([[2], [2]], dtype=np.int32, order='F')
+    mean_pmf_counts = np.array([[2, 2]], dtype=np.int32, order='F')
     mean_pmf_included_n_reps = np.array([4], dtype=np.int32)
     included_n_reps = np.array([[0, 4]], dtype=np.int32, order='F')
 
@@ -717,8 +717,9 @@ def test_run_js_comp_test_two_studies_hand_traceable():
     # `n_bins` input (the bin count is now decided per reference point by an internal occupancy
     # search) and added `n_bins_per_point`/`max_n_bins_per_point` plus several per-point
     # diagnostics; `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts` are now always sized to the fixed
-    # 256-bin ceiling (MAX_N_BINS), of which only the leading `max_n_bins_per_point` rows are
-    # meaningful -- a caller must slice `[:max_n_bins_per_point, ...]` themselves.
+    # 256-bin ceiling (MAX_N_BINS) in their second axis, of which only the leading
+    # `max_n_bins_per_point` bins are meaningful -- a caller must slice
+    # `[:, :max_n_bins_per_point, ...]` themselves.
     gene_means = np.array([[1.0, 1.0], [5.0, 5.0]], dtype=np.float64, order='F')
     gene_means_perms = np.array([[1, 1], [2, 2]], dtype=np.int32, order='F')
 
@@ -749,11 +750,11 @@ def test_run_js_comp_test_two_studies_hand_traceable():
     assert result["max_bin_occupancy"].shape == (n_points,)
     assert result["sturges_bins"].shape == (n_points,)
     assert result["fd_bins"].shape == (n_points,)
-    assert result["pmfs"].shape == (256, n_points, n_studies)
-    assert result["counts"].shape == (256, n_points, n_studies)
+    assert result["pmfs"].shape == (n_points, 256, n_studies)
+    assert result["counts"].shape == (n_points, 256, n_studies)
     assert result["included_n_reps"].shape == (n_points, n_studies)
-    assert result["mean_pmf"].shape == (256, n_points)
-    assert result["mean_pmf_counts"].shape == (256, n_points)
+    assert result["mean_pmf"].shape == (n_points, 256)
+    assert result["mean_pmf_counts"].shape == (n_points, 256)
     assert result["mean_pmf_included_n_reps"].shape == (n_points,)
     assert result["js_divergences"].shape == (n_points, n_studies)
     assert result["weights"].shape == (n_points, n_studies)
@@ -763,7 +764,7 @@ def test_run_js_comp_test_two_studies_hand_traceable():
 
     # A caller must be able to slice down to the meaningful leading bins.
     max_n_bins = result["max_n_bins_per_point"]
-    assert result["pmfs"][:max_n_bins, ...].shape == (max_n_bins, n_points, n_studies)
+    assert result["pmfs"][:, :max_n_bins, ...].shape == (n_points, max_n_bins, n_studies)
 
     assert list(result["neighborhood_indices"][:, 0, 0]) == [1], "study 1 neighbor should be gene 1"
     assert list(result["neighborhood_indices"][:, 0, 1]) == [1], "study 2 neighbor should be gene 1"
@@ -781,7 +782,7 @@ def test_run_js_comp_test_two_studies_hand_traceable():
         assert result_mode["n_bins_per_point"].shape == (n_points,), f"{mode}: n_bins_per_point shape"
         assert result_mode["occupancy_failed"].shape == (n_points,), f"{mode}: occupancy_failed shape"
         assert result_mode["occupancy_failed"].dtype == np.bool_, f"{mode}: occupancy_failed dtype"
-        assert result_mode["pmfs"].shape == (256, n_points, n_studies), f"{mode}: pmfs shape"
+        assert result_mode["pmfs"].shape == (n_points, 256, n_studies), f"{mode}: pmfs shape"
         assert result_mode["global_js_divergence"].shape == (n_studies,), f"{mode}: global_js_divergence shape"
     assert_error(lambda: run_js_comp_test(n_neighbors=1, gene_means=gene_means, gene_means_perms=gene_means_perms,
                                           residuals=residuals, x_star=x_star, n_permutations=0,
@@ -1177,10 +1178,10 @@ def test_run_js_comp_test_adaptive():
                 "sturges_bins", "fd_bins", "mean_pmf_included_n_reps"):
         assert result[key].shape == (n_points,), f"{key}: expected ({n_points},), got {result[key].shape}"
     assert isinstance(result["max_n_bins_per_point"], (int, np.integer))
-    assert result["pmfs"].shape == (256, n_points, n_studies)
-    assert result["counts"].shape == (256, n_points, n_studies)
-    assert result["mean_pmf"].shape == (256, n_points)
-    assert result["mean_pmf_counts"].shape == (256, n_points)
+    assert result["pmfs"].shape == (n_points, 256, n_studies)
+    assert result["counts"].shape == (n_points, 256, n_studies)
+    assert result["mean_pmf"].shape == (n_points, 256)
+    assert result["mean_pmf_counts"].shape == (n_points, 256)
     for key in ("included_n_reps", "js_divergences", "weights"):
         assert result[key].shape == (n_points, n_studies), f"{key}: wrong shape {result[key].shape}"
     assert result["global_js_divergence"].shape == (n_studies,)

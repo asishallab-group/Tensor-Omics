@@ -755,8 +755,8 @@ SEXP check_neighborhood_overlaps_call(SEXP neighborhood_range, SEXP min_neighbor
 SEXP check_mean_pmf_min_counts_call(SEXP mean_pmf_counts, SEXP n_bins_per_point, SEXP min_count) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
-    int n_bins = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[0];
-    int n_points = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[1];
+    int n_bins = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[1];
+    int n_points = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[0];
 
     // scalar inputs, pulled from their length-1 vectors
     int min_count_v = Rf_asInteger(min_count);
@@ -900,16 +900,16 @@ SEXP check_effect_size_plateau_condition_call(SEXP global_js_divergence, SEXP pr
 SEXP create_mean_pmf_call(SEXP pmfs, SEXP counts, SEXP included_n_reps) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
-    int n_bins = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[0];
-    int n_points = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[1];
+    int n_bins = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[1];
+    int n_points = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[0];
     int n_studies = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[2];
 
     // outputs and work space
-    SEXP mean_pmf = PROTECT(Rf_allocVector(REALSXP, n_bins * n_points)); nprot++;
-    { SEXP mean_pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_dim)[0] = n_bins; INTEGER(mean_pmf_dim)[1] = n_points; Rf_setAttrib(mean_pmf, R_DimSymbol, mean_pmf_dim); UNPROTECT(1); }
+    SEXP mean_pmf = PROTECT(Rf_allocVector(REALSXP, n_points * n_bins)); nprot++;
+    { SEXP mean_pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_dim)[0] = n_points; INTEGER(mean_pmf_dim)[1] = n_bins; Rf_setAttrib(mean_pmf, R_DimSymbol, mean_pmf_dim); UNPROTECT(1); }
     SEXP mean_pmf_included_n_reps = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
-    SEXP mean_pmf_counts = PROTECT(Rf_allocVector(INTSXP, n_bins * n_points)); nprot++;
-    { SEXP mean_pmf_counts_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_counts_dim)[0] = n_bins; INTEGER(mean_pmf_counts_dim)[1] = n_points; Rf_setAttrib(mean_pmf_counts, R_DimSymbol, mean_pmf_counts_dim); UNPROTECT(1); }
+    SEXP mean_pmf_counts = PROTECT(Rf_allocVector(INTSXP, n_points * n_bins)); nprot++;
+    { SEXP mean_pmf_counts_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_counts_dim)[0] = n_points; INTEGER(mean_pmf_counts_dim)[1] = n_bins; Rf_setAttrib(mean_pmf_counts, R_DimSymbol, mean_pmf_counts_dim); UNPROTECT(1); }
     int ierr = 0;
 
     create_mean_pmf_c(
@@ -943,13 +943,13 @@ SEXP create_mean_pmf_call(SEXP pmfs, SEXP counts, SEXP included_n_reps) {
 SEXP create_mean_pmf_only_call(SEXP pmfs) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
-    int n_bins = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[0];
-    int n_points = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[1];
+    int n_bins = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[1];
+    int n_points = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[0];
     int n_studies = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[2];
 
     // outputs and work space
-    SEXP mean_pmf = PROTECT(Rf_allocVector(REALSXP, n_bins * n_points)); nprot++;
-    { SEXP mean_pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_dim)[0] = n_bins; INTEGER(mean_pmf_dim)[1] = n_points; Rf_setAttrib(mean_pmf, R_DimSymbol, mean_pmf_dim); UNPROTECT(1); }
+    SEXP mean_pmf = PROTECT(Rf_allocVector(REALSXP, n_points * n_bins)); nprot++;
+    { SEXP mean_pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_dim)[0] = n_points; INTEGER(mean_pmf_dim)[1] = n_bins; Rf_setAttrib(mean_pmf, R_DimSymbol, mean_pmf_dim); UNPROTECT(1); }
     int ierr = 0;
 
     create_mean_pmf_only_c(
@@ -975,8 +975,8 @@ SEXP create_mean_pmf_only_call(SEXP pmfs) {
 SEXP bootstrap_histogram_call(SEXP n_bootstraps, SEXP mean_pmf_counts, SEXP mean_pmf_included_n_reps, SEXP included_n_reps, SEXP confidence_interval, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
-    int n_bins = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[0];
-    int n_points = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[1];
+    int n_bins = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[1];
+    int n_points = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[0];
     int n_studies = INTEGER(Rf_getAttrib(included_n_reps, R_DimSymbol))[1];
 
     // scalar inputs, pulled from their length-1 vectors
@@ -1053,16 +1053,16 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_means_pe
     SEXP max_bin_occupancy = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
     SEXP sturges_bins = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
     SEXP fd_bins = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
-    SEXP pmfs = PROTECT(Rf_allocVector(REALSXP, 256 * n_points * n_studies)); nprot++;
-    { SEXP pmfs_dim = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(pmfs_dim)[0] = 256; INTEGER(pmfs_dim)[1] = n_points; INTEGER(pmfs_dim)[2] = n_studies; Rf_setAttrib(pmfs, R_DimSymbol, pmfs_dim); UNPROTECT(1); }
-    SEXP counts = PROTECT(Rf_allocVector(INTSXP, 256 * n_points * n_studies)); nprot++;
-    { SEXP counts_dim = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(counts_dim)[0] = 256; INTEGER(counts_dim)[1] = n_points; INTEGER(counts_dim)[2] = n_studies; Rf_setAttrib(counts, R_DimSymbol, counts_dim); UNPROTECT(1); }
+    SEXP pmfs = PROTECT(Rf_allocVector(REALSXP, n_points * 256 * n_studies)); nprot++;
+    { SEXP pmfs_dim = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(pmfs_dim)[0] = n_points; INTEGER(pmfs_dim)[1] = 256; INTEGER(pmfs_dim)[2] = n_studies; Rf_setAttrib(pmfs, R_DimSymbol, pmfs_dim); UNPROTECT(1); }
+    SEXP counts = PROTECT(Rf_allocVector(INTSXP, n_points * 256 * n_studies)); nprot++;
+    { SEXP counts_dim = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(counts_dim)[0] = n_points; INTEGER(counts_dim)[1] = 256; INTEGER(counts_dim)[2] = n_studies; Rf_setAttrib(counts, R_DimSymbol, counts_dim); UNPROTECT(1); }
     SEXP included_n_reps = PROTECT(Rf_allocVector(INTSXP, n_points * n_studies)); nprot++;
     { SEXP included_n_reps_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(included_n_reps_dim)[0] = n_points; INTEGER(included_n_reps_dim)[1] = n_studies; Rf_setAttrib(included_n_reps, R_DimSymbol, included_n_reps_dim); UNPROTECT(1); }
-    SEXP mean_pmf = PROTECT(Rf_allocVector(REALSXP, 256 * n_points)); nprot++;
-    { SEXP mean_pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_dim)[0] = 256; INTEGER(mean_pmf_dim)[1] = n_points; Rf_setAttrib(mean_pmf, R_DimSymbol, mean_pmf_dim); UNPROTECT(1); }
-    SEXP mean_pmf_counts = PROTECT(Rf_allocVector(INTSXP, 256 * n_points)); nprot++;
-    { SEXP mean_pmf_counts_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_counts_dim)[0] = 256; INTEGER(mean_pmf_counts_dim)[1] = n_points; Rf_setAttrib(mean_pmf_counts, R_DimSymbol, mean_pmf_counts_dim); UNPROTECT(1); }
+    SEXP mean_pmf = PROTECT(Rf_allocVector(REALSXP, n_points * 256)); nprot++;
+    { SEXP mean_pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_dim)[0] = n_points; INTEGER(mean_pmf_dim)[1] = 256; Rf_setAttrib(mean_pmf, R_DimSymbol, mean_pmf_dim); UNPROTECT(1); }
+    SEXP mean_pmf_counts = PROTECT(Rf_allocVector(INTSXP, n_points * 256)); nprot++;
+    { SEXP mean_pmf_counts_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_counts_dim)[0] = n_points; INTEGER(mean_pmf_counts_dim)[1] = 256; Rf_setAttrib(mean_pmf_counts, R_DimSymbol, mean_pmf_counts_dim); UNPROTECT(1); }
     SEXP mean_pmf_included_n_reps = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
     SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, n_points * n_studies)); nprot++;
     { SEXP js_divergences_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(js_divergences_dim)[0] = n_points; INTEGER(js_divergences_dim)[1] = n_studies; Rf_setAttrib(js_divergences, R_DimSymbol, js_divergences_dim); UNPROTECT(1); }
@@ -1214,16 +1214,16 @@ SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled
     SEXP max_bin_occupancy = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
     SEXP sturges_bins = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
     SEXP fd_bins = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
-    SEXP pmfs = PROTECT(Rf_allocVector(REALSXP, 256 * n_points * n_studies)); nprot++;
-    { SEXP pmfs_dim = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(pmfs_dim)[0] = 256; INTEGER(pmfs_dim)[1] = n_points; INTEGER(pmfs_dim)[2] = n_studies; Rf_setAttrib(pmfs, R_DimSymbol, pmfs_dim); UNPROTECT(1); }
-    SEXP counts = PROTECT(Rf_allocVector(INTSXP, 256 * n_points * n_studies)); nprot++;
-    { SEXP counts_dim = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(counts_dim)[0] = 256; INTEGER(counts_dim)[1] = n_points; INTEGER(counts_dim)[2] = n_studies; Rf_setAttrib(counts, R_DimSymbol, counts_dim); UNPROTECT(1); }
+    SEXP pmfs = PROTECT(Rf_allocVector(REALSXP, n_points * 256 * n_studies)); nprot++;
+    { SEXP pmfs_dim = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(pmfs_dim)[0] = n_points; INTEGER(pmfs_dim)[1] = 256; INTEGER(pmfs_dim)[2] = n_studies; Rf_setAttrib(pmfs, R_DimSymbol, pmfs_dim); UNPROTECT(1); }
+    SEXP counts = PROTECT(Rf_allocVector(INTSXP, n_points * 256 * n_studies)); nprot++;
+    { SEXP counts_dim = PROTECT(Rf_allocVector(INTSXP, 3)); INTEGER(counts_dim)[0] = n_points; INTEGER(counts_dim)[1] = 256; INTEGER(counts_dim)[2] = n_studies; Rf_setAttrib(counts, R_DimSymbol, counts_dim); UNPROTECT(1); }
     SEXP included_n_reps = PROTECT(Rf_allocVector(INTSXP, n_points * n_studies)); nprot++;
     { SEXP included_n_reps_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(included_n_reps_dim)[0] = n_points; INTEGER(included_n_reps_dim)[1] = n_studies; Rf_setAttrib(included_n_reps, R_DimSymbol, included_n_reps_dim); UNPROTECT(1); }
-    SEXP mean_pmf = PROTECT(Rf_allocVector(REALSXP, 256 * n_points)); nprot++;
-    { SEXP mean_pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_dim)[0] = 256; INTEGER(mean_pmf_dim)[1] = n_points; Rf_setAttrib(mean_pmf, R_DimSymbol, mean_pmf_dim); UNPROTECT(1); }
-    SEXP mean_pmf_counts = PROTECT(Rf_allocVector(INTSXP, 256 * n_points)); nprot++;
-    { SEXP mean_pmf_counts_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_counts_dim)[0] = 256; INTEGER(mean_pmf_counts_dim)[1] = n_points; Rf_setAttrib(mean_pmf_counts, R_DimSymbol, mean_pmf_counts_dim); UNPROTECT(1); }
+    SEXP mean_pmf = PROTECT(Rf_allocVector(REALSXP, n_points * 256)); nprot++;
+    { SEXP mean_pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_dim)[0] = n_points; INTEGER(mean_pmf_dim)[1] = 256; Rf_setAttrib(mean_pmf, R_DimSymbol, mean_pmf_dim); UNPROTECT(1); }
+    SEXP mean_pmf_counts = PROTECT(Rf_allocVector(INTSXP, n_points * 256)); nprot++;
+    { SEXP mean_pmf_counts_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_counts_dim)[0] = n_points; INTEGER(mean_pmf_counts_dim)[1] = 256; Rf_setAttrib(mean_pmf_counts, R_DimSymbol, mean_pmf_counts_dim); UNPROTECT(1); }
     SEXP mean_pmf_included_n_reps = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
     SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, n_points * n_studies)); nprot++;
     { SEXP js_divergences_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(js_divergences_dim)[0] = n_points; INTEGER(js_divergences_dim)[1] = n_studies; Rf_setAttrib(js_divergences, R_DimSymbol, js_divergences_dim); UNPROTECT(1); }

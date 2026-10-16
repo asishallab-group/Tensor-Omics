@@ -11,8 +11,8 @@ void gjct_permutation_test_c(const int*, const int*, const int*, const int*, con
 SEXP gjct_permutation_test_call(SEXP n_permutations, SEXP mean_pmf_counts, SEXP mean_pmf, SEXP mean_pmf_included_n_reps, SEXP included_n_reps, SEXP global_jsd_observed, SEXP random_seed) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
-    int n_bins = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[0];
-    int n_points = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[1];
+    int n_bins = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[1];
+    int n_points = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[0];
     int n_studies = INTEGER(Rf_getAttrib(included_n_reps, R_DimSymbol))[1];
 
     // scalar inputs, pulled from their length-1 vectors

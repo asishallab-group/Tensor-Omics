@@ -98,11 +98,11 @@ contains
             !! Number of permutations to perform. `0` skips the test: no permutation runs, and
             !! `p_values` and `p_values_observed_consensus` are then NaN ("not computed")
             !! The minimum valid value is `0_int32`.
-        integer(int32), dimension(n_bins, n_points), intent(in) :: mean_pmf_counts
+        integer(int32), dimension(n_points, n_bins), intent(in) :: mean_pmf_counts
             !! Absolute counts of a residual per bin for the consensus pmf -- the pool each
             !! permutation resamples from without replacement, per reference point
             !! The minimum valid value is `0_int32`.
-        real(real64), dimension(n_bins, n_points), intent(in) :: mean_pmf
+        real(real64), dimension(n_points, n_bins), intent(in) :: mean_pmf
             !! The consensus pmf built from all studies' pmfs; each permuted study is compared
             !! against it for `p_values_observed_consensus` only
             !! The minimum valid value is `0.0_real64`.
@@ -142,8 +142,9 @@ contains
         real(real64), dimension(:, :), allocatable :: tmp_js_divergences
         real(real64), dimension(:, :), allocatable :: tmp_weights
         real(real64), dimension(:), allocatable :: tmp_global_js_divergence
-        real(real64), dimension(:, :), allocatable :: tmp_pmf_point_major
-        integer(int32), dimension(:, :), allocatable :: tmp_counts_point_major
+        real(real64), dimension(:, :), allocatable :: tmp_permuted_mean_pmf
+        integer(int32), dimension(:), allocatable :: tmp_point_pool
+        integer(int32), dimension(:), allocatable :: tmp_point_draw
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -151,22 +152,23 @@ contains
         call validate_in_range_int(n_bins, ierr, arg_pos=2_int32, min=1_int32)
         call validate_in_range_int(n_points, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_studies, ierr, arg_pos=4_int32, min=1_int32)
-        call validate_all_in_range_int(mean_pmf_counts, n_bins * n_points, ierr, arg_pos=5_int32, min=0_int32)
-        call validate_all_in_range_real(mean_pmf, n_bins * n_points, ierr, arg_pos=6_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_int(mean_pmf_counts, n_points * n_bins, ierr, arg_pos=5_int32, min=0_int32)
+        call validate_all_in_range_real(mean_pmf, n_points * n_bins, ierr, arg_pos=6_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_int(mean_pmf_included_n_reps, n_points, ierr, arg_pos=7_int32, min=0_int32)
         call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=8_int32, min=1_int32)
         call validate_all_in_range_real(global_jsd_observed, n_studies, ierr, arg_pos=9_int32)
         if (is_err(ierr)) return
 #endif
 
-        M_ALLOCATE(tmp_mean_pmf_counts(n_bins, n_points))
-        M_ALLOCATE(tmp_counts(n_bins, n_points))
-        M_ALLOCATE(tmp_pmfs(n_bins, n_points, n_studies))
+        M_ALLOCATE(tmp_mean_pmf_counts(n_points, n_bins))
+        M_ALLOCATE(tmp_counts(n_points, n_bins))
+        M_ALLOCATE(tmp_pmfs(n_points, n_bins, n_studies))
         M_ALLOCATE(tmp_js_divergences(n_points, n_studies))
         M_ALLOCATE(tmp_weights(n_points, n_studies))
         M_ALLOCATE(tmp_global_js_divergence(n_studies))
-        M_ALLOCATE(tmp_pmf_point_major(n_points, n_bins))
-        M_ALLOCATE(tmp_counts_point_major(n_points, n_bins))
+        M_ALLOCATE(tmp_permuted_mean_pmf(n_points, n_bins))
+        M_ALLOCATE(tmp_point_pool(n_bins))
+        M_ALLOCATE(tmp_point_draw(n_bins))
 
         call gjct_permutation_test_impl(&
             n_permutations = n_permutations,&
@@ -186,8 +188,9 @@ contains
             tmp_js_divergences = tmp_js_divergences,&
             tmp_weights = tmp_weights,&
             tmp_global_js_divergence = tmp_global_js_divergence,&
-            tmp_pmf_point_major = tmp_pmf_point_major,&
-            tmp_counts_point_major = tmp_counts_point_major,&
+            tmp_permuted_mean_pmf = tmp_permuted_mean_pmf,&
+            tmp_point_pool = tmp_point_pool,&
+            tmp_point_draw = tmp_point_draw,&
             random_seed = random_seed,&
             ierr = ierr&
         )
@@ -252,8 +255,9 @@ contains
             tmp_js_divergences,&
             tmp_weights,&
             tmp_global_js_divergence,&
-            tmp_pmf_point_major,&
-            tmp_counts_point_major,&
+            tmp_permuted_mean_pmf,&
+            tmp_point_pool,&
+            tmp_point_draw,&
             random_seed,&
             ierr&
         )
@@ -270,11 +274,11 @@ contains
             !! Number of permutations to perform. `0` skips the test: no permutation runs, and
             !! `p_values` and `p_values_observed_consensus` are then NaN ("not computed")
             !! The minimum valid value is `0_int32`.
-        integer(int32), dimension(n_bins, n_points), intent(in) :: mean_pmf_counts
+        integer(int32), dimension(n_points, n_bins), intent(in) :: mean_pmf_counts
             !! Absolute counts of a residual per bin for the consensus pmf -- the pool each
             !! permutation resamples from without replacement, per reference point
             !! The minimum valid value is `0_int32`.
-        real(real64), dimension(n_bins, n_points), intent(in) :: mean_pmf
+        real(real64), dimension(n_points, n_bins), intent(in) :: mean_pmf
             !! The consensus pmf built from all studies' pmfs; each permuted study is compared
             !! against it for `p_values_observed_consensus` only
             !! The minimum valid value is `0.0_real64`.
@@ -301,12 +305,12 @@ contains
             !! the consensus per permutation. Kept for comparison only; `p_values` is the primary
             !! result. The same Laplace correction applies. NaN when `n_permutations` is 0: no
             !! permutation was run, so no p-value was computed
-        integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_mean_pmf_counts
+        integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_mean_pmf_counts
             !! Working array for proper resampling per permutation: the remaining pool to draw
             !! from, reset to `mean_pmf_counts` at the start of every permutation
-        integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_counts
+        integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts
             !! Working array for one study's resampled histogram counts, one permutation at a time
-        real(real64), dimension(n_bins, n_points, n_studies), intent(out) :: tmp_pmfs
+        real(real64), dimension(n_points, n_bins, n_studies), intent(out) :: tmp_pmfs
             !! Working array that holds one permutation's resampled pmfs, all studies
         real(real64), dimension(n_points, n_studies), intent(out) :: tmp_js_divergences
             !! Working array for one permutation's per-point JSD values
@@ -314,13 +318,12 @@ contains
             !! Working array for one permutation's per-point weights
         real(real64), dimension(n_studies), intent(out) :: tmp_global_js_divergence
             !! Working array for one permutation's global weighted JSD values
-        real(real64), dimension(n_points, n_bins), intent(out) :: tmp_pmf_point_major
-            !! Working array: one study's resampled pmf, point-major, for calc_pmf_impl's
-            !! point-major convention before transposing into tmp_pmfs; then the permuted
-            !! studies' equal-weight consensus pmf, point-major, for the divergence computation
-        integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts_point_major
-            !! Working array: one study's resampled counts, point-major, transposed from tmp_counts
-            !! before calc_pmf_impl
+        real(real64), dimension(n_points, n_bins), intent(out) :: tmp_permuted_mean_pmf
+            !! Working array for one permutation's equal-weight consensus pmf of the permuted studies
+        integer(int32), dimension(n_bins), intent(out) :: tmp_point_pool
+            !! Working array: one reference point's remaining pool, drawn from and then written back
+        integer(int32), dimension(n_bins), intent(out) :: tmp_point_draw
+            !! Working array: one study's draw at one reference point
         integer(int32), intent(in), optional :: random_seed
             !! Seed for the GSL random number generator
             !! The default value is `42_int32`.
@@ -335,8 +338,8 @@ contains
         call validate_in_range_int(n_bins, ierr, arg_pos=2_int32, min=1_int32)
         call validate_in_range_int(n_points, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_studies, ierr, arg_pos=4_int32, min=1_int32)
-        call validate_all_in_range_int(mean_pmf_counts, n_bins * n_points, ierr, arg_pos=5_int32, min=0_int32)
-        call validate_all_in_range_real(mean_pmf, n_bins * n_points, ierr, arg_pos=6_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_int(mean_pmf_counts, n_points * n_bins, ierr, arg_pos=5_int32, min=0_int32)
+        call validate_all_in_range_real(mean_pmf, n_points * n_bins, ierr, arg_pos=6_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_int(mean_pmf_included_n_reps, n_points, ierr, arg_pos=7_int32, min=0_int32)
         call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=8_int32, min=1_int32)
         call validate_all_in_range_real(global_jsd_observed, n_studies, ierr, arg_pos=9_int32)
@@ -361,8 +364,9 @@ contains
             tmp_js_divergences = tmp_js_divergences,&
             tmp_weights = tmp_weights,&
             tmp_global_js_divergence = tmp_global_js_divergence,&
-            tmp_pmf_point_major = tmp_pmf_point_major,&
-            tmp_counts_point_major = tmp_counts_point_major,&
+            tmp_permuted_mean_pmf = tmp_permuted_mean_pmf,&
+            tmp_point_pool = tmp_point_pool,&
+            tmp_point_draw = tmp_point_draw,&
             random_seed = random_seed,&
             ierr = ierr&
         )

@@ -8,9 +8,9 @@ test_gjct_permutation_test_basic <- function() {
   # 2-point scenario (the Laplace correction keeps them above 0).
   n_bins <- 3; n_points <- 2; n_studies <- 2; n_permutations <- 20
 
-  mean_pmf_counts <- matrix(0L, n_bins, n_points)
-  mean_pmf_counts[, 1] <- c(5, 3, 2)
-  mean_pmf_counts[, 2] <- c(2, 2, 6)
+  mean_pmf_counts <- matrix(0L, n_points, n_bins)
+  mean_pmf_counts[1, ] <- c(5, 3, 2)
+  mean_pmf_counts[2, ] <- c(2, 2, 6)
   mean_pmf_included_n_reps <- c(10L, 10L)
   included_n_reps <- matrix(0L, n_points, n_studies)
   included_n_reps[, 1] <- c(4, 4)
@@ -33,9 +33,9 @@ test_gjct_permutation_test_basic <- function() {
 test_gjct_permutation_test_zero_permutations_gives_nan_p_values <- function() {
   n_bins <- 3; n_points <- 2; n_studies <- 2
 
-  mean_pmf_counts <- matrix(0L, n_bins, n_points)
-  mean_pmf_counts[, 1] <- c(5, 3, 2)
-  mean_pmf_counts[, 2] <- c(2, 2, 6)
+  mean_pmf_counts <- matrix(0L, n_points, n_bins)
+  mean_pmf_counts[1, ] <- c(5, 3, 2)
+  mean_pmf_counts[2, ] <- c(2, 2, 6)
   mean_pmf_included_n_reps <- c(10L, 10L)
   included_n_reps <- matrix(0L, n_points, n_studies)
   included_n_reps[, 1] <- c(4, 4)
@@ -57,9 +57,9 @@ test_gjct_permutation_test_zero_permutations_gives_nan_p_values <- function() {
 test_gjct_permutation_test_seeded_reproducibility <- function() {
   n_bins <- 3; n_points <- 2; n_studies <- 2; n_permutations <- 20
 
-  mean_pmf_counts <- matrix(0L, n_bins, n_points)
-  mean_pmf_counts[, 1] <- c(5, 3, 2)
-  mean_pmf_counts[, 2] <- c(2, 2, 6)
+  mean_pmf_counts <- matrix(0L, n_points, n_bins)
+  mean_pmf_counts[1, ] <- c(5, 3, 2)
+  mean_pmf_counts[2, ] <- c(2, 2, 6)
   mean_pmf_included_n_reps <- c(10L, 10L)
   included_n_reps <- matrix(0L, n_points, n_studies)
   included_n_reps[, 1] <- c(4, 4)
@@ -81,8 +81,8 @@ test_gjct_permutation_test_seeded_reproducibility <- function() {
 # fail with invalid input, not tied to any one argument -- mirrors the Fortran test of the same
 # name (test/mod_test_data_integration_js_comp_test.F90).
 test_gjct_permutation_test_rejects_draws_larger_than_pool <- function() {
-  mean_pmf_counts <- matrix(c(2L, 2L), nrow = 2)
-  mean_pmf <- matrix(c(0.5, 0.5), nrow = 2)
+  mean_pmf_counts <- matrix(c(2L, 2L), nrow = 1)
+  mean_pmf <- matrix(c(0.5, 0.5), nrow = 1)
   mean_pmf_included_n_reps <- c(4L) # consistent pool: only the draws exceed it
   included_n_reps <- matrix(c(4L, 4L), nrow = 1)
   global_jsd_observed <- c(0.1, 0.1)
@@ -100,8 +100,8 @@ test_gjct_permutation_test_rejects_draws_larger_than_pool <- function() {
 # included_n_reps is rejected on that argument, even where the counts otherwise add up -- mirrors
 # the Fortran test of the same name (test/mod_test_data_integration_js_comp_test.F90).
 test_gjct_permutation_test_rejects_zero_included_n_reps <- function() {
-  mean_pmf_counts <- matrix(c(2L, 2L), nrow = 2)
-  mean_pmf <- matrix(c(0.5, 0.5), nrow = 2)
+  mean_pmf_counts <- matrix(c(2L, 2L), nrow = 1)
+  mean_pmf <- matrix(c(0.5, 0.5), nrow = 1)
   mean_pmf_included_n_reps <- c(4L)
   included_n_reps <- matrix(c(0L, 4L), nrow = 1)
   global_jsd_observed <- c(0.1, 0.1)

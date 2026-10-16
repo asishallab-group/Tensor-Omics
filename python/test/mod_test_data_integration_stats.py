@@ -20,9 +20,9 @@ def test_gjct_permutation_test_basic():
     2-study, 2-point scenario (the Laplace correction keeps them above 0)."""
     n_bins, n_points, n_studies, n_permutations = 3, 2, 2, 20
 
-    mean_pmf_counts = np.zeros((n_bins, n_points), dtype=np.int32, order="F")
-    mean_pmf_counts[:, 0] = [5, 3, 2]
-    mean_pmf_counts[:, 1] = [2, 2, 6]
+    mean_pmf_counts = np.zeros((n_points, n_bins), dtype=np.int32, order="F")
+    mean_pmf_counts[0, :] = [5, 3, 2]
+    mean_pmf_counts[1, :] = [2, 2, 6]
     mean_pmf_included_n_reps = np.array([10, 10], dtype=np.int32)
     included_n_reps = np.zeros((n_points, n_studies), dtype=np.int32, order="F")
     included_n_reps[:, 0] = [4, 4]
@@ -46,9 +46,9 @@ def test_gjct_permutation_test_zero_permutations_gives_nan_p_values():
     mirrors the Fortran test of the same name (test/mod_test_data_integration_js_comp_test.F90)."""
     n_bins, n_points, n_studies = 3, 2, 2
 
-    mean_pmf_counts = np.zeros((n_bins, n_points), dtype=np.int32, order="F")
-    mean_pmf_counts[:, 0] = [5, 3, 2]
-    mean_pmf_counts[:, 1] = [2, 2, 6]
+    mean_pmf_counts = np.zeros((n_points, n_bins), dtype=np.int32, order="F")
+    mean_pmf_counts[0, :] = [5, 3, 2]
+    mean_pmf_counts[1, :] = [2, 2, 6]
     mean_pmf_included_n_reps = np.array([10, 10], dtype=np.int32)
     included_n_reps = np.zeros((n_points, n_studies), dtype=np.int32, order="F")
     included_n_reps[:, 0] = [4, 4]
@@ -71,9 +71,9 @@ def test_gjct_permutation_test_seeded_reproducibility():
     mirrors the Fortran test of the same name (test/mod_test_data_integration_js_comp_test.F90)."""
     n_bins, n_points, n_studies, n_permutations = 3, 2, 2, 20
 
-    mean_pmf_counts = np.zeros((n_bins, n_points), dtype=np.int32, order="F")
-    mean_pmf_counts[:, 0] = [5, 3, 2]
-    mean_pmf_counts[:, 1] = [2, 2, 6]
+    mean_pmf_counts = np.zeros((n_points, n_bins), dtype=np.int32, order="F")
+    mean_pmf_counts[0, :] = [5, 3, 2]
+    mean_pmf_counts[1, :] = [2, 2, 6]
     mean_pmf_included_n_reps = np.array([10, 10], dtype=np.int32)
     included_n_reps = np.zeros((n_points, n_studies), dtype=np.int32, order="F")
     included_n_reps[:, 0] = [4, 4]
@@ -98,8 +98,8 @@ def test_gjct_permutation_test_rejects_draws_larger_than_pool():
     """Per-study draws that do not fit the pooled counts (pool [2, 2], each of two studies drawing
     4) fail with invalid input, not tied to any one argument -- mirrors the Fortran test of the
     same name (test/mod_test_data_integration_js_comp_test.F90)."""
-    mean_pmf_counts = np.array([[2], [2]], dtype=np.int32, order="F")
-    mean_pmf = np.array([[0.5], [0.5]], dtype=np.float64, order="F")
+    mean_pmf_counts = np.array([[2, 2]], dtype=np.int32, order="F")
+    mean_pmf = np.array([[0.5, 0.5]], dtype=np.float64, order="F")
     mean_pmf_included_n_reps = np.array([4], dtype=np.int32)  # consistent pool: only the draws exceed it
     included_n_reps = np.array([[4, 4]], dtype=np.int32, order="F")
     global_jsd_observed = np.array([0.1, 0.1], dtype=np.float64)
@@ -119,8 +119,8 @@ def test_gjct_permutation_test_rejects_zero_included_n_reps():
     """Every study needs at least one included residual at every reference point, so a single 0 in
     included_n_reps is rejected on that argument, even where the counts otherwise add up --
     mirrors the Fortran test of the same name (test/mod_test_data_integration_js_comp_test.F90)."""
-    mean_pmf_counts = np.array([[2], [2]], dtype=np.int32, order="F")
-    mean_pmf = np.array([[0.5], [0.5]], dtype=np.float64, order="F")
+    mean_pmf_counts = np.array([[2, 2]], dtype=np.int32, order="F")
+    mean_pmf = np.array([[0.5, 0.5]], dtype=np.float64, order="F")
     mean_pmf_included_n_reps = np.array([4], dtype=np.int32)
     included_n_reps = np.array([[0, 4]], dtype=np.int32, order="F")
     global_jsd_observed = np.array([0.1, 0.1], dtype=np.float64)
