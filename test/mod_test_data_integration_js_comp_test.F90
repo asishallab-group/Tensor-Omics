@@ -46,7 +46,8 @@ module mod_test_data_integration_js_comp_test
                                                        sorted_bin_counts, histogram_bin_counts, group_sorted_perm_by_study, &
                                                        MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, &
                                                        MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, MODE_BIN_COUNT_STONE_POOLED, &
-                                                       MAX_N_BINS, generate_js_comp_test_candidates_impl
+                                                       MAX_N_BINS, MAX_CANDIDATE_PAIRS, &
+                                                       generate_js_comp_test_candidates_impl
     use f42_sort_impl, only: init_perm, sort_array_heapsort
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
                                              compute_weighted_global_divergence_impl
@@ -73,10 +74,12 @@ module mod_test_data_integration_js_comp_test
     !> Test helper type: every output of run_js_comp_test_adaptive_parameter_search, sized by run_adaptive_search.
     type :: adaptive_search_outputs
         integer(int32) :: capacity, k_start, k_step, k_max, n_points, n_admissible, n_tried
-        integer(int32) :: trace_k_start(16), trace_k_step(16), trace_k_max(16), trace_n_points(16)
-        integer(int32) :: cand_k_start(16), cand_n_points(16), cand_status(16)
+        integer(int32) :: trace_k_start(MAX_CANDIDATE_PAIRS), trace_k_step(MAX_CANDIDATE_PAIRS), &
+            trace_k_max(MAX_CANDIDATE_PAIRS), trace_n_points(MAX_CANDIDATE_PAIRS)
+        integer(int32) :: cand_k_start(MAX_CANDIDATE_PAIRS), cand_n_points(MAX_CANDIDATE_PAIRS), &
+            cand_status(MAX_CANDIDATE_PAIRS)
         logical(c_bool) :: plateau
-        real(real64) :: trace_delta_median(16), trace_delta_max(16)
+        real(real64) :: trace_delta_median(MAX_CANDIDATE_PAIRS), trace_delta_max(MAX_CANDIDATE_PAIRS)
         integer(int32), allocatable :: n_bins(:), trace_n_bins(:, :), trace_n_pooled(:, :), trace_min_occ(:, :)
         integer(int32), allocatable :: trace_max_occ(:, :), trace_sturges(:, :), trace_fd(:, :)
         logical(c_bool), allocatable :: trace_occ_failed(:, :)
@@ -96,9 +99,9 @@ module mod_test_data_integration_js_comp_test
     !> Test helper type: every output of run_js_comp_test_parameter_search, sized by run_fixed_k_search.
     type :: fixed_k_search_outputs
         integer(int32) :: n_points, n_neighbors, n_admissible
-        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
+        integer(int32) :: trace_n_points(MAX_CANDIDATE_PAIRS), trace_n_neighbors(MAX_CANDIDATE_PAIRS)
         logical(c_bool) :: plateau
-        real(real64) :: trace_delta_median(16), trace_delta_max(16)
+        real(real64) :: trace_delta_median(MAX_CANDIDATE_PAIRS), trace_delta_max(MAX_CANDIDATE_PAIRS)
         integer(int32), allocatable :: n_bins(:), trace_n_bins(:, :), trace_n_pooled(:, :), trace_min_occ(:, :)
         integer(int32), allocatable :: trace_max_occ(:, :), trace_sturges(:, :), trace_fd(:, :)
         logical(c_bool), allocatable :: trace_occ_failed(:, :)
@@ -974,8 +977,10 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_estimate_bin_count_clamped_to_max_n_bins: ierr should be OK")
         call assert_equal_int(sturges_bins, 1_int32, &
                               "test_estimate_bin_count_clamped_to_max_n_bins: sturges_bins should be 1")
-        call assert_equal_int(fd_bins, 256_int32, "test_estimate_bin_count_clamped_to_max_n_bins: fd_bins should clamp to 256")
-        call assert_equal_int(n_bins, 256_int32, "test_estimate_bin_count_clamped_to_max_n_bins: n_bins should clamp to 256")
+        call assert_equal_int(fd_bins, MAX_N_BINS, &
+        "test_estimate_bin_count_clamped_to_max_n_bins: fd_bins should clamp to 256")
+        call assert_equal_int(n_bins, MAX_N_BINS, &
+        "test_estimate_bin_count_clamped_to_max_n_bins: n_bins should clamp to 256")
     end subroutine test_estimate_bin_count_clamped_to_max_n_bins
 
     !> Covers the branch where Sturges' estimate exceeds Freedman-Diaconis, so the combined
@@ -1059,18 +1064,18 @@ contains
                               "test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins: ierr should be OK (ratio 1e12)")
         call assert_equal_int(sturges_bins, 1_int32, &
                               "test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins: sturges_bins should be 1 (ratio 1e12)")
-        call assert_equal_int(fd_bins, 256_int32, &
+        call assert_equal_int(fd_bins, MAX_N_BINS, &
                               "test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins: fd_bins should be 256 (ratio 1e12)")
-        call assert_equal_int(n_bins, 256_int32, &
+        call assert_equal_int(n_bins, MAX_N_BINS, &
                               "test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins: n_bins should be 256 (ratio 1e12)")
 
         call estimate_bin_count(residuals, n_residuals, 1_int32, 1_int32, 1.0e308_real64, n_bins, sturges_bins, fd_bins, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins: ierr should be OK (infinite ratio)")
-        call assert_equal_int(fd_bins, 256_int32, &
+        call assert_equal_int(fd_bins, MAX_N_BINS, &
                               "test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins: fd_bins should be 256 (infinite ratio)")
-        call assert_equal_int(n_bins, 256_int32, &
+        call assert_equal_int(n_bins, MAX_N_BINS, &
                               "test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins: n_bins should be 256 (infinite ratio)")
     end subroutine test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins
 
@@ -1081,7 +1086,7 @@ contains
     !| `n_points` value is ever produced -- every candidate pair the grid returns must share the
     !| same `n_points`. This is real, derived behavior the grid depends on, not a bug.
     subroutine test_generate_js_comp_test_candidates_collapses_at_8742()
-        integer(int32) :: candidates(2, 16), n_candidates, ierr
+        integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr
 
         call generate_js_comp_test_candidates(8742_int32, candidates, n_candidates, ierr)
 
@@ -1102,7 +1107,7 @@ contains
     !| `n_points_low=300`, so the loop proceeds to a second, distinct `n_points=300` candidate. At
     !| least two distinct `n_points` values must appear in the grid.
     subroutine test_generate_js_comp_test_candidates_has_two_distinct_at_8743()
-        integer(int32) :: candidates(2, 16), n_candidates, ierr
+        integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr
         integer(int32) :: n_distinct_n_points, i_candidate
 
         call generate_js_comp_test_candidates(8743_int32, candidates, n_candidates, ierr)
@@ -1133,7 +1138,7 @@ contains
     !| tier no longer exists (no `tmp_`/work-array/permutation left in its signature once the
     !| bin-estimate side effect was removed), so this test no longer exercises it.
     subroutine test_generate_js_comp_test_candidates_validation()
-        integer(int32) :: candidates(2, 16), n_candidates, ierr
+        integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr
 
         call generate_js_comp_test_candidates(0_int32, candidates, n_candidates, ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, &
@@ -2767,11 +2772,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(256, n_points, n_studies)
-        integer(int32) :: counts(256, n_points, n_studies)
+        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
+        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(256, n_points)
-        integer(int32) :: mean_pmf_counts(256, n_points)
+        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
+        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -2875,11 +2880,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(256, n_points, n_studies)
-        integer(int32) :: counts(256, n_points, n_studies)
+        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
+        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(256, n_points)
-        integer(int32) :: mean_pmf_counts(256, n_points)
+        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
+        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -3007,11 +3012,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(256, n_points, n_studies)
-        integer(int32) :: counts(256, n_points, n_studies)
+        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
+        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(256, n_points)
-        integer(int32) :: mean_pmf_counts(256, n_points)
+        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
+        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -3116,11 +3121,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(256, n_points, n_studies)
-        integer(int32) :: counts(256, n_points, n_studies)
+        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
+        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(256, n_points)
-        integer(int32) :: mean_pmf_counts(256, n_points)
+        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
+        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -3250,11 +3255,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(256, n_points, n_studies)
-        integer(int32) :: counts(256, n_points, n_studies)
+        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
+        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(256, n_points)
-        integer(int32) :: mean_pmf_counts(256, n_points)
+        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
+        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -3368,11 +3373,14 @@ contains
         logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
-        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
-        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
-            trace_ci_overlap(n_studies, 16)
-        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: trace_n_points(MAX_CANDIDATE_PAIRS), trace_n_neighbors(MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_global_js_divergence(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS), trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_width_relative(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_delta(n_studies, MAX_CANDIDATE_PAIRS), trace_delta_median(MAX_CANDIDATE_PAIRS), &
+            trace_delta_max(MAX_CANDIDATE_PAIRS)
         integer(int32) :: i_gene, i_study
 
         do i_study = 1, n_studies
@@ -3388,14 +3396,17 @@ contains
                               "test_param_search_no_plateau_falls_back_to_finest: "// &
                               "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
-        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
-        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
-        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (trace_selected_n_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_n_pooled_residuals(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_max_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_sturges_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_fd_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_occupancy_failed(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
         allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
-        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
-                 trace_shared_residual_range_high(max_n_points_candidate, 16))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                 trace_shared_residual_range_high(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 10_int32, METHOD_JOIN_MIN, &
@@ -3466,11 +3477,14 @@ contains
         logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
-        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
-        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
-            trace_ci_overlap(n_studies, 16)
-        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: trace_n_points(MAX_CANDIDATE_PAIRS), trace_n_neighbors(MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_global_js_divergence(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS), trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_width_relative(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_delta(n_studies, MAX_CANDIDATE_PAIRS), trace_delta_median(MAX_CANDIDATE_PAIRS), &
+            trace_delta_max(MAX_CANDIDATE_PAIRS)
         integer(int32) :: i_gene, i_study
 
         do i_study = 1, n_studies
@@ -3486,14 +3500,17 @@ contains
                               "test_param_search_single_candidate_bypasses_plateau: "// &
                               "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
-        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
-        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
-        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (trace_selected_n_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_n_pooled_residuals(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_max_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_sturges_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_fd_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_occupancy_failed(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
         allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
-        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
-                 trace_shared_residual_range_high(max_n_points_candidate, 16))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                 trace_shared_residual_range_high(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 5_int32, METHOD_JOIN_MIN, &
@@ -3592,11 +3609,14 @@ contains
         logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
-        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
-        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
-            trace_ci_overlap(n_studies, 16)
-        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: trace_n_points(MAX_CANDIDATE_PAIRS), trace_n_neighbors(MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_global_js_divergence(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS), trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_width_relative(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_delta(n_studies, MAX_CANDIDATE_PAIRS), trace_delta_median(MAX_CANDIDATE_PAIRS), &
+            trace_delta_max(MAX_CANDIDATE_PAIRS)
         integer(int32) :: i_gene, i_study
 
         do i_study = 1, n_studies
@@ -3612,14 +3632,17 @@ contains
                               "test_param_search_finds_plateau_mid_grid: "// &
                               "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
-        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
-        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
-        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (trace_selected_n_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_n_pooled_residuals(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_max_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_sturges_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_fd_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_occupancy_failed(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
         allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
-        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
-                 trace_shared_residual_range_high(max_n_points_candidate, 16))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                 trace_shared_residual_range_high(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 10_int32, METHOD_JOIN_MIN, &
@@ -3744,11 +3767,14 @@ contains
         logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
-        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
-        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
-            trace_ci_overlap(n_studies, 16)
-        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: trace_n_points(MAX_CANDIDATE_PAIRS), trace_n_neighbors(MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_global_js_divergence(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS), trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_width_relative(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_delta(n_studies, MAX_CANDIDATE_PAIRS), trace_delta_median(MAX_CANDIDATE_PAIRS), &
+            trace_delta_max(MAX_CANDIDATE_PAIRS)
         integer(int32) :: i_gene, i_study
 
         do i_study = 1, n_studies
@@ -3764,14 +3790,17 @@ contains
                               "test_param_search_effect_size_mode_plateau: "// &
                               "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
-        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
-        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
-        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (trace_selected_n_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_n_pooled_residuals(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_max_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_sturges_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_fd_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_occupancy_failed(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
         allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
-        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
-                 trace_shared_residual_range_high(max_n_points_candidate, 16))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                 trace_shared_residual_range_high(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 10_int32, METHOD_JOIN_MIN, &
@@ -3834,11 +3863,14 @@ contains
         logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
-        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
-        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
-            trace_ci_overlap(n_studies, 16)
-        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: trace_n_points(MAX_CANDIDATE_PAIRS), trace_n_neighbors(MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_global_js_divergence(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS), trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_width_relative(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_delta(n_studies, MAX_CANDIDATE_PAIRS), trace_delta_median(MAX_CANDIDATE_PAIRS), &
+            trace_delta_max(MAX_CANDIDATE_PAIRS)
         integer(int32) :: i_gene, i_study
 
         do i_study = 1, n_studies
@@ -3854,14 +3886,17 @@ contains
                               "test_param_search_both_mode_uses_earlier_trigger: "// &
                               "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
-        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
-        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
-        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (trace_selected_n_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_n_pooled_residuals(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_max_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_sturges_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_fd_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_occupancy_failed(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
         allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
-        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
-                 trace_shared_residual_range_high(max_n_points_candidate, 16))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                 trace_shared_residual_range_high(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 10_int32, METHOD_JOIN_MIN, &
@@ -3910,13 +3945,13 @@ contains
             !! The selected candidate's n_points
         integer(int32), intent(in) :: n_neighbors
             !! The selected candidate's n_neighbors
-        integer(int32), intent(in) :: trace_n_points(16)
+        integer(int32), intent(in) :: trace_n_points(MAX_CANDIDATE_PAIRS)
             !! n_points of every admissible candidate, in trace order
-        integer(int32), intent(in) :: trace_n_neighbors(16)
+        integer(int32), intent(in) :: trace_n_neighbors(MAX_CANDIDATE_PAIRS)
             !! n_neighbors of every admissible candidate, in trace order
-        real(real64), intent(in) :: trace_ci_lower(n_studies, 16)
+        real(real64), intent(in) :: trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS)
             !! Traced lower CI bounds
-        real(real64), intent(in) :: trace_ci_upper(n_studies, 16)
+        real(real64), intent(in) :: trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS)
             !! Traced upper CI bounds
         integer(int32), intent(in) :: n_admissible
             !! Number of valid trace columns
@@ -3955,11 +3990,11 @@ contains
             !! Number of studies (rows of every trace array)
         integer(int32), intent(in) :: n_admissible
             !! Number of admissible candidates (leading columns to check)
-        real(real64), intent(in) :: trace_ci_lower(n_studies, 16)
+        real(real64), intent(in) :: trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS)
             !! Traced interval lower bounds
-        real(real64), intent(in) :: trace_ci_upper(n_studies, 16)
+        real(real64), intent(in) :: trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS)
             !! Traced interval upper bounds
-        real(real64), intent(in) :: trace_ci_overlap(n_studies, 16)
+        real(real64), intent(in) :: trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS)
             !! Traced overlaps under test
         character(len=*), intent(in) :: name
             !! Message prefix
@@ -4040,11 +4075,14 @@ contains
         logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
-        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
-        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
-            trace_ci_overlap(n_studies, 16)
-        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: trace_n_points(MAX_CANDIDATE_PAIRS), trace_n_neighbors(MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_global_js_divergence(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS), trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_width_relative(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_delta(n_studies, MAX_CANDIDATE_PAIRS), trace_delta_median(MAX_CANDIDATE_PAIRS), &
+            trace_delta_max(MAX_CANDIDATE_PAIRS)
         integer(int32) :: i_gene, i_study, i_rep, k
 
         do i_study = 1, n_studies
@@ -4066,14 +4104,17 @@ contains
                               "test_param_search_no_plateau_uses_smallest_uncertainty: "// &
                               "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
-        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
-        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
-        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (trace_selected_n_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_n_pooled_residuals(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_max_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_sturges_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_fd_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_occupancy_failed(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
         allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
-        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
-                 trace_shared_residual_range_high(max_n_points_candidate, 16))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                 trace_shared_residual_range_high(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 10_int32, METHOD_JOIN_MIN, &
@@ -4158,11 +4199,14 @@ contains
         logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
-        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
-        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
-            trace_ci_overlap(n_studies, 16)
-        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: trace_n_points(MAX_CANDIDATE_PAIRS), trace_n_neighbors(MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_global_js_divergence(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS), trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_width_relative(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_delta(n_studies, MAX_CANDIDATE_PAIRS), trace_delta_median(MAX_CANDIDATE_PAIRS), &
+            trace_delta_max(MAX_CANDIDATE_PAIRS)
         integer(int32) :: i_gene, i_study, i_rep, k
 
         do i_study = 1, n_studies
@@ -4184,14 +4228,17 @@ contains
                               "test_param_search_no_plateau_effect_size_smallest_uncertainty: "// &
                               "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
-        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
-        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
-        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (trace_selected_n_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_n_pooled_residuals(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_max_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_sturges_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_fd_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_occupancy_failed(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
         allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
-        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
-                 trace_shared_residual_range_high(max_n_points_candidate, 16))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                 trace_shared_residual_range_high(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 10_int32, METHOD_JOIN_MIN, &
@@ -4267,11 +4314,14 @@ contains
         logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
-        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
-        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
-            trace_ci_overlap(n_studies, 16)
-        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: trace_n_points(MAX_CANDIDATE_PAIRS), trace_n_neighbors(MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_global_js_divergence(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS), trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_width_relative(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_delta(n_studies, MAX_CANDIDATE_PAIRS), trace_delta_median(MAX_CANDIDATE_PAIRS), &
+            trace_delta_max(MAX_CANDIDATE_PAIRS)
         integer(int32) :: i_gene, i_study, i_rep, k
 
         do i_study = 1, n_studies
@@ -4293,14 +4343,17 @@ contains
                               "test_param_search_no_plateau_both_uses_smallest_uncertainty: "// &
                               "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
-        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
-        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
-        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (trace_selected_n_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_n_pooled_residuals(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_max_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_sturges_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_fd_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_occupancy_failed(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
         allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
-        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
-                 trace_shared_residual_range_high(max_n_points_candidate, 16))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                 trace_shared_residual_range_high(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 10_int32, METHOD_JOIN_MIN, &
@@ -4397,11 +4450,14 @@ contains
         logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
-        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
-        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
-            trace_ci_overlap(n_studies, 16)
-        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: trace_n_points(MAX_CANDIDATE_PAIRS), trace_n_neighbors(MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_global_js_divergence(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS), trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_width_relative(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_delta(n_studies, MAX_CANDIDATE_PAIRS), trace_delta_median(MAX_CANDIDATE_PAIRS), &
+            trace_delta_max(MAX_CANDIDATE_PAIRS)
         integer(int32) :: i_gene, i_study
 
         do i_study = 1, n_studies
@@ -4417,14 +4473,17 @@ contains
                               "test_param_search_occupancy_failure_rejects_candidate: "// &
                               "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
-        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
-        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
-        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (trace_selected_n_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_n_pooled_residuals(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_max_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_sturges_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_fd_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_occupancy_failed(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
         allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
-        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
-                 trace_shared_residual_range_high(max_n_points_candidate, 16))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                 trace_shared_residual_range_high(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 5_int32, METHOD_JOIN_MIN, &
@@ -4537,11 +4596,14 @@ contains
         logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
-        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
-        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
-            trace_ci_overlap(n_studies, 16)
-        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: trace_n_points(MAX_CANDIDATE_PAIRS), trace_n_neighbors(MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_global_js_divergence(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS), trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_width_relative(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_delta(n_studies, MAX_CANDIDATE_PAIRS), trace_delta_median(MAX_CANDIDATE_PAIRS), &
+            trace_delta_max(MAX_CANDIDATE_PAIRS)
 
         do i_study = 1, n_studies
             do i_gene = 1, max_n_genes_all_studies
@@ -4566,14 +4628,17 @@ contains
                               "test_param_search_different_neighborhoods_different_m_j: "// &
                               "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
-        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
-        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
-        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (trace_selected_n_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_n_pooled_residuals(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_max_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_sturges_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_fd_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_occupancy_failed(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
         allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
-        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
-                 trace_shared_residual_range_high(max_n_points_candidate, 16))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                 trace_shared_residual_range_high(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 5_int32, METHOD_JOIN_MIN, &
@@ -4662,11 +4727,14 @@ contains
         logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         logical(c_bool) :: plateau_established
-        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
-        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
-        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16), &
-            trace_ci_overlap(n_studies, 16)
-        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: trace_n_points(MAX_CANDIDATE_PAIRS), trace_n_neighbors(MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_global_js_divergence(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS), trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_width_relative(n_studies, MAX_CANDIDATE_PAIRS), &
+            trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS)
+        real(real64) :: trace_delta(n_studies, MAX_CANDIDATE_PAIRS), trace_delta_median(MAX_CANDIDATE_PAIRS), &
+            trace_delta_max(MAX_CANDIDATE_PAIRS)
         integer(int32) :: i_gene, i_study, i_rep, k, t, selected_column
 
         do i_study = 1, n_studies
@@ -4688,14 +4756,17 @@ contains
                               "test_param_search_final_n_bins_matches_selected_trace_column: "// &
                               "candidate bounds ierr should be OK")
         allocate (n_bins_per_point(max_n_points_candidate))
-        allocate (trace_selected_n_bins(max_n_points_candidate, 16), trace_n_pooled_residuals(max_n_points_candidate, 16))
-        allocate (trace_min_bin_occupancy(max_n_points_candidate, 16), trace_max_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_sturges_bins(max_n_points_candidate, 16), trace_fd_bins(max_n_points_candidate, 16))
-        allocate (trace_mean_bin_occupancy(max_n_points_candidate, 16))
-        allocate (trace_occupancy_failed(max_n_points_candidate, 16))
+        allocate (trace_selected_n_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_n_pooled_residuals(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_min_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_max_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_sturges_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_fd_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_mean_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        allocate (trace_occupancy_failed(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
         allocate (shared_residual_range_low(max_n_points_candidate), shared_residual_range_high(max_n_points_candidate))
-        allocate (trace_shared_residual_range_low(max_n_points_candidate, 16), &
-                 trace_shared_residual_range_high(max_n_points_candidate, 16))
+        allocate (trace_shared_residual_range_low(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                 trace_shared_residual_range_high(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 10_int32, METHOD_JOIN_MIN, &
@@ -5981,11 +6052,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(256, n_points, n_studies)
-        integer(int32) :: counts(256, n_points, n_studies)
+        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
+        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(256, n_points)
-        integer(int32) :: mean_pmf_counts(256, n_points)
+        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
+        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -6103,7 +6174,7 @@ contains
         integer(int32) :: gene_means_perms(n_genes, n_studies)
         integer(int32) :: point_indices(k, n_studies), point_n_neighbors(n_studies)
         real(real64) :: tmp_pooled(n_pool), reference_pool(n_pool)
-        integer(int32) :: tmp_perm(n_pool), tmp_bin_counts(256), tmp_group_perm(n_pool)
+        integer(int32) :: tmp_perm(n_pool), tmp_bin_counts(MAX_N_BINS), tmp_group_perm(n_pool)
         integer(int32) :: tmp_ends(n_studies), tmp_sizes(n_studies)
         integer(int32) :: n_bins, n_pooled, min_occ, max_occ, sturges, fd, ierr
         integer(int32) :: ref_n_bins, ref_n_pooled, ref_min_occ, ref_max_occ, ref_sturges, ref_fd, ref_ierr
@@ -6159,7 +6230,8 @@ contains
         real(real64) :: residuals(n_reps, n_genes, n_studies), hand_pool(12)
         integer(int32) :: point_indices(max_k, n_studies), point_n_neighbors(n_studies)
         real(real64) :: tmp_pooled(n_reps*max_k*n_studies)
-        integer(int32) :: tmp_perm(n_reps*max_k*n_studies), tmp_bin_counts(256), tmp_group_perm(n_reps*max_k*n_studies)
+        integer(int32) :: tmp_perm(n_reps*max_k*n_studies), tmp_bin_counts(MAX_N_BINS), &
+            tmp_group_perm(n_reps*max_k*n_studies)
         integer(int32) :: tmp_ends(n_studies), tmp_sizes(n_studies)
         integer(int32) :: n_bins, n_pooled, min_occ, max_occ, sturges, fd, ierr
         integer(int32) :: ref_n_bins, ref_n_pooled, ref_min_occ, ref_max_occ, ref_sturges, ref_fd, ref_ierr
@@ -6237,7 +6309,8 @@ contains
         real(real64) :: residuals(n_reps, n_genes, n_studies)
         integer(int32) :: point_indices(max_k, n_studies), point_n_neighbors(n_studies)
         real(real64) :: tmp_pooled(n_reps*max_k*n_studies)
-        integer(int32) :: tmp_perm(n_reps*max_k*n_studies), tmp_bin_counts(256), tmp_group_perm(n_reps*max_k*n_studies)
+        integer(int32) :: tmp_perm(n_reps*max_k*n_studies), tmp_bin_counts(MAX_N_BINS), &
+            tmp_group_perm(n_reps*max_k*n_studies)
         integer(int32) :: tmp_ends(n_studies), tmp_sizes(n_studies)
         integer(int32) :: n_bins, n_pooled, min_occ, max_occ, sturges, fd, ierr
         real(real64) :: low, high, mean_occ
@@ -6269,7 +6342,8 @@ contains
         real(real64) :: residuals(n_reps, n_genes, n_studies)
         integer(int32) :: point_indices(max_k, n_studies)
         real(real64) :: tmp_pooled(n_reps*max_k*n_studies)
-        integer(int32) :: tmp_perm(n_reps*max_k*n_studies), tmp_bin_counts(256), tmp_group_perm(n_reps*max_k*n_studies)
+        integer(int32) :: tmp_perm(n_reps*max_k*n_studies), tmp_bin_counts(MAX_N_BINS), &
+            tmp_group_perm(n_reps*max_k*n_studies)
         integer(int32) :: tmp_ends(n_studies), tmp_sizes(n_studies)
         integer(int32) :: n_bins, n_pooled, min_occ, max_occ, sturges, fd, ierr, i_rep, i_gene, i_study
         real(real64) :: low, high, mean_occ
@@ -6418,11 +6492,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(256, n_points, n_studies)
-        integer(int32) :: counts(256, n_points, n_studies)
+        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
+        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(256, n_points)
-        integer(int32) :: mean_pmf_counts(256, n_points)
+        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
+        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -6494,8 +6568,8 @@ contains
     !| (`n_neighbors = floor(2000/(0.25*300)) = 26` and `floor(2000/(0.5*300)) = 13`), but only
     !| ONE distinct `n_points` value (300) -- the collapse this sequence must not have.
     subroutine test_adaptive_candidates_small_n_does_not_collapse()
-        integer(int32) :: candidates(3, 16), n_candidates, ierr
-        integer(int32) :: fixed_candidates(2, 16), n_fixed_candidates
+        integer(int32) :: candidates(3, MAX_CANDIDATE_PAIRS), n_candidates, ierr
+        integer(int32) :: fixed_candidates(2, MAX_CANDIDATE_PAIRS), n_fixed_candidates
         integer(int32), parameter :: expected(3, 10) = reshape([ &
                                      80, 20, 320, 64, 16, 256, 51, 13, 204, 40, 10, 160, 32, 8, 128, &
                                      26, 7, 104, 20, 5, 80, 16, 4, 64, 13, 4, 52, 10, 3, 40], [3, 10])
@@ -6528,13 +6602,13 @@ contains
     !| independent of the routine's real64 formulation). Hand-derived end points: 16 candidates
     !| (capped; uncapped the sequence would run to 25), first 3132, last `floor(3132*0.8**15)=110`.
     subroutine test_adaptive_candidates_strictly_decreasing_and_formulas()
-        integer(int32) :: candidates(3, 16), n_candidates, ierr, i_candidate, k_start
+        integer(int32) :: candidates(3, MAX_CANDIDATE_PAIRS), n_candidates, ierr, i_candidate, k_start
 
         call generate_adaptive_js_comp_test_candidates(26097_int32, 6_int32, candidates, n_candidates, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_adaptive_candidates_strictly_decreasing_and_formulas: ierr should be OK")
-        call assert_equal_int(n_candidates, 16_int32, &
+        call assert_equal_int(n_candidates, MAX_CANDIDATE_PAIRS, &
                               "test_adaptive_candidates_strictly_decreasing_and_formulas: 16 candidates")
         call assert_equal_int(candidates(1, 1), 3132_int32, &
                               "test_adaptive_candidates_strictly_decreasing_and_formulas: first k_start 3132")
@@ -6559,7 +6633,7 @@ contains
     !| 20 (20.48), 16 (16.38), then 13 (13.1) < 16 stops -> 4 candidates ending exactly at the
     !| floor. With the absolute floor of 10 alone the sequence would have continued to 13 and 10.
     subroutine test_adaptive_candidates_study_floor_binds()
-        integer(int32) :: candidates(3, 16), n_candidates, ierr
+        integer(int32) :: candidates(3, MAX_CANDIDATE_PAIRS), n_candidates, ierr
         integer(int32), parameter :: expected(3, 4) = reshape([32, 8, 128, 25, 7, 100, 20, 5, 80, 16, 4, 64], [3, 4])
 
         call generate_adaptive_js_comp_test_candidates(200_int32, 8_int32, candidates, n_candidates, ierr)
@@ -6575,7 +6649,7 @@ contains
     !| `[10, ceil(2.5)=3, 40]` (the next value `floor(8.0)=8` is below the floor); the adaptive
     !| construction, not the generator, reports that 3 means cannot seed `k_start=10`.
     subroutine test_adaptive_candidates_tiny_n_single_candidate()
-        integer(int32) :: candidates(3, 16), n_candidates, ierr
+        integer(int32) :: candidates(3, MAX_CANDIDATE_PAIRS), n_candidates, ierr
 
         call generate_adaptive_js_comp_test_candidates(3_int32, 1_int32, candidates, n_candidates, ierr)
 
@@ -6591,14 +6665,14 @@ contains
     !| values >= 10 (down to 12); capped it stops after the 16th:
     !| 1200, 960, 768, 614, 491, 393, 314, 251, 201, 161, 128, 103, 82, 65, 52, 42.
     subroutine test_adaptive_candidates_capped_at_16()
-        integer(int32) :: candidates(3, 16), n_candidates, ierr
+        integer(int32) :: candidates(3, MAX_CANDIDATE_PAIRS), n_candidates, ierr
         integer(int32), parameter :: expected_k_start(16) = [1200, 960, 768, 614, 491, 393, 314, 251, &
                                                              201, 161, 128, 103, 82, 65, 52, 42]
 
         call generate_adaptive_js_comp_test_candidates(20000_int32, 3_int32, candidates, n_candidates, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_adaptive_candidates_capped_at_16: ierr should be OK")
-        call assert_equal_int(n_candidates, 16_int32, "test_adaptive_candidates_capped_at_16: capped at 16")
+        call assert_equal_int(n_candidates, MAX_CANDIDATE_PAIRS, "test_adaptive_candidates_capped_at_16: capped at 16")
         call assert_equal_array_int(candidates(1, 1:16), expected_k_start, 16_int32, &
                                     "test_adaptive_candidates_capped_at_16: k_start sequence")
     end subroutine test_adaptive_candidates_capped_at_16
@@ -6609,7 +6683,7 @@ contains
     !| - `G=20000, S=3`: `k_start_last=42` (D4, capped), `ceil(120000/42)+1 = 2858+1 = 2859` -> 2859
     !| - `G=1, S=1`: `k_start_last=10`, `ceil(2/10)+1 = 2 > N=1` -> clamped to `N = 1`
     subroutine test_adaptive_bounds_matches_generator_last_k_start()
-        integer(int32) :: candidates(3, 16), n_candidates, max_n_points_candidate, ierr
+        integer(int32) :: candidates(3, MAX_CANDIDATE_PAIRS), n_candidates, max_n_points_candidate, ierr
 
         call generate_adaptive_js_comp_test_candidates(2000_int32, 2_int32, candidates, n_candidates, ierr)
         call calc_adaptive_js_comp_test_bounds(2000_int32, 2_int32, max_n_points_candidate, ierr)
@@ -6638,7 +6712,7 @@ contains
     !> Issue #217 (D6a): the generated wrapper rejects a non-positive gene count (argument 1) and
     !| a non-positive study count (argument 2).
     subroutine test_adaptive_candidates_validation()
-        integer(int32) :: candidates(3, 16), n_candidates, ierr
+        integer(int32) :: candidates(3, MAX_CANDIDATE_PAIRS), n_candidates, ierr
 
         call generate_adaptive_js_comp_test_candidates(0_int32, 2_int32, candidates, n_candidates, ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, &
@@ -7926,10 +8000,10 @@ contains
         if (present(n_points)) n_passed = n_points
 
         allocate (out%n_per_point(n_studies, n_pts), out%n_bins(n_pts), out%n_pooled(n_pts), out%min_occ(n_pts), &
-                  out%max_occ(n_pts), out%sturges(n_pts), out%fd(n_pts), out%counts(256, n_pts, n_studies), &
-                  out%included(n_pts, n_studies), out%mean_pmf_counts(256, n_pts), out%mean_included(n_pts), &
+                  out%max_occ(n_pts), out%sturges(n_pts), out%fd(n_pts), out%counts(MAX_N_BINS, n_pts, n_studies), &
+                  out%included(n_pts, n_studies), out%mean_pmf_counts(MAX_N_BINS, n_pts), out%mean_included(n_pts), &
                   out%occ_failed(n_pts), out%range_low(n_pts), out%range_high(n_pts), out%mean_occ(n_pts), &
-                  out%pmfs(256, n_pts, n_studies), out%mean_pmf(256, n_pts), out%js(n_pts, n_studies), &
+                  out%pmfs(MAX_N_BINS, n_pts, n_studies), out%mean_pmf(MAX_N_BINS, n_pts), out%js(n_pts, n_studies), &
                   out%weights(n_pts, n_studies), out%global_jsd(n_studies), out%p_values(n_studies), &
                   out%p_values_observed_consensus(n_studies))
         out%n_per_point = -7_int32
@@ -8040,10 +8114,12 @@ contains
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies), neighborhood_range(2, n_points, n_studies)
         integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point, n_pooled_residuals(n_points)
         integer(int32) :: min_bin_occupancy(n_points), max_bin_occupancy(n_points), sturges_bins(n_points)
-        integer(int32) :: fd_bins(n_points), counts(256, n_points, n_studies), included_n_reps(n_points, n_studies)
-        integer(int32) :: mean_pmf_counts(256, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: fd_bins(n_points), counts(MAX_N_BINS, n_points, n_studies), &
+            included_n_reps(n_points, n_studies)
+        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points), mean_pmf_included_n_reps(n_points)
         real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
-        real(real64) :: mean_bin_occupancy(n_points), pmfs(256, n_points, n_studies), mean_pmf(256, n_points)
+        real(real64) :: mean_bin_occupancy(n_points), pmfs(MAX_N_BINS, n_points, n_studies), &
+            mean_pmf(MAX_N_BINS, n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
         real(real64) :: p_values_observed_consensus(n_studies)
@@ -8505,13 +8581,18 @@ contains
         out%capacity = cap
 
         allocate (out%n_bins(cap), out%range_low(cap), out%range_high(cap), out%ci(2, n_studies), &
-                  out%trace_jsd(n_studies, 16), out%trace_ci_lower(n_studies, 16), out%trace_ci_upper(n_studies, 16), &
-                  out%trace_ci_width(n_studies, 16), out%trace_ci_width_rel(n_studies, 16), &
-                  out%trace_ci_overlap(n_studies, 16), &
-                  out%trace_delta(n_studies, 16), out%trace_n_bins(cap, 16), out%trace_occ_failed(cap, 16), &
-                  out%trace_n_pooled(cap, 16), out%trace_min_occ(cap, 16), out%trace_mean_occ(cap, 16), &
-                  out%trace_max_occ(cap, 16), out%trace_sturges(cap, 16), out%trace_fd(cap, 16), &
-                  out%trace_range_low(cap, 16), out%trace_range_high(cap, 16))
+                  out%trace_jsd(n_studies, MAX_CANDIDATE_PAIRS), out%trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_width_rel(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_delta(n_studies, MAX_CANDIDATE_PAIRS), out%trace_n_bins(cap, MAX_CANDIDATE_PAIRS), &
+                  out%trace_occ_failed(cap, MAX_CANDIDATE_PAIRS), &
+                  out%trace_n_pooled(cap, MAX_CANDIDATE_PAIRS), out%trace_min_occ(cap, MAX_CANDIDATE_PAIRS), &
+                  out%trace_mean_occ(cap, MAX_CANDIDATE_PAIRS), &
+                  out%trace_max_occ(cap, MAX_CANDIDATE_PAIRS), out%trace_sturges(cap, MAX_CANDIDATE_PAIRS), &
+                  out%trace_fd(cap, MAX_CANDIDATE_PAIRS), &
+                  out%trace_range_low(cap, MAX_CANDIDATE_PAIRS), out%trace_range_high(cap, MAX_CANDIDATE_PAIRS))
         out%n_bins = -7_int32
         out%range_low = -7.0_real64
         out%range_high = -7.0_real64
@@ -8788,7 +8869,7 @@ contains
         character(len=*), parameter :: name = "test_adaptive_search_single_candidate_bypasses_plateau: "
         real(real64) :: gene_means(10, 1), residuals(1, 10, 1)
         type(adaptive_search_outputs) :: out
-        integer(int32) :: ierr, candidates(3, 16), n_candidates
+        integer(int32) :: ierr, candidates(3, MAX_CANDIDATE_PAIRS), n_candidates
 
         call generate_adaptive_js_comp_test_candidates(10_int32, 1_int32, candidates, n_candidates, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"candidate sequence ierr")
@@ -8818,7 +8899,7 @@ contains
         character(len=*), parameter :: name = "test_adaptive_search_single_rejected_candidate_m_min: "
         real(real64) :: gene_means(10, 1), residuals(1, 10, 1)
         type(adaptive_search_outputs) :: out
-        integer(int32) :: ierr, candidates(3, 16), n_candidates
+        integer(int32) :: ierr, candidates(3, MAX_CANDIDATE_PAIRS), n_candidates
 
         call generate_adaptive_js_comp_test_candidates(10_int32, 1_int32, candidates, n_candidates, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"candidate sequence ierr")
@@ -10012,7 +10093,7 @@ contains
     subroutine test_stone_expert_matches_plain()
         character(len=*), parameter :: name = "test_stone_expert_matches_plain: "
         real(real64) :: values(5), range_low, range_high, mean_occ
-        integer(int32) :: labels(5), perm(5), work_bins(256), work_perm(5), work_sizes(2)
+        integer(int32) :: labels(5), perm(5), work_bins(MAX_N_BINS), work_perm(5), work_sizes(2)
         integer(int32) :: n_bins, n_pooled, min_occ, max_occ, sturges, fd, ierr
         logical(c_bool) :: failed
         type(stone_outputs) :: plain
@@ -10056,7 +10137,7 @@ contains
     subroutine test_stone_m_max_at_max_n_bins()
         character(len=*), parameter :: name = "test_stone_m_max_at_max_n_bins: "
         real(real64) :: values(1000)
-        integer(int32) :: labels(1000), perm(1000), hist(256), min_occ
+        integer(int32) :: labels(1000), perm(1000), hist(MAX_N_BINS), min_occ
         type(stone_outputs) :: out
 
         call logistic_fixture(values, labels)
@@ -10068,10 +10149,10 @@ contains
         call run_stone(values, labels, 1_int32, MODE_BIN_COUNT_STONE_POOLED, MAX_N_BINS, MAX_N_BINS, 0_int32, &
                        0.05_real64, 0.95_real64, out)
         call assert_false(out%failed, name//"m=256 only: not failed")
-        call assert_equal_int(out%n_bins, 256_int32, name//"m=256 only: chosen")
+        call assert_equal_int(out%n_bins, MAX_N_BINS, name//"m=256 only: chosen")
         call init_perm(perm)
         call sort_array_heapsort(values, perm)
-        call histogram_bin_counts(values, perm, 1000_int32, 1000_int32, out%range_low, out%range_high, 256_int32, &
+        call histogram_bin_counts(values, perm, 1000_int32, 1000_int32, out%range_low, out%range_high, MAX_N_BINS, &
                                   hist, min_occ)
         call assert_equal_int(out%min_occ, minval(hist), name//"min occupancy == histogram_bin_counts at 256")
         call assert_equal_int(out%max_occ, maxval(hist), name//"max occupancy == histogram_bin_counts at 256")
@@ -10296,9 +10377,9 @@ contains
             !! Per-point Sturges diagnostic
         integer(int32), intent(out) :: fd(3)
             !! Per-point Freedman-Diaconis diagnostic
-        real(real64), intent(out) :: pmfs(256, 3, 3)
+        real(real64), intent(out) :: pmfs(MAX_N_BINS, 3, 3)
             !! Per-point, per-study pmfs
-        integer(int32), intent(out) :: counts(256, 3, 3)
+        integer(int32), intent(out) :: counts(MAX_N_BINS, 3, 3)
             !! Per-point, per-study counts
         real(real64), intent(out) :: js(3, 3)
             !! Per-point JSDs
@@ -10320,8 +10401,8 @@ contains
             !! Forwarded to run_js_comp_test
         integer(int32), intent(in), optional :: bin_count_mode
             !! Forwarded to run_js_comp_test
-        real(real64) :: gene_means(10, 3), residuals(4, 10, 3), x_star(3), mean_pmf(256, 3)
-        integer(int32) :: gene_means_perms(10, 3), ranges(2, 3, 3), included(3, 3), mean_pmf_counts(256, 3)
+        real(real64) :: gene_means(10, 3), residuals(4, 10, 3), x_star(3), mean_pmf(MAX_N_BINS, 3)
+        integer(int32) :: gene_means_perms(10, 3), ranges(2, 3, 3), included(3, 3), mean_pmf_counts(MAX_N_BINS, 3)
         integer(int32) :: mean_included(3), max_n_bins
 
         call build_run_js_comp_test_golden_fixture(gene_means, gene_means_perms, residuals, x_star)
@@ -10341,10 +10422,10 @@ contains
         character(len=*), parameter :: name = "test_run_js_comp_test_bin_count_mode_default_is_occupancy: "
         integer(int32) :: idx_a(4, 3, 3), idx_b(4, 3, 3), bins_a(3), bins_b(3), pooled_a(3), pooled_b(3)
         integer(int32) :: min_a(3), min_b(3), max_a(3), max_b(3), st_a(3), st_b(3), fd_a(3), fd_b(3)
-        integer(int32) :: counts_a(256, 3, 3), counts_b(256, 3, 3), ierr_a, ierr_b
+        integer(int32) :: counts_a(MAX_N_BINS, 3, 3), counts_b(MAX_N_BINS, 3, 3), ierr_a, ierr_b
         logical(c_bool) :: failed_a(3), failed_b(3)
         real(real64) :: low_a(3), low_b(3), high_a(3), high_b(3), mean_a(3), mean_b(3)
-        real(real64) :: pmfs_a(256, 3, 3), pmfs_b(256, 3, 3), js_a(3, 3), js_b(3, 3), w_a(3, 3), w_b(3, 3)
+        real(real64) :: pmfs_a(MAX_N_BINS, 3, 3), pmfs_b(MAX_N_BINS, 3, 3), js_a(3, 3), js_b(3, 3), w_a(3, 3), w_b(3, 3)
         real(real64) :: g_a(3), g_b(3), p_a(3), p_b(3), po_a(3), po_b(3)
 
         call run_golden_with_mode(idx_a, bins_a, failed_a, low_a, high_a, pooled_a, min_a, mean_a, max_a, st_a, fd_a, &
@@ -10386,10 +10467,11 @@ contains
         integer(int32), parameter :: modes(3) = [MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, &
                                                   MODE_BIN_COUNT_STONE_POOLED]
         integer(int32), parameter :: floors(4) = [0_int32, 3_int32, 5_int32, 50_int32]
-        integer(int32) :: idx(4, 3, 3), bins(3), pooled(3), min_occ(3), max_occ(3), st(3), fd(3), counts(256, 3, 3)
+        integer(int32) :: idx(4, 3, 3), bins(3), pooled(3), min_occ(3), max_occ(3), st(3), fd(3), &
+            counts(MAX_N_BINS, 3, 3)
         integer(int32) :: ierr, i_mode, i_floor, i_point, bins_floor0(3)
         logical(c_bool) :: failed(3)
-        real(real64) :: low(3), high(3), mean_occ(3), pmfs(256, 3, 3), js(3, 3), w(3, 3), g(3), p(3), po(3)
+        real(real64) :: low(3), high(3), mean_occ(3), pmfs(MAX_N_BINS, 3, 3), js(3, 3), w(3, 3), g(3), p(3), po(3)
         real(real64) :: gene_means(10, 3), residuals(4, 10, 3), x_star(3)
         integer(int32) :: gene_means_perms(10, 3)
         type(stone_outputs) :: ref
@@ -10437,10 +10519,10 @@ contains
         character(len=*), parameter :: name = "test_run_js_comp_test_stone_ignores_gamma: "
         integer(int32) :: idx_a(4, 3, 3), idx_b(4, 3, 3), bins_a(3), bins_b(3), pooled_a(3), pooled_b(3)
         integer(int32) :: min_a(3), min_b(3), max_a(3), max_b(3), st_a(3), st_b(3), fd_a(3), fd_b(3)
-        integer(int32) :: counts_a(256, 3, 3), counts_b(256, 3, 3), ierr_a, ierr_b
+        integer(int32) :: counts_a(MAX_N_BINS, 3, 3), counts_b(MAX_N_BINS, 3, 3), ierr_a, ierr_b
         logical(c_bool) :: failed_a(3), failed_b(3)
         real(real64) :: low_a(3), low_b(3), high_a(3), high_b(3), mean_a(3), mean_b(3)
-        real(real64) :: pmfs_a(256, 3, 3), pmfs_b(256, 3, 3), js_a(3, 3), js_b(3, 3), w_a(3, 3), w_b(3, 3)
+        real(real64) :: pmfs_a(MAX_N_BINS, 3, 3), pmfs_b(MAX_N_BINS, 3, 3), js_a(3, 3), js_b(3, 3), w_a(3, 3), w_b(3, 3)
         real(real64) :: g_a(3), g_b(3), p_a(3), p_b(3), po_a(3), po_b(3)
 
         call run_golden_with_mode(idx_a, bins_a, failed_a, low_a, high_a, pooled_a, min_a, mean_a, max_a, st_a, fd_a, &
@@ -10871,15 +10953,22 @@ contains
         call assert_equal_int(get_err_code(bounds_ierr), ERR_OK, "run_fixed_k_search: bounds ierr")
 
         allocate (out%n_bins(max_points), out%range_low(max_points), out%range_high(max_points), &
-                  out%ci(2, n_studies), out%trace_jsd(n_studies, 16), out%trace_ci_lower(n_studies, 16), &
-                  out%trace_ci_upper(n_studies, 16), out%trace_ci_width(n_studies, 16), &
-                  out%trace_ci_width_rel(n_studies, 16), out%trace_ci_overlap(n_studies, 16), &
-                  out%trace_delta(n_studies, 16), &
-                  out%trace_n_bins(max_points, 16), out%trace_occ_failed(max_points, 16), &
-                  out%trace_n_pooled(max_points, 16), out%trace_min_occ(max_points, 16), &
-                  out%trace_mean_occ(max_points, 16), out%trace_max_occ(max_points, 16), &
-                  out%trace_sturges(max_points, 16), out%trace_fd(max_points, 16), &
-                  out%trace_range_low(max_points, 16), out%trace_range_high(max_points, 16))
+                  out%ci(2, n_studies), out%trace_jsd(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_width_rel(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_delta(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_n_bins(max_points, MAX_CANDIDATE_PAIRS), &
+                  out%trace_occ_failed(max_points, MAX_CANDIDATE_PAIRS), &
+                  out%trace_n_pooled(max_points, MAX_CANDIDATE_PAIRS), &
+                  out%trace_min_occ(max_points, MAX_CANDIDATE_PAIRS), &
+                  out%trace_mean_occ(max_points, MAX_CANDIDATE_PAIRS), &
+                  out%trace_max_occ(max_points, MAX_CANDIDATE_PAIRS), &
+                  out%trace_sturges(max_points, MAX_CANDIDATE_PAIRS), out%trace_fd(max_points, MAX_CANDIDATE_PAIRS), &
+                  out%trace_range_low(max_points, MAX_CANDIDATE_PAIRS), &
+                  out%trace_range_high(max_points, MAX_CANDIDATE_PAIRS))
 
         call run_js_comp_test_parameter_search(n_studies, n_genes, n_reps, gene_means, residuals, 5_int32, &
                                                METHOD_JOIN_MIN, max_points, max_neighbors, out%n_points, &
@@ -11093,16 +11182,24 @@ contains
         end do
 
         allocate (out%n_bins(max_n_points_candidate), out%range_low(max_n_points_candidate), &
-                  out%range_high(max_n_points_candidate), out%ci(2, n_studies), out%trace_jsd(n_studies, 16), &
-                  out%trace_ci_lower(n_studies, 16), out%trace_ci_upper(n_studies, 16), &
-                  out%trace_ci_width(n_studies, 16), out%trace_ci_width_rel(n_studies, 16), &
-                  out%trace_ci_overlap(n_studies, 16), &
-                  out%trace_delta(n_studies, 16), out%trace_n_bins(max_n_points_candidate, 16), &
-                  out%trace_occ_failed(max_n_points_candidate, 16), out%trace_n_pooled(max_n_points_candidate, 16), &
-                  out%trace_min_occ(max_n_points_candidate, 16), out%trace_mean_occ(max_n_points_candidate, 16), &
-                  out%trace_max_occ(max_n_points_candidate, 16), out%trace_sturges(max_n_points_candidate, 16), &
-                  out%trace_fd(max_n_points_candidate, 16), out%trace_range_low(max_n_points_candidate, 16), &
-                  out%trace_range_high(max_n_points_candidate, 16))
+                  out%range_high(max_n_points_candidate), out%ci(2, n_studies), &
+                  out%trace_jsd(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_width_rel(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_delta(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_n_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  out%trace_occ_failed(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  out%trace_n_pooled(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  out%trace_min_occ(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  out%trace_mean_occ(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  out%trace_max_occ(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  out%trace_sturges(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  out%trace_fd(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  out%trace_range_low(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  out%trace_range_high(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
 
         call run_js_comp_test_parameter_search(n_studies, n_genes, n_reps, gene_means, residuals, 5_int32, &
                                                METHOD_JOIN_MIN, max_n_points_candidate, max_n_neighbors_candidate, &
@@ -11176,14 +11273,20 @@ contains
         gene_means = 1.0_real64
         residuals = 0.0_real64
         allocate (out%n_bins(n_points_alloc), out%range_low(n_points_alloc), out%range_high(n_points_alloc), &
-                  out%ci(2, 1), out%trace_jsd(1, 16), out%trace_ci_lower(1, 16), out%trace_ci_upper(1, 16), &
-                  out%trace_ci_width(1, 16), out%trace_ci_width_rel(1, 16), &
-                  out%trace_ci_overlap(1, 16), out%trace_delta(1, 16), &
-                  out%trace_n_bins(n_points_alloc, 16), out%trace_occ_failed(n_points_alloc, 16), &
-                  out%trace_n_pooled(n_points_alloc, 16), out%trace_min_occ(n_points_alloc, 16), &
-                  out%trace_mean_occ(n_points_alloc, 16), out%trace_max_occ(n_points_alloc, 16), &
-                  out%trace_sturges(n_points_alloc, 16), out%trace_fd(n_points_alloc, 16), &
-                  out%trace_range_low(n_points_alloc, 16), out%trace_range_high(n_points_alloc, 16))
+                  out%ci(2, 1), out%trace_jsd(1, MAX_CANDIDATE_PAIRS), out%trace_ci_lower(1, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_upper(1, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_width(1, MAX_CANDIDATE_PAIRS), out%trace_ci_width_rel(1, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_overlap(1, MAX_CANDIDATE_PAIRS), out%trace_delta(1, MAX_CANDIDATE_PAIRS), &
+                  out%trace_n_bins(n_points_alloc, MAX_CANDIDATE_PAIRS), &
+                  out%trace_occ_failed(n_points_alloc, MAX_CANDIDATE_PAIRS), &
+                  out%trace_n_pooled(n_points_alloc, MAX_CANDIDATE_PAIRS), &
+                  out%trace_min_occ(n_points_alloc, MAX_CANDIDATE_PAIRS), &
+                  out%trace_mean_occ(n_points_alloc, MAX_CANDIDATE_PAIRS), &
+                  out%trace_max_occ(n_points_alloc, MAX_CANDIDATE_PAIRS), &
+                  out%trace_sturges(n_points_alloc, MAX_CANDIDATE_PAIRS), &
+                  out%trace_fd(n_points_alloc, MAX_CANDIDATE_PAIRS), &
+                  out%trace_range_low(n_points_alloc, MAX_CANDIDATE_PAIRS), &
+                  out%trace_range_high(n_points_alloc, MAX_CANDIDATE_PAIRS))
 
         call run_js_comp_test_parameter_search(1_int32, n_genes, 1_int32, gene_means, residuals, 5_int32, &
                                                METHOD_JOIN_MIN, max_n_points_candidate, max_n_neighbors_candidate, &
@@ -11209,7 +11312,7 @@ contains
     !| runs, so the sweep stays cheap.
     subroutine test_param_search_bounds_match_candidate_bounds()
         character(len=*), parameter :: name = "test_param_search_bounds_match_candidate_bounds: "
-        integer(int32) :: candidates(2, 16)
+        integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS)
         integer(int32) :: n_genes, max_points, max_neighbors, n_candidates, ierr, n_mismatches
         character(len=16) :: genes_text
 
@@ -11260,11 +11363,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(256, n_points, n_studies)
-        integer(int32) :: counts(256, n_points, n_studies)
+        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
+        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(256, n_points)
-        integer(int32) :: mean_pmf_counts(256, n_points)
+        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
+        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -11321,11 +11424,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(256, n_points, n_studies)
-        integer(int32) :: counts(256, n_points, n_studies)
+        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
+        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(256, n_points)
-        integer(int32) :: mean_pmf_counts(256, n_points)
+        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
+        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -11475,7 +11578,7 @@ contains
         character(len=*), parameter :: name = "test_occupancy_expert_rejects_reversed_residual_range_quantiles: "
         integer(int32), parameter :: n_residuals = 120
         real(real64) :: residuals(n_residuals)
-        integer(int32) :: residuals_perm(n_residuals), tmp_bin_counts(256)
+        integer(int32) :: residuals_perm(n_residuals), tmp_bin_counts(MAX_N_BINS)
         integer(int32) :: selected_n_bins, n_pooled_residuals, min_bin_occupancy, max_bin_occupancy
         integer(int32) :: sturges_bins, fd_bins, ierr, i
         real(real64) :: mean_bin_occupancy, shared_residual_range_low, shared_residual_range_high
@@ -11565,11 +11668,11 @@ contains
         integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
         real(real64) :: mean_bin_occupancy(n_points)
         integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
-        real(real64) :: pmfs(256, n_points, n_studies)
-        integer(int32) :: counts(256, n_points, n_studies)
+        real(real64) :: pmfs(MAX_N_BINS, n_points, n_studies)
+        integer(int32) :: counts(MAX_N_BINS, n_points, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(256, n_points)
-        integer(int32) :: mean_pmf_counts(256, n_points)
+        real(real64) :: mean_pmf(MAX_N_BINS, n_points)
+        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -11720,7 +11823,7 @@ contains
             !! Fixture mean expression
         real(real64), intent(out) :: residuals(3, 100, 2)
             !! Fixture residuals
-        integer(int32) :: candidates(2, 16), n_candidates, ierr, i_gene
+        integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr, i_gene
 
         call generate_js_comp_test_candidates(100_int32, candidates, n_candidates, ierr)
         call assert_err(ierr, ERR_OK, name//"candidate grid ierr")
@@ -11933,10 +12036,12 @@ contains
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies), neighborhood_range(2, n_points, n_studies)
         integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point, n_pooled_residuals(n_points)
         integer(int32) :: min_bin_occupancy(n_points), max_bin_occupancy(n_points), sturges_bins(n_points)
-        integer(int32) :: fd_bins(n_points), counts(256, n_points, n_studies), included_n_reps(n_points, n_studies)
-        integer(int32) :: mean_pmf_counts(256, n_points), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: fd_bins(n_points), counts(MAX_N_BINS, n_points, n_studies), &
+            included_n_reps(n_points, n_studies)
+        integer(int32) :: mean_pmf_counts(MAX_N_BINS, n_points), mean_pmf_included_n_reps(n_points)
         real(real64) :: shared_residual_range_low(n_points), shared_residual_range_high(n_points)
-        real(real64) :: mean_bin_occupancy(n_points), pmfs(256, n_points, n_studies), mean_pmf(256, n_points)
+        real(real64) :: mean_bin_occupancy(n_points), pmfs(MAX_N_BINS, n_points, n_studies), &
+            mean_pmf(MAX_N_BINS, n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
         real(real64) :: p_values_observed_consensus(n_studies)

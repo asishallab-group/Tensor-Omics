@@ -1839,16 +1839,16 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included
 #'     search (per `bin_count_mode`) -- never part of the bin-count search's own decision}
 #'   \item{fd_bins}{a integer vector. This reference point's Freedman-Diaconis rule bin-count diagnostic from Pass B's bin-count
 #'     search (per `bin_count_mode`) -- never part of the bin-count search's own decision}
-#'   \item{pmfs}{a numeric array of rank 3. `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`. `256`
-#'     = MAX_N_BINS, a fixed ceiling (see `max_n_bins_per_point` above) -- only rows `1:max_n_bins_per_point`
+#'   \item{pmfs}{a numeric array of rank 3. `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`. The
+#'     bins are a fixed ceiling (see `max_n_bins_per_point` above) -- only rows `1:max_n_bins_per_point`
 #'     are meaningful; a Python/R caller must slice `[:max_n_bins_per_point, ...]` themselves}
-#'   \item{counts}{a integer array of rank 3. Absolute counts of a residual per bin for `pmfs`. `256` = MAX_N_BINS; only rows
+#'   \item{counts}{a integer array of rank 3. Absolute counts of a residual per bin for `pmfs`. Only rows
 #'     `1:max_n_bins_per_point` are meaningful -- see `pmfs` above}
 #'   \item{included_n_reps}{a integer matrix. Count of non-NaN replicates (included ones) per reference point, per study}
-#'   \item{mean_pmf}{a numeric matrix. The consensus pmf, from create_mean_pmf_impl. `256` = MAX_N_BINS; only rows
+#'   \item{mean_pmf}{a numeric matrix. The consensus pmf, from create_mean_pmf_impl. Only rows
 #'     `1:max_n_bins_per_point` are meaningful -- see `pmfs` above}
-#'   \item{mean_pmf_counts}{a integer matrix. Absolute counts of a residual per bin for the consensus pmf. `256` = MAX_N_BINS;
-#'     only rows `1:max_n_bins_per_point` are meaningful -- see `pmfs` above}
+#'   \item{mean_pmf_counts}{a integer matrix. Absolute counts of a residual per bin for the consensus pmf. Only rows
+#'     `1:max_n_bins_per_point` are meaningful -- see `pmfs` above}
 #'   \item{mean_pmf_included_n_reps}{a integer vector. Count of non-NaN replicates (included ones) per reference point for the consensus pmf}
 #'   \item{js_divergences}{a numeric matrix. Per-reference-point JSD of each study against the consensus pmf}
 #'   \item{weights}{a numeric matrix. Per-reference-point weights for `global_js_divergence`}
@@ -2073,14 +2073,14 @@ run_js_comp_test <- function(n_neighbors, gene_means, gene_means_perms, residual
 #'     neighbor count; never part of the bin-count search's decision}
 #'   \item{fd_bins}{a integer vector. Each reference point's Freedman-Diaconis rule diagnostic, with the rounded mean
 #'     per-study neighbor count; never part of the bin-count search's decision}
-#'   \item{pmfs}{a numeric array of rank 3. `counts` normalized per reference point and study. `256` = MAX_N_BINS; only rows
+#'   \item{pmfs}{a numeric array of rank 3. `counts` normalized per reference point and study. Only rows
 #'     `1:max_n_bins_per_point` are meaningful}
-#'   \item{counts}{a integer array of rank 3. Absolute counts of a residual per bin for `pmfs`. `256` = MAX_N_BINS; only rows
+#'   \item{counts}{a integer array of rank 3. Absolute counts of a residual per bin for `pmfs`. Only rows
 #'     `1:max_n_bins_per_point` are meaningful}
 #'   \item{included_n_reps}{a integer matrix. Count of non-NaN residuals binned per reference point, per study}
-#'   \item{mean_pmf}{a numeric matrix. The consensus pmf. `256` = MAX_N_BINS; only rows `1:max_n_bins_per_point` are meaningful}
-#'   \item{mean_pmf_counts}{a integer matrix. Absolute counts of a residual per bin for the consensus pmf. `256` = MAX_N_BINS; only
-#'     rows `1:max_n_bins_per_point` are meaningful}
+#'   \item{mean_pmf}{a numeric matrix. The consensus pmf. Only rows `1:max_n_bins_per_point` are meaningful}
+#'   \item{mean_pmf_counts}{a integer matrix. Absolute counts of a residual per bin for the consensus pmf. Only rows
+#'     `1:max_n_bins_per_point` are meaningful}
 #'   \item{mean_pmf_included_n_reps}{a integer vector. Count of non-NaN residuals per reference point for the consensus pmf}
 #'   \item{js_divergences}{a numeric matrix. Per-reference-point JSD of each study against the consensus pmf}
 #'   \item{weights}{a numeric matrix. Per-reference-point weights for `global_js_divergence`}
@@ -2405,8 +2405,7 @@ run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood
 #'     fallback recommendation -- `plateau_established` is what distinguishes that case from
 #'     an actual plateau, not the confidence interval's sentinel value}
 #'   \item{trace_n_points}{a integer vector. Per-admissible-candidate `n_points`, one entry per column of the other `trace_*`
-#'     arrays. `16` = MAX_CANDIDATE_PAIRS, written as a literal for the same reason
-#'     candidates_n_points_n_neighbors is in generate_js_comp_test_candidates_impl
+#'     arrays
 #'     The first `n_admissible_evaluated` elements will hold the results.}
 #'   \item{trace_n_neighbors}{a integer vector. Per-admissible-candidate `n_neighbors`, paired with trace_n_points above
 #'     The first `n_admissible_evaluated` elements will hold the results.}
@@ -2453,7 +2452,7 @@ run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood
 #'     (Issue #187's `M_j`), from Pass B's bin-count search (per `bin_count_mode`). Unlike every OTHER
 #'     trace_* array above, whose first extent is a fixed thing like `n_studies`, this
 #'     array's first extent is `max_n_points_candidate`, NOT `n_points`, because `n_points`
-#'     itself varies per candidate (that is why `trace_n_points(16)` exists as its own
+#'     itself varies per candidate (that is why `trace_n_points` exists as its own
 #'     array): this array is genuinely JAGGED per candidate column `t` -- only rows
 #'     `1:trace_n_points(t)` are meaningful for that column, rows beyond that are undefined
 #'     padding. The result-size directive below only trims the LAST extent (candidates, via
@@ -2817,8 +2816,7 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstrap
 #'     exhausted the sequence without one, in which case the smallest-uncertainty
 #'     admissible candidate is returned if there is one, and also when no candidate was
 #'     admissible at all, a single rejected candidate included}
-#'   \item{trace_k_start}{a integer vector. Per-admissible-candidate `k_start`. `16` = MAX_CANDIDATE_PAIRS, the adaptive
-#'     sequence's cap
+#'   \item{trace_k_start}{a integer vector. Per-admissible-candidate `k_start`
 #'     The first `n_admissible_evaluated` elements will hold the results.}
 #'   \item{trace_k_step}{a integer vector. Per-admissible-candidate `k_step`
 #'     The first `n_admissible_evaluated` elements will hold the results.}

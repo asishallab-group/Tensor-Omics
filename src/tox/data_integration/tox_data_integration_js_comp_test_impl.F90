@@ -108,11 +108,7 @@ module tox_data_integration_js_comp_test_impl
 
     ! Module-private tuning constants, ported verbatim from 125-stabilize-jscomp's
     ! `determine_js_comp_test_n_points_n_neighbors_alloc`. No argument, no directive -- these
-    ! never cross a wrapper boundary; where an array would need one of them as a dimension (e.g.
-    ! MAX_CANDIDATE_PAIRS below), the dimension is written as the literal value instead, since a
-    ! dimension expression that names a symbol the wrapper module never `use`s would not compile
-    ! there (confirmed against how `emit/fortran_wrapper.py` renders `argument.dimension.extents`
-    ! verbatim, with no import path for a bare dimension token).
+    ! never cross a wrapper boundary.
     real(real64), parameter :: KX_FACTORS(2) = [0.25_real64, 0.5_real64]
         !! Ascending, as part of the neighbor-candidate denominator: first factor gives the
         !! larger neighbor-candidate value, second the smaller
@@ -121,13 +117,14 @@ module tox_data_integration_js_comp_test_impl
     real(real64), parameter :: GAMMA = 0.8_real64
     integer(int32), parameter :: MAX_POINT_CANDIDATES = 8_int32
         !! How often n_points_high may be multiplied by GAMMA before the grid gives up
-    integer(int32), parameter :: MAX_CANDIDATE_PAIRS = 16_int32
-        !! = size(KX_FACTORS) * MAX_POINT_CANDIDATES = 2 * 8. Kept a literal (rather than the
-        !! product expression) because it is also, independently, the literal array-dimension
-        !! bound written on candidates_n_points_n_neighbors below -- the two
-        !! must agree, and a compile-time PARAMETER expression cannot itself be documented as
-        !! equal to a dimension literal the generator reads as plain text.
-    integer(int32), parameter :: MAX_N_BINS = 256_int32
+    ! CM_MAX_CANDIDATE_PAIRS and CM_MAX_N_BINS are the single source of these two values, used
+    ! both for the parameters and for the dummy extents of wrapped routines: a parameter cannot be
+    ! such an extent, because the generated C and R bindings need the number itself.
+#define CM_MAX_CANDIDATE_PAIRS 16
+#define CM_MAX_N_BINS 256
+    integer(int32), parameter :: MAX_CANDIDATE_PAIRS = CM_MAX_CANDIDATE_PAIRS
+        !! = size(KX_FACTORS) * MAX_POINT_CANDIDATES = 2 * 8
+    integer(int32), parameter :: MAX_N_BINS = CM_MAX_N_BINS
         !! Fixed ceiling for a candidate's estimated histogram bin count (see
         !! estimate_bin_count_impl below): later stages of this pipeline size their histogram
         !! work arrays to this fixed bound rather than to a data-dependent one.
@@ -139,7 +136,7 @@ module tox_data_integration_js_comp_test_impl
     ! of them is relative to the padded pool size `N = max_n_genes_all_studies * n_studies`, so
     ! the sequence scales with the data instead of hitting a fixed floor the way the fixed-k
     ! grid's `n_points_low = max(MIN_POINTS, ...)` does. The candidate cap is
-    ! MAX_CANDIDATE_PAIRS (16), shared with the fixed-k grid so both searches' trace arrays have
+    ! MAX_CANDIDATE_PAIRS, shared with the fixed-k grid so both searches' trace arrays have
     ! the same candidate extent. Provisional: the values are to be settled by real-data
     ! validation of the adaptive search (Issue #217).
     real(real64), parameter :: ADAPTIVE_START_FRACTION = 0.02_real64
@@ -386,7 +383,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure
 
-        integer(int32) :: k_starts(16), n_k_starts
+        integer(int32) :: k_starts(MAX_CANDIDATE_PAIRS), n_k_starts
         integer(int64) :: n_pool, capacity
 
         call set_ok(ierr)
@@ -609,10 +606,9 @@ contains
         integer(int32), intent(out) :: fd_bins
             !! Freedman-Diaconis rule estimate from estimate_bin_count_impl (with its padded-slot
             !! sample size) -- a diagnostic only, never part of the search's own decision
-        integer(int32), intent(out) :: tmp_bin_counts(256)
+        integer(int32), intent(out) :: tmp_bin_counts(CM_MAX_N_BINS)
             !! Working array: per-bin counts of whichever candidate bin count is currently being
-            !! tested, reused throughout the search (256 = MAX_N_BINS, written as a literal since a
-            !! generated wrapper's dummy dimension cannot reference a module parameter)
+            !! tested, reused throughout the search
         integer(int32), intent(in), optional :: m_min
             !! Smallest candidate bin count the search will ever test (M_min)
             !! DM_MIN(1_int32)
@@ -1658,10 +1654,8 @@ contains
         integer(int32), intent(out) :: fd_bins
             !! Freedman-Diaconis rule estimate from estimate_bin_count_impl (with its padded-slot
             !! sample size) -- a diagnostic only, never part of the decision
-        integer(int32), intent(out) :: tmp_bin_counts(256)
-            !! Working array: one study's bin counts at the bin count under test (256 = MAX_N_BINS,
-            !! written as a literal since a generated wrapper's dummy dimension cannot reference a
-            !! module parameter)
+        integer(int32), intent(out) :: tmp_bin_counts(CM_MAX_N_BINS)
+            !! Working array: one study's bin counts at the bin count under test
         integer(int32), intent(out) :: tmp_residual_to_study_perm(n_residuals)
             !! Working array: the indices of `pooled_residuals` grouped by `residual_to_study` (study 1
             !! first), each study's indices ordered ascending by residual, NaN last
@@ -2186,11 +2180,11 @@ contains
         integer(int32), intent(in) :: max_n_genes_all_studies
             !! Maximum number of genes across all studies
             !! DM_MIN(1_int32)
-        integer(int32), intent(out) :: candidates_n_points_n_neighbors(2, 16)
+        integer(int32), intent(out) :: candidates_n_points_n_neighbors(2, CM_MAX_CANDIDATE_PAIRS)
             !! Candidate `[n_points, n_neighbors]` pairs, `n_points` descending
             !! DM_RESULT_SIZE_IS(n_candidates)
         integer(int32), intent(out) :: n_candidates
-            !! Number of candidate pairs actually filled (at most MAX_CANDIDATE_PAIRS = 16)
+            !! Number of candidate pairs actually filled (at most CM_MAX_CANDIDATE_PAIRS)
 
         real(real64) :: n_points_high, n_points_low
         integer(int32) :: i_point_candidate, point_candidate, prev_point_candidate
@@ -2248,7 +2242,7 @@ contains
     !|
     !| - `k_start_1 = max(floor_k, ceiling(0.02 * N))`
     !| - `k_start_t = floor(k_start_1 * 0.8**(t-1))`
-    !| - stop once `k_start_t < floor_k`, or once 16 candidates are accepted
+    !| - stop once `k_start_t < floor_k`, or once CM_MAX_CANDIDATE_PAIRS candidates are accepted
     !| - `k_step_t = ceiling(0.25 * k_start_t)`
     !| - `k_max_t = ceiling(4 * k_start_t)`
     !|
@@ -2257,7 +2251,7 @@ contains
     !| [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_K_STEP_FRACTION(variable)]] (0.25),
     !| [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_K_MAX_FACTOR(variable)]] (4),
     !| [[tox_data_integration_js_comp_test_impl(module):ADAPTIVE_K_START_MIN_ABS(variable)]] (10) and
-    !| [[tox_data_integration_js_comp_test_impl(module):MAX_CANDIDATE_PAIRS(variable)]] (16).
+    !| [[tox_data_integration_js_comp_test_impl(module):MAX_CANDIDATE_PAIRS(variable)]] (CM_MAX_CANDIDATE_PAIRS).
     !| With them, one decay step lowers any `k_start >= 10` by at least 2, so the values are
     !| strictly descending without any deduplication, every `k_step` is at least 1 and every
     !| `k_max` at least `k_start`.
@@ -2286,14 +2280,14 @@ contains
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
-        integer(int32), intent(out) :: candidates_k_start_k_step_k_max(3, 16)
+        integer(int32), intent(out) :: candidates_k_start_k_step_k_max(3, CM_MAX_CANDIDATE_PAIRS)
             !! Candidate `[k_start, k_step, k_max]` triples, `k_start` strictly descending (so the
             !! emerging number of reference points ascends)
             !! DM_RESULT_SIZE_IS(n_candidates)
         integer(int32), intent(out) :: n_candidates
-            !! Number of candidate triples actually filled (at least 1, at most 16)
+            !! Number of candidate triples actually filled (at least 1, at most CM_MAX_CANDIDATE_PAIRS)
 
-        integer(int32) :: k_starts(16), i_candidate, k_start
+        integer(int32) :: k_starts(MAX_CANDIDATE_PAIRS), i_candidate, k_start
 
         call compute_adaptive_k_starts(max_n_genes_all_studies, n_studies, k_starts, n_candidates)
 
@@ -2323,7 +2317,7 @@ contains
             !! Maximum number of genes across all studies, at least 1
         integer(int32), intent(in) :: n_studies
             !! Number of studies, at least 1
-        integer(int32), intent(out) :: k_starts(16)
+        integer(int32), intent(out) :: k_starts(MAX_CANDIDATE_PAIRS)
             !! Accepted `k_start` values, strictly descending; only the first `n_k_starts` are set
         integer(int32), intent(out) :: n_k_starts
             !! Number of accepted `k_start` values, between 1 and MAX_CANDIDATE_PAIRS
@@ -4031,7 +4025,7 @@ contains
     !| used to be sized by that input (`pmfs`, `counts`, `mean_pmf`, `mean_pmf_counts`,
     !| `tmp_counts_point_major`, `tmp_pmf_point_major`, `tmp_permutation_mean_pmf_counts`,
     !| `tmp_permutation_counts`, `tmp_permutation_pmfs`) is now sized to the fixed compile-time
-    !| ceiling [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] (`256`)
+    !| ceiling [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] (`CM_MAX_N_BINS`)
     !| instead, exactly mirroring how `run_js_comp_test_parameter_search_impl`'s own
     !| `tmp_counts_point_major`/`tmp_pmf_point_major`/`tmp_pmfs`/`tmp_counts` etc. have been sized
     !| since Issue #187's earlier steps. The new `max_n_bins_per_point` output tells a caller how many of the
@@ -4057,7 +4051,7 @@ contains
     !| study) before building that point's histogram with `build_residual_histograms_impl` for
     !| that single point, whose bins are copied straight into the matching column of
     !| `counts`/`pmfs` -- no transpose is needed there. `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts`
-    !| here are BIN-major (`(256, n_points, n_studies)`) to match
+    !| here are BIN-major (`(CM_MAX_N_BINS, n_points, n_studies)`) to match
     !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]'s own
     !| convention, while `compute_divergence_per_reference_point_impl` and `calc_pmf_impl` are
     !| POINT-major (`(n_points, max_n_bins_per_point)`): the calls to those two after Pass C bridge
@@ -4135,7 +4129,7 @@ contains
             !! (`maxval(n_bins_per_point(1:n_points))`), derived once after Pass B. The number of
             !! leading, meaningful bins/rows in `pmfs`, `counts`, `mean_pmf` and `mean_pmf_counts`
             !! below (and of the bin-sized work arrays) -- those are all declared
-            !! with a fixed 256-bin ceiling (MAX_N_BINS) rather than a caller-supplied bin count,
+            !! with a fixed CM_MAX_N_BINS-bin ceiling (MAX_N_BINS) rather than a caller-supplied bin count,
             !! since `n_bins_per_point` can no longer be known by a caller in advance. A Python/R
             !! caller must slice `[:max_n_bins_per_point, ...]` themselves: the generator's own result-size
             !! trimming directive cannot express this trim, because it only ever trims an array's
@@ -4166,21 +4160,21 @@ contains
         integer(int32), dimension(n_points), intent(out) :: fd_bins
             !! This reference point's Freedman-Diaconis rule bin-count diagnostic from Pass B's bin-count
             !! search (per `bin_count_mode`) -- never part of the bin-count search's own decision
-        real(real64), dimension(256, n_points, n_studies), intent(out) :: pmfs
-            !! `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`. `256`
-            !! = MAX_N_BINS, a fixed ceiling (see `max_n_bins_per_point` above) -- only rows `1:max_n_bins_per_point`
+        real(real64), dimension(CM_MAX_N_BINS, n_points, n_studies), intent(out) :: pmfs
+            !! `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`. The
+            !! bins are a fixed ceiling (see `max_n_bins_per_point` above) -- only rows `1:max_n_bins_per_point`
             !! are meaningful; a Python/R caller must slice `[:max_n_bins_per_point, ...]` themselves
-        integer(int32), dimension(256, n_points, n_studies), intent(out) :: counts
-            !! Absolute counts of a residual per bin for `pmfs`. `256` = MAX_N_BINS; only rows
+        integer(int32), dimension(CM_MAX_N_BINS, n_points, n_studies), intent(out) :: counts
+            !! Absolute counts of a residual per bin for `pmfs`. Only rows
             !! `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
         integer(int32), dimension(n_points, n_studies), intent(out) :: included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point, per study
-        real(real64), dimension(256, n_points), intent(out) :: mean_pmf
-            !! The consensus pmf, from create_mean_pmf_impl. `256` = MAX_N_BINS; only rows
+        real(real64), dimension(CM_MAX_N_BINS, n_points), intent(out) :: mean_pmf
+            !! The consensus pmf, from create_mean_pmf_impl. Only rows
             !! `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
-        integer(int32), dimension(256, n_points), intent(out) :: mean_pmf_counts
-            !! Absolute counts of a residual per bin for the consensus pmf. `256` = MAX_N_BINS;
-            !! only rows `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
+        integer(int32), dimension(CM_MAX_N_BINS, n_points), intent(out) :: mean_pmf_counts
+            !! Absolute counts of a residual per bin for the consensus pmf. Only rows
+            !! `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
         integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point for the consensus pmf
         real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
@@ -4203,25 +4197,21 @@ contains
             tmp_neighborhood_residuals_gathered
             !! Working array: gathered neighborhood residual values, one slice per reference
             !! point, reused for every study (Pass C)
-        integer(int32), dimension(n_points, 256), intent(out) :: tmp_counts_point_major
+        integer(int32), dimension(n_points, CM_MAX_N_BINS), intent(out) :: tmp_counts_point_major
             !! Working array forwarded to gjct_permutation_test_impl's own point-major counts
-            !! scratch. `256` = MAX_N_BINS, written as a literal because a generated wrapper's
-            !! dummy dimension cannot reference a module parameter
-        real(real64), dimension(n_points, 256), intent(out) :: tmp_pmf_point_major
+            !! scratch
+        real(real64), dimension(n_points, CM_MAX_N_BINS), intent(out) :: tmp_pmf_point_major
             !! Working array: forwarded to gjct_permutation_test_impl's own point-major pmf
-            !! scratch, then reused for calc_pmf_impl's re-derived per-study pmf. `256` =
-            !! MAX_N_BINS, see tmp_counts_point_major above
+            !! scratch, then reused for calc_pmf_impl's re-derived per-study pmf
         real(real64), dimension(max_n_reps_all_studies*n_neighbors*n_studies), intent(out) :: tmp_pooled_residuals
             !! Working array: one reference point's pooled residuals across every neighbor and
             !! every study (Pass B), reused per point -- one small buffer, not one per point, since
             !! Pass B is a deliberate sequential loop (see the implementation body's own comment)
         integer(int32), dimension(max_n_reps_all_studies*n_neighbors*n_studies), intent(out) :: tmp_pooled_residuals_perm
             !! Working array: sorting permutation for tmp_pooled_residuals, reused per point
-        integer(int32), dimension(256), intent(out) :: tmp_bin_counts_search
+        integer(int32), dimension(CM_MAX_N_BINS), intent(out) :: tmp_bin_counts_search
             !! Working array forwarded to the bin-count search's own per-bin-count scratch, reused
-            !! per point. `256` = MAX_N_BINS, matching the bin-count searches' own tmp_bin_counts
-            !! dummy -- written as a literal
-            !! because a generated wrapper's dummy dimension cannot reference a module parameter
+            !! per point
         integer(int32), dimension(max_n_reps_all_studies*n_neighbors*n_studies), intent(out) :: tmp_residual_to_study_perm
             !! Working array for the Stone modes of `bin_count_mode`: the indices of
             !! tmp_pooled_residuals grouped by study, each study's sorted, reused per point
@@ -4234,15 +4224,13 @@ contains
         integer(int32), dimension(n_studies), intent(out) :: tmp_point_n_neighbors
             !! Working array: every study's neighbor count for the reference point in Pass B --
             !! `n_neighbors` for every study, since this routine uses one neighbor count throughout
-        integer(int32), dimension(256, n_points), intent(out) :: tmp_permutation_mean_pmf_counts
-            !! Working array forwarded to gjct_permutation_test_impl's own resampling pool. `256` =
-            !! MAX_N_BINS, see tmp_counts_point_major above
-        integer(int32), dimension(256, n_points), intent(out) :: tmp_permutation_counts
+        integer(int32), dimension(CM_MAX_N_BINS, n_points), intent(out) :: tmp_permutation_mean_pmf_counts
+            !! Working array forwarded to gjct_permutation_test_impl's own resampling pool
+        integer(int32), dimension(CM_MAX_N_BINS, n_points), intent(out) :: tmp_permutation_counts
             !! Working array forwarded to gjct_permutation_test_impl's own per-study resampled
-            !! counts. `256` = MAX_N_BINS, see tmp_counts_point_major above
-        real(real64), dimension(256, n_points, n_studies), intent(out) :: tmp_permutation_pmfs
-            !! Working array forwarded to gjct_permutation_test_impl's own resampled pmfs. `256` =
-            !! MAX_N_BINS, see tmp_counts_point_major above
+            !! counts
+        real(real64), dimension(CM_MAX_N_BINS, n_points, n_studies), intent(out) :: tmp_permutation_pmfs
+            !! Working array forwarded to gjct_permutation_test_impl's own resampled pmfs
         real(real64), dimension(n_points, n_studies), intent(out) :: tmp_permutation_js_divergences
             !! Working array forwarded to gjct_permutation_test_impl's own per-point JSD values
         real(real64), dimension(n_points, n_studies), intent(out) :: tmp_permutation_weights
@@ -4493,7 +4481,7 @@ contains
     !| `tmp_residual_to_study_perm`, holds the per-study grouping the Stone modes of
     !| `bin_count_mode` need; the plain entry point allocates it in every mode, occupancy included.
     !|
-    !| The bin-sized arrays have the same fixed 256-bin
+    !| The bin-sized arrays have the same fixed CM_MAX_N_BINS-bin
     !| ([[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]]) leading extent as in
     !| `run_js_comp_test_impl`, of which only the first `max_n_bins_per_point` rows are
     !| meaningful; a Python/R caller slices `[:max_n_bins_per_point, ...]` themselves.
@@ -4573,19 +4561,19 @@ contains
         integer(int32), dimension(n_points), intent(out) :: fd_bins
             !! Each reference point's Freedman-Diaconis rule diagnostic, with the rounded mean
             !! per-study neighbor count; never part of the bin-count search's decision
-        real(real64), dimension(256, n_points, n_studies), intent(out) :: pmfs
-            !! `counts` normalized per reference point and study. `256` = MAX_N_BINS; only rows
+        real(real64), dimension(CM_MAX_N_BINS, n_points, n_studies), intent(out) :: pmfs
+            !! `counts` normalized per reference point and study. Only rows
             !! `1:max_n_bins_per_point` are meaningful
-        integer(int32), dimension(256, n_points, n_studies), intent(out) :: counts
-            !! Absolute counts of a residual per bin for `pmfs`. `256` = MAX_N_BINS; only rows
+        integer(int32), dimension(CM_MAX_N_BINS, n_points, n_studies), intent(out) :: counts
+            !! Absolute counts of a residual per bin for `pmfs`. Only rows
             !! `1:max_n_bins_per_point` are meaningful
         integer(int32), dimension(n_points, n_studies), intent(out) :: included_n_reps
             !! Count of non-NaN residuals binned per reference point, per study
-        real(real64), dimension(256, n_points), intent(out) :: mean_pmf
-            !! The consensus pmf. `256` = MAX_N_BINS; only rows `1:max_n_bins_per_point` are meaningful
-        integer(int32), dimension(256, n_points), intent(out) :: mean_pmf_counts
-            !! Absolute counts of a residual per bin for the consensus pmf. `256` = MAX_N_BINS; only
-            !! rows `1:max_n_bins_per_point` are meaningful
+        real(real64), dimension(CM_MAX_N_BINS, n_points), intent(out) :: mean_pmf
+            !! The consensus pmf. Only rows `1:max_n_bins_per_point` are meaningful
+        integer(int32), dimension(CM_MAX_N_BINS, n_points), intent(out) :: mean_pmf_counts
+            !! Absolute counts of a residual per bin for the consensus pmf. Only rows
+            !! `1:max_n_bins_per_point` are meaningful
         integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
             !! Count of non-NaN residuals per reference point for the consensus pmf
         real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
@@ -4611,11 +4599,10 @@ contains
             !! Working array: one reference point's gene indices per study, reused per point
         real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies), intent(out) :: tmp_neighbor_residuals
             !! Working array: one (reference point, study) pair's gathered residuals, reused (Pass C)
-        integer(int32), dimension(n_points, 256), intent(out) :: tmp_counts_point_major
-            !! Working array forwarded to the permutation test. `256` = MAX_N_BINS
-        real(real64), dimension(n_points, 256), intent(out) :: tmp_pmf_point_major
-            !! Working array forwarded to the permutation test and reused for the re-derived pmfs.
-            !! `256` = MAX_N_BINS
+        integer(int32), dimension(n_points, CM_MAX_N_BINS), intent(out) :: tmp_counts_point_major
+            !! Working array forwarded to the permutation test
+        real(real64), dimension(n_points, CM_MAX_N_BINS), intent(out) :: tmp_pmf_point_major
+            !! Working array forwarded to the permutation test and reused for the re-derived pmfs
         real(real64), dimension(max_n_reps_all_studies*max_n_genes_all_studies*n_studies), intent(out) :: &
             tmp_pooled_residuals
             !! Working array: one reference point's pooled residuals across all its genes of all
@@ -4623,8 +4610,8 @@ contains
         integer(int32), dimension(max_n_reps_all_studies*max_n_genes_all_studies*n_studies), intent(out) :: &
             tmp_pooled_residuals_perm
             !! Working array: sorting permutation for `tmp_pooled_residuals`, reused per point
-        integer(int32), dimension(256), intent(out) :: tmp_bin_counts_search
-            !! Working array forwarded to the bin-count search, reused per point. `256` = MAX_N_BINS
+        integer(int32), dimension(CM_MAX_N_BINS), intent(out) :: tmp_bin_counts_search
+            !! Working array forwarded to the bin-count search, reused per point
         integer(int32), dimension(max_n_reps_all_studies*max_n_genes_all_studies*n_studies), intent(out) :: &
             tmp_residual_to_study_perm
             !! Working array for the Stone modes of `bin_count_mode`: the indices of
@@ -4635,12 +4622,12 @@ contains
         integer(int32), dimension(n_studies), intent(out) :: tmp_study_block_sizes
             !! Working array for the Stone modes of `bin_count_mode`: each study's block size in
             !! `tmp_pooled_residuals`, reused per point
-        integer(int32), dimension(256, n_points), intent(out) :: tmp_permutation_mean_pmf_counts
-            !! Working array forwarded to the permutation test. `256` = MAX_N_BINS
-        integer(int32), dimension(256, n_points), intent(out) :: tmp_permutation_counts
-            !! Working array forwarded to the permutation test. `256` = MAX_N_BINS
-        real(real64), dimension(256, n_points, n_studies), intent(out) :: tmp_permutation_pmfs
-            !! Working array forwarded to the permutation test. `256` = MAX_N_BINS
+        integer(int32), dimension(CM_MAX_N_BINS, n_points), intent(out) :: tmp_permutation_mean_pmf_counts
+            !! Working array forwarded to the permutation test
+        integer(int32), dimension(CM_MAX_N_BINS, n_points), intent(out) :: tmp_permutation_counts
+            !! Working array forwarded to the permutation test
+        real(real64), dimension(CM_MAX_N_BINS, n_points, n_studies), intent(out) :: tmp_permutation_pmfs
+            !! Working array forwarded to the permutation test
         real(real64), dimension(n_points, n_studies), intent(out) :: tmp_permutation_js_divergences
             !! Working array forwarded to the permutation test
         real(real64), dimension(n_points, n_studies), intent(out) :: tmp_permutation_weights
@@ -5070,37 +5057,36 @@ contains
             !! Issue #178's own index `t` domain: "position in the ordered sequence of ADMISSIBLE
             !! parameter pairs" -- a candidate that failed either gate has no `trace_*` entry at
             !! all, rather than a zero-filled one
-        integer(int32), dimension(16), intent(out) :: trace_n_points
+        integer(int32), dimension(CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_n_points
             !! Per-admissible-candidate `n_points`, one entry per column of the other `trace_*`
-            !! arrays. `16` = MAX_CANDIDATE_PAIRS, written as a literal for the same reason
-            !! candidates_n_points_n_neighbors is in generate_js_comp_test_candidates_impl
+            !! arrays
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        integer(int32), dimension(16), intent(out) :: trace_n_neighbors
+        integer(int32), dimension(CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_n_neighbors
             !! Per-admissible-candidate `n_neighbors`, paired with trace_n_points above
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(n_studies, 16), intent(out) :: trace_global_js_divergence
+        real(real64), dimension(n_studies, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_global_js_divergence
             !! Per-admissible-candidate, per-study observed global JSD (`J_{i,t}` in Issue #178)
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_lower
+        real(real64), dimension(n_studies, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_lower
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
             !! (`L_{i,t}`)
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_upper
+        real(real64), dimension(n_studies, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_upper
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
             !! (`U_{i,t}`)
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_width
+        real(real64), dimension(n_studies, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_width
             !! Per-admissible-candidate, per-study confidence-interval width (`W_{i,t} = U_{i,t} -
             !! L_{i,t}`)
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_width_relative
+        real(real64), dimension(n_studies, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_width_relative
             !! Per-admissible-candidate, per-study relative confidence-interval width
             !! (`W_{i,t} / J_{i,t}`), denominator floored at `delta_epsilon` -- the issue's own
             !! formula omits this floor, but the same near-zero-JSD instability that motivates
             !! `delta_epsilon` in the `Delta_{i,t}` formula applies here too (a near-zero `J`
             !! destabilizes any ratio that divides by it, whichever candidate's `J` it is)
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_overlap
+        real(real64), dimension(n_studies, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_overlap
             !! Per-admissible-candidate, per-study fractional overlap of the candidate's bootstrapped
             !! confidence interval with the running best candidate's interval at that moment, in
             !! `[0, 1]`, from check_plateau_condition_impl: the values `succeeding_ci_overlap` is
@@ -5111,88 +5097,88 @@ contains
             !! candidate (no previous best to compare with) -- every other column within
             !! `1:n_admissible_evaluated` holds a real value
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(n_studies, 16), intent(out) :: trace_delta
+        real(real64), dimension(n_studies, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
             !! candidate (`Delta_{i,t}`), from check_effect_size_plateau_condition_impl;
             !! `-1.0_real64` throughout at the first admissible candidate specifically (no
             !! predecessor to diff against) -- every other column within `1:n_admissible_evaluated`
             !! holds a real value
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(16), intent(out) :: trace_delta_median
+        real(real64), dimension(CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_delta_median
             !! Per-admissible-candidate median of trace_delta across studies (Delta-tilde_t);
             !! `-1.0_real64` at the first admissible candidate, see trace_delta above
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(16), intent(out) :: trace_delta_max
+        real(real64), dimension(CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_delta_max
             !! Per-admissible-candidate maximum of trace_delta across studies (Delta^max_t);
             !! `-1.0_real64` at the first admissible candidate, see trace_delta above
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_selected_n_bins
+        integer(int32), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_selected_n_bins
             !! Per-admissible-candidate, per-reference-point selected histogram bin count
             !! (Issue #187's `M_j`), from Pass B's bin-count search (per `bin_count_mode`). Unlike every OTHER
             !! trace_* array above, whose first extent is a fixed thing like `n_studies`, this
             !! array's first extent is `max_n_points_candidate`, NOT `n_points`, because `n_points`
-            !! itself varies per candidate (that is why `trace_n_points(16)` exists as its own
+            !! itself varies per candidate (that is why `trace_n_points` exists as its own
             !! array): this array is genuinely JAGGED per candidate column `t` -- only rows
             !! `1:trace_n_points(t)` are meaningful for that column, rows beyond that are undefined
             !! padding. The result-size directive below only trims the LAST extent (candidates, via
             !! `n_admissible_evaluated`), not this row dimension, so a Python/R caller must
             !! additionally slice `[:trace_n_points[t], t]` themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        logical(c_bool), dimension(max_n_points_candidate, 16), intent(out) :: trace_occupancy_failed
+        logical(c_bool), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_occupancy_failed
             !! Per-admissible-candidate, per-reference-point `occupancy_failed` flag: `.true.` iff the
             !! bin-count search failed (occupancy or Stone, per `bin_count_mode`), and the point then
             !! uses `m_min` bins. Jagged per candidate column exactly as
             !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
             !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_n_pooled_residuals
+        integer(int32), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_n_pooled_residuals
             !! Per-admissible-candidate, per-reference-point pooled residual count (`N_j`) from
             !! Pass B's bin-count search. Jagged per candidate column exactly as
             !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
             !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_min_bin_occupancy
+        integer(int32), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_min_bin_occupancy
             !! Per-admissible-candidate, per-reference-point minimum bin occupancy at
             !! trace_selected_n_bins, from Pass B's bin-count search. Jagged per candidate
             !! column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
             !! meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
             !! themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(max_n_points_candidate, 16), intent(out) :: trace_mean_bin_occupancy
+        real(real64), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_mean_bin_occupancy
             !! Per-admissible-candidate, per-reference-point mean bin occupancy at
             !! trace_selected_n_bins, from Pass B's bin-count search. Jagged per candidate
             !! column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
             !! meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
             !! themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_max_bin_occupancy
+        integer(int32), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_max_bin_occupancy
             !! Per-admissible-candidate, per-reference-point maximum bin occupancy at
             !! trace_selected_n_bins, from Pass B's bin-count search. Jagged per candidate
             !! column exactly as trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are
             !! meaningful for column `t`; a Python/R caller must slice `[:trace_n_points[t], t]`
             !! themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_sturges_bins
+        integer(int32), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_sturges_bins
             !! Per-admissible-candidate, per-reference-point Sturges' rule bin-count diagnostic
             !! from Pass B's bin-count search (never part of the bin-count search's own
             !! decision). Jagged per candidate column exactly as trace_selected_n_bins above --
             !! only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R caller
             !! must slice `[:trace_n_points[t], t]` themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_fd_bins
+        integer(int32), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_fd_bins
             !! Per-admissible-candidate, per-reference-point Freedman-Diaconis rule bin-count
             !! diagnostic from Pass B's bin-count search (never part of the bin-count
             !! search's own decision). Jagged per candidate column exactly as trace_selected_n_bins
             !! above -- only rows `1:trace_n_points(t)` are meaningful for column `t`; a Python/R
             !! caller must slice `[:trace_n_points[t], t]` themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(max_n_points_candidate, 16), intent(out) :: trace_shared_residual_range_low
+        real(real64), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_shared_residual_range_low
             !! Per-admissible-candidate, per-reference-point lower residual-range bound (R_low)
             !! from Pass B's bin-count search. Jagged per candidate column exactly as
             !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
             !! column `t`; a Python/R caller must slice `[:trace_n_points[t], t]` themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(max_n_points_candidate, 16), intent(out) :: trace_shared_residual_range_high
+        real(real64), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_shared_residual_range_high
             !! Per-admissible-candidate, per-reference-point upper residual-range bound (R_high)
             !! from Pass B's bin-count search. Jagged per candidate column exactly as
             !! trace_selected_n_bins above -- only rows `1:trace_n_points(t)` are meaningful for
@@ -5218,16 +5204,12 @@ contains
             intent(out) :: tmp_neighborhood_residuals_gathered
             !! Working array: one study's gathered neighborhood residual values for the current
             !! candidate, reused per study
-        integer(int32), dimension(max_n_points_candidate, 256), intent(out) :: tmp_counts_point_major
+        integer(int32), dimension(max_n_points_candidate, CM_MAX_N_BINS), intent(out) :: tmp_counts_point_major
             !! Working array: one study's point-major histogram counts for the current candidate,
-            !! reused per study. The `256` is
-            !! [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]], written as a
-            !! literal because a dimension naming a module parameter the generated wrapper never
-            !! `use`s would not compile there -- the same reason MAX_CANDIDATE_PAIRS is written as
-            !! `16` on generate_js_comp_test_candidates_impl's own dummy arguments
-        real(real64), dimension(max_n_points_candidate, 256), intent(out) :: tmp_pmf_point_major
+            !! reused per study
+        real(real64), dimension(max_n_points_candidate, CM_MAX_N_BINS), intent(out) :: tmp_pmf_point_major
             !! Working array: one study's point-major pmf for the current candidate, reused per
-            !! study. `256` = MAX_N_BINS, see tmp_counts_point_major above
+            !! study
         integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_n_bins_per_point
             !! Working array: this candidate's per-point histogram bin count, decided by Pass B's
             !! bin-count search (per `bin_count_mode`) for each reference point independently
@@ -5237,20 +5219,16 @@ contains
         real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_shared_residual_range_high
             !! Working array: this candidate's per-point upper residual-range bound (R_high),
             !! mirroring tmp_shared_residual_range_low above
-        real(real64), dimension(256, max_n_points_candidate, n_studies), intent(out) :: tmp_pmfs
-            !! Working array: every study's bin-major pmf for the current candidate. `256` =
-            !! MAX_N_BINS, see tmp_counts_point_major above
-        integer(int32), dimension(256, max_n_points_candidate, n_studies), intent(out) :: tmp_counts
-            !! Working array: every study's bin-major histogram counts for the current candidate.
-            !! `256` = MAX_N_BINS, see tmp_counts_point_major above
+        real(real64), dimension(CM_MAX_N_BINS, max_n_points_candidate, n_studies), intent(out) :: tmp_pmfs
+            !! Working array: every study's bin-major pmf for the current candidate
+        integer(int32), dimension(CM_MAX_N_BINS, max_n_points_candidate, n_studies), intent(out) :: tmp_counts
+            !! Working array: every study's bin-major histogram counts for the current candidate
         integer(int32), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_included_n_reps
             !! Working array: every study's included-replicate counts for the current candidate
-        real(real64), dimension(256, max_n_points_candidate), intent(out) :: tmp_mean_pmf
-            !! Working array: the current candidate's consensus pmf. `256` = MAX_N_BINS, see
-            !! tmp_counts_point_major above
-        integer(int32), dimension(256, max_n_points_candidate), intent(out) :: tmp_mean_pmf_counts
-            !! Working array: the current candidate's consensus histogram counts. `256` =
-            !! MAX_N_BINS, see tmp_counts_point_major above
+        real(real64), dimension(CM_MAX_N_BINS, max_n_points_candidate), intent(out) :: tmp_mean_pmf
+            !! Working array: the current candidate's consensus pmf
+        integer(int32), dimension(CM_MAX_N_BINS, max_n_points_candidate), intent(out) :: tmp_mean_pmf_counts
+            !! Working array: the current candidate's consensus histogram counts
         integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_mean_pmf_included_n_reps
             !! Working array: the current candidate's consensus included-replicate counts
         real(real64), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_js_divergences
@@ -5286,11 +5264,9 @@ contains
         integer(int32), dimension(max_n_reps_all_studies*max_n_neighbors_candidate*n_studies), intent(out) :: &
             tmp_pooled_residuals_perm
             !! Working array: sorting permutation for tmp_pooled_residuals, reused per point
-        integer(int32), dimension(256), intent(out) :: tmp_bin_counts_search
+        integer(int32), dimension(CM_MAX_N_BINS), intent(out) :: tmp_bin_counts_search
             !! Working array forwarded to the bin-count search's own per-bin-count scratch, reused
-            !! per point. `256` = MAX_N_BINS, matching the bin-count searches' own tmp_bin_counts
-            !! dummy -- written as a literal because a generated wrapper's dummy dimension cannot
-            !! reference a module parameter
+            !! per point
         integer(int32), dimension(max_n_reps_all_studies*max_n_neighbors_candidate*n_studies), intent(out) :: &
             tmp_residual_to_study_perm
             !! Working array for the Stone modes of `bin_count_mode`: the indices of
@@ -5943,7 +5919,7 @@ contains
     !| have all its genes in one neighborhood. A third buffer of that size, the int32
     !| `tmp_residual_to_study_perm`, holds the per-study grouping the Stone modes of
     !| `bin_count_mode` need; the plain entry point allocates it in every mode, occupancy included.
-    !| The histogram buffers hold `256 * max_n_points_candidate
+    !| The histogram buffers hold `CM_MAX_N_BINS * max_n_points_candidate
     !| * n_studies` values each.
     !|
     !| Impure: calls the impure
@@ -6071,106 +6047,105 @@ contains
             !! Number of candidates that passed both admissibility gates and got a JSD and
             !! confidence interval before the search stopped: the number of leading, valid
             !! columns/elements of every `trace_*` array
-        integer(int32), dimension(16), intent(out) :: trace_k_start
-            !! Per-admissible-candidate `k_start`. `16` = MAX_CANDIDATE_PAIRS, the adaptive
-            !! sequence's cap
+        integer(int32), dimension(CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_k_start
+            !! Per-admissible-candidate `k_start`
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        integer(int32), dimension(16), intent(out) :: trace_k_step
+        integer(int32), dimension(CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_k_step
             !! Per-admissible-candidate `k_step`
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        integer(int32), dimension(16), intent(out) :: trace_k_max
+        integer(int32), dimension(CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_k_max
             !! Per-admissible-candidate `k_max`
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        integer(int32), dimension(16), intent(out) :: trace_n_points
+        integer(int32), dimension(CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_n_points
             !! Per-admissible-candidate number of reference points
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(n_studies, 16), intent(out) :: trace_global_js_divergence
+        real(real64), dimension(n_studies, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_global_js_divergence
             !! Per-admissible-candidate, per-study observed global JSD (`J_{i,t}` in Issue #178)
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_lower
+        real(real64), dimension(n_studies, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_lower
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_upper
+        real(real64), dimension(n_studies, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_upper
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_width
+        real(real64), dimension(n_studies, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_width
             !! Per-admissible-candidate, per-study confidence-interval width
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_width_relative
+        real(real64), dimension(n_studies, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_width_relative
             !! Per-admissible-candidate, per-study confidence-interval width divided by the observed
             !! global JSD, the denominator floored at `delta_epsilon`
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_overlap
+        real(real64), dimension(n_studies, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_ci_overlap
             !! Per-admissible-candidate, per-study fractional overlap of the candidate's bootstrapped
             !! confidence interval with the running best candidate's interval at that moment, in
             !! `[0, 1]`, relative to this candidate's own interval width; `-1.0_real64` throughout at
             !! the first one. See the fixed-k search's `trace_ci_overlap` for the running-best detail
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(n_studies, 16), intent(out) :: trace_delta
+        real(real64), dimension(n_studies, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
             !! candidate; `-1.0_real64` throughout at the first one
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(16), intent(out) :: trace_delta_median
+        real(real64), dimension(CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_delta_median
             !! Per-admissible-candidate median of trace_delta across studies; `-1.0_real64` at the
             !! first one
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(16), intent(out) :: trace_delta_max
+        real(real64), dimension(CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_delta_max
             !! Per-admissible-candidate maximum of trace_delta across studies; `-1.0_real64` at the
             !! first one
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_selected_n_bins
+        integer(int32), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_selected_n_bins
             !! Per-admissible-candidate, per-reference-point selected histogram bin count. Jagged:
             !! only rows `1:trace_n_points(t)` of column `t` are meaningful, so a Python/R caller
             !! must additionally slice `[:trace_n_points[t], t]` themselves
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        logical(c_bool), dimension(max_n_points_candidate, 16), intent(out) :: trace_occupancy_failed
+        logical(c_bool), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_occupancy_failed
             !! Per-admissible-candidate, per-reference-point `occupancy_failed` flag: `.true.` iff the
             !! bin-count search failed (occupancy or Stone, per `bin_count_mode`); jagged as
             !! trace_selected_n_bins
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_n_pooled_residuals
+        integer(int32), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_n_pooled_residuals
             !! Per-admissible-candidate, per-reference-point pooled non-NaN residual count (`N_j`);
             !! jagged as trace_selected_n_bins
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_min_bin_occupancy
+        integer(int32), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_min_bin_occupancy
             !! Per-admissible-candidate, per-reference-point minimum bin occupancy; jagged as
             !! trace_selected_n_bins
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(max_n_points_candidate, 16), intent(out) :: trace_mean_bin_occupancy
+        real(real64), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_mean_bin_occupancy
             !! Per-admissible-candidate, per-reference-point mean bin occupancy; jagged as
             !! trace_selected_n_bins
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_max_bin_occupancy
+        integer(int32), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_max_bin_occupancy
             !! Per-admissible-candidate, per-reference-point maximum bin occupancy; jagged as
             !! trace_selected_n_bins
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_sturges_bins
+        integer(int32), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_sturges_bins
             !! Per-admissible-candidate, per-reference-point Sturges' rule diagnostic, with the
             !! rounded mean per-study neighbor count; jagged as trace_selected_n_bins
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_fd_bins
+        integer(int32), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_fd_bins
             !! Per-admissible-candidate, per-reference-point Freedman-Diaconis rule diagnostic, with
             !! the rounded mean per-study neighbor count; jagged as trace_selected_n_bins
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(max_n_points_candidate, 16), intent(out) :: trace_shared_residual_range_low
+        real(real64), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_shared_residual_range_low
             !! Per-admissible-candidate, per-reference-point lower residual-range bound (R_low);
             !! jagged as trace_selected_n_bins
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
-        real(real64), dimension(max_n_points_candidate, 16), intent(out) :: trace_shared_residual_range_high
+        real(real64), dimension(max_n_points_candidate, CM_MAX_CANDIDATE_PAIRS), intent(out) :: trace_shared_residual_range_high
             !! Per-admissible-candidate, per-reference-point upper residual-range bound (R_high);
             !! jagged as trace_selected_n_bins
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         integer(int32), intent(out) :: n_candidates_tried
             !! Number of candidates the search tried before it stopped: the number of leading,
             !! valid entries of `candidate_k_start`, `candidate_n_points` and `candidate_status`
-        integer(int32), dimension(16), intent(out) :: candidate_k_start
+        integer(int32), dimension(CM_MAX_CANDIDATE_PAIRS), intent(out) :: candidate_k_start
             !! `k_start` of every candidate tried, in sequence order
             !! DM_RESULT_SIZE_IS(n_candidates_tried)
-        integer(int32), dimension(16), intent(out) :: candidate_n_points
+        integer(int32), dimension(CM_MAX_CANDIDATE_PAIRS), intent(out) :: candidate_n_points
             !! Number of reference points every tried candidate's construction produced (0 for too
             !! few means), whether or not the candidate was admissible
             !! DM_RESULT_SIZE_IS(n_candidates_tried)
-        integer(int32), dimension(16), intent(out) :: candidate_status
+        integer(int32), dimension(CM_MAX_CANDIDATE_PAIRS), intent(out) :: candidate_status
             !! What happened to every tried candidate: `CM_ADAPTIVE_CANDIDATE_EVALUATED` evaluated,
             !! `CM_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED` construction failed,
             !! `CM_ADAPTIVE_CANDIDATE_EMPTY_STUDY` a study neighborhood below `min_study_neighbors`
@@ -6204,17 +6179,16 @@ contains
             !! Working array: the current candidate's per-point R_low from Pass B
         real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_shared_residual_range_high
             !! Working array: the current candidate's per-point R_high from Pass B
-        real(real64), dimension(256, max_n_points_candidate, n_studies), intent(out) :: tmp_pmfs
-            !! Working array: every study's bin-major pmf for the current candidate. `256` = MAX_N_BINS
-        integer(int32), dimension(256, max_n_points_candidate, n_studies), intent(out) :: tmp_counts
-            !! Working array: every study's bin-major histogram counts for the current candidate.
-            !! `256` = MAX_N_BINS
+        real(real64), dimension(CM_MAX_N_BINS, max_n_points_candidate, n_studies), intent(out) :: tmp_pmfs
+            !! Working array: every study's bin-major pmf for the current candidate
+        integer(int32), dimension(CM_MAX_N_BINS, max_n_points_candidate, n_studies), intent(out) :: tmp_counts
+            !! Working array: every study's bin-major histogram counts for the current candidate
         integer(int32), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_included_n_reps
             !! Working array: every study's included-replicate counts for the current candidate
-        real(real64), dimension(256, max_n_points_candidate), intent(out) :: tmp_mean_pmf
-            !! Working array: the current candidate's consensus pmf. `256` = MAX_N_BINS
-        integer(int32), dimension(256, max_n_points_candidate), intent(out) :: tmp_mean_pmf_counts
-            !! Working array: the current candidate's consensus histogram counts. `256` = MAX_N_BINS
+        real(real64), dimension(CM_MAX_N_BINS, max_n_points_candidate), intent(out) :: tmp_mean_pmf
+            !! Working array: the current candidate's consensus pmf
+        integer(int32), dimension(CM_MAX_N_BINS, max_n_points_candidate), intent(out) :: tmp_mean_pmf_counts
+            !! Working array: the current candidate's consensus histogram counts
         integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_mean_pmf_included_n_reps
             !! Working array: the current candidate's consensus included-replicate counts
         real(real64), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_js_divergences
@@ -6245,8 +6219,8 @@ contains
         integer(int32), dimension(max_n_reps_all_studies*max_n_genes_all_studies*n_studies), intent(out) :: &
             tmp_pooled_residuals_perm
             !! Working array: sorting permutation for `tmp_pooled_residuals`, reused per point
-        integer(int32), dimension(256), intent(out) :: tmp_bin_counts_search
-            !! Working array forwarded to the bin-count search, reused per point. `256` = MAX_N_BINS
+        integer(int32), dimension(CM_MAX_N_BINS), intent(out) :: tmp_bin_counts_search
+            !! Working array forwarded to the bin-count search, reused per point
         integer(int32), dimension(max_n_reps_all_studies*max_n_genes_all_studies*n_studies), intent(out) :: &
             tmp_residual_to_study_perm
             !! Working array for the Stone modes of `bin_count_mode`: the indices of

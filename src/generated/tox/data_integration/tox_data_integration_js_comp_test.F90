@@ -573,8 +573,7 @@ contains
             !! sample size) -- a diagnostic only, never part of the search's own decision
         integer(int32), dimension(256), intent(out) :: tmp_bin_counts
             !! Working array: per-bin counts of whichever candidate bin count is currently being
-            !! tested, reused throughout the search (256 = MAX_N_BINS, written as a literal since a
-            !! generated wrapper's dummy dimension cannot reference a module parameter)
+            !! tested, reused throughout the search
         integer(int32), intent(in), optional :: m_min
             !! Smallest candidate bin count the search will ever test (M_min)
             !! The minimum valid value is `1_int32`.
@@ -1264,9 +1263,7 @@ contains
             !! Freedman-Diaconis rule estimate from estimate_bin_count_impl (with its padded-slot
             !! sample size) -- a diagnostic only, never part of the decision
         integer(int32), dimension(256), intent(out) :: tmp_bin_counts
-            !! Working array: one study's bin counts at the bin count under test (256 = MAX_N_BINS,
-            !! written as a literal since a generated wrapper's dummy dimension cannot reference a
-            !! module parameter)
+            !! Working array: one study's bin counts at the bin count under test
         integer(int32), dimension(n_residuals), intent(out) :: tmp_residual_to_study_perm
             !! Working array: the indices of `pooled_residuals` grouped by `residual_to_study` (study 1
             !! first), each study's indices ordered ascending by residual, NaN last
@@ -1397,7 +1394,7 @@ contains
             !! Candidate `[n_points, n_neighbors]` pairs, `n_points` descending
             !! The first `n_candidates` elements will hold the results.
         integer(int32), intent(out) :: n_candidates
-            !! Number of candidate pairs actually filled (at most MAX_CANDIDATE_PAIRS = 16)
+            !! Number of candidate pairs actually filled (at most 16)
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -3094,20 +3091,20 @@ contains
             !! This reference point's Freedman-Diaconis rule bin-count diagnostic from Pass B's bin-count
             !! search (per `bin_count_mode`) -- never part of the bin-count search's own decision
         real(real64), dimension(256, n_points, n_studies), intent(out) :: pmfs
-            !! `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`. `256`
-            !! = MAX_N_BINS, a fixed ceiling (see `max_n_bins_per_point` above) -- only rows `1:max_n_bins_per_point`
+            !! `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`. The
+            !! bins are a fixed ceiling (see `max_n_bins_per_point` above) -- only rows `1:max_n_bins_per_point`
             !! are meaningful; a Python/R caller must slice `[:max_n_bins_per_point, ...]` themselves
         integer(int32), dimension(256, n_points, n_studies), intent(out) :: counts
-            !! Absolute counts of a residual per bin for `pmfs`. `256` = MAX_N_BINS; only rows
+            !! Absolute counts of a residual per bin for `pmfs`. Only rows
             !! `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
         integer(int32), dimension(n_points, n_studies), intent(out) :: included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point, per study
         real(real64), dimension(256, n_points), intent(out) :: mean_pmf
-            !! The consensus pmf, from create_mean_pmf_impl. `256` = MAX_N_BINS; only rows
+            !! The consensus pmf, from create_mean_pmf_impl. Only rows
             !! `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
         integer(int32), dimension(256, n_points), intent(out) :: mean_pmf_counts
-            !! Absolute counts of a residual per bin for the consensus pmf. `256` = MAX_N_BINS;
-            !! only rows `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
+            !! Absolute counts of a residual per bin for the consensus pmf. Only rows
+            !! `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
         integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point for the consensus pmf
         real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
@@ -3590,20 +3587,20 @@ contains
             !! This reference point's Freedman-Diaconis rule bin-count diagnostic from Pass B's bin-count
             !! search (per `bin_count_mode`) -- never part of the bin-count search's own decision
         real(real64), dimension(256, n_points, n_studies), intent(out) :: pmfs
-            !! `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`. `256`
-            !! = MAX_N_BINS, a fixed ceiling (see `max_n_bins_per_point` above) -- only rows `1:max_n_bins_per_point`
+            !! `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`. The
+            !! bins are a fixed ceiling (see `max_n_bins_per_point` above) -- only rows `1:max_n_bins_per_point`
             !! are meaningful; a Python/R caller must slice `[:max_n_bins_per_point, ...]` themselves
         integer(int32), dimension(256, n_points, n_studies), intent(out) :: counts
-            !! Absolute counts of a residual per bin for `pmfs`. `256` = MAX_N_BINS; only rows
+            !! Absolute counts of a residual per bin for `pmfs`. Only rows
             !! `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
         integer(int32), dimension(n_points, n_studies), intent(out) :: included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point, per study
         real(real64), dimension(256, n_points), intent(out) :: mean_pmf
-            !! The consensus pmf, from create_mean_pmf_impl. `256` = MAX_N_BINS; only rows
+            !! The consensus pmf, from create_mean_pmf_impl. Only rows
             !! `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
         integer(int32), dimension(256, n_points), intent(out) :: mean_pmf_counts
-            !! Absolute counts of a residual per bin for the consensus pmf. `256` = MAX_N_BINS;
-            !! only rows `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
+            !! Absolute counts of a residual per bin for the consensus pmf. Only rows
+            !! `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
         integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point for the consensus pmf
         real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
@@ -3627,12 +3624,10 @@ contains
             !! point, reused for every study (Pass C)
         integer(int32), dimension(n_points, 256), intent(out) :: tmp_counts_point_major
             !! Working array forwarded to gjct_permutation_test_impl's own point-major counts
-            !! scratch. `256` = MAX_N_BINS, written as a literal because a generated wrapper's
-            !! dummy dimension cannot reference a module parameter
+            !! scratch
         real(real64), dimension(n_points, 256), intent(out) :: tmp_pmf_point_major
             !! Working array: forwarded to gjct_permutation_test_impl's own point-major pmf
-            !! scratch, then reused for calc_pmf_impl's re-derived per-study pmf. `256` =
-            !! MAX_N_BINS, see tmp_counts_point_major above
+            !! scratch, then reused for calc_pmf_impl's re-derived per-study pmf
         real(real64), dimension(max_n_reps_all_studies*n_neighbors*n_studies), intent(out) :: tmp_pooled_residuals
             !! Working array: one reference point's pooled residuals across every neighbor and
             !! every study (Pass B), reused per point -- one small buffer, not one per point, since
@@ -3641,9 +3636,7 @@ contains
             !! Working array: sorting permutation for tmp_pooled_residuals, reused per point
         integer(int32), dimension(256), intent(out) :: tmp_bin_counts_search
             !! Working array forwarded to the bin-count search's own per-bin-count scratch, reused
-            !! per point. `256` = MAX_N_BINS, matching the bin-count searches' own tmp_bin_counts
-            !! dummy -- written as a literal
-            !! because a generated wrapper's dummy dimension cannot reference a module parameter
+            !! per point
         integer(int32), dimension(max_n_reps_all_studies*n_neighbors*n_studies), intent(out) :: tmp_residual_to_study_perm
             !! Working array for the Stone modes of `bin_count_mode`: the indices of
             !! tmp_pooled_residuals grouped by study, each study's sorted, reused per point
@@ -3657,14 +3650,12 @@ contains
             !! Working array: every study's neighbor count for the reference point in Pass B --
             !! `n_neighbors` for every study, since this routine uses one neighbor count throughout
         integer(int32), dimension(256, n_points), intent(out) :: tmp_permutation_mean_pmf_counts
-            !! Working array forwarded to gjct_permutation_test_impl's own resampling pool. `256` =
-            !! MAX_N_BINS, see tmp_counts_point_major above
+            !! Working array forwarded to gjct_permutation_test_impl's own resampling pool
         integer(int32), dimension(256, n_points), intent(out) :: tmp_permutation_counts
             !! Working array forwarded to gjct_permutation_test_impl's own per-study resampled
-            !! counts. `256` = MAX_N_BINS, see tmp_counts_point_major above
+            !! counts
         real(real64), dimension(256, n_points, n_studies), intent(out) :: tmp_permutation_pmfs
-            !! Working array forwarded to gjct_permutation_test_impl's own resampled pmfs. `256` =
-            !! MAX_N_BINS, see tmp_counts_point_major above
+            !! Working array forwarded to gjct_permutation_test_impl's own resampled pmfs
         real(real64), dimension(n_points, n_studies), intent(out) :: tmp_permutation_js_divergences
             !! Working array forwarded to gjct_permutation_test_impl's own per-point JSD values
         real(real64), dimension(n_points, n_studies), intent(out) :: tmp_permutation_weights
@@ -4002,18 +3993,18 @@ contains
             !! Each reference point's Freedman-Diaconis rule diagnostic, with the rounded mean
             !! per-study neighbor count; never part of the bin-count search's decision
         real(real64), dimension(256, n_points, n_studies), intent(out) :: pmfs
-            !! `counts` normalized per reference point and study. `256` = MAX_N_BINS; only rows
+            !! `counts` normalized per reference point and study. Only rows
             !! `1:max_n_bins_per_point` are meaningful
         integer(int32), dimension(256, n_points, n_studies), intent(out) :: counts
-            !! Absolute counts of a residual per bin for `pmfs`. `256` = MAX_N_BINS; only rows
+            !! Absolute counts of a residual per bin for `pmfs`. Only rows
             !! `1:max_n_bins_per_point` are meaningful
         integer(int32), dimension(n_points, n_studies), intent(out) :: included_n_reps
             !! Count of non-NaN residuals binned per reference point, per study
         real(real64), dimension(256, n_points), intent(out) :: mean_pmf
-            !! The consensus pmf. `256` = MAX_N_BINS; only rows `1:max_n_bins_per_point` are meaningful
+            !! The consensus pmf. Only rows `1:max_n_bins_per_point` are meaningful
         integer(int32), dimension(256, n_points), intent(out) :: mean_pmf_counts
-            !! Absolute counts of a residual per bin for the consensus pmf. `256` = MAX_N_BINS; only
-            !! rows `1:max_n_bins_per_point` are meaningful
+            !! Absolute counts of a residual per bin for the consensus pmf. Only rows
+            !! `1:max_n_bins_per_point` are meaningful
         integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
             !! Count of non-NaN residuals per reference point for the consensus pmf
         real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
@@ -4405,18 +4396,18 @@ contains
             !! Each reference point's Freedman-Diaconis rule diagnostic, with the rounded mean
             !! per-study neighbor count; never part of the bin-count search's decision
         real(real64), dimension(256, n_points, n_studies), intent(out) :: pmfs
-            !! `counts` normalized per reference point and study. `256` = MAX_N_BINS; only rows
+            !! `counts` normalized per reference point and study. Only rows
             !! `1:max_n_bins_per_point` are meaningful
         integer(int32), dimension(256, n_points, n_studies), intent(out) :: counts
-            !! Absolute counts of a residual per bin for `pmfs`. `256` = MAX_N_BINS; only rows
+            !! Absolute counts of a residual per bin for `pmfs`. Only rows
             !! `1:max_n_bins_per_point` are meaningful
         integer(int32), dimension(n_points, n_studies), intent(out) :: included_n_reps
             !! Count of non-NaN residuals binned per reference point, per study
         real(real64), dimension(256, n_points), intent(out) :: mean_pmf
-            !! The consensus pmf. `256` = MAX_N_BINS; only rows `1:max_n_bins_per_point` are meaningful
+            !! The consensus pmf. Only rows `1:max_n_bins_per_point` are meaningful
         integer(int32), dimension(256, n_points), intent(out) :: mean_pmf_counts
-            !! Absolute counts of a residual per bin for the consensus pmf. `256` = MAX_N_BINS; only
-            !! rows `1:max_n_bins_per_point` are meaningful
+            !! Absolute counts of a residual per bin for the consensus pmf. Only rows
+            !! `1:max_n_bins_per_point` are meaningful
         integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
             !! Count of non-NaN residuals per reference point for the consensus pmf
         real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
@@ -4443,17 +4434,16 @@ contains
         real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies), intent(out) :: tmp_neighbor_residuals
             !! Working array: one (reference point, study) pair's gathered residuals, reused (Pass C)
         integer(int32), dimension(n_points, 256), intent(out) :: tmp_counts_point_major
-            !! Working array forwarded to the permutation test. `256` = MAX_N_BINS
+            !! Working array forwarded to the permutation test
         real(real64), dimension(n_points, 256), intent(out) :: tmp_pmf_point_major
-            !! Working array forwarded to the permutation test and reused for the re-derived pmfs.
-            !! `256` = MAX_N_BINS
+            !! Working array forwarded to the permutation test and reused for the re-derived pmfs
         real(real64), dimension(max_n_reps_all_studies*max_n_genes_all_studies*n_studies), intent(out) :: tmp_pooled_residuals
             !! Working array: one reference point's pooled residuals across all its genes of all
             !! studies (Pass B), reused per point; as large as `residuals`
         integer(int32), dimension(max_n_reps_all_studies*max_n_genes_all_studies*n_studies), intent(out) :: tmp_pooled_residuals_perm
             !! Working array: sorting permutation for `tmp_pooled_residuals`, reused per point
         integer(int32), dimension(256), intent(out) :: tmp_bin_counts_search
-            !! Working array forwarded to the bin-count search, reused per point. `256` = MAX_N_BINS
+            !! Working array forwarded to the bin-count search, reused per point
         integer(int32), dimension(max_n_reps_all_studies*max_n_genes_all_studies*n_studies), intent(out) :: tmp_residual_to_study_perm
             !! Working array for the Stone modes of `bin_count_mode`: the indices of
             !! `tmp_pooled_residuals` grouped by study, each study's sorted, reused per point
@@ -4464,11 +4454,11 @@ contains
             !! Working array for the Stone modes of `bin_count_mode`: each study's block size in
             !! `tmp_pooled_residuals`, reused per point
         integer(int32), dimension(256, n_points), intent(out) :: tmp_permutation_mean_pmf_counts
-            !! Working array forwarded to the permutation test. `256` = MAX_N_BINS
+            !! Working array forwarded to the permutation test
         integer(int32), dimension(256, n_points), intent(out) :: tmp_permutation_counts
-            !! Working array forwarded to the permutation test. `256` = MAX_N_BINS
+            !! Working array forwarded to the permutation test
         real(real64), dimension(256, n_points, n_studies), intent(out) :: tmp_permutation_pmfs
-            !! Working array forwarded to the permutation test. `256` = MAX_N_BINS
+            !! Working array forwarded to the permutation test
         real(real64), dimension(n_points, n_studies), intent(out) :: tmp_permutation_js_divergences
             !! Working array forwarded to the permutation test
         real(real64), dimension(n_points, n_studies), intent(out) :: tmp_permutation_weights
@@ -4880,8 +4870,7 @@ contains
             !! all, rather than a zero-filled one
         integer(int32), dimension(16), intent(out) :: trace_n_points
             !! Per-admissible-candidate `n_points`, one entry per column of the other `trace_*`
-            !! arrays. `16` = MAX_CANDIDATE_PAIRS, written as a literal for the same reason
-            !! candidates_n_points_n_neighbors is in generate_js_comp_test_candidates_impl
+            !! arrays
             !! The first `n_admissible_evaluated` elements will hold the results.
         integer(int32), dimension(16), intent(out) :: trace_n_neighbors
             !! Per-admissible-candidate `n_neighbors`, paired with trace_n_points above
@@ -4939,7 +4928,7 @@ contains
             !! (Issue #187's `M_j`), from Pass B's bin-count search (per `bin_count_mode`). Unlike every OTHER
             !! trace_* array above, whose first extent is a fixed thing like `n_studies`, this
             !! array's first extent is `max_n_points_candidate`, NOT `n_points`, because `n_points`
-            !! itself varies per candidate (that is why `trace_n_points(16)` exists as its own
+            !! itself varies per candidate (that is why `trace_n_points` exists as its own
             !! array): this array is genuinely JAGGED per candidate column `t` -- only rows
             !! `1:trace_n_points(t)` are meaningful for that column, rows beyond that are undefined
             !! padding. The result-size directive below only trims the LAST extent (candidates, via
@@ -5663,8 +5652,7 @@ contains
             !! all, rather than a zero-filled one
         integer(int32), dimension(16), intent(out) :: trace_n_points
             !! Per-admissible-candidate `n_points`, one entry per column of the other `trace_*`
-            !! arrays. `16` = MAX_CANDIDATE_PAIRS, written as a literal for the same reason
-            !! candidates_n_points_n_neighbors is in generate_js_comp_test_candidates_impl
+            !! arrays
             !! The first `n_admissible_evaluated` elements will hold the results.
         integer(int32), dimension(16), intent(out) :: trace_n_neighbors
             !! Per-admissible-candidate `n_neighbors`, paired with trace_n_points above
@@ -5722,7 +5710,7 @@ contains
             !! (Issue #187's `M_j`), from Pass B's bin-count search (per `bin_count_mode`). Unlike every OTHER
             !! trace_* array above, whose first extent is a fixed thing like `n_studies`, this
             !! array's first extent is `max_n_points_candidate`, NOT `n_points`, because `n_points`
-            !! itself varies per candidate (that is why `trace_n_points(16)` exists as its own
+            !! itself varies per candidate (that is why `trace_n_points` exists as its own
             !! array): this array is genuinely JAGGED per candidate column `t` -- only rows
             !! `1:trace_n_points(t)` are meaningful for that column, rows beyond that are undefined
             !! padding. The result-size directive below only trims the LAST extent (candidates, via
@@ -5809,14 +5797,10 @@ contains
             !! candidate, reused per study
         integer(int32), dimension(max_n_points_candidate, 256), intent(out) :: tmp_counts_point_major
             !! Working array: one study's point-major histogram counts for the current candidate,
-            !! reused per study. The `256` is
-            !! [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]], written as a
-            !! literal because a dimension naming a module parameter the generated wrapper never
-            !! `use`s would not compile there -- the same reason MAX_CANDIDATE_PAIRS is written as
-            !! `16` on generate_js_comp_test_candidates_impl's own dummy arguments
+            !! reused per study
         real(real64), dimension(max_n_points_candidate, 256), intent(out) :: tmp_pmf_point_major
             !! Working array: one study's point-major pmf for the current candidate, reused per
-            !! study. `256` = MAX_N_BINS, see tmp_counts_point_major above
+            !! study
         integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_n_bins_per_point
             !! Working array: this candidate's per-point histogram bin count, decided by Pass B's
             !! bin-count search (per `bin_count_mode`) for each reference point independently
@@ -5827,19 +5811,15 @@ contains
             !! Working array: this candidate's per-point upper residual-range bound (R_high),
             !! mirroring tmp_shared_residual_range_low above
         real(real64), dimension(256, max_n_points_candidate, n_studies), intent(out) :: tmp_pmfs
-            !! Working array: every study's bin-major pmf for the current candidate. `256` =
-            !! MAX_N_BINS, see tmp_counts_point_major above
+            !! Working array: every study's bin-major pmf for the current candidate
         integer(int32), dimension(256, max_n_points_candidate, n_studies), intent(out) :: tmp_counts
-            !! Working array: every study's bin-major histogram counts for the current candidate.
-            !! `256` = MAX_N_BINS, see tmp_counts_point_major above
+            !! Working array: every study's bin-major histogram counts for the current candidate
         integer(int32), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_included_n_reps
             !! Working array: every study's included-replicate counts for the current candidate
         real(real64), dimension(256, max_n_points_candidate), intent(out) :: tmp_mean_pmf
-            !! Working array: the current candidate's consensus pmf. `256` = MAX_N_BINS, see
-            !! tmp_counts_point_major above
+            !! Working array: the current candidate's consensus pmf
         integer(int32), dimension(256, max_n_points_candidate), intent(out) :: tmp_mean_pmf_counts
-            !! Working array: the current candidate's consensus histogram counts. `256` =
-            !! MAX_N_BINS, see tmp_counts_point_major above
+            !! Working array: the current candidate's consensus histogram counts
         integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_mean_pmf_included_n_reps
             !! Working array: the current candidate's consensus included-replicate counts
         real(real64), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_js_divergences
@@ -5875,9 +5855,7 @@ contains
             !! Working array: sorting permutation for tmp_pooled_residuals, reused per point
         integer(int32), dimension(256), intent(out) :: tmp_bin_counts_search
             !! Working array forwarded to the bin-count search's own per-bin-count scratch, reused
-            !! per point. `256` = MAX_N_BINS, matching the bin-count searches' own tmp_bin_counts
-            !! dummy -- written as a literal because a generated wrapper's dummy dimension cannot
-            !! reference a module parameter
+            !! per point
         integer(int32), dimension(max_n_reps_all_studies*max_n_neighbors_candidate*n_studies), intent(out) :: tmp_residual_to_study_perm
             !! Working array for the Stone modes of `bin_count_mode`: the indices of
             !! tmp_pooled_residuals grouped by study, each study's sorted, reused per point
@@ -6426,8 +6404,7 @@ contains
             !! confidence interval before the search stopped: the number of leading, valid
             !! columns/elements of every `trace_*` array
         integer(int32), dimension(16), intent(out) :: trace_k_start
-            !! Per-admissible-candidate `k_start`. `16` = MAX_CANDIDATE_PAIRS, the adaptive
-            !! sequence's cap
+            !! Per-admissible-candidate `k_start`
             !! The first `n_admissible_evaluated` elements will hold the results.
         integer(int32), dimension(16), intent(out) :: trace_k_step
             !! Per-admissible-candidate `k_step`
@@ -7200,8 +7177,7 @@ contains
             !! confidence interval before the search stopped: the number of leading, valid
             !! columns/elements of every `trace_*` array
         integer(int32), dimension(16), intent(out) :: trace_k_start
-            !! Per-admissible-candidate `k_start`. `16` = MAX_CANDIDATE_PAIRS, the adaptive
-            !! sequence's cap
+            !! Per-admissible-candidate `k_start`
             !! The first `n_admissible_evaluated` elements will hold the results.
         integer(int32), dimension(16), intent(out) :: trace_k_step
             !! Per-admissible-candidate `k_step`
@@ -7333,16 +7309,15 @@ contains
         real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_shared_residual_range_high
             !! Working array: the current candidate's per-point R_high from Pass B
         real(real64), dimension(256, max_n_points_candidate, n_studies), intent(out) :: tmp_pmfs
-            !! Working array: every study's bin-major pmf for the current candidate. `256` = MAX_N_BINS
+            !! Working array: every study's bin-major pmf for the current candidate
         integer(int32), dimension(256, max_n_points_candidate, n_studies), intent(out) :: tmp_counts
-            !! Working array: every study's bin-major histogram counts for the current candidate.
-            !! `256` = MAX_N_BINS
+            !! Working array: every study's bin-major histogram counts for the current candidate
         integer(int32), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_included_n_reps
             !! Working array: every study's included-replicate counts for the current candidate
         real(real64), dimension(256, max_n_points_candidate), intent(out) :: tmp_mean_pmf
-            !! Working array: the current candidate's consensus pmf. `256` = MAX_N_BINS
+            !! Working array: the current candidate's consensus pmf
         integer(int32), dimension(256, max_n_points_candidate), intent(out) :: tmp_mean_pmf_counts
-            !! Working array: the current candidate's consensus histogram counts. `256` = MAX_N_BINS
+            !! Working array: the current candidate's consensus histogram counts
         integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_mean_pmf_included_n_reps
             !! Working array: the current candidate's consensus included-replicate counts
         real(real64), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_js_divergences
@@ -7372,7 +7347,7 @@ contains
         integer(int32), dimension(max_n_reps_all_studies*max_n_genes_all_studies*n_studies), intent(out) :: tmp_pooled_residuals_perm
             !! Working array: sorting permutation for `tmp_pooled_residuals`, reused per point
         integer(int32), dimension(256), intent(out) :: tmp_bin_counts_search
-            !! Working array forwarded to the bin-count search, reused per point. `256` = MAX_N_BINS
+            !! Working array forwarded to the bin-count search, reused per point
         integer(int32), dimension(max_n_reps_all_studies*max_n_genes_all_studies*n_studies), intent(out) :: tmp_residual_to_study_perm
             !! Working array for the Stone modes of `bin_count_mode`: the indices of
             !! `tmp_pooled_residuals` grouped by study, each study's sorted, reused per point

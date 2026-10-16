@@ -3767,24 +3767,24 @@ def run_js_comp_test(
             search (per `bin_count_mode`) -- never part of the bin-count search's own decision
             A result is a value; call `.copy()` to obtain a modifiable array.
         pmfs : np.ndarray[np.float64] of shape (256, n_points, n_studies,), column-major (order='F'), read-only
-            `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`. `256`
-            = MAX_N_BINS, a fixed ceiling (see `max_n_bins_per_point` above) -- only rows `1:max_n_bins_per_point`
+            `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`. The
+            bins are a fixed ceiling (see `max_n_bins_per_point` above) -- only rows `1:max_n_bins_per_point`
             are meaningful; a Python/R caller must slice `[:max_n_bins_per_point, ...]` themselves
             A result is a value; call `.copy()` to obtain a modifiable array.
         counts : np.ndarray[np.int32] of shape (256, n_points, n_studies,), column-major (order='F'), read-only
-            Absolute counts of a residual per bin for `pmfs`. `256` = MAX_N_BINS; only rows
+            Absolute counts of a residual per bin for `pmfs`. Only rows
             `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
             A result is a value; call `.copy()` to obtain a modifiable array.
         included_n_reps : np.ndarray[np.int32] of shape (n_points, n_studies,), column-major (order='F'), read-only
             Count of non-NaN replicates (included ones) per reference point, per study
             A result is a value; call `.copy()` to obtain a modifiable array.
         mean_pmf : np.ndarray[np.float64] of shape (256, n_points,), column-major (order='F'), read-only
-            The consensus pmf, from create_mean_pmf_impl. `256` = MAX_N_BINS; only rows
+            The consensus pmf, from create_mean_pmf_impl. Only rows
             `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
             A result is a value; call `.copy()` to obtain a modifiable array.
         mean_pmf_counts : np.ndarray[np.int32] of shape (256, n_points,), column-major (order='F'), read-only
-            Absolute counts of a residual per bin for the consensus pmf. `256` = MAX_N_BINS;
-            only rows `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
+            Absolute counts of a residual per bin for the consensus pmf. Only rows
+            `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
             A result is a value; call `.copy()` to obtain a modifiable array.
         mean_pmf_included_n_reps : np.ndarray[np.int32] of shape (n_points,), read-only
             Count of non-NaN replicates (included ones) per reference point for the consensus pmf
@@ -4207,22 +4207,22 @@ def run_js_comp_test_adaptive(
             per-study neighbor count; never part of the bin-count search's decision
             A result is a value; call `.copy()` to obtain a modifiable array.
         pmfs : np.ndarray[np.float64] of shape (256, n_points, n_studies,), column-major (order='F'), read-only
-            `counts` normalized per reference point and study. `256` = MAX_N_BINS; only rows
+            `counts` normalized per reference point and study. Only rows
             `1:max_n_bins_per_point` are meaningful
             A result is a value; call `.copy()` to obtain a modifiable array.
         counts : np.ndarray[np.int32] of shape (256, n_points, n_studies,), column-major (order='F'), read-only
-            Absolute counts of a residual per bin for `pmfs`. `256` = MAX_N_BINS; only rows
+            Absolute counts of a residual per bin for `pmfs`. Only rows
             `1:max_n_bins_per_point` are meaningful
             A result is a value; call `.copy()` to obtain a modifiable array.
         included_n_reps : np.ndarray[np.int32] of shape (n_points, n_studies,), column-major (order='F'), read-only
             Count of non-NaN residuals binned per reference point, per study
             A result is a value; call `.copy()` to obtain a modifiable array.
         mean_pmf : np.ndarray[np.float64] of shape (256, n_points,), column-major (order='F'), read-only
-            The consensus pmf. `256` = MAX_N_BINS; only rows `1:max_n_bins_per_point` are meaningful
+            The consensus pmf. Only rows `1:max_n_bins_per_point` are meaningful
             A result is a value; call `.copy()` to obtain a modifiable array.
         mean_pmf_counts : np.ndarray[np.int32] of shape (256, n_points,), column-major (order='F'), read-only
-            Absolute counts of a residual per bin for the consensus pmf. `256` = MAX_N_BINS; only
-            rows `1:max_n_bins_per_point` are meaningful
+            Absolute counts of a residual per bin for the consensus pmf. Only rows
+            `1:max_n_bins_per_point` are meaningful
             A result is a value; call `.copy()` to obtain a modifiable array.
         mean_pmf_included_n_reps : np.ndarray[np.int32] of shape (n_points,), read-only
             Count of non-NaN residuals per reference point for the consensus pmf
@@ -4741,8 +4741,7 @@ def run_js_comp_test_parameter_search(
             an actual plateau, not the confidence interval's sentinel value
         trace_n_points : np.ndarray[np.int32] of shape (16,), read-only
             Per-admissible-candidate `n_points`, one entry per column of the other `trace_*`
-            arrays. `16` = MAX_CANDIDATE_PAIRS, written as a literal for the same reason
-            candidates_n_points_n_neighbors is in generate_js_comp_test_candidates_impl
+            arrays
             The first `n_admissible_evaluated` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
         trace_n_neighbors : np.ndarray[np.int32] of shape (16,), read-only
@@ -4811,7 +4810,7 @@ def run_js_comp_test_parameter_search(
             (Issue #187's `M_j`), from Pass B's bin-count search (per `bin_count_mode`). Unlike every OTHER
             trace_* array above, whose first extent is a fixed thing like `n_studies`, this
             array's first extent is `max_n_points_candidate`, NOT `n_points`, because `n_points`
-            itself varies per candidate (that is why `trace_n_points(16)` exists as its own
+            itself varies per candidate (that is why `trace_n_points` exists as its own
             array): this array is genuinely JAGGED per candidate column `t` -- only rows
             `1:trace_n_points(t)` are meaningful for that column, rows beyond that are undefined
             padding. The result-size directive below only trims the LAST extent (candidates, via
@@ -5392,8 +5391,7 @@ def run_js_comp_test_adaptive_parameter_search(
             admissible candidate is returned if there is one, and also when no candidate was
             admissible at all, a single rejected candidate included
         trace_k_start : np.ndarray[np.int32] of shape (16,), read-only
-            Per-admissible-candidate `k_start`. `16` = MAX_CANDIDATE_PAIRS, the adaptive
-            sequence's cap
+            Per-admissible-candidate `k_start`
             The first `n_admissible_evaluated` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
         trace_k_step : np.ndarray[np.int32] of shape (16,), read-only
