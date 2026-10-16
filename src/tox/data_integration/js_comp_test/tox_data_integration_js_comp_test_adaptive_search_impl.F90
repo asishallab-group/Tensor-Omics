@@ -27,7 +27,7 @@ module tox_data_integration_js_comp_test_adaptive_search_impl
     use tox_data_integration_js_comp_test_histograms_impl, only: build_adaptive_histograms
     use tox_data_integration_js_comp_test_search_impl, only: check_neighborhood_overlaps_impl, score_candidate_histograms, &
                                                              evaluate_admissible_candidate, select_final_candidate, &
-                                                             MAX_CANDIDATE_PAIRS
+                                                             MAX_CANDIDATE_PAIRS, NOT_COMPUTED
     M_IMPLICIT_NONE
     private
     public :: calc_adaptive_js_comp_test_bounds, generate_adaptive_js_comp_test_candidates_impl, &
@@ -95,8 +95,8 @@ contains
     !| Rejects, with invalid input naming neither argument when the bound is joint, a
     !| `max_n_genes_all_studies` or `n_studies` below 1, a product `N` beyond the 32-bit range, or a
     !| first candidate `k_start_1 = max(10, 2*n_studies, ceiling(0.02 * N))` above
-    !| `huge(1_int32)/4 = 536870911` (so that its `k_max = 4*k_start_1` fits); the output is then
-    !| left undefined.
+    !| `floor(huge(1_int32)/ADAPTIVE_K_MAX_FACTOR)` ([[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_K_MAX_FACTOR(variable)]]), so that its
+    !| `k_max = ceiling(ADAPTIVE_K_MAX_FACTOR*k_start_1)` fits; the output is then left undefined.
     pure subroutine calc_adaptive_js_comp_test_bounds(max_n_genes_all_studies, n_studies, max_n_points_candidate, ierr)
         integer(int32), intent(in) :: max_n_genes_all_studies
             !! Maximum number of genes across all studies
@@ -119,7 +119,8 @@ contains
         if (is_err(ierr)) return
         n_pool = int(max_n_genes_all_studies, int64)*int(n_studies, int64)
         ! Joint bounds on (G, S), so no arg_pos: the pool size must fit a 32-bit integer (array
-        ! extents derive from it), and so must the first candidate's k_max = 4*k_start_1.
+        ! extents derive from it), and so must the first candidate's
+        ! k_max = ceiling(ADAPTIVE_K_MAX_FACTOR*k_start_1).
         if (n_pool > int(huge(1_int32), int64)) call set_err_once(ierr, ERR_INVALID_INPUT)
         if (adaptive_k_start_1(max_n_genes_all_studies, n_studies) > &
             floor(real(huge(1_int32), real64)/ADAPTIVE_K_MAX_FACTOR, kind=int64)) &
@@ -161,7 +162,8 @@ contains
     !| returned, even for data smaller than `k_start_1`, whose construction then fails with a
     !| too-few-means status in the search.
     !|
-    !| Not checked here: the values fit 32-bit integers only while `k_start_1 <= huge(1_int32)/4`;
+    !| Not checked here: the values fit 32-bit integers only while
+    !| `k_start_1 <= floor(huge(1_int32)/ADAPTIVE_K_MAX_FACTOR)` ([[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_K_MAX_FACTOR(variable)]]);
     !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):calc_adaptive_js_comp_test_bounds(interface)]]
     !| rejects inputs beyond that.
     pure subroutine generate_adaptive_js_comp_test_candidates_impl(max_n_genes_all_studies, n_studies, &
@@ -782,7 +784,7 @@ contains
         ! candidate grows on it, and a pooled position names the same entry as there.
         call sort_pooled_gene_means(gene_means, max_n_genes_all_studies, n_studies, tmp_gene_means_perm_all)
 
-        best_candidate_confidence_interval = -1.0_real64
+        best_candidate_confidence_interval = NOT_COMPUTED
         best_candidate_index = 1_int32
         best_exceeded_ci_overlap_count = 0_int32
         best_uncertainty_value = huge(1.0_real64)

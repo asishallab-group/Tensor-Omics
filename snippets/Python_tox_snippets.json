@@ -320,7 +320,7 @@
   },
   "generate_js_comp_test_candidates (call)": {
     "prefix": "tox:generate_js_comp_test_candidates",
-    "description": "Starting from `n_points_high = clamp(ceiling(4*sqrt(G)), MIN_POINTS, MAX_POINTS)` (`G` =",
+    "description": "Starting from `n_points_high = clamp(ceiling(N_POINTS_HIGH_FACTOR*sqrt(G)), MIN_POINTS, MAX_POINTS)`",
     "body": [
       "${1:result} = generate_js_comp_test_candidates(",
       "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",

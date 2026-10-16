@@ -22,7 +22,7 @@ module tox_data_integration_js_comp_test_run_impl
                                                        materialize_pooled_neighborhood, sort_gene_means_per_study, &
                                                        sort_pooled_gene_means
     use tox_data_integration_stats_impl, only: gjct_permutation_test_impl
-    use tox_data_integration_js_comp_test_binning_impl, only: MAX_N_BINS, determine_point_bin_count, &
+    use tox_data_integration_js_comp_test_binning_impl, only: MAX_N_BINS, determine_fixed_k_point_bin_counts, &
                                                               determine_adaptive_point_bin_counts
     use tox_data_integration_js_comp_test_histograms_impl, only: build_fixed_k_histograms, build_adaptive_histograms
     M_IMPLICIT_NONE
@@ -414,7 +414,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT or ERR_ALLOC_FAIL (see above)
 
-        integer(int32) :: i_study, i_point, actual_n_permutations, finish_ierr
+        integer(int32) :: i_study, actual_n_permutations, finish_ierr
 
         call set_ok(ierr)
         M_DEFAULT_VAL(n_permutations, actual_n_permutations, CM_N_PERMUTATIONS_DEFAULT)
@@ -435,29 +435,24 @@ contains
         ! ===== PASS B (per point): pool all studies' residuals and run the bin-count search.
         ! Sequential, so one tmp_pooled_residuals buffer serves every point (do concurrent would
         ! need one per point).
-        tmp_point_n_neighbors = n_neighbors
-        do i_point = 1, n_points
-            call determine_point_bin_count(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, &
-                                           n_neighbors, n_points, neighborhood_indices, i_point, tmp_point_n_neighbors, &
-                                           n_bins_per_point(i_point), occupancy_failed(i_point), &
-                                           shared_residual_range_low(i_point), shared_residual_range_high(i_point), &
-                                           n_pooled_residuals(i_point), min_bin_occupancy(i_point), &
-                                           mean_bin_occupancy(i_point), max_bin_occupancy(i_point), &
-                                           sturges_bins(i_point), fd_bins(i_point), tmp_pooled_residuals, &
-                                           tmp_pooled_residuals_perm, tmp_bin_counts_search, tmp_residual_to_study_perm, &
-                                           tmp_study_block_ends, tmp_study_block_sizes, &
-                                           m_min=m_min, m_max=m_max, min_residuals_per_bin=min_residuals_per_bin, &
-                                           gamma_occupancy=gamma_occupancy, &
-                                           lower_residual_range_quantile=lower_residual_range_quantile, &
-                                           upper_residual_range_quantile=upper_residual_range_quantile, &
-                                           bin_count_mode=bin_count_mode)
-        end do
+        call determine_fixed_k_point_bin_counts(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, &
+                                                n_neighbors, n_points, neighborhood_indices, n_bins_per_point, &
+                                                occupancy_failed, shared_residual_range_low, shared_residual_range_high, &
+                                                n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                                max_bin_occupancy, sturges_bins, fd_bins, tmp_point_n_neighbors, &
+                                                tmp_pooled_residuals, tmp_pooled_residuals_perm, tmp_bin_counts_search, &
+                                                tmp_residual_to_study_perm, tmp_study_block_ends, tmp_study_block_sizes, &
+                                                m_min=m_min, m_max=m_max, min_residuals_per_bin=min_residuals_per_bin, &
+                                                gamma_occupancy=gamma_occupancy, &
+                                                lower_residual_range_quantile=lower_residual_range_quantile, &
+                                                upper_residual_range_quantile=upper_residual_range_quantile, &
+                                                bin_count_mode=bin_count_mode)
 
         ! ===== PASS C (per study): build every (point, study) histogram at the chosen bin counts.
         ! The bins beyond max_n_bins_per_point are zeroed, as finish_js_comp_test requires.
         max_n_bins_per_point = maxval(n_bins_per_point(1:n_points))
         call build_fixed_k_histograms(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_neighbors, &
-                                      n_points, max_n_bins_per_point, M_MAX_N_BINS, neighborhood_indices, &
+                                      n_points, max_n_bins_per_point, MAX_N_BINS, neighborhood_indices, &
                                       shared_residual_range_low, shared_residual_range_high, n_bins_per_point, counts, &
                                       pmfs, included_n_reps, tmp_neighborhood_residuals_gathered)
         counts(:, max_n_bins_per_point + 1:, :) = 0_int32
@@ -746,7 +741,7 @@ contains
         counts(:, max_n_bins_per_point + 1:, :) = 0_int32
         pmfs(:, max_n_bins_per_point + 1:, :) = 0.0_real64
         call build_adaptive_histograms(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_points, &
-                                       max_n_bins_per_point, M_MAX_N_BINS, tmp_gene_means_perm_all, &
+                                       max_n_bins_per_point, MAX_N_BINS, tmp_gene_means_perm_all, &
                                        pooled_neighborhood_range, n_neighbors_per_point, shared_residual_range_low, &
                                        shared_residual_range_high, n_bins_per_point, counts, pmfs, included_n_reps, &
                                        tmp_point_neighborhood_indices, tmp_neighbor_residuals)

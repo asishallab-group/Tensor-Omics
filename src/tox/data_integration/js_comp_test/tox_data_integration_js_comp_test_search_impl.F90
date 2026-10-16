@@ -36,7 +36,7 @@ module tox_data_integration_js_comp_test_search_impl
     public :: check_neighborhood_overlaps_impl, check_mean_pmf_min_counts_impl, check_plateau_condition_impl, check_effect_size_plateau_condition_impl, &
              score_candidate_histograms, evaluate_admissible_candidate, select_final_candidate, &
              METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, &
-             MODE_PLATEAU_BOTH, MAX_CANDIDATE_PAIRS
+             MODE_PLATEAU_BOTH, MAX_CANDIDATE_PAIRS, NOT_COMPUTED
 
     ! `join_method`'s mode table; the `METHOD_` prefix follows from the argument name `join_method`.
     ! Plain parameters: no DM_DEFAULT and no other module needs the numbers themselves.
@@ -68,6 +68,13 @@ module tox_data_integration_js_comp_test_search_impl
         !! Plateau mode: relative-effect-size stability only
     integer(int32), parameter :: MODE_PLATEAU_BOTH = M_MODE_PLATEAU_BOTH
         !! Plateau mode: either CI overlap or relative-effect-size stability
+
+    real(real64), parameter :: NOT_COMPUTED = -1.0_real64
+        !! The value of a search output that was not computed (`-1.0`, outside the range of
+        !! every JSD, change and overlap it stands in for): the relative JSD changes and the CI
+        !! overlap of the first admissible candidate, which has no predecessor, and the confidence
+        !! interval when no admissible candidate backs the result. Both searches also seed the
+        !! best confidence interval with it before the first admissible candidate
 
 contains
 
@@ -356,9 +363,9 @@ contains
         integer(int32) :: i_study
 
         if (.not. has_previous) then
-            delta = -1.0_real64
-            delta_median = -1.0_real64
-            delta_max = -1.0_real64
+            delta = NOT_COMPUTED
+            delta_median = NOT_COMPUTED
+            delta_max = NOT_COMPUTED
             n_consecutive_ok = 0_int32
             plateau_found = logical(.false., kind=c_bool)
             return
@@ -738,8 +745,9 @@ contains
                                           best_candidate_index, best_exceeded_ci_overlap_count, candidate_index, join_method, &
                                           succeeding_ci_overlap, &
                                           trace_ci_overlap(1:n_studies, n_admissible_evaluated), ci_plateau_found)
-        ! The first admissible candidate was compared against the -1.0 seed: record -1.0.
-        if (n_admissible_evaluated == 1_int32) trace_ci_overlap(1:n_studies, 1) = -1.0_real64
+        ! The first admissible candidate was compared against the NOT_COMPUTED seed: record
+        ! NOT_COMPUTED.
+        if (n_admissible_evaluated == 1_int32) trace_ci_overlap(1:n_studies, 1) = NOT_COMPUTED
 
         ! This candidate became the new best: snapshot its per-point values.
         if (best_candidate_index == candidate_index) then
@@ -869,7 +877,7 @@ contains
             n_bins_per_point(1:min(n_points, max_n_points_candidate)) = m_min
             shared_residual_range_low(1:min(n_points, max_n_points_candidate)) = 0.0_real64
             shared_residual_range_high(1:min(n_points, max_n_points_candidate)) = 0.0_real64
-            best_candidate_confidence_interval = -1.0_real64
+            best_candidate_confidence_interval = NOT_COMPUTED
             plateau_established = logical(.false., kind=c_bool)
         end if
 

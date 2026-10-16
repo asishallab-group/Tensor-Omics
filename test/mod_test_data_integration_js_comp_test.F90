@@ -39,7 +39,8 @@ module mod_test_data_integration_js_comp_test
                                                        run_js_comp_test_impl
     use tox_data_integration_js_comp_test_fixed_k_search_impl, only: calc_js_comp_test_candidate_bounds, &
                                                                      generate_js_comp_test_candidates_impl, &
-                                                                     KX_FACTORS, MAX_POINT_CANDIDATES
+                                                                     KX_FACTORS, MAX_POINT_CANDIDATES, &
+                                                                     calc_fixed_k_n_points_range
     use tox_data_integration_js_comp_test_adaptive_search_impl, only: calc_adaptive_js_comp_test_bounds, ADAPTIVE_GAMMA, &
                                                                       ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_K_STEP_FRACTION, &
                                                                       ADAPTIVE_K_MAX_FACTOR, ADAPTIVE_CANDIDATE_EVALUATED, &
@@ -138,7 +139,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(240))
+        allocate (all_tests(241))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -628,6 +629,7 @@ contains
                                    test_run_js_comp_test_impl_out_of_range_neighbor_sets_ierr)
         all_tests(240) = test_case("test_sort_pooled_gene_means_matches_heapsort", &
                                    test_sort_pooled_gene_means_matches_heapsort)
+        all_tests(241) = test_case("test_calc_fixed_k_n_points_range", test_calc_fixed_k_n_points_range)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -12224,6 +12226,33 @@ contains
                          name//"non-NaN ascending")
         call assert_equal_real(flat_means(perm(1)), -0.5_real64, TOL, name//"smallest first")
     end subroutine test_sort_pooled_gene_means_matches_heapsort
+
+    !> calc_fixed_k_n_points_range, the one place of the fixed-k grid's n_points_high/n_points_low
+    !| formula: G = 1 and G = 2000 (`ceiling(4*sqrt(G))` = 4 and 179) are clamped up to
+    !| MIN_POINTS = 300; G = 5625 lands on it exactly (`4*75`); G = 10000 gives 400 unclamped;
+    !| G = 140625 lands on MAX_POINTS = 1500 exactly (`4*375`) and G = 200000 (1789) is clamped down
+    !| to it. `n_points_low = max(300, ceiling(0.2*n_points_high))` is 300 throughout, because
+    !| `0.2*MAX_POINTS` is 300. The bounds producer's `max_n_points_candidate` is the same value.
+    subroutine test_calc_fixed_k_n_points_range()
+        character(len=*), parameter :: name = "test_calc_fixed_k_n_points_range: "
+        integer(int32), parameter :: n_cases = 6
+        integer(int32), parameter :: gene_counts(n_cases) = [1_int32, 2000_int32, 5625_int32, 10000_int32, &
+                                                             140625_int32, 200000_int32]
+        integer(int32), parameter :: expected_high(n_cases) = [300_int32, 300_int32, 300_int32, 400_int32, &
+                                                               1500_int32, 1500_int32]
+        integer(int32) :: i_case, n_points_high, n_points_low, bound_n_points, bound_n_neighbors, ierr
+        character(len=16) :: genes_text
+
+        do i_case = 1, n_cases
+            write (genes_text, '(i0)') gene_counts(i_case)
+            call calc_fixed_k_n_points_range(gene_counts(i_case), n_points_high, n_points_low)
+            call assert_equal_int(n_points_high, expected_high(i_case), name//"n_points_high, G="//trim(genes_text))
+            call assert_equal_int(n_points_low, 300_int32, name//"n_points_low, G="//trim(genes_text))
+            call calc_js_comp_test_candidate_bounds(gene_counts(i_case), bound_n_points, bound_n_neighbors, ierr)
+            call assert_err(ierr, ERR_OK, name//"bounds ierr, G="//trim(genes_text))
+            call assert_equal_int(bound_n_points, n_points_high, name//"bounds producer agrees, G="//trim(genes_text))
+        end do
+    end subroutine test_calc_fixed_k_n_points_range
 
     !> The plain run_js_comp_test (prologue-built permutations) and run_js_comp_test_expert handed
     !| `init_perm` + `sort_array_heapsort` permutations give bit-identical outputs, every one of

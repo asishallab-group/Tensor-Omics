@@ -35,6 +35,10 @@ module tox_data_integration_preprocessing_impl
              ADAPTIVE_STATUS_OK, ADAPTIVE_STATUS_TOO_FEW_MEANS, ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD, &
              ADAPTIVE_STATUS_TOO_FEW_RESIDUALS
 
+    ! Default of calc_neighborhood_size's `desired_size`, shared by its DM_DEFAULT and its
+    ! M_DEFAULT_VAL.
+#define CM_DESIRED_SIZE_DEFAULT 1000_int32
+
     ! Output codes of construct_adaptive_neighborhoods_impl (not mode arguments). Each is a CM_
     ! macro first, so the parameter and the documentation quoting it share one literal.
 #define CM_ADAPTIVE_MIN_VALID_RESIDUALS 10_int32
@@ -250,13 +254,13 @@ contains
             !! DM_ALLOW_NAN
         integer(int32), intent(in), optional :: desired_size
             !! Optional desired neighborhood size
-            !! DM_DEFAULT(1000_int32)
+            !! DM_DEFAULT(CM_DESIRED_SIZE_DEFAULT)
         integer(int32) :: n_neighbors
             !! Calculated neighborhood size
 
         integer(int32) :: max_neighbors, i_gene, min_neighbors
 
-        M_DEFAULT_VAL(desired_size, max_neighbors, 1000_int32)
+        M_DEFAULT_VAL(desired_size, max_neighbors, CM_DESIRED_SIZE_DEFAULT)
 
         min_neighbors = 100_int32
 

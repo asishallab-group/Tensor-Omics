@@ -14,8 +14,8 @@
 #' Rejects, with invalid input naming neither argument when the bound is joint, a
 #' `max_n_genes_all_studies` or `n_studies` below 1, a product `N` beyond the 32-bit range, or a
 #' first candidate `k_start_1 = max(10, 2*n_studies, ceiling(0.02 * N))` above
-#' `huge(1)/4 = 536870911` (so that its `k_max = 4*k_start_1` fits); the output is then
-#' left undefined.
+#' `floor(huge(1)/ADAPTIVE_K_MAX_FACTOR)` (\code{ADAPTIVE_K_MAX_FACTOR}), so that its
+#' `k_max = ceiling(ADAPTIVE_K_MAX_FACTOR*k_start_1)` fits; the output is then left undefined.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_adaptive_search_impl::calc_adaptive_js_comp_test_bounds}, whose argument names
 #' are the ones an error message reports.

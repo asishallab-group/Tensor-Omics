@@ -901,7 +901,7 @@
   },
   "generate_js_comp_test_candidates (call)": {
     "prefix": "tox:generate_js_comp_test_candidates",
-    "description": "Starting from `n_points_high = clamp(ceiling(4*sqrt(G)), MIN_POINTS, MAX_POINTS)` (`G` =",
+    "description": "Starting from `n_points_high = clamp(ceiling(N_POINTS_HIGH_FACTOR*sqrt(G)), MIN_POINTS, MAX_POINTS)`",
     "body": [
       "call generate_js_comp_test_candidates( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
@@ -912,7 +912,7 @@
   },
   "generate_js_comp_test_candidates (call, checked)": {
     "prefix": "tox:generate_js_comp_test_candidates.checked",
-    "description": "Starting from `n_points_high = clamp(ceiling(4*sqrt(G)), MIN_POINTS, MAX_POINTS)` (`G` = (with error check)",
+    "description": "Starting from `n_points_high = clamp(ceiling(N_POINTS_HIGH_FACTOR*sqrt(G)), MIN_POINTS, MAX_POINTS)` (with error check)",
     "body": [
       "call generate_js_comp_test_candidates( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",

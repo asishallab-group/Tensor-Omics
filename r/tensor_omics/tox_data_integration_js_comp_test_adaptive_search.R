@@ -28,7 +28,8 @@
 #' returned, even for data smaller than `k_start_1`, whose construction then fails with a
 #' too-few-means status in the search.
 #'
-#' Not checked here: the values fit 32-bit integers only while `k_start_1 <= huge(1)/4`;
+#' Not checked here: the values fit 32-bit integers only while
+#' `k_start_1 <= floor(huge(1)/ADAPTIVE_K_MAX_FACTOR)` (\code{ADAPTIVE_K_MAX_FACTOR});
 #' \code{\link{calc_adaptive_js_comp_test_bounds}}
 #' rejects inputs beyond that.
 #'

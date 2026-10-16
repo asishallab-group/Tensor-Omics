@@ -1,14 +1,16 @@
 !> Unit test suite for the sorted-slice statistics of f42_stats_impl: the median absolute
 !| deviation of an already-sorted slice (calc_sorted_slice_mad) and the equal-width bin counts of
 !| already-sorted values (sorted_bin_counts, by binary search, against histogram_bin_counts, by
-!| clamping and binning every value).
+!| clamping and binning every value), and the binary search behind sorted_bin_counts
+!| (sorted_partition_point) on its own.
 module mod_test_sorted_stats
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32, int64
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use f42_sort_impl, only: init_perm, sort_array_heapsort
     use f42_stats_impl, only: calc_sorted_slice_mad, sorted_bin_counts, histogram_bin_counts, last_non_nan_position, &
-                              calc_median, calc_quantile_impl
+                              calc_median, calc_quantile_impl, sorted_partition_point, PREDICATE_BELOW, &
+                              PREDICATE_AT_MOST, PREDICATE_BIN_AT_MOST
     use test_suite, only: test_case
     implicit none
     public
@@ -20,7 +22,7 @@ contains
     !> Get array of all available sorted-slice statistics tests.
     function get_all_tests_sorted_stats() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(8))
+        allocate (all_tests(9))
         all_tests(1) = test_case("test_sorted_slice_mad_odd_length", test_sorted_slice_mad_odd_length)
         all_tests(2) = test_case("test_sorted_slice_mad_even_length", test_sorted_slice_mad_even_length)
         all_tests(3) = test_case("test_sorted_slice_mad_all_equal", test_sorted_slice_mad_all_equal)
@@ -30,6 +32,7 @@ contains
                                  test_sorted_bin_counts_matches_histogram_bin_counts)
         all_tests(7) = test_case("test_last_non_nan_position", test_last_non_nan_position)
         all_tests(8) = test_case("test_calc_median", test_calc_median)
+        all_tests(9) = test_case("test_sorted_partition_point", test_sorted_partition_point)
     end function get_all_tests_sorted_stats
 
     !> Issue #217 (C1), odd length, and the merge's left-only branch. Sorted slice
@@ -239,5 +242,57 @@ contains
         call calc_median([-2.0_real64], 1_int32, perm1, median)
         call assert_equal_real(median, -2.0_real64, TOL, name//"single value")
     end subroutine test_calc_median
+
+    !> sorted_partition_point directly, on values [3, 1, 2, 2, 5, 0] whose permutation
+    !| [6, 2, 3, 4, 1, 5] orders them as [0, 1, 2, 2, 3, 5]. Each predicate kind: below 2 holds for
+    !| the first 2 positions (the tied 2s fail), at most 2 for the first 4 (the tied 2s hold), and
+    !| bin at most 3 (range low 0, width 1, so bin = int(v) + 1) for the first 4 (2.0 on an edge is
+    !| bin 3, 3.0 on an edge is bin 4). All-true gives `last_pos`, all-false `first_pos`, and an
+    !| empty range (`first_pos == last_pos`) returns `first_pos` without probing. A sub-range
+    !| `first_pos+1 .. last_pos` stops at its own ends, and a permutation slice shorter than
+    !| `values` is searched over its own positions only.
+    subroutine test_sorted_partition_point()
+        character(len=*), parameter :: name = "test_sorted_partition_point: "
+        real(real64), parameter :: values(6) = [3.0_real64, 1.0_real64, 2.0_real64, 2.0_real64, 5.0_real64, 0.0_real64]
+        integer(int32), parameter :: perm(6) = [6_int32, 2_int32, 3_int32, 4_int32, 1_int32, 5_int32]
+        integer(int32), parameter :: short_perm(4) = [2_int32, 3_int32, 4_int32, 1_int32]
+
+        ! Each predicate kind over the whole permutation, ties at the threshold.
+        call assert_equal_int(sorted_partition_point(values, 6_int32, perm, 6_int32, 0_int32, 6_int32, PREDICATE_BELOW, &
+                                                     2.0_real64, 1.0_real64, 0_int32), 2_int32, name//"below, ties fail")
+        call assert_equal_int(sorted_partition_point(values, 6_int32, perm, 6_int32, 0_int32, 6_int32, PREDICATE_AT_MOST, &
+                                                     2.0_real64, 1.0_real64, 0_int32), 4_int32, name//"at most, ties hold")
+        call assert_equal_int(sorted_partition_point(values, 6_int32, perm, 6_int32, 0_int32, 6_int32, &
+                                                     PREDICATE_BIN_AT_MOST, 0.0_real64, 1.0_real64, 3_int32), 4_int32, &
+                              name//"bin at most 3, values on bin edges")
+
+        ! All true, all false.
+        call assert_equal_int(sorted_partition_point(values, 6_int32, perm, 6_int32, 0_int32, 6_int32, PREDICATE_AT_MOST, &
+                                                     10.0_real64, 1.0_real64, 0_int32), 6_int32, name//"all true")
+        call assert_equal_int(sorted_partition_point(values, 6_int32, perm, 6_int32, 0_int32, 6_int32, PREDICATE_BELOW, &
+                                                     -1.0_real64, 1.0_real64, 0_int32), 0_int32, name//"all false")
+        call assert_equal_int(sorted_partition_point(values, 6_int32, perm, 6_int32, 0_int32, 6_int32, &
+                                                     PREDICATE_BIN_AT_MOST, 0.0_real64, 1.0_real64, 6_int32), 6_int32, &
+                              name//"bin at most 6, all true")
+
+        ! Empty ranges: nothing to probe, so first_pos comes back whatever the predicate says.
+        call assert_equal_int(sorted_partition_point(values, 6_int32, perm, 6_int32, 0_int32, 0_int32, PREDICATE_AT_MOST, &
+                                                     10.0_real64, 1.0_real64, 0_int32), 0_int32, name//"empty range at 0")
+        call assert_equal_int(sorted_partition_point(values, 6_int32, perm, 6_int32, 3_int32, 3_int32, PREDICATE_BELOW, &
+                                                     -1.0_real64, 1.0_real64, 0_int32), 3_int32, name//"empty range at 3")
+
+        ! Sub-range first_pos+1 .. last_pos = 3 .. 5.
+        call assert_equal_int(sorted_partition_point(values, 6_int32, perm, 6_int32, 2_int32, 5_int32, PREDICATE_AT_MOST, &
+                                                     10.0_real64, 1.0_real64, 0_int32), 5_int32, name//"sub-range, all true")
+        call assert_equal_int(sorted_partition_point(values, 6_int32, perm, 6_int32, 2_int32, 5_int32, PREDICATE_BELOW, &
+                                                     -1.0_real64, 1.0_real64, 0_int32), 2_int32, name//"sub-range, all false")
+        call assert_equal_int(sorted_partition_point(values, 6_int32, perm, 6_int32, 2_int32, 5_int32, PREDICATE_AT_MOST, &
+                                                     2.0_real64, 1.0_real64, 0_int32), 4_int32, name//"sub-range, split")
+
+        ! A permutation slice shorter than values: [1, 2, 2, 3].
+        call assert_equal_int(sorted_partition_point(values, 6_int32, short_perm, 4_int32, 0_int32, 4_int32, &
+                                                     PREDICATE_AT_MOST, 2.0_real64, 1.0_real64, 0_int32), 3_int32, &
+                              name//"short permutation")
+    end subroutine test_sorted_partition_point
 
 end module mod_test_sorted_stats

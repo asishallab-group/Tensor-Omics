@@ -16,8 +16,8 @@
 !| Generated from [[tox_data_integration_js_comp_test_fixed_k_search_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_js_comp_test_fixed_k_search
     use f42_safeguard
-    use tox_data_integration_js_comp_test_fixed_k_search_impl, only: KX_FACTORS, MAX_POINTS, MIN_POINTS, generate_js_comp_test_candidates_impl
-    use tox_data_integration_js_comp_test_fixed_k_search_impl, only: run_js_comp_test_parameter_search_impl
+    use tox_data_integration_js_comp_test_fixed_k_search_impl, only: KX_FACTORS, MAX_POINTS, MIN_POINTS, N_POINTS_HIGH_FACTOR
+    use tox_data_integration_js_comp_test_fixed_k_search_impl, only: N_POINTS_LOW_FRACTION, generate_js_comp_test_candidates_impl, run_js_comp_test_parameter_search_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_math_impl, only: above
@@ -39,9 +39,9 @@ module tox_data_integration_js_comp_test_fixed_k_search
 contains
 
     !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):generate_js_comp_test_candidates_impl]].
-    !| Starting from `n_points_high = clamp(ceiling(4*sqrt(G)), MIN_POINTS, MAX_POINTS)` (`G` =
-    !| `max_n_genes_all_studies`), multiplies it by GAMMA until it drops below
-    !| `n_points_low = max(MIN_POINTS, ceiling(0.2*n_points_high))`, and pairs each distinct
+    !| Starting from `n_points_high = clamp(ceiling(N_POINTS_HIGH_FACTOR*sqrt(G)), MIN_POINTS, MAX_POINTS)`
+    !| (`G` = `max_n_genes_all_studies`), multiplies it by GAMMA until it drops below
+    !| `n_points_low = max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*n_points_high))`, and pairs each distinct
     !| `n_points` with up to `size(KX_FACTORS)` distinct `n_neighbors = max(1, floor(G/(f*n_points_high)))`.
     !| Duplicate values from clamping or rounding collapse, so a small enough `G` yields a single
     !| candidate. Bin counts are not part of a candidate; they are chosen per reference point later.
@@ -182,7 +182,7 @@ contains
             !! Upper bound on the grid's `n_points` candidates, which sizes the per-point outputs;
             !! at least what `calc_js_comp_test_candidate_bounds` returns, else invalid input
             !! It is recommended to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):calc_js_comp_test_candidate_bounds]].
-            !! The minimum valid value is `max(MIN_POINTS, min(ceiling(4.0_real64*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS))`.
+            !! The minimum valid value is `max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS))`.
         real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
             !! Per-gene mean expression values for all studies
             !! NaN is permitted for this value.
@@ -204,7 +204,7 @@ contains
             !! Upper bound on the grid's `n_neighbors` candidates; at least what
             !! `calc_js_comp_test_candidate_bounds` returns, else invalid input
             !! It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):calc_js_comp_test_candidate_bounds]].
-            !! The minimum valid value is `max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(0.2_real64*real(max(MIN_POINTS, min(ceiling(4.0_real64*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32))`.
+            !! The minimum valid value is `max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32))`.
         integer(int32), intent(out) :: n_points
             !! The finally chosen candidate's `n_points`
         integer(int32), intent(out) :: n_neighbors
@@ -452,8 +452,8 @@ contains
         call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=2_int32, min=1_int32)
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_bootstraps, ierr, arg_pos=6_int32, min=1_int32)
-        call validate_in_range_int(max_n_points_candidate, ierr, arg_pos=8_int32, min=max(MIN_POINTS, min(ceiling(4.0_real64*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)))
-        call validate_in_range_int(max_n_neighbors_candidate, ierr, arg_pos=9_int32, min=max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(0.2_real64*real(max(MIN_POINTS, min(ceiling(4.0_real64*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32)))
+        call validate_in_range_int(max_n_points_candidate, ierr, arg_pos=8_int32, min=max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)))
+        call validate_in_range_int(max_n_neighbors_candidate, ierr, arg_pos=9_int32, min=max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32)))
         call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=39_int32, min=0_int32)
         call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=40_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=41_int32, min=0.0_real64, max=1.0_real64)
@@ -784,12 +784,12 @@ contains
             !! Upper bound on the grid's `n_points` candidates, which sizes the per-point outputs;
             !! at least what `calc_js_comp_test_candidate_bounds` returns, else invalid input
             !! It is recommended to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):calc_js_comp_test_candidate_bounds]].
-            !! The minimum valid value is `max(MIN_POINTS, min(ceiling(4.0_real64*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS))`.
+            !! The minimum valid value is `max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS))`.
         integer(int32), intent(in) :: max_n_neighbors_candidate
             !! Upper bound on the grid's `n_neighbors` candidates; at least what
             !! `calc_js_comp_test_candidate_bounds` returns, else invalid input
             !! It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):calc_js_comp_test_candidate_bounds]].
-            !! The minimum valid value is `max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(0.2_real64*real(max(MIN_POINTS, min(ceiling(4.0_real64*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32))`.
+            !! The minimum valid value is `max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32))`.
         integer(int32), intent(in) :: n_bootstrapping_top_k_jsds
             !! Number of values kept at each end of the bootstrap distribution (heap size)
             !! It is *VERY IMPORTANT* to compute this argument from the `n_top_k` output produced by [[tox_data_integration_stats_impl(module):calc_js_comp_test_n_top_k_jsds]].
@@ -1103,8 +1103,8 @@ contains
         call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=2_int32, min=1_int32)
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_bootstraps, ierr, arg_pos=6_int32, min=1_int32)
-        call validate_in_range_int(max_n_points_candidate, ierr, arg_pos=8_int32, min=max(MIN_POINTS, min(ceiling(4.0_real64*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)))
-        call validate_in_range_int(max_n_neighbors_candidate, ierr, arg_pos=9_int32, min=max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(0.2_real64*real(max(MIN_POINTS, min(ceiling(4.0_real64*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32)))
+        call validate_in_range_int(max_n_points_candidate, ierr, arg_pos=8_int32, min=max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)))
+        call validate_in_range_int(max_n_neighbors_candidate, ierr, arg_pos=9_int32, min=max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32)))
         call validate_in_range_int(n_bootstrapping_top_k_jsds, ierr, arg_pos=10_int32, min=1_int32)
         call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=84_int32, min=0_int32)
         call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=85_int32, min=0.0_real64, max=1.0_real64)

@@ -106,9 +106,9 @@ def generate_js_comp_test_candidates(
 ):
     r"""Generate the GAMMA-decay (n_points, n_neighbors) candidate grid
 
-    Starting from `n_points_high = clamp(ceiling(4*sqrt(G)), MIN_POINTS, MAX_POINTS)` (`G` =
-    `max_n_genes_all_studies`), multiplies it by GAMMA until it drops below
-    `n_points_low = max(MIN_POINTS, ceiling(0.2*n_points_high))`, and pairs each distinct
+    Starting from `n_points_high = clamp(ceiling(N_POINTS_HIGH_FACTOR*sqrt(G)), MIN_POINTS, MAX_POINTS)`
+    (`G` = `max_n_genes_all_studies`), multiplies it by GAMMA until it drops below
+    `n_points_low = max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*n_points_high))`, and pairs each distinct
     `n_points` with up to `size(KX_FACTORS)` distinct `n_neighbors = max(1, floor(G/(f*n_points_high)))`.
     Duplicate values from clamping or rounding collapse, so a small enough `G` yields a single
     candidate. Bin counts are not part of a candidate; they are chosen per reference point later.
@@ -236,12 +236,12 @@ def run_js_comp_test_parameter_search(
         Upper bound on the grid's `n_points` candidates, which sizes the per-point outputs;
         at least what `calc_js_comp_test_candidate_bounds` returns, else invalid input
         It is recommended to compute this argument from the `max_n_points_candidate` output produced by :func:`tensor_omics.calc_js_comp_test_candidate_bounds`.
-        The minimum valid value is `max(MIN_POINTS, min(ceiling(4.0*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS))`.
+        The minimum valid value is `max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS))`.
     max_n_neighbors_candidate : int
         Upper bound on the grid's `n_neighbors` candidates; at least what
         `calc_js_comp_test_candidate_bounds` returns, else invalid input
         It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by :func:`tensor_omics.calc_js_comp_test_candidate_bounds`.
-        The minimum valid value is `max(1, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(0.2*real(max(MIN_POINTS, min(ceiling(4.0*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32))`.
+        The minimum valid value is `max(1, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32))`.
     min_residuals_per_bin : int, optional, default 10
         Minimum count of every consensus bin (gate 2) and the floor of the bin-count search,
         one threshold for both, so a point the search marks as failed also fails the gate

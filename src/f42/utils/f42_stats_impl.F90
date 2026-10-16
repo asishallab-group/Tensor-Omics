@@ -12,8 +12,9 @@ module f42_stats_impl
     use f42_math_impl, only: clamp
     M_IMPLICIT_NONE
 
-    ! Which monotone predicate sorted_partition_point searches for; the `PREDICATE_` prefix
-    ! follows from the argument name `predicate_kind`.
+    ! The values of sorted_partition_point's `predicate_kind`: which monotone predicate it
+    ! searches for. The `PREDICATE_` prefix only names this family of values; sorted_partition_point
+    ! is not published, so no mode-table convention applies to it.
     integer(int32), parameter :: PREDICATE_BELOW = 1_int32
         !! [[f42_stats_impl(module):sorted_partition_point(function)]]: `probed_value < threshold`
     integer(int32), parameter :: PREDICATE_AT_MOST = 2_int32

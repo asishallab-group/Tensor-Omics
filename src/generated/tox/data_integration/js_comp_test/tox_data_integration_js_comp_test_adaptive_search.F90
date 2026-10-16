@@ -67,7 +67,8 @@ contains
     !| returned, even for data smaller than `k_start_1`, whose construction then fails with a
     !| too-few-means status in the search.
     !|
-    !| Not checked here: the values fit 32-bit integers only while `k_start_1 <= huge(1_int32)/4`;
+    !| Not checked here: the values fit 32-bit integers only while
+    !| `k_start_1 <= floor(huge(1_int32)/ADAPTIVE_K_MAX_FACTOR)` ([[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_K_MAX_FACTOR(variable)]]);
     !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):calc_adaptive_js_comp_test_bounds(interface)]]
     !| rejects inputs beyond that.
     pure subroutine generate_adaptive_js_comp_test_candidates(&

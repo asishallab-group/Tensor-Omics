@@ -148,7 +148,8 @@ def generate_adaptive_js_comp_test_candidates(
     returned, even for data smaller than `k_start_1`, whose construction then fails with a
     too-few-means status in the search.
 
-    Not checked here: the values fit 32-bit integers only while `k_start_1 <= huge(1)/4`;
+    Not checked here: the values fit 32-bit integers only while
+    `k_start_1 <= floor(huge(1)/ADAPTIVE_K_MAX_FACTOR)` (``ADAPTIVE_K_MAX_FACTOR``);
     :func:`tensor_omics.calc_adaptive_js_comp_test_bounds`
     rejects inputs beyond that.
 
