@@ -16,11 +16,11 @@ module tox_data_integration_js_comp_test_run_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
-    use f42_sort_impl, only: init_perm, sort_real_heapsort_expl_size
     use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, ERR_INVALID_INPUT
     use tox_data_integration_jsd_impl, only: compute_consensus_divergences, calc_pmf_impl, create_mean_pmf_impl
     use tox_data_integration_preprocessing_impl, only: construct_neighborhoods_ranged_impl, &
-                                                       materialize_pooled_neighborhood, sort_gene_means_per_study
+                                                       materialize_pooled_neighborhood, sort_gene_means_per_study, &
+                                                       sort_pooled_gene_means
     use tox_data_integration_stats_impl, only: gjct_permutation_test_impl
     use tox_data_integration_js_comp_test_binning_impl, only: MAX_N_BINS, determine_point_bin_count, &
                                                               determine_adaptive_point_bin_counts
@@ -703,8 +703,7 @@ contains
         M_DEFAULT_VAL(n_permutations, actual_n_permutations, CM_N_PERMUTATIONS_DEFAULT)
 
         ! The construction's own sort, so every pooled position names the same entry as there.
-        call init_perm(tmp_gene_means_perm_all)
-        call sort_real_heapsort_expl_size(gene_means, tmp_gene_means_perm_all, max_n_genes_all_studies*n_studies)
+        call sort_pooled_gene_means(gene_means, max_n_genes_all_studies, n_studies, tmp_gene_means_perm_all)
         ! NaN sorts last, so the non-NaN means occupy exactly the first n_valid_means positions.
         n_valid_means = count(.not. ieee_is_nan(gene_means), kind=int32)
 

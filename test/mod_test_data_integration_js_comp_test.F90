@@ -56,7 +56,7 @@ module mod_test_data_integration_js_comp_test
                                                        ADAPTIVE_STATUS_OK, ADAPTIVE_STATUS_TOO_FEW_MEANS, &
                                                        ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD, &
                                                        ADAPTIVE_STATUS_TOO_FEW_RESIDUALS, &
-                                                       materialize_pooled_neighborhood
+                                                       materialize_pooled_neighborhood, sort_pooled_gene_means
     use f42_sort_impl, only: init_perm, sort_array_heapsort
     use f42_stats_impl, only: sorted_bin_counts, histogram_bin_counts
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
@@ -138,7 +138,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(239))
+        allocate (all_tests(240))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -626,6 +626,8 @@ contains
                                    test_adaptive_search_pads_unused_per_point_slots_with_zero)
         all_tests(239) = test_case("test_run_js_comp_test_impl_out_of_range_neighbor_sets_ierr", &
                                    test_run_js_comp_test_impl_out_of_range_neighbor_sets_ierr)
+        all_tests(240) = test_case("test_sort_pooled_gene_means_matches_heapsort", &
+                                   test_sort_pooled_gene_means_matches_heapsort)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -12191,6 +12193,37 @@ contains
                          name//"study 1: non-NaN ascending")
         call assert_true(all(ieee_is_nan(gene_means(perms(n_genes - 1:n_genes, 3), 3))), name//"study 3: NaNs last")
     end subroutine test_prepare_gene_means_perms_matches_heapsort
+
+    !> sort_pooled_gene_means on 5 genes x 3 studies (two NaNs, ties within and across studies, a
+    !| negative): the permutation must equal what a direct `init_perm` + `sort_array_heapsort` on
+    !| the flattened means gives (the two calls each site made before the helper), overwrite a
+    !| deliberately wrong start value, keep every pooled position exactly once, and put the
+    !| non-NaN means ascending first and both NaNs last.
+    subroutine test_sort_pooled_gene_means_matches_heapsort()
+        character(len=*), parameter :: name = "test_sort_pooled_gene_means_matches_heapsort: "
+        integer(int32), parameter :: n_genes = 5, n_studies = 3, n_pool = n_genes*n_studies
+        real(real64) :: gene_means(n_genes, n_studies), flat_means(n_pool), nan_val
+        integer(int32) :: perm(n_pool), expected(n_pool), i_pos
+
+        nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
+        gene_means(:, 1) = [3.0_real64, 1.0_real64, nan_val, 1.0_real64, 2.0_real64]
+        gene_means(:, 2) = [2.0_real64, 2.0_real64, -0.5_real64, 3.0_real64, 1.0_real64]
+        gene_means(:, 3) = [0.0_real64, nan_val, 2.0_real64, 4.0_real64, 1.0_real64]
+        flat_means = reshape(gene_means, [n_pool])
+
+        perm = -1_int32
+        call sort_pooled_gene_means(gene_means, n_genes, n_studies, perm)
+
+        call init_perm(expected)
+        call sort_array_heapsort(flat_means, expected)
+        call assert_equal_array_int(perm, expected, n_pool, name//"equals init_perm + sort_array_heapsort on the flat means")
+        call assert_true(all([(count(perm == i_pos) == 1, i_pos=1, n_pool)]), name//"every pooled position exactly once")
+        call assert_true(all(ieee_is_nan(flat_means(perm(n_pool - 1:n_pool)))), name//"both NaNs last")
+        call assert_true(.not. any(ieee_is_nan(flat_means(perm(1:n_pool - 2)))), name//"no NaN before the last two")
+        call assert_true(all(flat_means(perm(1:n_pool - 3)) <= flat_means(perm(2:n_pool - 2))), &
+                         name//"non-NaN ascending")
+        call assert_equal_real(flat_means(perm(1)), -0.5_real64, TOL, name//"smallest first")
+    end subroutine test_sort_pooled_gene_means_matches_heapsort
 
     !> The plain run_js_comp_test (prologue-built permutations) and run_js_comp_test_expert handed
     !| `init_perm` + `sort_array_heapsort` permutations give bit-identical outputs, every one of

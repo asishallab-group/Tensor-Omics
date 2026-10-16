@@ -18,10 +18,9 @@ module tox_data_integration_js_comp_test_fixed_k_search_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use f42_math_impl, only: clamp
-    use f42_sort_impl, only: init_perm, sort_real_heapsort_expl_size
     use tox_errors, only: set_ok, is_err, validate_in_range_int
     use tox_data_integration_preprocessing_impl, only: construct_neighborhoods_ranged_impl, pool_means_impl, &
-                                                       sort_gene_means_per_study
+                                                       sort_gene_means_per_study, sort_pooled_gene_means
     use tox_data_integration_js_comp_test_binning_impl, only: determine_point_bin_count
     use tox_data_integration_js_comp_test_histograms_impl, only: build_fixed_k_histograms
     use tox_data_integration_js_comp_test_search_impl, only: check_neighborhood_overlaps_impl, score_candidate_histograms, &
@@ -630,8 +629,7 @@ contains
         ! Sort each study's own gene means (for construct_neighborhoods_ranged_impl) and the
         ! flattened, all-studies-pooled gene means (for pool_means_impl's x_star).
         call sort_gene_means_per_study(gene_means, max_n_genes_all_studies, n_studies, tmp_gene_means_perms)
-        call init_perm(tmp_gene_means_perm_all)
-        call sort_real_heapsort_expl_size(gene_means, tmp_gene_means_perm_all, pool_size)
+        call sort_pooled_gene_means(gene_means, max_n_genes_all_studies, n_studies, tmp_gene_means_perm_all)
 
         best_candidate_pair_confidence_interval = -1.0_real64
         best_candidate_index = 1_int32

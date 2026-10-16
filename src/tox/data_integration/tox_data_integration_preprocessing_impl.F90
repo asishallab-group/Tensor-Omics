@@ -29,7 +29,7 @@ module tox_data_integration_preprocessing_impl
              calc_neighborhood_size, construct_neighborhoods_impl, construct_neighborhoods_ranged_impl, &
              gather_pooled_neighborhood_residuals, grow_adaptive_neighborhoods, &
              construct_adaptive_neighborhoods_impl, materialize_pooled_neighborhood, &
-             gather_pooled_neighborhood_residuals_core, sort_gene_means_per_study, &
+             gather_pooled_neighborhood_residuals_core, sort_gene_means_per_study, sort_pooled_gene_means, &
              ADAPTIVE_MIN_VALID_RESIDUALS, ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_K_MAX, ADAPTIVE_STOP_RESIDUAL_CAP, &
              ADAPTIVE_STOP_EXHAUSTED, ADAPTIVE_STOP_ZERO_DISPERSION, ADAPTIVE_STOP_TOO_FEW_RESIDUALS, &
              ADAPTIVE_STATUS_OK, ADAPTIVE_STATUS_TOO_FEW_MEANS, ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD, &
@@ -373,6 +373,29 @@ contains
             call sort_array_heapsort(gene_means(:, i_study), gene_means_perms(:, i_study))
         end do
     end subroutine sort_gene_means_per_study
+
+    !> summary: Sort all studies' gene means pooled: one ascending, NaN-last heapsort permutation
+    !| AUTHOR_LASZLO_LANG
+    !| `gene_means_perm_all` becomes the identity, heapsorted against `gene_means` read as one flat
+    !| vector of length `max_n_genes_all_studies*n_studies` (column-major, so position
+    !| `(i_study - 1)*max_n_genes_all_studies + i_gene` is gene `i_gene` of study `i_study`). The
+    !| order is ascending with NaN last, so the non-NaN means fill the leading positions. Internal
+    !| helper, not published; public because the fixed-k and adaptive parameter searches, the adaptive
+    !| final run and [[tox_data_integration_preprocessing_impl(module):construct_adaptive_neighborhoods_impl(interface)]]
+    !| all build their pooled order with it, so a pooled position names the same entry in each.
+    pure subroutine sort_pooled_gene_means(gene_means, max_n_genes_all_studies, n_studies, gene_means_perm_all)
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
+            !! Per-gene mean expression values for all studies, NaN allowed
+        integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: gene_means_perm_all
+            !! The permutation that sorts the flattened `gene_means` ascending, NaN last
+
+        call init_perm(gene_means_perm_all)
+        call sort_real_heapsort_expl_size(gene_means, gene_means_perm_all, max_n_genes_all_studies*n_studies)
+    end subroutine sort_pooled_gene_means
 
     !> summary: Construct neighborhood-based residual sets (kNN), with a `[min_idx, max_idx]` range per reference point
     !| AUTHOR_LASZLO_LANG
@@ -1091,8 +1114,7 @@ contains
         M_DEFAULT_VAL(min_study_neighbors, actual_min_study_neighbors, M_ADAPTIVE_MIN_STUDY_NEIGHBORS_DEFAULT)
 
         ! The same pooled sort as the fixed-k search, so an adaptive search can share this order.
-        call init_perm(tmp_gene_means_perm_all)
-        call sort_real_heapsort_expl_size(gene_means, tmp_gene_means_perm_all, max_n_genes_all_studies*n_studies)
+        call sort_pooled_gene_means(gene_means, max_n_genes_all_studies, n_studies, tmp_gene_means_perm_all)
 
         call grow_adaptive_neighborhoods(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                          residuals, tmp_gene_means_perm_all, k_start, k_step, k_max, actual_tau, &

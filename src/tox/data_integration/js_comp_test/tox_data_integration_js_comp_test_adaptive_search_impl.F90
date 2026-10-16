@@ -20,10 +20,9 @@ module tox_data_integration_js_comp_test_adaptive_search_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, int64, real64
     use, intrinsic :: iso_c_binding, only: c_bool
-    use f42_sort_impl, only: init_perm, sort_real_heapsort_expl_size
     use tox_errors, only: set_ok, set_err_once, is_err, validate_in_range_int, ERR_INVALID_INPUT
     use tox_data_integration_preprocessing_impl, only: grow_adaptive_neighborhoods, ADAPTIVE_STATUS_OK, &
-                                                       ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD
+                                                       ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD, sort_pooled_gene_means
     use tox_data_integration_js_comp_test_binning_impl, only: determine_adaptive_point_bin_counts
     use tox_data_integration_js_comp_test_histograms_impl, only: build_adaptive_histograms
     use tox_data_integration_js_comp_test_search_impl, only: check_neighborhood_overlaps_impl, score_candidate_histograms, &
@@ -752,7 +751,7 @@ contains
         integer(int32) :: candidates_k_start_k_step_k_max(3, MAX_CANDIDATE_PAIRS)
         integer(int32) :: i_candidate, max_n_bins
         integer(int32) :: best_candidate_index, best_exceeded_ci_overlap_count, n_candidates
-        integer(int32) :: pool_size, actual_min_residuals_per_bin, selected_candidate_index
+        integer(int32) :: actual_min_residuals_per_bin, selected_candidate_index
         integer(int32) :: actual_plateau_mode, actual_delta_min_consecutive_transitions, n_consecutive_effect_size_ok
         integer(int32) :: best_uncertainty_candidate_index, actual_m_min
         integer(int32) :: actual_max_pooled_residuals, actual_min_study_neighbors, construction_status, max_n_neighbors
@@ -776,15 +775,12 @@ contains
         M_DEFAULT_VAL(max_pooled_residuals, actual_max_pooled_residuals, M_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT)
         M_DEFAULT_VAL(min_study_neighbors, actual_min_study_neighbors, M_ADAPTIVE_MIN_STUDY_NEIGHBORS_DEFAULT)
 
-        pool_size = max_n_genes_all_studies*n_studies
-
         call generate_adaptive_js_comp_test_candidates_impl(max_n_genes_all_studies, n_studies, &
                                                             candidates_k_start_k_step_k_max, n_candidates)
 
         ! The construction's own sort (construct_adaptive_neighborhoods_impl), done once: every
         ! candidate grows on it, and a pooled position names the same entry as there.
-        call init_perm(tmp_gene_means_perm_all)
-        call sort_real_heapsort_expl_size(gene_means, tmp_gene_means_perm_all, pool_size)
+        call sort_pooled_gene_means(gene_means, max_n_genes_all_studies, n_studies, tmp_gene_means_perm_all)
 
         best_candidate_confidence_interval = -1.0_real64
         best_candidate_index = 1_int32
