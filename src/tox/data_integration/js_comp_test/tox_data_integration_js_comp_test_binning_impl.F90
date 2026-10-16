@@ -31,7 +31,7 @@ module tox_data_integration_js_comp_test_binning_impl
     private
     public :: estimate_bin_count_impl, determine_bin_count_occupancy_impl, &
              determine_bin_count_occupancy_exhaustive_impl, determine_bin_count_stone_impl, &
-             group_sorted_perm_by_study, select_point_bin_count, determine_point_bin_count, &
+             group_sorted_perm_by_study, determine_point_bin_count, &
              build_point_study_histogram, build_fixed_k_study_histograms, build_adaptive_histograms, &
              MAX_N_BINS, MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, &
              MODE_BIN_COUNT_STONE_POOLED
@@ -1022,9 +1022,8 @@ contains
     !|   `stone_bin_count_core` chooses the bin count. Its `stone_failed` is returned as
     !|   `bin_count_failed`. `gamma_occupancy` is not used.
     !|
-    !| Both rules get `n_neighbors` only for the Sturges/Freedman-Diaconis diagnostics. Internal
-    !| helper, not published; public only because the fixed-k parameter search calls it besides
-    !| `determine_point_bin_count`.
+    !| Both rules get `n_neighbors` only for the Sturges/Freedman-Diaconis diagnostics. Private
+    !| helper of `determine_point_bin_count`.
     !| Precondition, not checked: `bin_count_mode` is one of
     !| the four `MODE_BIN_COUNT_*` values (any other is treated as a Stone mode with equal weights),
     !| and `study_block_ends` ascends to `n_residuals`.

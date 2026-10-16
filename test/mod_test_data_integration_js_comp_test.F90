@@ -36,7 +36,8 @@ module mod_test_data_integration_js_comp_test
                                                        MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, MODE_BIN_COUNT_STONE_POOLED, &
                                                        MAX_N_BINS, MAX_CANDIDATE_PAIRS, prepare_gene_means_perms
     use tox_data_integration_js_comp_test_fixed_k_search_impl, only: calc_js_comp_test_candidate_bounds, &
-                                                                     generate_js_comp_test_candidates_impl
+                                                                     generate_js_comp_test_candidates_impl, &
+                                                                     KX_FACTORS, MAX_POINT_CANDIDATES
     use tox_data_integration_js_comp_test_adaptive_search_impl, only: calc_adaptive_js_comp_test_bounds, ADAPTIVE_GAMMA, &
                                                                       ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_K_STEP_FRACTION, &
                                                                       ADAPTIVE_K_MAX_FACTOR, ADAPTIVE_CANDIDATE_EVALUATED, &
@@ -135,7 +136,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(235))
+        allocate (all_tests(236))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -615,6 +616,8 @@ contains
                                    test_run_js_comp_test_plain_matches_expert_bit_identical)
         all_tests(235) = test_case("test_run_js_comp_test_expert_uses_caller_tie_order", &
                                    test_run_js_comp_test_expert_uses_caller_tie_order)
+        all_tests(236) = test_case("test_fixed_k_grid_fills_max_candidate_pairs_exactly", &
+                                   test_fixed_k_grid_fills_max_candidate_pairs_exactly)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -6775,6 +6778,14 @@ contains
         call assert_true(ADAPTIVE_K_MAX_FACTOR >= 1.0_real64, &
                          "test_adaptive_constants_preclude_dead_clamps: k_max factor >= 1")
     end subroutine test_adaptive_constants_preclude_dead_clamps
+
+    !> The fixed-k grid derives MAX_POINT_CANDIDATES as `MAX_CANDIDATE_PAIRS / size(KX_FACTORS)`, so
+    !| it can never write past its candidate array. The division must also be exact (16 / 2 = 8): a
+    !| retuning that leaves a remainder would silently shorten the grid instead, and fails here.
+    subroutine test_fixed_k_grid_fills_max_candidate_pairs_exactly()
+        call assert_equal_int(MAX_POINT_CANDIDATES*size(KX_FACTORS, kind=int32), MAX_CANDIDATE_PAIRS, &
+                              "test_fixed_k_grid_fills_max_candidate_pairs_exactly: size(KX_FACTORS)*MAX_POINT_CANDIDATES")
+    end subroutine test_fixed_k_grid_fills_max_candidate_pairs_exactly
 
     !> Issue #217: the producer enforces the generator's representability bound
     !| `k_start_1 <= huge(1_int32)/4 = 536870911` (hand-derived cases):

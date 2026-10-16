@@ -30,6 +30,9 @@ module tox_data_integration_js_comp_test_run_impl
     private
     public :: run_js_comp_test_impl, run_js_comp_test_adaptive_impl, prepare_gene_means_perms
 
+    ! `n_permutations`' default, shared by DM_DEFAULT and M_DEFAULT_VAL of both final runs.
+#define CM_N_PERMUTATIONS_DEFAULT 1000_int32
+
 contains
 
     !> The shared tail of both final runs, after every study's histograms are built: the consensus
@@ -371,10 +374,10 @@ contains
         integer(int32), intent(in), optional :: n_permutations
             !! Number of permutations of the permutation test; `0` skips it (p-values NaN)
             !! DM_MIN(0_int32)
-            !! DM_DEFAULT(1000_int32)
+            !! DM_DEFAULT(CM_N_PERMUTATIONS_DEFAULT)
         integer(int32), intent(in), optional :: random_seed
             !! Seed for the GSL random number generator
-            !! DM_DEFAULT(42_int32)
+            !! DM_DEFAULT(M_RANDOM_SEED_DEFAULT)
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum number of pooled residuals every bin must reach for a bin count to be
             !! admissible, in every `bin_count_mode`
@@ -428,7 +431,7 @@ contains
         integer(int32) :: i_study, i_point, actual_n_permutations, point_ierr, finish_ierr
 
         call set_ok(ierr)
-        M_DEFAULT_VAL(n_permutations, actual_n_permutations, 1000_int32)
+        M_DEFAULT_VAL(n_permutations, actual_n_permutations, CM_N_PERMUTATIONS_DEFAULT)
 
         ! ===== PASS A (per study): neighborhood construction.
         do i_study = 1, n_studies
@@ -659,10 +662,10 @@ contains
         integer(int32), intent(in), optional :: n_permutations
             !! Number of permutations of the permutation test; `0` skips it (p-values NaN)
             !! DM_MIN(0_int32)
-            !! DM_DEFAULT(1000_int32)
+            !! DM_DEFAULT(CM_N_PERMUTATIONS_DEFAULT)
         integer(int32), intent(in), optional :: random_seed
             !! Seed for the GSL random number generator
-            !! DM_DEFAULT(42_int32)
+            !! DM_DEFAULT(M_RANDOM_SEED_DEFAULT)
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum number of pooled residuals every bin must reach for a bin count to be
             !! admissible, in every `bin_count_mode`
@@ -716,7 +719,7 @@ contains
         integer(int32) :: i_point, n_valid_means, actual_n_permutations, point_ierr, finish_ierr
 
         call set_ok(ierr)
-        M_DEFAULT_VAL(n_permutations, actual_n_permutations, 1000_int32)
+        M_DEFAULT_VAL(n_permutations, actual_n_permutations, CM_N_PERMUTATIONS_DEFAULT)
 
         ! The construction's own sort, so every pooled position names the same entry as there.
         call init_perm(tmp_gene_means_perm_all)

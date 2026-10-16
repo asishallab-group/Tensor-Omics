@@ -900,7 +900,8 @@ contains
         real(c_double), dimension(n_studies), intent(out), target :: tmp_prev_global_js_divergence
             !! Working array: the previous admissible candidate's observed global JSD per study
         integer(c_int), dimension(n_studies), intent(out), target :: tmp_delta_perm
-            !! Working array: sorting permutation for the per-study medians
+            !! Working array: sorting permutation for the per-study medians; before that, every
+            !! study's neighbor count for the bin-count search
         real(c_double), dimension(2, n_studies), intent(out), target :: tmp_best_uncertainty_confidence_interval
             !! Working array: confidence interval of the smallest-uncertainty admissible candidate
         real(c_double), dimension(max_n_reps_all_studies*max_n_neighbors_candidate*n_studies), intent(out), target :: tmp_pooled_residuals

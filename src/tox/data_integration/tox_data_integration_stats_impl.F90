@@ -1,4 +1,5 @@
 #include <src/macros.h>
+#include <src/tox/data_integration/macros.h>
 
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Permutation Test and Bootstrap
 !|
@@ -107,15 +108,16 @@ contains
             !! Working array: one study's draw at one reference point
         integer(int32), intent(in), optional :: random_seed
             !! Seed for the GSL random number generator
-            !! DM_DEFAULT(42_int32)
+            !! DM_DEFAULT(M_RANDOM_SEED_DEFAULT)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT for inconsistent counts, ERR_ALLOC_FAIL if the random
             !! number generator could not be created (see above)
 
-        integer(int32) :: i_permutation, i_point, i_study, draw_ierr
+        integer(int32) :: i_permutation, i_point, i_study, draw_ierr, actual_random_seed
         type(rng_t) :: rng
 
         call set_ok(ierr)
+        M_DEFAULT_VAL(random_seed, actual_random_seed, M_RANDOM_SEED_DEFAULT)
         ! Inconsistent inputs, checked before the generator is created: at every point the studies'
         ! draws must add up to the pool's total, and that total must be the sum of its bin counts,
         ! so that a permutation splits the pool exactly. Not one argument's fault, so no position
@@ -127,7 +129,7 @@ contains
                 exit
             end if
         end do
-        if (.not. is_err(ierr)) rng = create_rng(ierr, random_seed)
+        if (.not. is_err(ierr)) rng = create_rng(ierr, actual_random_seed)
         if (is_err(ierr)) then
             ! Inconsistent inputs or a genuine runtime failure -- nothing was tested, so the
             ! p-values are NaN ("not computed"), not 0.0 (which would read as maximally
@@ -230,13 +232,13 @@ contains
             !! distribution (e.g. 2.5 for a 95% two-sided interval)
             !! DM_MIN(0.0_real64)
             !! DM_MAX(100.0_real64)
-            !! DM_DEFAULT(2.5_real64)
+            !! DM_DEFAULT(M_TWO_SIDED_BOOTSTRAPPING_SIGNIFICANCE_LEVEL_DEFAULT)
         integer(int32), intent(out) :: n_top_k
             !! Number of elements to keep at each end of the bootstrap distribution, at least 1
 
         real(real64) :: sig_level
 
-        M_DEFAULT_VAL(two_sided_bootstrapping_significance_level, sig_level, 2.5_real64)
+        M_DEFAULT_VAL(two_sided_bootstrapping_significance_level, sig_level, M_TWO_SIDED_BOOTSTRAPPING_SIGNIFICANCE_LEVEL_DEFAULT)
 
         n_top_k = max(1_int32, floor(sig_level/100.0_real64*real(n_bootstraps, real64), kind=int32))
     end subroutine calc_js_comp_test_n_top_k_jsds
@@ -318,18 +320,19 @@ contains
             !! Only sizes n_bootstrapping_top_k_jsds (via calc_js_comp_test_n_top_k_jsds)
             !! DM_MIN(0.0_real64)
             !! DM_MAX(100.0_real64)
-            !! DM_DEFAULT(2.5_real64)
+            !! DM_DEFAULT(M_TWO_SIDED_BOOTSTRAPPING_SIGNIFICANCE_LEVEL_DEFAULT)
         integer(int32), intent(in), optional :: random_seed
             !! Seed for the GSL random number generator
-            !! DM_DEFAULT(42_int32)
+            !! DM_DEFAULT(M_RANDOM_SEED_DEFAULT)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT for inconsistent counts, ERR_ALLOC_FAIL if the random
             !! number generator could not be created (see above)
 
-        integer(int32) :: i_bootstrap, i_study, i_point, draw_ierr
+        integer(int32) :: i_bootstrap, i_study, i_point, draw_ierr, actual_random_seed
         type(rng_t) :: rng
 
         call set_ok(ierr)
+        M_DEFAULT_VAL(random_seed, actual_random_seed, M_RANDOM_SEED_DEFAULT)
         ! The pool's total is the multinomial total and the weights' denominator, so it must match
         ! the studies' draws and its own bin counts (also covers drawing from an empty pool). Not
         ! one argument's fault, so no position.
@@ -340,7 +343,7 @@ contains
                 exit
             end if
         end do
-        if (.not. is_err(ierr)) rng = create_rng(ierr, random_seed)
+        if (.not. is_err(ierr)) rng = create_rng(ierr, actual_random_seed)
         if (is_err(ierr)) then
             ! Leave the work arrays defined (zeroed) and confidence_interval untouched.
             tmp_bootstrapping_top_k_jsds = 0.0_real64

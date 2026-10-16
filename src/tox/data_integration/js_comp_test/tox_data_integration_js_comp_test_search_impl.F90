@@ -26,13 +26,16 @@ module tox_data_integration_js_comp_test_search_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use f42_stats_impl, only: calc_quantile_impl
     use f42_sort_impl, only: init_perm, sort_array_heapsort
+    use tox_errors, only: set_ok, set_err_once, is_err, get_err_code
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
                                              compute_weighted_global_divergence_impl, create_mean_pmf_impl
+    use tox_data_integration_stats_impl, only: bootstrap_histogram_impl
     M_IMPLICIT_NONE
     private
     public :: check_mean_pmf_min_counts_impl, check_plateau_condition_impl, check_effect_size_plateau_condition_impl, &
-             score_candidate_histograms, METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, &
-             MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, MODE_PLATEAU_BOTH, MAX_CANDIDATE_PAIRS
+             score_candidate_histograms, evaluate_admissible_candidate, select_final_candidate, &
+             METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, &
+             MODE_PLATEAU_BOTH, MAX_CANDIDATE_PAIRS
 
     ! `join_method`'s mode table; the `METHOD_` prefix follows from the argument name `join_method`.
     integer(int32), parameter :: METHOD_JOIN_MIN = 0_int32
@@ -48,9 +51,10 @@ module tox_data_integration_js_comp_test_search_impl
     ! M_MAX_CANDIDATE_PAIRS is defined in src/tox/data_integration/macros.h: both searches need the
     ! number itself as the extent of their candidate and trace arrays.
     integer(int32), parameter :: MAX_CANDIDATE_PAIRS = M_MAX_CANDIDATE_PAIRS
-        !! = size(KX_FACTORS) * MAX_POINT_CANDIDATES = 2 * 8 of the fixed-k search
-        !! ([[tox_data_integration_js_comp_test_fixed_k_search_impl(module):KX_FACTORS(variable)]],
-        !! [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MAX_POINT_CANDIDATES(variable)]]);
+        !! Most candidates either search evaluates. The fixed-k search derives its
+        !! [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MAX_POINT_CANDIDATES(variable)]]
+        !! from it as `MAX_CANDIDATE_PAIRS / size(KX_FACTORS)` (16 / 2 = 8,
+        !! [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):KX_FACTORS(variable)]]);
         !! the adaptive search caps its candidate count at the same value
 
     ! `plateau_mode`'s mode table. M_MODE_PLATEAU_CI_OVERLAP, defined in
@@ -384,5 +388,412 @@ contains
             confidence_interval(2, i_study) = global_js_divergence(i_study)
         end do
     end subroutine score_candidate_histograms
+
+    !> summary: Evaluate one admissible parameter-search candidate: traces, bootstrap and both plateau criteria
+    !| AUTHOR_LASZLO_LANG
+    !| The part of both parameter searches after a candidate passed both admissibility gates
+    !| ([[tox_data_integration_js_comp_test_search_impl(module):score_candidate_histograms(subroutine)]])
+    !| and the search counted it in `n_admissible_evaluated` and traced its identity. Fills trace
+    !| column `n_admissible_evaluated`, tests the effect-size criterion
+    !| ([[tox_data_integration_js_comp_test_search_impl(module):check_effect_size_plateau_condition_impl(interface)]])
+    !| before the bootstrap
+    !| ([[tox_data_integration_stats_impl(module):bootstrap_histogram_impl(interface)]]) reuses
+    !| the observed values as scratch, then the CI-overlap criterion
+    !| ([[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]]),
+    !| and updates the running state: the best and the smallest-uncertainty candidate with their
+    !| per-point snapshots, the previous candidate's JSD and the effect-size run. `plateau_found`
+    !| is the criterion `plateau_mode` selects; an effect-size plateau it selects makes this
+    !| candidate the best.
+    !|
+    !| Internal helper, not published; public because both parameter searches call it, and impure
+    !| because the bootstrap is. Every candidate-sized dummy is a search buffer viewed packed at
+    !| the candidate's sizes. A failed bootstrap returns its error code in `ierr` (argument
+    !| position cleared) at once.
+    subroutine evaluate_admissible_candidate(n_points, max_n_bins, n_studies, max_n_points_candidate, candidate_index, &
+                                             n_admissible_evaluated, n_bootstraps, n_bootstrapping_top_k_jsds, &
+                                             join_method, plateau_mode, succeeding_ci_overlap, delta_median_threshold, &
+                                             delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, &
+                                             n_bins_per_point, occupancy_failed, n_pooled_residuals, min_bin_occupancy, &
+                                             mean_bin_occupancy, max_bin_occupancy, sturges_bins, fd_bins, &
+                                             shared_residual_range_low, shared_residual_range_high, included_n_reps, &
+                                             mean_pmf_counts, mean_pmf_included_n_reps, counts, pmfs, mean_pmf, &
+                                             js_divergences, weights, global_js_divergence, confidence_interval, &
+                                             trace_global_js_divergence, trace_ci_lower, trace_ci_upper, trace_ci_width, &
+                                             trace_ci_width_relative, trace_ci_overlap, trace_delta, trace_delta_median, &
+                                             trace_delta_max, trace_selected_n_bins, trace_occupancy_failed, &
+                                             trace_n_pooled_residuals, trace_min_bin_occupancy, trace_mean_bin_occupancy, &
+                                             trace_max_bin_occupancy, trace_sturges_bins, trace_fd_bins, &
+                                             trace_shared_residual_range_low, trace_shared_residual_range_high, &
+                                             prev_global_js_divergence, n_consecutive_effect_size_ok, &
+                                             best_candidate_confidence_interval, best_candidate_index, &
+                                             best_exceeded_ci_overlap_count, best_n_bins_per_point, &
+                                             best_shared_residual_range_low, best_shared_residual_range_high, &
+                                             best_uncertainty_value, best_uncertainty_candidate_index, &
+                                             best_uncertainty_confidence_interval, best_uncertainty_n_bins_per_point, &
+                                             best_uncertainty_shared_residual_range_low, &
+                                             best_uncertainty_shared_residual_range_high, plateau_found, &
+                                             tmp_bootstrapping_top_k_jsds, tmp_point_pool, tmp_point_draw, tmp_delta_perm, &
+                                             ierr, two_sided_bootstrapping_significance_level, random_seed)
+        integer(int32), intent(in) :: n_points
+            !! The candidate's number of reference points
+        integer(int32), intent(in) :: max_n_bins
+            !! The candidate's widest per-point bin count
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: max_n_points_candidate
+            !! First extent of the per-point traces
+        integer(int32), intent(in) :: candidate_index
+            !! The candidate's index in the search's candidate sequence
+        integer(int32), intent(in) :: n_admissible_evaluated
+            !! Number of admissible candidates so far, this one included: its trace column
+        integer(int32), intent(in) :: n_bootstraps
+            !! Forwarded to the bootstrap
+        integer(int32), intent(in) :: n_bootstrapping_top_k_jsds
+            !! Forwarded to the bootstrap (heap size)
+        integer(int32), intent(in) :: join_method
+            !! Forwarded to check_plateau_condition_impl
+        integer(int32), intent(in) :: plateau_mode
+            !! Which plateau criterion sets `plateau_found`, one of the `MODE_PLATEAU_*` values
+        real(real64), intent(in) :: succeeding_ci_overlap
+            !! Forwarded to check_plateau_condition_impl
+        real(real64), intent(in) :: delta_median_threshold
+            !! Forwarded to check_effect_size_plateau_condition_impl
+        real(real64), intent(in) :: delta_max_threshold
+            !! Forwarded to check_effect_size_plateau_condition_impl
+        real(real64), intent(in) :: delta_epsilon
+            !! Forwarded to check_effect_size_plateau_condition_impl; also the floor of the relative CI width
+        integer(int32), intent(in) :: delta_min_consecutive_transitions
+            !! Forwarded to check_effect_size_plateau_condition_impl
+        integer(int32), intent(in) :: n_bins_per_point(n_points)
+            !! The candidate's bin count per reference point
+        logical(c_bool), intent(in) :: occupancy_failed(n_points)
+            !! The candidate's bin-count failure flag per reference point
+        integer(int32), intent(in) :: n_pooled_residuals(n_points)
+            !! The candidate's pooled residual count per reference point
+        integer(int32), intent(in) :: min_bin_occupancy(n_points)
+            !! The candidate's minimum bin occupancy per reference point
+        real(real64), intent(in) :: mean_bin_occupancy(n_points)
+            !! The candidate's mean bin occupancy per reference point
+        integer(int32), intent(in) :: max_bin_occupancy(n_points)
+            !! The candidate's maximum bin occupancy per reference point
+        integer(int32), intent(in) :: sturges_bins(n_points)
+            !! The candidate's Sturges' rule diagnostic per reference point
+        integer(int32), intent(in) :: fd_bins(n_points)
+            !! The candidate's Freedman-Diaconis rule diagnostic per reference point
+        real(real64), intent(in) :: shared_residual_range_low(n_points)
+            !! The candidate's R_low per reference point
+        real(real64), intent(in) :: shared_residual_range_high(n_points)
+            !! The candidate's R_high per reference point
+        integer(int32), intent(in) :: included_n_reps(n_points, n_studies)
+            !! Every study's included-replicate counts
+        integer(int32), intent(in) :: mean_pmf_counts(n_points, max_n_bins)
+            !! The consensus histogram counts, the bootstrap's pool
+        integer(int32), intent(in) :: mean_pmf_included_n_reps(n_points)
+            !! The consensus included-replicate counts
+        integer(int32), intent(out) :: counts(n_points, max_n_bins, n_studies)
+            !! Every study's histogram counts; bootstrap scratch here
+        real(real64), intent(out) :: pmfs(n_points, max_n_bins, n_studies)
+            !! Every study's pmfs; bootstrap scratch here
+        real(real64), intent(out) :: mean_pmf(n_points, max_n_bins)
+            !! The consensus pmf; bootstrap scratch here
+        real(real64), intent(out) :: js_divergences(n_points, n_studies)
+            !! Each study's per-point JSD; bootstrap scratch here
+        real(real64), intent(out) :: weights(n_points, n_studies)
+            !! Each study's per-point weights; bootstrap scratch here
+        real(real64), intent(inout) :: global_js_divergence(n_studies)
+            !! Each study's observed global JSD on entry; bootstrap scratch afterwards
+        real(real64), intent(inout) :: confidence_interval(2, n_studies)
+            !! The `[J, J]` seed on entry, the bootstrapped interval on return
+        real(real64), intent(inout) :: trace_global_js_divergence(n_studies, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the observed global JSD
+        real(real64), intent(inout) :: trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the confidence-interval lower bound
+        real(real64), intent(inout) :: trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the confidence-interval upper bound
+        real(real64), intent(inout) :: trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the confidence-interval width
+        real(real64), intent(inout) :: trace_ci_width_relative(n_studies, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the relative confidence-interval width
+        real(real64), intent(inout) :: trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the overlap with the best interval so far
+        real(real64), intent(inout) :: trace_delta(n_studies, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the relative JSD change
+        real(real64), intent(inout) :: trace_delta_median(MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the median relative JSD change
+        real(real64), intent(inout) :: trace_delta_max(MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the largest relative JSD change
+        integer(int32), intent(inout) :: trace_selected_n_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the per-point bin counts
+        logical(c_bool), intent(inout) :: trace_occupancy_failed(max_n_points_candidate, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the per-point bin-count failure flags
+        integer(int32), intent(inout) :: trace_n_pooled_residuals(max_n_points_candidate, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the per-point pooled residual counts
+        integer(int32), intent(inout) :: trace_min_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the per-point minimum bin occupancy
+        real(real64), intent(inout) :: trace_mean_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the per-point mean bin occupancy
+        integer(int32), intent(inout) :: trace_max_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the per-point maximum bin occupancy
+        integer(int32), intent(inout) :: trace_sturges_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the per-point Sturges' rule diagnostic
+        integer(int32), intent(inout) :: trace_fd_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the per-point Freedman-Diaconis rule diagnostic
+        real(real64), intent(inout) :: trace_shared_residual_range_low(max_n_points_candidate, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the per-point R_low
+        real(real64), intent(inout) :: trace_shared_residual_range_high(max_n_points_candidate, MAX_CANDIDATE_PAIRS)
+            !! The search's trace of the per-point R_high
+        real(real64), intent(inout) :: prev_global_js_divergence(n_studies)
+            !! The previous admissible candidate's observed global JSD; this candidate's on return
+        integer(int32), intent(inout) :: n_consecutive_effect_size_ok
+            !! Running count of consecutive qualifying effect-size transitions
+        real(real64), intent(inout) :: best_candidate_confidence_interval(2, n_studies)
+            !! The best candidate's confidence interval
+        integer(int32), intent(inout) :: best_candidate_index
+            !! The best candidate's index
+        integer(int32), intent(inout) :: best_exceeded_ci_overlap_count
+            !! Forwarded to check_plateau_condition_impl
+        integer(int32), intent(inout) :: best_n_bins_per_point(n_points)
+            !! The best candidate's bin counts, overwritten when this candidate becomes the best
+        real(real64), intent(inout) :: best_shared_residual_range_low(n_points)
+            !! The best candidate's R_low, like `best_n_bins_per_point`
+        real(real64), intent(inout) :: best_shared_residual_range_high(n_points)
+            !! The best candidate's R_high, like `best_n_bins_per_point`
+        real(real64), intent(inout) :: best_uncertainty_value
+            !! Smallest median confidence-interval width so far
+        integer(int32), intent(inout) :: best_uncertainty_candidate_index
+            !! Index of the candidate with that width
+        real(real64), intent(inout) :: best_uncertainty_confidence_interval(2, n_studies)
+            !! That candidate's confidence interval
+        integer(int32), intent(inout) :: best_uncertainty_n_bins_per_point(n_points)
+            !! That candidate's bin counts, overwritten when this candidate takes its place
+        real(real64), intent(inout) :: best_uncertainty_shared_residual_range_low(n_points)
+            !! That candidate's R_low, like `best_uncertainty_n_bins_per_point`
+        real(real64), intent(inout) :: best_uncertainty_shared_residual_range_high(n_points)
+            !! That candidate's R_high, like `best_uncertainty_n_bins_per_point`
+        logical(c_bool), intent(out) :: plateau_found
+            !! `.true.` iff the criterion `plateau_mode` selects found a plateau
+        real(real64), intent(out) :: tmp_bootstrapping_top_k_jsds(n_bootstrapping_top_k_jsds, 2, n_studies)
+            !! Working array: the bootstrap's bottom-k/top-k heaps
+        integer(int32), intent(out) :: tmp_point_pool(M_MAX_N_BINS)
+            !! Working array of the bootstrap: one point's pool
+        integer(int32), intent(out) :: tmp_point_draw(M_MAX_N_BINS)
+            !! Working array of the bootstrap: one study's draw at one point
+        integer(int32), intent(out) :: tmp_delta_perm(n_studies)
+            !! Working array: sorting permutation for the per-study medians
+        integer(int32), intent(out) :: ierr
+            !! Error code of the bootstrap if it fails (see above)
+        real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
+            !! Forwarded to the bootstrap
+        integer(int32), intent(in), optional :: random_seed
+            !! Forwarded to the bootstrap
+
+        integer(int32) :: bootstrap_ierr
+        real(real64) :: median_ci_width
+        logical(c_bool) :: ci_plateau_found, effect_size_plateau_found
+
+        call set_ok(ierr)
+
+        ! Trace the candidate and test the effect-size criterion, whatever plateau_mode is. Must
+        ! come before the bootstrap, which reuses global_js_divergence as scratch.
+        trace_global_js_divergence(1:n_studies, n_admissible_evaluated) = global_js_divergence
+        trace_selected_n_bins(1:n_points, n_admissible_evaluated) = n_bins_per_point
+        trace_occupancy_failed(1:n_points, n_admissible_evaluated) = occupancy_failed
+        trace_n_pooled_residuals(1:n_points, n_admissible_evaluated) = n_pooled_residuals
+        trace_min_bin_occupancy(1:n_points, n_admissible_evaluated) = min_bin_occupancy
+        trace_mean_bin_occupancy(1:n_points, n_admissible_evaluated) = mean_bin_occupancy
+        trace_max_bin_occupancy(1:n_points, n_admissible_evaluated) = max_bin_occupancy
+        trace_sturges_bins(1:n_points, n_admissible_evaluated) = sturges_bins
+        trace_fd_bins(1:n_points, n_admissible_evaluated) = fd_bins
+        trace_shared_residual_range_low(1:n_points, n_admissible_evaluated) = shared_residual_range_low
+        trace_shared_residual_range_high(1:n_points, n_admissible_evaluated) = shared_residual_range_high
+
+        ! The first admissible candidate has no previous one.
+        call check_effect_size_plateau_condition_impl(global_js_divergence, prev_global_js_divergence, &
+                                                      n_studies, logical(n_admissible_evaluated > 1_int32, kind=c_bool), &
+                                                      delta_median_threshold, delta_max_threshold, delta_epsilon, &
+                                                      delta_min_consecutive_transitions, &
+                                                      n_consecutive_effect_size_ok, &
+                                                      trace_delta(1:n_studies, n_admissible_evaluated), &
+                                                      trace_delta_median(n_admissible_evaluated), &
+                                                      trace_delta_max(n_admissible_evaluated), &
+                                                      effect_size_plateau_found, tmp_delta_perm)
+        prev_global_js_divergence = global_js_divergence
+
+        ! Same n_bootstraps/random_seed for every candidate, for comparability. The observed-value
+        ! arrays above double as the bootstrap's work arrays, passed whole and viewed packed.
+        call bootstrap_histogram_impl(n_bootstraps, max_n_bins, n_points, n_studies, mean_pmf_counts, &
+                                      mean_pmf_included_n_reps, included_n_reps, &
+                                      n_bootstrapping_top_k_jsds, confidence_interval, &
+                                      tmp_bootstrapping_top_k_jsds, counts, pmfs, mean_pmf, &
+                                      js_divergences, weights, global_js_divergence, tmp_point_pool, &
+                                      tmp_point_draw, two_sided_bootstrapping_significance_level, random_seed, &
+                                      bootstrap_ierr)
+        ! Defensive: the counts add up by construction, so only a failed rng allocation can
+        ! land here (untested). Without the return the interval would stay at its zero-width
+        ! [J, J] seed and could win the smallest-uncertainty ranking.
+        if (is_err(bootstrap_ierr)) then
+            call set_err_once(ierr, get_err_code(bootstrap_ierr))
+            return
+        end if
+
+        trace_ci_lower(1:n_studies, n_admissible_evaluated) = confidence_interval(1, 1:n_studies)
+        trace_ci_upper(1:n_studies, n_admissible_evaluated) = confidence_interval(2, 1:n_studies)
+        trace_ci_width(1:n_studies, n_admissible_evaluated) = &
+            trace_ci_upper(1:n_studies, n_admissible_evaluated) - trace_ci_lower(1:n_studies, n_admissible_evaluated)
+        trace_ci_width_relative(1:n_studies, n_admissible_evaluated) = &
+            trace_ci_width(1:n_studies, n_admissible_evaluated) &
+            / max(trace_global_js_divergence(1:n_studies, n_admissible_evaluated), delta_epsilon)
+
+        ! Track the admissible candidate with the smallest median CI width (the no-plateau
+        ! fallback). tmp_delta_perm must be re-sorted for trace_ci_width: calc_quantile_impl
+        ! trusts the order it is handed.
+        call init_perm(tmp_delta_perm)
+        call sort_array_heapsort(trace_ci_width(1:n_studies, n_admissible_evaluated), tmp_delta_perm)
+        call calc_quantile_impl(trace_ci_width(1:n_studies, n_admissible_evaluated), n_studies, tmp_delta_perm, &
+                                0.5_real64, median_ci_width)
+        if (median_ci_width < best_uncertainty_value) then
+            best_uncertainty_value = median_ci_width
+            best_uncertainty_candidate_index = candidate_index
+            best_uncertainty_confidence_interval = confidence_interval
+            best_uncertainty_n_bins_per_point = n_bins_per_point
+            best_uncertainty_shared_residual_range_low = shared_residual_range_low
+            best_uncertainty_shared_residual_range_high = shared_residual_range_high
+        end if
+
+        call check_plateau_condition_impl(confidence_interval, best_candidate_confidence_interval, n_studies, &
+                                          best_candidate_index, best_exceeded_ci_overlap_count, candidate_index, join_method, &
+                                          succeeding_ci_overlap, &
+                                          trace_ci_overlap(1:n_studies, n_admissible_evaluated), ci_plateau_found)
+        ! The first admissible candidate was compared against the -1.0 seed: record -1.0.
+        if (n_admissible_evaluated == 1_int32) trace_ci_overlap(1:n_studies, 1) = -1.0_real64
+
+        ! This candidate became the new best: snapshot its per-point values.
+        if (best_candidate_index == candidate_index) then
+            best_n_bins_per_point = n_bins_per_point
+            best_shared_residual_range_low = shared_residual_range_low
+            best_shared_residual_range_high = shared_residual_range_high
+        end if
+
+        select case (plateau_mode)
+        case (MODE_PLATEAU_CI_OVERLAP)
+            plateau_found = ci_plateau_found
+        case (MODE_PLATEAU_EFFECT_SIZE)
+            plateau_found = effect_size_plateau_found
+        case default ! MODE_PLATEAU_BOTH
+            plateau_found = logical(ci_plateau_found .or. effect_size_plateau_found, kind=c_bool)
+        end select
+
+        ! The best-candidate bookkeeping follows the CI-overlap criterion only; an effect-size
+        ! plateau returns the candidate that triggered it.
+        if (effect_size_plateau_found .and. plateau_mode /= MODE_PLATEAU_CI_OVERLAP) then
+            best_candidate_index = candidate_index
+            best_candidate_confidence_interval = confidence_interval
+            best_n_bins_per_point = n_bins_per_point
+            best_shared_residual_range_low = shared_residual_range_low
+            best_shared_residual_range_high = shared_residual_range_high
+        end if
+    end subroutine evaluate_admissible_candidate
+
+    !> summary: Select the candidate a parameter search returns, by its three cases
+    !| AUTHOR_LASZLO_LANG
+    !| The end of both parameter searches. Case 1, a plateau was found or the only candidate was
+    !| admissible: the best candidate, `plateau_established = .true.`. Case 2, some candidate was
+    !| admissible: the one with the smallest median confidence-interval width, with its interval.
+    !| Case 3, nothing was admissible: candidate 1, every bin count `m_min`, both ranges `0.0`
+    !| (for at most `max_n_points_candidate` points) and the interval `-1.0`. Cases 2 and 3 set
+    !| `plateau_established = .false.`. The search reads the selected candidate's identity at
+    !| `selected_candidate_index`. Internal helper, not published; public because both parameter
+    !| searches call it.
+    pure subroutine select_final_candidate(max_n_points_candidate, n_studies, n_candidates, n_admissible_evaluated, &
+                                           plateau_found, m_min, best_candidate_index, best_n_points, &
+                                           best_n_bins_per_point, best_shared_residual_range_low, &
+                                           best_shared_residual_range_high, best_uncertainty_candidate_index, &
+                                           best_uncertainty_n_points, best_uncertainty_confidence_interval, &
+                                           best_uncertainty_n_bins_per_point, best_uncertainty_shared_residual_range_low, &
+                                           best_uncertainty_shared_residual_range_high, first_n_points, &
+                                           selected_candidate_index, n_points, n_bins_per_point, shared_residual_range_low, &
+                                           shared_residual_range_high, best_candidate_confidence_interval, &
+                                           plateau_established)
+        integer(int32), intent(in) :: max_n_points_candidate
+            !! Extent of the per-point arrays
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        integer(int32), intent(in) :: n_candidates
+            !! Number of candidates in the search's sequence, inadmissible ones included
+        integer(int32), intent(in) :: n_admissible_evaluated
+            !! Number of admissible candidates the search evaluated
+        logical(c_bool), intent(in) :: plateau_found
+            !! Whether the search stopped at a plateau
+        integer(int32), intent(in) :: m_min
+            !! The bin count of every point in case 3
+        integer(int32), intent(in) :: best_candidate_index
+            !! The best candidate's index
+        integer(int32), intent(in) :: best_n_points
+            !! The best candidate's number of reference points
+        integer(int32), intent(in) :: best_n_bins_per_point(max_n_points_candidate)
+            !! The best candidate's bin counts
+        real(real64), intent(in) :: best_shared_residual_range_low(max_n_points_candidate)
+            !! The best candidate's R_low
+        real(real64), intent(in) :: best_shared_residual_range_high(max_n_points_candidate)
+            !! The best candidate's R_high
+        integer(int32), intent(in) :: best_uncertainty_candidate_index
+            !! The smallest-uncertainty candidate's index
+        integer(int32), intent(in) :: best_uncertainty_n_points
+            !! The smallest-uncertainty candidate's number of reference points
+        real(real64), intent(in) :: best_uncertainty_confidence_interval(2, n_studies)
+            !! The smallest-uncertainty candidate's confidence interval
+        integer(int32), intent(in) :: best_uncertainty_n_bins_per_point(max_n_points_candidate)
+            !! The smallest-uncertainty candidate's bin counts
+        real(real64), intent(in) :: best_uncertainty_shared_residual_range_low(max_n_points_candidate)
+            !! The smallest-uncertainty candidate's R_low
+        real(real64), intent(in) :: best_uncertainty_shared_residual_range_high(max_n_points_candidate)
+            !! The smallest-uncertainty candidate's R_high
+        integer(int32), intent(in) :: first_n_points
+            !! Candidate 1's number of reference points
+        integer(int32), intent(out) :: selected_candidate_index
+            !! Index of the returned candidate
+        integer(int32), intent(out) :: n_points
+            !! The returned candidate's number of reference points
+        integer(int32), intent(out) :: n_bins_per_point(max_n_points_candidate)
+            !! The returned bin counts; the first `min(n_points, max_n_points_candidate)` are set
+        real(real64), intent(out) :: shared_residual_range_low(max_n_points_candidate)
+            !! The returned R_low, like `n_bins_per_point`
+        real(real64), intent(out) :: shared_residual_range_high(max_n_points_candidate)
+            !! The returned R_high, like `n_bins_per_point`
+        real(real64), intent(inout) :: best_candidate_confidence_interval(2, n_studies)
+            !! The best candidate's interval on entry; the returned candidate's on return
+        logical(c_bool), intent(out) :: plateau_established
+            !! `.true.` in case 1 only
+
+        ! In case 1 some candidate was admissible, so the best-candidate snapshot exists;
+        ! n_candidates counts gate-failed candidates too.
+        if (plateau_found .or. (n_candidates < 2_int32 .and. n_admissible_evaluated >= 1_int32)) then
+            selected_candidate_index = best_candidate_index
+            n_points = best_n_points
+            n_bins_per_point(1:n_points) = best_n_bins_per_point(1:n_points)
+            shared_residual_range_low(1:n_points) = best_shared_residual_range_low(1:n_points)
+            shared_residual_range_high(1:n_points) = best_shared_residual_range_high(1:n_points)
+            plateau_established = logical(.true., kind=c_bool)
+        else if (n_admissible_evaluated >= 1_int32) then
+            selected_candidate_index = best_uncertainty_candidate_index
+            n_points = best_uncertainty_n_points
+            n_bins_per_point(1:n_points) = best_uncertainty_n_bins_per_point(1:n_points)
+            shared_residual_range_low(1:n_points) = best_uncertainty_shared_residual_range_low(1:n_points)
+            shared_residual_range_high(1:n_points) = best_uncertainty_shared_residual_range_high(1:n_points)
+            best_candidate_confidence_interval = best_uncertainty_confidence_interval
+            plateau_established = logical(.false., kind=c_bool)
+        else
+            ! No bin count was kept for candidate 1, so m_min (as in a failed bin-count search) and
+            ! a zero range (as for an all-NaN pool). An adaptive candidate 1 may have more points
+            ! than the capacity, hence the clamp.
+            selected_candidate_index = 1_int32
+            n_points = first_n_points
+            n_bins_per_point(1:min(n_points, max_n_points_candidate)) = m_min
+            shared_residual_range_low(1:min(n_points, max_n_points_candidate)) = 0.0_real64
+            shared_residual_range_high(1:min(n_points, max_n_points_candidate)) = 0.0_real64
+            best_candidate_confidence_interval = -1.0_real64
+            plateau_established = logical(.false., kind=c_bool)
+        end if
+    end subroutine select_final_candidate
 
 end module tox_data_integration_js_comp_test_search_impl

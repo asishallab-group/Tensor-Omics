@@ -44,6 +44,17 @@
 ! the DM_DEFAULT and M_DEFAULT_VAL of both parameter searches.
 #define M_MODE_PLATEAU_CI_OVERLAP 0_int32
 
+! Defaults of the two admissibility/plateau thresholds `min_neighbor_overlap` (gate 1) and
+! `succeeding_ci_overlap`, shared by DM_DEFAULT and M_DEFAULT_VAL in both parameter searches.
+#define M_MIN_NEIGHBOR_OVERLAP_DEFAULT 0.1_real64
+#define M_SUCCEEDING_CI_OVERLAP_DEFAULT 0.9_real64
+
+! Defaults of the bootstrap and the permutation test (tox_data_integration_stats_impl), shared by
+! their DM_DEFAULT and M_DEFAULT_VAL and by the DM_DEFAULT of every routine that forwards them:
+! both parameter searches and both final runs.
+#define M_TWO_SIDED_BOOTSTRAPPING_SIGNIFICANCE_LEVEL_DEFAULT 2.5_real64
+#define M_RANDOM_SEED_DEFAULT 42_int32
+
 ! Defaults of the relative-effect-size plateau criterion (provisional, to be validated
 ! empirically), shared by DM_DEFAULT and M_DEFAULT_VAL in both parameter searches.
 #define M_DELTA_MEDIAN_THRESHOLD_DEFAULT 0.05_real64

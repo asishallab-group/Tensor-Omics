@@ -958,7 +958,8 @@ contains
         real(real64), dimension(n_studies), intent(out) :: tmp_prev_global_js_divergence
             !! Working array: the previous admissible candidate's observed global JSD per study
         integer(int32), dimension(n_studies), intent(out) :: tmp_delta_perm
-            !! Working array: sorting permutation for the per-study medians
+            !! Working array: sorting permutation for the per-study medians; before that, every
+            !! study's neighbor count for the bin-count search
         real(real64), dimension(2, n_studies), intent(out) :: tmp_best_uncertainty_confidence_interval
             !! Working array: confidence interval of the smallest-uncertainty admissible candidate
         real(real64), dimension(max_n_reps_all_studies*max_n_neighbors_candidate*n_studies), intent(out) :: tmp_pooled_residuals

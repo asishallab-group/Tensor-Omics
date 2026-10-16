@@ -14,7 +14,7 @@ module tox_data_integration_jsd_impl
     use, intrinsic :: iso_fortran_env, only: int32, int64, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
-    use f42_math_impl, only: clamp, is_close, LOG_2
+    use f42_math_impl, only: clamp, is_close, LOG_2, IS_CLOSE_ABS_TOL
     use f42_sort_impl, only: sort_array_heapsort
     use f42_stats_impl, only: calc_quantile_impl
     M_IMPLICIT_NONE
@@ -23,6 +23,10 @@ module tox_data_integration_jsd_impl
              build_residual_histograms_impl, calc_pmf_impl, &
              compute_divergence_per_reference_point_impl, compute_weighted_global_divergence_impl, &
              jct_compute_jsd_pipeline_impl, create_mean_pmf_impl, create_mean_pmf_only_impl
+
+    ! `residual_range_quantile_level`'s default, shared by DM_DEFAULT and M_DEFAULT_VAL of both
+    ! residual-range routines.
+#define CM_RESIDUAL_RANGE_QUANTILE_LEVEL_DEFAULT 0.95_real64
 contains
 
     !> summary: Compute the shared residual range [-R, R] from a pooled set of absolute residuals
@@ -36,7 +40,7 @@ contains
             !! Quantile level in [0,1] for determining the residual range
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(0.95_real64)
+            !! DM_DEFAULT(CM_RESIDUAL_RANGE_QUANTILE_LEVEL_DEFAULT)
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
         real(real64), dimension(pool_size), intent(in) :: abs_residual_pool
@@ -50,7 +54,7 @@ contains
         integer(int32) :: i_pool, last_non_nan
         real(real64) :: actual_quantile_level
 
-        M_DEFAULT_VAL(residual_range_quantile_level, actual_quantile_level, 0.95_real64)
+        M_DEFAULT_VAL(residual_range_quantile_level, actual_quantile_level, CM_RESIDUAL_RANGE_QUANTILE_LEVEL_DEFAULT)
 
         last_non_nan = pool_size
         ! NaN is always last -> find last non-NaN index for the quantile calculation
@@ -99,7 +103,7 @@ contains
             !! Quantile level in [0,1] for determining the residual range
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(0.95_real64)
+            !! DM_DEFAULT(CM_RESIDUAL_RANGE_QUANTILE_LEVEL_DEFAULT)
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
 
@@ -307,11 +311,6 @@ contains
 
         real(real64) :: S_mean, s1_val, s2_val
         integer(int32) :: i_bin, i_point
-        ! The absolute tolerance of `is_close` (f42_math_impl): `is_close(S_mean, 0.0_real64)` is
-        ! exactly `abs(S_mean) <= ZERO_MEAN_TOLERANCE`, for every value including NaN and infinity.
-        ! Written out here because ifx 2026.1 at -O3 -xHost miscompiled the `do concurrent` below
-        ! while it called `is_close` (JSDs below 0); keep it equal to `is_close`'s absolute floor.
-        real(real64), parameter :: ZERO_MEAN_TOLERANCE = 1.0e-12_real64
 
         js_divergences = 0.0_real64
 
@@ -326,7 +325,9 @@ contains
                 s2_val = pmf_S2(i_point, i_bin)
                 S_mean = 0.5_real64*(s1_val + s2_val)
 
-                if (.not. (abs(S_mean) <= ZERO_MEAN_TOLERANCE)) then
+                ! Exactly `.not. is_close(S_mean, 0.0_real64)`, NaN and infinity included; written out
+                ! because ifx 2026.1 at -O3 -xHost miscompiled this loop while it called `is_close`.
+                if (.not. (abs(S_mean) <= IS_CLOSE_ABS_TOL)) then
                     if (s1_val > 0.0_real64) then
                         js_divergences(i_point) = js_divergences(i_point) + s1_val*log(s1_val/S_mean)
                     end if

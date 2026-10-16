@@ -18,17 +18,13 @@ module tox_data_integration_js_comp_test_fixed_k_search_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use f42_math_impl, only: clamp
-    use f42_stats_impl, only: calc_quantile_impl
     use f42_sort_impl, only: init_perm, sort_array_heapsort, sort_real_heapsort_expl_size
     use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, validate_in_range_int
     use tox_data_integration_preprocessing_impl, only: construct_neighborhoods_ranged_impl, pool_means_impl, &
-                                                       gather_pooled_neighborhood_residuals, &
                                                        check_neighborhood_overlaps_impl
-    use tox_data_integration_stats_impl, only: bootstrap_histogram_impl
-    use tox_data_integration_js_comp_test_binning_impl, only: select_point_bin_count, build_fixed_k_study_histograms
-    use tox_data_integration_js_comp_test_search_impl, only: check_plateau_condition_impl, check_effect_size_plateau_condition_impl, &
-                                                             score_candidate_histograms, MAX_CANDIDATE_PAIRS, &
-                                                             MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE
+    use tox_data_integration_js_comp_test_binning_impl, only: determine_point_bin_count, build_fixed_k_study_histograms
+    use tox_data_integration_js_comp_test_search_impl, only: score_candidate_histograms, evaluate_admissible_candidate, &
+                                                             select_final_candidate, MAX_CANDIDATE_PAIRS
     M_IMPLICIT_NONE
     private
     public :: calc_js_comp_test_candidate_bounds, generate_js_comp_test_candidates_impl, &
@@ -40,8 +36,9 @@ module tox_data_integration_js_comp_test_fixed_k_search_impl
     integer(int32), parameter :: MAX_POINTS = 1500_int32
     integer(int32), parameter :: MIN_POINTS = 300_int32
     real(real64), parameter :: GAMMA = 0.8_real64
-    integer(int32), parameter :: MAX_POINT_CANDIDATES = 8_int32
-        !! How often n_points_high may be multiplied by GAMMA before the grid gives up
+    integer(int32), parameter :: MAX_POINT_CANDIDATES = MAX_CANDIDATE_PAIRS/size(KX_FACTORS, kind=int32)
+        !! How often n_points_high may be multiplied by GAMMA before the grid gives up; derived so
+        !! that the grid never exceeds MAX_CANDIDATE_PAIRS candidates
 
 contains
 
@@ -182,53 +179,6 @@ contains
             if (.not. all_have_min_neighbor_overlap) exit
         end do
     end subroutine construct_fixed_k_candidate_neighborhoods
-
-    !> Pools one reference point's residuals across all its neighbors of all studies, for Pass B
-    !| of the fixed-k parameter search: one
-    !| [[tox_data_integration_preprocessing_impl(module):gather_pooled_neighborhood_residuals(interface)]]
-    !| call per study into that study's block of `pooled_residuals`, which gives exactly the layout
-    !| of a single multi-study call. Private helper; `neighborhood_indices` is the search's buffer
-    !| viewed packed at the candidate's sizes. A gene index out of range returns that routine's
-    !| error code in `ierr` (its argument position cleared) and stops at once.
-    pure subroutine gather_fixed_k_point_pool(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, &
-                                              n_neighbors, n_points, neighborhood_indices, i_point, pooled_residuals, ierr)
-        integer(int32), intent(in) :: max_n_reps_all_studies
-            !! Maximum number of replicates across all studies
-        integer(int32), intent(in) :: max_n_genes_all_studies
-            !! Maximum number of genes across all studies
-        integer(int32), intent(in) :: n_studies
-            !! Number of studies
-        integer(int32), intent(in) :: n_neighbors
-            !! The candidate's number of neighbors per reference point
-        integer(int32), intent(in) :: n_points
-            !! The candidate's number of reference points
-        real(real64), intent(in) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-            !! Matrix of signed residuals per study, NaN allowed for missing values
-        integer(int32), intent(in) :: neighborhood_indices(n_neighbors, n_points, n_studies)
-            !! Every study's neighbor gene indices
-        integer(int32), intent(in) :: i_point
-            !! The reference point to pool
-        real(real64), intent(out) :: pooled_residuals(max_n_reps_all_studies*n_neighbors*n_studies)
-            !! The point's pooled residuals, one block of `max_n_reps_all_studies*n_neighbors` per study
-        integer(int32), intent(out) :: ierr
-            !! Error code; ERR_INVALID_INPUT for a gene index out of range
-
-        integer(int32) :: i_study, block_size, gather_ierr
-
-        call set_ok(ierr)
-        block_size = max_n_reps_all_studies*n_neighbors
-        do i_study = 1, n_studies
-            call gather_pooled_neighborhood_residuals(residuals(:, :, i_study:i_study), max_n_reps_all_studies, &
-                                                      max_n_genes_all_studies, n_neighbors, 1_int32, &
-                                                      neighborhood_indices(:, i_point, i_study), &
-                                                      pooled_residuals((i_study - 1)*block_size + 1:i_study*block_size), &
-                                                      gather_ierr)
-            if (is_err(gather_ierr)) then
-                call set_err_once(ierr, get_err_code(gather_ierr))
-                return
-            end if
-        end do
-    end subroutine gather_fixed_k_point_pool
 
     !> Pass C of the fixed-k parameter search for one candidate: every study's histograms, by
     !| `build_fixed_k_study_histograms`. Private helper; every array dummy is a search buffer
@@ -555,7 +505,8 @@ contains
         real(real64), dimension(n_studies), intent(out) :: tmp_prev_global_js_divergence
             !! Working array: the previous admissible candidate's observed global JSD per study
         integer(int32), dimension(n_studies), intent(out) :: tmp_delta_perm
-            !! Working array: sorting permutation for the per-study medians
+            !! Working array: sorting permutation for the per-study medians; before that, every
+            !! study's neighbor count for the bin-count search
         real(real64), dimension(2, n_studies), intent(out) :: tmp_best_uncertainty_confidence_interval
             !! Working array: confidence interval of the smallest-uncertainty admissible candidate
         real(real64), dimension(max_n_reps_all_studies*max_n_neighbors_candidate*n_studies), intent(out) :: &
@@ -609,14 +560,14 @@ contains
             !! Minimum fractional overlap of two consecutive neighborhoods (gate 1)
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(0.1_real64)
+            !! DM_DEFAULT(M_MIN_NEIGHBOR_OVERLAP_DEFAULT)
         real(real64), intent(in), optional :: succeeding_ci_overlap
             !! Minimum fractional overlap of a candidate's confidence interval with the best one so
             !! far, per `join_method`. `0` makes the first admissible candidate plateau under the
             !! CI-overlap criterion (for baseline sweeps)
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(0.9_real64)
+            !! DM_DEFAULT(M_SUCCEEDING_CI_OVERLAP_DEFAULT)
         integer(int32), intent(in), optional :: plateau_mode
             !! Which plateau criterion decides when the search stops
             !!
@@ -675,10 +626,10 @@ contains
             !! Two-sided significance level of the bootstrap interval, in percent per end
             !! DM_MIN(0.0_real64)
             !! DM_MAX(100.0_real64)
-            !! DM_DEFAULT(2.5_real64)
+            !! DM_DEFAULT(M_TWO_SIDED_BOOTSTRAPPING_SIGNIFICANCE_LEVEL_DEFAULT)
         integer(int32), intent(in), optional :: random_seed
             !! Seed for the GSL random number generator
-            !! DM_DEFAULT(42_int32)
+            !! DM_DEFAULT(M_RANDOM_SEED_DEFAULT)
         integer(int32), intent(in), optional :: bin_count_mode
             !! How each reference point's histogram bin count is chosen, for every candidate; the
             !! Stone modes test every bin count from `m_min` to `m_max`
@@ -696,28 +647,26 @@ contains
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
 
         integer(int32) :: candidates_n_points_n_neighbors(2, MAX_CANDIDATE_PAIRS)
-        integer(int32) :: i_candidate, i_study, i_point, n_pool, max_n_bins, gather_ierr
+        integer(int32) :: i_candidate, i_study, i_point, n_pool, max_n_bins, point_ierr
         integer(int32) :: prev_n_points, best_candidate_index, best_exceeded_ci_overlap_count, n_candidates
-        integer(int32) :: pool_size, bootstrap_ierr, actual_min_residuals_per_bin
+        integer(int32) :: pool_size, actual_min_residuals_per_bin, selected_candidate_index
         integer(int32) :: actual_plateau_mode, actual_delta_min_consecutive_transitions, n_consecutive_effect_size_ok
-        integer(int32) :: best_uncertainty_candidate_index, actual_m_min, actual_bin_count_mode
+        integer(int32) :: best_uncertainty_candidate_index, actual_m_min
         real(real64) :: actual_min_neighbor_overlap, actual_succeeding_ci_overlap
         real(real64) :: actual_delta_median_threshold, actual_delta_max_threshold, actual_delta_epsilon
-        real(real64) :: best_uncertainty_value, median_ci_width
+        real(real64) :: best_uncertainty_value
         logical(c_bool) :: all_have_min_neighbor_overlap, all_bins_have_min_count, plateau_found, has_empty_study
-        logical(c_bool) :: ci_plateau_found, effect_size_plateau_found, has_previous_admissible
 
         call set_ok(ierr)
         M_DEFAULT_VAL(min_residuals_per_bin, actual_min_residuals_per_bin, M_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
-        M_DEFAULT_VAL(min_neighbor_overlap, actual_min_neighbor_overlap, 0.1_real64)
-        M_DEFAULT_VAL(succeeding_ci_overlap, actual_succeeding_ci_overlap, 0.9_real64)
+        M_DEFAULT_VAL(min_neighbor_overlap, actual_min_neighbor_overlap, M_MIN_NEIGHBOR_OVERLAP_DEFAULT)
+        M_DEFAULT_VAL(succeeding_ci_overlap, actual_succeeding_ci_overlap, M_SUCCEEDING_CI_OVERLAP_DEFAULT)
         M_DEFAULT_VAL(plateau_mode, actual_plateau_mode, M_MODE_PLATEAU_CI_OVERLAP)
         M_DEFAULT_VAL(delta_median_threshold, actual_delta_median_threshold, M_DELTA_MEDIAN_THRESHOLD_DEFAULT)
         M_DEFAULT_VAL(delta_max_threshold, actual_delta_max_threshold, M_DELTA_MAX_THRESHOLD_DEFAULT)
         M_DEFAULT_VAL(delta_epsilon, actual_delta_epsilon, M_DELTA_EPSILON_DEFAULT)
         M_DEFAULT_VAL(delta_min_consecutive_transitions, actual_delta_min_consecutive_transitions, M_DELTA_MIN_CONSECUTIVE_TRANSITIONS_DEFAULT)
         M_DEFAULT_VAL(m_min, actual_m_min, M_OCCUPANCY_M_MIN_DEFAULT)
-        M_DEFAULT_VAL(bin_count_mode, actual_bin_count_mode, M_MODE_BIN_COUNT_OCCUPANCY)
 
         pool_size = max_n_genes_all_studies*n_studies
 
@@ -741,7 +690,6 @@ contains
         prev_n_points = -1_int32
         n_admissible_evaluated = 0_int32
         n_consecutive_effect_size_ok = 0_int32
-        has_previous_admissible = logical(.false., kind=c_bool)
 
         ! Test candidate pairs, finest resolution to coarsest, and stop at the first JSD plateau.
         do i_candidate = 1, n_candidates
@@ -769,41 +717,34 @@ contains
                                                            all_have_min_neighbor_overlap)
             if (.not. all_have_min_neighbor_overlap) cycle
 
-            ! ===== PASS B (per point): pool all studies' residuals and run the bin-count search.
-            ! Sequential although the points are independent, so one tmp_pooled_residuals buffer
-            ! serves every point (do concurrent would need one per point). Every study's block has
-            ! max_n_reps_all_studies*n_neighbors values, so the block ends are the same for every point.
-            do concurrent(i_study=1:n_studies) shared(tmp_study_block_ends, max_n_reps_all_studies, n_neighbors)
-                tmp_study_block_ends(i_study) = i_study*max_n_reps_all_studies*n_neighbors
-            end do
+            ! ===== PASS B (per point): pool all studies' residuals and run the bin-count search, as
+            ! run_js_comp_test_impl does. Sequential although the points are independent, so one
+            ! tmp_pooled_residuals buffer serves every point (do concurrent would need one per point).
+            ! tmp_delta_perm is free until the candidate is evaluated and holds every study's n_neighbors.
+            tmp_delta_perm = n_neighbors
             do i_point = 1, n_points
-                call gather_fixed_k_point_pool(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, &
+                call determine_point_bin_count(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, &
                                                n_neighbors, n_points, tmp_neighborhood_indices_all_studies, i_point, &
-                                               tmp_pooled_residuals, gather_ierr)
+                                               tmp_delta_perm, tmp_n_bins_per_point(i_point), tmp_occupancy_failed(i_point), &
+                                               tmp_shared_residual_range_low(i_point), &
+                                               tmp_shared_residual_range_high(i_point), tmp_n_pooled_residuals(i_point), &
+                                               tmp_min_bin_occupancy(i_point), tmp_mean_bin_occupancy(i_point), &
+                                               tmp_max_bin_occupancy(i_point), tmp_sturges_bins(i_point), &
+                                               tmp_fd_bins(i_point), tmp_pooled_residuals, tmp_pooled_residuals_perm, &
+                                               tmp_bin_counts_search, tmp_residual_to_study_perm, tmp_study_block_ends, &
+                                               tmp_study_block_sizes, point_ierr, m_min=m_min, m_max=m_max, &
+                                               min_residuals_per_bin=actual_min_residuals_per_bin, &
+                                               gamma_occupancy=gamma_occupancy, &
+                                               lower_residual_range_quantile=lower_residual_range_quantile, &
+                                               upper_residual_range_quantile=upper_residual_range_quantile, &
+                                               bin_count_mode=bin_count_mode)
                 ! Defensive: only an out-of-range gene index fails here, and every index comes from
                 ! permutations this routine builds. Kept for direct callers, since Pass C would read
                 ! out of bounds; untested.
-                if (is_err(gather_ierr)) then
-                    call set_err_once(ierr, get_err_code(gather_ierr))
+                if (is_err(point_ierr)) then
+                    call set_err_once(ierr, get_err_code(point_ierr))
                     return
                 end if
-
-                call init_perm(tmp_pooled_residuals_perm(1:max_n_reps_all_studies*n_neighbors*n_studies))
-                call sort_array_heapsort(tmp_pooled_residuals(1:max_n_reps_all_studies*n_neighbors*n_studies), &
-                                         tmp_pooled_residuals_perm(1:max_n_reps_all_studies*n_neighbors*n_studies))
-
-                call select_point_bin_count( &
-                    tmp_pooled_residuals(1:max_n_reps_all_studies*n_neighbors*n_studies), &
-                    tmp_pooled_residuals_perm(1:max_n_reps_all_studies*n_neighbors*n_studies), &
-                    max_n_reps_all_studies*n_neighbors*n_studies, n_studies, tmp_study_block_ends, &
-                    max_n_reps_all_studies, n_neighbors, actual_bin_count_mode, &
-                    tmp_n_bins_per_point(i_point), tmp_occupancy_failed(i_point), &
-                    tmp_shared_residual_range_low(i_point), tmp_shared_residual_range_high(i_point), &
-                    tmp_n_pooled_residuals(i_point), tmp_min_bin_occupancy(i_point), tmp_mean_bin_occupancy(i_point), &
-                    tmp_max_bin_occupancy(i_point), tmp_sturges_bins(i_point), tmp_fd_bins(i_point), &
-                    tmp_bin_counts_search, tmp_residual_to_study_perm(1:max_n_reps_all_studies*n_neighbors*n_studies), &
-                    tmp_study_block_sizes, m_min, m_max, actual_min_residuals_per_bin, gamma_occupancy, &
-                    lower_residual_range_quantile, upper_residual_range_quantile)
             end do
 
             ! ===== PASS C (per study): every study's histograms at the chosen bin counts.
@@ -823,140 +764,54 @@ contains
                                             tmp_confidence_interval, has_empty_study, all_bins_have_min_count)
             if (has_empty_study .or. .not. all_bins_have_min_count) cycle
 
-            ! Trace the candidate and test the effect-size criterion, whatever plateau_mode is. Must
-            ! come before the bootstrap, which reuses tmp_global_js_divergence as scratch.
             n_admissible_evaluated = n_admissible_evaluated + 1_int32
             trace_n_points(n_admissible_evaluated) = n_points
             trace_n_neighbors(n_admissible_evaluated) = n_neighbors
-            trace_global_js_divergence(1:n_studies, n_admissible_evaluated) = tmp_global_js_divergence
-            trace_selected_n_bins(1:n_points, n_admissible_evaluated) = tmp_n_bins_per_point(1:n_points)
-            trace_occupancy_failed(1:n_points, n_admissible_evaluated) = tmp_occupancy_failed(1:n_points)
-            trace_n_pooled_residuals(1:n_points, n_admissible_evaluated) = tmp_n_pooled_residuals(1:n_points)
-            trace_min_bin_occupancy(1:n_points, n_admissible_evaluated) = tmp_min_bin_occupancy(1:n_points)
-            trace_mean_bin_occupancy(1:n_points, n_admissible_evaluated) = tmp_mean_bin_occupancy(1:n_points)
-            trace_max_bin_occupancy(1:n_points, n_admissible_evaluated) = tmp_max_bin_occupancy(1:n_points)
-            trace_sturges_bins(1:n_points, n_admissible_evaluated) = tmp_sturges_bins(1:n_points)
-            trace_fd_bins(1:n_points, n_admissible_evaluated) = tmp_fd_bins(1:n_points)
-            trace_shared_residual_range_low(1:n_points, n_admissible_evaluated) = tmp_shared_residual_range_low(1:n_points)
-            trace_shared_residual_range_high(1:n_points, n_admissible_evaluated) = tmp_shared_residual_range_high(1:n_points)
-
-            call check_effect_size_plateau_condition_impl(tmp_global_js_divergence, tmp_prev_global_js_divergence, &
-                                                          n_studies, has_previous_admissible, actual_delta_median_threshold, &
-                                                          actual_delta_max_threshold, actual_delta_epsilon, &
-                                                          actual_delta_min_consecutive_transitions, &
-                                                          n_consecutive_effect_size_ok, &
-                                                          trace_delta(1:n_studies, n_admissible_evaluated), &
-                                                          trace_delta_median(n_admissible_evaluated), &
-                                                          trace_delta_max(n_admissible_evaluated), &
-                                                          effect_size_plateau_found, tmp_delta_perm)
-            tmp_prev_global_js_divergence = tmp_global_js_divergence
-            has_previous_admissible = logical(.true., kind=c_bool)
-
-            ! Same n_bootstraps/random_seed for every candidate, for comparability. The observed-value
-            ! arrays above double as the bootstrap's work arrays, passed whole and viewed packed.
-            call bootstrap_histogram_impl(n_bootstraps, max_n_bins, n_points, n_studies, tmp_mean_pmf_counts, &
-                                          tmp_mean_pmf_included_n_reps, tmp_included_n_reps, &
-                                          n_bootstrapping_top_k_jsds, tmp_confidence_interval, &
-                                          tmp_bootstrapping_top_k_jsds, tmp_counts, tmp_pmfs, tmp_mean_pmf, &
-                                          tmp_js_divergences, tmp_weights, tmp_global_js_divergence, tmp_point_pool, &
-                                          tmp_point_draw, two_sided_bootstrapping_significance_level, random_seed, &
-                                          bootstrap_ierr)
-            ! Defensive: the counts add up by construction, so only a failed rng allocation can
-            ! land here (untested). Without the return the interval would stay at its zero-width
-            ! [J, J] seed and could win the smallest-uncertainty ranking.
-            if (is_err(bootstrap_ierr)) then
-                call set_err_once(ierr, get_err_code(bootstrap_ierr))
-                return
-            end if
-
-            trace_ci_lower(1:n_studies, n_admissible_evaluated) = tmp_confidence_interval(1, 1:n_studies)
-            trace_ci_upper(1:n_studies, n_admissible_evaluated) = tmp_confidence_interval(2, 1:n_studies)
-            trace_ci_width(1:n_studies, n_admissible_evaluated) = &
-                trace_ci_upper(1:n_studies, n_admissible_evaluated) - trace_ci_lower(1:n_studies, n_admissible_evaluated)
-            trace_ci_width_relative(1:n_studies, n_admissible_evaluated) = &
-                trace_ci_width(1:n_studies, n_admissible_evaluated) &
-                / max(trace_global_js_divergence(1:n_studies, n_admissible_evaluated), actual_delta_epsilon)
-
-            ! Track the admissible candidate with the smallest median CI width (the no-plateau
-            ! fallback). tmp_delta_perm must be re-sorted for trace_ci_width: calc_quantile_impl
-            ! trusts the order it is handed.
-            call init_perm(tmp_delta_perm)
-            call sort_array_heapsort(trace_ci_width(1:n_studies, n_admissible_evaluated), tmp_delta_perm)
-            call calc_quantile_impl(trace_ci_width(1:n_studies, n_admissible_evaluated), n_studies, tmp_delta_perm, &
-                                      0.5_real64, median_ci_width)
-            if (median_ci_width < best_uncertainty_value) then
-                best_uncertainty_value = median_ci_width
-                best_uncertainty_candidate_index = i_candidate
-                tmp_best_uncertainty_confidence_interval = tmp_confidence_interval
-                tmp_best_uncertainty_n_bins_per_point(1:n_points) = tmp_n_bins_per_point(1:n_points)
-                tmp_best_uncertainty_shared_residual_range_low(1:n_points) = tmp_shared_residual_range_low(1:n_points)
-                tmp_best_uncertainty_shared_residual_range_high(1:n_points) = tmp_shared_residual_range_high(1:n_points)
-            end if
-
-            call check_plateau_condition_impl(tmp_confidence_interval, best_candidate_pair_confidence_interval, n_studies, &
-                                              best_candidate_index, best_exceeded_ci_overlap_count, i_candidate, join_method, &
-                                              actual_succeeding_ci_overlap, &
-                                              trace_ci_overlap(1:n_studies, n_admissible_evaluated), ci_plateau_found)
-            ! The first admissible candidate was compared against the -1.0 seed: record -1.0.
-            if (n_admissible_evaluated == 1_int32) trace_ci_overlap(1:n_studies, 1) = -1.0_real64
-
-            ! This candidate became the new best: snapshot its per-point values.
-            if (best_candidate_index == i_candidate) then
-                tmp_best_n_bins_per_point(1:n_points) = tmp_n_bins_per_point(1:n_points)
-                tmp_best_shared_residual_range_low(1:n_points) = tmp_shared_residual_range_low(1:n_points)
-                tmp_best_shared_residual_range_high(1:n_points) = tmp_shared_residual_range_high(1:n_points)
-            end if
-
-            select case (actual_plateau_mode)
-            case (MODE_PLATEAU_CI_OVERLAP)
-                plateau_found = ci_plateau_found
-            case (MODE_PLATEAU_EFFECT_SIZE)
-                plateau_found = effect_size_plateau_found
-            case default ! MODE_PLATEAU_BOTH
-                plateau_found = logical(ci_plateau_found .or. effect_size_plateau_found, kind=c_bool)
-            end select
-
-            ! The best-candidate bookkeeping follows the CI-overlap criterion only; an effect-size
-            ! plateau returns the candidate that triggered it.
-            if (effect_size_plateau_found .and. actual_plateau_mode /= MODE_PLATEAU_CI_OVERLAP) then
-                best_candidate_index = i_candidate
-                best_candidate_pair_confidence_interval = tmp_confidence_interval
-                tmp_best_n_bins_per_point(1:n_points) = tmp_n_bins_per_point(1:n_points)
-                tmp_best_shared_residual_range_low(1:n_points) = tmp_shared_residual_range_low(1:n_points)
-                tmp_best_shared_residual_range_high(1:n_points) = tmp_shared_residual_range_high(1:n_points)
-            end if
-
+            call evaluate_admissible_candidate(n_points, max_n_bins, n_studies, max_n_points_candidate, i_candidate, &
+                                               n_admissible_evaluated, n_bootstraps, n_bootstrapping_top_k_jsds, &
+                                               join_method, actual_plateau_mode, actual_succeeding_ci_overlap, &
+                                               actual_delta_median_threshold, actual_delta_max_threshold, &
+                                               actual_delta_epsilon, actual_delta_min_consecutive_transitions, &
+                                               tmp_n_bins_per_point, tmp_occupancy_failed, tmp_n_pooled_residuals, &
+                                               tmp_min_bin_occupancy, tmp_mean_bin_occupancy, tmp_max_bin_occupancy, &
+                                               tmp_sturges_bins, tmp_fd_bins, tmp_shared_residual_range_low, &
+                                               tmp_shared_residual_range_high, tmp_included_n_reps, tmp_mean_pmf_counts, &
+                                               tmp_mean_pmf_included_n_reps, tmp_counts, tmp_pmfs, tmp_mean_pmf, &
+                                               tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
+                                               tmp_confidence_interval, trace_global_js_divergence, trace_ci_lower, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_ci_overlap, &
+                                               trace_delta, trace_delta_median, trace_delta_max, trace_selected_n_bins, &
+                                               trace_occupancy_failed, trace_n_pooled_residuals, trace_min_bin_occupancy, &
+                                               trace_mean_bin_occupancy, trace_max_bin_occupancy, trace_sturges_bins, &
+                                               trace_fd_bins, trace_shared_residual_range_low, &
+                                               trace_shared_residual_range_high, tmp_prev_global_js_divergence, &
+                                               n_consecutive_effect_size_ok, best_candidate_pair_confidence_interval, &
+                                               best_candidate_index, best_exceeded_ci_overlap_count, &
+                                               tmp_best_n_bins_per_point, tmp_best_shared_residual_range_low, &
+                                               tmp_best_shared_residual_range_high, best_uncertainty_value, &
+                                               best_uncertainty_candidate_index, tmp_best_uncertainty_confidence_interval, &
+                                               tmp_best_uncertainty_n_bins_per_point, &
+                                               tmp_best_uncertainty_shared_residual_range_low, &
+                                               tmp_best_uncertainty_shared_residual_range_high, plateau_found, &
+                                               tmp_bootstrapping_top_k_jsds, tmp_point_pool, tmp_point_draw, &
+                                               tmp_delta_perm, ierr, two_sided_bootstrapping_significance_level, &
+                                               random_seed)
+            if (is_err(ierr)) return
             if (plateau_found) exit
         end do
 
-        ! The three cases of the routine description. In case 1 some candidate was admissible, so
-        ! the best-candidate snapshot exists; n_candidates counts gate-failed candidates too.
-        if (plateau_found .or. (n_candidates < 2_int32 .and. n_admissible_evaluated >= 1_int32)) then
-            n_points = candidates_n_points_n_neighbors(1, best_candidate_index)
-            n_neighbors = candidates_n_points_n_neighbors(2, best_candidate_index)
-            n_bins_per_point(1:n_points) = tmp_best_n_bins_per_point(1:n_points)
-            shared_residual_range_low(1:n_points) = tmp_best_shared_residual_range_low(1:n_points)
-            shared_residual_range_high(1:n_points) = tmp_best_shared_residual_range_high(1:n_points)
-            plateau_established = logical(.true., kind=c_bool)
-        else if (n_admissible_evaluated >= 1_int32) then
-            n_points = candidates_n_points_n_neighbors(1, best_uncertainty_candidate_index)
-            n_neighbors = candidates_n_points_n_neighbors(2, best_uncertainty_candidate_index)
-            n_bins_per_point(1:n_points) = tmp_best_uncertainty_n_bins_per_point(1:n_points)
-            shared_residual_range_low(1:n_points) = tmp_best_uncertainty_shared_residual_range_low(1:n_points)
-            shared_residual_range_high(1:n_points) = tmp_best_uncertainty_shared_residual_range_high(1:n_points)
-            best_candidate_pair_confidence_interval = tmp_best_uncertainty_confidence_interval
-            plateau_established = logical(.false., kind=c_bool)
-        else
-            n_points = candidates_n_points_n_neighbors(1, 1)
-            n_neighbors = candidates_n_points_n_neighbors(2, 1)
-            ! No bin count was kept for candidate 1, so m_min (as in a failed bin-count search) and
-            ! a zero range (as for an all-NaN pool).
-            n_bins_per_point(1:n_points) = actual_m_min
-            shared_residual_range_low(1:n_points) = 0.0_real64
-            shared_residual_range_high(1:n_points) = 0.0_real64
-            best_candidate_pair_confidence_interval = -1.0_real64
-            plateau_established = logical(.false., kind=c_bool)
-        end if
+        call select_final_candidate(max_n_points_candidate, n_studies, n_candidates, n_admissible_evaluated, plateau_found, &
+                                    actual_m_min, best_candidate_index, &
+                                    candidates_n_points_n_neighbors(1, best_candidate_index), tmp_best_n_bins_per_point, &
+                                    tmp_best_shared_residual_range_low, tmp_best_shared_residual_range_high, &
+                                    best_uncertainty_candidate_index, &
+                                    candidates_n_points_n_neighbors(1, best_uncertainty_candidate_index), &
+                                    tmp_best_uncertainty_confidence_interval, tmp_best_uncertainty_n_bins_per_point, &
+                                    tmp_best_uncertainty_shared_residual_range_low, &
+                                    tmp_best_uncertainty_shared_residual_range_high, candidates_n_points_n_neighbors(1, 1), &
+                                    selected_candidate_index, n_points, n_bins_per_point, shared_residual_range_low, &
+                                    shared_residual_range_high, best_candidate_pair_confidence_interval, plateau_established)
+        n_neighbors = candidates_n_points_n_neighbors(2, selected_candidate_index)
     end subroutine run_js_comp_test_parameter_search_impl
 
 end module tox_data_integration_js_comp_test_fixed_k_search_impl
