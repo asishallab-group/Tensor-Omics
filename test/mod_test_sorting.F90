@@ -17,7 +17,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_sorting() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(24))
+        allocate (all_tests(28))
 
         all_tests(1) = test_case("test_sort_real", test_sort_real)
         all_tests(2) = test_case("test_sort_integer", test_sort_integer)
@@ -44,6 +44,11 @@ contains
         all_tests(22) = test_case("test_sort_duplicates_real", test_sort_duplicates_real)
         all_tests(23) = test_case("test_sort_negatives_real", test_sort_negatives_real)
         all_tests(24) = test_case("test_sort_real_get_perm", test_sort_real_get_perm)
+        ! Value heaps tracking the k largest / k smallest values pushed
+        all_tests(25) = test_case("test_top_k_heap_push", test_top_k_heap_push)
+        all_tests(26) = test_case("test_bottom_k_heap_push", test_bottom_k_heap_push)
+        all_tests(27) = test_case("test_k_heap_push_size_zero_and_one", test_k_heap_push_size_zero_and_one)
+        all_tests(28) = test_case("test_heap_sift_down", test_heap_sift_down)
     end function get_all_tests_sorting
 
     !> Test sorting of a real array using permutation vector.
@@ -467,5 +472,125 @@ contains
         call assert_equal_array_real(sorted_non_nan, expected_non_nan, n - 1, 1d-12, &
                                      "test_sort_real_get_perm: non-NaN values not sorted")
     end subroutine test_sort_real_get_perm
+
+    !> top_k_heap_push on a 3-slot heap seeded with 0, values 5, 1, -1, 7, 3, 3 pushed in turn,
+    !| every heap state derived by hand:
+    !| - 5 displaces the root 0: both children 0, the left is taken -> [0, 5, 0];
+    !| - 1 displaces the root 0: the right child 0 is smaller than the left 5 -> [0, 5, 1];
+    !| - -1 is not above the root 0: dropped, heap unchanged;
+    !| - 7 displaces the root 0: the right child 1 is the smaller -> [1, 5, 7];
+    !| - 3 displaces the root 1: the smaller child 5 is not below 3, the sift stops at once
+    !|   -> [3, 5, 7];
+    !| - 3 again equals the root: not above it, dropped.
+    !| The heap then holds the 3 largest values pushed {3, 5, 7}, its root the smallest of them.
+    !| A 2-slot heap exercises the left-child-only sift: [0, 0] + 4 -> [0, 4], + 2 -> [2, 4].
+    subroutine test_top_k_heap_push()
+        character(len=*), parameter :: name = "test_top_k_heap_push: "
+        real(real64) :: heap(3), heap2(2)
+
+        heap = 0.0_real64
+        call top_k_heap_push(heap, 3_int32, 5.0_real64)
+        call assert_equal_array_real(heap, [0.0_real64, 5.0_real64, 0.0_real64], 3_int32, 0.0_real64, name//"push 5")
+        call top_k_heap_push(heap, 3_int32, 1.0_real64)
+        call assert_equal_array_real(heap, [0.0_real64, 5.0_real64, 1.0_real64], 3_int32, 0.0_real64, name//"push 1")
+        call top_k_heap_push(heap, 3_int32, -1.0_real64)
+        call assert_equal_array_real(heap, [0.0_real64, 5.0_real64, 1.0_real64], 3_int32, 0.0_real64, &
+                                     name//"push -1 dropped")
+        call top_k_heap_push(heap, 3_int32, 7.0_real64)
+        call assert_equal_array_real(heap, [1.0_real64, 5.0_real64, 7.0_real64], 3_int32, 0.0_real64, name//"push 7")
+        call top_k_heap_push(heap, 3_int32, 3.0_real64)
+        call assert_equal_array_real(heap, [3.0_real64, 5.0_real64, 7.0_real64], 3_int32, 0.0_real64, &
+                                     name//"push 3, sift stops at once")
+        call top_k_heap_push(heap, 3_int32, 3.0_real64)
+        call assert_equal_array_real(heap, [3.0_real64, 5.0_real64, 7.0_real64], 3_int32, 0.0_real64, &
+                                     name//"push 3 equal to the root dropped")
+
+        heap2 = 0.0_real64
+        call top_k_heap_push(heap2, 2_int32, 4.0_real64)
+        call assert_equal_array_real(heap2, [0.0_real64, 4.0_real64], 2_int32, 0.0_real64, name//"2 slots, push 4")
+        call top_k_heap_push(heap2, 2_int32, 2.0_real64)
+        call assert_equal_array_real(heap2, [2.0_real64, 4.0_real64], 2_int32, 0.0_real64, name//"2 slots, push 2")
+    end subroutine test_top_k_heap_push
+
+    !> bottom_k_heap_push, the mirror of test_top_k_heap_push: a 3-slot heap seeded with 10,
+    !| values 5, 9, 11, 3, 7, 7 pushed in turn:
+    !| - 5 displaces the root 10: both children 10, the left is taken -> [10, 5, 10];
+    !| - 9 displaces the root 10: the right child 10 is larger than the left 5 -> [10, 5, 9];
+    !| - 11 is not below the root 10: dropped;
+    !| - 3 displaces the root 10: the right child 9 is the larger -> [9, 5, 3];
+    !| - 7 displaces the root 9: the larger child 5 is not above 7, the sift stops -> [7, 5, 3];
+    !| - 7 again equals the root: dropped.
+    !| The heap then holds the 3 smallest values pushed {3, 5, 7}. A 2-slot heap exercises the
+    !| left-child-only sift: [10, 10] + 4 -> [10, 4], + 6 -> [6, 4].
+    subroutine test_bottom_k_heap_push()
+        character(len=*), parameter :: name = "test_bottom_k_heap_push: "
+        real(real64) :: heap(3), heap2(2)
+
+        heap = 10.0_real64
+        call bottom_k_heap_push(heap, 3_int32, 5.0_real64)
+        call assert_equal_array_real(heap, [10.0_real64, 5.0_real64, 10.0_real64], 3_int32, 0.0_real64, name//"push 5")
+        call bottom_k_heap_push(heap, 3_int32, 9.0_real64)
+        call assert_equal_array_real(heap, [10.0_real64, 5.0_real64, 9.0_real64], 3_int32, 0.0_real64, name//"push 9")
+        call bottom_k_heap_push(heap, 3_int32, 11.0_real64)
+        call assert_equal_array_real(heap, [10.0_real64, 5.0_real64, 9.0_real64], 3_int32, 0.0_real64, &
+                                     name//"push 11 dropped")
+        call bottom_k_heap_push(heap, 3_int32, 3.0_real64)
+        call assert_equal_array_real(heap, [9.0_real64, 5.0_real64, 3.0_real64], 3_int32, 0.0_real64, name//"push 3")
+        call bottom_k_heap_push(heap, 3_int32, 7.0_real64)
+        call assert_equal_array_real(heap, [7.0_real64, 5.0_real64, 3.0_real64], 3_int32, 0.0_real64, &
+                                     name//"push 7, sift stops at once")
+        call bottom_k_heap_push(heap, 3_int32, 7.0_real64)
+        call assert_equal_array_real(heap, [7.0_real64, 5.0_real64, 3.0_real64], 3_int32, 0.0_real64, &
+                                     name//"push 7 equal to the root dropped")
+
+        heap2 = 10.0_real64
+        call bottom_k_heap_push(heap2, 2_int32, 4.0_real64)
+        call assert_equal_array_real(heap2, [10.0_real64, 4.0_real64], 2_int32, 0.0_real64, name//"2 slots, push 4")
+        call bottom_k_heap_push(heap2, 2_int32, 6.0_real64)
+        call assert_equal_array_real(heap2, [6.0_real64, 4.0_real64], 2_int32, 0.0_real64, name//"2 slots, push 6")
+    end subroutine test_bottom_k_heap_push
+
+    !> A heap size of 0 leaves the array untouched for both pushes (the early return); a single
+    !| slot is replaced by a value beyond it and kept otherwise, the sift exiting at once with no
+    !| child.
+    subroutine test_k_heap_push_size_zero_and_one()
+        character(len=*), parameter :: name = "test_k_heap_push_size_zero_and_one: "
+        real(real64) :: slot(1)
+
+        slot = 1.0_real64
+        call top_k_heap_push(slot, 0_int32, 5.0_real64)
+        call assert_equal_real(slot(1), 1.0_real64, 0.0_real64, name//"top-k, size 0 writes nothing")
+        call bottom_k_heap_push(slot, 0_int32, -5.0_real64)
+        call assert_equal_real(slot(1), 1.0_real64, 0.0_real64, name//"bottom-k, size 0 writes nothing")
+
+        call top_k_heap_push(slot, 1_int32, 5.0_real64)
+        call assert_equal_real(slot(1), 5.0_real64, 0.0_real64, name//"top-k, size 1 takes a larger value")
+        call top_k_heap_push(slot, 1_int32, 2.0_real64)
+        call assert_equal_real(slot(1), 5.0_real64, 0.0_real64, name//"top-k, size 1 keeps its value over a smaller")
+        call bottom_k_heap_push(slot, 1_int32, -5.0_real64)
+        call assert_equal_real(slot(1), -5.0_real64, 0.0_real64, name//"bottom-k, size 1 takes a smaller value")
+        call bottom_k_heap_push(slot, 1_int32, 0.0_real64)
+        call assert_equal_real(slot(1), -5.0_real64, 0.0_real64, name//"bottom-k, size 1 keeps its value over a larger")
+    end subroutine test_k_heap_push_size_zero_and_one
+
+    !> The two sifts on a 5-element heap whose root alone breaks the heap condition: the root
+    !| travels down two levels, each time to the child that keeps the heap valid.
+    !| Min-heap [9, 1, 2, 3, 4]: 9 swaps with 1 (left), then with 3 (left of 2) -> [1, 3, 2, 9, 4].
+    !| Max-heap [0, 8, 9, 7, 6]: 0 swaps with 9 (right), then stops (position 3 has no child)
+    !| -> [9, 8, 0, 7, 6].
+    subroutine test_heap_sift_down()
+        character(len=*), parameter :: name = "test_heap_sift_down: "
+        real(real64) :: heap(5)
+
+        heap = [9.0_real64, 1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
+        call minheap_sift_down(heap, 5_int32)
+        call assert_equal_array_real(heap, [1.0_real64, 3.0_real64, 2.0_real64, 9.0_real64, 4.0_real64], 5_int32, &
+                                     0.0_real64, name//"min-heap")
+
+        heap = [0.0_real64, 8.0_real64, 9.0_real64, 7.0_real64, 6.0_real64]
+        call maxheap_sift_down(heap, 5_int32)
+        call assert_equal_array_real(heap, [9.0_real64, 8.0_real64, 0.0_real64, 7.0_real64, 6.0_real64], 5_int32, &
+                                     0.0_real64, name//"max-heap")
+    end subroutine test_heap_sift_down
 
 end module mod_test_sorting

@@ -32,7 +32,7 @@ module mod_test_data_integration_js_comp_test
                                                        determine_point_bin_count, build_point_study_histogram, &
                                                        calc_adaptive_js_comp_test_bounds, ADAPTIVE_GAMMA, &
                                                        ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_K_STEP_FRACTION, &
-                                                       ADAPTIVE_K_MAX_FACTOR, calc_sorted_slice_mad, &
+                                                       ADAPTIVE_K_MAX_FACTOR, &
                                                        ADAPTIVE_MIN_VALID_RESIDUALS, ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_K_MAX, &
                                                        ADAPTIVE_STOP_RESIDUAL_CAP, ADAPTIVE_STOP_EXHAUSTED, &
                                                        ADAPTIVE_STOP_ZERO_DISPERSION, ADAPTIVE_STOP_TOO_FEW_RESIDUALS, &
@@ -43,12 +43,13 @@ module mod_test_data_integration_js_comp_test
                                                        ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, ADAPTIVE_CANDIDATE_EMPTY_STUDY, &
                                                        ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, ADAPTIVE_CANDIDATE_OVERLAP_FAILED, &
                                                        ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED, &
-                                                       sorted_bin_counts, histogram_bin_counts, group_sorted_perm_by_study, &
+                                                       group_sorted_perm_by_study, &
                                                        MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, &
                                                        MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, MODE_BIN_COUNT_STONE_POOLED, &
                                                        MAX_N_BINS, MAX_CANDIDATE_PAIRS, &
                                                        generate_js_comp_test_candidates_impl
     use f42_sort_impl, only: init_perm, sort_array_heapsort
+    use f42_stats_impl, only: sorted_bin_counts, histogram_bin_counts
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
                                              compute_weighted_global_divergence_impl
     use tox_data_integration_preprocessing_impl, only: construct_neighborhoods_ranged_impl
@@ -116,7 +117,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(238))
+        allocate (all_tests(232))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -321,286 +322,274 @@ contains
                                   test_adaptive_bounds_rejects_unrepresentable_k_start)
         all_tests(97) = test_case("test_candidate_bounds_rejects_nonpositive_genes", &
                                   test_candidate_bounds_rejects_nonpositive_genes)
-        all_tests(98) = test_case("test_sorted_slice_mad_odd_length", &
-                                  test_sorted_slice_mad_odd_length)
-        all_tests(99) = test_case("test_sorted_slice_mad_even_length", &
-                                  test_sorted_slice_mad_even_length)
-        all_tests(100) = test_case("test_sorted_slice_mad_all_equal", &
-                                  test_sorted_slice_mad_all_equal)
-        all_tests(101) = test_case("test_sorted_slice_mad_single_element", &
-                                  test_sorted_slice_mad_single_element)
-        all_tests(102) = test_case("test_sorted_slice_mad_offset_slice", &
-                                  test_sorted_slice_mad_offset_slice)
-        all_tests(103) = test_case("test_adaptive_x_star_chain_stops_on_k_max", &
+        all_tests(98) = test_case("test_adaptive_x_star_chain_stops_on_k_max", &
                                   test_adaptive_x_star_chain_stops_on_k_max)
-        all_tests(104) = test_case("test_adaptive_k_start_phase_ignores_tau", &
+        all_tests(99) = test_case("test_adaptive_k_start_phase_ignores_tau", &
                                   test_adaptive_k_start_phase_ignores_tau)
-        all_tests(105) = test_case("test_adaptive_tau_stop_discards_round", &
+        all_tests(100) = test_case("test_adaptive_tau_stop_discards_round", &
                                   test_adaptive_tau_stop_discards_round)
-        all_tests(106) = test_case("test_adaptive_tau_ratchets_against_previous_round", &
+        all_tests(101) = test_case("test_adaptive_tau_ratchets_against_previous_round", &
                                   test_adaptive_tau_ratchets_against_previous_round)
-        all_tests(107) = test_case("test_adaptive_partial_last_round_near_k_max", &
+        all_tests(102) = test_case("test_adaptive_partial_last_round_near_k_max", &
                                   test_adaptive_partial_last_round_near_k_max)
-        all_tests(108) = test_case("test_adaptive_cap_truncated_round_committed_then_stops", &
+        all_tests(103) = test_case("test_adaptive_cap_truncated_round_committed_then_stops", &
                                   test_adaptive_cap_truncated_round_committed_then_stops)
-        all_tests(109) = test_case("test_adaptive_cap_truncated_round_rejected_by_tau", &
+        all_tests(104) = test_case("test_adaptive_cap_truncated_round_rejected_by_tau", &
                                   test_adaptive_cap_truncated_round_rejected_by_tau)
-        all_tests(110) = test_case("test_adaptive_cap_empty_round_stops", &
+        all_tests(105) = test_case("test_adaptive_cap_empty_round_stops", &
                                   test_adaptive_cap_empty_round_stops)
-        all_tests(111) = test_case("test_adaptive_exhausted_after_partial_round", &
+        all_tests(106) = test_case("test_adaptive_exhausted_after_partial_round", &
                                   test_adaptive_exhausted_after_partial_round)
-        all_tests(112) = test_case("test_adaptive_k_max_takes_precedence_over_exhausted", &
+        all_tests(107) = test_case("test_adaptive_k_max_takes_precedence_over_exhausted", &
                                   test_adaptive_k_max_takes_precedence_over_exhausted)
-        all_tests(113) = test_case("test_adaptive_zero_dispersion_skips_adaptive_phase", &
+        all_tests(108) = test_case("test_adaptive_zero_dispersion_skips_adaptive_phase", &
                                   test_adaptive_zero_dispersion_skips_adaptive_phase)
-        all_tests(114) = test_case("test_adaptive_too_few_residuals_after_k_start", &
+        all_tests(109) = test_case("test_adaptive_too_few_residuals_after_k_start", &
                                   test_adaptive_too_few_residuals_after_k_start)
-        all_tests(115) = test_case("test_adaptive_too_few_residuals_precedes_zero_dispersion", &
+        all_tests(110) = test_case("test_adaptive_too_few_residuals_precedes_zero_dispersion", &
                                   test_adaptive_too_few_residuals_precedes_zero_dispersion)
-        all_tests(116) = test_case("test_adaptive_no_valid_residual_gives_nan_dispersion", &
+        all_tests(111) = test_case("test_adaptive_no_valid_residual_gives_nan_dispersion", &
                                   test_adaptive_no_valid_residual_gives_nan_dispersion)
-        all_tests(117) = test_case("test_adaptive_all_nan_staged_round_commits", &
+        all_tests(112) = test_case("test_adaptive_all_nan_staged_round_commits", &
                                   test_adaptive_all_nan_staged_round_commits)
-        all_tests(118) = test_case("test_adaptive_ties_go_to_lower_mean_and_position", &
+        all_tests(113) = test_case("test_adaptive_ties_go_to_lower_mean_and_position", &
                                   test_adaptive_ties_go_to_lower_mean_and_position)
-        all_tests(119) = test_case("test_adaptive_zero_mad_still_progresses", &
+        all_tests(114) = test_case("test_adaptive_zero_mad_still_progresses", &
                                   test_adaptive_zero_mad_still_progresses)
-        all_tests(120) = test_case("test_adaptive_seed_beyond_largest_mean", &
+        all_tests(115) = test_case("test_adaptive_seed_beyond_largest_mean", &
                                   test_adaptive_seed_beyond_largest_mean)
-        all_tests(121) = test_case("test_adaptive_mad_distance_factor_zero_and_four", &
+        all_tests(116) = test_case("test_adaptive_mad_distance_factor_zero_and_four", &
                                   test_adaptive_mad_distance_factor_zero_and_four)
-        all_tests(122) = test_case("test_adaptive_multi_study_decode_nan_padded_study", &
+        all_tests(117) = test_case("test_adaptive_multi_study_decode_nan_padded_study", &
                                   test_adaptive_multi_study_decode_nan_padded_study)
-        all_tests(123) = test_case("test_adaptive_too_few_means", &
+        all_tests(118) = test_case("test_adaptive_too_few_means", &
                                   test_adaptive_too_few_means)
-        all_tests(124) = test_case("test_adaptive_all_means_nan", &
+        all_tests(119) = test_case("test_adaptive_all_means_nan", &
                                   test_adaptive_all_means_nan)
-        all_tests(125) = test_case("test_adaptive_empty_study_neighborhood_min_one", &
+        all_tests(120) = test_case("test_adaptive_empty_study_neighborhood_min_one", &
                                   test_adaptive_empty_study_neighborhood_min_one)
-        all_tests(126) = test_case("test_adaptive_empty_study_neighborhood_min_two", &
+        all_tests(121) = test_case("test_adaptive_empty_study_neighborhood_min_two", &
                                   test_adaptive_empty_study_neighborhood_min_two)
-        all_tests(127) = test_case("test_adaptive_max_n_neighbors_later_point_and_study", &
+        all_tests(122) = test_case("test_adaptive_max_n_neighbors_later_point_and_study", &
                                   test_adaptive_max_n_neighbors_later_point_and_study)
-        all_tests(128) = test_case("test_adaptive_status_too_few_residuals_beats_empty_study", &
+        all_tests(123) = test_case("test_adaptive_status_too_few_residuals_beats_empty_study", &
                                   test_adaptive_status_too_few_residuals_beats_empty_study)
-        all_tests(129) = test_case("test_adaptive_nan_residuals_excluded_from_s_and_cap", &
+        all_tests(124) = test_case("test_adaptive_nan_residuals_excluded_from_s_and_cap", &
                                   test_adaptive_nan_residuals_excluded_from_s_and_cap)
-        all_tests(130) = test_case("test_adaptive_wrapper_validation", &
+        all_tests(125) = test_case("test_adaptive_wrapper_validation", &
                                   test_adaptive_wrapper_validation)
-        all_tests(131) = test_case("test_adaptive_min_valid_residuals_positive", &
+        all_tests(126) = test_case("test_adaptive_min_valid_residuals_positive", &
                                   test_adaptive_min_valid_residuals_positive)
-        all_tests(132) = test_case("test_adaptive_seed_tie_run_takes_first_position", &
+        all_tests(127) = test_case("test_adaptive_seed_tie_run_takes_first_position", &
                                   test_adaptive_seed_tie_run_takes_first_position)
-        all_tests(133) = test_case("test_adaptive_seed_beyond_tie_run_takes_first", &
+        all_tests(128) = test_case("test_adaptive_seed_beyond_tie_run_takes_first", &
                                   test_adaptive_seed_beyond_tie_run_takes_first)
-        all_tests(134) = test_case("test_materialize_pooled_neighborhood_decode", &
+        all_tests(129) = test_case("test_materialize_pooled_neighborhood_decode", &
                                   test_materialize_pooled_neighborhood_decode)
-        all_tests(135) = test_case("test_run_adaptive_matches_fixed_k_exactly", &
+        all_tests(130) = test_case("test_run_adaptive_matches_fixed_k_exactly", &
                                   test_run_adaptive_matches_fixed_k_exactly)
-        all_tests(136) = test_case("test_run_adaptive_ragged_hand_traceable", &
+        all_tests(131) = test_case("test_run_adaptive_ragged_hand_traceable", &
                                   test_run_adaptive_ragged_hand_traceable)
-        all_tests(137) = test_case("test_run_adaptive_reversed_range_sets_ierr", &
+        all_tests(132) = test_case("test_run_adaptive_reversed_range_sets_ierr", &
                                   test_run_adaptive_reversed_range_sets_ierr)
-        all_tests(138) = test_case("test_run_adaptive_range_beyond_valid_pool_sets_ierr", &
+        all_tests(133) = test_case("test_run_adaptive_range_beyond_valid_pool_sets_ierr", &
                                   test_run_adaptive_range_beyond_valid_pool_sets_ierr)
-        all_tests(139) = test_case("test_run_adaptive_empty_study_sets_ierr", &
+        all_tests(134) = test_case("test_run_adaptive_empty_study_sets_ierr", &
                                   test_run_adaptive_empty_study_sets_ierr)
-        all_tests(140) = test_case("test_run_adaptive_end_to_end_after_construction", &
+        all_tests(135) = test_case("test_run_adaptive_end_to_end_after_construction", &
                                   test_run_adaptive_end_to_end_after_construction)
-        all_tests(141) = test_case("test_run_adaptive_wrapper_validation", &
+        all_tests(136) = test_case("test_run_adaptive_wrapper_validation", &
                                   test_run_adaptive_wrapper_validation)
-        all_tests(142) = test_case("test_adaptive_search_ci_plateau_mid_sequence", &
+        all_tests(137) = test_case("test_adaptive_search_ci_plateau_mid_sequence", &
                                   test_adaptive_search_ci_plateau_mid_sequence)
-        all_tests(143) = test_case("test_adaptive_search_effect_size_plateau", &
+        all_tests(138) = test_case("test_adaptive_search_effect_size_plateau", &
                                   test_adaptive_search_effect_size_plateau)
-        all_tests(144) = test_case("test_adaptive_search_both_mode_uses_earlier_trigger", &
+        all_tests(139) = test_case("test_adaptive_search_both_mode_uses_earlier_trigger", &
                                   test_adaptive_search_both_mode_uses_earlier_trigger)
-        all_tests(145) = test_case("test_adaptive_search_no_plateau_ci_smallest_uncertainty", &
+        all_tests(140) = test_case("test_adaptive_search_no_plateau_ci_smallest_uncertainty", &
                                   test_adaptive_search_no_plateau_ci_smallest_uncertainty)
-        all_tests(146) = test_case("test_adaptive_search_no_plateau_effect_smallest_uncertainty", &
+        all_tests(141) = test_case("test_adaptive_search_no_plateau_effect_smallest_uncertainty", &
                                   test_adaptive_search_no_plateau_effect_smallest_uncertainty)
-        all_tests(147) = test_case("test_adaptive_search_no_plateau_both_smallest_uncertainty", &
+        all_tests(142) = test_case("test_adaptive_search_no_plateau_both_smallest_uncertainty", &
                                   test_adaptive_search_no_plateau_both_smallest_uncertainty)
-        all_tests(148) = test_case("test_adaptive_search_nothing_admissible_falls_back_to_first", &
+        all_tests(143) = test_case("test_adaptive_search_nothing_admissible_falls_back_to_first", &
                                   test_adaptive_search_nothing_admissible_falls_back_to_first)
-        all_tests(149) = test_case("test_adaptive_search_single_candidate_bypasses_plateau", &
+        all_tests(144) = test_case("test_adaptive_search_single_candidate_bypasses_plateau", &
                                   test_adaptive_search_single_candidate_bypasses_plateau)
-        all_tests(150) = test_case("test_adaptive_search_single_rejected_candidate_m_min", &
+        all_tests(145) = test_case("test_adaptive_search_single_rejected_candidate_m_min", &
                                   test_adaptive_search_single_rejected_candidate_m_min)
-        all_tests(151) = test_case("test_adaptive_search_status_too_few_means", &
+        all_tests(146) = test_case("test_adaptive_search_status_too_few_means", &
                                   test_adaptive_search_status_too_few_means)
-        all_tests(152) = test_case("test_adaptive_search_status_too_few_residuals", &
+        all_tests(147) = test_case("test_adaptive_search_status_too_few_residuals", &
                                   test_adaptive_search_status_too_few_residuals)
-        all_tests(153) = test_case("test_adaptive_search_status_empty_study", &
+        all_tests(148) = test_case("test_adaptive_search_status_empty_study", &
                                   test_adaptive_search_status_empty_study)
-        all_tests(154) = test_case("test_adaptive_search_status_capacity_exceeded", &
+        all_tests(149) = test_case("test_adaptive_search_status_capacity_exceeded", &
                                   test_adaptive_search_status_capacity_exceeded)
-        all_tests(155) = test_case("test_adaptive_search_status_overlap_failed", &
+        all_tests(150) = test_case("test_adaptive_search_status_overlap_failed", &
                                   test_adaptive_search_status_overlap_failed)
-        all_tests(156) = test_case("test_adaptive_search_status_min_count_failed", &
+        all_tests(151) = test_case("test_adaptive_search_status_min_count_failed", &
                                   test_adaptive_search_status_min_count_failed)
-        all_tests(157) = test_case("test_adaptive_search_final_bins_match_selected_trace", &
+        all_tests(152) = test_case("test_adaptive_search_final_bins_match_selected_trace", &
                                   test_adaptive_search_final_bins_match_selected_trace)
-        all_tests(158) = test_case("test_adaptive_search_round_trip_reproduces_trace", &
+        all_tests(153) = test_case("test_adaptive_search_round_trip_reproduces_trace", &
                                   test_adaptive_search_round_trip_reproduces_trace)
-        all_tests(159) = test_case("test_adaptive_search_n_points_ascend_homoscedastic", &
+        all_tests(154) = test_case("test_adaptive_search_n_points_ascend_homoscedastic", &
                                   test_adaptive_search_n_points_ascend_homoscedastic)
-        all_tests(160) = test_case("test_adaptive_search_wrapper_validation", &
+        all_tests(155) = test_case("test_adaptive_search_wrapper_validation", &
                                   test_adaptive_search_wrapper_validation)
-        all_tests(161) = test_case("test_adaptive_search_round_trip_non_default_options", &
+        all_tests(156) = test_case("test_adaptive_search_round_trip_non_default_options", &
                                   test_adaptive_search_round_trip_non_default_options)
-        all_tests(162) = test_case("test_adaptive_search_nothing_admissible_clamped_to_capacity", &
+        all_tests(157) = test_case("test_adaptive_search_nothing_admissible_clamped_to_capacity", &
                                   test_adaptive_search_nothing_admissible_clamped_to_capacity)
-        all_tests(163) = test_case("test_adaptive_search_single_rejected_clamped_to_capacity", &
+        all_tests(158) = test_case("test_adaptive_search_single_rejected_clamped_to_capacity", &
                                   test_adaptive_search_single_rejected_clamped_to_capacity)
-        all_tests(164) = test_case("test_adaptive_search_ci_plateau_keeps_earlier_best", &
+        all_tests(159) = test_case("test_adaptive_search_ci_plateau_keeps_earlier_best", &
                                   test_adaptive_search_ci_plateau_keeps_earlier_best)
-        all_tests(165) = test_case("test_gjct_permutation_depletes_pool_exactly", &
+        all_tests(160) = test_case("test_gjct_permutation_depletes_pool_exactly", &
                                   test_gjct_permutation_depletes_pool_exactly)
-        all_tests(166) = test_case("test_gjct_null_statistic_uses_permuted_consensus", &
+        all_tests(161) = test_case("test_gjct_null_statistic_uses_permuted_consensus", &
                                   test_gjct_null_statistic_uses_permuted_consensus)
-        all_tests(167) = test_case("test_gjct_observed_consensus_p_value", &
+        all_tests(162) = test_case("test_gjct_observed_consensus_p_value", &
                                   test_gjct_observed_consensus_p_value)
-        all_tests(168) = test_case("test_sorted_bin_counts_matches_histogram_bin_counts", &
-                                  test_sorted_bin_counts_matches_histogram_bin_counts)
-        all_tests(169) = test_case("test_stone_theorem2_hand_computed_per_mode", &
+        all_tests(163) = test_case("test_stone_theorem2_hand_computed_per_mode", &
                                   test_stone_theorem2_hand_computed_per_mode)
-        all_tests(170) = test_case("test_stone_matches_brute_force_leave_one_out", &
+        all_tests(164) = test_case("test_stone_matches_brute_force_leave_one_out", &
                                   test_stone_matches_brute_force_leave_one_out)
-        all_tests(171) = test_case("test_stone_scores_inside_residuals_not_clamped", &
+        all_tests(165) = test_case("test_stone_scores_inside_residuals_not_clamped", &
                                   test_stone_scores_inside_residuals_not_clamped)
-        all_tests(172) = test_case("test_stone_tie_goes_to_smaller_m", &
+        all_tests(166) = test_case("test_stone_tie_goes_to_smaller_m", &
                                   test_stone_tie_goes_to_smaller_m)
-        all_tests(173) = test_case("test_stone_floor_binds", &
+        all_tests(167) = test_case("test_stone_floor_binds", &
                                   test_stone_floor_binds)
-        all_tests(174) = test_case("test_stone_no_admissible_m_fails", &
+        all_tests(168) = test_case("test_stone_no_admissible_m_fails", &
                                   test_stone_no_admissible_m_fails)
-        all_tests(175) = test_case("test_stone_all_residuals_nan_fails", &
+        all_tests(169) = test_case("test_stone_all_residuals_nan_fails", &
                                   test_stone_all_residuals_nan_fails)
-        all_tests(176) = test_case("test_stone_zero_range_fails", &
+        all_tests(170) = test_case("test_stone_zero_range_fails", &
                                   test_stone_zero_range_fails)
-        all_tests(177) = test_case("test_stone_skips_study_with_fewer_than_two_inside", &
+        all_tests(171) = test_case("test_stone_skips_study_with_fewer_than_two_inside", &
                                   test_stone_skips_study_with_fewer_than_two_inside)
-        all_tests(178) = test_case("test_stone_all_studies_below_two_inside_fails", &
+        all_tests(172) = test_case("test_stone_all_studies_below_two_inside_fails", &
                                   test_stone_all_studies_below_two_inside_fails)
-        all_tests(179) = test_case("test_stone_pooled_total_below_two_fails", &
+        all_tests(173) = test_case("test_stone_pooled_total_below_two_fails", &
                                   test_stone_pooled_total_below_two_fails)
-        all_tests(180) = test_case("test_stone_shuffled_labels_match_contiguous", &
+        all_tests(174) = test_case("test_stone_shuffled_labels_match_contiguous", &
                                   test_stone_shuffled_labels_match_contiguous)
-        all_tests(181) = test_case("test_stone_rejects_non_stone_mode", &
+        all_tests(175) = test_case("test_stone_rejects_non_stone_mode", &
                                   test_stone_rejects_non_stone_mode)
-        all_tests(182) = test_case("test_stone_diagnostics_match_occupancy_routine", &
+        all_tests(176) = test_case("test_stone_diagnostics_match_occupancy_routine", &
                                   test_stone_diagnostics_match_occupancy_routine)
-        all_tests(183) = test_case("test_stone_expert_matches_plain", &
+        all_tests(177) = test_case("test_stone_expert_matches_plain", &
                                   test_stone_expert_matches_plain)
-        all_tests(184) = test_case("test_stone_m_max_at_max_n_bins", &
+        all_tests(178) = test_case("test_stone_m_max_at_max_n_bins", &
                                   test_stone_m_max_at_max_n_bins)
-        all_tests(185) = test_case("test_group_sorted_perm_matches_sort_per_block", &
+        all_tests(179) = test_case("test_group_sorted_perm_matches_sort_per_block", &
                                   test_group_sorted_perm_matches_sort_per_block)
-        all_tests(186) = test_case("test_run_js_comp_test_bin_count_mode_default_is_occupancy", &
+        all_tests(180) = test_case("test_run_js_comp_test_bin_count_mode_default_is_occupancy", &
                                   test_run_js_comp_test_bin_count_mode_default_is_occupancy)
-        all_tests(187) = test_case("test_run_js_comp_test_stone_matches_standalone", &
+        all_tests(181) = test_case("test_run_js_comp_test_stone_matches_standalone", &
                                   test_run_js_comp_test_stone_matches_standalone)
-        all_tests(188) = test_case("test_run_js_comp_test_stone_ignores_gamma", &
+        all_tests(182) = test_case("test_run_js_comp_test_stone_ignores_gamma", &
                                   test_run_js_comp_test_stone_ignores_gamma)
-        all_tests(189) = test_case("test_adaptive_final_bin_count_mode_default_is_occupancy", &
+        all_tests(183) = test_case("test_adaptive_final_bin_count_mode_default_is_occupancy", &
                                   test_adaptive_final_bin_count_mode_default_is_occupancy)
-        all_tests(190) = test_case("test_adaptive_final_stone_matches_standalone", &
+        all_tests(184) = test_case("test_adaptive_final_stone_matches_standalone", &
                                   test_adaptive_final_stone_matches_standalone)
-        all_tests(191) = test_case("test_adaptive_final_stone_ignores_gamma", &
+        all_tests(185) = test_case("test_adaptive_final_stone_ignores_gamma", &
                                   test_adaptive_final_stone_ignores_gamma)
-        all_tests(192) = test_case("test_adaptive_search_bin_count_mode_default_is_occupancy", &
+        all_tests(186) = test_case("test_adaptive_search_bin_count_mode_default_is_occupancy", &
                                   test_adaptive_search_bin_count_mode_default_is_occupancy)
-        all_tests(193) = test_case("test_adaptive_search_stone_matches_standalone", &
+        all_tests(187) = test_case("test_adaptive_search_stone_matches_standalone", &
                                   test_adaptive_search_stone_matches_standalone)
-        all_tests(194) = test_case("test_adaptive_search_stone_ignores_gamma", &
+        all_tests(188) = test_case("test_adaptive_search_stone_ignores_gamma", &
                                   test_adaptive_search_stone_ignores_gamma)
-        all_tests(195) = test_case("test_param_search_bin_count_mode_default_is_occupancy", &
+        all_tests(189) = test_case("test_param_search_bin_count_mode_default_is_occupancy", &
                                   test_param_search_bin_count_mode_default_is_occupancy)
-        all_tests(196) = test_case("test_param_search_stone_matches_standalone", &
+        all_tests(190) = test_case("test_param_search_stone_matches_standalone", &
                                   test_param_search_stone_matches_standalone)
-        all_tests(197) = test_case("test_param_search_stone_ignores_gamma", &
+        all_tests(191) = test_case("test_param_search_stone_ignores_gamma", &
                                   test_param_search_stone_ignores_gamma)
-        all_tests(198) = test_case("test_stone_matches_brute_force_with_outside_values", &
+        all_tests(192) = test_case("test_stone_matches_brute_force_with_outside_values", &
                                   test_stone_matches_brute_force_with_outside_values)
-        all_tests(199) = test_case("test_param_search_rejects_undersized_max_n_points_candidate", &
+        all_tests(193) = test_case("test_param_search_rejects_undersized_max_n_points_candidate", &
                                   test_param_search_rejects_undersized_max_n_points_candidate)
-        all_tests(200) = test_case("test_param_search_rejects_undersized_max_n_neighbors_candidate", &
+        all_tests(194) = test_case("test_param_search_rejects_undersized_max_n_neighbors_candidate", &
                                   test_param_search_rejects_undersized_max_n_neighbors_candidate)
-        all_tests(201) = test_case("test_param_search_bounds_match_candidate_bounds", &
+        all_tests(195) = test_case("test_param_search_bounds_match_candidate_bounds", &
                                   test_param_search_bounds_match_candidate_bounds)
-        all_tests(202) = test_case("test_run_js_comp_test_rejects_reversed_residual_range_quantiles", &
+        all_tests(196) = test_case("test_run_js_comp_test_rejects_reversed_residual_range_quantiles", &
                                   test_run_js_comp_test_rejects_reversed_residual_range_quantiles)
-        all_tests(203) = test_case("test_occupancy_rejects_reversed_residual_range_quantiles", &
+        all_tests(197) = test_case("test_occupancy_rejects_reversed_residual_range_quantiles", &
                                   test_occupancy_rejects_reversed_residual_range_quantiles)
-        all_tests(204) = test_case("test_occupancy_accepts_equal_residual_range_quantiles", &
+        all_tests(198) = test_case("test_occupancy_accepts_equal_residual_range_quantiles", &
                                   test_occupancy_accepts_equal_residual_range_quantiles)
-        all_tests(205) = test_case("test_occupancy_upper_quantile_only", test_occupancy_upper_quantile_only)
-        all_tests(206) = test_case("test_stone_rejects_reversed_residual_range_quantiles", &
+        all_tests(199) = test_case("test_occupancy_upper_quantile_only", test_occupancy_upper_quantile_only)
+        all_tests(200) = test_case("test_stone_rejects_reversed_residual_range_quantiles", &
                                   test_stone_rejects_reversed_residual_range_quantiles)
-        all_tests(207) = test_case("test_occupancy_expert_rejects_reversed_residual_range_quantiles", &
+        all_tests(201) = test_case("test_occupancy_expert_rejects_reversed_residual_range_quantiles", &
                                   test_occupancy_expert_rejects_reversed_residual_range_quantiles)
-        all_tests(208) = test_case("test_occupancy_known_limitation_lower_only_above_default_upper", &
+        all_tests(202) = test_case("test_occupancy_known_limitation_lower_only_above_default_upper", &
                                   test_occupancy_known_limitation_lower_only_above_default_upper)
-        all_tests(209) = test_case("test_run_js_comp_test_empty_study_sets_ierr", &
+        all_tests(203) = test_case("test_run_js_comp_test_empty_study_sets_ierr", &
                                   test_run_js_comp_test_empty_study_sets_ierr)
-        all_tests(210) = test_case("test_run_js_comp_test_nan_residuals_only_study_sets_ierr", &
+        all_tests(204) = test_case("test_run_js_comp_test_nan_residuals_only_study_sets_ierr", &
                                   test_run_js_comp_test_nan_residuals_only_study_sets_ierr)
-        all_tests(211) = test_case("test_param_search_empty_study_not_admissible", &
+        all_tests(205) = test_case("test_param_search_empty_study_not_admissible", &
                                   test_param_search_empty_study_not_admissible)
-        all_tests(212) = test_case("test_run_js_comp_test_single_empty_point_sets_ierr", &
+        all_tests(206) = test_case("test_run_js_comp_test_single_empty_point_sets_ierr", &
                                   test_run_js_comp_test_single_empty_point_sets_ierr)
-        all_tests(213) = test_case("test_neighborhood_overlaps_counts_inclusive_positions", &
+        all_tests(207) = test_case("test_neighborhood_overlaps_counts_inclusive_positions", &
                                   test_neighborhood_overlaps_counts_inclusive_positions)
-        all_tests(214) = test_case("test_param_search_lone_inadmissible_candidate_not_established", &
+        all_tests(208) = test_case("test_param_search_lone_inadmissible_candidate_not_established", &
                                   test_param_search_lone_inadmissible_candidate_not_established)
-        all_tests(215) = test_case("test_param_search_lone_admissible_candidate_established", &
+        all_tests(209) = test_case("test_param_search_lone_admissible_candidate_established", &
                                   test_param_search_lone_admissible_candidate_established)
-        all_tests(216) = test_case("test_run_adaptive_nan_residuals_only_study_sets_ierr", &
+        all_tests(210) = test_case("test_run_adaptive_nan_residuals_only_study_sets_ierr", &
                                   test_run_adaptive_nan_residuals_only_study_sets_ierr)
-        all_tests(217) = test_case("test_run_adaptive_single_empty_point_sets_ierr", &
+        all_tests(211) = test_case("test_run_adaptive_single_empty_point_sets_ierr", &
                                   test_run_adaptive_single_empty_point_sets_ierr)
-        all_tests(218) = test_case("test_adaptive_search_nan_residuals_study_not_admissible", &
+        all_tests(212) = test_case("test_adaptive_search_nan_residuals_study_not_admissible", &
                                   test_adaptive_search_nan_residuals_study_not_admissible)
-        all_tests(219) = test_case("test_final_runs_accept_partly_different_gene_sets", &
+        all_tests(213) = test_case("test_final_runs_accept_partly_different_gene_sets", &
                                   test_final_runs_accept_partly_different_gene_sets)
-        all_tests(220) = test_case("test_construct_neighborhoods_ranged_expert_rejects_bad_perm", &
+        all_tests(214) = test_case("test_construct_neighborhoods_ranged_expert_rejects_bad_perm", &
                                   test_construct_neighborhoods_ranged_expert_rejects_bad_perm)
-        all_tests(221) = test_case("test_run_js_comp_test_rejects_nan_x_star", &
+        all_tests(215) = test_case("test_run_js_comp_test_rejects_nan_x_star", &
                                   test_run_js_comp_test_rejects_nan_x_star)
-        all_tests(222) = test_case("test_gjct_permutation_test_rejects_draws_larger_than_pool", &
+        all_tests(216) = test_case("test_gjct_permutation_test_rejects_draws_larger_than_pool", &
                                   test_gjct_permutation_test_rejects_draws_larger_than_pool)
-        all_tests(223) = test_case("test_bootstrap_histogram_rejects_draws_from_empty_pool", &
+        all_tests(217) = test_case("test_bootstrap_histogram_rejects_draws_from_empty_pool", &
                                   test_bootstrap_histogram_rejects_draws_from_empty_pool)
-        all_tests(224) = test_case("test_gjct_permutation_test_zero_permutations_gives_nan_p_values", &
+        all_tests(218) = test_case("test_gjct_permutation_test_zero_permutations_gives_nan_p_values", &
                                   test_gjct_permutation_test_zero_permutations_gives_nan_p_values)
-        all_tests(225) = test_case("test_run_js_comp_test_zero_permutations_gives_nan_p_values", &
+        all_tests(219) = test_case("test_run_js_comp_test_zero_permutations_gives_nan_p_values", &
                                   test_run_js_comp_test_zero_permutations_gives_nan_p_values)
-        all_tests(226) = test_case("test_adaptive_bounds_rejects_pool_beyond_int32", &
+        all_tests(220) = test_case("test_adaptive_bounds_rejects_pool_beyond_int32", &
                                   test_adaptive_bounds_rejects_pool_beyond_int32)
-        all_tests(227) = test_case("test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins", &
+        all_tests(221) = test_case("test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins", &
                                   test_estimate_bin_count_huge_fd_ratio_clamps_to_max_n_bins)
-        all_tests(228) = test_case("test_check_plateau_condition_ci_overlap_fractional_values", &
+        all_tests(222) = test_case("test_check_plateau_condition_ci_overlap_fractional_values", &
                                    test_check_plateau_condition_ci_overlap_fractional_values)
-        all_tests(229) = test_case("test_construct_neighborhoods_ranged_rejects_nan_x_star", &
+        all_tests(223) = test_case("test_construct_neighborhoods_ranged_rejects_nan_x_star", &
                                    test_construct_neighborhoods_ranged_rejects_nan_x_star)
-        all_tests(230) = test_case("test_neighborhood_overlaps_reversed_first_span_counts_as_empty", &
+        all_tests(224) = test_case("test_neighborhood_overlaps_reversed_first_span_counts_as_empty", &
                                    test_neighborhood_overlaps_reversed_first_span_counts_as_empty)
-        all_tests(231) = test_case("test_construct_neighborhoods_ranged_impl_nan_x_star", &
+        all_tests(225) = test_case("test_construct_neighborhoods_ranged_impl_nan_x_star", &
                                    test_construct_neighborhoods_ranged_impl_nan_x_star)
-        all_tests(232) = test_case("test_create_mean_pmf_rejects_zero_included_n_reps", &
+        all_tests(226) = test_case("test_create_mean_pmf_rejects_zero_included_n_reps", &
                                    test_create_mean_pmf_rejects_zero_included_n_reps)
-        all_tests(233) = test_case("test_bootstrap_histogram_rejects_zero_included_n_reps", &
+        all_tests(227) = test_case("test_bootstrap_histogram_rejects_zero_included_n_reps", &
                                    test_bootstrap_histogram_rejects_zero_included_n_reps)
-        all_tests(234) = test_case("test_gjct_permutation_test_rejects_zero_included_n_reps", &
+        all_tests(228) = test_case("test_gjct_permutation_test_rejects_zero_included_n_reps", &
                                    test_gjct_permutation_test_rejects_zero_included_n_reps)
-        all_tests(235) = test_case("test_gjct_permutation_test_rejects_pool_total_not_bin_sum", &
+        all_tests(229) = test_case("test_gjct_permutation_test_rejects_pool_total_not_bin_sum", &
                                    test_gjct_permutation_test_rejects_pool_total_not_bin_sum)
-        all_tests(236) = test_case("test_gjct_permutation_test_rejects_draws_fewer_than_pool", &
+        all_tests(230) = test_case("test_gjct_permutation_test_rejects_draws_fewer_than_pool", &
                                    test_gjct_permutation_test_rejects_draws_fewer_than_pool)
-        all_tests(237) = test_case("test_bootstrap_histogram_rejects_pool_total_not_bin_sum", &
+        all_tests(231) = test_case("test_bootstrap_histogram_rejects_pool_total_not_bin_sum", &
                                    test_bootstrap_histogram_rejects_pool_total_not_bin_sum)
-        all_tests(238) = test_case("test_bootstrap_histogram_rejects_study_sum_not_pool_total", &
+        all_tests(232) = test_case("test_bootstrap_histogram_rejects_study_sum_not_pool_total", &
                                    test_bootstrap_histogram_rejects_study_sum_not_pool_total)
     end function get_all_tests_data_integration_js_comp_test
 
@@ -6866,7 +6855,8 @@ contains
     end subroutine test_candidate_bounds_rejects_nonpositive_genes
 
     ! ---------------------------------------------------------------------------------------------
-    ! Issue #217, Checkpoint C: calc_sorted_slice_mad and construct_adaptive_neighborhoods.
+    ! Issue #217, Checkpoint C: construct_adaptive_neighborhoods (calc_sorted_slice_mad is tested in
+    ! mod_test_sorted_stats).
     !
     ! Growth fixtures use R = 10 replicates, so that one entry with 10 non-NaN residuals already
     ! meets ADAPTIVE_MIN_VALID_RESIDUALS. adaptive_residual_column(c, n) gives an entry `n`
@@ -6991,68 +6981,6 @@ contains
         call assert_equal_array_real(dispersion(1:n_exp), exp_dispersion, n_exp, TOL, label//": dispersion")
         call assert_equal_array_real(mads(1:n_exp), exp_mads, n_exp, TOL, label//": mad")
     end subroutine assert_adaptive_points
-
-    !> Issue #217 (C1), odd length, and the merge's left-only branch. Sorted slice
-    !| [0, 1, 2, 2.25, 2.5] (given unsorted through `perm`): rank 0.5*4+1 = 3, median 2.
-    !| Deviations 2, 1, 0, 0.25, 0.5 sort to 0, 0.25, 0.5, 1, 2 -> MAD 0.5. The merge takes 0 (left),
-    !| 0.25 and 0.5 (right, which is then exhausted), then 1 from the left side alone.
-    subroutine test_sorted_slice_mad_odd_length()
-        real(real64) :: median, mad
-
-        call calc_sorted_slice_mad([2.25_real64, 0.0_real64, 2.5_real64, 1.0_real64, 2.0_real64], 5_int32, &
-                                   [2_int32, 4_int32, 5_int32, 1_int32, 3_int32], 1_int32, 5_int32, median, mad)
-        call assert_equal_real(median, 2.0_real64, TOL, "test_sorted_slice_mad_odd_length: median")
-        call assert_equal_real(mad, 0.5_real64, TOL, "test_sorted_slice_mad_odd_length: mad")
-    end subroutine test_sorted_slice_mad_odd_length
-
-    !> Issue #217 (C2), even length. [0, 1, 3, 7]: rank 2.5, median 1 + 0.5*(3-1) = 2; deviations
-    !| 2, 1, 1, 5 sort to 1, 1, 2, 5 -> MAD 1 + 0.5*(2-1) = 1.5. [3, 7] exercises the merge's
-    !| right-only branch: median 5, the tied middle pair takes the left first, then only the right
-    !| is left -> deviations 2, 2, MAD 2.
-    subroutine test_sorted_slice_mad_even_length()
-        real(real64) :: median, mad
-
-        call calc_sorted_slice_mad([0.0_real64, 1.0_real64, 3.0_real64, 7.0_real64], 4_int32, &
-                                   [1_int32, 2_int32, 3_int32, 4_int32], 1_int32, 4_int32, median, mad)
-        call assert_equal_real(median, 2.0_real64, TOL, "test_sorted_slice_mad_even_length: median of 4")
-        call assert_equal_real(mad, 1.5_real64, TOL, "test_sorted_slice_mad_even_length: mad of 4")
-
-        call calc_sorted_slice_mad([7.0_real64, 3.0_real64], 2_int32, [2_int32, 1_int32], 1_int32, 2_int32, median, mad)
-        call assert_equal_real(median, 5.0_real64, TOL, "test_sorted_slice_mad_even_length: median of 2")
-        call assert_equal_real(mad, 2.0_real64, TOL, "test_sorted_slice_mad_even_length: mad of 2")
-    end subroutine test_sorted_slice_mad_even_length
-
-    !> Issue #217 (C3): four equal values have median 5 and MAD 0.
-    subroutine test_sorted_slice_mad_all_equal()
-        real(real64) :: median, mad
-
-        call calc_sorted_slice_mad([5.0_real64, 5.0_real64, 5.0_real64, 5.0_real64], 4_int32, &
-                                   [1_int32, 2_int32, 3_int32, 4_int32], 1_int32, 4_int32, median, mad)
-        call assert_equal_real(median, 5.0_real64, TOL, "test_sorted_slice_mad_all_equal: median")
-        call assert_equal_real(mad, 0.0_real64, TOL, "test_sorted_slice_mad_all_equal: mad")
-    end subroutine test_sorted_slice_mad_all_equal
-
-    !> Issue #217 (C4): a one-element slice (here position 2 of 3) is its own median, MAD 0.
-    subroutine test_sorted_slice_mad_single_element()
-        real(real64) :: median, mad
-
-        call calc_sorted_slice_mad([9.0_real64, 3.5_real64, -1.0_real64], 3_int32, [3_int32, 2_int32, 1_int32], &
-                                   2_int32, 2_int32, median, mad)
-        call assert_equal_real(median, 3.5_real64, TOL, "test_sorted_slice_mad_single_element: median")
-        call assert_equal_real(mad, 0.0_real64, TOL, "test_sorted_slice_mad_single_element: mad")
-    end subroutine test_sorted_slice_mad_single_element
-
-    !> Issue #217 (C5): only positions 2..4 of the sorted order [-1, 0, 2, 3, 100, 200] are read.
-    !| Slice [0, 2, 3]: median 2, deviations 2, 0, 1 -> MAD 1 (the outer values would change both).
-    subroutine test_sorted_slice_mad_offset_slice()
-        real(real64) :: median, mad
-
-        call calc_sorted_slice_mad([100.0_real64, 3.0_real64, -1.0_real64, 200.0_real64, 0.0_real64, 2.0_real64], &
-                                   6_int32, [3_int32, 5_int32, 6_int32, 2_int32, 1_int32, 4_int32], 2_int32, 4_int32, &
-                                   median, mad)
-        call assert_equal_real(median, 2.0_real64, TOL, "test_sorted_slice_mad_offset_slice: median")
-        call assert_equal_real(mad, 1.0_real64, TOL, "test_sorted_slice_mad_offset_slice: mad")
-    end subroutine test_sorted_slice_mad_offset_slice
 
     !> Issue #217 (C6), the reference-point chain, every neighborhood stopping on K_MAX. One study,
     !| means [2, 0, 6, 1.25, 3, 1] sort to p1..p6 = 0, 1, 1.25, 2, 3, 6; every residual magnitude
@@ -9575,61 +9503,6 @@ contains
         end do
         labels = 1_int32
     end subroutine logistic_fixture
-
-    !> `sorted_bin_counts` (binary search on sorted values, inside values only) plus the clamped
-    !| tails reproduces `histogram_bin_counts` exactly, for m = 3, 17, 120 and 256. The values mix
-    !| pseudo-random ones in [-2, 4] (some below R_low = -1, some above R_high = 3), every bin edge
-    !| `R_low + j*w` itself (including R_low and R_high), and two NaNs. A zero-width range puts every
-    !| inside value into bin 1.
-    subroutine test_sorted_bin_counts_matches_histogram_bin_counts()
-        character(len=*), parameter :: name = "test_sorted_bin_counts_matches_histogram_bin_counts: "
-        integer(int32), parameter :: m_values(4) = [3_int32, 17_int32, 120_int32, 256_int32]
-        real(real64), parameter :: range_low = -1.0_real64, range_high = 3.0_real64
-        real(real64), allocatable :: values(:)
-        integer(int32), allocatable :: perm(:), counts(:), hist(:)
-        integer(int32) :: i_m, m, j, n, n_valid, n_below, n_inside, min_occ
-        real(real64) :: width, nan_val
-        character(len=8) :: m_text
-
-        nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
-        do i_m = 1, size(m_values)
-            m = m_values(i_m)
-            write (m_text, '(i0)') m
-            n = 80_int32 + (m + 1_int32) + 2_int32
-            allocate (values(n), perm(n), counts(m), hist(m))
-            call lcg_values(int(m, int64)*7_int64, -2.0_real64, 4.0_real64, values(1:80))
-            width = (range_high - range_low)/real(m, real64)
-            do j = 0, m
-                values(81 + j) = range_low + real(j, real64)*width
-            end do
-            values(n - 1:n) = nan_val
-            n_valid = n - 2_int32
-            call init_perm(perm)
-            call sort_array_heapsort(values, perm)
-
-            call sorted_bin_counts(values, n, perm, n, range_low, range_high, m, counts, n_below, n_inside)
-            call assert_equal_int(n_below, count(values < range_low), name//"n_below, m="//trim(m_text))
-            call assert_equal_int(n_inside, count(values >= range_low .and. values <= range_high), &
-                                  name//"n_inside, m="//trim(m_text))
-            call assert_equal_int(sum(counts), n_inside, name//"inside counts sum to n_inside, m="//trim(m_text))
-            counts(1) = counts(1) + n_below
-            counts(m) = counts(m) + (n_valid - n_below - n_inside)
-            call histogram_bin_counts(values, perm, n, n_valid, range_low, range_high, m, hist, min_occ)
-            call assert_equal_array_int(counts, hist, m, name//"clamped counts == histogram_bin_counts, m="//trim(m_text))
-            deallocate (values, perm, counts, hist)
-        end do
-
-        ! Zero-width range: every inside value (== 1.0) in bin 1, nothing elsewhere.
-        allocate (values(6), perm(6), counts(5))
-        values = [0.5_real64, 1.0_real64, 1.0_real64, 2.0_real64, 1.0_real64, nan_val]
-        call init_perm(perm)
-        call sort_array_heapsort(values, perm)
-        call sorted_bin_counts(values, 6_int32, perm, 6_int32, 1.0_real64, 1.0_real64, 5_int32, counts, n_below, n_inside)
-        call assert_equal_int(n_below, 1_int32, name//"zero range: one value below")
-        call assert_equal_int(n_inside, 3_int32, name//"zero range: three values equal the range")
-        call assert_equal_int(counts(1), 3_int32, name//"zero range: all inside values in bin 1")
-        call assert_equal_int(sum(counts(2:5)), 0_int32, name//"zero range: other bins empty")
-    end subroutine test_sorted_bin_counts_matches_histogram_bin_counts
 
     !> Theorem 2 by hand. Study 1 = {0, 3, 3}, study 2 = {11, 12}; with the quantiles 0 and 1 the
     !| range is [0, 12] (R = 12, every value inside), m in [1, 6], no floor. In the evaluated form

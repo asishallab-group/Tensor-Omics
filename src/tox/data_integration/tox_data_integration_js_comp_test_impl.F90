@@ -43,8 +43,9 @@ module tox_data_integration_js_comp_test_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
     use f42_math_impl, only: clamp, is_close, LOG_2
-    use f42_stats_impl, only: calc_quantile_impl
-    use f42_sort_impl, only: init_perm, sort_array_heapsort, sort_real_heapsort_expl_size, binary_search_insertion
+    use f42_stats_impl, only: calc_quantile_impl, calc_sorted_slice_mad, histogram_bin_counts, sorted_bin_counts
+    use f42_sort_impl, only: init_perm, sort_array_heapsort, sort_real_heapsort_expl_size, binary_search_insertion, &
+                             block_containing_index, top_k_heap_push, bottom_k_heap_push
     use f42_random_gsl, only: rng_t, create_rng, destroy_rng, random_multinomial
     use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, validate_dimension_size, &
                           validate_in_range_int, ERR_INVALID_INPUT
@@ -59,7 +60,7 @@ module tox_data_integration_js_comp_test_impl
              determine_point_bin_count, build_point_study_histogram, &
              estimate_bin_count_impl, determine_bin_count_occupancy_impl, &
              determine_bin_count_occupancy_exhaustive_impl, &
-             determine_bin_count_stone_impl, sorted_bin_counts, histogram_bin_counts, group_sorted_perm_by_study, &
+             determine_bin_count_stone_impl, group_sorted_perm_by_study, &
              MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, &
              MODE_BIN_COUNT_STONE_POOLED, &
              generate_js_comp_test_candidates_impl, &
@@ -72,7 +73,7 @@ module tox_data_integration_js_comp_test_impl
              generate_adaptive_js_comp_test_candidates_impl, calc_adaptive_js_comp_test_bounds, &
              ADAPTIVE_START_FRACTION, ADAPTIVE_GAMMA, ADAPTIVE_K_STEP_FRACTION, ADAPTIVE_K_MAX_FACTOR, &
              ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_POINT_CAPACITY_FACTOR, &
-             calc_sorted_slice_mad, construct_adaptive_neighborhoods_impl, ADAPTIVE_MIN_VALID_RESIDUALS, &
+             construct_adaptive_neighborhoods_impl, ADAPTIVE_MIN_VALID_RESIDUALS, &
              materialize_pooled_neighborhood, run_js_comp_test_adaptive_impl, &
              ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_K_MAX, ADAPTIVE_STOP_RESIDUAL_CAP, ADAPTIVE_STOP_EXHAUSTED, &
              ADAPTIVE_STOP_ZERO_DISPERSION, ADAPTIVE_STOP_TOO_FEW_RESIDUALS, ADAPTIVE_STATUS_OK, &
@@ -223,11 +224,6 @@ module tox_data_integration_js_comp_test_impl
         !! residual count inside the range
     integer(int32), parameter :: MODE_BIN_COUNT_STONE_POOLED = CM_MODE_BIN_COUNT_STONE_POOLED
         !! Bin-count mode: Stone's cross-validation score of the pooled residuals of all studies
-
-    ! Which monotone predicate sorted_partition_point searches for (private selector).
-    integer(int32), parameter :: PREDICATE_BELOW = 1_int32
-    integer(int32), parameter :: PREDICATE_AT_MOST = 2_int32
-    integer(int32), parameter :: PREDICATE_BIN_AT_MOST = 3_int32
 
     ! Defaults of the relative-effect-size plateau criterion (provisional, to be validated
     ! empirically), shared by DM_DEFAULT and M_DEFAULT_VAL.
@@ -648,64 +644,6 @@ contains
         mean_bin_occupancy = real(n_pooled_residuals, real64)/real(best_m, real64)
     end subroutine determine_bin_count_occupancy_impl
 
-    !> summary: Bin already-sorted pooled residuals into equal-width bins, clamping the outside ones into the edge bins
-    !| AUTHOR_LASZLO_LANG
-    !| Bins `pooled_residuals(pooled_residuals_perm(1:n_pool))` (the non-NaN ones) into `trial_m`
-    !| equal-width bins over `[shared_residual_range_low, shared_residual_range_high]`, with the
-    !| same clamp-then-bin-index formula as
-    !| [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]].
-    !| Not published: a helper of
-    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]],
-    !| public only so the tests can compare it with `sorted_bin_counts`.
-    pure subroutine histogram_bin_counts(pooled_residuals, pooled_residuals_perm, n_residuals, n_pool, &
-                                         shared_residual_range_low, shared_residual_range_high, trial_m, &
-                                         bin_counts, min_occupancy)
-        integer(int32), intent(in) :: n_residuals
-            !! Number of pooled residuals
-        integer(int32), intent(in) :: n_pool
-            !! Number of non-NaN pooled residuals; only pooled_residuals_perm(1:n_pool) is used
-        real(real64), intent(in) :: pooled_residuals(n_residuals)
-            !! Pooled signed residuals for one neighborhood
-        integer(int32), intent(in) :: pooled_residuals_perm(n_residuals)
-            !! Sorting permutation for `pooled_residuals`, ascending, NaN last
-        real(real64), intent(in) :: shared_residual_range_low
-            !! This neighborhood's own lower residual-range bound (R_low)
-        real(real64), intent(in) :: shared_residual_range_high
-            !! This neighborhood's own upper residual-range bound (R_high)
-        integer(int32), intent(in) :: trial_m
-            !! Candidate number of equally sized histogram bins in range [R_low, R_high]
-        integer(int32), intent(out) :: bin_counts(trial_m)
-            !! Absolute count of pooled residuals per bin
-        integer(int32), intent(out) :: min_occupancy
-            !! minval(bin_counts), the occupancy criterion's test statistic
-
-        real(real64) :: bin_width, clamped_residual
-        integer(int32) :: i_pool, bin_idx
-
-        ! Same zero-range guard as build_residual_histograms_impl: a degenerate range falls back to
-        ! a fixed bin width instead of dividing by zero.
-        if (shared_residual_range_high - shared_residual_range_low <= 0.0_real64) then
-            bin_width = 1.0_real64
-        else
-            bin_width = (shared_residual_range_high - shared_residual_range_low)/real(trial_m, real64)
-        end if
-
-        bin_counts = 0_int32
-        ! Sequential: two residuals can increment the same bin.
-        do i_pool = 1, n_pool
-            clamped_residual = clamp(pooled_residuals(pooled_residuals_perm(i_pool)), min_val=shared_residual_range_low, &
-                                     max_val=shared_residual_range_high)
-            ! Known limitation, not guarded: if the range width is not finite (residuals near
-            ! +-1e308) or so small that bin_width underflows to 0, the quotient below is not finite
-            ! and bin_idx can leave [1, trial_m], so the next line writes out of bounds. Real
-            ! residuals are far from this; build_residual_histograms_impl has the same limitation.
-            bin_idx = min(trial_m, int((clamped_residual - shared_residual_range_low)/bin_width) + 1_int32)
-            bin_counts(bin_idx) = bin_counts(bin_idx) + 1_int32
-        end do
-
-        min_occupancy = minval(bin_counts)
-    end subroutine histogram_bin_counts
-
     !> summary: Exhaustive brute-force reference implementation of Issue #187's occupancy search
     !| AUTHOR_LASZLO_LANG
     !| Tests every candidate bin count `M` in `[m_min, m_max]` and keeps the largest one whose
@@ -809,130 +747,6 @@ contains
         max_bin_occupancy = maxval(candidate_bin_counts(1:best_m))
         mean_bin_occupancy = real(n_pooled_residuals, real64)/real(best_m, real64)
     end subroutine determine_bin_count_occupancy_exhaustive_impl
-
-    !> summary: Count already-sorted values into equal-width bins, inside the range only, by binary search
-    !| AUTHOR_LASZLO_LANG
-    !| Counts `values(perm(1:n_perm))` (ascending, NaN last) into `trial_m` equal-width bins over
-    !| `[range_low, range_high]` in O(trial_m log n_perm): the bin index of
-    !| `histogram_bin_counts` never decreases with the value, so each bin end is a binary search.
-    !| Only values inside the range are binned (`n_inside` of them); values below it are counted in
-    !| `n_below`, values above it and NaN nowhere. For a range of positive width the counts equal
-    !| `histogram_bin_counts`' counts without its clamping of the outside values into the edge bins.
-    !|
-    !| Not published: a helper of
-    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_stone_impl(interface)]],
-    !| public only so the tests can compare it with `histogram_bin_counts`. Precondition, not
-    !| checked: `perm(1:n_perm)` orders `values` ascending, NaN last.
-    pure subroutine sorted_bin_counts(values, n_values, perm, n_perm, range_low, range_high, trial_m, bin_counts, &
-                                      n_below, n_inside)
-        integer(int32), intent(in) :: n_values
-            !! Number of elements in `values`
-        real(real64), intent(in) :: values(n_values)
-            !! Values to count, NaN allowed
-        integer(int32), intent(in) :: n_perm
-            !! Number of positions in `perm`
-        integer(int32), intent(in) :: perm(n_perm)
-            !! Indices into `values`, ordering the counted values ascending, NaN last
-        real(real64), intent(in) :: range_low
-            !! Lower end of the binned range (R_low)
-        real(real64), intent(in) :: range_high
-            !! Upper end of the binned range (R_high)
-        integer(int32), intent(in) :: trial_m
-            !! Number of equal-width bins
-        integer(int32), intent(out) :: bin_counts(trial_m)
-            !! Number of inside values per bin
-        integer(int32), intent(out) :: n_below
-            !! Number of values below `range_low`
-        integer(int32), intent(out) :: n_inside
-            !! Number of values inside `[range_low, range_high]`, the sum of `bin_counts`
-
-        real(real64) :: bin_width
-        integer(int32) :: n_up_to_high, n_up_to_bin, n_before_bin, i_bin
-
-        ! Same zero-range guard as histogram_bin_counts.
-        if (range_high - range_low <= 0.0_real64) then
-            bin_width = 1.0_real64
-        else
-            bin_width = (range_high - range_low)/real(trial_m, real64)
-        end if
-
-        ! A comparison with NaN is false, so both predicates stay monotone over a NaN tail.
-        n_below = sorted_partition_point(values, n_values, perm, n_perm, 0_int32, n_perm, PREDICATE_BELOW, &
-                                         range_low, bin_width, 0_int32)
-        n_up_to_high = sorted_partition_point(values, n_values, perm, n_perm, n_below, n_perm, PREDICATE_AT_MOST, &
-                                              range_high, bin_width, 0_int32)
-        n_inside = n_up_to_high - n_below
-
-        ! Sequential: each bin's search starts where the previous bin ended. The bin predicate is
-        ! only evaluated inside the range, which holds no NaN.
-        n_before_bin = n_below
-        do i_bin = 1, trial_m - 1_int32
-            n_up_to_bin = sorted_partition_point(values, n_values, perm, n_perm, n_before_bin, n_up_to_high, &
-                                                 PREDICATE_BIN_AT_MOST, range_low, bin_width, i_bin)
-            bin_counts(i_bin) = n_up_to_bin - n_before_bin
-            n_before_bin = n_up_to_bin
-        end do
-        bin_counts(trial_m) = n_up_to_high - n_before_bin
-    end subroutine sorted_bin_counts
-
-    !> Binary search over positions `first_pos+1 .. last_pos` of a sorted permutation: returns the
-    !| last position up to which a monotone predicate holds (`first_pos` when it holds nowhere).
-    !|
-    !| On `probed_value = values(perm(pos))`, `PREDICATE_BELOW` is `probed_value < threshold`,
-    !| `PREDICATE_AT_MOST` is `probed_value <= threshold`, and `PREDICATE_BIN_AT_MOST` is
-    !| `int((probed_value - threshold)/bin_width) + 1 <= max_bin` (`threshold` = range's lower end).
-    !| Precondition, not checked: the predicate holds on a leading run of the positions and fails on
-    !| the rest. Private helper of `sorted_bin_counts`.
-    pure integer(int32) function sorted_partition_point(values, n_values, perm, n_perm, first_pos, last_pos, &
-                                                        predicate_kind, threshold, bin_width, max_bin) result(split_pos)
-        integer(int32), intent(in) :: n_values
-            !! Number of elements in `values`
-        real(real64), intent(in) :: values(n_values)
-            !! Values the permutation orders
-        integer(int32), intent(in) :: n_perm
-            !! Number of positions in `perm`
-        integer(int32), intent(in) :: perm(n_perm)
-            !! Indices into `values`, ascending order
-        integer(int32), intent(in) :: first_pos
-            !! The predicate is known to hold up to this position (0 for none)
-        integer(int32), intent(in) :: last_pos
-            !! Last position searched
-        integer(int32), intent(in) :: predicate_kind
-            !! PREDICATE_BELOW, PREDICATE_AT_MOST or PREDICATE_BIN_AT_MOST
-        real(real64), intent(in) :: threshold
-            !! Compared value, or the range's lower end for PREDICATE_BIN_AT_MOST
-        real(real64), intent(in) :: bin_width
-            !! Bin width, used by PREDICATE_BIN_AT_MOST only
-        integer(int32), intent(in) :: max_bin
-            !! Largest accepted bin index, used by PREDICATE_BIN_AT_MOST only
-
-        integer(int32) :: holds_pos, fails_pos, mid_pos
-        real(real64) :: probed_value
-        logical(c_bool) :: holds
-
-        ! Invariant: the predicate holds up to holds_pos and fails at fails_pos (last_pos + 1 is a
-        ! virtual failing position).
-        holds_pos = first_pos
-        fails_pos = last_pos + 1_int32
-        do while (fails_pos - holds_pos > 1_int32)
-            mid_pos = holds_pos + (fails_pos - holds_pos)/2_int32
-            probed_value = values(perm(mid_pos))
-            select case (predicate_kind)
-            case (PREDICATE_BELOW)
-                holds = probed_value < threshold
-            case (PREDICATE_AT_MOST)
-                holds = probed_value <= threshold
-            case default ! PREDICATE_BIN_AT_MOST
-                holds = int((probed_value - threshold)/bin_width) + 1_int32 <= max_bin
-            end select
-            if (holds) then
-                holds_pos = mid_pos
-            else
-                fails_pos = mid_pos
-            end if
-        end do
-        split_pos = holds_pos
-    end function sorted_partition_point
 
     !> Stone's leave-one-out cross-validation score (Duke STA 293.3 lecture notes, ch. 6,
     !| Theorem 2) of one histogram of `n_inside` values over `trial_m` equal bins on a range of
@@ -1261,34 +1075,6 @@ contains
             residual_to_study_perm = 0_int32
         end if
     end subroutine group_sorted_perm_by_study
-
-    !> The first block `s` with `block_ends(s) >= pool_idx`, by binary search over the ascending
-    !| block ends: the contiguous block holding pool index `pool_idx`. Precondition, not checked:
-    !| `block_ends` ascends and `1 <= pool_idx <= block_ends(n_blocks)`. Private helper of
-    !| `group_sorted_perm_by_study`.
-    pure integer(int32) function block_containing_index(block_ends, n_blocks, pool_idx) result(block_idx)
-        integer(int32), intent(in) :: n_blocks
-            !! Number of blocks
-        integer(int32), intent(in) :: block_ends(n_blocks)
-            !! Last pool index of each block, ascending
-        integer(int32), intent(in) :: pool_idx
-            !! The pool index to locate
-
-        integer(int32) :: low_block, high_block, mid_block
-
-        ! Invariant: the answer lies in low_block..high_block.
-        low_block = 1_int32
-        high_block = n_blocks
-        do while (low_block < high_block)
-            mid_block = low_block + (high_block - low_block)/2_int32
-            if (block_ends(mid_block) >= pool_idx) then
-                high_block = mid_block
-            else
-                low_block = mid_block + 1_int32
-            end if
-        end do
-        block_idx = low_block
-    end function block_containing_index
 
     !> Groups pooled residuals by study and sorts each study's residuals: fills
     !| `residual_to_study_perm` with the indices of the pooled residuals grouped by
@@ -2184,80 +1970,6 @@ contains
         n_pool = int(max_n_genes_all_studies, int64)*int(n_studies, int64)
         k_start_1 = max(adaptive_floor_k(n_studies), ceiling(ADAPTIVE_START_FRACTION*real(n_pool, real64), kind=int64))
     end function adaptive_k_start_1
-
-    !> summary: Median and raw median absolute deviation of an already-sorted slice, in O(k)
-    !| AUTHOR_LASZLO_LANG
-    !| Median and raw (unscaled) median absolute deviation (MAD) of the values
-    !| `values(perm(first_pos:last_pos))`, which `perm` already orders ascending, with no work
-    !| buffer and no sort. Both medians follow
-    !| [[f42_stats_impl(module):calc_quantile_impl(interface)]]'s convention (rank `0.5*(k-1) + 1`,
-    !| linearly interpolated). The absolute deviations grow outward from the median on both sides,
-    !| so a two-pointer merge outward visits them in ascending order and stops at the needed rank.
-    !| A single value has itself as median and a MAD of 0.
-    !|
-    !| Precondition, not checked: `1 <= first_pos <= last_pos <= n_values`, and the slice contains
-    !| no NaN.
-    pure subroutine calc_sorted_slice_mad(values, n_values, perm, first_pos, last_pos, median, mad)
-        integer(int32), intent(in) :: n_values
-            !! Number of elements in `values`
-        real(real64), intent(in) :: values(n_values)
-            !! Values the slice is taken from
-        integer(int32), intent(in) :: perm(n_values)
-            !! Permutation ordering `values` ascending at least over `first_pos:last_pos`
-        integer(int32), intent(in) :: first_pos
-            !! First position of the slice in `perm`
-        integer(int32), intent(in) :: last_pos
-            !! Last position of the slice in `perm`
-        real(real64), intent(out) :: median
-            !! Median of the slice
-        real(real64), intent(out) :: mad
-            !! Raw median absolute deviation of the slice from `median`
-
-        integer(int32) :: n_slice, lower_rank, left_pos, right_pos, i_rank
-        real(real64) :: rank, fraction, left_dev, right_dev, dev, lower_dev
-
-        n_slice = last_pos - first_pos + 1
-        if (n_slice == 1_int32) then
-            median = values(perm(first_pos))
-            mad = 0.0_real64
-            return
-        end if
-
-        ! calc_quantile_impl's rank at level 0.5. For n_slice >= 2 it is below n_slice,
-        ! so both interpolation neighbors lie inside the slice.
-        rank = 0.5_real64*real(n_slice - 1_int32, real64) + 1.0_real64
-        lower_rank = floor(rank, kind=int32)
-        fraction = rank - real(lower_rank, real64)
-        left_pos = first_pos + lower_rank - 1_int32
-        right_pos = left_pos + 1_int32
-        median = values(perm(left_pos)) + fraction*(values(perm(right_pos)) - values(perm(left_pos)))
-
-        ! Sequential two-pointer merge: each step depends on which side the previous one took.
-        ! The deviations at ranks lower_rank and lower_rank + 1 are interpolated like the median.
-        lower_dev = 0.0_real64
-        dev = 0.0_real64
-        do i_rank = 1_int32, lower_rank + 1_int32
-            if (left_pos >= first_pos .and. right_pos <= last_pos) then
-                left_dev = abs(values(perm(left_pos)) - median)
-                right_dev = abs(values(perm(right_pos)) - median)
-                if (left_dev <= right_dev) then
-                    dev = left_dev
-                    left_pos = left_pos - 1_int32
-                else
-                    dev = right_dev
-                    right_pos = right_pos + 1_int32
-                end if
-            else if (left_pos >= first_pos) then
-                dev = abs(values(perm(left_pos)) - median)
-                left_pos = left_pos - 1_int32
-            else
-                dev = abs(values(perm(right_pos)) - median)
-                right_pos = right_pos + 1_int32
-            end if
-            if (i_rank == lower_rank) lower_dev = dev
-        end do
-        mad = lower_dev + fraction*(dev - lower_dev)
-    end subroutine calc_sorted_slice_mad
 
     !> summary: Grow Issue #217's adaptive neighborhoods over an already-sorted pool of gene means
     !| AUTHOR_LASZLO_LANG
@@ -3387,114 +3099,6 @@ contains
 
         call destroy_rng(rng)
     end subroutine bootstrap_histogram_impl
-
-    !> summary: Push a value onto a top-k heap (a min-heap tracking the k largest values pushed)
-    !| AUTHOR_LASZLO_LANG
-    !| Private helper of
-    !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]], which
-    !| seeds every slot itself, so no initialization routine exists.
-    pure subroutine top_k_heap_push(heap, heap_size, value)
-        integer(int32), intent(in) :: heap_size
-            !! Size of heap
-        real(real64), intent(inout) :: heap(heap_size)
-            !! The top-k heap array (min-heap of the k largest values pushed so far)
-        real(real64), intent(in) :: value
-            !! Value to push
-
-        if (heap_size <= 0_int32) return
-
-        if (value > heap(1)) then
-            heap(1) = value
-            call minheap_sift_down(heap, heap_size)
-        end if
-    end subroutine top_k_heap_push
-
-    !> summary: Push a value onto a bottom-k heap (a max-heap tracking the k smallest values pushed)
-    !| AUTHOR_LASZLO_LANG
-    !| Private helper of
-    !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]], which
-    !| seeds every slot itself.
-    pure subroutine bottom_k_heap_push(heap, heap_size, value)
-        integer(int32), intent(in) :: heap_size
-            !! Size of heap
-        real(real64), intent(inout) :: heap(heap_size)
-            !! The bottom-k heap array (max-heap of the k smallest values pushed so far)
-        real(real64), intent(in) :: value
-            !! Value to push
-
-        if (heap_size <= 0_int32) return
-
-        if (value < heap(1)) then
-            heap(1) = value
-            call maxheap_sift_down(heap, heap_size)
-        end if
-    end subroutine bottom_k_heap_push
-
-    !> Top-down sift for a min-heap: swaps the root with its smaller child until the heap
-    !| condition holds. Private helper of `top_k_heap_push`.
-    pure subroutine minheap_sift_down(heap, n)
-        integer(int32), intent(in) :: n
-            !! Current heap size
-        real(real64), intent(inout) :: heap(n)
-            !! The min-heap array
-
-        integer(int32) :: i, left, right, smallest
-        real(real64) :: temp
-
-        i = 1_int32
-        do
-            left = 2_int32*i
-            right = left + 1_int32
-            if (left > n) exit
-
-            smallest = left
-            if (right <= n) then
-                if (heap(right) < heap(smallest)) smallest = right
-            end if
-
-            if (heap(smallest) < heap(i)) then
-                temp = heap(i)
-                heap(i) = heap(smallest)
-                heap(smallest) = temp
-                i = smallest
-            else
-                exit
-            end if
-        end do
-    end subroutine minheap_sift_down
-
-    !> Top-down sift for a max-heap: swaps the root with its larger child until the heap
-    !| condition holds. Private helper of `bottom_k_heap_push`.
-    pure subroutine maxheap_sift_down(heap, n)
-        integer(int32), intent(in) :: n
-            !! Current heap size
-        real(real64), intent(inout) :: heap(n)
-            !! The max-heap array
-
-        integer(int32) :: i, left, right, largest
-        real(real64) :: temp
-
-        i = 1_int32
-        do
-            left = 2_int32*i
-            right = left + 1_int32
-            if (left > n) exit
-
-            largest = left
-            if (right <= n) then
-                if (heap(right) > heap(largest)) largest = right
-            end if
-
-            if (heap(largest) > heap(i)) then
-                temp = heap(i)
-                heap(i) = heap(largest)
-                heap(largest) = temp
-                i = largest
-            else
-                exit
-            end if
-        end do
-    end subroutine maxheap_sift_down
 
     !> The shared tail of both final runs, after every study's histograms are built: the consensus
     !| pmf (create_mean_pmf_impl), each study's JSD against it and the weighted global JSD, the

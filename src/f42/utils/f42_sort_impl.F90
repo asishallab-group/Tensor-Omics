@@ -142,6 +142,38 @@ contains
         end if
     end function binary_search
 
+    !> AUTHOR_LASZLO_LANG
+    !| The first block `s` with `block_ends(s) >= idx`, by binary search over the ascending block
+    !| ends: the contiguous block holding index `idx`, for an array split into consecutive blocks
+    !| `block_ends(s-1)+1 .. block_ends(s)` (empty blocks allowed). Unlike
+    !| [[f42_sort_impl(module):binary_search_insertion(function)]] it searches integers directly,
+    !| without a permutation. Precondition, not checked: `n_blocks >= 1`, `block_ends` ascends and
+    !| `1 <= idx <= block_ends(n_blocks)`; outside it the result is `n_blocks` for an `idx` above
+    !| every block end and `1` for `n_blocks = 0`.
+    pure integer(int32) function block_containing_index(block_ends, n_blocks, idx) result(block_idx)
+        integer(int32), intent(in) :: n_blocks
+            !! Number of blocks
+        integer(int32), intent(in) :: block_ends(n_blocks)
+            !! Last index of each block, ascending
+        integer(int32), intent(in) :: idx
+            !! The index to locate
+
+        integer(int32) :: low_block, high_block, mid_block
+
+        ! Invariant: the answer lies in low_block..high_block.
+        low_block = 1_int32
+        high_block = n_blocks
+        do while (low_block < high_block)
+            mid_block = low_block + (high_block - low_block)/2_int32
+            if (block_ends(mid_block) >= idx) then
+                high_block = mid_block
+            else
+                low_block = mid_block + 1_int32
+            end if
+        end do
+        block_idx = low_block
+    end function block_containing_index
+
     !> AUTHOR_VIVIAN_BASS
     !| Sort a real array indirectly using quicksort.
     !| Creates a sorted version of the array by reordering the `perm` vector. The original data in `array` remains unchanged.
@@ -682,6 +714,120 @@ contains
             end if
         end do
     end subroutine heapify_character
+
+    !> AUTHOR_LASZLO_LANG
+    !| Push a value onto a top-k heap: a min-heap holding the `heap_size` largest values pushed so
+    !| far, its root the smallest of them. A value above the root replaces it and sifts down
+    !| ([[f42_sort_impl(module):minheap_sift_down(subroutine)]]); any other value is dropped. The
+    !| caller seeds every slot (with values that form a min-heap, e.g. all equal), so no
+    !| initialization routine exists. A `heap_size` of 0 or less does nothing.
+    pure subroutine top_k_heap_push(heap, heap_size, value)
+        integer(int32), intent(in) :: heap_size
+            !! Size of heap
+        real(real64), intent(inout) :: heap(heap_size)
+            !! The top-k heap array (min-heap of the k largest values pushed so far)
+        real(real64), intent(in) :: value
+            !! Value to push
+
+        if (heap_size <= 0_int32) return
+
+        if (value > heap(1)) then
+            heap(1) = value
+            call minheap_sift_down(heap, heap_size)
+        end if
+    end subroutine top_k_heap_push
+
+    !> AUTHOR_LASZLO_LANG
+    !| Push a value onto a bottom-k heap: a max-heap holding the `heap_size` smallest values pushed
+    !| so far, its root the largest of them. A value below the root replaces it and sifts down
+    !| ([[f42_sort_impl(module):maxheap_sift_down(subroutine)]]); any other value is dropped. The
+    !| caller seeds every slot, as for [[f42_sort_impl(module):top_k_heap_push(subroutine)]]. A
+    !| `heap_size` of 0 or less does nothing.
+    pure subroutine bottom_k_heap_push(heap, heap_size, value)
+        integer(int32), intent(in) :: heap_size
+            !! Size of heap
+        real(real64), intent(inout) :: heap(heap_size)
+            !! The bottom-k heap array (max-heap of the k smallest values pushed so far)
+        real(real64), intent(in) :: value
+            !! Value to push
+
+        if (heap_size <= 0_int32) return
+
+        if (value < heap(1)) then
+            heap(1) = value
+            call maxheap_sift_down(heap, heap_size)
+        end if
+    end subroutine bottom_k_heap_push
+
+    !> AUTHOR_LASZLO_LANG
+    !| Top-down sift for a min-heap of values (not a permutation, unlike
+    !| [[f42_sort_impl(module):heapify_real(subroutine)]]): swaps the root with its smaller child
+    !| until the heap condition holds.
+    pure subroutine minheap_sift_down(heap, n)
+        integer(int32), intent(in) :: n
+            !! Current heap size
+        real(real64), intent(inout) :: heap(n)
+            !! The min-heap array
+
+        integer(int32) :: i, left, right, smallest
+        real(real64) :: temp
+
+        i = 1_int32
+        do
+            left = 2_int32*i
+            right = left + 1_int32
+            if (left > n) exit
+
+            smallest = left
+            if (right <= n) then
+                if (heap(right) < heap(smallest)) smallest = right
+            end if
+
+            if (heap(smallest) < heap(i)) then
+                temp = heap(i)
+                heap(i) = heap(smallest)
+                heap(smallest) = temp
+                i = smallest
+            else
+                exit
+            end if
+        end do
+    end subroutine minheap_sift_down
+
+    !> AUTHOR_LASZLO_LANG
+    !| Top-down sift for a max-heap of values (not a permutation, unlike
+    !| [[f42_sort_impl(module):heapify_real(subroutine)]]): swaps the root with its larger child
+    !| until the heap condition holds.
+    pure subroutine maxheap_sift_down(heap, n)
+        integer(int32), intent(in) :: n
+            !! Current heap size
+        real(real64), intent(inout) :: heap(n)
+            !! The max-heap array
+
+        integer(int32) :: i, left, right, largest
+        real(real64) :: temp
+
+        i = 1_int32
+        do
+            left = 2_int32*i
+            right = left + 1_int32
+            if (left > n) exit
+
+            largest = left
+            if (right <= n) then
+                if (heap(right) > heap(largest)) largest = right
+            end if
+
+            if (heap(largest) > heap(i)) then
+                temp = heap(i)
+                heap(i) = heap(largest)
+                heap(largest) = temp
+                i = largest
+            else
+                exit
+            end if
+        end do
+    end subroutine maxheap_sift_down
 
     !> AUTHOR_VIVIAN_BASS
     !| Swap two integer values in-place.

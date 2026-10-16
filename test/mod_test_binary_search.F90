@@ -15,10 +15,11 @@ contains
     !> Get array of all available tests.
     function get_all_tests_binary_search() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(2))
+        allocate (all_tests(3))
 
         all_tests(1) = test_case("test_binary_search_insertion", test_binary_search_insertion)
         all_tests(2) = test_case("test_binary_search", test_binary_search)
+        all_tests(3) = test_case("test_block_containing_index", test_block_containing_index)
     end function get_all_tests_binary_search
 
     subroutine test_binary_search_insertion()
@@ -109,4 +110,29 @@ contains
         call assert_equal_int(idx, size(perm, kind=int32), "test_binary_search: Search non-NaN in all-NaN array")
 
     end subroutine test_binary_search
+
+    !> block_containing_index on block ends `[3, 3, 4, 8, 8]` (block 2 and block 5 empty): every
+    !| index 1..8 lands in the first block whose end reaches it, so an empty block is never chosen
+    !| (index 4 skips block 2 for block 3, index 8 stays in block 4 rather than the empty block
+    !| 5). The first and last index exercise both ends of the search; a single block holds
+    !| everything.
+    subroutine test_block_containing_index()
+        character(len=*), parameter :: name = "test_block_containing_index: "
+        integer(int32), parameter :: ends(5) = [3_int32, 3_int32, 4_int32, 8_int32, 8_int32]
+        integer(int32), parameter :: expected(8) = [1_int32, 1_int32, 1_int32, 3_int32, 4_int32, 4_int32, 4_int32, &
+                                                    4_int32]
+        integer(int32) :: idx, got(8)
+
+        do idx = 1, 8
+            got(idx) = block_containing_index(ends, 5_int32, idx)
+        end do
+        call assert_equal_array_int(got, expected, 8_int32, name//"five blocks with two empty ones")
+
+        call assert_equal_int(block_containing_index([6_int32], 1_int32, 1_int32), 1_int32, &
+                              name//"one block, first index")
+        call assert_equal_int(block_containing_index([6_int32], 1_int32, 6_int32), 1_int32, &
+                              name//"one block, last index")
+        call assert_equal_int(block_containing_index([1_int32, 2_int32], 2_int32, 2_int32), 2_int32, &
+                              name//"two blocks of one index, second")
+    end subroutine test_block_containing_index
 end module mod_test_binary_search
