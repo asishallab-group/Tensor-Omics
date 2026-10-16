@@ -111,24 +111,45 @@ determine_study_shared_residual_range <- function(neighborhood_residuals_S1, nei
 #'
 #' @param neighborhood_residuals a numeric array of rank 3. Computed neighborhood residuals for a study, NaN is explicitly allowed for missing values
 #'   NaN is permitted for this value.
-#' @param shared_residual_range a numeric scalar. Computed residual range (R)
-#'   The minimum valid value is `0.0`.
-#' @param n_bins a integer scalar. Number of equally sized histogram bins in range [-R,R]
+#' @param shared_residual_range_low a numeric vector. Lower bound of the histogram range (R_low) for reference point i_point -- e.g. from
+#'   \code{\link{determine_bin_count_occupancy}}'s
+#'   own `shared_residual_range_low` output
+#' @param shared_residual_range_high a numeric vector. Upper bound of the histogram range (R_high) for reference point i_point -- e.g. from
+#'   \code{\link{determine_bin_count_occupancy}}'s
+#'   own `shared_residual_range_high` output
+#' @param max_n_bins a integer scalar. Widest histogram bin count used by any reference point in this call -- the array
+#'   extent `counts`/`pmf` are declared with. A reference point whose own
+#'   `n_bins_per_point` is smaller has its remaining columns zero-padded.
+#' @param n_bins_per_point a integer vector. Number of equally sized histogram bins in range [shared_residual_range_low(i_point),
+#'   shared_residual_range_high(i_point)] to use for this reference point
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `max_n_bins`.
 #' @param neighbor_mask a logical matrix. Optional mask to exclude specific neighbors (e.g. for family-wise analysis)
 #' @return a named list with elements:
-#'   \item{counts}{a integer matrix. Absolute counts of a residual per bin}
-#'   \item{pmf}{a numeric matrix. `counts` normalized to `0 <= counts(:, i) <= 1` and `sum(counts(:, i)) == 1`}
+#'   \item{counts}{a integer matrix. Absolute counts of a residual per bin, per reference point. Zero-padded beyond
+#'     `n_bins_per_point(i_point)` for each reference point `i_point`}
+#'   \item{pmf}{a numeric matrix. `counts` normalized to `0 <= counts(:, i) <= 1` and `sum(counts(:, i)) == 1`.
+#'     Zero-padded beyond `n_bins_per_point(i_point)` for each reference point `i_point`}
 #'   \item{included_n_reps}{a integer vector. Stores the count of non-NaN replicates (included ones)}
 #' @export
-build_residual_histograms <- function(neighborhood_residuals, shared_residual_range, n_bins, neighbor_mask = NULL) {
+build_residual_histograms <- function(neighborhood_residuals, shared_residual_range_low, shared_residual_range_high, max_n_bins, n_bins_per_point, neighbor_mask = NULL) {
     neighborhood_residuals <- .tox_as_double_array(neighborhood_residuals, "neighborhood_residuals", 3L)
-    shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
-    n_bins <- .tox_as_integer_scalar(n_bins, "n_bins")
+    shared_residual_range_low <- .tox_as_double_vector(shared_residual_range_low, "shared_residual_range_low")
+    shared_residual_range_high <- .tox_as_double_vector(shared_residual_range_high, "shared_residual_range_high")
+    max_n_bins <- .tox_as_integer_scalar(max_n_bins, "max_n_bins")
+    n_bins_per_point <- .tox_as_integer_vector(n_bins_per_point, "n_bins_per_point")
     if (!is.null(neighbor_mask))
         neighbor_mask <- .tox_as_logical_matrix(neighbor_mask, "neighbor_mask")
-    .result <- .Call("build_residual_histograms_call", neighborhood_residuals, shared_residual_range, n_bins, neighbor_mask)
-    .arguments <- c("neighborhood_residuals", "n_reps", "n_neighbors", "n_points", "shared_residual_range", "n_bins", "counts", "pmf", "included_n_reps", "neighbor_mask", "ierr")
-    .sources <- c(NA_character_, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", NA_character_, "counts", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    if (length(shared_residual_range_low) != dim(neighborhood_residuals)[3])
+        .tox_shape_error("shared_residual_range_low", length(shared_residual_range_low), "neighborhood_residuals", dim(neighborhood_residuals)[3])
+    if (length(shared_residual_range_high) != dim(neighborhood_residuals)[3])
+        .tox_shape_error("shared_residual_range_high", length(shared_residual_range_high), "neighborhood_residuals", dim(neighborhood_residuals)[3])
+    if (length(n_bins_per_point) != dim(neighborhood_residuals)[3])
+        .tox_shape_error("n_bins_per_point", length(n_bins_per_point), "neighborhood_residuals", dim(neighborhood_residuals)[3])
+
+    .result <- .Call("build_residual_histograms_call", neighborhood_residuals, shared_residual_range_low, shared_residual_range_high, max_n_bins, n_bins_per_point, neighbor_mask)
+    .arguments <- c("neighborhood_residuals", "n_reps", "n_neighbors", "n_points", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins", "n_bins_per_point", "counts", "pmf", "included_n_reps", "neighbor_mask", "ierr")
+    .sources <- c(NA_character_, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", NA_character_, NA_character_, "counts", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -138,9 +159,40 @@ build_residual_histograms <- function(neighborhood_residuals, shared_residual_ra
     )
 }
 
+#' Normalize histogram counts into a probability mass function
+#'
+#' The counts-to-pmf half of `build_residual_histograms_impl`, factored out so a caller that
+#' already holds a study's `counts` -- untouched by anything that perturbed scratch copies
+#' downstream of it -- can re-derive `pmf` without re-binning residuals.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_jsd::calc_pmf}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param counts a integer matrix. Absolute counts of a residual per bin
+#'   The minimum valid value is `0`.
+#' @param included_n_reps a integer vector. Count of non-NaN replicates (included ones) per reference point
+#'   The minimum valid value is `0`.
+#' @return a numeric matrix. `counts` normalized to `0 <= pmf(:, i) <= 1` and `sum(pmf(:, i)) == 1`
+#' @export
+calc_pmf <- function(counts, included_n_reps) {
+    counts <- .tox_as_integer_matrix(counts, "counts")
+    included_n_reps <- .tox_as_integer_vector(included_n_reps, "included_n_reps")
+    if (length(included_n_reps) != dim(counts)[1])
+        .tox_shape_error("included_n_reps", length(included_n_reps), "counts", dim(counts)[1])
+
+    .result <- .Call("calc_pmf_call", counts, included_n_reps)
+    .arguments <- c("counts", "included_n_reps", "n_points", "n_bins", "pmf", "ierr")
+    .sources <- c(NA_character_, NA_character_, "counts", "counts", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    .result$pmf
+}
+
 #' Compute the Jensen-Shannon divergence per reference point from two histograms
 #'
-#' Takes the probabilities `pmf` produced by `build_residual_histograms`.
+#' Takes the probabilities `pmf` produced by `build_residual_histograms`. The natural JSD
+#' computed from the KL divergences lies in `[0, ln 2]`; the final step below rescales it by
+#' `LOG_2` onto `[0, 1]`.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_jsd::compute_divergence_per_reference_point}, whose argument names
 #' are the ones an error message reports.
@@ -151,7 +203,8 @@ build_residual_histograms <- function(neighborhood_residuals, shared_residual_ra
 #' @param pmf_S2 a numeric matrix. Computed normalized histogram counts for study 2
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
-#' @return a numeric vector. Jensen-Shannon divergence per reference point
+#' @return a numeric vector. Jensen-Shannon divergence per reference point, rescaled by `LOG_2` onto `[0, 1]`
+#'   (rather than its natural `[0, ln 2]` range)
 #' @export
 compute_divergence_per_reference_point <- function(pmf_S1, pmf_S2) {
     pmf_S1 <- .tox_as_double_matrix(pmf_S1, "pmf_S1")
@@ -204,4 +257,138 @@ compute_weighted_global_divergence <- function(js_divergences, included_n_reps_S
         global_js_divergence = .result$global_js_divergence,
         weights = .result$weights
     )
+}
+
+#' Compute the JSD of two studies from their neighborhood residuals in one call
+#'
+#' Runs \code{\link{build_residual_histograms}} for
+#' each study, \code{\link{compute_divergence_per_reference_point}}
+#' and \code{\link{compute_weighted_global_divergence}},
+#' with one bin count `n_bins` and one symmetric range `[-shared_residual_range, shared_residual_range]`
+#' for every reference point.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_jsd::jct_compute_jsd_pipeline}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
+#' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
+#' @param n_bins a integer scalar. Number of equally sized histogram bins used for the studies
+#' @param shared_residual_range a numeric scalar. Computed residual range for both studies
+#'   The minimum valid value is `0.0`.
+#' @param neighbor_mask_S1 a logical matrix. Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
+#' @param neighbor_mask_S2 a logical matrix. Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
+#' @return a named list with elements:
+#'   \item{js_divergences}{a numeric vector. Jensen-Shannon divergence per reference point, computed for studies S1 and S2}
+#'   \item{included_n_reps_S1}{a integer vector. Count of non-NaN residuals (included ones) in study 1}
+#'   \item{included_n_reps_S2}{a integer vector. Count of non-NaN residuals (included ones) in study 2}
+#'   \item{global_js_divergence}{a numeric scalar. Weighted global Jensen-Shannon divergence}
+#'   \item{weights}{a numeric vector. Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`}
+#'   \item{pmf_S1}{a numeric matrix. Normalized histogram counts for study 1}
+#'   \item{pmf_S2}{a numeric matrix. Normalized histogram counts for study 2}
+#' @export
+jct_compute_jsd_pipeline <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, n_bins, shared_residual_range, neighbor_mask_S1 = NULL, neighbor_mask_S2 = NULL) {
+    neighborhood_residuals_S1 <- .tox_as_double_array(neighborhood_residuals_S1, "neighborhood_residuals_S1", 3L)
+    neighborhood_residuals_S2 <- .tox_as_double_array(neighborhood_residuals_S2, "neighborhood_residuals_S2", 3L)
+    n_bins <- .tox_as_integer_scalar(n_bins, "n_bins")
+    shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
+    if (!is.null(neighbor_mask_S1))
+        neighbor_mask_S1 <- .tox_as_logical_matrix(neighbor_mask_S1, "neighbor_mask_S1")
+    if (!is.null(neighbor_mask_S2))
+        neighbor_mask_S2 <- .tox_as_logical_matrix(neighbor_mask_S2, "neighbor_mask_S2")
+    if (dim(neighborhood_residuals_S2)[2] != dim(neighborhood_residuals_S1)[2])
+        .tox_shape_error("neighborhood_residuals_S2", dim(neighborhood_residuals_S2)[2], "neighborhood_residuals_S1", dim(neighborhood_residuals_S1)[2])
+    if (dim(neighborhood_residuals_S2)[3] != dim(neighborhood_residuals_S1)[3])
+        .tox_shape_error("neighborhood_residuals_S2", dim(neighborhood_residuals_S2)[3], "neighborhood_residuals_S1", dim(neighborhood_residuals_S1)[3])
+
+    .result <- .Call("jct_compute_jsd_pipeline_call", neighborhood_residuals_S1, neighborhood_residuals_S2, n_bins, shared_residual_range, neighbor_mask_S1, neighbor_mask_S2)
+    .arguments <- c("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "n_bins", "shared_residual_range", "js_divergences", "included_n_reps_S1", "included_n_reps_S2", "global_js_divergence", "weights", "pmf_S1", "pmf_S2", "neighbor_mask_S1", "neighbor_mask_S2", "ierr")
+    .sources <- c(NA_character_, NA_character_, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", "pmf_S1", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        js_divergences = .result$js_divergences,
+        included_n_reps_S1 = .result$included_n_reps_S1,
+        included_n_reps_S2 = .result$included_n_reps_S2,
+        global_js_divergence = .result$global_js_divergence,
+        weights = .result$weights,
+        pmf_S1 = .result$pmf_S1,
+        pmf_S2 = .result$pmf_S2
+    )
+}
+
+#' Build the consensus pmf and its histogram counts from all studies' pmfs
+#'
+#' `mean_pmf` is the equal-weight mean of all studies' pmfs, `mean_pmf_counts` and
+#' `mean_pmf_included_n_reps` the sums of their counts. Known limitation: every study is
+#' compared against a consensus that includes itself, not a leave-one-out background.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_jsd::create_mean_pmf}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param pmfs a numeric array of rank 3. Per-study probabilities of each bin per reference point, from
+#'   \code{\link{build_residual_histograms}}
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#' @param counts a integer array of rank 3. Absolute counts of a residual per bin for `pmfs`
+#'   The minimum valid value is `0`.
+#' @param included_n_reps a integer matrix. Count of non-NaN replicates per reference point, per study; every study needs at
+#'   least one at every reference point
+#'   The minimum valid value is `1`.
+#' @return a named list with elements:
+#'   \item{mean_pmf}{a numeric matrix. The consensus pmf, `sum(pmfs, dim=3) / n_studies`}
+#'   \item{mean_pmf_included_n_reps}{a integer vector. Count of non-NaN replicates per reference point, summed over the studies}
+#'   \item{mean_pmf_counts}{a integer matrix. Residual counts per bin of the consensus, `sum(counts, dim=3)`}
+#' @export
+create_mean_pmf <- function(pmfs, counts, included_n_reps) {
+    pmfs <- .tox_as_double_array(pmfs, "pmfs", 3L)
+    counts <- .tox_as_integer_array(counts, "counts", 3L)
+    included_n_reps <- .tox_as_integer_matrix(included_n_reps, "included_n_reps")
+    if (dim(counts)[2] != dim(pmfs)[2])
+        .tox_shape_error("counts", dim(counts)[2], "pmfs", dim(pmfs)[2])
+    if (dim(counts)[1] != dim(pmfs)[1])
+        .tox_shape_error("counts", dim(counts)[1], "pmfs", dim(pmfs)[1])
+    if (dim(included_n_reps)[1] != dim(pmfs)[1])
+        .tox_shape_error("included_n_reps", dim(included_n_reps)[1], "pmfs", dim(pmfs)[1])
+    if (dim(counts)[3] != dim(pmfs)[3])
+        .tox_shape_error("counts", dim(counts)[3], "pmfs", dim(pmfs)[3])
+    if (dim(included_n_reps)[2] != dim(pmfs)[3])
+        .tox_shape_error("included_n_reps", dim(included_n_reps)[2], "pmfs", dim(pmfs)[3])
+
+    .result <- .Call("create_mean_pmf_call", pmfs, counts, included_n_reps)
+    .arguments <- c("pmfs", "counts", "n_bins", "n_points", "n_studies", "included_n_reps", "mean_pmf", "mean_pmf_included_n_reps", "mean_pmf_counts", "ierr")
+    .sources <- c(NA_character_, NA_character_, "pmfs", "pmfs", "pmfs", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        mean_pmf = .result$mean_pmf,
+        mean_pmf_included_n_reps = .result$mean_pmf_included_n_reps,
+        mean_pmf_counts = .result$mean_pmf_counts
+    )
+}
+
+#' Build only the consensus pmf from all studies' pmfs, without its histogram counts
+#'
+#' As \code{\link{create_mean_pmf}}, for
+#' callers that need no counts (the bootstrap and the permutation test). Same known limitation: the consensus includes
+#' the study compared against it.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_jsd::create_mean_pmf_only}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param pmfs a numeric array of rank 3. Per-study probabilities of each bin per reference point, from
+#'   \code{\link{build_residual_histograms}}
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#' @return a numeric matrix. The consensus pmf, `sum(pmfs, dim=3) / n_studies`
+#' @export
+create_mean_pmf_only <- function(pmfs) {
+    pmfs <- .tox_as_double_array(pmfs, "pmfs", 3L)
+    .result <- .Call("create_mean_pmf_only_call", pmfs)
+    .arguments <- c("pmfs", "n_bins", "n_points", "n_studies", "mean_pmf", "ierr")
+    .sources <- c(NA_character_, "pmfs", "pmfs", "pmfs", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    .result$mean_pmf
 }

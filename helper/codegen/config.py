@@ -83,6 +83,7 @@ class Conventions:
         "tox_conversions",
         "f42_config",
         "f42_safeguard",
+        "f42_random_gsl",
     )
     #: Suffix marking a permutation vector. In the allocating wrapper a `<base>_perm`
     #: argument is seeded with `init_perm` and heapsorted against `<base>`.

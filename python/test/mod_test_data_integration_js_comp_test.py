@@ -1,0 +1,1399 @@
+"""
+Comprehensive Python test suite for the gJCT/fJCT JSD-Comp-Test parameter-search building
+blocks in tensoromics (Issue #126).
+Uses tensor_omics.py wrapper functions (mirrors Fortran test suite
+mod_test_data_integration_js_comp_test.F90 -- fixtures below are translated from that suite's
+already hand-computed/verified numbers rather than re-derived).
+"""
+import numpy as np
+import sys
+import os
+
+# Add parent directory to path to import tensor_omics
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from test_helpers import run_all_tests, assert_error
+from tensor_omics import (
+    ToxError,
+    estimate_bin_count,
+    estimate_bin_count_expert,
+    determine_bin_count_occupancy,
+    determine_bin_count_occupancy_expert,
+    determine_bin_count_occupancy_exhaustive,
+    determine_bin_count_occupancy_exhaustive_expert,
+    determine_bin_count_stone,
+    determine_bin_count_stone_expert,
+    generate_js_comp_test_candidates,
+    generate_adaptive_js_comp_test_candidates,
+    construct_adaptive_neighborhoods,
+    check_neighborhood_overlaps,
+    check_mean_pmf_min_counts,
+    check_plateau_condition,
+    check_effect_size_plateau_condition,
+    create_mean_pmf,
+    create_mean_pmf_only,
+    bootstrap_histogram,
+    calc_js_comp_test_candidate_bounds,
+    calc_adaptive_js_comp_test_bounds,
+    calc_js_comp_test_n_top_k_jsds,
+    gather_pooled_neighborhood_residuals,
+    run_js_comp_test,
+    run_js_comp_test_expert,
+    run_js_comp_test_parameter_search,
+    run_js_comp_test_adaptive,
+    run_js_comp_test_adaptive_parameter_search,
+)
+from tensor_omics.error_handling import ERR_INVALID_INPUT, ERR_NAN_INF
+
+TOL = 1e-12
+
+
+# Every `bin_count_mode` string of run_js_comp_test, run_js_comp_test_adaptive and both
+# parameter searches.
+BIN_COUNT_MODES = ("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted",
+                   "bin_count_stone_pooled")
+
+
+def test_estimate_bin_count():
+    # NOTE: estimate_bin_count/estimate_bin_count_expert now return a dict with keys n_bins,
+    # sturges_bins and fd_bins (Issue #187 checkpoint 1). Per this project's testing philosophy
+    # (Fortran_Coding_Guides.pdf Sec 17.1), this suite only checks call-ability, return
+    # type/shape, and the n_bins == max(sturges_bins, fd_bins) structural invariant --
+    # individual numerical correctness of sturges_bins/fd_bins is the Fortran suite's job
+    # (mod_test_data_integration_js_comp_test.F90).
+
+    # ============================================================
+    # Test 1 -- basic hand-computed (test_estimate_bin_count_basic_hand_computed):
+    # residuals already ascending, no ties needed. Sturges gives 1 + nint(log(1)/LOG_2) = 1.
+    # 25th/75th percentiles (rank 3.25 and 7.75) interpolate to -1.75 and 2.75, so the
+    # Freedman-Diaconis half-width is (2.75 - (-1.75)) / 1^(1/3) = 4.5; with
+    # shared_residual_range=9.0, nint(9.0/4.5) = 2, which beats Sturges.
+    # ============================================================
+    residuals = np.array([-4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0], dtype=np.float64)
+
+    result = estimate_bin_count(residuals, max_n_reps_all_studies=1, n_neighbors=1, shared_residual_range=9.0)
+    assert isinstance(result, dict), f"Test 1 failed: expected a dict, got {type(result)}"
+    for key in ("n_bins", "sturges_bins", "fd_bins"):
+        assert key in result, f"Test 1 failed: missing expected output key '{key}'"
+    assert result["n_bins"] == 2, f"Test 1 failed: expected n_bins=2, got {result['n_bins']}"
+    assert result["n_bins"] == max(result["sturges_bins"], result["fd_bins"]), \
+        "Test 1 failed: n_bins must equal max(sturges_bins, fd_bins)"
+
+    # The expert entry point, given the same sorting permutation, must agree.
+    residuals_perm = (np.argsort(residuals, kind="mergesort") + 1).astype(np.int32)
+    result_expert = estimate_bin_count_expert(residuals, residuals_perm, max_n_reps_all_studies=1, n_neighbors=1,
+                                               shared_residual_range=9.0)
+    assert result_expert["n_bins"] == 2, f"Test 1 (expert) failed: expected n_bins=2, got {result_expert['n_bins']}"
+    assert result_expert["n_bins"] == max(result_expert["sturges_bins"], result_expert["fd_bins"]), \
+        "Test 1 (expert) failed: n_bins must equal max(sturges_bins, fd_bins)"
+
+    # ============================================================
+    # Test 2 -- all-NaN pool falls back to a single bin (test_estimate_bin_count_all_nan_gives_one_bin)
+    # ============================================================
+    residuals_nan = np.full(4, np.nan, dtype=np.float64)
+    result_nan = estimate_bin_count(residuals_nan, max_n_reps_all_studies=1, n_neighbors=1, shared_residual_range=9.0)
+    assert result_nan["n_bins"] == 1, f"Test 2 failed: expected n_bins=1, got {result_nan['n_bins']}"
+    assert result_nan["sturges_bins"] == 1, f"Test 2 failed: expected sturges_bins=1, got {result_nan['sturges_bins']}"
+    assert result_nan["fd_bins"] == 1, f"Test 2 failed: expected fd_bins=1, got {result_nan['fd_bins']}"
+
+    # ============================================================
+    # Test 3 -- clamped to MAX_N_BINS=256 (test_estimate_bin_count_clamped_to_max_n_bins):
+    # same residuals, but shared_residual_range=5000.0 -> raw estimate nint(5000.0/4.5)=1111,
+    # far above MAX_N_BINS.
+    # ============================================================
+    result_clamped = estimate_bin_count(residuals, max_n_reps_all_studies=1, n_neighbors=1,
+                                         shared_residual_range=5000.0)
+    assert result_clamped["n_bins"] == 256, f"Test 3 failed: expected n_bins=256, got {result_clamped['n_bins']}"
+    assert result_clamped["n_bins"] == max(result_clamped["sturges_bins"], result_clamped["fd_bins"]), \
+        "Test 3 failed: n_bins must equal max(sturges_bins, fd_bins)"
+
+
+def test_determine_bin_count_occupancy():
+    # Call-ability and return type/shape only, per this project's testing philosophy
+    # (Fortran_Coding_Guides.pdf Sec 17.1) -- numerical branch coverage of Issue #187's
+    # geometric-search-then-refinement algorithm is the Fortran suite's job
+    # (mod_test_data_integration_js_comp_test.F90's own 9 enumerated
+    # test_determine_bin_count_occupancy_* tests).
+    residuals = np.arange(-60, 60, dtype=np.float64)  # 120 values, matches a Fortran fixture
+
+    result = determine_bin_count_occupancy(residuals, max_n_reps_all_studies=1, n_neighbors=1)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    for key in ("selected_n_bins", "occupancy_failed", "shared_residual_range_low", "shared_residual_range_high",
+                "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy",
+                "sturges_bins", "fd_bins"):
+        assert key in result, f"missing expected output key '{key}'"
+    assert isinstance(result["occupancy_failed"], (bool, np.bool_)), \
+        f"expected occupancy_failed to be a bool, got {type(result['occupancy_failed'])}"
+    assert result["n_pooled_residuals"] == 120, \
+        f"expected n_pooled_residuals=120, got {result['n_pooled_residuals']}"
+    # Call-ability/type/shape only, per this project's testing philosophy (Fortran_Coding_Guides.pdf
+    # Sec 17.1) -- shared_residual_range_low/high are now this neighborhood's own 5th/95th
+    # percentiles (Step 3), and selected_n_bins is Issue #187's own occupancy-search result; the
+    # exact numerical values for this fixture are hand-derived and asserted in the Fortran suite's
+    # own test_occupancy_finds_valid_below_m_max, not here.
+    assert isinstance(result["shared_residual_range_low"], (float, np.floating)), \
+        f"expected shared_residual_range_low to be a float, got {type(result['shared_residual_range_low'])}"
+    assert isinstance(result["shared_residual_range_high"], (float, np.floating)), \
+        f"expected shared_residual_range_high to be a float, got {type(result['shared_residual_range_high'])}"
+    assert np.isfinite(result["shared_residual_range_low"]), "shared_residual_range_low must be finite"
+    assert np.isfinite(result["shared_residual_range_high"]), "shared_residual_range_high must be finite"
+    assert result["shared_residual_range_low"] < result["shared_residual_range_high"], \
+        "shared_residual_range_low must be strictly below shared_residual_range_high on this non-degenerate fixture"
+    assert isinstance(result["selected_n_bins"], (int, np.integer)), \
+        f"expected selected_n_bins to be an int, got {type(result['selected_n_bins'])}"
+    assert result["selected_n_bins"] > 0, "selected_n_bins must be positive"
+    assert not result["occupancy_failed"]
+
+    # The expert entry point, given the same sorting permutation, must agree.
+    residuals_perm = (np.argsort(residuals, kind="mergesort") + 1).astype(np.int32)
+    result_expert = determine_bin_count_occupancy_expert(residuals, residuals_perm, max_n_reps_all_studies=1,
+                                                           n_neighbors=1)
+    assert result_expert["selected_n_bins"] == result["selected_n_bins"], \
+        "expert entry point should agree with the plain one given the same sorted permutation"
+
+    # All-NaN pool: occupancy_failed must be True, and every occupancy diagnostic must be 0.
+    residuals_nan = np.full(4, np.nan, dtype=np.float64)
+    result_nan = determine_bin_count_occupancy(residuals_nan, max_n_reps_all_studies=1, n_neighbors=1)
+    assert result_nan["occupancy_failed"]
+    assert result_nan["n_pooled_residuals"] == 0
+    assert result_nan["min_bin_occupancy"] == 0
+    assert result_nan["max_bin_occupancy"] == 0
+    assert result_nan["shared_residual_range_low"] == 0.0
+    assert result_nan["shared_residual_range_high"] == 0.0
+
+
+def test_determine_bin_count_occupancy_exhaustive():
+    # Call-ability and return type/shape only, per this project's testing philosophy
+    # (Fortran_Coding_Guides.pdf Sec 17.1) -- numerical correctness (including the adversarial
+    # fixture proving this routine's own reason for existing) is the Fortran suite's job
+    # (mod_test_data_integration_js_comp_test.F90's own test_occupancy_exhaustive_* tests).
+    # Unlike determine_bin_count_occupancy, this routine takes shared_residual_range_low/high and
+    # n_pooled_residuals as direct inputs rather than deriving them, so literal values are enough.
+    residuals = np.arange(-60, 60, dtype=np.float64)  # 120 values, matches a Fortran fixture
+
+    result = determine_bin_count_occupancy_exhaustive(residuals, n_pooled_residuals=120,
+                                                        shared_residual_range_low=-60.0,
+                                                        shared_residual_range_high=60.0)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    for key in ("selected_n_bins", "occupancy_failed", "min_bin_occupancy", "mean_bin_occupancy",
+                "max_bin_occupancy"):
+        assert key in result, f"missing expected output key '{key}'"
+    assert isinstance(result["occupancy_failed"], (bool, np.bool_)), \
+        f"expected occupancy_failed to be a bool, got {type(result['occupancy_failed'])}"
+    assert isinstance(result["selected_n_bins"], (int, np.integer)), \
+        f"expected selected_n_bins to be an int, got {type(result['selected_n_bins'])}"
+    assert result["selected_n_bins"] > 0, "selected_n_bins must be positive"
+    assert not result["occupancy_failed"]
+
+    # The expert entry point, given the same sorting permutation, must agree.
+    residuals_perm = (np.argsort(residuals, kind="mergesort") + 1).astype(np.int32)
+    result_expert = determine_bin_count_occupancy_exhaustive_expert(residuals, residuals_perm,
+                                                                      n_pooled_residuals=120,
+                                                                      shared_residual_range_low=-60.0,
+                                                                      shared_residual_range_high=60.0)
+    assert result_expert["selected_n_bins"] == result["selected_n_bins"], \
+        "expert entry point should agree with the plain one given the same sorted permutation"
+
+    # All-NaN pool: occupancy_failed must be True (n_pooled_residuals=0, default min_residuals_per_bin=10).
+    residuals_nan = np.full(4, np.nan, dtype=np.float64)
+    result_nan = determine_bin_count_occupancy_exhaustive(residuals_nan, n_pooled_residuals=0,
+                                                            shared_residual_range_low=0.0,
+                                                            shared_residual_range_high=0.0)
+    assert result_nan["occupancy_failed"]
+    assert result_nan["min_bin_occupancy"] == 0
+    assert result_nan["max_bin_occupancy"] == 0
+
+
+def test_determine_bin_count_stone():
+    # Call-ability and return type/shape only, per this project's testing philosophy
+    # (Fortran_Coding_Guides.pdf Sec 17.1) -- the numerics of Stone's rule (Theorem 2 by hand,
+    # brute-force leave-one-out, ties, floor, failure paths) are the Fortran suite's job
+    # (mod_test_data_integration_js_comp_test.F90's own test_stone_* tests).
+    rng = np.random.default_rng(7)
+    residuals = rng.standard_normal(300)
+    residual_to_study = np.repeat(np.array([1, 2, 3], dtype=np.int32), [120, 60, 120])
+    rng.shuffle(residual_to_study)
+
+    for mode in ("bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"):
+        result = determine_bin_count_stone(residuals, residual_to_study, n_studies=3, max_n_reps_all_studies=1,
+                                           n_neighbors=1, bin_count_mode=mode)
+        assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+        for key in ("selected_n_bins", "stone_failed", "shared_residual_range_low", "shared_residual_range_high",
+                    "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy",
+                    "sturges_bins", "fd_bins"):
+            assert key in result, f"missing expected output key '{key}' ({mode})"
+        assert isinstance(result["stone_failed"], (bool, np.bool_)), \
+            f"expected stone_failed to be a bool, got {type(result['stone_failed'])} ({mode})"
+        assert isinstance(result["selected_n_bins"], (int, np.integer)), \
+            f"expected selected_n_bins to be an int, got {type(result['selected_n_bins'])} ({mode})"
+        assert isinstance(result["mean_bin_occupancy"], (float, np.floating)), \
+            f"expected mean_bin_occupancy to be a float ({mode})"
+        assert not result["stone_failed"], f"Stone should not fail on this dense fixture ({mode})"
+        assert 3 <= result["selected_n_bins"] <= 120, f"selected_n_bins within [m_min, m_max] ({mode})"
+        assert result["shared_residual_range_low"] < result["shared_residual_range_high"], \
+            f"non-degenerate range expected ({mode})"
+
+    # The default mode is accepted without being named.
+    result = determine_bin_count_stone(residuals, residual_to_study, n_studies=3, max_n_reps_all_studies=1,
+                                       n_neighbors=1)
+    assert not result["stone_failed"]
+
+    # The expert entry point, given the same sorting permutation, must agree.
+    residuals_perm = (np.argsort(residuals, kind="mergesort") + 1).astype(np.int32)
+    result_expert = determine_bin_count_stone_expert(residuals, residuals_perm, residual_to_study, n_studies=3,
+                                                     max_n_reps_all_studies=1, n_neighbors=1)
+    assert result_expert["selected_n_bins"] == result["selected_n_bins"], \
+        "expert entry point should agree with the plain one given the same sorted permutation"
+
+    # An unknown mode string, and the occupancy mode (not a Stone mode), are rejected by the C layer.
+    assert_error(lambda: determine_bin_count_stone(residuals, residual_to_study, n_studies=3, max_n_reps_all_studies=1,
+                                                   n_neighbors=1, bin_count_mode="bin_count_occupancy"),
+                 "expected the occupancy mode to be rejected", ERR_INVALID_INPUT)
+    assert_error(lambda: determine_bin_count_stone(residuals, residual_to_study, n_studies=3, max_n_reps_all_studies=1,
+                                                   n_neighbors=1, bin_count_mode="nonsense"),
+                 "expected an unknown mode string to be rejected", ERR_INVALID_INPUT)
+    # A study label outside [1, n_studies] is invalid input.
+    assert_error(lambda: determine_bin_count_stone(residuals, residual_to_study, n_studies=2, max_n_reps_all_studies=1,
+                                                   n_neighbors=1),
+                 "expected ERR_INVALID_INPUT for a label above n_studies", ERR_INVALID_INPUT)
+
+    # All-NaN pool: the search fails.
+    result_nan = determine_bin_count_stone(np.full(4, np.nan), np.array([1, 2, 1, 2], dtype=np.int32), n_studies=2,
+                                           max_n_reps_all_studies=1, n_neighbors=1)
+    assert result_nan["stone_failed"], "all-NaN pool must fail"
+
+
+def test_generate_js_comp_test_candidates():
+    # ============================================================
+    # Test 1 -- small-N candidate-grid collapse at its exact threshold
+    # (test_generate_js_comp_test_candidates_collapses_at_8742): with
+    # max_n_genes_all_studies=8742, n_points_high = clamp(ceil(4*sqrt(8742)), 300, 1500) = 374
+    # and n_points_low = max(300, ceil(0.2*374)) = 300; after one grid iteration n_points_high
+    # becomes 374*0.8=299.2 < 300, so every candidate the grid returns shares n_points=374.
+    # ============================================================
+    # Issue #187, Step 2.7: candidates_n_points_n_neighbors is now the routine's only
+    # DM_RESULT_SIZE_IS output, so the generated Python wrapper returns the already-trimmed
+    # array directly rather than a dict.
+    candidates = generate_js_comp_test_candidates(8742)
+    n_candidates = candidates.shape[1]
+    assert n_candidates >= 1, "Test 1 failed: expected at least one candidate"
+    assert np.all(candidates[0, :] == candidates[0, 0]), \
+        "Test 1 failed: every candidate must share the same n_points"
+    assert candidates[0, 0] == 374, f"Test 1 failed: n_points should be 374, got {candidates[0, 0]}"
+
+    # ============================================================
+    # Test 2 -- the other side of the bracket (test_generate_js_comp_test_candidates_has_two_distinct_at_8743):
+    # with max_n_genes_all_studies=8743, n_points_high=ceil(4*sqrt(8743))=375 and
+    # n_points_low=300; after one iteration n_points_high becomes 375*0.8=300.0, which is NOT
+    # less than n_points_low=300, so a second, distinct n_points=300 candidate appears.
+    # ============================================================
+    candidates2 = generate_js_comp_test_candidates(8743)
+    n_candidates2 = candidates2.shape[1]
+    n_distinct = len(set(candidates2[0, :].tolist()))
+    assert n_distinct >= 2, "Test 2 failed: expected at least two distinct n_points values"
+    assert candidates2[0, 0] == 375, f"Test 2 failed: first n_points should be 375, got {candidates2[0, 0]}"
+    assert candidates2[0, n_candidates2 - 1] == 300, \
+        f"Test 2 failed: last n_points should collapse to 300, got {candidates2[0, n_candidates2 - 1]}"
+
+    # ============================================================
+    # Test 3 -- validation (test_generate_js_comp_test_candidates_validation):
+    # max_n_genes_all_studies must be positive. Issue #187, Step 2.7: this routine's `_expert`
+    # tier no longer exists (no tmp_/work-array/permutation left in its signature once the
+    # bin-estimate side effect was removed), so this test no longer exercises it.
+    # ============================================================
+    assert_error(lambda: generate_js_comp_test_candidates(0),
+                 "Test 3 failed: expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
+
+
+def test_check_neighborhood_overlaps():
+    # ============================================================
+    # Test 1 -- identical ranges always pass, even at the strictest threshold
+    # (test_neighborhood_overlaps_all_pass)
+    # ============================================================
+    neighborhood_range = np.array([[1, 1, 1], [10, 10, 10]], dtype=np.int32, order='F')
+    all_pass = check_neighborhood_overlaps(neighborhood_range, min_neighbor_overlap=1.0)
+    assert all_pass, "Test 1 failed: identical ranges should always pass"
+
+    # ============================================================
+    # Test 2 -- overlap exactly at threshold passes (test_neighborhood_overlaps_exactly_at_threshold_passes):
+    # inclusive position ranges [1,10] and [6,10] share the 5 positions 6..10 of the first
+    # range's 10, so overlap = 5/10 = 0.5. The gate is overlap >= min_neighbor_overlap, so setting
+    # the threshold to that exact fraction must still pass.
+    # ============================================================
+    neighborhood_range_2 = np.array([[1, 6], [10, 10]], dtype=np.int32, order='F')
+    all_pass_2 = check_neighborhood_overlaps(neighborhood_range_2, min_neighbor_overlap=0.5)
+    assert all_pass_2, "Test 2 failed: overlap exactly at threshold must pass"
+
+    # ============================================================
+    # Test 3 -- same 5/10 overlap, threshold 0.51 > 0.5, must fail
+    # (test_neighborhood_overlaps_below_threshold_fails)
+    # ============================================================
+    all_fail = check_neighborhood_overlaps(neighborhood_range_2, min_neighbor_overlap=0.51)
+    assert not all_fail, "Test 3 failed: overlap below threshold must fail"
+
+    # ============================================================
+    # Test 4 -- the overlap counts shared positions of inclusive ranges
+    # (test_neighborhood_overlaps_counts_inclusive_positions): [5,6] and [6,7] share 1 of 2
+    # positions (0.5), [1,100] and [91,190] share 10 of 100 (exactly 0.1); both pass at those
+    # exact thresholds, and the second still fails just above, at 0.11.
+    # ============================================================
+    neighborhood_range_3 = np.array([[5, 6], [6, 7]], dtype=np.int32, order='F')
+    assert check_neighborhood_overlaps(neighborhood_range_3, min_neighbor_overlap=0.5), \
+        "Test 4 failed: [5,6]/[6,7] share 1 of 2 positions, must pass at 0.5"
+    neighborhood_range_4 = np.array([[1, 91], [100, 190]], dtype=np.int32, order='F')
+    assert check_neighborhood_overlaps(neighborhood_range_4, min_neighbor_overlap=0.1), \
+        "Test 4 failed: [1,100]/[91,190] share 10 of 100 positions, must pass at 0.1"
+    assert not check_neighborhood_overlaps(neighborhood_range_4, min_neighbor_overlap=0.11), \
+        "Test 4 failed: [1,100]/[91,190] share only 10 of 100 positions, must fail at 0.11"
+
+
+def test_check_mean_pmf_min_counts():
+    # ============================================================
+    # Test 1 -- every bin comfortably above the minimum (test_mean_pmf_min_counts_all_pass)
+    # n_bins_per_point uniformly equals n_bins (call-ability/shape only, per this file's convention)
+    # ============================================================
+    mean_pmf_counts = np.array([[10, 10], [10, 10]], dtype=np.int32, order='F')
+    n_bins_per_point = np.array([2, 2], dtype=np.int32)
+    assert check_mean_pmf_min_counts(mean_pmf_counts, n_bins_per_point, min_count=5), \
+        "Test 1 failed: all bins above minimum should pass"
+
+    # ============================================================
+    # Test 2 -- every bin equals the minimum exactly: gate is >=, must pass
+    # (test_mean_pmf_min_counts_exactly_at_threshold_passes)
+    # ============================================================
+    mean_pmf_counts_2 = np.array([[3, 3], [3, 3]], dtype=np.int32, order='F')
+    n_bins_per_point_2 = np.array([2, 2], dtype=np.int32)
+    assert check_mean_pmf_min_counts(mean_pmf_counts_2, n_bins_per_point_2, min_count=3), \
+        "Test 2 failed: count exactly at minimum must pass"
+
+    # ============================================================
+    # Test 3 -- one bin one below the minimum: gate must fail
+    # (test_mean_pmf_min_counts_below_threshold_fails)
+    # ============================================================
+    mean_pmf_counts_3 = np.array([[3, 3], [3, 2]], dtype=np.int32, order='F')
+    n_bins_per_point_3 = np.array([2, 2], dtype=np.int32)
+    assert not check_mean_pmf_min_counts(mean_pmf_counts_3, n_bins_per_point_3, min_count=3), \
+        "Test 3 failed: one bin below minimum must fail the whole gate"
+
+
+def test_check_plateau_condition():
+    # ============================================================
+    # Test 1 -- METHOD_JOIN_MIN requires every study to pass (test_check_plateau_condition_join_min_requires_all).
+    # 2-of-3 studies passing must fail; 3-of-3 must succeed.
+    # ============================================================
+    confidence_interval = np.array([[0.4, 0.4, -2.0], [0.6, 0.6, -1.0]], dtype=np.float64, order='F')
+    best_ci = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]], dtype=np.float64, order='F')
+
+    result = check_plateau_condition(confidence_interval, best_ci, best_candidate_index=0,
+                                      best_exceeded_ci_overlap_count=0, candidate_index=1,
+                                      join_method='join_min', succeeding_ci_overlap=0.9)
+    assert not result["plateau_found"], "Test 1 failed: 2-of-3 studies must not plateau"
+    # Studies 1,2 sit inside the best interval (overlap 1.0), study 3 is far outside (0.0).
+    np.testing.assert_array_almost_equal(result["ci_overlap"], [1.0, 1.0, 0.0], decimal=12)
+
+    confidence_interval[:, 2] = [0.4, 0.6]
+    best_ci_2 = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]], dtype=np.float64, order='F')
+    result2 = check_plateau_condition(confidence_interval, best_ci_2, best_candidate_index=0,
+                                       best_exceeded_ci_overlap_count=0, candidate_index=1,
+                                       join_method='join_min', succeeding_ci_overlap=0.9)
+    assert result2["plateau_found"], "Test 1 failed: 3-of-3 studies must plateau"
+    np.testing.assert_array_almost_equal(result2["ci_overlap"], [1.0, 1.0, 1.0], decimal=12)
+
+    # ============================================================
+    # Test 2 -- METHOD_JOIN_MAX succeeds once any one study passes
+    # (test_check_plateau_condition_join_max_requires_any). 0-of-3 must fail, 1-of-3 must succeed.
+    # ============================================================
+    confidence_interval_max = np.array([[-2.0, -2.0, -2.0], [-1.0, -1.0, -1.0]], dtype=np.float64, order='F')
+    best_ci_max = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]], dtype=np.float64, order='F')
+    result_max_0 = check_plateau_condition(confidence_interval_max, best_ci_max, best_candidate_index=0,
+                                            best_exceeded_ci_overlap_count=0, candidate_index=1,
+                                            join_method='join_max', succeeding_ci_overlap=0.9)
+    assert not result_max_0["plateau_found"], "Test 2 failed: 0-of-3 studies must not plateau"
+    np.testing.assert_array_almost_equal(result_max_0["ci_overlap"], [0.0, 0.0, 0.0], decimal=12)
+
+    confidence_interval_max[:, 0] = [0.4, 0.6]
+    best_ci_max_2 = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]], dtype=np.float64, order='F')
+    result_max_1 = check_plateau_condition(confidence_interval_max, best_ci_max_2, best_candidate_index=0,
+                                            best_exceeded_ci_overlap_count=0, candidate_index=1,
+                                            join_method='join_max', succeeding_ci_overlap=0.9)
+    assert result_max_1["plateau_found"], "Test 2 failed: 1-of-3 studies must plateau"
+    np.testing.assert_array_almost_equal(result_max_1["ci_overlap"], [1.0, 0.0, 0.0], decimal=12)
+
+    # ============================================================
+    # Test 3 -- METHOD_JOIN_MEDIAN succeeds once a majority pass (n_studies=3 -> threshold 2)
+    # (test_check_plateau_condition_join_median_requires_majority). 1-of-3 must fail, 2-of-3 must succeed.
+    # ============================================================
+    confidence_interval_med = np.array([[0.4, -2.0, -2.0], [0.6, -1.0, -1.0]], dtype=np.float64, order='F')
+    best_ci_med = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]], dtype=np.float64, order='F')
+    result_med_1 = check_plateau_condition(confidence_interval_med, best_ci_med, best_candidate_index=0,
+                                            best_exceeded_ci_overlap_count=0, candidate_index=1,
+                                            join_method='join_median', succeeding_ci_overlap=0.9)
+    assert not result_med_1["plateau_found"], "Test 3 failed: 1-of-3 must not plateau"
+    np.testing.assert_array_almost_equal(result_med_1["ci_overlap"], [1.0, 0.0, 0.0], decimal=12)
+
+    confidence_interval_med[:, 1] = [0.4, 0.6]
+    best_ci_med_2 = np.array([[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]], dtype=np.float64, order='F')
+    result_med_2 = check_plateau_condition(confidence_interval_med, best_ci_med_2, best_candidate_index=0,
+                                            best_exceeded_ci_overlap_count=0, candidate_index=1,
+                                            join_method='join_median', succeeding_ci_overlap=0.9)
+    assert result_med_2["plateau_found"], "Test 3 failed: 2-of-3 must plateau"
+    np.testing.assert_array_almost_equal(result_med_2["ci_overlap"], [1.0, 1.0, 0.0], decimal=12)
+
+    # ============================================================
+    # Test 4 -- a candidate worse than the previous best plateaus immediately, regardless of
+    # join_method, and none of the best_* state is overwritten
+    # (test_check_plateau_condition_worse_than_previous_short_circuits).
+    # ============================================================
+    confidence_interval_worse = np.array([[-5.0, -5.0], [-4.0, -4.0]], dtype=np.float64, order='F')
+    best_ci_worse = np.array([[0.1, 0.3], [0.2, 0.4]], dtype=np.float64, order='F')
+    expected_best_ci_worse = best_ci_worse.copy()
+
+    result_worse = check_plateau_condition(confidence_interval_worse, best_ci_worse, best_candidate_index=5,
+                                            best_exceeded_ci_overlap_count=2, candidate_index=9,
+                                            join_method='join_min', succeeding_ci_overlap=0.5)
+    assert result_worse["plateau_found"], "Test 4 failed: a worse candidate must plateau immediately"
+    assert result_worse["best_candidate_index"] == 5, "Test 4 failed: best_candidate_index must not be overwritten"
+    assert result_worse["best_exceeded_ci_overlap_count"] == 2, \
+        "Test 4 failed: best_exceeded_ci_overlap_count must not be overwritten"
+    np.testing.assert_array_almost_equal(best_ci_worse, expected_best_ci_worse, decimal=12)
+    # The overlaps are still reported on the worse-than-best shortcut.
+    np.testing.assert_array_almost_equal(result_worse["ci_overlap"], [0.0, 0.0], decimal=12)
+
+    # ============================================================
+    # Test 5 -- fractional overlaps (test_check_plateau_condition_ci_overlap_fractional_values):
+    # against the best interval [0, 1], [0.4, 0.6] lies inside (1.0), [-0.5, 0.5] shares half of
+    # its width (0.5), [-2, -1] shares nothing (0.0), and [0, 2] is twice as wide as the best
+    # interval, so only half of the candidate is covered (0.5: the candidate's width is the denominator).
+    # ============================================================
+    confidence_interval_frac = np.array([[0.4, -0.5, -2.0, 0.0], [0.6, 0.5, -1.0, 2.0]], dtype=np.float64, order='F')
+    best_ci_frac = np.array([[0.0] * 4, [1.0] * 4], dtype=np.float64, order='F')
+    result_frac = check_plateau_condition(confidence_interval_frac, best_ci_frac, best_candidate_index=0,
+                                           best_exceeded_ci_overlap_count=0, candidate_index=1,
+                                           join_method='join_min', succeeding_ci_overlap=0.9)
+    np.testing.assert_array_almost_equal(result_frac["ci_overlap"], [1.0, 0.5, 0.0, 0.5], decimal=12)
+
+
+def test_check_effect_size_plateau_condition():
+    # Call-ability and return type/shape (Fortran_Coding_Guides.pdf Sec 17.1); the counting rules
+    # themselves are the Fortran suite's test_effect_size_plateau_* tests.
+    # ============================================================
+    # Test 1 -- first admissible candidate (test_effect_size_plateau_first_candidate_no_delta):
+    # no transition, so delta/delta_median/delta_max are the documented -1.0 and the count resets.
+    # ============================================================
+    result = check_effect_size_plateau_condition(np.array([0.1, 0.2]), np.array([0.0, 0.0]), has_previous=False,
+                                                 delta_median_threshold=0.05, delta_max_threshold=0.10,
+                                                 delta_epsilon=1.0e-10, delta_min_consecutive_transitions=2,
+                                                 n_consecutive_ok=5)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    assert isinstance(result["delta"], np.ndarray), f"expected an ndarray, got {type(result['delta'])}"
+    assert result["delta"].dtype == np.float64, f"expected float64, got {result['delta'].dtype}"
+    assert result["delta"].shape == (2,), f"expected shape (2,), got {result['delta'].shape}"
+    np.testing.assert_array_equal(result["delta"], [-1.0, -1.0])
+    assert result["delta_median"] == -1.0 and result["delta_max"] == -1.0, "Test 1 failed: expected the -1.0 sentinel"
+    assert result["n_consecutive_ok"] == 0, "Test 1 failed: n_consecutive_ok must reset to 0"
+    assert not result["plateau_found"], "Test 1 failed: no plateau on the first admissible candidate"
+
+    # ============================================================
+    # Test 2 -- a qualifying transition (|0.101 - 0.100| / 0.100 = 0.01 for both studies): one alone
+    # is not enough (test_effect_size_plateau_single_transition_insufficient), the second in a row
+    # is (test_effect_size_plateau_two_consecutive_transitions).
+    # ============================================================
+    for n_ok_before, plateau_expected in ((0, False), (1, True)):
+        result = check_effect_size_plateau_condition(np.array([0.101, 0.101]), np.array([0.100, 0.100]),
+                                                     has_previous=True, delta_median_threshold=0.05,
+                                                     delta_max_threshold=0.10, delta_epsilon=1.0e-10,
+                                                     delta_min_consecutive_transitions=2,
+                                                     n_consecutive_ok=n_ok_before)
+        assert result["n_consecutive_ok"] == n_ok_before + 1, \
+            f"Test 2 failed: expected n_consecutive_ok={n_ok_before + 1}, got {result['n_consecutive_ok']}"
+        assert bool(result["plateau_found"]) == plateau_expected, \
+            f"Test 2 failed: plateau_found should be {plateau_expected} after {n_ok_before + 1} transition(s)"
+        assert isinstance(result["delta_median"], float) and isinstance(result["delta_max"], float), \
+            "Test 2 failed: delta_median and delta_max must be floats"
+
+
+def test_create_mean_pmf():
+    # ============================================================
+    # Test 1 -- two studies, hand-computed (test_create_mean_pmf_two_studies_hand_computed):
+    # S1 pmf=[0.3,0.7] counts=[3,7] included=10; S2 pmf=[0.5,0.5] counts=[5,5] included=10.
+    # mean_pmf = ([0.3,0.7]+[0.5,0.5])/2 = [0.4,0.6], mean_pmf_counts=[8,12], included=20.
+    # ============================================================
+    pmfs = np.zeros((1, 2, 2), dtype=np.float64, order='F')
+    pmfs[0, :, 0] = [0.3, 0.7]
+    pmfs[0, :, 1] = [0.5, 0.5]
+    counts = np.zeros((1, 2, 2), dtype=np.int32, order='F')
+    counts[0, :, 0] = [3, 7]
+    counts[0, :, 1] = [5, 5]
+    included_n_reps = np.array([[10, 10]], dtype=np.int32, order='F')
+
+    result = create_mean_pmf(pmfs, counts, included_n_reps)
+    np.testing.assert_array_almost_equal(result["mean_pmf"][0, :], [0.4, 0.6], decimal=12)
+    assert list(result["mean_pmf_counts"][0, :]) == [8, 12], "Test 1 failed: mean_pmf_counts mismatch"
+    assert result["mean_pmf_included_n_reps"][0] == 20, "Test 1 failed: mean_pmf_included_n_reps mismatch"
+
+    # ============================================================
+    # Test 2 -- three studies, DOCUMENTS THE KNOWN LIMITATION: averages over ALL studies
+    # including self, not a true leave-one-out background (test_create_mean_pmf_three_studies_includes_self).
+    # S1 pmf=[0.2,0.8], S2 pmf=[0.4,0.6], S3 pmf=[0.9,0.1] -> mean_pmf=[0.5,0.5] over all three.
+    # ============================================================
+    pmfs3 = np.zeros((1, 2, 3), dtype=np.float64, order='F')
+    pmfs3[0, :, 0] = [0.2, 0.8]
+    pmfs3[0, :, 1] = [0.4, 0.6]
+    pmfs3[0, :, 2] = [0.9, 0.1]
+    counts3 = np.zeros((1, 2, 3), dtype=np.int32, order='F')
+    counts3[0, :, 0] = [2, 8]
+    counts3[0, :, 1] = [4, 6]
+    counts3[0, :, 2] = [9, 1]
+    included_n_reps3 = np.array([[10, 10, 10]], dtype=np.int32, order='F')
+
+    result3 = create_mean_pmf(pmfs3, counts3, included_n_reps3)
+    np.testing.assert_array_almost_equal(result3["mean_pmf"][0, :], [0.5, 0.5], decimal=12)
+    assert list(result3["mean_pmf_counts"][0, :]) == [15, 15], "Test 2 failed: mean_pmf_counts mismatch"
+    assert result3["mean_pmf_included_n_reps"][0] == 30, "Test 2 failed: mean_pmf_included_n_reps mismatch"
+
+    # What a true leave-one-out background for study 1 would be, for contrast -- NOT what
+    # mean_pmf above equals, and not asserted against it.
+    leave_one_out_study1 = (np.array([0.4, 0.6]) + np.array([0.9, 0.1])) / 2.0
+    assert abs(result3["mean_pmf"][0, 0] - leave_one_out_study1[0]) > TOL, \
+        "Test 2 failed: mean_pmf must differ from the leave-one-out background -- known limitation was fixed " \
+        "without updating this test"
+
+    # ============================================================
+    # Test 3 -- validation: pmfs must be in [0,1], counts must be non-negative
+    # (test_create_mean_pmf_validation)
+    # ============================================================
+    pmfs_bad = np.array([[[1.5]]], dtype=np.float64, order='F')
+    counts_bad = np.array([[[1]]], dtype=np.int32, order='F')
+    included_n_reps_bad = np.array([[1]], dtype=np.int32, order='F')
+    assert_error(lambda: create_mean_pmf(pmfs_bad, counts_bad, included_n_reps_bad),
+                 "Test 3 failed: expected ERR_INVALID_INPUT for pmf above 1.0", ERR_INVALID_INPUT)
+
+    pmfs_ok = np.array([[[0.5]]], dtype=np.float64, order='F')
+    counts_neg = np.array([[[-1]]], dtype=np.int32, order='F')
+    assert_error(lambda: create_mean_pmf(pmfs_ok, counts_neg, included_n_reps_bad),
+                 "Test 3 failed: expected ERR_INVALID_INPUT for negative count", ERR_INVALID_INPUT)
+
+
+def test_create_mean_pmf_only():
+    # `create_mean_pmf_only` must produce exactly the same mean_pmf as `create_mean_pmf`
+    # (test_create_mean_pmf_only_matches_create_mean_pmf).
+    pmfs = np.zeros((1, 2, 2), dtype=np.float64, order='F')
+    pmfs[0, :, 0] = [0.3, 0.7]
+    pmfs[0, :, 1] = [0.5, 0.5]
+    counts = np.zeros((1, 2, 2), dtype=np.int32, order='F')
+    counts[0, :, 0] = [3, 7]
+    counts[0, :, 1] = [5, 5]
+    included_n_reps = np.array([[10, 10]], dtype=np.int32, order='F')
+
+    full = create_mean_pmf(pmfs, counts, included_n_reps)
+    only = create_mean_pmf_only(pmfs)
+
+    np.testing.assert_array_almost_equal(only, full["mean_pmf"], decimal=12)
+
+
+def test_bootstrap_histogram():
+    # ============================================================
+    # Test 1 -- same random_seed twice must give bit-for-bit identical confidence_interval
+    # (test_bootstrap_histogram_seeded_reproducibility).
+    # ============================================================
+    mean_pmf_counts = np.array([[5, 3, 2], [2, 2, 6]], dtype=np.int32, order='F')
+    mean_pmf_included_n_reps = np.array([10, 10], dtype=np.int32)
+    included_n_reps = np.array([[4, 6], [4, 6]], dtype=np.int32, order='F')
+
+    ci_first = np.array([[0.2, 0.3], [0.2, 0.3]], dtype=np.float64, order='F')
+    bootstrap_histogram(15, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps, ci_first, random_seed=123)
+
+    ci_second = np.array([[0.2, 0.3], [0.2, 0.3]], dtype=np.float64, order='F')
+    bootstrap_histogram(15, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps, ci_second, random_seed=123)
+
+    np.testing.assert_array_almost_equal(ci_first, ci_second, decimal=12)
+
+    # ============================================================
+    # Test 2 -- degenerate single-bin histogram: JSD is always exactly 0.0, so seeding the
+    # confidence interval at [0.0, 0.0] must leave it collapsed at [0.0, 0.0]
+    # (test_bootstrap_histogram_degenerate_single_bin_zero_ci).
+    # ============================================================
+    mean_pmf_counts_deg = np.array([[10]], dtype=np.int32, order='F')
+    mean_pmf_included_n_reps_deg = np.array([10], dtype=np.int32)
+    included_n_reps_deg = np.array([[5, 5]], dtype=np.int32, order='F')
+    confidence_interval_deg = np.zeros((2, 2), dtype=np.float64, order='F')
+
+    bootstrap_histogram(5, mean_pmf_counts_deg, mean_pmf_included_n_reps_deg, included_n_reps_deg,
+                         confidence_interval_deg, random_seed=7)
+
+    np.testing.assert_array_almost_equal(confidence_interval_deg, np.zeros((2, 2)), decimal=12)
+
+
+def test_bootstrap_histogram_rejects_draws_from_empty_pool():
+    # A study drawing from a point whose pool is empty (counts [0, 0], 0 included replicates) fails
+    # with invalid input, not tied to any one argument
+    # (test_bootstrap_histogram_rejects_draws_from_empty_pool in the Fortran suite).
+    mean_pmf_counts = np.array([[0, 0]], dtype=np.int32, order='F')
+    mean_pmf_included_n_reps = np.array([0], dtype=np.int32)
+    included_n_reps = np.array([[3, 3]], dtype=np.int32, order='F')
+
+    def call():
+        confidence_interval = np.zeros((2, 2), dtype=np.float64, order='F')
+        bootstrap_histogram(3, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps,
+                            confidence_interval, random_seed=7)
+
+    assert_error(call, "expected ERR_INVALID_INPUT for draws from an empty pool", ERR_INVALID_INPUT)
+    try:
+        call()
+    except ToxError as error:
+        assert error.argument is None, f"expected no argument named, got {error.argument!r}"
+
+
+def test_create_mean_pmf_rejects_zero_included_n_reps():
+    # Every study needs at least one included residual at every reference point, so a single 0 in
+    # included_n_reps is rejected on that argument
+    # (test_create_mean_pmf_rejects_zero_included_n_reps in the Fortran suite).
+    pmfs = np.zeros((2, 2, 2), dtype=np.float64, order='F')
+    pmfs[0, :, 0] = [0.5, 0.5]
+    pmfs[1, :, 0] = [0.25, 0.75]
+    pmfs[0, :, 1] = [1.0, 0.0]
+    counts = np.zeros((2, 2, 2), dtype=np.int32, order='F')
+    counts[0, :, 0] = [1, 1]
+    counts[1, :, 0] = [1, 3]
+    counts[0, :, 1] = [2, 0]
+    included_n_reps = np.array([[2, 2], [4, 0]], dtype=np.int32, order='F')
+
+    def call():
+        create_mean_pmf(pmfs, counts, included_n_reps)
+
+    assert_error(call, "expected ERR_INVALID_INPUT for a study without a residual at a point", ERR_INVALID_INPUT)
+    try:
+        call()
+    except ToxError as error:
+        assert error.argument == "included_n_reps", f"expected the error on included_n_reps, got {error.argument!r}"
+
+
+def test_bootstrap_histogram_rejects_zero_included_n_reps():
+    # Every study needs at least one included residual at every reference point, so a single 0 in
+    # included_n_reps is rejected on that argument, even where the counts otherwise add up
+    # (test_bootstrap_histogram_rejects_zero_included_n_reps in the Fortran suite).
+    mean_pmf_counts = np.array([[2, 2]], dtype=np.int32, order='F')
+    mean_pmf_included_n_reps = np.array([4], dtype=np.int32)
+    included_n_reps = np.array([[0, 4]], dtype=np.int32, order='F')
+
+    def call():
+        confidence_interval = np.full((2, 2), 0.5, dtype=np.float64, order='F')
+        bootstrap_histogram(3, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps,
+                            confidence_interval, random_seed=7)
+
+    assert_error(call, "expected ERR_INVALID_INPUT for a study without a residual at a point", ERR_INVALID_INPUT)
+    try:
+        call()
+    except ToxError as error:
+        assert error.argument == "included_n_reps", f"expected the error on included_n_reps, got {error.argument!r}"
+
+
+def test_calc_js_comp_test_candidate_bounds():
+    # Cross-check against the already-verified candidate-grid collapse fixture: with
+    # max_n_genes_all_studies=8742 the grid's first (largest) n_points candidate is 374
+    # (see test_generate_js_comp_test_candidates), and `max_n_points_candidate` is documented
+    # as being exactly that value.
+    bounds = calc_js_comp_test_candidate_bounds(8742)
+    assert bounds["max_n_points_candidate"] == 374, \
+        f"expected max_n_points_candidate=374, got {bounds['max_n_points_candidate']}"
+
+    candidates = generate_js_comp_test_candidates(8742)
+    assert bounds["max_n_neighbors_candidate"] >= int(np.max(candidates[1, :])), \
+        "max_n_neighbors_candidate must be a safe upper bound on the grid's n_neighbors"
+
+    assert_error(lambda: calc_js_comp_test_candidate_bounds(0),
+                 "expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
+
+
+def test_gather_pooled_neighborhood_residuals():
+    # Call-ability and return type/shape only, per this project's testing philosophy
+    # (Fortran_Coding_Guides.pdf Sec 17.1) -- numerical correctness is the Fortran suite's job
+    # (mod_test_data_integration_js_comp_test.F90's own test_gather_pooled_residuals_* tests).
+    # max_n_reps_all_studies/max_n_genes_all_studies/n_neighbors/n_studies must all auto-derive
+    # from residuals'/neighborhood_indices_point's own shapes, per calc_work_arr_paralog_subsets_size's
+    # precedent -- not asked of the caller.
+    max_n_reps_all_studies, max_n_genes_all_studies, n_neighbors, n_studies = 2, 3, 2, 2
+    residuals = np.arange(max_n_reps_all_studies*max_n_genes_all_studies*n_studies, dtype=np.float64).reshape(
+        (max_n_reps_all_studies, max_n_genes_all_studies, n_studies), order='F')
+    neighborhood_indices_point = np.array([[1, 3], [2, 1]], dtype=np.int32)  # (n_neighbors, n_studies)
+
+    pooled_residuals = gather_pooled_neighborhood_residuals(residuals, neighborhood_indices_point)
+
+    assert isinstance(pooled_residuals, np.ndarray), f"expected an ndarray, got {type(pooled_residuals)}"
+    assert pooled_residuals.dtype == np.float64, f"expected float64, got {pooled_residuals.dtype}"
+    assert pooled_residuals.shape == (max_n_reps_all_studies*n_neighbors*n_studies,), \
+        f"expected shape ({max_n_reps_all_studies*n_neighbors*n_studies},), got {pooled_residuals.shape}"
+
+    # An out-of-range gene index must raise, confirming the new bounds check is wired through.
+    bad_indices = np.array([[1, max_n_genes_all_studies + 1], [2, 1]], dtype=np.int32)
+    assert_error(lambda: gather_pooled_neighborhood_residuals(residuals, bad_indices),
+                 "expected ERR_INVALID_INPUT for an out-of-range gene index", ERR_INVALID_INPUT)
+
+
+def test_calc_js_comp_test_n_top_k_jsds():
+    # ============================================================
+    # Test 1 -- default 2.5% significance level (test_calc_js_comp_test_n_top_k_jsds_default_hand_computed):
+    # n_bootstraps=1000 -> n_top_k = max(1, floor(0.025*1000)) = 25.
+    # ============================================================
+    assert calc_js_comp_test_n_top_k_jsds(1000) == 25, "Test 1 failed: expected n_top_k=25"
+
+    # ============================================================
+    # Test 2 -- explicit significance level (test_calc_js_comp_test_n_top_k_jsds_explicit_significance_level):
+    # n_bootstraps=200, significance=5.0 -> n_top_k = max(1, floor(0.05*200)) = 10.
+    # ============================================================
+    assert calc_js_comp_test_n_top_k_jsds(200, two_sided_bootstrapping_significance_level=5.0) == 10, \
+        "Test 2 failed: expected n_top_k=10"
+
+    # ============================================================
+    # Test 3 -- clamped to at least one (test_calc_js_comp_test_n_top_k_jsds_clamped_to_at_least_one):
+    # n_bootstraps=10 -> floor(0.025*10)=0, must clamp up to 1.
+    # ============================================================
+    assert calc_js_comp_test_n_top_k_jsds(10) == 1, "Test 3 failed: expected n_top_k=1"
+
+    # The routine validates its own arguments (test_calc_js_comp_test_n_top_k_jsds_validation).
+    assert_error(lambda: calc_js_comp_test_n_top_k_jsds(0),
+                 "expected ERR_INVALID_INPUT for n_bootstraps=0", ERR_INVALID_INPUT)
+    assert_error(lambda: calc_js_comp_test_n_top_k_jsds(100, two_sided_bootstrapping_significance_level=100.5),
+                 "expected ERR_INVALID_INPUT for a significance level above 100", ERR_INVALID_INPUT)
+
+
+def test_run_js_comp_test_two_studies_hand_traceable():
+    # Call-ability/shape check only (Fortran_Coding_Guides.pdf Sec 17.1) -- the same fixture as
+    # the Fortran suite's own test_run_js_comp_test_two_studies_hand_traceable, which is where the
+    # exact hand-derived closed-form JSD assertions live. Issue #187 removed the mandatory scalar
+    # `n_bins` input (the bin count is now decided per reference point by an internal occupancy
+    # search) and added `n_bins_per_point`/`max_n_bins_per_point` plus several per-point
+    # diagnostics; `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts` are now always sized to the fixed
+    # 256-bin ceiling (MAX_N_BINS) in their second axis, of which only the leading
+    # `max_n_bins_per_point` bins are meaningful -- a caller must slice
+    # `[:, :max_n_bins_per_point, ...]` themselves.
+    gene_means = np.array([[1.0, 1.0], [5.0, 5.0]], dtype=np.float64, order='F')
+
+    residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
+    residuals[:, 0, 0] = [-1.0, 1.0]
+    residuals[:, 0, 1] = [-3.0, 3.0]
+
+    x_star = np.array([1.0], dtype=np.float64)
+
+    # min_residuals_per_bin=1 (its default is 10, which this tiny 4-residual fixture could never
+    # satisfy) so the occupancy search actually succeeds, matching the Fortran fixture's own
+    # override -- exercised here for call-ability, not to reproduce that test's exact numbers.
+    result = run_js_comp_test(n_neighbors=1, gene_means=gene_means,
+                               residuals=residuals, x_star=x_star,
+                               n_permutations=0, random_seed=1, min_residuals_per_bin=1)
+
+    n_points, n_studies = 1, 2
+    assert result["neighborhood_indices"].shape == (1, n_points, n_studies)
+    assert result["neighborhood_range"].shape == (2, n_points, n_studies)
+    assert result["n_bins_per_point"].shape == (n_points,)
+    assert result["shared_residual_range_low"].shape == (n_points,)
+    assert result["shared_residual_range_high"].shape == (n_points,)
+    assert isinstance(result["max_n_bins_per_point"], (int, np.integer))
+    assert result["occupancy_failed"].shape == (n_points,)
+    assert result["n_pooled_residuals"].shape == (n_points,)
+    assert result["min_bin_occupancy"].shape == (n_points,)
+    assert result["mean_bin_occupancy"].shape == (n_points,)
+    assert result["max_bin_occupancy"].shape == (n_points,)
+    assert result["sturges_bins"].shape == (n_points,)
+    assert result["fd_bins"].shape == (n_points,)
+    assert result["pmfs"].shape == (n_points, 256, n_studies)
+    assert result["counts"].shape == (n_points, 256, n_studies)
+    assert result["included_n_reps"].shape == (n_points, n_studies)
+    assert result["mean_pmf"].shape == (n_points, 256)
+    assert result["mean_pmf_counts"].shape == (n_points, 256)
+    assert result["mean_pmf_included_n_reps"].shape == (n_points,)
+    assert result["js_divergences"].shape == (n_points, n_studies)
+    assert result["weights"].shape == (n_points, n_studies)
+    assert result["global_js_divergence"].shape == (n_studies,)
+    assert result["p_values"].shape == (n_studies,)
+    assert result["p_values_observed_consensus"].shape == (n_studies,)
+
+    # A caller must be able to slice down to the meaningful leading bins.
+    max_n_bins = result["max_n_bins_per_point"]
+    assert result["pmfs"][:, :max_n_bins, ...].shape == (n_points, max_n_bins, n_studies)
+
+    assert list(result["neighborhood_indices"][:, 0, 0]) == [1], "study 1 neighbor should be gene 1"
+    assert list(result["neighborhood_indices"][:, 0, 1]) == [1], "study 2 neighbor should be gene 1"
+
+    assert np.all(np.isnan(result["p_values"])), "n_permutations=0 -> p_values are NaN (not computed)"
+    assert np.all(np.isnan(result["p_values_observed_consensus"])), \
+        "n_permutations=0 -> p_values_observed_consensus are NaN (not computed)"
+
+    # bin_count_mode: every mode string is accepted (type/shape only; the bin counts themselves
+    # are the Fortran suite's job), an unknown one is rejected by the C layer.
+    for mode in BIN_COUNT_MODES:
+        result_mode = run_js_comp_test(n_neighbors=1, gene_means=gene_means,
+                                       residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
+                                       min_residuals_per_bin=1, bin_count_mode=mode)
+        assert result_mode["n_bins_per_point"].shape == (n_points,), f"{mode}: n_bins_per_point shape"
+        assert result_mode["occupancy_failed"].shape == (n_points,), f"{mode}: occupancy_failed shape"
+        assert result_mode["occupancy_failed"].dtype == np.bool_, f"{mode}: occupancy_failed dtype"
+        assert result_mode["pmfs"].shape == (n_points, 256, n_studies), f"{mode}: pmfs shape"
+        assert result_mode["global_js_divergence"].shape == (n_studies,), f"{mode}: global_js_divergence shape"
+    assert_error(lambda: run_js_comp_test(n_neighbors=1, gene_means=gene_means,
+                                          residuals=residuals, x_star=x_star, n_permutations=0,
+                                          bin_count_mode="nonsense"),
+                 "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
+
+
+def test_run_js_comp_test_zero_permutations_gives_nan_p_values():
+    # n_permutations=0 skips the permutation test: both p-value arrays are NaN ("not computed"), not
+    # 0.0 (which would read as "maximally significant"). The control with permutations gives finite
+    # p-values in (0, 1]. Same tiny fixture as test_run_js_comp_test_two_studies_hand_traceable.
+    gene_means = np.array([[1.0, 1.0], [5.0, 5.0]], dtype=np.float64, order='F')
+    residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
+    residuals[:, 0, 0] = [-1.0, 1.0]
+    residuals[:, 0, 1] = [-3.0, 3.0]
+    x_star = np.array([1.0], dtype=np.float64)
+
+    skipped = run_js_comp_test(n_neighbors=1, gene_means=gene_means,
+                               residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
+                               min_residuals_per_bin=1)
+    for key in ("p_values", "p_values_observed_consensus"):
+        assert np.all(np.isnan(skipped[key])), f"{key}: n_permutations=0 must give NaN"
+    assert np.all(np.isfinite(skipped["global_js_divergence"])), "the JSDs are still computed"
+
+    control = run_js_comp_test(n_neighbors=1, gene_means=gene_means,
+                               residuals=residuals, x_star=x_star, n_permutations=2, random_seed=1,
+                               min_residuals_per_bin=1)
+    for key in ("p_values", "p_values_observed_consensus"):
+        assert np.all((control[key] > 0.0) & (control[key] <= 1.0)), f"{key}: control expected in (0, 1]"
+
+
+def test_run_js_comp_test_expert_takes_the_callers_permutations():
+    # run_js_comp_test sorts each study's gene means itself; run_js_comp_test_expert takes that
+    # order from the caller (1-based, one column per study). Fixture 1, no ties: the expert tier
+    # with the ascending order (np.argsort + 1, the only ascending order without ties) gives exactly
+    # what the plain call gives, every output. Fixture 2: study 1's genes 1 and 2 tie at 1.0 and
+    # x_star = 0.5 lies below every mean, so with one neighbor study 1's neighborhood is the first
+    # gene of the caller's order: [1, 2, 3] takes gene 1, [2, 1, 3] gene 2
+    # (test_run_js_comp_test_expert_uses_caller_tie_order in the Fortran suite).
+    gene_means = np.array([[1.0, 1.0], [5.0, 5.0]], dtype=np.float64, order='F')
+    residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
+    residuals[:, 0, 0] = [-1.0, 1.0]
+    residuals[:, 0, 1] = [-3.0, 3.0]
+    x_star = np.array([1.0], dtype=np.float64)
+    options = dict(n_permutations=2, random_seed=1, min_residuals_per_bin=1)
+
+    plain = run_js_comp_test(n_neighbors=1, gene_means=gene_means, residuals=residuals, x_star=x_star, **options)
+    ascending = np.asfortranarray(np.argsort(gene_means, axis=0, kind='stable') + 1, dtype=np.int32)
+    expert = run_js_comp_test_expert(n_neighbors=1, gene_means=gene_means, gene_means_perms=ascending,
+                                     residuals=residuals, x_star=x_star, **options)
+    assert set(expert) == set(plain), "both tiers return the same outputs"
+    for key, value in plain.items():
+        value = np.asarray(value)
+        is_real = np.issubdtype(value.dtype, np.floating)
+        assert np.array_equal(np.asarray(expert[key]), value, equal_nan=is_real), \
+            f"{key}: expert tier with the ascending order differs from the plain call"
+
+    tied_means = np.array([[1.0, 1.0], [1.0, 5.0], [5.0, 9.0]], dtype=np.float64, order='F')
+    tied_residuals = np.empty((2, 3, 2), dtype=np.float64, order='F')
+    tied_residuals[:, 0, 0] = [-1.0, 1.0]
+    tied_residuals[:, 1, 0] = [-3.0, 3.0]
+    tied_residuals[:, 2, 0] = [0.5, -0.5]
+    tied_residuals[:, 0, 1] = [-2.0, 2.0]
+    tied_residuals[:, 1, 1] = [0.25, -0.25]
+    tied_residuals[:, 2, 1] = [0.75, -0.75]
+    below = np.array([0.5], dtype=np.float64)
+    for order, gene in (([1, 2, 3], 1), ([2, 1, 3], 2)):
+        perms = np.array([order, [1, 2, 3]], dtype=np.int32).T.copy(order='F')
+        result = run_js_comp_test_expert(n_neighbors=1, gene_means=tied_means, gene_means_perms=perms,
+                                         residuals=tied_residuals, x_star=below, n_permutations=0,
+                                         min_residuals_per_bin=1)
+        assert result["neighborhood_indices"][0, 0, 0] == gene, f"order {order}: study 1 should take gene {gene}"
+        assert result["neighborhood_indices"][0, 0, 1] == 1, f"order {order}: study 2 should take gene 1"
+
+
+def test_run_js_comp_test_parameter_search():
+    max_n_genes_all_studies = 2000
+    max_n_reps_all_studies = 3
+    n_studies = 2
+
+    gene_means = np.empty((max_n_genes_all_studies, n_studies), dtype=np.float64, order='F')
+    residuals = np.empty((max_n_reps_all_studies, max_n_genes_all_studies, n_studies), dtype=np.float64, order='F')
+    for i_study in range(n_studies):
+        gene_means[:, i_study] = np.arange(1, max_n_genes_all_studies + 1, dtype=np.float64)
+        residuals[:, :, i_study] = np.array([-0.5, 0.0, 0.5]).reshape(3, 1)
+
+    # ============================================================
+    # Test 1 -- no candidate ever plateaus (min_residuals_per_bin impossibly high), so the
+    # search falls back to the FIRST (finest-resolution) candidate and resets
+    # best_candidate_pair_confidence_interval to -1.0 throughout
+    # (test_param_search_no_plateau_falls_back_to_finest). Both n_points=300 and n_neighbors=26
+    # are derived purely from the GAMMA-decay constants and max_n_genes_all_studies=2000.
+    # ============================================================
+    bounds = calc_js_comp_test_candidate_bounds(max_n_genes_all_studies)
+    result = run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=10,
+                                                join_method='join_min',
+                                                max_n_points_candidate=bounds["max_n_points_candidate"],
+                                                max_n_neighbors_candidate=bounds["max_n_neighbors_candidate"],
+                                                min_residuals_per_bin=1000000,
+                                                random_seed=1)
+
+    assert result["n_points"] == 300, f"expected n_points=300, got {result['n_points']}"
+    assert result["n_neighbors"] == 26, f"expected n_neighbors=26, got {result['n_neighbors']}"
+    assert result["plateau_established"] == False, "no candidate ever plateaus here"
+    np.testing.assert_array_almost_equal(result["best_candidate_pair_confidence_interval"][:, 0], [-1.0, -1.0],
+                                          decimal=12)
+    np.testing.assert_array_almost_equal(result["best_candidate_pair_confidence_interval"][:, 1], [-1.0, -1.0],
+                                          decimal=12)
+
+    # ============================================================
+    # Test 2 -- the GAMMA-decay grid collapses to exactly ONE candidate at
+    # max_n_genes_all_studies=100 ((n_points, n_neighbors)=(300, 1)); with both admissibility
+    # gates relaxed to their most permissive settings the sole candidate is returned regardless
+    # of plateau, and the bootstrap actually runs, giving a real (not -1.0) confidence interval
+    # (test_param_search_single_candidate_bypasses_plateau).
+    # ============================================================
+    max_n_genes_2 = 100
+    gene_means_2 = np.empty((max_n_genes_2, n_studies), dtype=np.float64, order='F')
+    residuals_2 = np.empty((max_n_reps_all_studies, max_n_genes_2, n_studies), dtype=np.float64, order='F')
+    for i_study in range(n_studies):
+        gene_means_2[:, i_study] = np.arange(1, max_n_genes_2 + 1, dtype=np.float64)
+        residuals_2[:, :, i_study] = np.array([-0.5, 0.0, 0.5]).reshape(3, 1)
+
+    bounds_2 = calc_js_comp_test_candidate_bounds(max_n_genes_2)
+    result2 = run_js_comp_test_parameter_search(gene_means_2, residuals_2,
+                                                 n_bootstraps=5, join_method='join_min',
+                                                 max_n_points_candidate=bounds_2["max_n_points_candidate"],
+                                                 max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
+                                                 min_residuals_per_bin=0, min_neighbor_overlap=0.0,
+                                                 random_seed=1)
+
+    assert result2["n_points"] == 300, f"expected n_points=300, got {result2['n_points']}"
+    assert result2["n_neighbors"] == 1, f"expected n_neighbors=1, got {result2['n_neighbors']}"
+    assert result2["plateau_established"] == True, "the single-candidate bypass counts as established"
+    ci = result2["best_candidate_pair_confidence_interval"]
+    assert ci[0, 0] >= 0.0 and ci[1, 0] <= 1.0, \
+        "relaxed gates should let bootstrap actually run, giving a real (not -1.0) CI"
+
+    # ============================================================
+    # Test 3 -- callability/shape coverage only (numerical correctness of the effect-size
+    # criterion itself is Fortran-only, per this project's testing convention) for the new
+    # Issue #178 diagnostics: plateau_mode as a mode string, the new threshold optionals, and the
+    # trace_* outputs' presence, dtype and shape. Reuses Test 2's single-candidate setup so the
+    # search actually reaches and bootstraps a candidate.
+    # ============================================================
+    result3 = run_js_comp_test_parameter_search(gene_means_2, residuals_2,
+                                                 n_bootstraps=5, join_method='join_min',
+                                                 max_n_points_candidate=bounds_2["max_n_points_candidate"],
+                                                 max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
+                                                 min_residuals_per_bin=0, min_neighbor_overlap=0.0,
+                                                 plateau_mode='plateau_effect_size', delta_median_threshold=0.05,
+                                                 delta_max_threshold=0.10, delta_epsilon=1e-10,
+                                                 delta_min_consecutive_transitions=2, random_seed=1)
+
+    # n_admissible_evaluated is DM_RESULT_SIZE_IS's own count argument, dropped from the Python
+    # return since every trace_* array already comes back trimmed to exactly that length.
+    for key in ("trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower",
+                "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta",
+                "trace_delta_median", "trace_delta_max", "plateau_established", "trace_ci_overlap"):
+        assert key in result3, f"missing expected output key '{key}'"
+    assert isinstance(result3["plateau_established"], (bool, np.bool_)), \
+        f"expected plateau_established to be a bool, got {type(result3['plateau_established'])}"
+    n_admissible = result3["trace_n_points"].shape[-1]
+    assert n_admissible >= 1, f"expected at least one admissible candidate, got {n_admissible}"
+    assert result3["trace_global_js_divergence"].shape[-1] == n_admissible
+    assert result3["trace_ci_width"].shape[-1] == n_admissible
+    assert result3["trace_ci_width_relative"].shape == result3["trace_ci_width"].shape
+    assert result3["trace_ci_overlap"].shape == result3["trace_ci_width"].shape
+    assert result3["trace_ci_overlap"].dtype == np.float64
+    assert result3["trace_ci_width"].dtype == np.float64
+    assert result3["trace_delta"].dtype == np.float64
+    # The first (and here, only) admissible candidate has no predecessor to diff against.
+    np.testing.assert_array_almost_equal(result3["trace_delta"][:, 0], [-1.0, -1.0], decimal=12)
+    # Likewise no previous best to overlap with: the same -1.0 sentinel.
+    np.testing.assert_array_almost_equal(result3["trace_ci_overlap"][:, 0], [-1.0, -1.0], decimal=12)
+
+    # ============================================================
+    # Test 4 -- callability/shape coverage for the Issue #187 per-point outputs added by this
+    # signature change: n_bins_per_point (replacing the old scalar n_bins) and the 8 new
+    # trace_* diagnostics from determine_bin_count_occupancy. Numerical correctness of the
+    # occupancy search itself is Fortran-only (mod_test_data_integration_js_comp_test.F90's
+    # test_param_search_occupancy_failure_rejects_candidate/
+    # test_param_search_different_neighborhoods_different_m_j/
+    # test_param_search_final_n_bins_matches_selected_trace_column).
+    # ============================================================
+    for key in ("n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high",
+                "trace_selected_n_bins", "trace_occupancy_failed",
+                "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy",
+                "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins",
+                "trace_shared_residual_range_low", "trace_shared_residual_range_high"):
+        assert key in result2, f"missing expected output key '{key}'"
+    assert result2["n_bins_per_point"].dtype == np.int32
+    assert result2["n_bins_per_point"].shape == (bounds_2["max_n_points_candidate"],)
+    assert result2["shared_residual_range_low"].dtype == np.float64
+    assert result2["shared_residual_range_low"].shape == (bounds_2["max_n_points_candidate"],)
+    assert result2["shared_residual_range_high"].shape == result2["shared_residual_range_low"].shape
+    assert result2["trace_selected_n_bins"].dtype == np.int32
+    assert result2["trace_selected_n_bins"].shape[0] == bounds_2["max_n_points_candidate"]
+    assert result2["trace_occupancy_failed"].dtype == np.bool_
+    assert result2["trace_occupancy_failed"].shape == result2["trace_selected_n_bins"].shape
+    assert result2["trace_mean_bin_occupancy"].dtype == np.float64
+    for key in ("trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_max_bin_occupancy",
+                "trace_sturges_bins", "trace_fd_bins"):
+        assert result2[key].shape == result2["trace_selected_n_bins"].shape, \
+            f"{key} shape mismatch: {result2[key].shape}"
+    assert result2["trace_shared_residual_range_low"].dtype == np.float64
+    assert result2["trace_shared_residual_range_low"].shape == result2["trace_selected_n_bins"].shape
+    assert result2["trace_shared_residual_range_high"].shape == result2["trace_selected_n_bins"].shape
+    # n_points=300 leading entries of n_bins_per_point must match the sole admissible candidate's
+    # own trace_selected_n_bins column (test_param_search_final_n_bins_matches_selected_trace_column
+    # is the Fortran suite's rigorous version of this same wiring check).
+    n_points_2 = result2["n_points"]
+    np.testing.assert_array_equal(result2["n_bins_per_point"][:n_points_2],
+                                   result2["trace_selected_n_bins"][:n_points_2, 0])
+
+    # ============================================================
+    # Test 5 -- bin_count_mode: every mode string is accepted (type/shape only; the Stone bin
+    # counts themselves are the Fortran suite's job, test_param_search_stone_matches_standalone),
+    # an unknown one rejected. Reuses Test 2's single-candidate setup.
+    # ============================================================
+    for mode in BIN_COUNT_MODES:
+        result_mode = run_js_comp_test_parameter_search(gene_means_2, residuals_2,
+                                                        n_bootstraps=5, join_method='join_min',
+                                                        max_n_points_candidate=bounds_2["max_n_points_candidate"],
+                                                        max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
+                                                        min_residuals_per_bin=0, min_neighbor_overlap=0.0,
+                                                        random_seed=1, bin_count_mode=mode)
+        n_points_mode = result_mode["n_points"]
+        assert result_mode["n_bins_per_point"].dtype == np.int32, f"{mode}: n_bins_per_point dtype"
+        assert result_mode["n_bins_per_point"].shape == (bounds_2["max_n_points_candidate"],), \
+            f"{mode}: n_bins_per_point shape"
+        assert np.all((result_mode["n_bins_per_point"][:n_points_mode] >= 3) &
+                      (result_mode["n_bins_per_point"][:n_points_mode] <= 120)), \
+            f"{mode}: bin counts within the default [m_min, m_max]"
+        assert result_mode["trace_occupancy_failed"].dtype == np.bool_, f"{mode}: trace_occupancy_failed dtype"
+        assert result_mode["trace_selected_n_bins"].shape[-1] >= 1, f"{mode}: at least one traced candidate"
+        assert result_mode["trace_occupancy_failed"].shape == result_mode["trace_selected_n_bins"].shape, \
+            f"{mode}: trace shapes"
+    assert_error(lambda: run_js_comp_test_parameter_search(gene_means_2, residuals_2,
+                                                           n_bootstraps=5, join_method='join_min',
+                                                           max_n_points_candidate=bounds_2["max_n_points_candidate"],
+                                                           max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
+                                                           bin_count_mode="nonsense"),
+                 "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
+
+
+def test_run_js_comp_test_parameter_search_rejects_undersized_bounds():
+    # A max_n_points_candidate or max_n_neighbors_candidate one below what
+    # calc_js_comp_test_candidate_bounds returns for the gene count (299 and 3 for 300 genes) is
+    # rejected with invalid input instead of being written past
+    # (test_param_search_rejects_undersized_max_n_points_candidate and
+    # test_param_search_rejects_undersized_max_n_neighbors_candidate).
+    n_genes, n_reps, n_studies = 300, 3, 2
+    gene_means = np.empty((n_genes, n_studies), dtype=np.float64, order='F')
+    residuals = np.empty((n_reps, n_genes, n_studies), dtype=np.float64, order='F')
+    for i_study in range(n_studies):
+        gene_means[:, i_study] = np.arange(1, n_genes + 1, dtype=np.float64)
+        residuals[:, :, i_study] = np.array([-0.5, 0.0, 0.5]).reshape(3, 1)
+
+    bounds = calc_js_comp_test_candidate_bounds(n_genes)
+    max_points = bounds["max_n_points_candidate"]
+    max_neighbors = bounds["max_n_neighbors_candidate"]
+    assert_error(lambda: run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=5,
+                                                           join_method='join_min',
+                                                           max_n_points_candidate=max_points - 1,
+                                                           max_n_neighbors_candidate=max_neighbors,
+                                                           min_neighbor_overlap=0.0, random_seed=1),
+                 "expected ERR_INVALID_INPUT for max_n_points_candidate below its bound", ERR_INVALID_INPUT)
+    assert_error(lambda: run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=5,
+                                                           join_method='join_min',
+                                                           max_n_points_candidate=max_points,
+                                                           max_n_neighbors_candidate=max_neighbors - 1,
+                                                           min_neighbor_overlap=0.0, random_seed=1),
+                 "expected ERR_INVALID_INPUT for max_n_neighbors_candidate below its bound", ERR_INVALID_INPUT)
+
+
+def test_run_js_comp_test_rejects_reversed_residual_range_quantiles():
+    # An upper residual-range quantile below the lower one (0.05 < 0.95) is rejected with invalid
+    # input instead of collapsing every histogram into one bin
+    # (test_run_js_comp_test_rejects_reversed_residual_range_quantiles in the Fortran suite).
+    gene_means = np.array([[1.0, 1.0], [5.0, 5.0]], dtype=np.float64, order='F')
+    residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
+    residuals[:, 0, 0] = [-1.0, 1.0]
+    residuals[:, 0, 1] = [-3.0, 3.0]
+    x_star = np.array([1.0], dtype=np.float64)
+
+    def call():
+        return run_js_comp_test(n_neighbors=1, gene_means=gene_means,
+                                residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
+                                min_residuals_per_bin=1, lower_residual_range_quantile=0.95,
+                                upper_residual_range_quantile=0.05)
+
+    assert_error(call, "expected ERR_INVALID_INPUT for upper_residual_range_quantile below the lower one",
+                 ERR_INVALID_INPUT)
+    try:
+        call()
+    except ToxError as error:
+        assert error.argument == "upper_residual_range_quantile", \
+            f"expected the error on upper_residual_range_quantile, got {error.argument!r}"
+
+
+def test_run_js_comp_test_rejects_nan_x_star():
+    # A NaN reference point is rejected with ERR_NAN_INF on x_star, instead of silently taking the
+    # lowest-mean genes as its neighborhood (test_run_js_comp_test_rejects_nan_x_star in the
+    # Fortran suite).
+    gene_means = np.array([[1.0, 1.0], [5.0, 5.0]], dtype=np.float64, order='F')
+    residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
+    residuals[:, 0, 0] = [-1.0, 1.0]
+    residuals[:, 0, 1] = [-3.0, 3.0]
+    x_star = np.array([1.0, np.nan], dtype=np.float64)
+
+    def call():
+        return run_js_comp_test(n_neighbors=1, gene_means=gene_means,
+                                residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
+                                min_residuals_per_bin=1)
+
+    assert_error(call, "expected ERR_NAN_INF for a NaN reference point", ERR_NAN_INF)
+    try:
+        call()
+    except ToxError as error:
+        assert error.argument == "x_star", f"expected the error on x_star, got {error.argument!r}"
+
+
+def test_run_js_comp_test_rejects_empty_study():
+    # A study whose gene means and residuals are all missing includes no residual at the reference
+    # point, so the equal-weight consensus is undefined and the call fails with invalid input, not
+    # tied to any one argument (test_run_js_comp_test_empty_study_sets_ierr in the Fortran suite).
+    gene_means = np.array([[1.0, np.nan], [5.0, np.nan]], dtype=np.float64, order='F')
+    residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
+    residuals[:, 0, 0] = [-1.0, 1.0]
+    residuals[:, 1, 0] = [-3.0, 3.0]
+    x_star = np.array([1.0], dtype=np.float64)
+
+    def call():
+        return run_js_comp_test(n_neighbors=1, gene_means=gene_means,
+                                residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
+                                min_residuals_per_bin=1)
+
+    assert_error(call, "expected ERR_INVALID_INPUT for a study without any non-NaN residual", ERR_INVALID_INPUT)
+    try:
+        call()
+    except ToxError as error:
+        assert error.argument is None, f"expected no argument named, got {error.argument!r}"
+
+
+def test_generate_adaptive_js_comp_test_candidates():
+    # Call-ability, return type/shape and non-error only -- the hand-derived sequences are the
+    # Fortran suite's job (test_adaptive_candidates_*). G=2000, S=2 must not collapse to a single
+    # candidate the way the fixed-k grid does at this size.
+    candidates = generate_adaptive_js_comp_test_candidates(2000, 2)
+    assert isinstance(candidates, np.ndarray), f"expected an ndarray, got {type(candidates)}"
+    assert candidates.dtype == np.int32, f"expected int32, got {candidates.dtype}"
+    assert candidates.ndim == 2 and candidates.shape[0] == 3, f"expected shape (3, n), got {candidates.shape}"
+    assert 8 <= candidates.shape[1] <= 16, f"expected 8..16 candidates, got {candidates.shape[1]}"
+
+    assert_error(lambda: generate_adaptive_js_comp_test_candidates(0, 2),
+                 "expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
+    assert_error(lambda: generate_adaptive_js_comp_test_candidates(2000, 0),
+                 "expected ERR_INVALID_INPUT for n_studies=0", ERR_INVALID_INPUT)
+
+
+def test_calc_adaptive_js_comp_test_bounds():
+    # Call-ability, return type and non-error only (numerics: test_adaptive_bounds_* in Fortran).
+    max_n_points_candidate = calc_adaptive_js_comp_test_bounds(2000, 2)
+    assert isinstance(max_n_points_candidate, int), f"expected an int, got {type(max_n_points_candidate)}"
+    assert 1 <= max_n_points_candidate <= 2000 * 2, \
+        f"capacity must lie in [1, G*S], got {max_n_points_candidate}"
+
+    assert_error(lambda: calc_adaptive_js_comp_test_bounds(0, 2),
+                 "expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
+    assert_error(lambda: calc_adaptive_js_comp_test_bounds(2000, 0),
+                 "expected ERR_INVALID_INPUT for n_studies=0", ERR_INVALID_INPUT)
+    # 50000 * 50000 = 2.5e9 does not fit a 32-bit integer (the pool size is a 32-bit extent downstream).
+    assert_error(lambda: calc_adaptive_js_comp_test_bounds(50000, 50000),
+                 "expected ERR_INVALID_INPUT for a pool size beyond int32", ERR_INVALID_INPUT)
+
+
+def test_construct_adaptive_neighborhoods():
+    # Call-ability, return types/shapes and non-error only -- the hand-derived constructions are
+    # the Fortran suite's job (test_adaptive_*). Two studies of 6 genes, the second NaN-padded by
+    # one gene, 10 replicates each; every output is trimmed to the same number of points.
+    rng = np.random.default_rng(217)
+    gene_means = rng.uniform(0.0, 10.0, size=(6, 2))
+    gene_means[5, 1] = np.nan
+    residuals = rng.normal(0.0, 1.0, size=(10, 6, 2))
+    residuals[:, 5, 1] = np.nan
+    result = construct_adaptive_neighborhoods(gene_means, residuals, 2, 1, 4)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    n_points = result["x_star"].shape[0]
+    assert 1 <= n_points <= 12, f"expected 1..G*S points, got {n_points}"
+    assert result["pooled_neighborhood_range"].shape == (2, n_points)
+    assert result["n_neighbors_per_point"].shape == (2, n_points)
+    for key in ("stop_reason", "neighborhood_dispersion", "neighborhood_mad"):
+        assert result[key].shape == (n_points,), f"{key}: expected ({n_points},), got {result[key].shape}"
+    assert result["stop_reason"].dtype == np.int32
+    assert isinstance(result["construction_status"], int) and 0 <= result["construction_status"] <= 3
+    assert isinstance(result["max_n_neighbors"], int) and result["max_n_neighbors"] >= 1
+    # structural: the per-study counts of a neighborhood partition its pooled range
+    lengths = result["pooled_neighborhood_range"][1] - result["pooled_neighborhood_range"][0] + 1
+    np.testing.assert_array_equal(result["n_neighbors_per_point"].sum(axis=0), lengths)
+
+    optional = construct_adaptive_neighborhoods(gene_means, residuals, 2, 1, 4, tau=0.5, mad_distance_factor=0.5,
+                                                max_pooled_residuals=60, min_study_neighbors=1)
+    assert optional["x_star"].shape[0] >= 1
+
+    assert_error(lambda: construct_adaptive_neighborhoods(gene_means, residuals, 3, 1, 2),
+                 "expected ERR_INVALID_INPUT for k_max < k_start", ERR_INVALID_INPUT)
+
+
+def test_run_js_comp_test_adaptive():
+    # Call-ability, return types/shapes and non-error only -- the hand-derived values and the
+    # fixed-k equivalence are the Fortran suite's job (test_run_adaptive_*). construct first, then
+    # run on its trimmed pooled ranges, as a caller does. Three interleaved studies of 8 genes,
+    # the third NaN-padded by one gene, 6 replicates each.
+    rng = np.random.default_rng(2170)
+    n_genes, n_studies = 8, 3
+    gene_means = np.array([[g + 0.3 * s for s in range(n_studies)] for g in range(n_genes)], dtype=np.float64)
+    gene_means[7, 2] = np.nan
+    residuals = rng.normal(0.0, 1.0, size=(6, n_genes, n_studies))
+    residuals[:, 7, 2] = np.nan
+    construction = construct_adaptive_neighborhoods(gene_means, residuals, 6, 3, 12)
+    assert construction["construction_status"] == 0, "expected a construction without empty studies"
+    ranges = construction["pooled_neighborhood_range"]
+    n_points = ranges.shape[1]
+
+    result = run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations=50, random_seed=3,
+                                       min_residuals_per_bin=2, m_min=2, m_max=8)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    assert result["n_neighbors_per_point"].shape == (n_studies, n_points)
+    np.testing.assert_array_equal(result["n_neighbors_per_point"], construction["n_neighbors_per_point"])
+    for key in ("n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "occupancy_failed",
+                "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy",
+                "sturges_bins", "fd_bins", "mean_pmf_included_n_reps"):
+        assert result[key].shape == (n_points,), f"{key}: expected ({n_points},), got {result[key].shape}"
+    assert isinstance(result["max_n_bins_per_point"], (int, np.integer))
+    assert result["pmfs"].shape == (n_points, 256, n_studies)
+    assert result["counts"].shape == (n_points, 256, n_studies)
+    assert result["mean_pmf"].shape == (n_points, 256)
+    assert result["mean_pmf_counts"].shape == (n_points, 256)
+    for key in ("included_n_reps", "js_divergences", "weights"):
+        assert result[key].shape == (n_points, n_studies), f"{key}: wrong shape {result[key].shape}"
+    assert result["global_js_divergence"].shape == (n_studies,)
+    assert result["p_values"].shape == (n_studies,)
+    assert result["p_values_observed_consensus"].shape == (n_studies,)
+    for key in ("p_values", "p_values_observed_consensus"):
+        assert np.all((result[key] > 0.0) & (result[key] <= 1.0)), f"{key}: expected values in (0, 1]"
+    assert np.all(np.isfinite(result["global_js_divergence"]))
+
+    # bin_count_mode: every mode string is accepted (type/shape only), an unknown one rejected.
+    for mode in BIN_COUNT_MODES:
+        result_mode = run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations=0,
+                                                min_residuals_per_bin=2, m_min=2, m_max=8, bin_count_mode=mode)
+        assert result_mode["n_bins_per_point"].shape == (n_points,), f"{mode}: n_bins_per_point shape"
+        assert result_mode["occupancy_failed"].shape == (n_points,), f"{mode}: occupancy_failed shape"
+        assert result_mode["occupancy_failed"].dtype == np.bool_, f"{mode}: occupancy_failed dtype"
+        assert np.all((result_mode["n_bins_per_point"] >= 2) & (result_mode["n_bins_per_point"] <= 8)), \
+            f"{mode}: bin counts within [m_min, m_max]"
+        assert result_mode["global_js_divergence"].shape == (n_studies,), f"{mode}: global_js_divergence shape"
+    assert_error(lambda: run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations=0,
+                                                   bin_count_mode="nonsense"),
+                 "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
+
+    reversed_ranges = ranges.copy()
+    reversed_ranges[:, 0] = [2, 1]
+    assert_error(lambda: run_js_comp_test_adaptive(gene_means, residuals, reversed_ranges, n_permutations=0),
+                 "expected ERR_INVALID_INPUT for a reversed pooled range", ERR_INVALID_INPUT)
+
+
+def test_run_js_comp_test_adaptive_rejects_empty_study():
+    # Study 2 has valid gene means, so both pooled ranges hold one of its genes, but all its
+    # residuals are missing: it includes no residual at either reference point, so the
+    # equal-weight consensus is undefined and the call fails with invalid input, not tied to any
+    # one argument (test_run_adaptive_nan_residuals_only_study_sets_ierr in the Fortran suite).
+    gene_means = np.array([[0.0, 1.0], [2.0, 3.0], [4.0, np.nan]], dtype=np.float64, order='F')
+    residuals = np.full((2, 3, 2), np.nan, dtype=np.float64, order='F')
+    residuals[:, 0, 0] = [-1.0, 1.0]
+    residuals[:, 1, 0] = [0.5, np.nan]
+    residuals[:, 2, 0] = [-0.5, 0.5]
+    ranges = np.array([[1, 4], [3, 5]], dtype=np.int32, order='F')
+
+    def call():
+        return run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations=0, min_residuals_per_bin=1)
+
+    assert_error(call, "expected ERR_INVALID_INPUT for a study without any non-NaN residual", ERR_INVALID_INPUT)
+    try:
+        call()
+    except ToxError as error:
+        assert error.argument is None, f"expected no argument named, got {error.argument!r}"
+
+
+def test_run_js_comp_test_adaptive_parameter_search():
+    # Call-ability, return types/shapes and non-error only -- plateau selection, fallbacks,
+    # candidate statuses and the construct + run round trip are the Fortran suite's job
+    # (test_adaptive_search_*). Two interleaved studies of 500 genes, 3 replicates, so the adaptive
+    # sequence has several candidates; gates relaxed so candidates get evaluated.
+    rng = np.random.default_rng(2171)
+    n_genes, n_studies = 500, 2
+    gene_means = np.array([[g + 0.5 * s for s in range(n_studies)] for g in range(1, n_genes + 1)], dtype=np.float64)
+    residuals = rng.normal(0.0, 1.0, size=(3, n_genes, n_studies))
+    capacity = calc_adaptive_js_comp_test_bounds(n_genes, n_studies)
+
+    result = run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps=10, join_method='join_min',
+                                                        max_n_points_candidate=capacity, min_residuals_per_bin=0,
+                                                        min_neighbor_overlap=0.0, plateau_mode='plateau_both',
+                                                        tau=0.1, mad_distance_factor=1.0, max_pooled_residuals=0,
+                                                        min_study_neighbors=1, random_seed=1)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    for key in ("k_start", "k_step", "k_max", "n_points"):
+        assert isinstance(result[key], (int, np.integer)), f"{key}: expected an int, got {type(result[key])}"
+    assert 1 <= result["n_points"] <= capacity
+    assert result["k_start"] <= result["k_max"]
+    assert isinstance(result["plateau_established"], (bool, np.bool_))
+    assert result["n_bins_per_point"].shape == (capacity,)
+    assert result["shared_residual_range_low"].shape == (capacity,)
+    assert result["best_candidate_confidence_interval"].shape == (2, n_studies)
+
+    # Two independent DM_RESULT_SIZE_IS counters: the traces are trimmed to the admissible
+    # candidates, the candidate log to the candidates tried; both counters are dropped.
+    assert "n_admissible_evaluated" not in result and "n_candidates_tried" not in result
+    n_admissible = result["trace_k_start"].shape[-1]
+    n_tried = result["candidate_status"].shape[-1]
+    assert 1 <= n_admissible <= n_tried <= 16, f"expected 1 <= {n_admissible} <= {n_tried} <= 16"
+    for key in ("trace_k_step", "trace_k_max", "trace_n_points", "trace_delta_median", "trace_delta_max"):
+        assert result[key].shape == (n_admissible,), f"{key}: wrong shape {result[key].shape}"
+    for key in ("trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width",
+                "trace_ci_width_relative", "trace_ci_overlap", "trace_delta"):
+        assert result[key].shape == (n_studies, n_admissible), f"{key}: wrong shape {result[key].shape}"
+    assert result["trace_ci_overlap"].dtype == np.float64
+    # The first admissible candidate has no previous best to overlap with: the -1.0 sentinel.
+    np.testing.assert_array_almost_equal(result["trace_ci_overlap"][:, 0], -1.0, decimal=12)
+    for key in ("trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals",
+                "trace_shared_residual_range_low", "trace_shared_residual_range_high"):
+        assert result[key].shape == (capacity, n_admissible), f"{key}: wrong shape {result[key].shape}"
+    for key in ("candidate_k_start", "candidate_n_points"):
+        assert result[key].shape == (n_tried,), f"{key}: wrong shape {result[key].shape}"
+    assert result["candidate_status"].dtype == np.int32
+    assert np.all((result["candidate_status"] >= 0) & (result["candidate_status"] <= 5))
+
+    assert_error(lambda: run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps=10,
+                                                                    join_method='join_min', max_n_points_candidate=0),
+                 "expected ERR_INVALID_INPUT for max_n_points_candidate=0", ERR_INVALID_INPUT)
+
+    # bin_count_mode: every mode string is accepted (type/shape only), an unknown one rejected.
+    for mode in BIN_COUNT_MODES:
+        result_mode = run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps=10,
+                                                                 join_method='join_min',
+                                                                 max_n_points_candidate=capacity,
+                                                                 min_residuals_per_bin=0, min_neighbor_overlap=0.0,
+                                                                 random_seed=1, bin_count_mode=mode)
+        assert isinstance(result_mode["n_points"], (int, np.integer)), f"{mode}: n_points type"
+        assert result_mode["n_bins_per_point"].shape == (capacity,), f"{mode}: n_bins_per_point shape"
+        n_admissible_mode = result_mode["trace_k_start"].shape[-1]
+        assert result_mode["trace_selected_n_bins"].shape == (capacity, n_admissible_mode), \
+            f"{mode}: trace_selected_n_bins shape"
+        assert result_mode["trace_occupancy_failed"].dtype == np.bool_, f"{mode}: trace_occupancy_failed dtype"
+    assert_error(lambda: run_js_comp_test_adaptive_parameter_search(gene_means, residuals, n_bootstraps=10,
+                                                                    join_method='join_min',
+                                                                    max_n_points_candidate=capacity,
+                                                                    bin_count_mode="nonsense"),
+                 "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
+
+
+def main():
+    run_all_tests(globals().values())
+
+
+if __name__ == "__main__":
+    main()

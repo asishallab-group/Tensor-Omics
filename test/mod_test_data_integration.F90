@@ -4,11 +4,8 @@ module mod_test_data_integration
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use tox_data_integration
-    ! an internal helper of the permutation test, so it stays in the kernel module
-    use tox_data_integration_stats_impl, only: shuffle_reference_point_helper
     use tox_errors
     use f42_math_impl, only: above, below
-    use f42_random_impl, only: init_random, shuffle_vector
     use test_suite, only: test_case
 
     implicit none
@@ -20,34 +17,46 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(21))
+        allocate (all_tests(26))
         all_tests(1) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
         all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(3) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
         all_tests(4) = test_case("test_compute_weighted_global_divergence", test_compute_weighted_global_divergence)
-        all_tests(5) = test_case("test_shuffle_reference_point_helper", test_shuffle_reference_point_helper)
-        all_tests(6) = test_case("test_gjct_permutation_test", test_gjct_permutation_test)
 
-        all_tests(7) = test_case("test_compute_gene_means_basic", test_compute_gene_means_basic)
-        all_tests(8) = test_case("test_compute_gene_means_with_nan", test_compute_gene_means_with_nan)
-        all_tests(9) = test_case("test_compute_gene_means_all_nan", test_compute_gene_means_all_nan)
-        all_tests(10) = test_case("test_compute_gene_means_invalid_input", test_compute_gene_means_invalid_input)
+        all_tests(5) = test_case("test_compute_gene_means_basic", test_compute_gene_means_basic)
+        all_tests(6) = test_case("test_compute_gene_means_with_nan", test_compute_gene_means_with_nan)
+        all_tests(7) = test_case("test_compute_gene_means_all_nan", test_compute_gene_means_all_nan)
+        all_tests(8) = test_case("test_compute_gene_means_invalid_input", test_compute_gene_means_invalid_input)
 
-        all_tests(11) = test_case("test_compute_residuals_basic", test_compute_residuals_basic)
-        all_tests(12) = test_case("test_compute_residuals_with_nan", test_compute_residuals_with_nan)
-        all_tests(13) = test_case("test_compute_residuals_all_nan", test_compute_residuals_all_nan)
-        all_tests(14) = test_case("test_compute_residuals_invalid_input", test_compute_residuals_invalid_input)
+        all_tests(9) = test_case("test_compute_residuals_basic", test_compute_residuals_basic)
+        all_tests(10) = test_case("test_compute_residuals_with_nan", test_compute_residuals_with_nan)
+        all_tests(11) = test_case("test_compute_residuals_all_nan", test_compute_residuals_all_nan)
+        all_tests(12) = test_case("test_compute_residuals_invalid_input", test_compute_residuals_invalid_input)
 
-        all_tests(15) = test_case("test_pool_means_alloc_basic", test_pool_means_alloc_basic)
-        all_tests(16) = test_case("test_pool_means_alloc_with_nan", test_pool_means_alloc_with_nan)
-        all_tests(17) = test_case("test_pool_means_alloc_single_study", test_pool_means_alloc_single_study)
-        all_tests(18) = test_case("test_pool_means_alloc_invalid_input", test_pool_means_alloc_invalid_input)
+        all_tests(13) = test_case("test_pool_means_alloc_basic", test_pool_means_alloc_basic)
+        all_tests(14) = test_case("test_pool_means_alloc_with_nan", test_pool_means_alloc_with_nan)
+        all_tests(15) = test_case("test_pool_means_alloc_single_study", test_pool_means_alloc_single_study)
+        all_tests(16) = test_case("test_pool_means_alloc_invalid_input", test_pool_means_alloc_invalid_input)
+        all_tests(17) = test_case("test_pool_means_uses_bare_fraction_level", test_pool_means_uses_bare_fraction_level)
 
-        all_tests(19) = test_case("test_construct_neighborhoods_basic", test_construct_neighborhoods_basic)
-        all_tests(20) = test_case("test_construct_neighborhoods_nan_means", test_construct_neighborhoods_nan_means)
+        all_tests(18) = test_case("test_construct_neighborhoods_basic", test_construct_neighborhoods_basic)
+        all_tests(19) = test_case("test_construct_neighborhoods_nan_means", test_construct_neighborhoods_nan_means)
 
-        all_tests(21) = test_case("test_fjct", test_fjct)
-        ! all_tests(22) = test_case("test_fjct_compute_contribution_scores", test_fjct_compute_contribution_scores)
+        all_tests(20) = test_case("test_fjct", test_fjct)
+        ! all_tests(20) = test_case("test_fjct_compute_contribution_scores", test_fjct_compute_contribution_scores)
+
+        all_tests(21) = test_case("test_build_residual_histograms_variable_bins_per_point", &
+                                  test_build_residual_histograms_variable_bins_per_point)
+        all_tests(22) = test_case("test_build_residual_histograms_zero_padding_safe_for_jsd", &
+                                  test_build_residual_histograms_zero_padding_safe_for_jsd)
+        all_tests(23) = test_case("test_compute_weighted_global_divergence_large_counts", &
+                                  test_compute_weighted_global_divergence_large_counts)
+        all_tests(24) = test_case("test_pool_means_expert_rejects_out_of_range_perm", &
+                                  test_pool_means_expert_rejects_out_of_range_perm)
+        all_tests(25) = test_case("test_jct_compute_jsd_pipeline_matches_its_steps", &
+                                  test_jct_compute_jsd_pipeline_matches_its_steps)
+        all_tests(26) = test_case("test_jct_compute_jsd_pipeline_rejects_negative_range", &
+                                  test_jct_compute_jsd_pipeline_rejects_negative_range)
     end function get_all_tests_data_integration
 
     !> Test the fjct_compute_jsd function.
@@ -134,7 +143,9 @@ contains
         ! -> pmf values point 3 = [0, 0, 1.0]
         expected_included_n_reps_S2 = [0, 0, 0] ! no neighbor included
         expected_total_included_n_reps = 3_int32
-        expected_js_divergences = [0.0_real64, 0.0_real64, 0.5_real64*log(2.0_real64)] ! s1 pmf val is 1.0, s2 is 0 -> mean is 0.5 -> jsd is 0.5*log(2)
+        ! s1 pmf val is 1.0, s2 is 0 -> mean is 0.5 -> jsd is 0.5*log(2), rescaled onto 0..1 by
+        ! dividing through LOG_2 = log(2): (0.5*log(2))/log(2) = 0.5
+        expected_js_divergences = [0.0_real64, 0.0_real64, (0.5_real64*log(2.0_real64))/log(2.0_real64)]
         expected_weights = [0.0_real64, 0.0_real64, 1.0_real64]
         call fjct_compute_jsd( &
             family_idx, gene_to_family_S1, gene_to_family_S2, n_genes_S1, n_genes_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, &
@@ -157,142 +168,6 @@ contains
         call assert_equal_array_real(support_weights, expected_support_weights, k_families, TOL, "test_fjct: Contribution scores: support weights mismatch")
         call assert_equal_array_real(contribution_scores, expected_contribution_scores, k_families, TOL, "test_fjct: Contribution scores: support weights mismatch")
     end subroutine test_fjct
-
-    !> Test the gjct_permutation_test function with a simple synthetic example.
-    subroutine test_gjct_permutation_test
-        integer(int32), parameter :: n_reps_S1 = 4, n_reps_S2 = 3, n_neighbors = 1, n_points = 2, n_permutations = 2, n_bins = 4
-        real(real64), dimension((n_reps_S1 + n_reps_S2)*n_neighbors*n_points), target :: S_12, expected_S_12
-        ! the residuals are shuffled in the work copies the kernel is given, so the shuffle is
-        ! asserted on those; the caller's own S1/S2 stay untouched
-        real(real64), dimension((n_reps_S1 + n_reps_S2)*n_neighbors*n_points), target :: shuffled_S_12
-        real(real64), dimension(:, :, :), pointer :: S1, S2
-        real(real64), dimension(:, :, :), pointer :: tmp_residuals_S1, tmp_residuals_S2
-        real(real64), dimension(:, :), pointer :: tmp_pool
-        real(real64), dimension(:), pointer :: S1_flat, S2_flat
-        integer(int32), parameter :: random_seed = 666
-        integer(int32) :: ierr, i_permutation
-        real(real64) :: p_value, global_jsd_observed
-        real(real64), dimension(n_permutations) :: jsd_null
-        real(real64), dimension((n_reps_S1 + n_reps_S2)*n_neighbors), target :: tmp_pool_flat
-        integer(int32), dimension(n_points, n_bins) :: tmp_counts
-        real(real64), dimension(n_points, n_bins) :: tmp_pmf_S1
-        real(real64), dimension(n_points, n_bins) :: tmp_pmf_S2
-        integer(int32), dimension(n_points) :: tmp_included_n_reps_S1
-        integer(int32), dimension(n_points) :: tmp_included_n_reps_S2
-        real(real64), dimension(n_points) :: tmp_js_divergences
-        real(real64), dimension(n_points) :: tmp_weights
-
-        call init_random(random_seed)
-
-        tmp_pool(1:n_reps_S1 + n_reps_S2, 1:n_neighbors) => tmp_pool_flat
-        tmp_residuals_S1(1:n_reps_S1, 1:n_neighbors, 1:n_points) => shuffled_S_12(1:n_reps_S1*n_neighbors*n_points)
-        tmp_residuals_S2(1:n_reps_S2, 1:n_neighbors, 1:n_points) => shuffled_S_12(n_reps_S1*n_neighbors*n_points + 1:)
-
-        ! ============================================================
-        ! Test 1 — Test randomness with seed
-        ! ============================================================
-        !
-        S_12 = [1, 2, 3, 4, 5, 6, -7, 8, 2, -4, 6, 8, 1, 3]
-
-        ! Simulate two permutations
-        expected_S_12 = S_12
-        S1(1:n_reps_S1, 1:n_neighbors, 1:n_points) => expected_S_12(1:n_reps_S1*n_neighbors*n_points)
-        S1_flat(1:n_reps_S1*n_neighbors*n_points) => expected_S_12(1:n_reps_S1*n_neighbors*n_points)
-        S2(1:n_reps_S2, 1:n_neighbors, 1:n_points) => expected_S_12(n_reps_S1*n_neighbors*n_points + 1:)
-        S2_flat(1:n_reps_S2*n_neighbors*n_points) => expected_S_12(n_reps_S1*n_neighbors*n_points + 1:)
-        do i_permutation = 1, n_permutations
-            ! First point
-            tmp_pool_flat(1:n_reps_S1*n_neighbors) = S1_flat(1:n_reps_S1*n_neighbors)
-            tmp_pool_flat(n_reps_S1*n_neighbors + 1:) = S2_flat(1:n_reps_S2*n_neighbors)
-            call shuffle_vector(tmp_pool_flat)
-            S1_flat(1:n_reps_S1*n_neighbors) = tmp_pool_flat(1:n_reps_S1*n_neighbors)
-            S2_flat(1:n_reps_S2*n_neighbors) = tmp_pool_flat(n_reps_S1*n_neighbors + 1:)
-
-            ! Second point
-            tmp_pool_flat(1:n_reps_S1*n_neighbors) = S1_flat(n_reps_S1*n_neighbors + 1:)
-            tmp_pool_flat(n_reps_S1*n_neighbors + 1:) = S2_flat(n_reps_S2*n_neighbors + 1:)
-            call shuffle_vector(tmp_pool_flat)
-            S1_flat(n_reps_S1*n_neighbors + 1:) = tmp_pool_flat(1:n_reps_S1*n_neighbors)
-            S2_flat(n_reps_S2*n_neighbors + 1:) = tmp_pool_flat(n_reps_S1*n_neighbors + 1:)
-        end do
-
-        ! for ifx: expected_shuffle = [2, 3, 6, 1, 5, 6, 1, -7, -4, 2, 4, 8, 3, 8]
-
-        S1(1:n_reps_S1, 1:n_neighbors, 1:n_points) => S_12(1:n_reps_S1*n_neighbors*n_points)
-        S2(1:n_reps_S2, 1:n_neighbors, 1:n_points) => S_12(n_reps_S1*n_neighbors*n_points + 1:)
-
-        global_jsd_observed = 0.0_real64
-        call gjct_permutation_test_expert(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr, random_seed=random_seed, tmp_residuals_S1=tmp_residuals_S1, tmp_residuals_S2=tmp_residuals_S2, tmp_pool=tmp_pool, tmp_counts=tmp_counts, tmp_pmf_S1=tmp_pmf_S1, tmp_pmf_S2=tmp_pmf_S2, tmp_included_n_reps_S1=tmp_included_n_reps_S1, tmp_included_n_reps_S2=tmp_included_n_reps_S2, tmp_js_divergences=tmp_js_divergences, tmp_weights=tmp_weights)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_gjct_permutation_test: Test 1: unexpected error")
-
-        call assert_equal_array_real(shuffled_S_12, expected_S_12, size(S_12, kind=int32), 0.0_real64, "test_gjct_permutation_test: Test 1: concatenated S1, S2 does not match the expected permutation")
-
-        ! ============================================================
-        ! Test 2 — Test randomness without seed
-        ! ============================================================
-        !
-        S_12 = [1, 2, 3, 4, 5, 6, -7, 8, 2, -4, 6, 8, 1, 3]
-        S1(1:n_reps_S1, 1:n_neighbors, 1:n_points) => S_12(1:n_reps_S1*n_neighbors*n_points)
-        S2(1:n_reps_S2, 1:n_neighbors, 1:n_points) => S_12(n_reps_S1*n_neighbors*n_points + 1:)
-
-        call init_random(random_seed)
-        call gjct_permutation_test_expert(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr, tmp_residuals_S1=tmp_residuals_S1, tmp_residuals_S2=tmp_residuals_S2, tmp_pool=tmp_pool, tmp_counts=tmp_counts, tmp_pmf_S1=tmp_pmf_S1, tmp_pmf_S2=tmp_pmf_S2, tmp_included_n_reps_S1=tmp_included_n_reps_S1, tmp_included_n_reps_S2=tmp_included_n_reps_S2, tmp_js_divergences=tmp_js_divergences, tmp_weights=tmp_weights)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_gjct_permutation_test: Test 2: 1. call, unexpected error")
-        call assert_equal_array_real(shuffled_S_12, expected_S_12, size(S_12, kind=int32), 0.0_real64, "test_gjct_permutation_test: Test 2: 1. call, concatenated S1, S2 does not match the expected permutation")
-
-        call gjct_permutation_test_expert(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr, tmp_residuals_S1=tmp_residuals_S1, tmp_residuals_S2=tmp_residuals_S2, tmp_pool=tmp_pool, tmp_counts=tmp_counts, tmp_pmf_S1=tmp_pmf_S1, tmp_pmf_S2=tmp_pmf_S2, tmp_included_n_reps_S1=tmp_included_n_reps_S1, tmp_included_n_reps_S2=tmp_included_n_reps_S2, tmp_js_divergences=tmp_js_divergences, tmp_weights=tmp_weights)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_gjct_permutation_test: Test 2: 2. call, unexpected error")
-        call assert_true(any(shuffled_S_12 /= expected_S_12), "test_gjct_permutation_test: Test 2: 2. call, concatenated S1, S2 should not match the expected permutation")
-
-        ! ============================================================
-        ! Test 3 — Test p value
-        ! ============================================================
-        !
-        S_12 = [1, 2, 3, 4, 5, 6, -7, 8, 2, -4, 6, 8, 1, 3]
-        S1(1:n_reps_S1, 1:n_neighbors, 1:n_points) => S_12(1:n_reps_S1*n_neighbors*n_points)
-        S2(1:n_reps_S2, 1:n_neighbors, 1:n_points) => S_12(n_reps_S1*n_neighbors*n_points + 1:)
-
-        ! all should be greater or equal -> p_value=1
-        global_jsd_observed = 0.0_real64
-
-        call gjct_permutation_test(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_gjct_permutation_test: Test 3: unexpected error")
-
-        call assert_equal_real(p_value, 1.0_real64, TOL, "test_gjct_permutation_test: Test 3: for zero observed jsd, p_value should be 1")
-
-        ! no one should be greater or equal -> p_value=1/(n_permutations+1)=1/3
-        global_jsd_observed = huge(0.0_real64)
-        call gjct_permutation_test(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_gjct_permutation_test: Test 3: unexpected error")
-
-        call assert_equal_real(p_value, 1.0_real64/3.0_real64, TOL, "test_gjct_permutation_test: Test 3: for max observed jsd, p_value should be 1/3")
-    end subroutine test_gjct_permutation_test
-
-    !> Test the shuffle_reference_point_helper function with a simple synthetic example.
-    subroutine test_shuffle_reference_point_helper
-        integer(int32), parameter :: n_reps_S1 = 4, n_reps_S2 = 3, n_neighbors = 2
-        real(real64), dimension((n_reps_S1 + n_reps_S2)*n_neighbors), target :: S_12, expected_S_12
-        real(real64), dimension(:), pointer :: S1, S2
-        real(real64), dimension((n_reps_S1 + n_reps_S2)*n_neighbors) :: pool_flat
-        integer(int32), parameter :: random_seed = 666
-
-        call init_random(random_seed)
-
-        S_12 = [1, 2, 3, 4, 5, 6, -7, 8, 2, -4, 6, 8, 1, 3]
-        S1(1:n_reps_S1*n_neighbors) => S_12(1:n_reps_S1*n_neighbors)
-        S2(1:n_reps_S2*n_neighbors) => S_12(n_reps_S1*n_neighbors + 1:)
-
-        expected_S_12 = S_12
-        call shuffle_vector(expected_S_12)
-        ! for ifx: expected_S_12 = [-7, 4, 6, 3, 2, 8, 8, 5, -4, 6, 2, 3, 1, 1]
-
-        call init_random(random_seed)
-
-        call shuffle_reference_point_helper(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, pool_flat)
-
-        call assert_equal_array_real(pool_flat, S_12, size(S_12, kind=int32), TOL, "test_shuffle_reference_point_helper: pool should match concatenated S1, S2")
-        call assert_equal_array_real(S_12, expected_S_12, size(S_12, kind=int32), TOL, "test_shuffle_reference_point_helper: concatenated S1, S2 does not match the expected permutation")
-    end subroutine test_shuffle_reference_point_helper
 
     !> Test the determine_shared_residual_range function with a simple synthetic example.
     subroutine test_determine_shared_residual_range
@@ -408,11 +283,13 @@ contains
     subroutine test_build_residual_histograms
         integer(int32), parameter :: n_reps = 3, n_neighbors = 2, n_points = 3
         integer(int32), parameter :: n_bins = 4
+        integer(int32), dimension(n_points) :: n_bins_per_point
         real(real64), dimension(n_reps, n_neighbors, n_points) :: E
         real(real64), dimension(n_points, n_bins) :: pmf, expected_pmf
         integer(int32), dimension(n_points, n_bins) :: counts, expected_counts
         integer(int32), dimension(n_points) :: included
         real(real64) :: R
+        real(real64), dimension(n_points) :: R_low, R_high
         integer(int32) :: ierr
 
         ! ============================================================
@@ -423,6 +300,9 @@ contains
         ! Bins: [-2,-1), [-1,0), [0,1), [1,2]
         !
         R = 2.0_real64
+        R_low = -R
+        R_high = R
+        n_bins_per_point = n_bins
 
         E(:, 1, 1) = [-2.0, -0.5, 0.2]
         E(:, 2, 1) = [1.7, 0.9, -1.2]
@@ -430,7 +310,7 @@ contains
         E(:, 1, 3) = [2.5, -3.0, 1.2] ! (clamping applies -> [2,-2,1.2])
         E(:, 2, 3) = [0.4, -0.1, 0.0]
 
-        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, &
+        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R_low, R_high, n_bins, n_bins_per_point, &
                                        counts, pmf, included, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_build_residual_histograms: Test 1: ierr should be OK")
@@ -480,7 +360,7 @@ contains
         E(2, 1, 2) = ieee_value(1.0_real64, ieee_quiet_nan)
         E(3, 2, 3) = ieee_value(1.0_real64, ieee_quiet_nan)
 
-        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, &
+        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R_low, R_high, n_bins, n_bins_per_point, &
                                        counts, pmf, included, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_build_residual_histograms: Test 2: ierr should be OK")
@@ -509,7 +389,7 @@ contains
         ! ============================================================
         E = ieee_value(1.0_real64, ieee_quiet_nan)
 
-        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, &
+        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R_low, R_high, n_bins, n_bins_per_point, &
                                        counts, pmf, included, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_build_residual_histograms: Test 3: ierr should be OK")
@@ -533,7 +413,7 @@ contains
                      -2.0, -1.0, 0.0, 1.0, 2.0, 0.0, &
                      -2.0, -1.0, 0.0, 1.0, 2.0, 0.0], shape(E))
 
-        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R, n_bins, &
+        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R_low, R_high, n_bins, n_bins_per_point, &
                                        counts, pmf, included, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_build_residual_histograms: Test 4: ierr should be OK")
@@ -566,13 +446,166 @@ contains
 
     end subroutine test_build_residual_histograms
 
+    !> Two reference points with genuinely different `n_bins_per_point` in the same call: each
+    !| point's own residuals must bin under its OWN bin width (not another point's, and not the
+    !| padded array's full `max_n_bins` width), and columns beyond a point's own bin count must
+    !| be exactly zero.
+    subroutine test_build_residual_histograms_variable_bins_per_point
+        integer(int32), parameter :: n_reps = 2, n_neighbors = 1, n_points = 2, max_n_bins = 4
+        integer(int32), dimension(n_points), parameter :: n_bins_per_point = [2, 3]
+        real(real64), dimension(n_reps, n_neighbors, n_points) :: E
+        real(real64), dimension(n_points, max_n_bins) :: pmf, expected_pmf
+        integer(int32), dimension(n_points, max_n_bins) :: counts, expected_counts
+        integer(int32), dimension(n_points) :: included
+        real(real64) :: R
+        real(real64), dimension(n_points) :: R_low, R_high
+        integer(int32) :: ierr
+
+        ! Point 1: n_bins_per_point(1) = 2 -> bin_width = 2*R/2 = 2.0, bins [-2,0),[0,2]
+        ! Point 2: n_bins_per_point(2) = 3 -> bin_width = 2*R/3 = 1.3333..., bins
+        !          [-2,-0.6667),[-0.6667,0.6667),[0.6667,2]
+        R = 2.0_real64
+        R_low = -R
+        R_high = R
+
+        E(:, 1, 1) = [-0.3_real64, 1.9_real64]
+        E(:, 1, 2) = [0.9_real64, -1.9_real64]
+
+        call build_residual_histograms(E, n_reps, n_neighbors, n_points, R_low, R_high, max_n_bins, n_bins_per_point, &
+                                       counts, pmf, included, ierr=ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_build_residual_histograms_variable_bins_per_point: ierr should be OK")
+
+        ! Point 1 (own bin_width = 2.0): -0.3 -> (( -0.3+2)/2 = 0.85 -> floor 0) -> bin 1;
+        ! 1.9 -> ((1.9+2)/2 = 1.95 -> floor 1) -> bin 2. Columns 3-4, beyond its own 2 bins, are
+        ! zero-padded.
+        ! Point 2 (own bin_width = 4/3): -1.9 -> ((-1.9+2)/(4/3) = 0.075 -> floor 0) -> bin 1;
+        ! 0.9 -> ((0.9+2)/(4/3) = 2.175 -> floor 2) -> bin 3. Column 4, beyond its own 3 bins, is
+        ! zero-padded.
+        ! Cross-check (why these particular values were chosen): had point 1 wrongly used point
+        ! 2's bin_width (4/3), -0.3 would land in bin 2, not 1; had point 2 wrongly used point 1's
+        ! bin_width (2.0), 0.9 would land in bin 2, not 3. Either bug would fail the exact
+        ! expectations below.
+        expected_counts = 0_int32
+        expected_counts(1, 1) = 1
+        expected_counts(1, 2) = 1
+        expected_counts(2, 1) = 1
+        expected_counts(2, 3) = 1
+
+        expected_pmf = 0.0_real64
+        expected_pmf(1, 1) = 0.5_real64
+        expected_pmf(1, 2) = 0.5_real64
+        expected_pmf(2, 1) = 0.5_real64
+        expected_pmf(2, 3) = 0.5_real64
+
+        call assert_equal_array_int(counts, expected_counts, size(counts, kind=int32), &
+                                    "test_build_residual_histograms_variable_bins_per_point: counts don't match")
+        call assert_equal_array_real(pmf, expected_pmf, size(pmf, kind=int32), TOL, &
+                                     "test_build_residual_histograms_variable_bins_per_point: pmf don't match")
+        call assert_equal_int(included(1), 2, "test_build_residual_histograms_variable_bins_per_point: included row 1")
+        call assert_equal_int(included(2), 2, "test_build_residual_histograms_variable_bins_per_point: included row 2")
+
+        ! Explicit zero-padding checks: point 1 owns only 2 bins, point 2 owns 3 -- their
+        ! remaining columns up to max_n_bins must be exactly zero.
+        call assert_equal_int(counts(1, 3), 0_int32, &
+                              "test_build_residual_histograms_variable_bins_per_point: point 1 col 3 must be zero-padded")
+        call assert_equal_int(counts(1, 4), 0_int32, &
+                              "test_build_residual_histograms_variable_bins_per_point: point 1 col 4 must be zero-padded")
+        call assert_equal_int(counts(2, 4), 0_int32, &
+                              "test_build_residual_histograms_variable_bins_per_point: point 2 col 4 must be zero-padded")
+    end subroutine test_build_residual_histograms_variable_bins_per_point
+
+    !> Builds two "studies" via two separate `build_residual_histograms` calls that pad the SAME
+    !| point's own bin count out to a wider `max_n_bins`, feeds both studies' unmodified
+    !| point-major pmfs into `compute_divergence_per_reference_point`, and checks the resulting
+    !| JSD against a reference computed with `max_n_bins` collapsed down to exactly that point's
+    !| own bin count (no padding at all). This proves Issue #187's "Key design insight" claim end
+    !| to end, rather than merely asserting it: zero-padding makes `calc_pmf_impl` and
+    !| `compute_divergence_per_reference_point_impl` agnostic to how far `max_n_bins` overshoots a
+    !| point's own bin count.
+    subroutine test_build_residual_histograms_zero_padding_safe_for_jsd
+        integer(int32), parameter :: n_reps_S1 = 3, n_reps_S2 = 3, n_neighbors = 1, n_points = 1
+        integer(int32), parameter :: own_n_bins = 3, padded_max_n_bins = 6
+        integer(int32), dimension(n_points), parameter :: n_bins_per_point = [own_n_bins]
+        real(real64), dimension(n_reps_S1, n_neighbors, n_points) :: E_S1
+        real(real64), dimension(n_reps_S2, n_neighbors, n_points) :: E_S2
+        real(real64), dimension(n_points, padded_max_n_bins) :: pmf_S1_padded, pmf_S2_padded
+        integer(int32), dimension(n_points, padded_max_n_bins) :: counts_S1_padded, counts_S2_padded
+        real(real64), dimension(n_points, own_n_bins) :: pmf_S1_ref, pmf_S2_ref
+        integer(int32), dimension(n_points, own_n_bins) :: counts_S1_ref, counts_S2_ref
+        integer(int32), dimension(n_points) :: included_S1, included_S2
+        real(real64), dimension(n_points) :: js_divergences_padded, js_divergences_ref
+        real(real64) :: R
+        real(real64), dimension(n_points) :: R_low, R_high
+        integer(int32) :: ierr
+
+        R = 2.0_real64
+        R_low = -R
+        R_high = R
+        E_S1(:, 1, 1) = [-2.0_real64, 0.0_real64, 1.9_real64]
+        E_S2(:, 1, 1) = [-0.5_real64, -0.5_real64, 1.99_real64]
+
+        ! Padded: max_n_bins = 6, but this point's own bin count stays 3 -- columns 4-6
+        ! zero-padded.
+        call build_residual_histograms(E_S1, n_reps_S1, n_neighbors, n_points, R_low, R_high, padded_max_n_bins, n_bins_per_point, &
+                                       counts_S1_padded, pmf_S1_padded, included_S1, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_build_residual_histograms_zero_padding_safe_for_jsd: S1 padded ierr should be OK")
+        call build_residual_histograms(E_S2, n_reps_S2, n_neighbors, n_points, R_low, R_high, padded_max_n_bins, n_bins_per_point, &
+                                       counts_S2_padded, pmf_S2_padded, included_S2, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_build_residual_histograms_zero_padding_safe_for_jsd: S2 padded ierr should be OK")
+
+        ! Feed the padded, UNMODIFIED (n_points, padded_max_n_bins) pmfs straight into
+        ! compute_divergence_per_reference_point -- no truncation/collapsing here.
+        call compute_divergence_per_reference_point(pmf_S1_padded, pmf_S2_padded, n_points, padded_max_n_bins, &
+                                                     js_divergences_padded, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_build_residual_histograms_zero_padding_safe_for_jsd: padded JSD ierr should be OK")
+
+        ! Reference: max_n_bins collapsed down to exactly this point's own bin count -- no
+        ! padding at all.
+        call build_residual_histograms(E_S1, n_reps_S1, n_neighbors, n_points, R_low, R_high, own_n_bins, n_bins_per_point, &
+                                       counts_S1_ref, pmf_S1_ref, included_S1, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_build_residual_histograms_zero_padding_safe_for_jsd: S1 ref ierr should be OK")
+        call build_residual_histograms(E_S2, n_reps_S2, n_neighbors, n_points, R_low, R_high, own_n_bins, n_bins_per_point, &
+                                       counts_S2_ref, pmf_S2_ref, included_S2, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_build_residual_histograms_zero_padding_safe_for_jsd: S2 ref ierr should be OK")
+
+        call compute_divergence_per_reference_point(pmf_S1_ref, pmf_S2_ref, n_points, own_n_bins, &
+                                                     js_divergences_ref, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_build_residual_histograms_zero_padding_safe_for_jsd: ref JSD ierr should be OK")
+
+        ! The unpadded columns (1..own_n_bins) of the padded run must exactly match the unpadded
+        ! reference run -- max_n_bins never enters bin_width's computation, only
+        ! n_bins_per_point does.
+        call assert_equal_array_int(counts_S1_padded(:, 1:own_n_bins), counts_S1_ref, size(counts_S1_ref, kind=int32), &
+                                    "test_build_residual_histograms_zero_padding_safe_for_jsd: S1 counts columns 1..own_n_bins must match the unpadded reference")
+        call assert_equal_array_int(counts_S2_padded(:, 1:own_n_bins), counts_S2_ref, size(counts_S2_ref, kind=int32), &
+                                    "test_build_residual_histograms_zero_padding_safe_for_jsd: S2 counts columns 1..own_n_bins must match the unpadded reference")
+
+        ! And the padded columns must be exactly zero.
+        call assert_equal_int(sum(counts_S1_padded(:, own_n_bins + 1:padded_max_n_bins)), 0_int32, &
+                              "test_build_residual_histograms_zero_padding_safe_for_jsd: S1 padded columns must be zero")
+        call assert_equal_int(sum(counts_S2_padded(:, own_n_bins + 1:padded_max_n_bins)), 0_int32, &
+                              "test_build_residual_histograms_zero_padding_safe_for_jsd: S2 padded columns must be zero")
+
+        ! The actual end-to-end claim: the JSD computed from the padded arrays, unmodified, is
+        ! numerically identical to the JSD computed from the collapsed, unpadded reference.
+        call assert_equal_real(js_divergences_padded(1), js_divergences_ref(1), TOL, &
+                               "test_build_residual_histograms_zero_padding_safe_for_jsd: padded JSD must equal unpadded reference JSD")
+    end subroutine test_build_residual_histograms_zero_padding_safe_for_jsd
+
     !> Test the compute_divergence_per_reference_point function with simple synthetic examples.
     subroutine test_compute_divergence_per_reference_point
         integer(int32), parameter :: n_points = 3, n_bins = 4
         real(real64), dimension(n_points, n_bins) :: p, q
         real(real64), dimension(n_points) :: jsd, expected_jsd
         integer(int32) :: ierr
-        real(real64) :: tol
 
         ! ============================================================
         ! Test 1 — Identical PMFs → JSD = 0
@@ -612,7 +645,8 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_divergence_per_reference_point: Test 2: ierr OK")
 
         expected_jsd = 0.0_real64
-        expected_jsd(1) = log(2.0_real64)
+        ! rescaled onto 0..1 by dividing through LOG_2 = log(2): log(2)/log(2) = 1.0
+        expected_jsd(1) = log(2.0_real64)/log(2.0_real64)
         call assert_equal_array_real(jsd, expected_jsd, size(jsd, kind=int32), TOL, "test_compute_divergence_per_reference_point: Test 2: disjoint PMFs → JSD=log(2)")
         call assert_equal_real(jsd(2), 0.0_real64, TOL, "test_compute_divergence_per_reference_point: Test 2: rows 2,3 are zero PMFs → JSD=0")
         call assert_equal_real(jsd(3), 0.0_real64, TOL, "test_compute_divergence_per_reference_point: Test 2: rows 2,3 are zero PMFs → JSD=0")
@@ -643,9 +677,11 @@ contains
 
         ! Compute expected value analytically
         expected_jsd = 0.0_real64
-        expected_jsd(1) = 0.5_real64*( &
-                          0.5_real64*log(2.0_real64) + 0.5_real64*log(2.0_real64/3.0_real64) &
-                          + log(1.0_real64/0.75_real64))
+        ! rescaled onto 0..1 by dividing through LOG_2 = log(2):
+        ! 0.5*(0.5*log(2) + 0.5*log(2/3) + log(1/0.75)) / log(2) ≈ 0.31127812445913283
+        expected_jsd(1) = (0.5_real64*( &
+                           0.5_real64*log(2.0_real64) + 0.5_real64*log(2.0_real64/3.0_real64) &
+                           + log(1.0_real64/0.75_real64)))/log(2.0_real64)
         call assert_equal_array_real(jsd, expected_jsd, size(jsd, kind=int32), TOL, "test_compute_divergence_per_reference_point: Test 3: analytic partial-overlap JSD")
 
         ! ============================================================
@@ -671,7 +707,8 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_divergence_per_reference_point: Test 4: ierr OK")
 
         expected_jsd = 0.0_real64
-        expected_jsd(1) = log(2.0_real64)
+        ! rescaled onto 0..1 by dividing through LOG_2 = log(2): log(2)/log(2) = 1.0
+        expected_jsd(1) = log(2.0_real64)/log(2.0_real64)
         call assert_equal_array_real(jsd, expected_jsd, size(jsd, kind=int32), TOL, "test_compute_divergence_per_reference_point: Test 4: zero-probability bins handled correctly")
 
         ! ============================================================
@@ -695,8 +732,9 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_divergence_per_reference_point: Test 5: ierr OK")
 
         expected_jsd = 0.0_real64
-        expected_jsd(2) = 0.5*(1.0_real64*log(1.0_real64/0.5_real64))
-        expected_jsd(3) = 0.5*(1.0_real64*log(1.0_real64/0.5_real64))
+        ! rescaled onto 0..1 by dividing through LOG_2 = log(2): 0.5*(1.0*log(1.0/0.5))/log(2) = 0.5
+        expected_jsd(2) = (0.5*(1.0_real64*log(1.0_real64/0.5_real64)))/log(2.0_real64)
+        expected_jsd(3) = (0.5*(1.0_real64*log(1.0_real64/0.5_real64)))/log(2.0_real64)
         call assert_equal_array_real(jsd, expected_jsd, size(jsd, kind=int32), TOL, "test_compute_divergence_per_reference_point: Test 5: mixed patterns")
     end subroutine test_compute_divergence_per_reference_point
 
@@ -858,6 +896,67 @@ contains
         call assert_equal_real(global_jsd, expected, TOL, "test_compute_weighted_global_divergence: Test 5: weighted global JSD")
 
     end subroutine test_compute_weighted_global_divergence
+
+    !> Regression test: sample counts whose sum exceeds huge(1_int32) = 2147483647.
+    !| In gJCT the second study is the consensus, whose counts sum over all studies, so a large but
+    !| valid input can push the total past the int32 range. The total and the per-point counts
+    !| must be summed in int64 before the conversion to real64, or they wrap to negative values.
+    subroutine test_compute_weighted_global_divergence_large_counts
+        real(real64) :: jsd_two(2), w_two(2), jsd_one(1), w_one(1)
+        integer(int32) :: n1_two(2), n2_two(2), n1_one(1), n2_one(1)
+        real(real64) :: global_jsd
+        integer(int32) :: ierr
+
+        ! ============================================================
+        ! Test 1 — Total count overflows int32
+        ! ============================================================
+        !
+        ! n1 = [2e9, 0], n2 = [0, 2e9]
+        ! n_j = [2e9, 2e9], T = 4e9 > 2147483647
+        ! w = [0.5, 0.5]
+        ! global_jsd = 0.5*0.2 + 0.5*0.4 = 0.3
+        !
+        jsd_two = [0.2_real64, 0.4_real64]
+        n1_two = [2000000000_int32, 0_int32]
+        n2_two = [0_int32, 2000000000_int32]
+
+        call compute_weighted_global_divergence(jsd_two, 2_int32, n1_two, n2_two, &
+                                                global_jsd, w_two, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_compute_weighted_global_divergence_large_counts: Test 1: ierr OK")
+        call assert_equal_array_real(w_two, [0.5_real64, 0.5_real64], 2_int32, TOL, &
+                                     "test_compute_weighted_global_divergence_large_counts: Test 1: weights")
+        call assert_equal_real(global_jsd, 0.3_real64, TOL, &
+                               "test_compute_weighted_global_divergence_large_counts: Test 1: global JSD")
+
+        ! ============================================================
+        ! Test 2 — Per-point count overflows int32
+        ! ============================================================
+        !
+        ! n1 = [1.5e9], n2 = [1.5e9]
+        ! n_1 = 3e9 > 2147483647, T = 3e9
+        ! w = [1.0]
+        ! global_jsd = jsd(1) = 0.7
+        !
+        ! With both sums in int32, n_1 and T wrap to the same negative value and the weight still
+        ! comes out as 1.0. This case guards the per-point sum: with only T summed in int64, the
+        ! weight would be the wrapped n_1 over the correct T, a negative number.
+        !
+        jsd_one = [0.7_real64]
+        n1_one = [1500000000_int32]
+        n2_one = [1500000000_int32]
+
+        call compute_weighted_global_divergence(jsd_one, 1_int32, n1_one, n2_one, &
+                                                global_jsd, w_one, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_compute_weighted_global_divergence_large_counts: Test 2: ierr OK")
+        call assert_equal_array_real(w_one, [1.0_real64], 1_int32, TOL, &
+                                     "test_compute_weighted_global_divergence_large_counts: Test 2: weight")
+        call assert_equal_real(global_jsd, 0.7_real64, TOL, &
+                               "test_compute_weighted_global_divergence_large_counts: Test 2: global JSD")
+    end subroutine test_compute_weighted_global_divergence_large_counts
 
     ! --------------------------------------------------------------------------
     ! Test Cases for compute_gene_means
@@ -1107,6 +1206,53 @@ contains
         call assert_not_equal_int(ierr, ERR_OK, "test_pool_means_alloc_invalid_input: zero points should fail")
     end subroutine test_pool_means_alloc_invalid_input
 
+    ! Test case 13: pool_means takes the reference-point level as the bare fraction i/(n+1).
+    ! n_points=647, pool_size=1000, i_point=216 is a case where the bare fraction (216/648) and the
+    ! percentage round trip (216/648*100/100) that 125-stabilize-jscomp used round to different
+    ! doubles, which floor() to different ranks (334 vs 333). With a sequential pool
+    ! [1.0, 2.0, ..., 1000.0] the interpolated x_star equals the rank, so the bare fraction gives
+    ! exactly 334.0 and the round trip 333.99999999999994; this guards against the round trip
+    ! coming back.
+    subroutine test_pool_means_uses_bare_fraction_level()
+        integer, parameter :: pool_size = 1000, n_points = 647
+        real(real64) :: pooled_means(pool_size), x_star(n_points)
+        integer(int32) :: n_pool, ierr, i
+
+        pooled_means = [(real(i, real64), i = 1, pool_size)]
+
+        call pool_means(pooled_means, pool_size, n_points, n_pool, x_star, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pool_means_uses_bare_fraction_level: should succeed")
+        call assert_equal_int(n_pool, pool_size, "test_pool_means_uses_bare_fraction_level: n_pool should equal pool_size")
+        call assert_equal_real(x_star(216), 334.0_real64, 1.0d-15, &
+                               "test_pool_means_uses_bare_fraction_level: x_star(216) is the bare fraction's rank")
+    end subroutine test_pool_means_uses_bare_fraction_level
+
+    !> pool_means_expert takes the caller's `pooled_means_perm` and indexes `pooled_means` with it,
+    !| so an entry outside `1..pool_size` is rejected with ERR_INVALID_INPUT at its position (2).
+    !| The bad entry sits last, where the trailing-NaN scan reads it first. Before the check the call
+    !| returned OK after reading `pooled_means(0)` or `pooled_means(5)`, outside the array.
+    subroutine test_pool_means_expert_rejects_out_of_range_perm()
+        character(len=*), parameter :: name = "test_pool_means_expert_rejects_out_of_range_perm: "
+        integer(int32), parameter :: pool_size = 4, n_points = 1
+        real(real64) :: pooled_means(pool_size), x_star(n_points)
+        integer(int32) :: pooled_means_perm(pool_size), n_pool, ierr
+
+        pooled_means = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
+
+        pooled_means_perm = [1, 2, 3, 4]
+        call pool_means_expert(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star, ierr)
+        call assert_err(ierr, ERR_OK, name//"an in-range permutation is accepted")
+
+        pooled_means_perm = [1, 2, 3, 0]
+        call pool_means_expert(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"entry 0 is rejected", arg_pos=2_int32)
+
+        pooled_means_perm = [1, 2, 3, 5]
+        call pool_means_expert(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star, ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"entry pool_size + 1 is rejected", arg_pos=2_int32)
+    end subroutine test_pool_means_expert_rejects_out_of_range_perm
+
     !> Test the construct_neighborhoods function with simple synthetic examples.
     subroutine test_construct_neighborhoods_basic()
         integer(int32), parameter :: n_points = 2
@@ -1257,4 +1403,97 @@ contains
                                     "test_construct_neighborhoods_nan_means: NaN mean handling incorrect")
     end subroutine test_construct_neighborhoods_nan_means
 
+
+    !> jct_compute_jsd_pipeline gives bit-identical results to calling its three steps one by one
+    !| (build_residual_histograms per study with one bin count and the range [-R, R], then
+    !| compute_divergence_per_reference_point and compute_weighted_global_divergence), both
+    !| without and with the optional neighbor masks. One residual is NaN, which the routine must
+    !| accept (DM_ALLOW_NAN) and leave out of the counts.
+    subroutine test_jct_compute_jsd_pipeline_matches_its_steps()
+        use, intrinsic :: iso_c_binding, only: c_bool
+        integer(int32), parameter :: n_reps_S1 = 3, n_reps_S2 = 4, n_neighbors = 4, n_points = 3, n_bins = 5
+        real(real64), parameter :: R = 2.0_real64
+        real(real64) :: E1(n_reps_S1, n_neighbors, n_points), E2(n_reps_S2, n_neighbors, n_points)
+        logical(c_bool) :: mask1(n_neighbors, n_points), mask2(n_neighbors, n_points)
+        real(real64) :: jsd(n_points), w(n_points), pmf1(n_points, n_bins), pmf2(n_points, n_bins), global_jsd
+        integer(int32) :: inc1(n_points), inc2(n_points)
+        real(real64) :: ref_jsd(n_points), ref_w(n_points), ref_pmf1(n_points, n_bins), ref_pmf2(n_points, n_bins)
+        real(real64) :: ref_global_jsd, r_low(n_points), r_high(n_points)
+        integer(int32) :: ref_inc1(n_points), ref_inc2(n_points), counts(n_points, n_bins), bins_per_point(n_points)
+        integer(int32) :: ierr, i_rep, i_neighbor, i_point, i_case
+
+        do i_point = 1, n_points
+            do i_neighbor = 1, n_neighbors
+                do i_rep = 1, n_reps_S1
+                    E1(i_rep, i_neighbor, i_point) = 0.37_real64*real(i_rep + 2*i_neighbor - 3*i_point, real64) - 0.4_real64
+                end do
+                do i_rep = 1, n_reps_S2
+                    E2(i_rep, i_neighbor, i_point) = 0.29_real64*real(2*i_rep - i_neighbor + i_point, real64) - 0.9_real64
+                end do
+            end do
+        end do
+        E2(2, 3, 2) = ieee_value(1.0_real64, ieee_quiet_nan)
+        mask1 = .true._c_bool
+        mask1(2, 1) = .false._c_bool
+        mask2 = .true._c_bool
+        mask2(4, 3) = .false._c_bool
+
+        r_low = -R
+        r_high = R
+        bins_per_point = n_bins
+        do i_case = 1, 2
+            if (i_case == 1) then
+                call jct_compute_jsd_pipeline(E1, E2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, R, jsd, &
+                                              inc1, inc2, global_jsd, w, pmf1, pmf2, ierr=ierr)
+                call assert_equal_int(get_err_code(ierr), ERR_OK, "pipeline without masks should succeed")
+                call build_residual_histograms(E1, n_reps_S1, n_neighbors, n_points, r_low, r_high, n_bins, &
+                                               bins_per_point, counts, ref_pmf1, ref_inc1, ierr=ierr)
+                call assert_equal_int(get_err_code(ierr), ERR_OK, "reference histograms of study 1 should succeed")
+                call build_residual_histograms(E2, n_reps_S2, n_neighbors, n_points, r_low, r_high, n_bins, &
+                                               bins_per_point, counts, ref_pmf2, ref_inc2, ierr=ierr)
+                call assert_equal_int(get_err_code(ierr), ERR_OK, "reference histograms of study 2 should succeed")
+            else
+                call jct_compute_jsd_pipeline(E1, E2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, R, jsd, &
+                                              inc1, inc2, global_jsd, w, pmf1, pmf2, mask1, mask2, ierr=ierr)
+                call assert_equal_int(get_err_code(ierr), ERR_OK, "pipeline with masks should succeed")
+                call build_residual_histograms(E1, n_reps_S1, n_neighbors, n_points, r_low, r_high, n_bins, &
+                                               bins_per_point, counts, ref_pmf1, ref_inc1, mask1, ierr=ierr)
+                call assert_equal_int(get_err_code(ierr), ERR_OK, "masked reference histograms of study 1 should succeed")
+                call build_residual_histograms(E2, n_reps_S2, n_neighbors, n_points, r_low, r_high, n_bins, &
+                                               bins_per_point, counts, ref_pmf2, ref_inc2, mask2, ierr=ierr)
+                call assert_equal_int(get_err_code(ierr), ERR_OK, "masked reference histograms of study 2 should succeed")
+            end if
+            call compute_divergence_per_reference_point(ref_pmf1, ref_pmf2, n_points, n_bins, ref_jsd, ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "reference divergences should succeed")
+            call compute_weighted_global_divergence(ref_jsd, n_points, ref_inc1, ref_inc2, ref_global_jsd, ref_w, ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "reference global divergence should succeed")
+
+            call assert_equal_array_real(pmf1, ref_pmf1, n_points*n_bins, 0.0_real64, "pmf_S1 equals its step")
+            call assert_equal_array_real(pmf2, ref_pmf2, n_points*n_bins, 0.0_real64, "pmf_S2 equals its step")
+            call assert_equal_array_int(inc1, ref_inc1, n_points, "included_n_reps_S1 equals its step")
+            call assert_equal_array_int(inc2, ref_inc2, n_points, "included_n_reps_S2 equals its step")
+            call assert_equal_array_real(jsd, ref_jsd, n_points, 0.0_real64, "js_divergences equal their step")
+            call assert_equal_array_real(w, ref_w, n_points, 0.0_real64, "weights equal their step")
+            call assert_equal_real(global_jsd, ref_global_jsd, 0.0_real64, "global_js_divergence equals its step")
+        end do
+        ! the NaN residual is left out: point 2 of study 2 has one fewer included residual than unmasked
+        call assert_equal_int(inc2(2), n_reps_S2*n_neighbors - 1_int32, "NaN residual is not counted")
+        ! the masked neighbor is left out: point 1 of study 1 loses n_reps_S1 residuals
+        call assert_equal_int(inc1(1), n_reps_S1*(n_neighbors - 1_int32), "masked neighbor is not counted")
+    end subroutine test_jct_compute_jsd_pipeline_matches_its_steps
+
+    !> jct_compute_jsd_pipeline rejects a negative shared_residual_range (DM_MIN(0.0_real64)) at
+    !| its argument position 8.
+    subroutine test_jct_compute_jsd_pipeline_rejects_negative_range()
+        integer(int32), parameter :: n_reps = 2, n_neighbors = 2, n_points = 1, n_bins = 2
+        real(real64) :: E1(n_reps, n_neighbors, n_points), E2(n_reps, n_neighbors, n_points)
+        real(real64) :: jsd(n_points), w(n_points), pmf1(n_points, n_bins), pmf2(n_points, n_bins), global_jsd
+        integer(int32) :: inc1(n_points), inc2(n_points), ierr
+
+        E1 = 0.5_real64
+        E2 = -0.5_real64
+        call jct_compute_jsd_pipeline(E1, E2, n_reps, n_reps, n_neighbors, n_points, n_bins, -1.0_real64, jsd, &
+                                      inc1, inc2, global_jsd, w, pmf1, pmf2, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, "negative shared_residual_range is rejected", arg_pos=8_int32)
+    end subroutine test_jct_compute_jsd_pipeline_rejects_negative_range
 end module mod_test_data_integration

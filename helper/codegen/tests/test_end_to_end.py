@@ -267,6 +267,26 @@ class TestResultsAreRight:
     def test_a_function_result_comes_back_as_the_return_value(self, tox, np):
         assert tox.fx_count_positive(np.array([-1.0, 2.0, 3.0])) == 2
 
+    def test_a_masked_matrix_result_is_column_truncated(self, tox, np):
+        # fx_masked_matrix mirrors candidates_n_points_n_neighbors: a fixed 2-row,
+        # N-column output where only the first n_results columns are real. Python's
+        # `[..., :n]` already truncates the right (last/outermost) axis regardless of
+        # rank -- this is the "never actually run" gap the R bug's fix closes for R too.
+        mask = np.array([True, False, True, True])
+
+        results = tox.fx_masked_matrix(mask)
+
+        assert results.shape == (2, 3)
+        assert np.array_equal(results, [[1, 2, 3], [10, 20, 30]])
+
+    def test_a_masked_matrix_result_with_one_real_column_stays_2d(self, tox, np):
+        mask = np.array([False, True, False])
+
+        results = tox.fx_masked_matrix(mask)
+
+        assert results.shape == (2, 1)
+        assert np.array_equal(results, [[1], [10]])
+
 
 class TestModes:
     def test_a_mode_travels_as_a_string_and_selects_the_branch(self, tox, np):
