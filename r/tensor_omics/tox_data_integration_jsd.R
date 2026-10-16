@@ -317,3 +317,78 @@ jct_compute_jsd_pipeline <- function(neighborhood_residuals_S1, neighborhood_res
         pmf_S2 = .result$pmf_S2
     )
 }
+
+#' Build the consensus pmf and its histogram counts from all studies' pmfs
+#'
+#' `mean_pmf` is the equal-weight mean of all studies' pmfs, `mean_pmf_counts` and
+#' `mean_pmf_included_n_reps` the sums of their counts. Known limitation: every study is
+#' compared against a consensus that includes itself, not a leave-one-out background.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_jsd::create_mean_pmf}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param pmfs a numeric array of rank 3. Per-study probabilities of each bin per reference point, from
+#'   \code{\link{build_residual_histograms}}
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#' @param counts a integer array of rank 3. Absolute counts of a residual per bin for `pmfs`
+#'   The minimum valid value is `0`.
+#' @param included_n_reps a integer matrix. Count of non-NaN replicates per reference point, per study; every study needs at
+#'   least one at every reference point
+#'   The minimum valid value is `1`.
+#' @return a named list with elements:
+#'   \item{mean_pmf}{a numeric matrix. The consensus pmf, `sum(pmfs, dim=3) / n_studies`}
+#'   \item{mean_pmf_included_n_reps}{a integer vector. Count of non-NaN replicates per reference point, summed over the studies}
+#'   \item{mean_pmf_counts}{a integer matrix. Residual counts per bin of the consensus, `sum(counts, dim=3)`}
+#' @export
+create_mean_pmf <- function(pmfs, counts, included_n_reps) {
+    pmfs <- .tox_as_double_array(pmfs, "pmfs", 3L)
+    counts <- .tox_as_integer_array(counts, "counts", 3L)
+    included_n_reps <- .tox_as_integer_matrix(included_n_reps, "included_n_reps")
+    if (dim(counts)[2] != dim(pmfs)[2])
+        .tox_shape_error("counts", dim(counts)[2], "pmfs", dim(pmfs)[2])
+    if (dim(counts)[1] != dim(pmfs)[1])
+        .tox_shape_error("counts", dim(counts)[1], "pmfs", dim(pmfs)[1])
+    if (dim(included_n_reps)[1] != dim(pmfs)[1])
+        .tox_shape_error("included_n_reps", dim(included_n_reps)[1], "pmfs", dim(pmfs)[1])
+    if (dim(counts)[3] != dim(pmfs)[3])
+        .tox_shape_error("counts", dim(counts)[3], "pmfs", dim(pmfs)[3])
+    if (dim(included_n_reps)[2] != dim(pmfs)[3])
+        .tox_shape_error("included_n_reps", dim(included_n_reps)[2], "pmfs", dim(pmfs)[3])
+
+    .result <- .Call("create_mean_pmf_call", pmfs, counts, included_n_reps)
+    .arguments <- c("pmfs", "counts", "n_bins", "n_points", "n_studies", "included_n_reps", "mean_pmf", "mean_pmf_included_n_reps", "mean_pmf_counts", "ierr")
+    .sources <- c(NA_character_, NA_character_, "pmfs", "pmfs", "pmfs", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        mean_pmf = .result$mean_pmf,
+        mean_pmf_included_n_reps = .result$mean_pmf_included_n_reps,
+        mean_pmf_counts = .result$mean_pmf_counts
+    )
+}
+
+#' Build only the consensus pmf from all studies' pmfs, without its histogram counts
+#'
+#' As \code{\link{create_mean_pmf}}, for
+#' callers that need no counts (the bootstrap). Same known limitation: the consensus includes
+#' the study compared against it.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_jsd::create_mean_pmf_only}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param pmfs a numeric array of rank 3. Per-study probabilities of each bin per reference point, from
+#'   \code{\link{build_residual_histograms}}
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#' @return a numeric matrix. The consensus pmf, `sum(pmfs, dim=3) / n_studies`
+#' @export
+create_mean_pmf_only <- function(pmfs) {
+    pmfs <- .tox_as_double_array(pmfs, "pmfs", 3L)
+    .result <- .Call("create_mean_pmf_only_call", pmfs)
+    .arguments <- c("pmfs", "n_bins", "n_points", "n_studies", "mean_pmf", "ierr")
+    .sources <- c(NA_character_, "pmfs", "pmfs", "pmfs", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    .result$mean_pmf
+}

@@ -7,7 +7,14 @@ consumes: gene-wise means, the signed deviation of each replicate from them, and
 neighborhoods of reference points those residuals are grouped into so the comparison is
 conditioned on expression level rather than pooled across it.
 
-`calc_neighborhood_size` sizes a neighborhood for a caller that allocates its own.
+Besides neighborhoods of a fixed size, the adaptive construction
+:func:`tensor_omics.construct_adaptive_neighborhoods`
+grows each reference point's neighborhood while its residual dispersion stays stable, and
+:func:`tensor_omics.check_neighborhood_overlaps`
+checks that consecutive neighborhoods overlap enough.
+
+`calc_neighborhood_size` sizes a neighborhood for a caller that allocates its own, and
+`gather_pooled_neighborhood_residuals` gathers a neighborhood's residuals of all studies.
 
 Python binding, generated from tox_data_integration_preprocessing. Do not edit.
 """
@@ -152,6 +159,51 @@ _lib.construct_neighborhoods_ranged_expert_c.argtypes = (
 _CONSTRUCT_NEIGHBORHOODS_RANGED_EXPERT_ARGUMENTS = ("n_points", "x_star", "n_genes_S", "mean_S", "mean_S_perm", "n_neighbors", "neighborhood_indices", "neighborhood_range", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _CONSTRUCT_NEIGHBORHOODS_RANGED_EXPERT_ARGUMENT_SOURCES = ("x_star", None, "mean_S", None, None, "neighborhood_indices", None, None, None,)
+
+_lib.construct_adaptive_neighborhoods_c.restype = None
+_lib.construct_adaptive_neighborhoods_c.argtypes = (
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_CONSTRUCT_ADAPTIVE_NEIGHBORHOODS_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "k_start", "k_step", "k_max", "n_points", "x_star", "pooled_neighborhood_range", "n_neighbors_per_point", "stop_reason", "neighborhood_dispersion", "neighborhood_mad", "max_n_neighbors", "construction_status", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CONSTRUCT_ADAPTIVE_NEIGHBORHOODS_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+
+_lib.check_neighborhood_overlaps_c.restype = None
+_lib.check_neighborhood_overlaps_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_bool),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENTS = ("neighborhood_range", "n_points", "min_neighbor_overlap", "all_have_min_neighbor_overlap", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENT_SOURCES = (None, "neighborhood_range", None, None, None,)
 
 def compute_gene_means(
         expr,
@@ -887,3 +939,312 @@ def construct_neighborhoods_ranged_expert(
         "neighborhood_indices": neighborhood_indices,
         "neighborhood_range": neighborhood_range,
     }
+
+def construct_adaptive_neighborhoods(
+        gene_means,
+        residuals,
+        k_start,
+        k_step,
+        k_max,
+        tau=0.1,
+        mad_distance_factor=1.0,
+        max_pooled_residuals=0,
+        min_study_neighbors=1,
+):
+    r"""Grow adaptive, dispersion-controlled neighborhoods over all studies' pooled gene means (Issue #217)
+
+    Instead of one fixed neighbor count, each neighborhood grows while the mean absolute residual
+    of its pool stays stable, and the next reference point is placed beyond it; the number of
+    reference points emerges. `k_start`, `k_step` and `k_max` count pooled entries (one entry is
+    one gene of one study).
+
+    **Pooling.** All studies' gene means are pooled into `N = max_n_genes_all_studies *
+    n_studies` entries (entry `(s - 1)*G + g` is gene `g` of study `s`) and sorted ascending; NaN
+    means take no part. A neighborhood is a contiguous run `a..b` of that order
+    (`pooled_neighborhood_range`, the input of
+    :func:`tensor_omics.check_neighborhood_overlaps`),
+    and its per-study counts `n_neighbors_per_point` add up to `b - a + 1`.
+
+    **Growth** around the reference point `x_star` (the mean at the seed position): entries join
+    nearest first, ties to the lower mean; the dispersion `S` is the mean absolute non-NaN
+    residual of the pool.
+
+    1. The first `k_start` entries join unconditionally. With fewer than
+    ``ADAPTIVE_MIN_VALID_RESIDUALS``
+    (`10`) non-NaN residuals the neighborhood stops with
+    ``ADAPTIVE_STOP_TOO_FEW_RESIDUALS``
+    (`6`); with all residuals zero, with
+    ``ADAPTIVE_STOP_ZERO_DISPERSION``
+    (`5`).
+    2. Then rounds of the next `min(k_step, k_max - count)` entries: a round with
+    `(S_new - S_old) / S_old > tau` is discarded and growth stops
+    (``ADAPTIVE_STOP_TAU``, `1`);
+    otherwise it is committed. Growth also stops at `k_max` entries
+    (``ADAPTIVE_STOP_K_MAX``, `2`,
+    checked first) or when no entry is left
+    (``ADAPTIVE_STOP_EXHAUSTED``, `4`).
+    3. With `max_pooled_residuals > 0`, a round stages whole entries only while the pool's
+    non-NaN residuals stay within that cap (the `k_start` phase is not capped); a capped round
+    is still evaluated, and growth then stops with
+    ``ADAPTIVE_STOP_RESIDUAL_CAP`` (`3`).
+
+    **Reference points.** The first seed is the smallest pooled mean. After a neighborhood ends at
+    sorted position `b`, the next seed is the first position after `b` whose mean is nearest
+    `mean(b) + mad_distance_factor * MAD` (ties to the lower mean), `MAD` being the raw median
+    absolute deviation of the neighborhood's pooled means. The construction ends with the
+    neighborhood that reaches the largest pooled mean.
+
+    **Construction status.**
+    ``ADAPTIVE_STATUS_TOO_FEW_MEANS``
+    (`1`) when fewer than `k_start` pooled means are non-NaN: nothing
+    is built, `n_points` and `max_n_neighbors` are 0. Otherwise the construction always completes,
+    and reports, in this priority,
+    ``ADAPTIVE_STATUS_TOO_FEW_RESIDUALS``
+    (`3`) if any neighborhood stopped with too few residuals,
+    ``ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD``
+    (`2`) if any has fewer than `min_study_neighbors`
+    entries of some study, else
+    ``ADAPTIVE_STATUS_OK`` (`0`).
+
+    Outputs sized by `N` are filled only for their first `n_points` reference points.
+
+    Parameters
+    ----------
+    gene_means : np.ndarray[np.float64] of shape (max_n_genes_all_studies, n_studies,), column-major (order='F')
+        Mean expression of every gene in every study, NaN for a missing gene
+        NaN is permitted for this value.
+    residuals : np.ndarray[np.float64] of shape (max_n_reps_all_studies, max_n_genes_all_studies, n_studies,), column-major (order='F')
+        Signed residuals of every replicate of every gene in every study, NaN for a missing value
+        NaN is permitted for this value.
+    k_start : int
+        Pooled entries every neighborhood takes unconditionally
+        The minimum valid value is `1`.
+    k_step : int
+        Pooled entries staged per adaptive growth round
+        The minimum valid value is `1`.
+    k_max : int
+        Largest number of pooled entries in one neighborhood
+        The minimum valid value is `k_start`.
+    tau : float, optional, default 0.1
+        Largest relative dispersion increase a growth round may cause and still be committed
+        The minimum valid value is `0.0`.
+        The default value is `0.1`.
+    mad_distance_factor : float, optional, default 1.0
+        Multiple of a neighborhood's MAD that the next reference point's target lies beyond
+        the neighborhood's largest mean
+        The minimum valid value is `0.0`.
+        The default value is `1.0`.
+    max_pooled_residuals : int, optional, default 0
+        Cap on a neighborhood's non-NaN residuals in the growth rounds; 0 for no cap
+        The minimum valid value is `0`.
+        The default value is `0`.
+    min_study_neighbors : int, optional, default 1
+        Fewest entries of each study every neighborhood must have for the construction
+        status to stay ok
+        The minimum valid value is `1`.
+        The default value is `1`.
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        x_star : np.ndarray[np.float64] of shape (max_n_genes_all_studies*n_studies,), read-only
+            Reference point of each neighborhood: the pooled mean at its seed position
+            The first `n_points` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        pooled_neighborhood_range : np.ndarray[np.int32] of shape (2, max_n_genes_all_studies*n_studies,), column-major (order='F'), read-only
+            For each neighborhood, its first and last position in the ascending order of the
+            pooled means
+            The first `n_points` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        n_neighbors_per_point : np.ndarray[np.int32] of shape (n_studies, max_n_genes_all_studies*n_studies,), column-major (order='F'), read-only
+            For each neighborhood, how many of its pooled entries belong to each study
+            The first `n_points` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        stop_reason : np.ndarray[np.int32] of shape (max_n_genes_all_studies*n_studies,), read-only
+            Why each neighborhood stopped growing: `1` tau exceeded,
+            `2` `k_max` reached, `3` residual cap
+            reached, `4` pool exhausted, `5`
+            zero dispersion, `6` too few residuals
+            The first `n_points` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        neighborhood_dispersion : np.ndarray[np.float64] of shape (max_n_genes_all_studies*n_studies,), read-only
+            Mean absolute non-NaN residual of each final neighborhood; NaN without any
+            The first `n_points` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        neighborhood_mad : np.ndarray[np.float64] of shape (max_n_genes_all_studies*n_studies,), read-only
+            Raw median absolute deviation of each final neighborhood's pooled means
+            The first `n_points` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        max_n_neighbors : int
+            Largest number of entries one study has in one neighborhood; 0 without a neighborhood
+        construction_status : int
+            Overall outcome: `0` ok, `1` too few
+            means, `2` a study neighborhood below
+            `min_study_neighbors`, `3` a neighborhood with too
+            few residuals
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_preprocessing::construct_adaptive_neighborhoods`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        gene_means = np.asfortranarray(gene_means, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'gene_means' must be an array of np.float64: {error}") from None
+    if gene_means.ndim != 2:
+        raise ValueError(f"'gene_means' must have 2 dimensions, but has {gene_means.ndim}")
+    try:
+        residuals = np.asfortranarray(residuals, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'residuals' must be an array of np.float64: {error}") from None
+    if residuals.ndim != 3:
+        raise ValueError(f"'residuals' must have 3 dimensions, but has {residuals.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_studies = gene_means.shape[1]
+    max_n_genes_all_studies = gene_means.shape[0]
+    max_n_reps_all_studies = residuals.shape[0]
+
+    # Fortran cannot check that shared extents agree; this can
+    if residuals.shape[2] != n_studies:
+        raise ValueError(f"'residuals' has {residuals.shape[2]} along axis 2, but "
+            f"'gene_means' implies n_studies == {n_studies}"
+        )
+    if residuals.shape[1] != max_n_genes_all_studies:
+        raise ValueError(f"'residuals' has {residuals.shape[1]} along axis 1, but "
+            f"'gene_means' implies max_n_genes_all_studies == {max_n_genes_all_studies}"
+        )
+
+    # outputs and work arrays, which the caller never sees
+    n_points = ctypes.c_int(0)
+    x_star = np.empty((max_n_genes_all_studies*n_studies,), dtype=np.float64, order='C')
+    pooled_neighborhood_range = np.empty((2, max_n_genes_all_studies*n_studies,), dtype=np.int32, order='F')
+    n_neighbors_per_point = np.empty((n_studies, max_n_genes_all_studies*n_studies,), dtype=np.int32, order='F')
+    stop_reason = np.empty((max_n_genes_all_studies*n_studies,), dtype=np.int32, order='C')
+    neighborhood_dispersion = np.empty((max_n_genes_all_studies*n_studies,), dtype=np.float64, order='C')
+    neighborhood_mad = np.empty((max_n_genes_all_studies*n_studies,), dtype=np.float64, order='C')
+    max_n_neighbors = ctypes.c_int(0)
+    construction_status = ctypes.c_int(0)
+    ierr = ctypes.c_int(0)
+
+    _lib.construct_adaptive_neighborhoods_c(
+        ctypes.byref(ctypes.c_int(n_studies)),
+        ctypes.byref(ctypes.c_int(max_n_genes_all_studies)),
+        ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
+        gene_means,
+        residuals,
+        ctypes.byref(ctypes.c_int(k_start)),
+        ctypes.byref(ctypes.c_int(k_step)),
+        ctypes.byref(ctypes.c_int(k_max)),
+        ctypes.byref(n_points),
+        x_star,
+        pooled_neighborhood_range,
+        n_neighbors_per_point,
+        stop_reason,
+        neighborhood_dispersion,
+        neighborhood_mad,
+        ctypes.byref(max_n_neighbors),
+        ctypes.byref(construction_status),
+        ctypes.byref(ctypes.c_double(tau)),
+        ctypes.byref(ctypes.c_double(mad_distance_factor)),
+        ctypes.byref(ctypes.c_int(max_pooled_residuals)),
+        ctypes.byref(ctypes.c_int(min_study_neighbors)),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _CONSTRUCT_ADAPTIVE_NEIGHBORHOODS_ARGUMENTS, _CONSTRUCT_ADAPTIVE_NEIGHBORHOODS_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    x_star.flags.writeable = False
+    pooled_neighborhood_range.flags.writeable = False
+    n_neighbors_per_point.flags.writeable = False
+    stop_reason.flags.writeable = False
+    neighborhood_dispersion.flags.writeable = False
+    neighborhood_mad.flags.writeable = False
+
+    return {
+        "x_star": x_star[..., :n_points.value],
+        "pooled_neighborhood_range": pooled_neighborhood_range[..., :n_points.value],
+        "n_neighbors_per_point": n_neighbors_per_point[..., :n_points.value],
+        "stop_reason": stop_reason[..., :n_points.value],
+        "neighborhood_dispersion": neighborhood_dispersion[..., :n_points.value],
+        "neighborhood_mad": neighborhood_mad[..., :n_points.value],
+        "max_n_neighbors": max_n_neighbors.value,
+        "construction_status": construction_status.value,
+    }
+
+def check_neighborhood_overlaps(
+        neighborhood_range,
+        min_neighbor_overlap,
+):
+    r"""Test whether every pair of consecutive neighborhoods overlaps by at least a minimum fraction
+
+    The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`
+    neighborhood spans of
+    :func:`tensor_omics.construct_neighborhoods_ranged`
+    (or the adaptive `pooled_neighborhood_range`). The overlap of two consecutive spans is the
+    number of positions they share divided by the length of the earlier span; a reversed span
+    (`max < min`) counts as empty. Not named `test_*`: the R test harness would run every
+    `test_`-prefixed export as a test case.
+
+    Parameters
+    ----------
+    neighborhood_range : np.ndarray[np.int32] of shape (2, n_points,), column-major (order='F')
+        For each reference point, the `[min_idx, max_idx]` neighborhood span
+        The minimum valid value is `1`.
+    min_neighbor_overlap : float
+        Minimum fractional overlap two consecutive neighborhoods must have
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+
+    Returns
+    -------
+    all_have_min_neighbor_overlap : bool
+        `True` if every pair of consecutive neighborhoods overlaps by at least
+        `min_neighbor_overlap`
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_preprocessing::check_neighborhood_overlaps`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        neighborhood_range = np.asfortranarray(neighborhood_range, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'neighborhood_range' must be an array of np.int32: {error}") from None
+    if neighborhood_range.ndim != 2:
+        raise ValueError(f"'neighborhood_range' must have 2 dimensions, but has {neighborhood_range.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_points = neighborhood_range.shape[1]
+
+    # outputs and work arrays, which the caller never sees
+    all_have_min_neighbor_overlap = ctypes.c_bool(0)
+    ierr = ctypes.c_int(0)
+
+    _lib.check_neighborhood_overlaps_c(
+        neighborhood_range,
+        ctypes.byref(ctypes.c_int(n_points)),
+        ctypes.byref(ctypes.c_double(min_neighbor_overlap)),
+        ctypes.byref(all_have_min_neighbor_overlap),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENTS, _CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENT_SOURCES)
+
+    return all_have_min_neighbor_overlap.value

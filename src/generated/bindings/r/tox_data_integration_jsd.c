@@ -14,6 +14,8 @@ void calc_pmf_c(const int*, const int*, const int*, const int*, double*, int*);
 void compute_divergence_per_reference_point_c(const double*, const double*, const int*, const int*, double*, int*);
 void compute_weighted_global_divergence_c(const double*, const int*, const int*, const int*, double*, double*, int*);
 void jct_compute_jsd_pipeline_c(const double*, const double*, const int*, const int*, const int*, const int*, const int*, const double*, double*, int*, int*, double*, double*, double*, double*, const unsigned char*, const unsigned char*, int*);
+void create_mean_pmf_c(const double*, const int*, const int*, const int*, const int*, const int*, double*, int*, int*, int*);
+void create_mean_pmf_only_c(const double*, const int*, const int*, const int*, double*, int*);
 
 SEXP determine_shared_residual_range_call(SEXP abs_residual_pool, SEXP residual_range_quantile_level) {
     int nprot = 0;
@@ -360,6 +362,81 @@ SEXP jct_compute_jsd_pipeline_call(SEXP neighborhood_residuals_S1, SEXP neighbor
     SET_STRING_ELT(_nms, 5, Rf_mkChar("pmf_S1"));
     SET_STRING_ELT(_nms, 6, Rf_mkChar("pmf_S2"));
     SET_STRING_ELT(_nms, 7, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP create_mean_pmf_call(SEXP pmfs, SEXP counts, SEXP included_n_reps) {
+    int nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_bins = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[1];
+    int n_points = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[0];
+    int n_studies = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[2];
+
+    // outputs and work space
+    SEXP mean_pmf = PROTECT(Rf_allocVector(REALSXP, n_points * n_bins)); nprot++;
+    { SEXP mean_pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_dim)[0] = n_points; INTEGER(mean_pmf_dim)[1] = n_bins; Rf_setAttrib(mean_pmf, R_DimSymbol, mean_pmf_dim); UNPROTECT(1); }
+    SEXP mean_pmf_included_n_reps = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
+    SEXP mean_pmf_counts = PROTECT(Rf_allocVector(INTSXP, n_points * n_bins)); nprot++;
+    { SEXP mean_pmf_counts_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_counts_dim)[0] = n_points; INTEGER(mean_pmf_counts_dim)[1] = n_bins; Rf_setAttrib(mean_pmf_counts, R_DimSymbol, mean_pmf_counts_dim); UNPROTECT(1); }
+    int ierr = 0;
+
+    create_mean_pmf_c(
+        REAL(pmfs),
+        INTEGER(counts),
+        &n_bins,
+        &n_points,
+        &n_studies,
+        INTEGER(included_n_reps),
+        REAL(mean_pmf),
+        INTEGER(mean_pmf_included_n_reps),
+        INTEGER(mean_pmf_counts),
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); nprot++;
+    SET_VECTOR_ELT(_out, 0, mean_pmf);
+    SET_VECTOR_ELT(_out, 1, mean_pmf_included_n_reps);
+    SET_VECTOR_ELT(_out, 2, mean_pmf_counts);
+    SET_VECTOR_ELT(_out, 3, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("mean_pmf"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("mean_pmf_included_n_reps"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("mean_pmf_counts"));
+    SET_STRING_ELT(_nms, 3, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP create_mean_pmf_only_call(SEXP pmfs) {
+    int nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_bins = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[1];
+    int n_points = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[0];
+    int n_studies = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[2];
+
+    // outputs and work space
+    SEXP mean_pmf = PROTECT(Rf_allocVector(REALSXP, n_points * n_bins)); nprot++;
+    { SEXP mean_pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_dim)[0] = n_points; INTEGER(mean_pmf_dim)[1] = n_bins; Rf_setAttrib(mean_pmf, R_DimSymbol, mean_pmf_dim); UNPROTECT(1); }
+    int ierr = 0;
+
+    create_mean_pmf_only_c(
+        REAL(pmfs),
+        &n_bins,
+        &n_points,
+        &n_studies,
+        REAL(mean_pmf),
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SET_VECTOR_ELT(_out, 0, mean_pmf);
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("mean_pmf"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;

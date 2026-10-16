@@ -99,12 +99,12 @@
       ")"
     ]
   },
-  "tox_data_integration_js_comp_test (import)": {
-    "prefix": "tox:data_integration_js_comp_test.setup",
-    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter Search",
+  "tox_data_integration_js_comp_test_binning (import)": {
+    "prefix": "tox:data_integration_js_comp_test_binning.setup",
+    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Bin Counts",
     "body": [
-      "from tensor_omics.tox_data_integration_js_comp_test import (",
-      "    ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,determine_bin_count_occupancy_exhaustive,determine_bin_count_occupancy_exhaustive_expert,determine_bin_count_stone,determine_bin_count_stone_expert,generate_js_comp_test_candidates,generate_adaptive_js_comp_test_candidates,construct_adaptive_neighborhoods,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_adaptive,run_js_comp_test_parameter_search,run_js_comp_test_adaptive_parameter_search|},",
+      "from tensor_omics.tox_data_integration_js_comp_test_binning import (",
+      "    ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,determine_bin_count_occupancy_exhaustive,determine_bin_count_occupancy_exhaustive_expert,determine_bin_count_stone,determine_bin_count_stone_expert|},",
       ")"
     ]
   },
@@ -238,126 +238,12 @@
       ")"
     ]
   },
-  "generate_js_comp_test_candidates (call)": {
-    "prefix": "tox:generate_js_comp_test_candidates",
-    "description": "Starting from `n_points_high = clamp(ceiling(4*sqrt(G)), MIN_POINTS, MAX_POINTS)` (`G` =",
+  "tox_data_integration_js_comp_test_run (import)": {
+    "prefix": "tox:data_integration_js_comp_test_run.setup",
+    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Final Run",
     "body": [
-      "${1:result} = generate_js_comp_test_candidates(",
-      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
-      ")"
-    ]
-  },
-  "generate_adaptive_js_comp_test_candidates (call)": {
-    "prefix": "tox:generate_adaptive_js_comp_test_candidates",
-    "description": "The adaptive counterpart of",
-    "body": [
-      "${1:result} = generate_adaptive_js_comp_test_candidates(",
-      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
-      "    n_studies=${3:n_studies},",
-      ")"
-    ]
-  },
-  "construct_adaptive_neighborhoods (call)": {
-    "prefix": "tox:construct_adaptive_neighborhoods",
-    "description": "Instead of one fixed neighbor count, each neighborhood grows while the mean absolute residual",
-    "body": [
-      "${1:result} = construct_adaptive_neighborhoods(",
-      "    gene_means=${2:gene_means},",
-      "    residuals=${3:residuals},",
-      "    k_start=${4:k_start},",
-      "    k_step=${5:k_step},",
-      "    k_max=${6:k_max},",
-      "    tau=${7:0.1},",
-      "    mad_distance_factor=${8:1.0},",
-      "    max_pooled_residuals=${9:0},",
-      "    min_study_neighbors=${10:1},",
-      ")"
-    ]
-  },
-  "check_neighborhood_overlaps (call)": {
-    "prefix": "tox:check_neighborhood_overlaps",
-    "description": "The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`",
-    "body": [
-      "${1:result} = check_neighborhood_overlaps(",
-      "    neighborhood_range=${2:neighborhood_range},",
-      "    min_neighbor_overlap=${3:min_neighbor_overlap},",
-      ")"
-    ]
-  },
-  "check_mean_pmf_min_counts (call)": {
-    "prefix": "tox:check_mean_pmf_min_counts",
-    "description": "The second admissibility gate of a parameter-search candidate, checked after",
-    "body": [
-      "${1:result} = check_mean_pmf_min_counts(",
-      "    mean_pmf_counts=${2:mean_pmf_counts},",
-      "    n_bins_per_point=${3:n_bins_per_point},",
-      "    min_count=${4:min_count},",
-      ")"
-    ]
-  },
-  "check_plateau_condition (call)": {
-    "prefix": "tox:check_plateau_condition",
-    "description": "For each study, the overlap of the new candidate's interval with the best one so far is",
-    "body": [
-      "${1:result} = check_plateau_condition(",
-      "    confidence_interval=${2:confidence_interval},",
-      "    best_candidate_pair_confidence_interval=${3:best_candidate_pair_confidence_interval},",
-      "    best_candidate_index=${4:best_candidate_index},",
-      "    best_exceeded_ci_overlap_count=${5:best_exceeded_ci_overlap_count},",
-      "    candidate_index=${6:candidate_index},",
-      "    join_method=${7|join_min,join_max,join_median|},",
-      "    succeeding_ci_overlap=${8:succeeding_ci_overlap},",
-      ")"
-    ]
-  },
-  "check_effect_size_plateau_condition (call)": {
-    "prefix": "tox:check_effect_size_plateau_condition",
-    "description": "The relative-effect-size alternative to",
-    "body": [
-      "${1:result} = check_effect_size_plateau_condition(",
-      "    global_js_divergence=${2:global_js_divergence},",
-      "    prev_global_js_divergence=${3:prev_global_js_divergence},",
-      "    has_previous=${4:has_previous},",
-      "    delta_median_threshold=${5:delta_median_threshold},",
-      "    delta_max_threshold=${6:delta_max_threshold},",
-      "    delta_epsilon=${7:delta_epsilon},",
-      "    delta_min_consecutive_transitions=${8:delta_min_consecutive_transitions},",
-      "    n_consecutive_ok=${9:n_consecutive_ok},",
-      ")"
-    ]
-  },
-  "create_mean_pmf (call)": {
-    "prefix": "tox:create_mean_pmf",
-    "description": "`mean_pmf` is the equal-weight mean of all studies' pmfs, `mean_pmf_counts` and",
-    "body": [
-      "${1:result} = create_mean_pmf(",
-      "    pmfs=${2:pmfs},",
-      "    counts=${3:counts},",
-      "    included_n_reps=${4:included_n_reps},",
-      ")"
-    ]
-  },
-  "create_mean_pmf_only (call)": {
-    "prefix": "tox:create_mean_pmf_only",
-    "description": "As [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]], for",
-    "body": [
-      "${1:result} = create_mean_pmf_only(",
-      "    pmfs=${2:pmfs},",
-      ")"
-    ]
-  },
-  "bootstrap_histogram (call)": {
-    "prefix": "tox:bootstrap_histogram",
-    "description": "In every bootstrap, each study's histogram at each reference point is drawn with replacement",
-    "body": [
-      "bootstrap_histogram(",
-      "    n_bootstraps=${1:n_bootstraps},",
-      "    mean_pmf_counts=${2:mean_pmf_counts},",
-      "    mean_pmf_included_n_reps=${3:mean_pmf_included_n_reps},",
-      "    included_n_reps=${4:included_n_reps},",
-      "    confidence_interval=${5:confidence_interval},",
-      "    two_sided_bootstrapping_significance_level=${6:2.5},",
-      "    random_seed=${7:42},",
+      "from tensor_omics.tox_data_integration_js_comp_test_run import (",
+      "    ${1|run_js_comp_test,run_js_comp_test_adaptive|},",
       ")"
     ]
   },
@@ -400,6 +286,76 @@
       "    lower_residual_range_quantile=${11:0.05},",
       "    upper_residual_range_quantile=${12:0.95},",
       "    bin_count_mode=${13|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
+      ")"
+    ]
+  },
+  "tox_data_integration_js_comp_test_search (import)": {
+    "prefix": "tox:data_integration_js_comp_test_search.setup",
+    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter Search",
+    "body": [
+      "from tensor_omics.tox_data_integration_js_comp_test_search import (",
+      "    ${1|generate_js_comp_test_candidates,generate_adaptive_js_comp_test_candidates,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,run_js_comp_test_parameter_search,run_js_comp_test_adaptive_parameter_search|},",
+      ")"
+    ]
+  },
+  "generate_js_comp_test_candidates (call)": {
+    "prefix": "tox:generate_js_comp_test_candidates",
+    "description": "Starting from `n_points_high = clamp(ceiling(4*sqrt(G)), MIN_POINTS, MAX_POINTS)` (`G` =",
+    "body": [
+      "${1:result} = generate_js_comp_test_candidates(",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
+      ")"
+    ]
+  },
+  "generate_adaptive_js_comp_test_candidates (call)": {
+    "prefix": "tox:generate_adaptive_js_comp_test_candidates",
+    "description": "The adaptive counterpart of",
+    "body": [
+      "${1:result} = generate_adaptive_js_comp_test_candidates(",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
+      "    n_studies=${3:n_studies},",
+      ")"
+    ]
+  },
+  "check_mean_pmf_min_counts (call)": {
+    "prefix": "tox:check_mean_pmf_min_counts",
+    "description": "The second admissibility gate of a parameter-search candidate, checked after",
+    "body": [
+      "${1:result} = check_mean_pmf_min_counts(",
+      "    mean_pmf_counts=${2:mean_pmf_counts},",
+      "    n_bins_per_point=${3:n_bins_per_point},",
+      "    min_count=${4:min_count},",
+      ")"
+    ]
+  },
+  "check_plateau_condition (call)": {
+    "prefix": "tox:check_plateau_condition",
+    "description": "For each study, the overlap of the new candidate's interval with the best one so far is",
+    "body": [
+      "${1:result} = check_plateau_condition(",
+      "    confidence_interval=${2:confidence_interval},",
+      "    best_candidate_pair_confidence_interval=${3:best_candidate_pair_confidence_interval},",
+      "    best_candidate_index=${4:best_candidate_index},",
+      "    best_exceeded_ci_overlap_count=${5:best_exceeded_ci_overlap_count},",
+      "    candidate_index=${6:candidate_index},",
+      "    join_method=${7|join_min,join_max,join_median|},",
+      "    succeeding_ci_overlap=${8:succeeding_ci_overlap},",
+      ")"
+    ]
+  },
+  "check_effect_size_plateau_condition (call)": {
+    "prefix": "tox:check_effect_size_plateau_condition",
+    "description": "The relative-effect-size alternative to",
+    "body": [
+      "${1:result} = check_effect_size_plateau_condition(",
+      "    global_js_divergence=${2:global_js_divergence},",
+      "    prev_global_js_divergence=${3:prev_global_js_divergence},",
+      "    has_previous=${4:has_previous},",
+      "    delta_median_threshold=${5:delta_median_threshold},",
+      "    delta_max_threshold=${6:delta_max_threshold},",
+      "    delta_epsilon=${7:delta_epsilon},",
+      "    delta_min_consecutive_transitions=${8:delta_min_consecutive_transitions},",
+      "    n_consecutive_ok=${9:n_consecutive_ok},",
       ")"
     ]
   },
@@ -466,12 +422,12 @@
       ")"
     ]
   },
-  "tox_data_integration_js_comp_test_impl (import)": {
-    "prefix": "tox:data_integration_js_comp_test_impl.setup",
+  "tox_data_integration_js_comp_test_search_impl (import)": {
+    "prefix": "tox:data_integration_js_comp_test_search_impl.setup",
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter Search",
     "body": [
-      "from tensor_omics.tox_data_integration_js_comp_test_impl import (",
-      "    ${1|calc_js_comp_test_candidate_bounds,calc_adaptive_js_comp_test_bounds,gather_pooled_neighborhood_residuals,calc_js_comp_test_n_top_k_jsds|},",
+      "from tensor_omics.tox_data_integration_js_comp_test_search_impl import (",
+      "    ${1|calc_js_comp_test_candidate_bounds,calc_adaptive_js_comp_test_bounds|},",
       ")"
     ]
   },
@@ -494,32 +450,12 @@
       ")"
     ]
   },
-  "gather_pooled_neighborhood_residuals (call)": {
-    "prefix": "tox:gather_pooled_neighborhood_residuals",
-    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat",
-    "body": [
-      "${1:result} = gather_pooled_neighborhood_residuals(",
-      "    residuals=${2:residuals},",
-      "    neighborhood_indices_point=${3:neighborhood_indices_point},",
-      ")"
-    ]
-  },
-  "calc_js_comp_test_n_top_k_jsds (call)": {
-    "prefix": "tox:calc_js_comp_test_n_top_k_jsds",
-    "description": "Sizes the top-k/bottom-k heaps",
-    "body": [
-      "${1:result} = calc_js_comp_test_n_top_k_jsds(",
-      "    n_bootstraps=${2:n_bootstraps},",
-      "    two_sided_bootstrapping_significance_level=${3:2.5},",
-      ")"
-    ]
-  },
   "tox_data_integration_jsd (import)": {
     "prefix": "tox:data_integration_jsd.setup",
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation",
     "body": [
       "from tensor_omics.tox_data_integration_jsd import (",
-      "    ${1|determine_shared_residual_range,determine_shared_residual_range_expert,determine_study_shared_residual_range,build_residual_histograms,calc_pmf,compute_divergence_per_reference_point,compute_weighted_global_divergence,jct_compute_jsd_pipeline|},",
+      "    ${1|determine_shared_residual_range,determine_shared_residual_range_expert,determine_study_shared_residual_range,build_residual_histograms,calc_pmf,compute_divergence_per_reference_point,compute_weighted_global_divergence,jct_compute_jsd_pipeline,create_mean_pmf,create_mean_pmf_only|},",
       ")"
     ]
   },
@@ -614,6 +550,26 @@
       ")"
     ]
   },
+  "create_mean_pmf (call)": {
+    "prefix": "tox:create_mean_pmf",
+    "description": "`mean_pmf` is the equal-weight mean of all studies' pmfs, `mean_pmf_counts` and",
+    "body": [
+      "${1:result} = create_mean_pmf(",
+      "    pmfs=${2:pmfs},",
+      "    counts=${3:counts},",
+      "    included_n_reps=${4:included_n_reps},",
+      ")"
+    ]
+  },
+  "create_mean_pmf_only (call)": {
+    "prefix": "tox:create_mean_pmf_only",
+    "description": "As [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]], for",
+    "body": [
+      "${1:result} = create_mean_pmf_only(",
+      "    pmfs=${2:pmfs},",
+      ")"
+    ]
+  },
   "tox_data_integration_per_family (import)": {
     "prefix": "tox:data_integration_per_family.setup",
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation per family",
@@ -669,7 +625,7 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing",
     "body": [
       "from tensor_omics.tox_data_integration_preprocessing import (",
-      "    ${1|compute_gene_means,compute_residuals,pool_means,pool_means_expert,pool_study_means,construct_neighborhoods,construct_neighborhoods_ranged,construct_neighborhoods_ranged_expert|},",
+      "    ${1|compute_gene_means,compute_residuals,pool_means,pool_means_expert,pool_study_means,construct_neighborhoods,construct_neighborhoods_ranged,construct_neighborhoods_ranged_expert,construct_adaptive_neighborhoods,check_neighborhood_overlaps|},",
       ")"
     ]
   },
@@ -759,12 +715,39 @@
       ")"
     ]
   },
+  "construct_adaptive_neighborhoods (call)": {
+    "prefix": "tox:construct_adaptive_neighborhoods",
+    "description": "Instead of one fixed neighbor count, each neighborhood grows while the mean absolute residual",
+    "body": [
+      "${1:result} = construct_adaptive_neighborhoods(",
+      "    gene_means=${2:gene_means},",
+      "    residuals=${3:residuals},",
+      "    k_start=${4:k_start},",
+      "    k_step=${5:k_step},",
+      "    k_max=${6:k_max},",
+      "    tau=${7:0.1},",
+      "    mad_distance_factor=${8:1.0},",
+      "    max_pooled_residuals=${9:0},",
+      "    min_study_neighbors=${10:1},",
+      ")"
+    ]
+  },
+  "check_neighborhood_overlaps (call)": {
+    "prefix": "tox:check_neighborhood_overlaps",
+    "description": "The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`",
+    "body": [
+      "${1:result} = check_neighborhood_overlaps(",
+      "    neighborhood_range=${2:neighborhood_range},",
+      "    min_neighbor_overlap=${3:min_neighbor_overlap},",
+      ")"
+    ]
+  },
   "tox_data_integration_preprocessing_impl (import)": {
     "prefix": "tox:data_integration_preprocessing_impl.setup",
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing",
     "body": [
       "from tensor_omics.tox_data_integration_preprocessing_impl import (",
-      "    ${1|calc_neighborhood_size|},",
+      "    ${1|calc_neighborhood_size,gather_pooled_neighborhood_residuals|},",
       ")"
     ]
   },
@@ -780,12 +763,22 @@
       ")"
     ]
   },
+  "gather_pooled_neighborhood_residuals (call)": {
+    "prefix": "tox:gather_pooled_neighborhood_residuals",
+    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat",
+    "body": [
+      "${1:result} = gather_pooled_neighborhood_residuals(",
+      "    residuals=${2:residuals},",
+      "    neighborhood_indices_point=${3:neighborhood_indices_point},",
+      ")"
+    ]
+  },
   "tox_data_integration_stats (import)": {
     "prefix": "tox:data_integration_stats.setup",
-    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Permutation Test",
+    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Permutation Test and Bootstrap",
     "body": [
       "from tensor_omics.tox_data_integration_stats import (",
-      "    ${1|gjct_permutation_test|},",
+      "    ${1|gjct_permutation_test,bootstrap_histogram|},",
       ")"
     ]
   },
@@ -801,6 +794,40 @@
       "    included_n_reps=${6:included_n_reps},",
       "    global_jsd_observed=${7:global_jsd_observed},",
       "    random_seed=${8:42},",
+      ")"
+    ]
+  },
+  "bootstrap_histogram (call)": {
+    "prefix": "tox:bootstrap_histogram",
+    "description": "In every bootstrap, each study's histogram at each reference point is drawn with replacement",
+    "body": [
+      "bootstrap_histogram(",
+      "    n_bootstraps=${1:n_bootstraps},",
+      "    mean_pmf_counts=${2:mean_pmf_counts},",
+      "    mean_pmf_included_n_reps=${3:mean_pmf_included_n_reps},",
+      "    included_n_reps=${4:included_n_reps},",
+      "    confidence_interval=${5:confidence_interval},",
+      "    two_sided_bootstrapping_significance_level=${6:2.5},",
+      "    random_seed=${7:42},",
+      ")"
+    ]
+  },
+  "tox_data_integration_stats_impl (import)": {
+    "prefix": "tox:data_integration_stats_impl.setup",
+    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Permutation Test and Bootstrap",
+    "body": [
+      "from tensor_omics.tox_data_integration_stats_impl import (",
+      "    ${1|calc_js_comp_test_n_top_k_jsds|},",
+      ")"
+    ]
+  },
+  "calc_js_comp_test_n_top_k_jsds (call)": {
+    "prefix": "tox:calc_js_comp_test_n_top_k_jsds",
+    "description": "Sizes the top-k/bottom-k heaps",
+    "body": [
+      "${1:result} = calc_js_comp_test_n_top_k_jsds(",
+      "    n_bootstraps=${2:n_bootstraps},",
+      "    two_sided_bootstrapping_significance_level=${3:2.5},",
       ")"
     ]
   },

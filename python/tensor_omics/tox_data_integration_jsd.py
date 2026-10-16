@@ -5,7 +5,10 @@ r"""tox_data_integration_jsd
 The step that turns neighborhood residuals -- as produced by the preprocessing module -- into
 a JSD value: residuals are binned into histograms per study, the two distributions are
 compared per reference point, and the per-point divergences are weighted into one global
-figure for the pair of studies.
+figure for the pair of studies. For K studies, each study is compared against the consensus pmf
+of all of them, built by
+:func:`tensor_omics.create_mean_pmf` (with its pooled
+counts) or :func:`tensor_omics.create_mean_pmf_only`.
 
 Python binding, generated from tox_data_integration_jsd. Do not edit.
 """
@@ -161,6 +164,40 @@ _lib.jct_compute_jsd_pipeline_c.argtypes = (
 _JCT_COMPUTE_JSD_PIPELINE_ARGUMENTS = ("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "n_bins", "shared_residual_range", "js_divergences", "included_n_reps_S1", "included_n_reps_S2", "global_js_divergence", "weights", "pmf_S1", "pmf_S2", "neighbor_mask_S1", "neighbor_mask_S2", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _JCT_COMPUTE_JSD_PIPELINE_ARGUMENT_SOURCES = (None, None, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", "pmf_S1", None, None, None, None, None, None, None, None, None, None, None,)
+
+_lib.create_mean_pmf_c.restype = None
+_lib.create_mean_pmf_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=3, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_CREATE_MEAN_PMF_ARGUMENTS = ("pmfs", "counts", "n_bins", "n_points", "n_studies", "included_n_reps", "mean_pmf", "mean_pmf_included_n_reps", "mean_pmf_counts", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CREATE_MEAN_PMF_ARGUMENT_SOURCES = (None, None, "pmfs", "pmfs", "pmfs", None, None, None, None, None,)
+
+_lib.create_mean_pmf_only_c.restype = None
+_lib.create_mean_pmf_only_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_CREATE_MEAN_PMF_ONLY_ARGUMENTS = ("pmfs", "n_bins", "n_points", "n_studies", "mean_pmf", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CREATE_MEAN_PMF_ONLY_ARGUMENT_SOURCES = (None, "pmfs", "pmfs", "pmfs", None, None,)
 
 def determine_shared_residual_range(
         abs_residual_pool,
@@ -979,3 +1016,199 @@ def jct_compute_jsd_pipeline(
         "pmf_S1": pmf_S1,
         "pmf_S2": pmf_S2,
     }
+
+def create_mean_pmf(
+        pmfs,
+        counts,
+        included_n_reps,
+):
+    r"""Build the consensus pmf and its histogram counts from all studies' pmfs
+
+    `mean_pmf` is the equal-weight mean of all studies' pmfs, `mean_pmf_counts` and
+    `mean_pmf_included_n_reps` the sums of their counts. Known limitation: every study is
+    compared against a consensus that includes itself, not a leave-one-out background.
+
+    Parameters
+    ----------
+    pmfs : np.ndarray[np.float64] of shape (n_points, n_bins, n_studies,), column-major (order='F')
+        Per-study probabilities of each bin per reference point, from
+        :func:`tensor_omics.build_residual_histograms`
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+    counts : np.ndarray[np.int32] of shape (n_points, n_bins, n_studies,), column-major (order='F')
+        Absolute counts of a residual per bin for `pmfs`
+        The minimum valid value is `0`.
+    included_n_reps : np.ndarray[np.int32] of shape (n_points, n_studies,), column-major (order='F')
+        Count of non-NaN replicates per reference point, per study; every study needs at
+        least one at every reference point
+        The minimum valid value is `1`.
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        mean_pmf : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F'), read-only
+            The consensus pmf, `sum(pmfs, dim=3) / n_studies`
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        mean_pmf_included_n_reps : np.ndarray[np.int32] of shape (n_points,), read-only
+            Count of non-NaN replicates per reference point, summed over the studies
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        mean_pmf_counts : np.ndarray[np.int32] of shape (n_points, n_bins,), column-major (order='F'), read-only
+            Residual counts per bin of the consensus, `sum(counts, dim=3)`
+            A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_jsd::create_mean_pmf`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        pmfs = np.asfortranarray(pmfs, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'pmfs' must be an array of np.float64: {error}") from None
+    if pmfs.ndim != 3:
+        raise ValueError(f"'pmfs' must have 3 dimensions, but has {pmfs.ndim}")
+    try:
+        counts = np.asfortranarray(counts, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'counts' must be an array of np.int32: {error}") from None
+    if counts.ndim != 3:
+        raise ValueError(f"'counts' must have 3 dimensions, but has {counts.ndim}")
+    try:
+        included_n_reps = np.asfortranarray(included_n_reps, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'included_n_reps' must be an array of np.int32: {error}") from None
+    if included_n_reps.ndim != 2:
+        raise ValueError(f"'included_n_reps' must have 2 dimensions, but has {included_n_reps.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_bins = pmfs.shape[1]
+    n_points = pmfs.shape[0]
+    n_studies = pmfs.shape[2]
+
+    # Fortran cannot check that shared extents agree; this can
+    if counts.shape[1] != n_bins:
+        raise ValueError(f"'counts' has {counts.shape[1]} along axis 1, but "
+            f"'pmfs' implies n_bins == {n_bins}"
+        )
+    if counts.shape[0] != n_points:
+        raise ValueError(f"'counts' has {counts.shape[0]} along axis 0, but "
+            f"'pmfs' implies n_points == {n_points}"
+        )
+    if included_n_reps.shape[0] != n_points:
+        raise ValueError(f"'included_n_reps' has {included_n_reps.shape[0]} along axis 0, but "
+            f"'pmfs' implies n_points == {n_points}"
+        )
+    if counts.shape[2] != n_studies:
+        raise ValueError(f"'counts' has {counts.shape[2]} along axis 2, but "
+            f"'pmfs' implies n_studies == {n_studies}"
+        )
+    if included_n_reps.shape[1] != n_studies:
+        raise ValueError(f"'included_n_reps' has {included_n_reps.shape[1]} along axis 1, but "
+            f"'pmfs' implies n_studies == {n_studies}"
+        )
+
+    # outputs and work arrays, which the caller never sees
+    mean_pmf = np.empty((n_points, n_bins,), dtype=np.float64, order='F')
+    mean_pmf_included_n_reps = np.empty((n_points,), dtype=np.int32, order='C')
+    mean_pmf_counts = np.empty((n_points, n_bins,), dtype=np.int32, order='F')
+    ierr = ctypes.c_int(0)
+
+    _lib.create_mean_pmf_c(
+        pmfs,
+        counts,
+        ctypes.byref(ctypes.c_int(n_bins)),
+        ctypes.byref(ctypes.c_int(n_points)),
+        ctypes.byref(ctypes.c_int(n_studies)),
+        included_n_reps,
+        mean_pmf,
+        mean_pmf_included_n_reps,
+        mean_pmf_counts,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _CREATE_MEAN_PMF_ARGUMENTS, _CREATE_MEAN_PMF_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    mean_pmf.flags.writeable = False
+    mean_pmf_included_n_reps.flags.writeable = False
+    mean_pmf_counts.flags.writeable = False
+
+    return {
+        "mean_pmf": mean_pmf,
+        "mean_pmf_included_n_reps": mean_pmf_included_n_reps,
+        "mean_pmf_counts": mean_pmf_counts,
+    }
+
+def create_mean_pmf_only(
+        pmfs,
+):
+    r"""Build only the consensus pmf from all studies' pmfs, without its histogram counts
+
+    As :func:`tensor_omics.create_mean_pmf`, for
+    callers that need no counts (the bootstrap). Same known limitation: the consensus includes
+    the study compared against it.
+
+    Parameters
+    ----------
+    pmfs : np.ndarray[np.float64] of shape (n_points, n_bins, n_studies,), column-major (order='F')
+        Per-study probabilities of each bin per reference point, from
+        :func:`tensor_omics.build_residual_histograms`
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+
+    Returns
+    -------
+    mean_pmf : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F'), read-only
+        The consensus pmf, `sum(pmfs, dim=3) / n_studies`
+        A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_jsd::create_mean_pmf_only`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        pmfs = np.asfortranarray(pmfs, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'pmfs' must be an array of np.float64: {error}") from None
+    if pmfs.ndim != 3:
+        raise ValueError(f"'pmfs' must have 3 dimensions, but has {pmfs.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_bins = pmfs.shape[1]
+    n_points = pmfs.shape[0]
+    n_studies = pmfs.shape[2]
+
+    # outputs and work arrays, which the caller never sees
+    mean_pmf = np.empty((n_points, n_bins,), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+
+    _lib.create_mean_pmf_only_c(
+        pmfs,
+        ctypes.byref(ctypes.c_int(n_bins)),
+        ctypes.byref(ctypes.c_int(n_points)),
+        ctypes.byref(ctypes.c_int(n_studies)),
+        mean_pmf,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _CREATE_MEAN_PMF_ONLY_ARGUMENTS, _CREATE_MEAN_PMF_ONLY_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    mean_pmf.flags.writeable = False
+
+    return mean_pmf

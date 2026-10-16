@@ -272,11 +272,11 @@
       "if (is_err(ierr)) return"
     ]
   },
-  "tox_data_integration_js_comp_test (use)": {
-    "prefix": "tox:data_integration_js_comp_test.use",
-    "description": "use tox_data_integration_js_comp_test, only: ...",
+  "tox_data_integration_js_comp_test_binning (use)": {
+    "prefix": "tox:data_integration_js_comp_test_binning.use",
+    "description": "use tox_data_integration_js_comp_test_binning, only: ...",
     "body": [
-      "use tox_data_integration_js_comp_test, only: ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,determine_bin_count_occupancy_exhaustive,determine_bin_count_occupancy_exhaustive_expert,determine_bin_count_stone,determine_bin_count_stone_expert,generate_js_comp_test_candidates,generate_adaptive_js_comp_test_candidates,construct_adaptive_neighborhoods,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_adaptive,run_js_comp_test_parameter_search,run_js_comp_test_adaptive_parameter_search|}"
+      "use tox_data_integration_js_comp_test_binning, only: ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,determine_bin_count_occupancy_exhaustive,determine_bin_count_occupancy_exhaustive_expert,determine_bin_count_stone,determine_bin_count_stone_expert|}"
     ]
   },
   "estimate_bin_count (call)": {
@@ -683,344 +683,11 @@
       "if (is_err(ierr)) return"
     ]
   },
-  "generate_js_comp_test_candidates (call)": {
-    "prefix": "tox:generate_js_comp_test_candidates",
-    "description": "Starting from `n_points_high = clamp(ceiling(4*sqrt(G)), MIN_POINTS, MAX_POINTS)` (`G` =",
+  "tox_data_integration_js_comp_test_run (use)": {
+    "prefix": "tox:data_integration_js_comp_test_run.use",
+    "description": "use tox_data_integration_js_comp_test_run, only: ...",
     "body": [
-      "call generate_js_comp_test_candidates( &",
-      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
-      "    candidates_n_points_n_neighbors=${2:candidates_n_points_n_neighbors}, &",
-      "    n_candidates=${3:n_candidates}, &",
-      "    ierr=${4:ierr})"
-    ]
-  },
-  "generate_js_comp_test_candidates (call, checked)": {
-    "prefix": "tox:generate_js_comp_test_candidates.checked",
-    "description": "Starting from `n_points_high = clamp(ceiling(4*sqrt(G)), MIN_POINTS, MAX_POINTS)` (`G` = (with error check)",
-    "body": [
-      "call generate_js_comp_test_candidates( &",
-      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
-      "    candidates_n_points_n_neighbors=${2:candidates_n_points_n_neighbors}, &",
-      "    n_candidates=${3:n_candidates}, &",
-      "    ierr=${4:ierr})",
-      "if (is_err(ierr)) return"
-    ]
-  },
-  "generate_adaptive_js_comp_test_candidates (call)": {
-    "prefix": "tox:generate_adaptive_js_comp_test_candidates",
-    "description": "The adaptive counterpart of",
-    "body": [
-      "call generate_adaptive_js_comp_test_candidates( &",
-      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
-      "    n_studies=${2:n_studies}, &",
-      "    candidates_k_start_k_step_k_max=${3:candidates_k_start_k_step_k_max}, &",
-      "    n_candidates=${4:n_candidates}, &",
-      "    ierr=${5:ierr})"
-    ]
-  },
-  "generate_adaptive_js_comp_test_candidates (call, checked)": {
-    "prefix": "tox:generate_adaptive_js_comp_test_candidates.checked",
-    "description": "The adaptive counterpart of (with error check)",
-    "body": [
-      "call generate_adaptive_js_comp_test_candidates( &",
-      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
-      "    n_studies=${2:n_studies}, &",
-      "    candidates_k_start_k_step_k_max=${3:candidates_k_start_k_step_k_max}, &",
-      "    n_candidates=${4:n_candidates}, &",
-      "    ierr=${5:ierr})",
-      "if (is_err(ierr)) return"
-    ]
-  },
-  "construct_adaptive_neighborhoods (call)": {
-    "prefix": "tox:construct_adaptive_neighborhoods",
-    "description": "Instead of one fixed neighbor count, each neighborhood grows while the mean absolute residual",
-    "body": [
-      "call construct_adaptive_neighborhoods( &",
-      "    n_studies=${1:n_studies}, &",
-      "    max_n_genes_all_studies=${2:max_n_genes_all_studies}, &",
-      "    max_n_reps_all_studies=${3:max_n_reps_all_studies}, &",
-      "    gene_means=${4:gene_means}, &",
-      "    residuals=${5:residuals}, &",
-      "    k_start=${6:k_start}, &",
-      "    k_step=${7:k_step}, &",
-      "    k_max=${8:k_max}, &",
-      "    n_points=${9:n_points}, &",
-      "    x_star=${10:x_star}, &",
-      "    pooled_neighborhood_range=${11:pooled_neighborhood_range}, &",
-      "    n_neighbors_per_point=${12:n_neighbors_per_point}, &",
-      "    stop_reason=${13:stop_reason}, &",
-      "    neighborhood_dispersion=${14:neighborhood_dispersion}, &",
-      "    neighborhood_mad=${15:neighborhood_mad}, &",
-      "    max_n_neighbors=${16:max_n_neighbors}, &",
-      "    construction_status=${17:construction_status}, &",
-      "    tau=${18:tau}, &",
-      "    mad_distance_factor=${19:mad_distance_factor}, &",
-      "    max_pooled_residuals=${20:max_pooled_residuals}, &",
-      "    min_study_neighbors=${21:min_study_neighbors}, &",
-      "    ierr=${22:ierr})"
-    ]
-  },
-  "construct_adaptive_neighborhoods (call, checked)": {
-    "prefix": "tox:construct_adaptive_neighborhoods.checked",
-    "description": "Instead of one fixed neighbor count, each neighborhood grows while the mean absolute residual (with error check)",
-    "body": [
-      "call construct_adaptive_neighborhoods( &",
-      "    n_studies=${1:n_studies}, &",
-      "    max_n_genes_all_studies=${2:max_n_genes_all_studies}, &",
-      "    max_n_reps_all_studies=${3:max_n_reps_all_studies}, &",
-      "    gene_means=${4:gene_means}, &",
-      "    residuals=${5:residuals}, &",
-      "    k_start=${6:k_start}, &",
-      "    k_step=${7:k_step}, &",
-      "    k_max=${8:k_max}, &",
-      "    n_points=${9:n_points}, &",
-      "    x_star=${10:x_star}, &",
-      "    pooled_neighborhood_range=${11:pooled_neighborhood_range}, &",
-      "    n_neighbors_per_point=${12:n_neighbors_per_point}, &",
-      "    stop_reason=${13:stop_reason}, &",
-      "    neighborhood_dispersion=${14:neighborhood_dispersion}, &",
-      "    neighborhood_mad=${15:neighborhood_mad}, &",
-      "    max_n_neighbors=${16:max_n_neighbors}, &",
-      "    construction_status=${17:construction_status}, &",
-      "    tau=${18:tau}, &",
-      "    mad_distance_factor=${19:mad_distance_factor}, &",
-      "    max_pooled_residuals=${20:max_pooled_residuals}, &",
-      "    min_study_neighbors=${21:min_study_neighbors}, &",
-      "    ierr=${22:ierr})",
-      "if (is_err(ierr)) return"
-    ]
-  },
-  "check_neighborhood_overlaps (call)": {
-    "prefix": "tox:check_neighborhood_overlaps",
-    "description": "The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`",
-    "body": [
-      "call check_neighborhood_overlaps( &",
-      "    neighborhood_range=${1:neighborhood_range}, &",
-      "    n_points=${2:n_points}, &",
-      "    min_neighbor_overlap=${3:min_neighbor_overlap}, &",
-      "    all_have_min_neighbor_overlap=${4:all_have_min_neighbor_overlap}, &",
-      "    ierr=${5:ierr})"
-    ]
-  },
-  "check_neighborhood_overlaps (call, checked)": {
-    "prefix": "tox:check_neighborhood_overlaps.checked",
-    "description": "The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]` (with error check)",
-    "body": [
-      "call check_neighborhood_overlaps( &",
-      "    neighborhood_range=${1:neighborhood_range}, &",
-      "    n_points=${2:n_points}, &",
-      "    min_neighbor_overlap=${3:min_neighbor_overlap}, &",
-      "    all_have_min_neighbor_overlap=${4:all_have_min_neighbor_overlap}, &",
-      "    ierr=${5:ierr})",
-      "if (is_err(ierr)) return"
-    ]
-  },
-  "check_mean_pmf_min_counts (call)": {
-    "prefix": "tox:check_mean_pmf_min_counts",
-    "description": "The second admissibility gate of a parameter-search candidate, checked after",
-    "body": [
-      "call check_mean_pmf_min_counts( &",
-      "    mean_pmf_counts=${1:mean_pmf_counts}, &",
-      "    n_bins=${2:n_bins}, &",
-      "    n_bins_per_point=${3:n_bins_per_point}, &",
-      "    n_points=${4:n_points}, &",
-      "    min_count=${5:min_count}, &",
-      "    all_bins_have_min_count=${6:all_bins_have_min_count}, &",
-      "    ierr=${7:ierr})"
-    ]
-  },
-  "check_mean_pmf_min_counts (call, checked)": {
-    "prefix": "tox:check_mean_pmf_min_counts.checked",
-    "description": "The second admissibility gate of a parameter-search candidate, checked after (with error check)",
-    "body": [
-      "call check_mean_pmf_min_counts( &",
-      "    mean_pmf_counts=${1:mean_pmf_counts}, &",
-      "    n_bins=${2:n_bins}, &",
-      "    n_bins_per_point=${3:n_bins_per_point}, &",
-      "    n_points=${4:n_points}, &",
-      "    min_count=${5:min_count}, &",
-      "    all_bins_have_min_count=${6:all_bins_have_min_count}, &",
-      "    ierr=${7:ierr})",
-      "if (is_err(ierr)) return"
-    ]
-  },
-  "check_plateau_condition (call)": {
-    "prefix": "tox:check_plateau_condition",
-    "description": "For each study, the overlap of the new candidate's interval with the best one so far is",
-    "body": [
-      "call check_plateau_condition( &",
-      "    confidence_interval=${1:confidence_interval}, &",
-      "    best_candidate_pair_confidence_interval=${2:best_candidate_pair_confidence_interval}, &",
-      "    n_studies=${3:n_studies}, &",
-      "    best_candidate_index=${4:best_candidate_index}, &",
-      "    best_exceeded_ci_overlap_count=${5:best_exceeded_ci_overlap_count}, &",
-      "    candidate_index=${6:candidate_index}, &",
-      "    join_method=${7|METHOD_JOIN_MIN,METHOD_JOIN_MAX,METHOD_JOIN_MEDIAN|}, &",
-      "    succeeding_ci_overlap=${8:succeeding_ci_overlap}, &",
-      "    ci_overlap=${9:ci_overlap}, &",
-      "    plateau_found=${10:plateau_found}, &",
-      "    ierr=${11:ierr})"
-    ]
-  },
-  "check_plateau_condition (call, checked)": {
-    "prefix": "tox:check_plateau_condition.checked",
-    "description": "For each study, the overlap of the new candidate's interval with the best one so far is (with error check)",
-    "body": [
-      "call check_plateau_condition( &",
-      "    confidence_interval=${1:confidence_interval}, &",
-      "    best_candidate_pair_confidence_interval=${2:best_candidate_pair_confidence_interval}, &",
-      "    n_studies=${3:n_studies}, &",
-      "    best_candidate_index=${4:best_candidate_index}, &",
-      "    best_exceeded_ci_overlap_count=${5:best_exceeded_ci_overlap_count}, &",
-      "    candidate_index=${6:candidate_index}, &",
-      "    join_method=${7|METHOD_JOIN_MIN,METHOD_JOIN_MAX,METHOD_JOIN_MEDIAN|}, &",
-      "    succeeding_ci_overlap=${8:succeeding_ci_overlap}, &",
-      "    ci_overlap=${9:ci_overlap}, &",
-      "    plateau_found=${10:plateau_found}, &",
-      "    ierr=${11:ierr})",
-      "if (is_err(ierr)) return"
-    ]
-  },
-  "check_effect_size_plateau_condition (call)": {
-    "prefix": "tox:check_effect_size_plateau_condition",
-    "description": "The relative-effect-size alternative to",
-    "body": [
-      "call check_effect_size_plateau_condition( &",
-      "    global_js_divergence=${1:global_js_divergence}, &",
-      "    prev_global_js_divergence=${2:prev_global_js_divergence}, &",
-      "    n_studies=${3:n_studies}, &",
-      "    has_previous=${4:has_previous}, &",
-      "    delta_median_threshold=${5:delta_median_threshold}, &",
-      "    delta_max_threshold=${6:delta_max_threshold}, &",
-      "    delta_epsilon=${7:delta_epsilon}, &",
-      "    delta_min_consecutive_transitions=${8:delta_min_consecutive_transitions}, &",
-      "    n_consecutive_ok=${9:n_consecutive_ok}, &",
-      "    delta=${10:delta}, &",
-      "    delta_median=${11:delta_median}, &",
-      "    delta_max=${12:delta_max}, &",
-      "    plateau_found=${13:plateau_found}, &",
-      "    ierr=${14:ierr})"
-    ]
-  },
-  "check_effect_size_plateau_condition (call, checked)": {
-    "prefix": "tox:check_effect_size_plateau_condition.checked",
-    "description": "The relative-effect-size alternative to (with error check)",
-    "body": [
-      "call check_effect_size_plateau_condition( &",
-      "    global_js_divergence=${1:global_js_divergence}, &",
-      "    prev_global_js_divergence=${2:prev_global_js_divergence}, &",
-      "    n_studies=${3:n_studies}, &",
-      "    has_previous=${4:has_previous}, &",
-      "    delta_median_threshold=${5:delta_median_threshold}, &",
-      "    delta_max_threshold=${6:delta_max_threshold}, &",
-      "    delta_epsilon=${7:delta_epsilon}, &",
-      "    delta_min_consecutive_transitions=${8:delta_min_consecutive_transitions}, &",
-      "    n_consecutive_ok=${9:n_consecutive_ok}, &",
-      "    delta=${10:delta}, &",
-      "    delta_median=${11:delta_median}, &",
-      "    delta_max=${12:delta_max}, &",
-      "    plateau_found=${13:plateau_found}, &",
-      "    ierr=${14:ierr})",
-      "if (is_err(ierr)) return"
-    ]
-  },
-  "create_mean_pmf (call)": {
-    "prefix": "tox:create_mean_pmf",
-    "description": "`mean_pmf` is the equal-weight mean of all studies' pmfs, `mean_pmf_counts` and",
-    "body": [
-      "call create_mean_pmf( &",
-      "    pmfs=${1:pmfs}, &",
-      "    counts=${2:counts}, &",
-      "    n_bins=${3:n_bins}, &",
-      "    n_points=${4:n_points}, &",
-      "    n_studies=${5:n_studies}, &",
-      "    included_n_reps=${6:included_n_reps}, &",
-      "    mean_pmf=${7:mean_pmf}, &",
-      "    mean_pmf_included_n_reps=${8:mean_pmf_included_n_reps}, &",
-      "    mean_pmf_counts=${9:mean_pmf_counts}, &",
-      "    ierr=${10:ierr})"
-    ]
-  },
-  "create_mean_pmf (call, checked)": {
-    "prefix": "tox:create_mean_pmf.checked",
-    "description": "`mean_pmf` is the equal-weight mean of all studies' pmfs, `mean_pmf_counts` and (with error check)",
-    "body": [
-      "call create_mean_pmf( &",
-      "    pmfs=${1:pmfs}, &",
-      "    counts=${2:counts}, &",
-      "    n_bins=${3:n_bins}, &",
-      "    n_points=${4:n_points}, &",
-      "    n_studies=${5:n_studies}, &",
-      "    included_n_reps=${6:included_n_reps}, &",
-      "    mean_pmf=${7:mean_pmf}, &",
-      "    mean_pmf_included_n_reps=${8:mean_pmf_included_n_reps}, &",
-      "    mean_pmf_counts=${9:mean_pmf_counts}, &",
-      "    ierr=${10:ierr})",
-      "if (is_err(ierr)) return"
-    ]
-  },
-  "create_mean_pmf_only (call)": {
-    "prefix": "tox:create_mean_pmf_only",
-    "description": "As [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]], for",
-    "body": [
-      "call create_mean_pmf_only( &",
-      "    pmfs=${1:pmfs}, &",
-      "    n_bins=${2:n_bins}, &",
-      "    n_points=${3:n_points}, &",
-      "    n_studies=${4:n_studies}, &",
-      "    mean_pmf=${5:mean_pmf}, &",
-      "    ierr=${6:ierr})"
-    ]
-  },
-  "create_mean_pmf_only (call, checked)": {
-    "prefix": "tox:create_mean_pmf_only.checked",
-    "description": "As [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]], for (with error check)",
-    "body": [
-      "call create_mean_pmf_only( &",
-      "    pmfs=${1:pmfs}, &",
-      "    n_bins=${2:n_bins}, &",
-      "    n_points=${3:n_points}, &",
-      "    n_studies=${4:n_studies}, &",
-      "    mean_pmf=${5:mean_pmf}, &",
-      "    ierr=${6:ierr})",
-      "if (is_err(ierr)) return"
-    ]
-  },
-  "bootstrap_histogram (call)": {
-    "prefix": "tox:bootstrap_histogram",
-    "description": "In every bootstrap, each study's histogram at each reference point is drawn with replacement",
-    "body": [
-      "call bootstrap_histogram( &",
-      "    n_bootstraps=${1:n_bootstraps}, &",
-      "    n_bins=${2:n_bins}, &",
-      "    n_points=${3:n_points}, &",
-      "    n_studies=${4:n_studies}, &",
-      "    mean_pmf_counts=${5:mean_pmf_counts}, &",
-      "    mean_pmf_included_n_reps=${6:mean_pmf_included_n_reps}, &",
-      "    included_n_reps=${7:included_n_reps}, &",
-      "    confidence_interval=${8:confidence_interval}, &",
-      "    two_sided_bootstrapping_significance_level=${9:two_sided_bootstrapping_significance_level}, &",
-      "    random_seed=${10:random_seed}, &",
-      "    ierr=${11:ierr})"
-    ]
-  },
-  "bootstrap_histogram (call, checked)": {
-    "prefix": "tox:bootstrap_histogram.checked",
-    "description": "In every bootstrap, each study's histogram at each reference point is drawn with replacement (with error check)",
-    "body": [
-      "call bootstrap_histogram( &",
-      "    n_bootstraps=${1:n_bootstraps}, &",
-      "    n_bins=${2:n_bins}, &",
-      "    n_points=${3:n_points}, &",
-      "    n_studies=${4:n_studies}, &",
-      "    mean_pmf_counts=${5:mean_pmf_counts}, &",
-      "    mean_pmf_included_n_reps=${6:mean_pmf_included_n_reps}, &",
-      "    included_n_reps=${7:included_n_reps}, &",
-      "    confidence_interval=${8:confidence_interval}, &",
-      "    two_sided_bootstrapping_significance_level=${9:two_sided_bootstrapping_significance_level}, &",
-      "    random_seed=${10:random_seed}, &",
-      "    ierr=${11:ierr})",
-      "if (is_err(ierr)) return"
+      "use tox_data_integration_js_comp_test_run, only: ${1|run_js_comp_test,run_js_comp_test_adaptive|}"
     ]
   },
   "run_js_comp_test (call)": {
@@ -1216,6 +883,170 @@
       "    upper_residual_range_quantile=${38:upper_residual_range_quantile}, &",
       "    bin_count_mode=${39|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    ierr=${40:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_data_integration_js_comp_test_search (use)": {
+    "prefix": "tox:data_integration_js_comp_test_search.use",
+    "description": "use tox_data_integration_js_comp_test_search, only: ...",
+    "body": [
+      "use tox_data_integration_js_comp_test_search, only: ${1|generate_js_comp_test_candidates,generate_adaptive_js_comp_test_candidates,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,run_js_comp_test_parameter_search,run_js_comp_test_adaptive_parameter_search|}"
+    ]
+  },
+  "generate_js_comp_test_candidates (call)": {
+    "prefix": "tox:generate_js_comp_test_candidates",
+    "description": "Starting from `n_points_high = clamp(ceiling(4*sqrt(G)), MIN_POINTS, MAX_POINTS)` (`G` =",
+    "body": [
+      "call generate_js_comp_test_candidates( &",
+      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
+      "    candidates_n_points_n_neighbors=${2:candidates_n_points_n_neighbors}, &",
+      "    n_candidates=${3:n_candidates}, &",
+      "    ierr=${4:ierr})"
+    ]
+  },
+  "generate_js_comp_test_candidates (call, checked)": {
+    "prefix": "tox:generate_js_comp_test_candidates.checked",
+    "description": "Starting from `n_points_high = clamp(ceiling(4*sqrt(G)), MIN_POINTS, MAX_POINTS)` (`G` = (with error check)",
+    "body": [
+      "call generate_js_comp_test_candidates( &",
+      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
+      "    candidates_n_points_n_neighbors=${2:candidates_n_points_n_neighbors}, &",
+      "    n_candidates=${3:n_candidates}, &",
+      "    ierr=${4:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "generate_adaptive_js_comp_test_candidates (call)": {
+    "prefix": "tox:generate_adaptive_js_comp_test_candidates",
+    "description": "The adaptive counterpart of",
+    "body": [
+      "call generate_adaptive_js_comp_test_candidates( &",
+      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
+      "    n_studies=${2:n_studies}, &",
+      "    candidates_k_start_k_step_k_max=${3:candidates_k_start_k_step_k_max}, &",
+      "    n_candidates=${4:n_candidates}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "generate_adaptive_js_comp_test_candidates (call, checked)": {
+    "prefix": "tox:generate_adaptive_js_comp_test_candidates.checked",
+    "description": "The adaptive counterpart of (with error check)",
+    "body": [
+      "call generate_adaptive_js_comp_test_candidates( &",
+      "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
+      "    n_studies=${2:n_studies}, &",
+      "    candidates_k_start_k_step_k_max=${3:candidates_k_start_k_step_k_max}, &",
+      "    n_candidates=${4:n_candidates}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "check_mean_pmf_min_counts (call)": {
+    "prefix": "tox:check_mean_pmf_min_counts",
+    "description": "The second admissibility gate of a parameter-search candidate, checked after",
+    "body": [
+      "call check_mean_pmf_min_counts( &",
+      "    mean_pmf_counts=${1:mean_pmf_counts}, &",
+      "    n_bins=${2:n_bins}, &",
+      "    n_bins_per_point=${3:n_bins_per_point}, &",
+      "    n_points=${4:n_points}, &",
+      "    min_count=${5:min_count}, &",
+      "    all_bins_have_min_count=${6:all_bins_have_min_count}, &",
+      "    ierr=${7:ierr})"
+    ]
+  },
+  "check_mean_pmf_min_counts (call, checked)": {
+    "prefix": "tox:check_mean_pmf_min_counts.checked",
+    "description": "The second admissibility gate of a parameter-search candidate, checked after (with error check)",
+    "body": [
+      "call check_mean_pmf_min_counts( &",
+      "    mean_pmf_counts=${1:mean_pmf_counts}, &",
+      "    n_bins=${2:n_bins}, &",
+      "    n_bins_per_point=${3:n_bins_per_point}, &",
+      "    n_points=${4:n_points}, &",
+      "    min_count=${5:min_count}, &",
+      "    all_bins_have_min_count=${6:all_bins_have_min_count}, &",
+      "    ierr=${7:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "check_plateau_condition (call)": {
+    "prefix": "tox:check_plateau_condition",
+    "description": "For each study, the overlap of the new candidate's interval with the best one so far is",
+    "body": [
+      "call check_plateau_condition( &",
+      "    confidence_interval=${1:confidence_interval}, &",
+      "    best_candidate_pair_confidence_interval=${2:best_candidate_pair_confidence_interval}, &",
+      "    n_studies=${3:n_studies}, &",
+      "    best_candidate_index=${4:best_candidate_index}, &",
+      "    best_exceeded_ci_overlap_count=${5:best_exceeded_ci_overlap_count}, &",
+      "    candidate_index=${6:candidate_index}, &",
+      "    join_method=${7|METHOD_JOIN_MIN,METHOD_JOIN_MAX,METHOD_JOIN_MEDIAN|}, &",
+      "    succeeding_ci_overlap=${8:succeeding_ci_overlap}, &",
+      "    ci_overlap=${9:ci_overlap}, &",
+      "    plateau_found=${10:plateau_found}, &",
+      "    ierr=${11:ierr})"
+    ]
+  },
+  "check_plateau_condition (call, checked)": {
+    "prefix": "tox:check_plateau_condition.checked",
+    "description": "For each study, the overlap of the new candidate's interval with the best one so far is (with error check)",
+    "body": [
+      "call check_plateau_condition( &",
+      "    confidence_interval=${1:confidence_interval}, &",
+      "    best_candidate_pair_confidence_interval=${2:best_candidate_pair_confidence_interval}, &",
+      "    n_studies=${3:n_studies}, &",
+      "    best_candidate_index=${4:best_candidate_index}, &",
+      "    best_exceeded_ci_overlap_count=${5:best_exceeded_ci_overlap_count}, &",
+      "    candidate_index=${6:candidate_index}, &",
+      "    join_method=${7|METHOD_JOIN_MIN,METHOD_JOIN_MAX,METHOD_JOIN_MEDIAN|}, &",
+      "    succeeding_ci_overlap=${8:succeeding_ci_overlap}, &",
+      "    ci_overlap=${9:ci_overlap}, &",
+      "    plateau_found=${10:plateau_found}, &",
+      "    ierr=${11:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "check_effect_size_plateau_condition (call)": {
+    "prefix": "tox:check_effect_size_plateau_condition",
+    "description": "The relative-effect-size alternative to",
+    "body": [
+      "call check_effect_size_plateau_condition( &",
+      "    global_js_divergence=${1:global_js_divergence}, &",
+      "    prev_global_js_divergence=${2:prev_global_js_divergence}, &",
+      "    n_studies=${3:n_studies}, &",
+      "    has_previous=${4:has_previous}, &",
+      "    delta_median_threshold=${5:delta_median_threshold}, &",
+      "    delta_max_threshold=${6:delta_max_threshold}, &",
+      "    delta_epsilon=${7:delta_epsilon}, &",
+      "    delta_min_consecutive_transitions=${8:delta_min_consecutive_transitions}, &",
+      "    n_consecutive_ok=${9:n_consecutive_ok}, &",
+      "    delta=${10:delta}, &",
+      "    delta_median=${11:delta_median}, &",
+      "    delta_max=${12:delta_max}, &",
+      "    plateau_found=${13:plateau_found}, &",
+      "    ierr=${14:ierr})"
+    ]
+  },
+  "check_effect_size_plateau_condition (call, checked)": {
+    "prefix": "tox:check_effect_size_plateau_condition.checked",
+    "description": "The relative-effect-size alternative to (with error check)",
+    "body": [
+      "call check_effect_size_plateau_condition( &",
+      "    global_js_divergence=${1:global_js_divergence}, &",
+      "    prev_global_js_divergence=${2:prev_global_js_divergence}, &",
+      "    n_studies=${3:n_studies}, &",
+      "    has_previous=${4:has_previous}, &",
+      "    delta_median_threshold=${5:delta_median_threshold}, &",
+      "    delta_max_threshold=${6:delta_max_threshold}, &",
+      "    delta_epsilon=${7:delta_epsilon}, &",
+      "    delta_min_consecutive_transitions=${8:delta_min_consecutive_transitions}, &",
+      "    n_consecutive_ok=${9:n_consecutive_ok}, &",
+      "    delta=${10:delta}, &",
+      "    delta_median=${11:delta_median}, &",
+      "    delta_max=${12:delta_max}, &",
+      "    plateau_found=${13:plateau_found}, &",
+      "    ierr=${14:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1491,11 +1322,11 @@
       "if (is_err(ierr)) return"
     ]
   },
-  "tox_data_integration_js_comp_test_impl (use)": {
-    "prefix": "tox:data_integration_js_comp_test_impl.use",
-    "description": "use tox_data_integration_js_comp_test_impl, only: ...",
+  "tox_data_integration_js_comp_test_search_impl (use)": {
+    "prefix": "tox:data_integration_js_comp_test_search_impl.use",
+    "description": "use tox_data_integration_js_comp_test_search_impl, only: ...",
     "body": [
-      "use tox_data_integration_js_comp_test_impl, only: ${1|calc_js_comp_test_candidate_bounds,calc_adaptive_js_comp_test_bounds,gather_pooled_neighborhood_residuals,calc_js_comp_test_n_top_k_jsds|}"
+      "use tox_data_integration_js_comp_test_search_impl, only: ${1|calc_js_comp_test_candidate_bounds,calc_adaptive_js_comp_test_bounds|}"
     ]
   },
   "calc_js_comp_test_candidate_bounds (call)": {
@@ -1544,52 +1375,11 @@
       "if (is_err(ierr)) return"
     ]
   },
-  "gather_pooled_neighborhood_residuals (call)": {
-    "prefix": "tox:gather_pooled_neighborhood_residuals",
-    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat",
-    "body": [
-      "call gather_pooled_neighborhood_residuals( &",
-      "    residuals=${1:residuals}, &",
-      "    max_n_reps_all_studies=${2:max_n_reps_all_studies}, &",
-      "    max_n_genes_all_studies=${3:max_n_genes_all_studies}, &",
-      "    n_neighbors=${4:n_neighbors}, &",
-      "    n_studies=${5:n_studies}, &",
-      "    neighborhood_indices_point=${6:neighborhood_indices_point}, &",
-      "    pooled_residuals=${7:pooled_residuals}, &",
-      "    ierr=${8:ierr})"
-    ]
-  },
-  "gather_pooled_neighborhood_residuals (call, checked)": {
-    "prefix": "tox:gather_pooled_neighborhood_residuals.checked",
-    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat (with error check)",
-    "body": [
-      "call gather_pooled_neighborhood_residuals( &",
-      "    residuals=${1:residuals}, &",
-      "    max_n_reps_all_studies=${2:max_n_reps_all_studies}, &",
-      "    max_n_genes_all_studies=${3:max_n_genes_all_studies}, &",
-      "    n_neighbors=${4:n_neighbors}, &",
-      "    n_studies=${5:n_studies}, &",
-      "    neighborhood_indices_point=${6:neighborhood_indices_point}, &",
-      "    pooled_residuals=${7:pooled_residuals}, &",
-      "    ierr=${8:ierr})",
-      "if (is_err(ierr)) return"
-    ]
-  },
-  "calc_js_comp_test_n_top_k_jsds (call)": {
-    "prefix": "tox:calc_js_comp_test_n_top_k_jsds",
-    "description": "Sizes the top-k/bottom-k heaps",
-    "body": [
-      "call calc_js_comp_test_n_top_k_jsds( &",
-      "    n_bootstraps=${1:n_bootstraps}, &",
-      "    two_sided_bootstrapping_significance_level=${2:two_sided_bootstrapping_significance_level}, &",
-      "    n_top_k=${3:n_top_k})"
-    ]
-  },
   "tox_data_integration_jsd (use)": {
     "prefix": "tox:data_integration_jsd.use",
     "description": "use tox_data_integration_jsd, only: ...",
     "body": [
-      "use tox_data_integration_jsd, only: ${1|determine_shared_residual_range,determine_shared_residual_range_expert,determine_study_shared_residual_range,build_residual_histograms,calc_pmf,compute_divergence_per_reference_point,compute_weighted_global_divergence,jct_compute_jsd_pipeline|}"
+      "use tox_data_integration_jsd, only: ${1|determine_shared_residual_range,determine_shared_residual_range_expert,determine_study_shared_residual_range,build_residual_histograms,calc_pmf,compute_divergence_per_reference_point,compute_weighted_global_divergence,jct_compute_jsd_pipeline,create_mean_pmf,create_mean_pmf_only|}"
     ]
   },
   "determine_shared_residual_range (call)": {
@@ -1852,6 +1642,68 @@
       "if (is_err(ierr)) return"
     ]
   },
+  "create_mean_pmf (call)": {
+    "prefix": "tox:create_mean_pmf",
+    "description": "`mean_pmf` is the equal-weight mean of all studies' pmfs, `mean_pmf_counts` and",
+    "body": [
+      "call create_mean_pmf( &",
+      "    pmfs=${1:pmfs}, &",
+      "    counts=${2:counts}, &",
+      "    n_bins=${3:n_bins}, &",
+      "    n_points=${4:n_points}, &",
+      "    n_studies=${5:n_studies}, &",
+      "    included_n_reps=${6:included_n_reps}, &",
+      "    mean_pmf=${7:mean_pmf}, &",
+      "    mean_pmf_included_n_reps=${8:mean_pmf_included_n_reps}, &",
+      "    mean_pmf_counts=${9:mean_pmf_counts}, &",
+      "    ierr=${10:ierr})"
+    ]
+  },
+  "create_mean_pmf (call, checked)": {
+    "prefix": "tox:create_mean_pmf.checked",
+    "description": "`mean_pmf` is the equal-weight mean of all studies' pmfs, `mean_pmf_counts` and (with error check)",
+    "body": [
+      "call create_mean_pmf( &",
+      "    pmfs=${1:pmfs}, &",
+      "    counts=${2:counts}, &",
+      "    n_bins=${3:n_bins}, &",
+      "    n_points=${4:n_points}, &",
+      "    n_studies=${5:n_studies}, &",
+      "    included_n_reps=${6:included_n_reps}, &",
+      "    mean_pmf=${7:mean_pmf}, &",
+      "    mean_pmf_included_n_reps=${8:mean_pmf_included_n_reps}, &",
+      "    mean_pmf_counts=${9:mean_pmf_counts}, &",
+      "    ierr=${10:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "create_mean_pmf_only (call)": {
+    "prefix": "tox:create_mean_pmf_only",
+    "description": "As [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]], for",
+    "body": [
+      "call create_mean_pmf_only( &",
+      "    pmfs=${1:pmfs}, &",
+      "    n_bins=${2:n_bins}, &",
+      "    n_points=${3:n_points}, &",
+      "    n_studies=${4:n_studies}, &",
+      "    mean_pmf=${5:mean_pmf}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "create_mean_pmf_only (call, checked)": {
+    "prefix": "tox:create_mean_pmf_only.checked",
+    "description": "As [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]], for (with error check)",
+    "body": [
+      "call create_mean_pmf_only( &",
+      "    pmfs=${1:pmfs}, &",
+      "    n_bins=${2:n_bins}, &",
+      "    n_points=${3:n_points}, &",
+      "    n_studies=${4:n_studies}, &",
+      "    mean_pmf=${5:mean_pmf}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
   "tox_data_integration_per_family (use)": {
     "prefix": "tox:data_integration_per_family.use",
     "description": "use tox_data_integration_per_family, only: ...",
@@ -2002,7 +1854,7 @@
     "prefix": "tox:data_integration_preprocessing.use",
     "description": "use tox_data_integration_preprocessing, only: ...",
     "body": [
-      "use tox_data_integration_preprocessing, only: ${1|compute_gene_means,compute_residuals,pool_means,pool_means_expert,pool_study_means,construct_neighborhoods,construct_neighborhoods_ranged,construct_neighborhoods_ranged_expert|}"
+      "use tox_data_integration_preprocessing, only: ${1|compute_gene_means,compute_residuals,pool_means,pool_means_expert,pool_study_means,construct_neighborhoods,construct_neighborhoods_ranged,construct_neighborhoods_ranged_expert,construct_adaptive_neighborhoods,check_neighborhood_overlaps|}"
     ]
   },
   "compute_gene_means (call)": {
@@ -2243,11 +2095,95 @@
       "if (is_err(ierr)) return"
     ]
   },
+  "construct_adaptive_neighborhoods (call)": {
+    "prefix": "tox:construct_adaptive_neighborhoods",
+    "description": "Instead of one fixed neighbor count, each neighborhood grows while the mean absolute residual",
+    "body": [
+      "call construct_adaptive_neighborhoods( &",
+      "    n_studies=${1:n_studies}, &",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies}, &",
+      "    max_n_reps_all_studies=${3:max_n_reps_all_studies}, &",
+      "    gene_means=${4:gene_means}, &",
+      "    residuals=${5:residuals}, &",
+      "    k_start=${6:k_start}, &",
+      "    k_step=${7:k_step}, &",
+      "    k_max=${8:k_max}, &",
+      "    n_points=${9:n_points}, &",
+      "    x_star=${10:x_star}, &",
+      "    pooled_neighborhood_range=${11:pooled_neighborhood_range}, &",
+      "    n_neighbors_per_point=${12:n_neighbors_per_point}, &",
+      "    stop_reason=${13:stop_reason}, &",
+      "    neighborhood_dispersion=${14:neighborhood_dispersion}, &",
+      "    neighborhood_mad=${15:neighborhood_mad}, &",
+      "    max_n_neighbors=${16:max_n_neighbors}, &",
+      "    construction_status=${17:construction_status}, &",
+      "    tau=${18:tau}, &",
+      "    mad_distance_factor=${19:mad_distance_factor}, &",
+      "    max_pooled_residuals=${20:max_pooled_residuals}, &",
+      "    min_study_neighbors=${21:min_study_neighbors}, &",
+      "    ierr=${22:ierr})"
+    ]
+  },
+  "construct_adaptive_neighborhoods (call, checked)": {
+    "prefix": "tox:construct_adaptive_neighborhoods.checked",
+    "description": "Instead of one fixed neighbor count, each neighborhood grows while the mean absolute residual (with error check)",
+    "body": [
+      "call construct_adaptive_neighborhoods( &",
+      "    n_studies=${1:n_studies}, &",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies}, &",
+      "    max_n_reps_all_studies=${3:max_n_reps_all_studies}, &",
+      "    gene_means=${4:gene_means}, &",
+      "    residuals=${5:residuals}, &",
+      "    k_start=${6:k_start}, &",
+      "    k_step=${7:k_step}, &",
+      "    k_max=${8:k_max}, &",
+      "    n_points=${9:n_points}, &",
+      "    x_star=${10:x_star}, &",
+      "    pooled_neighborhood_range=${11:pooled_neighborhood_range}, &",
+      "    n_neighbors_per_point=${12:n_neighbors_per_point}, &",
+      "    stop_reason=${13:stop_reason}, &",
+      "    neighborhood_dispersion=${14:neighborhood_dispersion}, &",
+      "    neighborhood_mad=${15:neighborhood_mad}, &",
+      "    max_n_neighbors=${16:max_n_neighbors}, &",
+      "    construction_status=${17:construction_status}, &",
+      "    tau=${18:tau}, &",
+      "    mad_distance_factor=${19:mad_distance_factor}, &",
+      "    max_pooled_residuals=${20:max_pooled_residuals}, &",
+      "    min_study_neighbors=${21:min_study_neighbors}, &",
+      "    ierr=${22:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "check_neighborhood_overlaps (call)": {
+    "prefix": "tox:check_neighborhood_overlaps",
+    "description": "The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`",
+    "body": [
+      "call check_neighborhood_overlaps( &",
+      "    neighborhood_range=${1:neighborhood_range}, &",
+      "    n_points=${2:n_points}, &",
+      "    min_neighbor_overlap=${3:min_neighbor_overlap}, &",
+      "    all_have_min_neighbor_overlap=${4:all_have_min_neighbor_overlap}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "check_neighborhood_overlaps (call, checked)": {
+    "prefix": "tox:check_neighborhood_overlaps.checked",
+    "description": "The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]` (with error check)",
+    "body": [
+      "call check_neighborhood_overlaps( &",
+      "    neighborhood_range=${1:neighborhood_range}, &",
+      "    n_points=${2:n_points}, &",
+      "    min_neighbor_overlap=${3:min_neighbor_overlap}, &",
+      "    all_have_min_neighbor_overlap=${4:all_have_min_neighbor_overlap}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
   "tox_data_integration_preprocessing_impl (use)": {
     "prefix": "tox:data_integration_preprocessing_impl.use",
     "description": "use tox_data_integration_preprocessing_impl, only: ...",
     "body": [
-      "use tox_data_integration_preprocessing_impl, only: ${1|calc_neighborhood_size|}"
+      "use tox_data_integration_preprocessing_impl, only: ${1|calc_neighborhood_size,gather_pooled_neighborhood_residuals|}"
     ]
   },
   "calc_neighborhood_size (call)": {
@@ -2262,11 +2198,42 @@
       "    desired_size=${6:desired_size})"
     ]
   },
+  "gather_pooled_neighborhood_residuals (call)": {
+    "prefix": "tox:gather_pooled_neighborhood_residuals",
+    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat",
+    "body": [
+      "call gather_pooled_neighborhood_residuals( &",
+      "    residuals=${1:residuals}, &",
+      "    max_n_reps_all_studies=${2:max_n_reps_all_studies}, &",
+      "    max_n_genes_all_studies=${3:max_n_genes_all_studies}, &",
+      "    n_neighbors=${4:n_neighbors}, &",
+      "    n_studies=${5:n_studies}, &",
+      "    neighborhood_indices_point=${6:neighborhood_indices_point}, &",
+      "    pooled_residuals=${7:pooled_residuals}, &",
+      "    ierr=${8:ierr})"
+    ]
+  },
+  "gather_pooled_neighborhood_residuals (call, checked)": {
+    "prefix": "tox:gather_pooled_neighborhood_residuals.checked",
+    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat (with error check)",
+    "body": [
+      "call gather_pooled_neighborhood_residuals( &",
+      "    residuals=${1:residuals}, &",
+      "    max_n_reps_all_studies=${2:max_n_reps_all_studies}, &",
+      "    max_n_genes_all_studies=${3:max_n_genes_all_studies}, &",
+      "    n_neighbors=${4:n_neighbors}, &",
+      "    n_studies=${5:n_studies}, &",
+      "    neighborhood_indices_point=${6:neighborhood_indices_point}, &",
+      "    pooled_residuals=${7:pooled_residuals}, &",
+      "    ierr=${8:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
   "tox_data_integration_stats (use)": {
     "prefix": "tox:data_integration_stats.use",
     "description": "use tox_data_integration_stats, only: ...",
     "body": [
-      "use tox_data_integration_stats, only: ${1|gjct_permutation_test|}"
+      "use tox_data_integration_stats, only: ${1|gjct_permutation_test,bootstrap_histogram|}"
     ]
   },
   "gjct_permutation_test (call)": {
@@ -2308,6 +2275,60 @@
       "    random_seed=${12:random_seed}, &",
       "    ierr=${13:ierr})",
       "if (is_err(ierr)) return"
+    ]
+  },
+  "bootstrap_histogram (call)": {
+    "prefix": "tox:bootstrap_histogram",
+    "description": "In every bootstrap, each study's histogram at each reference point is drawn with replacement",
+    "body": [
+      "call bootstrap_histogram( &",
+      "    n_bootstraps=${1:n_bootstraps}, &",
+      "    n_bins=${2:n_bins}, &",
+      "    n_points=${3:n_points}, &",
+      "    n_studies=${4:n_studies}, &",
+      "    mean_pmf_counts=${5:mean_pmf_counts}, &",
+      "    mean_pmf_included_n_reps=${6:mean_pmf_included_n_reps}, &",
+      "    included_n_reps=${7:included_n_reps}, &",
+      "    confidence_interval=${8:confidence_interval}, &",
+      "    two_sided_bootstrapping_significance_level=${9:two_sided_bootstrapping_significance_level}, &",
+      "    random_seed=${10:random_seed}, &",
+      "    ierr=${11:ierr})"
+    ]
+  },
+  "bootstrap_histogram (call, checked)": {
+    "prefix": "tox:bootstrap_histogram.checked",
+    "description": "In every bootstrap, each study's histogram at each reference point is drawn with replacement (with error check)",
+    "body": [
+      "call bootstrap_histogram( &",
+      "    n_bootstraps=${1:n_bootstraps}, &",
+      "    n_bins=${2:n_bins}, &",
+      "    n_points=${3:n_points}, &",
+      "    n_studies=${4:n_studies}, &",
+      "    mean_pmf_counts=${5:mean_pmf_counts}, &",
+      "    mean_pmf_included_n_reps=${6:mean_pmf_included_n_reps}, &",
+      "    included_n_reps=${7:included_n_reps}, &",
+      "    confidence_interval=${8:confidence_interval}, &",
+      "    two_sided_bootstrapping_significance_level=${9:two_sided_bootstrapping_significance_level}, &",
+      "    random_seed=${10:random_seed}, &",
+      "    ierr=${11:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_data_integration_stats_impl (use)": {
+    "prefix": "tox:data_integration_stats_impl.use",
+    "description": "use tox_data_integration_stats_impl, only: ...",
+    "body": [
+      "use tox_data_integration_stats_impl, only: ${1|calc_js_comp_test_n_top_k_jsds|}"
+    ]
+  },
+  "calc_js_comp_test_n_top_k_jsds (call)": {
+    "prefix": "tox:calc_js_comp_test_n_top_k_jsds",
+    "description": "Sizes the top-k/bottom-k heaps",
+    "body": [
+      "call calc_js_comp_test_n_top_k_jsds( &",
+      "    n_bootstraps=${1:n_bootstraps}, &",
+      "    two_sided_bootstrapping_significance_level=${2:two_sided_bootstrapping_significance_level}, &",
+      "    n_top_k=${3:n_top_k})"
     ]
   },
   "tox_data_tools (use)": {

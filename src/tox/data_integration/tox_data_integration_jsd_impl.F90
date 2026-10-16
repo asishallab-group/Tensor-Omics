@@ -5,7 +5,10 @@
 !| The step that turns neighborhood residuals -- as produced by the preprocessing module -- into
 !| a JSD value: residuals are binned into histograms per study, the two distributions are
 !| compared per reference point, and the per-point divergences are weighted into one global
-!| figure for the pair of studies.
+!| figure for the pair of studies. For K studies, each study is compared against the consensus pmf
+!| of all of them, built by
+!| [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]] (with its pooled
+!| counts) or [[tox_data_integration_jsd_impl(module):create_mean_pmf_only_impl(interface)]].
 module tox_data_integration_jsd_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, int64, real64
@@ -19,7 +22,7 @@ module tox_data_integration_jsd_impl
     public :: determine_shared_residual_range_impl, determine_study_shared_residual_range_impl, &
              build_residual_histograms_impl, calc_pmf_impl, &
              compute_divergence_per_reference_point_impl, compute_weighted_global_divergence_impl, &
-             jct_compute_jsd_pipeline_impl
+             jct_compute_jsd_pipeline_impl, create_mean_pmf_impl, create_mean_pmf_only_impl
 contains
 
     !> summary: Compute the shared residual range [-R, R] from a pooled set of absolute residuals
@@ -147,11 +150,11 @@ contains
             !! DM_ALLOW_NAN
         real(real64), dimension(n_points), intent(in) :: shared_residual_range_low
             !! Lower bound of the histogram range (R_low) for reference point i_point -- e.g. from
-            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+            !! [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
             !! own `shared_residual_range_low` output
         real(real64), dimension(n_points), intent(in) :: shared_residual_range_high
             !! Upper bound of the histogram range (R_high) for reference point i_point -- e.g. from
-            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+            !! [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
             !! own `shared_residual_range_high` output
         integer(int32), intent(in) :: max_n_bins
             !! Widest histogram bin count used by any reference point in this call -- the array
@@ -465,4 +468,96 @@ contains
         call compute_divergence_per_reference_point_impl(pmf_S1, pmf_S2, n_points, n_bins, js_divergences)
         call compute_weighted_global_divergence_impl(js_divergences, n_points, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights)
     end subroutine jct_compute_jsd_pipeline_impl
+
+    !> summary: Build the consensus pmf and its histogram counts from all studies' pmfs
+    !| AUTHOR_LASZLO_LANG
+    !| `mean_pmf` is the equal-weight mean of all studies' pmfs, `mean_pmf_counts` and
+    !| `mean_pmf_included_n_reps` the sums of their counts. Known limitation: every study is
+    !| compared against a consensus that includes itself, not a leave-one-out background.
+    pure subroutine create_mean_pmf_impl(pmfs, counts, n_bins, n_points, n_studies, included_n_reps, mean_pmf, &
+                                         mean_pmf_included_n_reps, mean_pmf_counts)
+        integer(int32), intent(in) :: n_bins
+            !! Second extent of the bin-sized arrays: the widest bin count of any reference point.
+            !! All studies must share each point's bin count, so their zero padding coincides
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        real(real64), dimension(n_points, n_bins, n_studies), intent(in) :: pmfs
+            !! Per-study probabilities of each bin per reference point, from
+            !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(1.0_real64)
+        integer(int32), dimension(n_points, n_bins, n_studies), intent(in) :: counts
+            !! Absolute counts of a residual per bin for `pmfs`
+            !! DM_MIN(0_int32)
+        integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
+            !! Count of non-NaN replicates per reference point, per study; every study needs at
+            !! least one at every reference point
+            !! DM_MIN(1_int32)
+        real(real64), dimension(n_points, n_bins), intent(out) :: mean_pmf
+            !! The consensus pmf, `sum(pmfs, dim=3) / n_studies`
+        integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
+            !! Count of non-NaN replicates per reference point, summed over the studies
+        integer(int32), dimension(n_points, n_bins), intent(out) :: mean_pmf_counts
+            !! Residual counts per bin of the consensus, `sum(counts, dim=3)`
+
+        integer(int32) :: i_study, i_point, i_bin
+
+        mean_pmf = 0.0_real64
+        mean_pmf_included_n_reps = 0_int32
+        mean_pmf_counts = 0_int32
+
+        ! Sequential over i_study, outermost, so every element accumulates its studies in order.
+        ! For some study counts (e.g. 9, 11, 18, 20) the sum exceeds 1.0 by a few ulps when every
+        ! study has all its mass in one bin, which gjct_permutation_test's DM_MAX(1.0) on mean_pmf
+        ! would reject. Deliberately not clamped, so outputs stay bit-identical.
+        do i_study = 1, n_studies
+            do i_bin = 1, n_bins
+                do concurrent(i_point=1:n_points) shared(mean_pmf, pmfs, i_bin, i_study, n_studies, mean_pmf_counts, counts)
+                    mean_pmf(i_point, i_bin) = mean_pmf(i_point, i_bin) + pmfs(i_point, i_bin, i_study)/real(n_studies, real64)
+                    mean_pmf_counts(i_point, i_bin) = mean_pmf_counts(i_point, i_bin) + counts(i_point, i_bin, i_study)
+                end do
+            end do
+            do concurrent(i_point=1:n_points) shared(mean_pmf_included_n_reps, included_n_reps, i_study)
+                mean_pmf_included_n_reps(i_point) = mean_pmf_included_n_reps(i_point) + included_n_reps(i_point, i_study)
+            end do
+        end do
+    end subroutine create_mean_pmf_impl
+
+    !> summary: Build only the consensus pmf from all studies' pmfs, without its histogram counts
+    !| AUTHOR_LASZLO_LANG
+    !| As [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]], for
+    !| callers that need no counts (the bootstrap). Same known limitation: the consensus includes
+    !| the study compared against it.
+    pure subroutine create_mean_pmf_only_impl(pmfs, n_bins, n_points, n_studies, mean_pmf)
+        integer(int32), intent(in) :: n_bins
+            !! Second extent of the bin-sized arrays: the widest bin count of any reference point.
+            !! All studies must share each point's bin count, so their zero padding coincides
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        real(real64), dimension(n_points, n_bins, n_studies), intent(in) :: pmfs
+            !! Per-study probabilities of each bin per reference point, from
+            !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(1.0_real64)
+        real(real64), dimension(n_points, n_bins), intent(out) :: mean_pmf
+            !! The consensus pmf, `sum(pmfs, dim=3) / n_studies`
+
+        integer(int32) :: i_study, i_point, i_bin
+
+        mean_pmf = 0.0_real64
+
+        ! Same order and the same few-ulp excess over 1.0 as create_mean_pmf_impl (not clamped).
+        do i_study = 1, n_studies
+            do i_bin = 1, n_bins
+                do concurrent(i_point=1:n_points) shared(mean_pmf, pmfs, i_bin, i_study, n_studies)
+                    mean_pmf(i_point, i_bin) = mean_pmf(i_point, i_bin) + pmfs(i_point, i_bin, i_study)/real(n_studies, real64)
+                end do
+            end do
+        end do
+    end subroutine create_mean_pmf_only_impl
+
 end module tox_data_integration_jsd_impl

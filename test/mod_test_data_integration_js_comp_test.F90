@@ -16,30 +16,24 @@ module mod_test_data_integration_js_comp_test
                                                   determine_bin_count_occupancy_expert, &
                                                   determine_bin_count_stone, determine_bin_count_stone_expert, &
                                                   determine_bin_count_occupancy_exhaustive, &
-                                                  generate_js_comp_test_candidates, check_neighborhood_overlaps, &
+                                                  generate_js_comp_test_candidates, &
                                                   check_mean_pmf_min_counts, check_plateau_condition, &
-                                                  check_effect_size_plateau_condition, create_mean_pmf, &
-                                                  create_mean_pmf_only, bootstrap_histogram, run_js_comp_test, &
+                                                  check_effect_size_plateau_condition, run_js_comp_test, &
                                                   run_js_comp_test_parameter_search, &
                                                   generate_adaptive_js_comp_test_candidates, &
-                                                  construct_adaptive_neighborhoods, run_js_comp_test_adaptive, &
+                                                  run_js_comp_test_adaptive, &
                                                   run_js_comp_test_adaptive_parameter_search
+    use tox_data_integration_jsd, only: create_mean_pmf, create_mean_pmf_only
+    use tox_data_integration_stats, only: bootstrap_histogram
+    use tox_data_integration_preprocessing, only: check_neighborhood_overlaps, construct_adaptive_neighborhoods
     use tox_data_integration_js_comp_test_impl, only: METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, &
                                                        MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, &
-                                                       MODE_PLATEAU_BOTH, calc_js_comp_test_n_top_k_jsds, &
+                                                       MODE_PLATEAU_BOTH, &
                                                        calc_js_comp_test_candidate_bounds, &
-                                                       gather_pooled_neighborhood_residuals, &
                                                        determine_point_bin_count, build_point_study_histogram, &
                                                        calc_adaptive_js_comp_test_bounds, ADAPTIVE_GAMMA, &
                                                        ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_K_STEP_FRACTION, &
-                                                       ADAPTIVE_K_MAX_FACTOR, &
-                                                       ADAPTIVE_MIN_VALID_RESIDUALS, ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_K_MAX, &
-                                                       ADAPTIVE_STOP_RESIDUAL_CAP, ADAPTIVE_STOP_EXHAUSTED, &
-                                                       ADAPTIVE_STOP_ZERO_DISPERSION, ADAPTIVE_STOP_TOO_FEW_RESIDUALS, &
-                                                       ADAPTIVE_STATUS_OK, ADAPTIVE_STATUS_TOO_FEW_MEANS, &
-                                                       ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD, &
-                                                       ADAPTIVE_STATUS_TOO_FEW_RESIDUALS, &
-                                                       materialize_pooled_neighborhood, ADAPTIVE_CANDIDATE_EVALUATED, &
+                                                       ADAPTIVE_K_MAX_FACTOR, ADAPTIVE_CANDIDATE_EVALUATED, &
                                                        ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, ADAPTIVE_CANDIDATE_EMPTY_STUDY, &
                                                        ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, ADAPTIVE_CANDIDATE_OVERLAP_FAILED, &
                                                        ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED, &
@@ -48,6 +42,15 @@ module mod_test_data_integration_js_comp_test
                                                        MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, MODE_BIN_COUNT_STONE_POOLED, &
                                                        MAX_N_BINS, MAX_CANDIDATE_PAIRS, &
                                                        generate_js_comp_test_candidates_impl
+    use tox_data_integration_stats_impl, only: calc_js_comp_test_n_top_k_jsds
+    use tox_data_integration_preprocessing_impl, only: gather_pooled_neighborhood_residuals, &
+                                                       ADAPTIVE_MIN_VALID_RESIDUALS, ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_K_MAX, &
+                                                       ADAPTIVE_STOP_RESIDUAL_CAP, ADAPTIVE_STOP_EXHAUSTED, &
+                                                       ADAPTIVE_STOP_ZERO_DISPERSION, ADAPTIVE_STOP_TOO_FEW_RESIDUALS, &
+                                                       ADAPTIVE_STATUS_OK, ADAPTIVE_STATUS_TOO_FEW_MEANS, &
+                                                       ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD, &
+                                                       ADAPTIVE_STATUS_TOO_FEW_RESIDUALS, &
+                                                       materialize_pooled_neighborhood
     use f42_sort_impl, only: init_perm, sort_array_heapsort
     use f42_stats_impl, only: sorted_bin_counts, histogram_bin_counts
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
@@ -2965,7 +2968,7 @@ contains
     !> Compliance-review fix (Issue #187 cleanup): `min_residuals_per_bin`'s `DM_MIN` used to
     !| disagree between this routine (`1`) and `run_js_comp_test_parameter_search` (`0`) even
     !| though both forward the same argument into the same
-    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
+    !| [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_occupancy_impl(interface)]]
     !| occupancy search -- a caller passing `0` was rejected here while accepted (and relied upon)
     !| by the sibling entry point's own tests. Fixed by loosening this routine's bound to `0` too.
     !|
@@ -4535,7 +4538,7 @@ contains
     !| occupancy FAILURE (`test_param_search_occupancy_failure_rejects_candidate` above already covers
     !| that path) rather than a valid, admissible, small `M_j` -- `m_min=1` lets a clustered point
     !| legitimately select `M_j=1` instead. Hand-traced through
-    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+    !| [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
     !| own geometric search (`gamma_occupancy` default 1.25); Step 3 makes both points' own
     !| `shared_residual_range_low`/`_high` their own 5th/95th-percentile-derived range, not the old
     !| dataset-wide `[-3, 3]`:

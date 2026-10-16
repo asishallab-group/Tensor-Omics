@@ -72,7 +72,7 @@ from .tox_data_archive import (
     get_tox_data_dims,
     read_tox_data_into,
 )
-from .tox_data_integration_js_comp_test import (
+from .tox_data_integration_js_comp_test_binning import (
     estimate_bin_count,
     estimate_bin_count_expert,
     determine_bin_count_occupancy,
@@ -81,26 +81,23 @@ from .tox_data_integration_js_comp_test import (
     determine_bin_count_occupancy_exhaustive_expert,
     determine_bin_count_stone,
     determine_bin_count_stone_expert,
+)
+from .tox_data_integration_js_comp_test_run import (
+    run_js_comp_test,
+    run_js_comp_test_adaptive,
+)
+from .tox_data_integration_js_comp_test_search import (
     generate_js_comp_test_candidates,
     generate_adaptive_js_comp_test_candidates,
-    construct_adaptive_neighborhoods,
-    check_neighborhood_overlaps,
     check_mean_pmf_min_counts,
     check_plateau_condition,
     check_effect_size_plateau_condition,
-    create_mean_pmf,
-    create_mean_pmf_only,
-    bootstrap_histogram,
-    run_js_comp_test,
-    run_js_comp_test_adaptive,
     run_js_comp_test_parameter_search,
     run_js_comp_test_adaptive_parameter_search,
 )
-from .tox_data_integration_js_comp_test_impl import (
+from .tox_data_integration_js_comp_test_search_impl import (
     calc_js_comp_test_candidate_bounds,
     calc_adaptive_js_comp_test_bounds,
-    gather_pooled_neighborhood_residuals,
-    calc_js_comp_test_n_top_k_jsds,
 )
 from .tox_data_integration_jsd import (
     determine_shared_residual_range,
@@ -111,6 +108,8 @@ from .tox_data_integration_jsd import (
     compute_divergence_per_reference_point,
     compute_weighted_global_divergence,
     jct_compute_jsd_pipeline,
+    create_mean_pmf,
+    create_mean_pmf_only,
 )
 from .tox_data_integration_per_family import (
     fjct_compute_jsd,
@@ -126,12 +125,19 @@ from .tox_data_integration_preprocessing import (
     construct_neighborhoods,
     construct_neighborhoods_ranged,
     construct_neighborhoods_ranged_expert,
+    construct_adaptive_neighborhoods,
+    check_neighborhood_overlaps,
 )
 from .tox_data_integration_preprocessing_impl import (
     calc_neighborhood_size,
+    gather_pooled_neighborhood_residuals,
 )
 from .tox_data_integration_stats import (
     gjct_permutation_test,
+    bootstrap_histogram,
+)
+from .tox_data_integration_stats_impl import (
+    calc_js_comp_test_n_top_k_jsds,
 )
 from .tox_data_tools import (
     read_expression_vectors_tsv,

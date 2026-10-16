@@ -7,7 +7,10 @@
 !| The step that turns neighborhood residuals -- as produced by the preprocessing module -- into
 !| a JSD value: residuals are binned into histograms per study, the two distributions are
 !| compared per reference point, and the per-point divergences are weighted into one global
-!| figure for the pair of studies.
+!| figure for the pair of studies. For K studies, each study is compared against the consensus pmf
+!| of all of them, built by
+!| [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]] (with its pooled
+!| counts) or [[tox_data_integration_jsd_impl(module):create_mean_pmf_only_impl(interface)]].
 module tox_data_integration_jsd_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
@@ -25,6 +28,8 @@ module tox_data_integration_jsd_c
     public :: compute_weighted_global_divergence_c
     public :: jct_compute_jsd_pipeline_c
     public :: jct_compute_jsd_pipeline_expert_c
+    public :: create_mean_pmf_c
+    public :: create_mean_pmf_only_c
 
 contains
 
@@ -293,11 +298,11 @@ contains
             !! NaN is permitted for this value.
         real(c_double), dimension(n_points), intent(in), target :: shared_residual_range_low
             !! Lower bound of the histogram range (R_low) for reference point i_point -- e.g. from
-            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+            !! [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
             !! own `shared_residual_range_low` output
         real(c_double), dimension(n_points), intent(in), target :: shared_residual_range_high
             !! Upper bound of the histogram range (R_high) for reference point i_point -- e.g. from
-            !! [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+            !! [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
             !! own `shared_residual_range_high` output
         integer(c_int), dimension(n_points), intent(in), target :: n_bins_per_point
             !! Number of equally sized histogram bins in range [shared_residual_range_low(i_point),
@@ -750,6 +755,127 @@ contains
             ierr = ierr&
         )
     end subroutine jct_compute_jsd_pipeline_expert_c
+
+    !> summary: C-wrapper for [[tox_data_integration_jsd(module):create_mean_pmf(subroutine)]]
+    !| `mean_pmf` is the equal-weight mean of all studies' pmfs, `mean_pmf_counts` and
+    !| `mean_pmf_included_n_reps` the sums of their counts. Known limitation: every study is
+    !| compared against a consensus that includes itself, not a leave-one-out background.
+    subroutine create_mean_pmf_c(&
+            pmfs,&
+            counts,&
+            n_bins,&
+            n_points,&
+            n_studies,&
+            included_n_reps,&
+            mean_pmf,&
+            mean_pmf_included_n_reps,&
+            mean_pmf_counts,&
+            ierr&
+        ) bind(C, name="create_mean_pmf_c")
+        use tox_data_integration_jsd, only: create_mean_pmf
+
+        integer(c_int), intent(in), target :: n_bins
+            !! Second extent of the bin-sized arrays: the widest bin count of any reference point.
+            !! All studies must share each point's bin count, so their zero padding coincides
+        integer(c_int), intent(in), target :: n_points
+            !! Number of reference points
+        integer(c_int), intent(in), target :: n_studies
+            !! Number of studies
+        real(c_double), dimension(n_points, n_bins, n_studies), intent(in), target :: pmfs
+            !! Per-study probabilities of each bin per reference point, from
+            !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+        integer(c_int), dimension(n_points, n_bins, n_studies), intent(in), target :: counts
+            !! Absolute counts of a residual per bin for `pmfs`
+            !! The minimum valid value is `0_int32`.
+        integer(c_int), dimension(n_points, n_studies), intent(in), target :: included_n_reps
+            !! Count of non-NaN replicates per reference point, per study; every study needs at
+            !! least one at every reference point
+            !! The minimum valid value is `1_int32`.
+        real(c_double), dimension(n_points, n_bins), intent(out), target :: mean_pmf
+            !! The consensus pmf, `sum(pmfs, dim=3) / n_studies`
+        integer(c_int), dimension(n_points), intent(out), target :: mean_pmf_included_n_reps
+            !! Count of non-NaN replicates per reference point, summed over the studies
+        integer(c_int), dimension(n_points, n_bins), intent(out), target :: mean_pmf_counts
+            !! Residual counts per bin of the consensus, `sum(counts, dim=3)`
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_bins)
+        M_CHECK_NON_NULL(n_points)
+        M_CHECK_NON_NULL(n_studies)
+        M_CHECK_ARRAY_NON_NULL(pmfs, n_points * n_bins * n_studies)
+        M_CHECK_ARRAY_NON_NULL(counts, n_points * n_bins * n_studies)
+        M_CHECK_ARRAY_NON_NULL(included_n_reps, n_points * n_studies)
+        M_CHECK_ARRAY_NON_NULL(mean_pmf, n_points * n_bins)
+        M_CHECK_ARRAY_NON_NULL(mean_pmf_included_n_reps, n_points)
+        M_CHECK_ARRAY_NON_NULL(mean_pmf_counts, n_points * n_bins)
+
+        call create_mean_pmf(&
+            pmfs = pmfs,&
+            counts = counts,&
+            n_bins = n_bins,&
+            n_points = n_points,&
+            n_studies = n_studies,&
+            included_n_reps = included_n_reps,&
+            mean_pmf = mean_pmf,&
+            mean_pmf_included_n_reps = mean_pmf_included_n_reps,&
+            mean_pmf_counts = mean_pmf_counts,&
+            ierr = ierr&
+        )
+    end subroutine create_mean_pmf_c
+
+    !> summary: C-wrapper for [[tox_data_integration_jsd(module):create_mean_pmf_only(subroutine)]]
+    !| As [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]], for
+    !| callers that need no counts (the bootstrap). Same known limitation: the consensus includes
+    !| the study compared against it.
+    subroutine create_mean_pmf_only_c(&
+            pmfs,&
+            n_bins,&
+            n_points,&
+            n_studies,&
+            mean_pmf,&
+            ierr&
+        ) bind(C, name="create_mean_pmf_only_c")
+        use tox_data_integration_jsd, only: create_mean_pmf_only
+
+        integer(c_int), intent(in), target :: n_bins
+            !! Second extent of the bin-sized arrays: the widest bin count of any reference point.
+            !! All studies must share each point's bin count, so their zero padding coincides
+        integer(c_int), intent(in), target :: n_points
+            !! Number of reference points
+        integer(c_int), intent(in), target :: n_studies
+            !! Number of studies
+        real(c_double), dimension(n_points, n_bins, n_studies), intent(in), target :: pmfs
+            !! Per-study probabilities of each bin per reference point, from
+            !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+        real(c_double), dimension(n_points, n_bins), intent(out), target :: mean_pmf
+            !! The consensus pmf, `sum(pmfs, dim=3) / n_studies`
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_bins)
+        M_CHECK_NON_NULL(n_points)
+        M_CHECK_NON_NULL(n_studies)
+        M_CHECK_ARRAY_NON_NULL(pmfs, n_points * n_bins * n_studies)
+        M_CHECK_ARRAY_NON_NULL(mean_pmf, n_points * n_bins)
+
+        call create_mean_pmf_only(&
+            pmfs = pmfs,&
+            n_bins = n_bins,&
+            n_points = n_points,&
+            n_studies = n_studies,&
+            mean_pmf = mean_pmf,&
+            ierr = ierr&
+        )
+    end subroutine create_mean_pmf_only_c
 
 end module tox_data_integration_jsd_c
 #endif
