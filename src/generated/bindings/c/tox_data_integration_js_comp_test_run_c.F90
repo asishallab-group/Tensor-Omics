@@ -67,6 +67,12 @@ contains
     !| generator; `pmfs`, `js_divergences`, `weights` and `global_js_divergence` then hold their
     !| values from before the permutation test. An out-of-range neighbor index is also reported
     !| as `ERR_INVALID_INPUT`, a safeguard valid input cannot reach.
+    !|
+    !| The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
+    !| last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
+    !| caller instead. That order must still be ascending with NaN last (only the order among tied
+    !| genes is the caller's choice); it is not checked to be sorted.
+    !| The allocating wrapper runs [[tox_data_integration_js_comp_test_run_impl(module):prepare_gene_means_perms]] first, which may handle the call and skip this one.
     subroutine run_js_comp_test_c(&
             n_studies,&
             max_n_genes_all_studies,&
@@ -74,7 +80,6 @@ contains
             n_points,&
             n_neighbors,&
             gene_means,&
-            gene_means_perms,&
             residuals,&
             x_star,&
             neighborhood_indices,&
@@ -134,10 +139,6 @@ contains
         real(c_double), dimension(max_n_genes_all_studies, n_studies), intent(in), target :: gene_means
             !! Per-gene mean expression values for all studies
             !! NaN is permitted for this value.
-        integer(c_int), dimension(max_n_genes_all_studies, n_studies), intent(in), target :: gene_means_perms
-            !! Per-study sorting permutation for `gene_means` (ascending, NaN last)
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `max_n_genes_all_studies`.
         real(c_double), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in), target :: residuals
             !! Matrix of signed residuals per study
             !! NaN is permitted for this value.
@@ -268,7 +269,6 @@ contains
         M_CHECK_NON_NULL(lower_residual_range_quantile)
         M_CHECK_NON_NULL(upper_residual_range_quantile)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
-        M_CHECK_ARRAY_NON_NULL(gene_means_perms, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(x_star, n_points)
         M_CHECK_ARRAY_NON_NULL(neighborhood_indices, n_neighbors * n_points * n_studies)
@@ -322,7 +322,6 @@ contains
             n_points = n_points,&
             n_neighbors = n_neighbors,&
             gene_means = gene_means,&
-            gene_means_perms = gene_means_perms,&
             residuals = residuals,&
             x_star = x_star,&
             neighborhood_indices = neighborhood_indices,&
@@ -402,6 +401,12 @@ contains
     !| generator; `pmfs`, `js_divergences`, `weights` and `global_js_divergence` then hold their
     !| values from before the permutation test. An out-of-range neighbor index is also reported
     !| as `ERR_INVALID_INPUT`, a safeguard valid input cannot reach.
+    !|
+    !| The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
+    !| last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
+    !| caller instead. That order must still be ascending with NaN last (only the order among tied
+    !| genes is the caller's choice); it is not checked to be sorted.
+    !| The allocating wrapper runs [[tox_data_integration_js_comp_test_run_impl(module):prepare_gene_means_perms]] first, which may handle the call and skip this one.
     subroutine run_js_comp_test_expert_c(&
             n_studies,&
             max_n_genes_all_studies,&
@@ -487,7 +492,10 @@ contains
             !! Per-gene mean expression values for all studies
             !! NaN is permitted for this value.
         integer(c_int), dimension(max_n_genes_all_studies, n_studies), intent(in), target :: gene_means_perms
-            !! Per-study sorting permutation for `gene_means` (ascending, NaN last)
+            !! Per study (column), a permutation of that study's `gene_means` in ascending order, NaN last.
+            !! The plain entry point builds it for you (heapsort); the expert one takes yours, which
+            !! must be sorted that way too (only the order among tied genes is free) and is not
+            !! checked to be sorted.
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `max_n_genes_all_studies`.
         real(c_double), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in), target :: residuals

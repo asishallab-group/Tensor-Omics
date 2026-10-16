@@ -218,6 +218,27 @@
       "${1:result} <- run_js_comp_test(",
       "  n_neighbors = ${2:n_neighbors},",
       "  gene_means = ${3:gene_means},",
+      "  residuals = ${4:residuals},",
+      "  x_star = ${5:x_star},",
+      "  n_permutations = ${6:1000L},",
+      "  random_seed = ${7:42L},",
+      "  min_residuals_per_bin = ${8:10L},",
+      "  m_min = ${9:3L},",
+      "  m_max = ${10:120L},",
+      "  gamma_occupancy = ${11:1.25},",
+      "  lower_residual_range_quantile = ${12:0.05},",
+      "  upper_residual_range_quantile = ${13:0.95},",
+      "  bin_count_mode = ${14|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|}",
+      ")"
+    ]
+  },
+  "run_js_comp_test_expert (call)": {
+    "prefix": "tox:run_js_comp_test_expert",
+    "description": "The final JS-Comp-Test of K studies for one fixed `(n_points, n_neighbors)` setting:",
+    "body": [
+      "${1:result} <- run_js_comp_test_expert(",
+      "  n_neighbors = ${2:n_neighbors},",
+      "  gene_means = ${3:gene_means},",
       "  gene_means_perms = ${4:gene_means_perms},",
       "  residuals = ${5:residuals},",
       "  x_star = ${6:x_star},",

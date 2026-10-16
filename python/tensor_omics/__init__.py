@@ -49,9 +49,6 @@ from .f42_serde_arrays_serialize_real import (
 from .f42_serde_arrays_utils import (
     get_array_metadata,
 )
-from .f42_sort_impl import (
-    sort_real_get_perm,
-)
 from .f42_stats import (
     loess_smooth_2d,
     compute_edf,
@@ -84,6 +81,7 @@ from .tox_data_integration_js_comp_test_binning import (
 )
 from .tox_data_integration_js_comp_test_run import (
     run_js_comp_test,
+    run_js_comp_test_expert,
     run_js_comp_test_adaptive,
 )
 from .tox_data_integration_js_comp_test_search import (
@@ -357,6 +355,7 @@ __all__ = [
     "run_js_comp_test",
     "run_js_comp_test_adaptive",
     "run_js_comp_test_adaptive_parameter_search",
+    "run_js_comp_test_expert",
     "run_js_comp_test_parameter_search",
     "save_tox_data",
     "serialize_char_helper",
@@ -364,7 +363,6 @@ __all__ = [
     "serialize_int_helper",
     "serialize_logical_helper",
     "serialize_real_helper",
-    "sort_real_get_perm",
     "tox_loess_required_workspace",
     "validate_all_data",
     "validate_data_structure",

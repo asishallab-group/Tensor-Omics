@@ -640,7 +640,6 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
   # (MAX_N_BINS) in their second dimension, of which only the leading `max_n_bins_per_point` bins
   # are meaningful -- a caller must slice `[, seq_len(max_n_bins_per_point), ]` themselves.
   gene_means <- matrix(c(1.0, 5.0, 1.0, 5.0), nrow = 2)
-  gene_means_perms <- matrix(c(1L, 2L, 1L, 2L), nrow = 2)
 
   residuals <- array(NaN, dim = c(2, 2, 2))
   residuals[, 1, 1] <- c(-1.0, 1.0)
@@ -652,7 +651,7 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
   # satisfy) so the occupancy search actually succeeds, matching the Fortran fixture's own
   # override -- exercised here for call-ability, not to reproduce that test's exact numbers.
   result <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
-                              gene_means_perms = gene_means_perms, residuals = residuals, x_star = x_star,
+                              residuals = residuals, x_star = x_star,
                               n_permutations = 0L, random_seed = 1L, min_residuals_per_bin = 1L)
 
   n_points <- 1L
@@ -697,7 +696,7 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
   # bin_count_mode: every mode string is accepted (type/shape only; the bin counts themselves are
   # the Fortran suite's job), an unknown one is rejected before Fortran.
   for (mode in BIN_COUNT_MODES) {
-    result_mode <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = gene_means_perms,
+    result_mode <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
                                     residuals = residuals, x_star = x_star, n_permutations = 0L, random_seed = 1L,
                                     min_residuals_per_bin = 1L, bin_count_mode = mode)
     assert_equal_int(length(result_mode$n_bins_per_point), n_points, paste(mode, "n_bins_per_point length"))
@@ -705,10 +704,57 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
     assert_equal_int(dim(result_mode$pmfs), c(n_points, 256L, n_studies), paste(mode, "pmfs shape"))
     assert_equal_int(length(result_mode$global_js_divergence), n_studies, paste(mode, "global_js_divergence length"))
   }
-  assert_error(run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = gene_means_perms,
+  assert_error(run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
                                 residuals = residuals, x_star = x_star, n_permutations = 0L,
                                 bin_count_mode = "nonsense"),
                "expected an unknown bin_count_mode string to be rejected before Fortran")
+}
+
+test_run_js_comp_test_expert_takes_the_callers_permutations <- function() {
+  # run_js_comp_test sorts each study's gene means itself; run_js_comp_test_expert takes that order
+  # from the caller (one column per study). Fixture 1, no ties: the expert tier with the ascending
+  # order (order(), the only ascending order without ties) gives exactly what the plain call gives,
+  # every output. Fixture 2: study 1's genes 1 and 2 tie at 1.0 and x_star = 0.5 lies below every
+  # mean, so with one neighbor study 1's neighborhood is the first gene of the caller's order:
+  # c(1, 2, 3) takes gene 1, c(2, 1, 3) gene 2
+  # (test_run_js_comp_test_expert_uses_caller_tie_order in the Fortran suite).
+  gene_means <- matrix(c(1.0, 5.0, 1.0, 5.0), nrow = 2)
+  residuals <- array(NaN, dim = c(2, 2, 2))
+  residuals[, 1, 1] <- c(-1.0, 1.0)
+  residuals[, 1, 2] <- c(-3.0, 3.0)
+  x_star <- c(1.0)
+
+  plain <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, residuals = residuals, x_star = x_star,
+                            n_permutations = 2L, random_seed = 1L, min_residuals_per_bin = 1L)
+  ascending <- apply(gene_means, 2, order)
+  storage.mode(ascending) <- "integer"
+  expert <- run_js_comp_test_expert(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = ascending,
+                                    residuals = residuals, x_star = x_star, n_permutations = 2L, random_seed = 1L,
+                                    min_residuals_per_bin = 1L)
+  assert_true(identical(sort(names(expert)), sort(names(plain))), "both tiers return the same outputs")
+  for (key in names(plain)) {
+    assert_true(identical(expert[[key]], plain[[key]]),
+                paste(key, "expert tier with the ascending order differs from the plain call"))
+  }
+
+  tied_means <- matrix(c(1.0, 1.0, 5.0, 1.0, 5.0, 9.0), nrow = 3)
+  tied_residuals <- array(0.0, dim = c(2, 3, 2))
+  tied_residuals[, 1, 1] <- c(-1.0, 1.0)
+  tied_residuals[, 2, 1] <- c(-3.0, 3.0)
+  tied_residuals[, 3, 1] <- c(0.5, -0.5)
+  tied_residuals[, 1, 2] <- c(-2.0, 2.0)
+  tied_residuals[, 2, 2] <- c(0.25, -0.25)
+  tied_residuals[, 3, 2] <- c(0.75, -0.75)
+  for (case in list(list(order = c(1L, 2L, 3L), gene = 1L), list(order = c(2L, 1L, 3L), gene = 2L))) {
+    perms <- cbind(case$order, c(1L, 2L, 3L))
+    result <- run_js_comp_test_expert(n_neighbors = 1L, gene_means = tied_means, gene_means_perms = perms,
+                                      residuals = tied_residuals, x_star = c(0.5), n_permutations = 0L,
+                                      min_residuals_per_bin = 1L)
+    label <- paste0("order c(", paste(case$order, collapse = ", "), "): ")
+    assert_equal_int(as.integer(result$neighborhood_indices[1, 1, 1]), case$gene,
+                     paste0(label, "study 1 should take gene ", case$gene))
+    assert_equal_int(as.integer(result$neighborhood_indices[1, 1, 2]), 1L, paste0(label, "study 2 should take gene 1"))
+  }
 }
 
 test_run_js_comp_test_zero_permutations_gives_nan_p_values <- function() {
@@ -716,13 +762,12 @@ test_run_js_comp_test_zero_permutations_gives_nan_p_values <- function() {
   # 0.0 (which would read as "maximally significant"). The control with permutations gives finite
   # p-values in (0, 1]. Same tiny fixture as test_run_js_comp_test_two_studies_hand_traceable.
   gene_means <- matrix(c(1.0, 5.0, 1.0, 5.0), nrow = 2)
-  gene_means_perms <- matrix(c(1L, 2L, 1L, 2L), nrow = 2)
   residuals <- array(NaN, dim = c(2, 2, 2))
   residuals[, 1, 1] <- c(-1.0, 1.0)
   residuals[, 1, 2] <- c(-3.0, 3.0)
   x_star <- c(1.0)
 
-  skipped <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = gene_means_perms,
+  skipped <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
                               residuals = residuals, x_star = x_star, n_permutations = 0L, random_seed = 1L,
                               min_residuals_per_bin = 1L)
   for (key in c("p_values", "p_values_observed_consensus")) {
@@ -730,7 +775,7 @@ test_run_js_comp_test_zero_permutations_gives_nan_p_values <- function() {
   }
   assert_true(all(is.finite(skipped$global_js_divergence)), "the JSDs are still computed")
 
-  control <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = gene_means_perms,
+  control <- run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
                               residuals = residuals, x_star = x_star, n_permutations = 2L, random_seed = 1L,
                               min_residuals_per_bin = 1L)
   for (key in c("p_values", "p_values_observed_consensus")) {
@@ -943,14 +988,13 @@ test_run_js_comp_test_rejects_reversed_residual_range_quantiles <- function() {
   # input instead of collapsing every histogram into one bin
   # (test_run_js_comp_test_rejects_reversed_residual_range_quantiles in the Fortran suite).
   gene_means <- matrix(c(1.0, 5.0, 1.0, 5.0), nrow = 2)
-  gene_means_perms <- matrix(c(1L, 2L, 1L, 2L), nrow = 2)
   residuals <- array(NaN, dim = c(2, 2, 2))
   residuals[, 1, 1] <- c(-1.0, 1.0)
   residuals[, 1, 2] <- c(-3.0, 3.0)
   x_star <- c(1.0)
 
   call <- function() {
-    run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = gene_means_perms,
+    run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
                      residuals = residuals, x_star = x_star, n_permutations = 0L, random_seed = 1L,
                      min_residuals_per_bin = 1L, lower_residual_range_quantile = 0.95,
                      upper_residual_range_quantile = 0.05)
@@ -967,14 +1011,13 @@ test_run_js_comp_test_rejects_nan_x_star <- function() {
   # lowest-mean genes as its neighborhood (test_run_js_comp_test_rejects_nan_x_star in the
   # Fortran suite).
   gene_means <- matrix(c(1.0, 5.0, 1.0, 5.0), nrow = 2)
-  gene_means_perms <- matrix(c(1L, 2L, 1L, 2L), nrow = 2)
   residuals <- array(NaN, dim = c(2, 2, 2))
   residuals[, 1, 1] <- c(-1.0, 1.0)
   residuals[, 1, 2] <- c(-3.0, 3.0)
   x_star <- c(1.0, NaN)
 
   call <- function() {
-    run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = gene_means_perms,
+    run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
                      residuals = residuals, x_star = x_star, n_permutations = 0L, random_seed = 1L,
                      min_residuals_per_bin = 1L)
   }
@@ -988,14 +1031,13 @@ test_run_js_comp_test_rejects_empty_study <- function() {
   # point, so the equal-weight consensus is undefined and the call fails with invalid input, not
   # tied to any one argument (test_run_js_comp_test_empty_study_sets_ierr in the Fortran suite).
   gene_means <- matrix(c(1.0, 5.0, NaN, NaN), nrow = 2)
-  gene_means_perms <- matrix(c(1L, 2L, 1L, 2L), nrow = 2)
   residuals <- array(NaN, dim = c(2, 2, 2))
   residuals[, 1, 1] <- c(-1.0, 1.0)
   residuals[, 2, 1] <- c(-3.0, 3.0)
   x_star <- c(1.0)
 
   call <- function() {
-    run_js_comp_test(n_neighbors = 1L, gene_means = gene_means, gene_means_perms = gene_means_perms,
+    run_js_comp_test(n_neighbors = 1L, gene_means = gene_means,
                      residuals = residuals, x_star = x_star, n_permutations = 0L, random_seed = 1L,
                      min_residuals_per_bin = 1L)
   }

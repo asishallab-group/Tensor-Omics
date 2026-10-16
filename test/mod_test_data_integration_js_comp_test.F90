@@ -19,6 +19,7 @@ module mod_test_data_integration_js_comp_test
                                                   generate_js_comp_test_candidates, &
                                                   check_mean_pmf_min_counts, check_plateau_condition, &
                                                   check_effect_size_plateau_condition, run_js_comp_test, &
+                                                  run_js_comp_test_expert, &
                                                   run_js_comp_test_parameter_search, &
                                                   generate_adaptive_js_comp_test_candidates, &
                                                   run_js_comp_test_adaptive, &
@@ -41,7 +42,7 @@ module mod_test_data_integration_js_comp_test
                                                        MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, &
                                                        MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, MODE_BIN_COUNT_STONE_POOLED, &
                                                        MAX_N_BINS, MAX_CANDIDATE_PAIRS, &
-                                                       generate_js_comp_test_candidates_impl
+                                                       generate_js_comp_test_candidates_impl, prepare_gene_means_perms
     use tox_data_integration_stats_impl, only: calc_js_comp_test_n_top_k_jsds
     use tox_data_integration_preprocessing_impl, only: gather_pooled_neighborhood_residuals, &
                                                        ADAPTIVE_MIN_VALID_RESIDUALS, ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_K_MAX, &
@@ -115,12 +116,24 @@ module mod_test_data_integration_js_comp_test
         real(real64), allocatable :: trace_delta(:, :), trace_mean_occ(:, :), trace_range_low(:, :), trace_range_high(:, :)
     end type fixed_k_search_outputs
 
+    !> Test helper type: every output of run_js_comp_test / run_js_comp_test_expert, sized by run_fixed_k_final.
+    type :: fixed_k_run_outputs
+        integer(int32), allocatable :: indices(:, :, :), ranges(:, :, :), n_bins(:), n_pooled(:), min_occ(:)
+        integer(int32), allocatable :: max_occ(:), sturges(:), fd(:), counts(:, :, :), included(:, :)
+        integer(int32), allocatable :: mean_pmf_counts(:, :), mean_included(:)
+        integer(int32) :: max_n_bins
+        logical(c_bool), allocatable :: occ_failed(:)
+        real(real64), allocatable :: range_low(:), range_high(:), mean_occ(:), pmfs(:, :, :), mean_pmf(:, :)
+        real(real64), allocatable :: js(:, :), weights(:, :), global_jsd(:), p_values(:)
+        real(real64), allocatable :: p_values_observed_consensus(:)
+    end type fixed_k_run_outputs
+
 contains
 
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(232))
+        allocate (all_tests(235))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -594,6 +607,12 @@ contains
                                    test_bootstrap_histogram_rejects_pool_total_not_bin_sum)
         all_tests(232) = test_case("test_bootstrap_histogram_rejects_study_sum_not_pool_total", &
                                    test_bootstrap_histogram_rejects_study_sum_not_pool_total)
+        all_tests(233) = test_case("test_prepare_gene_means_perms_matches_heapsort", &
+                                   test_prepare_gene_means_perms_matches_heapsort)
+        all_tests(234) = test_case("test_run_js_comp_test_plain_matches_expert_bit_identical", &
+                                   test_run_js_comp_test_plain_matches_expert_bit_identical)
+        all_tests(235) = test_case("test_run_js_comp_test_expert_uses_caller_tie_order", &
+                                   test_run_js_comp_test_expert_uses_caller_tie_order)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -2753,7 +2772,6 @@ contains
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
         integer(int32), parameter :: n_points = 1, n_neighbors = 1
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
-        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
         real(real64) :: x_star(n_points)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
@@ -2780,8 +2798,6 @@ contains
         nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
         gene_means(:, 1) = [1.0_real64, 5.0_real64]
         gene_means(:, 2) = [1.0_real64, 5.0_real64]
-        gene_means_perms(:, 1) = [1, 2]
-        gene_means_perms(:, 2) = [1, 2]
         residuals(:, 1, 1) = [-1.0_real64, 1.0_real64]
         residuals(:, 2, 1) = nan_val
         residuals(:, 1, 2) = [-3.0_real64, 3.0_real64]
@@ -2792,7 +2808,7 @@ contains
             p_values = -1.0_real64
             p_values_observed_consensus = -1.0_real64
             call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                                  gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                                  gene_means, residuals, x_star, neighborhood_indices, &
                                   neighborhood_range, n_bins_per_point, shared_residual_range_low, &
                                   shared_residual_range_high, max_n_bins_per_point, occupancy_failed, &
                                   n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
@@ -2861,7 +2877,6 @@ contains
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
         integer(int32), parameter :: n_points = 1, n_neighbors = 1
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
-        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
         real(real64) :: x_star(n_points)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
@@ -2888,8 +2903,6 @@ contains
 
         gene_means(:, 1) = [1.0_real64, 5.0_real64]
         gene_means(:, 2) = [1.0_real64, 5.0_real64]
-        gene_means_perms(:, 1) = [1, 2]
-        gene_means_perms(:, 2) = [1, 2]
 
         residuals(:, 1, 1) = [-1.0_real64, 1.0_real64]
         residuals(:, 2, 1) = nan_val
@@ -2899,7 +2912,7 @@ contains
         x_star = [1.0_real64]
 
         call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              gene_means, residuals, x_star, neighborhood_indices, &
                               neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
@@ -2993,7 +3006,6 @@ contains
         real(real64), parameter :: LOG2_3 = 1.5849625007211562_real64 ! log2(3) = ln(3)/ln(2)
         real(real64), parameter :: EXPECTED_JSD = 1.5_real64 - 0.75_real64*LOG2_3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
-        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
         real(real64) :: x_star(n_points)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
@@ -3020,8 +3032,6 @@ contains
 
         gene_means(:, 1) = [1.0_real64, 5.0_real64]
         gene_means(:, 2) = [1.0_real64, 5.0_real64]
-        gene_means_perms(:, 1) = [1, 2]
-        gene_means_perms(:, 2) = [1, 2]
 
         residuals(:, 1, 1) = [-1.0_real64, 1.0_real64]
         residuals(:, 2, 1) = nan_val
@@ -3031,7 +3041,7 @@ contains
         x_star = [1.0_real64]
 
         call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              gene_means, residuals, x_star, neighborhood_indices, &
                               neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
@@ -3102,7 +3112,6 @@ contains
         integer(int32), parameter :: n_studies = 3, max_n_genes_all_studies = 2, max_n_reps_all_studies = 4
         integer(int32), parameter :: n_points = 1, n_neighbors = 1, n_permutations = 500
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
-        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
         real(real64) :: x_star(n_points)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
@@ -3129,7 +3138,6 @@ contains
 
         do i_study = 1, n_studies
             gene_means(:, i_study) = [1.0_real64, 5.0_real64]
-            gene_means_perms(:, i_study) = [1, 2]
             residuals(:, 2, i_study) = nan_val
         end do
         residuals(:, 1, 1) = [-1.0_real64, -1.0_real64, 1.0_real64, 1.0_real64]
@@ -3139,7 +3147,7 @@ contains
         x_star = [1.0_real64]
 
         call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              gene_means, residuals, x_star, neighborhood_indices, &
                               neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
@@ -3236,7 +3244,6 @@ contains
         real(real64), parameter :: EXPECTED_GLOBAL_JSD_STUDY1 = 0.5_real64*POINT1_JSD + 0.5_real64*POINT2_JSD_STUDY1
         real(real64), parameter :: EXPECTED_GLOBAL_JSD_STUDY2 = 0.5_real64*POINT1_JSD + 0.5_real64*POINT2_JSD_STUDY2
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
-        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
         real(real64) :: x_star(n_points)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
@@ -3260,8 +3267,6 @@ contains
 
         gene_means(:, 1) = [1.0_real64, 5.0_real64]
         gene_means(:, 2) = [1.0_real64, 5.0_real64]
-        gene_means_perms(:, 1) = [1, 2]
-        gene_means_perms(:, 2) = [1, 2]
 
         ! Gene 1 (point 1's neighbor): well-supported, same fixture as the hand-traceable test.
         residuals(:, 1, 1) = [-1.0_real64, 1.0_real64]
@@ -3274,7 +3279,7 @@ contains
         x_star = [1.0_real64, 5.0_real64]
 
         call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              gene_means, residuals, x_star, neighborhood_indices, &
                               neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
@@ -6063,7 +6068,7 @@ contains
         call build_run_js_comp_test_golden_fixture(gene_means, gene_means_perms, residuals, x_star)
 
         call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              gene_means, residuals, x_star, neighborhood_indices, &
                               neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
@@ -6500,7 +6505,6 @@ contains
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
         integer(int32), parameter :: n_points = 1, n_neighbors = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
-        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
         real(real64) :: x_star(n_points)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
@@ -6523,7 +6527,6 @@ contains
         integer(int32) :: ierr
 
         gene_means = reshape([1.0_real64, 2.0_real64, 1.0_real64, 2.0_real64], [2, 2])
-        gene_means_perms = reshape([1, 2, 1, 2], [2, 2])
         residuals = 0.5_real64
         x_star = [1.5_real64]
 
@@ -6540,7 +6543,7 @@ contains
         p_values_observed_consensus = -7.0_real64
 
         call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              gene_means, residuals, x_star, neighborhood_indices, &
                               neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
@@ -8069,7 +8072,7 @@ contains
     subroutine test_run_adaptive_matches_fixed_k_exactly()
         integer(int32), parameter :: n_studies = 2, n_genes = 8, n_reps = 4, n_points = 3, n_neighbors = 3
         real(real64) :: gene_means(n_genes, n_studies), residuals(n_reps, n_genes, n_studies), x_star(n_points)
-        integer(int32) :: gene_means_perms(n_genes, n_studies), ranges(2, n_points)
+        integer(int32) :: ranges(2, n_points)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies), neighborhood_range(2, n_points, n_studies)
         integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point, n_pooled_residuals(n_points)
         integer(int32) :: min_bin_occupancy(n_points), max_bin_occupancy(n_points), sturges_bins(n_points)
@@ -8090,7 +8093,6 @@ contains
         do i_study = 1, n_studies
             do i_gene = 1, n_genes
                 gene_means(i_gene, i_study) = real(i_gene, real64)
-                gene_means_perms(i_gene, i_study) = i_gene
                 do i_rep = 1, n_reps
                     residuals(i_rep, i_gene, i_study) = (1.0_real64 + 0.2_real64*real(i_gene, real64))* &
                                                         sin(1.3_real64*real(i_rep, real64) + 0.7_real64*real(i_gene, real64) + &
@@ -8109,7 +8111,7 @@ contains
         mean_pmf = -7.0_real64
         mean_pmf_counts = -7_int32
 
-        call run_js_comp_test(n_studies, n_genes, n_reps, n_points, n_neighbors, gene_means, gene_means_perms, residuals, &
+        call run_js_comp_test(n_studies, n_genes, n_reps, n_points, n_neighbors, gene_means, residuals, &
                               x_star, neighborhood_indices, neighborhood_range, n_bins_per_point, &
                               shared_residual_range_low, shared_residual_range_high, max_n_bins_per_point, &
                               occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
@@ -10329,7 +10331,7 @@ contains
         integer(int32) :: mean_included(3), max_n_bins
 
         call build_run_js_comp_test_golden_fixture(gene_means, gene_means_perms, residuals, x_star)
-        call run_js_comp_test(3_int32, 10_int32, 4_int32, 3_int32, 4_int32, gene_means, gene_means_perms, residuals, &
+        call run_js_comp_test(3_int32, 10_int32, 4_int32, 3_int32, 4_int32, gene_means, residuals, &
                               x_star, neighborhood_indices, ranges, n_bins, range_low, range_high, max_n_bins, failed, &
                               n_pooled, min_occ, mean_occ, max_occ, sturges, fd, pmfs, counts, included, mean_pmf, &
                               mean_pmf_counts, mean_included, js, weights, global_jsd, p_values, p_values_observed, &
@@ -11266,7 +11268,7 @@ contains
     end subroutine test_param_search_bounds_match_candidate_bounds
 
     !> A reversed residual-range quantile pair (lower 0.95 above upper 0.05) is rejected by
-    !| run_js_comp_test at the upper quantile's position (41 in the plain wrapper). Before the
+    !| run_js_comp_test at the upper quantile's position (40 in the plain wrapper). Before the
     !| check existed, R_low ended up above R_high, every residual was clamped into bin 1, every
     !| JSD became 0 and ierr stayed OK. Reuses test_run_js_comp_test_two_studies_hand_traceable's
     !| fixture.
@@ -11275,7 +11277,6 @@ contains
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
         integer(int32), parameter :: n_points = 1, n_neighbors = 1
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
-        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
         real(real64) :: x_star(n_points)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
@@ -11302,8 +11303,6 @@ contains
 
         gene_means(:, 1) = [1.0_real64, 5.0_real64]
         gene_means(:, 2) = [1.0_real64, 5.0_real64]
-        gene_means_perms(:, 1) = [1, 2]
-        gene_means_perms(:, 2) = [1, 2]
 
         residuals(:, 1, 1) = [-1.0_real64, 1.0_real64]
         residuals(:, 2, 1) = nan_val
@@ -11313,7 +11312,7 @@ contains
         x_star = [1.0_real64]
 
         call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              gene_means, residuals, x_star, neighborhood_indices, &
                               neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
@@ -11323,11 +11322,11 @@ contains
                               ierr=ierr, n_permutations=0_int32, random_seed=1_int32, min_residuals_per_bin=1_int32, &
                               lower_residual_range_quantile=0.95_real64, upper_residual_range_quantile=0.05_real64)
 
-        call assert_err(ierr, ERR_INVALID_INPUT, name//"upper quantile below lower quantile is rejected", 41_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"upper quantile below lower quantile is rejected", 40_int32)
     end subroutine test_run_js_comp_test_rejects_reversed_residual_range_quantiles
 
     !> A NaN reference point is rejected by run_js_comp_test with ERR_NAN_INF at `x_star`'s
-    !| position (9). Before the check the NaN point silently took the first `n_neighbors` genes in
+    !| position (8). Before the check the NaN point silently took the first `n_neighbors` genes in
     !| sorted order, the lowest means, and the call returned OK. Two studies with the same 4 genes
     !| (means 1..4, residuals `[-1, 1]`, `[-2, 2]`, ...), as in
     !| assert_run_js_comp_test_rejects_empty_study, with `x_star = [1.5, NaN]`.
@@ -11336,7 +11335,6 @@ contains
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 4, max_n_reps_all_studies = 2
         integer(int32), parameter :: n_points = 2, n_neighbors = 2
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
-        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
         real(real64) :: x_star(n_points)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
@@ -11360,14 +11358,13 @@ contains
 
         gene_means(:, 1) = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
         gene_means(:, 2) = gene_means(:, 1)
-        gene_means_perms = reshape([1, 2, 3, 4, 1, 2, 3, 4], [4, 2])
         residuals(:, :, 1) = reshape([-1.0_real64, 1.0_real64, -2.0_real64, 2.0_real64, &
                                       -1.0_real64, 1.0_real64, -2.0_real64, 2.0_real64], [2, 4])
         residuals(:, :, 2) = residuals(:, :, 1)
         x_star = [1.5_real64, ieee_value(1.0_real64, ieee_quiet_nan)]
 
         call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              gene_means, residuals, x_star, neighborhood_indices, &
                               neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
@@ -11376,7 +11373,7 @@ contains
                               p_values_observed_consensus, ierr=ierr, n_permutations=0_int32, random_seed=1_int32, &
                               min_residuals_per_bin=1_int32)
 
-        call assert_err(ierr, ERR_NAN_INF, name//"a NaN reference point is rejected", arg_pos=9_int32)
+        call assert_err(ierr, ERR_NAN_INF, name//"a NaN reference point is rejected", arg_pos=8_int32)
     end subroutine test_run_js_comp_test_rejects_nan_x_star
 
     !> determine_bin_count_occupancy rejects a reversed residual-range quantile pair (lower 0.95,
@@ -11580,7 +11577,6 @@ contains
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 4, max_n_reps_all_studies = 2
         integer(int32), parameter :: n_points = 2, n_neighbors = 2
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
-        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
         real(real64) :: x_star(n_points)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
@@ -11604,7 +11600,6 @@ contains
 
         gene_means(:, 1) = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
         gene_means(:, 2) = study_2_means
-        gene_means_perms = reshape([1, 2, 3, 4, 1, 2, 3, 4], [4, 2])
         residuals(:, :, 1) = reshape([-1.0_real64, 1.0_real64, -2.0_real64, 2.0_real64, &
                                       -1.0_real64, 1.0_real64, -2.0_real64, 2.0_real64], [2, 4])
         residuals(:, :, 2) = study_2_residuals
@@ -11620,7 +11615,7 @@ contains
         p_values_observed_consensus = -7.0_real64
 
         call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
-                              gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              gene_means, residuals, x_star, neighborhood_indices, &
                               neighborhood_range, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
                               max_n_bins_per_point, occupancy_failed, &
                               n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
@@ -11955,7 +11950,6 @@ contains
         integer(int32), parameter :: n_studies = 2, n_genes = 12, n_reps = 3, n_points = 3, n_neighbors = 3
         integer(int32), parameter :: pool = n_genes*n_studies
         real(real64) :: gene_means(n_genes, n_studies), residuals(n_reps, n_genes, n_studies), x_star(n_points)
-        integer(int32) :: gene_means_perms(n_genes, n_studies)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies), neighborhood_range(2, n_points, n_studies)
         integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point, n_pooled_residuals(n_points)
         integer(int32) :: min_bin_occupancy(n_points), max_bin_occupancy(n_points), sturges_bins(n_points)
@@ -11992,12 +11986,8 @@ contains
         residuals(:, 9, 2) = ieee_value(0.0_real64, ieee_quiet_nan)
 
         ! Fixed-k final run.
-        do i_study = 1, n_studies
-            call init_perm(gene_means_perms(:, i_study))
-            call sort_array_heapsort(gene_means(:, i_study), gene_means_perms(:, i_study))
-        end do
         x_star = [3.7_real64, 6.2_real64, 9.3_real64]
-        call run_js_comp_test(n_studies, n_genes, n_reps, n_points, n_neighbors, gene_means, gene_means_perms, residuals, &
+        call run_js_comp_test(n_studies, n_genes, n_reps, n_points, n_neighbors, gene_means, residuals, &
                               x_star, neighborhood_indices, neighborhood_range, n_bins_per_point, &
                               shared_residual_range_low, shared_residual_range_high, max_n_bins_per_point, &
                               occupancy_failed, n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
@@ -12039,5 +12029,295 @@ contains
         call assert_true(all(.not. ieee_is_nan(out%global_jsd)) .and. all(out%global_jsd >= 0.0_real64) .and. &
                          all(out%global_jsd <= 1.0_real64), name//"adaptive: global JSDs finite, in [0, 1]")
     end subroutine test_final_runs_accept_partly_different_gene_sets
+
+    ! ---------------------------------------------------------------------------------------------
+    ! The plain run_js_comp_test builds `gene_means_perms` in its prologue prepare_gene_means_perms;
+    ! run_js_comp_test_expert takes the caller's own.
+    ! ---------------------------------------------------------------------------------------------
+
+    !> prepare_gene_means_perms on 7 genes x 3 studies: study 1 with two tied pairs and one NaN,
+    !| study 2 all tied, study 3 with two NaNs and a negative. Every column must equal what a
+    !| direct `init_perm` + `sort_array_heapsort` gives on that column (the call the fixed-k
+    !| parameter search makes); `handled` must come back `.false.` and `ierr` ok, both overwritten
+    !| from deliberately wrong values.
+    subroutine test_prepare_gene_means_perms_matches_heapsort()
+        character(len=*), parameter :: name = "test_prepare_gene_means_perms_matches_heapsort: "
+        integer(int32), parameter :: n_genes = 7, n_studies = 3
+        real(real64) :: gene_means(n_genes, n_studies), nan_val
+        integer(int32) :: perms(n_genes, n_studies), expected(n_genes), ierr, i_study
+        logical :: handled
+        character(len=16) :: column_text
+
+        nan_val = ieee_value(1.0_real64, ieee_quiet_nan)
+        gene_means(:, 1) = [3.0_real64, 1.0_real64, 2.0_real64, 1.0_real64, nan_val, 2.0_real64, 0.5_real64]
+        gene_means(:, 2) = 2.0_real64
+        gene_means(:, 3) = [nan_val, -1.5_real64, 4.0_real64, nan_val, 0.0_real64, 4.0_real64, 2.5_real64]
+
+        handled = .true.
+        ierr = ERR_INVALID_INPUT
+        perms = -1_int32
+        call prepare_gene_means_perms(gene_means, n_genes, n_studies, perms, handled, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_true(.not. handled, name//"handled is .false.")
+        do i_study = 1, n_studies
+            write (column_text, '(a,i0,a)') "study ", i_study, ": "
+            call init_perm(expected)
+            call sort_array_heapsort(gene_means(:, i_study), expected)
+            call assert_equal_array_int(perms(:, i_study), expected, n_genes, &
+                                        name//trim(column_text)//"equals init_perm + sort_array_heapsort")
+        end do
+        ! and the order is the documented one: NaN last, the rest ascending
+        call assert_true(ieee_is_nan(gene_means(perms(n_genes, 1), 1)), name//"study 1: NaN last")
+        call assert_true(all(gene_means(perms(1:n_genes - 2, 1), 1) <= gene_means(perms(2:n_genes - 1, 1), 1)), &
+                         name//"study 1: non-NaN ascending")
+        call assert_true(all(ieee_is_nan(gene_means(perms(n_genes - 1:n_genes, 3), 3))), name//"study 3: NaNs last")
+    end subroutine test_prepare_gene_means_perms_matches_heapsort
+
+    !> The plain run_js_comp_test (prologue-built permutations) and run_js_comp_test_expert handed
+    !| `init_perm` + `sort_array_heapsort` permutations give bit-identical outputs, every one of
+    !| them: the golden fixture with the golden regression's options (3 points, 4 neighbors,
+    !| `m_min=2`, `m_max=12`, `min_residuals_per_bin=3`, 300 permutations, seed 7). The heapsort
+    !| permutations also equal the fixture's hand-sorted ones (the fixture has no ties), so the
+    !| golden regression still runs on the order it was captured with.
+    subroutine test_run_js_comp_test_plain_matches_expert_bit_identical()
+        character(len=*), parameter :: name = "test_run_js_comp_test_plain_matches_expert_bit_identical: "
+        real(real64) :: gene_means(10, 3), residuals(4, 10, 3), x_star(3)
+        integer(int32) :: hand_perms(10, 3), heapsort_perms(10, 3), ierr_plain, ierr_expert, i_study
+        type(fixed_k_run_outputs) :: plain, expert
+
+        call build_run_js_comp_test_golden_fixture(gene_means, hand_perms, residuals, x_star)
+        do i_study = 1, 3
+            call init_perm(heapsort_perms(:, i_study))
+            call sort_array_heapsort(gene_means(:, i_study), heapsort_perms(:, i_study))
+        end do
+        call assert_equal_array_int(heapsort_perms, hand_perms, 30_int32, name//"heapsort == hand-sorted fixture order", &
+                                    n_rows=10_int32)
+
+        call run_fixed_k_final(gene_means, residuals, x_star, 4_int32, plain, ierr_plain, n_permutations=300_int32, &
+                               random_seed=7_int32, m_min=2_int32, m_max=12_int32, min_residuals_per_bin=3_int32)
+        call run_fixed_k_final(gene_means, residuals, x_star, 4_int32, expert, ierr_expert, &
+                               gene_means_perms=heapsort_perms, n_permutations=300_int32, random_seed=7_int32, &
+                               m_min=2_int32, m_max=12_int32, min_residuals_per_bin=3_int32)
+        call assert_equal_int(get_err_code(ierr_plain), ERR_OK, name//"plain ierr")
+        call assert_equal_int(get_err_code(ierr_expert), ERR_OK, name//"expert ierr")
+        call assert_fixed_k_runs_bit_identical(plain, expert, name)
+        ! guards against comparing two untouched sentinel fills
+        call assert_equal_array_int(plain%n_bins, [6, 5, 3], 3_int32, name//"golden bin counts 6/5/3")
+    end subroutine test_run_js_comp_test_plain_matches_expert_bit_identical
+
+    !> run_js_comp_test_expert accepts a caller order that heapsort need not produce, and uses it.
+    !| Study 1's genes 1 and 2 tie at mean 1.0 (gene 3 at 5.0); study 2 has distinct means 1/5/9.
+    !| With one neighbor and `x_star = 0.5`, below every mean, a study's neighborhood is the first
+    !| gene in its sort order, so study 1's tie order decides it: `[1, 2, 3]` must give gene 1,
+    !| `[2, 1, 3]` gene 2, both with ierr ok. The two genes carry different residuals
+    !| (`[-1, 1]` vs `[-3, 3]`), so the two runs' pooled upper range bounds differ too. The plain
+    !| run_js_comp_test must give exactly what the expert tier gives with heapsort's own order.
+    subroutine test_run_js_comp_test_expert_uses_caller_tie_order()
+        character(len=*), parameter :: name = "test_run_js_comp_test_expert_uses_caller_tie_order: "
+        real(real64) :: gene_means(3, 2), residuals(2, 3, 2), x_star(1)
+        integer(int32) :: order_a(3, 2), order_b(3, 2), heapsort_perms(3, 2), ierr_a, ierr_b, ierr_plain, ierr_heap
+        integer(int32) :: i_study
+        type(fixed_k_run_outputs) :: run_a, run_b, plain, heap
+
+        gene_means(:, 1) = [1.0_real64, 1.0_real64, 5.0_real64]
+        gene_means(:, 2) = [1.0_real64, 5.0_real64, 9.0_real64]
+        residuals(:, 1, 1) = [-1.0_real64, 1.0_real64]
+        residuals(:, 2, 1) = [-3.0_real64, 3.0_real64]
+        residuals(:, 3, 1) = [0.5_real64, -0.5_real64]
+        residuals(:, 1, 2) = [-2.0_real64, 2.0_real64]
+        residuals(:, 2, 2) = [0.25_real64, -0.25_real64]
+        residuals(:, 3, 2) = [0.75_real64, -0.75_real64]
+        x_star = [0.5_real64]
+        order_a = reshape([1, 2, 3, 1, 2, 3], [3, 2])
+        order_b = reshape([2, 1, 3, 1, 2, 3], [3, 2])
+
+        call run_fixed_k_final(gene_means, residuals, x_star, 1_int32, run_a, ierr_a, gene_means_perms=order_a, &
+                               n_permutations=0_int32, min_residuals_per_bin=1_int32)
+        call run_fixed_k_final(gene_means, residuals, x_star, 1_int32, run_b, ierr_b, gene_means_perms=order_b, &
+                               n_permutations=0_int32, min_residuals_per_bin=1_int32)
+        call assert_equal_int(get_err_code(ierr_a), ERR_OK, name//"order [1, 2, 3]: ierr")
+        call assert_equal_int(get_err_code(ierr_b), ERR_OK, name//"order [2, 1, 3]: ierr")
+        call assert_equal_int(run_a%indices(1, 1, 1), 1_int32, name//"order [1, 2, 3]: study 1 takes gene 1")
+        call assert_equal_int(run_b%indices(1, 1, 1), 2_int32, name//"order [2, 1, 3]: study 1 takes gene 2")
+        call assert_equal_int(run_a%indices(1, 1, 2), 1_int32, name//"order [1, 2, 3]: study 2 takes gene 1")
+        call assert_equal_int(run_b%indices(1, 1, 2), 1_int32, name//"order [2, 1, 3]: study 2 takes gene 1")
+        call assert_true(run_a%range_high(1) /= run_b%range_high(1), name//"the two orders give different range bounds")
+
+        do i_study = 1, 2
+            call init_perm(heapsort_perms(:, i_study))
+            call sort_array_heapsort(gene_means(:, i_study), heapsort_perms(:, i_study))
+        end do
+        call run_fixed_k_final(gene_means, residuals, x_star, 1_int32, plain, ierr_plain, n_permutations=0_int32, &
+                               min_residuals_per_bin=1_int32)
+        call run_fixed_k_final(gene_means, residuals, x_star, 1_int32, heap, ierr_heap, &
+                               gene_means_perms=heapsort_perms, n_permutations=0_int32, min_residuals_per_bin=1_int32)
+        call assert_equal_int(get_err_code(ierr_plain), ERR_OK, name//"plain: ierr")
+        call assert_equal_int(get_err_code(ierr_heap), ERR_OK, name//"expert with heapsort order: ierr")
+        call assert_fixed_k_runs_bit_identical(plain, heap, name//"plain vs expert with heapsort order: ")
+    end subroutine test_run_js_comp_test_expert_uses_caller_tie_order
+
+    !> Test helper: run the fixed-k final run, sizes taken from the arrays. Without
+    !| `gene_means_perms` it calls the plain run_js_comp_test, which sorts each study's gene means
+    !| itself; with it, run_js_comp_test_expert on that order, with locally allocated work arrays.
+    !| Every output is pre-filled with the sentinel -7 first.
+    subroutine run_fixed_k_final(gene_means, residuals, x_star, n_neighbors, out, ierr, gene_means_perms, &
+                                 n_permutations, random_seed, m_min, m_max, min_residuals_per_bin)
+        real(real64), intent(in) :: gene_means(:, :)
+            !! Mean expression of every gene in every study, NaN for a missing gene
+        real(real64), intent(in) :: residuals(:, :, :)
+            !! Signed residuals of every replicate of every gene in every study
+        real(real64), intent(in) :: x_star(:)
+            !! Mean-expression reference points
+        integer(int32), intent(in) :: n_neighbors
+            !! Number of neighbors per neighborhood
+        type(fixed_k_run_outputs), intent(out) :: out
+            !! Every output of the run, pre-filled with the sentinel -7
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure
+        integer(int32), intent(in), optional :: gene_means_perms(:, :)
+            !! Per-study sort order for run_js_comp_test_expert; absent: the plain run_js_comp_test
+        integer(int32), intent(in), optional :: n_permutations
+            !! Number of permutations, forwarded
+        integer(int32), intent(in), optional :: random_seed
+            !! Seed for the GSL random number generator, forwarded
+        integer(int32), intent(in), optional :: m_min
+            !! Smallest candidate bin count, forwarded
+        integer(int32), intent(in), optional :: m_max
+            !! Largest candidate bin count, forwarded
+        integer(int32), intent(in), optional :: min_residuals_per_bin
+            !! Occupancy floor per bin, forwarded
+        integer(int32) :: n_studies, n_genes, n_reps, n_pts, n_pool
+        real(real64), allocatable :: tmp_gathered(:, :, :), tmp_perm_mean_pmf(:, :), tmp_pooled(:), tmp_perm_pmfs(:, :, :)
+        real(real64), allocatable :: tmp_perm_js(:, :), tmp_perm_weights(:, :), tmp_perm_global(:)
+        integer(int32), allocatable :: tmp_point_pool(:), tmp_point_draw(:), tmp_pooled_perm(:), tmp_bin_counts(:)
+        integer(int32), allocatable :: tmp_to_study_perm(:), tmp_block_ends(:), tmp_block_sizes(:), tmp_point_n(:)
+        integer(int32), allocatable :: tmp_perm_mean_pmf_counts(:, :), tmp_perm_counts(:, :)
+
+        n_genes = size(gene_means, 1, kind=int32)
+        n_studies = size(gene_means, 2, kind=int32)
+        n_reps = size(residuals, 1, kind=int32)
+        n_pts = size(x_star, kind=int32)
+
+        allocate (out%indices(n_neighbors, n_pts, n_studies), out%ranges(2, n_pts, n_studies), out%n_bins(n_pts), &
+                  out%n_pooled(n_pts), out%min_occ(n_pts), out%max_occ(n_pts), out%sturges(n_pts), out%fd(n_pts), &
+                  out%counts(n_pts, MAX_N_BINS, n_studies), out%included(n_pts, n_studies), &
+                  out%mean_pmf_counts(n_pts, MAX_N_BINS), out%mean_included(n_pts), out%occ_failed(n_pts), &
+                  out%range_low(n_pts), out%range_high(n_pts), out%mean_occ(n_pts), &
+                  out%pmfs(n_pts, MAX_N_BINS, n_studies), out%mean_pmf(n_pts, MAX_N_BINS), out%js(n_pts, n_studies), &
+                  out%weights(n_pts, n_studies), out%global_jsd(n_studies), out%p_values(n_studies), &
+                  out%p_values_observed_consensus(n_studies))
+        out%indices = -7_int32
+        out%ranges = -7_int32
+        out%n_bins = -7_int32
+        out%n_pooled = -7_int32
+        out%min_occ = -7_int32
+        out%max_occ = -7_int32
+        out%sturges = -7_int32
+        out%fd = -7_int32
+        out%counts = -7_int32
+        out%included = -7_int32
+        out%mean_pmf_counts = -7_int32
+        out%mean_included = -7_int32
+        out%max_n_bins = -7_int32
+        out%occ_failed = .false._c_bool
+        out%range_low = -7.0_real64
+        out%range_high = -7.0_real64
+        out%mean_occ = -7.0_real64
+        out%pmfs = -7.0_real64
+        out%mean_pmf = -7.0_real64
+        out%js = -7.0_real64
+        out%weights = -7.0_real64
+        out%global_jsd = -7.0_real64
+        out%p_values = -7.0_real64
+        out%p_values_observed_consensus = -7.0_real64
+
+        if (.not. present(gene_means_perms)) then
+            call run_js_comp_test(n_studies, n_genes, n_reps, n_pts, n_neighbors, gene_means, residuals, x_star, &
+                                  out%indices, out%ranges, out%n_bins, out%range_low, out%range_high, out%max_n_bins, &
+                                  out%occ_failed, out%n_pooled, out%min_occ, out%mean_occ, out%max_occ, out%sturges, &
+                                  out%fd, out%pmfs, out%counts, out%included, out%mean_pmf, out%mean_pmf_counts, &
+                                  out%mean_included, out%js, out%weights, out%global_jsd, out%p_values, &
+                                  out%p_values_observed_consensus, n_permutations=n_permutations, &
+                                  random_seed=random_seed, min_residuals_per_bin=min_residuals_per_bin, m_min=m_min, &
+                                  m_max=m_max, ierr=ierr)
+            return
+        end if
+
+        n_pool = n_reps*n_neighbors*n_studies
+        allocate (tmp_gathered(n_reps, n_neighbors, n_pts), tmp_perm_mean_pmf(n_pts, MAX_N_BINS), &
+                  tmp_point_pool(MAX_N_BINS), tmp_point_draw(MAX_N_BINS), tmp_pooled(n_pool), tmp_pooled_perm(n_pool), &
+                  tmp_bin_counts(MAX_N_BINS), tmp_to_study_perm(n_pool), tmp_block_ends(n_studies), &
+                  tmp_block_sizes(n_studies), tmp_point_n(n_studies), tmp_perm_mean_pmf_counts(n_pts, MAX_N_BINS), &
+                  tmp_perm_counts(n_pts, MAX_N_BINS), tmp_perm_pmfs(n_pts, MAX_N_BINS, n_studies), &
+                  tmp_perm_js(n_pts, n_studies), tmp_perm_weights(n_pts, n_studies), tmp_perm_global(n_studies))
+        call run_js_comp_test_expert(n_studies, n_genes, n_reps, n_pts, n_neighbors, gene_means, gene_means_perms, &
+                                     residuals, x_star, out%indices, out%ranges, out%n_bins, out%range_low, &
+                                     out%range_high, out%max_n_bins, out%occ_failed, out%n_pooled, out%min_occ, &
+                                     out%mean_occ, out%max_occ, out%sturges, out%fd, out%pmfs, out%counts, out%included, &
+                                     out%mean_pmf, out%mean_pmf_counts, out%mean_included, out%js, out%weights, &
+                                     out%global_jsd, out%p_values, out%p_values_observed_consensus, tmp_gathered, &
+                                     tmp_perm_mean_pmf, tmp_point_pool, tmp_point_draw, tmp_pooled, tmp_pooled_perm, &
+                                     tmp_bin_counts, tmp_to_study_perm, tmp_block_ends, tmp_block_sizes, tmp_point_n, &
+                                     tmp_perm_mean_pmf_counts, tmp_perm_counts, tmp_perm_pmfs, tmp_perm_js, &
+                                     tmp_perm_weights, tmp_perm_global, n_permutations=n_permutations, &
+                                     random_seed=random_seed, min_residuals_per_bin=min_residuals_per_bin, m_min=m_min, &
+                                     m_max=m_max, ierr=ierr)
+    end subroutine run_fixed_k_final
+
+    !> Test helper: every output of two fixed-k final runs is bit-for-bit the same -- integers and
+    !| logicals equal, reals equal as bit patterns (so NaN payloads and signed zeros count too).
+    subroutine assert_fixed_k_runs_bit_identical(a, b, msg)
+        type(fixed_k_run_outputs), intent(in) :: a
+            !! The first run
+        type(fixed_k_run_outputs), intent(in) :: b
+            !! The second run
+        character(*), intent(in) :: msg
+            !! Assertion message prefix
+
+        call assert_equal_array_int(a%indices, b%indices, size(a%indices, kind=int32), msg//"neighborhood_indices")
+        call assert_equal_array_int(a%ranges, b%ranges, size(a%ranges, kind=int32), msg//"neighborhood_range")
+        call assert_equal_array_int(a%n_bins, b%n_bins, size(a%n_bins, kind=int32), msg//"n_bins_per_point")
+        call assert_equal_int(a%max_n_bins, b%max_n_bins, msg//"max_n_bins_per_point")
+        call assert_equal_array_logical(a%occ_failed, b%occ_failed, size(a%occ_failed, kind=int32), &
+                                        msg//"occupancy_failed")
+        call assert_equal_array_int(a%n_pooled, b%n_pooled, size(a%n_pooled, kind=int32), msg//"n_pooled_residuals")
+        call assert_equal_array_int(a%min_occ, b%min_occ, size(a%min_occ, kind=int32), msg//"min_bin_occupancy")
+        call assert_equal_array_int(a%max_occ, b%max_occ, size(a%max_occ, kind=int32), msg//"max_bin_occupancy")
+        call assert_equal_array_int(a%sturges, b%sturges, size(a%sturges, kind=int32), msg//"sturges_bins")
+        call assert_equal_array_int(a%fd, b%fd, size(a%fd, kind=int32), msg//"fd_bins")
+        call assert_equal_array_int(a%counts, b%counts, size(a%counts, kind=int32), msg//"counts")
+        call assert_equal_array_int(a%included, b%included, size(a%included, kind=int32), msg//"included_n_reps")
+        call assert_equal_array_int(a%mean_pmf_counts, b%mean_pmf_counts, size(a%mean_pmf_counts, kind=int32), &
+                                    msg//"mean_pmf_counts")
+        call assert_equal_array_int(a%mean_included, b%mean_included, size(a%mean_included, kind=int32), &
+                                    msg//"mean_pmf_included_n_reps")
+        call assert_bits_equal(a%range_low, b%range_low, size(a%range_low, kind=int32), msg//"shared_residual_range_low")
+        call assert_bits_equal(a%range_high, b%range_high, size(a%range_high, kind=int32), &
+                               msg//"shared_residual_range_high")
+        call assert_bits_equal(a%mean_occ, b%mean_occ, size(a%mean_occ, kind=int32), msg//"mean_bin_occupancy")
+        call assert_bits_equal(a%pmfs, b%pmfs, size(a%pmfs, kind=int32), msg//"pmfs")
+        call assert_bits_equal(a%mean_pmf, b%mean_pmf, size(a%mean_pmf, kind=int32), msg//"mean_pmf")
+        call assert_bits_equal(a%js, b%js, size(a%js, kind=int32), msg//"js_divergences")
+        call assert_bits_equal(a%weights, b%weights, size(a%weights, kind=int32), msg//"weights")
+        call assert_bits_equal(a%global_jsd, b%global_jsd, size(a%global_jsd, kind=int32), msg//"global_js_divergence")
+        call assert_bits_equal(a%p_values, b%p_values, size(a%p_values, kind=int32), msg//"p_values")
+        call assert_bits_equal(a%p_values_observed_consensus, b%p_values_observed_consensus, &
+                               size(a%p_values_observed_consensus, kind=int32), msg//"p_values_observed_consensus")
+    end subroutine assert_fixed_k_runs_bit_identical
+
+    !> Test helper: two real arrays of `n` elements hold the same bit patterns, element by element.
+    subroutine assert_bits_equal(a, b, n, msg)
+        integer(int32), intent(in) :: n
+            !! Number of elements in `a` and `b`
+        real(real64), intent(in) :: a(n)
+            !! Actual values
+        real(real64), intent(in) :: b(n)
+            !! Expected values
+        character(*), intent(in) :: msg
+            !! Assertion message
+
+        call assert_true(all(transfer(a, 0_int64, n) == transfer(b, 0_int64, n)), msg//" (bit patterns)")
+    end subroutine assert_bits_equal
 
 end module mod_test_data_integration_js_comp_test

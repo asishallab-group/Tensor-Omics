@@ -8,7 +8,6 @@ module mod_test_sorting
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use test_suite, only: test_case
-    use tox_errors, only: get_err_code, ERR_OK
     implicit none
     public
 
@@ -17,7 +16,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_sorting() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(28))
+        allocate (all_tests(27))
 
         all_tests(1) = test_case("test_sort_real", test_sort_real)
         all_tests(2) = test_case("test_sort_integer", test_sort_integer)
@@ -43,12 +42,11 @@ contains
         all_tests(21) = test_case("test_sort_nan", test_sort_nan)
         all_tests(22) = test_case("test_sort_duplicates_real", test_sort_duplicates_real)
         all_tests(23) = test_case("test_sort_negatives_real", test_sort_negatives_real)
-        all_tests(24) = test_case("test_sort_real_get_perm", test_sort_real_get_perm)
         ! Value heaps tracking the k largest / k smallest values pushed
-        all_tests(25) = test_case("test_top_k_heap_push", test_top_k_heap_push)
-        all_tests(26) = test_case("test_bottom_k_heap_push", test_bottom_k_heap_push)
-        all_tests(27) = test_case("test_k_heap_push_size_zero_and_one", test_k_heap_push_size_zero_and_one)
-        all_tests(28) = test_case("test_heap_sift_down", test_heap_sift_down)
+        all_tests(24) = test_case("test_top_k_heap_push", test_top_k_heap_push)
+        all_tests(25) = test_case("test_bottom_k_heap_push", test_bottom_k_heap_push)
+        all_tests(26) = test_case("test_k_heap_push_size_zero_and_one", test_k_heap_push_size_zero_and_one)
+        all_tests(27) = test_case("test_heap_sift_down", test_heap_sift_down)
     end function get_all_tests_sorting
 
     !> Test sorting of a real array using permutation vector.
@@ -449,29 +447,6 @@ contains
         call assert_equal_array_real(sorted_non_nan, expected_non_nan, n - 1, 1d-12, &
                                      "test_sort_nan (heapsort): non-NaN values not sorted")
     end subroutine test_sort_nan
-
-    !> Test sort_real_get_perm: ascending order, duplicates handled, NaN sorted last.
-    subroutine test_sort_real_get_perm()
-        use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_is_nan, ieee_quiet_nan
-        real(real64), dimension(6) :: data
-        real(real64), dimension(5) :: expected_non_nan = [1.0d0, 1.0d0, 2.0d0, 2.0d0, 3.0d0]
-        real(real64), dimension(5) :: sorted_non_nan
-        integer(int32), dimension(6) :: perm
-        real(real64) :: nanval
-        integer(int32) :: n, ierr
-
-        nanval = ieee_value(0.0_real64, ieee_quiet_nan)
-        data = [3.0d0, 1.0d0, 2.0d0, 1.0d0, nanval, 2.0d0]
-        n = size(data)
-
-        call sort_real_get_perm(data, n, perm, ierr)
-
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_sort_real_get_perm: ierr should be OK")
-        call assert_true(ieee_is_nan(data(perm(n))), "test_sort_real_get_perm: NaN not last")
-        sorted_non_nan = data(perm(1:n - 1))
-        call assert_equal_array_real(sorted_non_nan, expected_non_nan, n - 1, 1d-12, &
-                                     "test_sort_real_get_perm: non-NaN values not sorted")
-    end subroutine test_sort_real_get_perm
 
     !> top_k_heap_push on a 3-slot heap seeded with 0, values 5, 1, -1, 7, 3, 3 pushed in turn,
     !| every heap state derived by hand:

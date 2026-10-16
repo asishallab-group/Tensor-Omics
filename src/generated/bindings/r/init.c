@@ -58,7 +58,6 @@ SEXP serialize_int_helper_call(SEXP, SEXP);
 SEXP serialize_logical_helper_call(SEXP, SEXP);
 SEXP serialize_real_helper_call(SEXP, SEXP);
 SEXP get_array_metadata_call(SEXP, SEXP);
-SEXP sort_real_get_perm_call(SEXP);
 SEXP loess_smooth_2d_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_edf_call(SEXP);
 SEXP compute_edf_expert_call(SEXP, SEXP);
@@ -81,7 +80,8 @@ SEXP determine_bin_count_occupancy_exhaustive_call(SEXP, SEXP, SEXP, SEXP, SEXP,
 SEXP determine_bin_count_occupancy_exhaustive_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP determine_bin_count_stone_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP determine_bin_count_stone_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP run_js_comp_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP run_js_comp_test_adaptive_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP generate_js_comp_test_candidates_call(SEXP);
 SEXP generate_adaptive_js_comp_test_candidates_call(SEXP, SEXP);
@@ -199,7 +199,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"serialize_logical_helper_call", (DL_FUNC) &serialize_logical_helper_call, 2},
     {"serialize_real_helper_call", (DL_FUNC) &serialize_real_helper_call, 2},
     {"get_array_metadata_call", (DL_FUNC) &get_array_metadata_call, 2},
-    {"sort_real_get_perm_call", (DL_FUNC) &sort_real_get_perm_call, 1},
     {"loess_smooth_2d_call", (DL_FUNC) &loess_smooth_2d_call, 6},
     {"compute_edf_call", (DL_FUNC) &compute_edf_call, 1},
     {"compute_edf_expert_call", (DL_FUNC) &compute_edf_expert_call, 2},
@@ -222,7 +221,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"determine_bin_count_occupancy_exhaustive_expert_call", (DL_FUNC) &determine_bin_count_occupancy_exhaustive_expert_call, 8},
     {"determine_bin_count_stone_call", (DL_FUNC) &determine_bin_count_stone_call, 11},
     {"determine_bin_count_stone_expert_call", (DL_FUNC) &determine_bin_count_stone_expert_call, 12},
-    {"run_js_comp_test_call", (DL_FUNC) &run_js_comp_test_call, 14},
+    {"run_js_comp_test_call", (DL_FUNC) &run_js_comp_test_call, 13},
+    {"run_js_comp_test_expert_call", (DL_FUNC) &run_js_comp_test_expert_call, 14},
     {"run_js_comp_test_adaptive_call", (DL_FUNC) &run_js_comp_test_adaptive_call, 12},
     {"generate_js_comp_test_candidates_call", (DL_FUNC) &generate_js_comp_test_candidates_call, 1},
     {"generate_adaptive_js_comp_test_candidates_call", (DL_FUNC) &generate_adaptive_js_comp_test_candidates_call, 2},

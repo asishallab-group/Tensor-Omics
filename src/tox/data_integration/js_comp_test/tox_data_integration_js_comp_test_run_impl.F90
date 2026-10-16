@@ -16,7 +16,7 @@ module tox_data_integration_js_comp_test_run_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
-    use f42_sort_impl, only: init_perm, sort_real_heapsort_expl_size
+    use f42_sort_impl, only: init_perm, sort_array_heapsort, sort_real_heapsort_expl_size
     use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, ERR_INVALID_INPUT
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
                                              compute_weighted_global_divergence_impl, calc_pmf_impl, &
@@ -28,7 +28,7 @@ module tox_data_integration_js_comp_test_run_impl
                                                               build_fixed_k_study_histograms, build_adaptive_histograms
     M_IMPLICIT_NONE
     private
-    public :: run_js_comp_test_impl, run_js_comp_test_adaptive_impl
+    public :: run_js_comp_test_impl, run_js_comp_test_adaptive_impl, prepare_gene_means_perms
 
 contains
 
@@ -152,6 +152,37 @@ contains
         end do
     end subroutine finish_js_comp_test
 
+    !> summary: Sort each study's gene means: one ascending, NaN-last permutation per study
+    !| AUTHOR_LASZLO_LANG
+    !| The prologue of the plain `run_js_comp_test`: column `i_study` of `gene_means_perms` is the
+    !| heapsort permutation of `gene_means(:, i_study)`, built exactly as the fixed-k parameter
+    !| search builds its own. Never handles the call itself (`handled` is always `.false.`).
+    pure subroutine prepare_gene_means_perms(gene_means, max_n_genes_all_studies, n_studies, gene_means_perms, &
+                                             handled, ierr)
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
+            !! Per-gene mean expression values for all studies
+        integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(out) :: gene_means_perms
+            !! Per study (column), the permutation that sorts that study's `gene_means` ascending, NaN last
+        ! Plain logical, not c_bool: the generated wrapper declares `handled` default-kind.
+        logical, intent(out) :: handled
+            !! Always `.false.`: the implementation always runs
+        integer(int32), intent(out) :: ierr
+            !! Error code; always success
+
+        integer(int32) :: i_study
+
+        do i_study = 1, n_studies
+            call init_perm(gene_means_perms(:, i_study))
+            call sort_array_heapsort(gene_means(:, i_study), gene_means_perms(:, i_study))
+        end do
+        handled = .false.
+        call set_ok(ierr)
+    end subroutine prepare_gene_means_perms
+
     !> summary: Run the JSD-Comp-Test pipeline for one fixed (n_points, n_neighbors) parameter setting
     !| AUTHOR_LASZLO_LANG
     !| The final JS-Comp-Test of K studies for one fixed `(n_points, n_neighbors)` setting:
@@ -193,6 +224,12 @@ contains
     !| generator; `pmfs`, `js_divergences`, `weights` and `global_js_divergence` then hold their
     !| values from before the permutation test. An out-of-range neighbor index is also reported
     !| as `ERR_INVALID_INPUT`, a safeguard valid input cannot reach.
+    !|
+    !| The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
+    !| last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
+    !| caller instead. That order must still be ascending with NaN last (only the order among tied
+    !| genes is the caller's choice); it is not checked to be sorted.
+    !| DM_PROLOGUE(prepare_gene_means_perms, tox_data_integration_js_comp_test_run_impl)
     subroutine run_js_comp_test_impl(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
                                      gene_means, gene_means_perms, residuals, x_star, &
                                      neighborhood_indices, neighborhood_range, n_bins_per_point, &
@@ -231,7 +268,10 @@ contains
             !! Per-gene mean expression values for all studies
             !! DM_ALLOW_NAN
         integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means_perms
-            !! Per-study sorting permutation for `gene_means` (ascending, NaN last)
+            !! Per study (column), a permutation of that study's `gene_means` in ascending order, NaN last.
+            !! The plain entry point builds it for you (heapsort); the expert one takes yours, which
+            !! must be sorted that way too (only the order among tied genes is free) and is not
+            !! checked to be sorted.
             !! DM_MIN(1_int32)
             !! DM_MAX(max_n_genes_all_studies)
         real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals

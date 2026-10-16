@@ -37,6 +37,7 @@ from tensor_omics import (
     calc_js_comp_test_n_top_k_jsds,
     gather_pooled_neighborhood_residuals,
     run_js_comp_test,
+    run_js_comp_test_expert,
     run_js_comp_test_parameter_search,
     run_js_comp_test_adaptive,
     run_js_comp_test_adaptive_parameter_search,
@@ -721,7 +722,6 @@ def test_run_js_comp_test_two_studies_hand_traceable():
     # `max_n_bins_per_point` bins are meaningful -- a caller must slice
     # `[:, :max_n_bins_per_point, ...]` themselves.
     gene_means = np.array([[1.0, 1.0], [5.0, 5.0]], dtype=np.float64, order='F')
-    gene_means_perms = np.array([[1, 1], [2, 2]], dtype=np.int32, order='F')
 
     residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
     residuals[:, 0, 0] = [-1.0, 1.0]
@@ -733,7 +733,7 @@ def test_run_js_comp_test_two_studies_hand_traceable():
     # satisfy) so the occupancy search actually succeeds, matching the Fortran fixture's own
     # override -- exercised here for call-ability, not to reproduce that test's exact numbers.
     result = run_js_comp_test(n_neighbors=1, gene_means=gene_means,
-                               gene_means_perms=gene_means_perms, residuals=residuals, x_star=x_star,
+                               residuals=residuals, x_star=x_star,
                                n_permutations=0, random_seed=1, min_residuals_per_bin=1)
 
     n_points, n_studies = 1, 2
@@ -776,7 +776,7 @@ def test_run_js_comp_test_two_studies_hand_traceable():
     # bin_count_mode: every mode string is accepted (type/shape only; the bin counts themselves
     # are the Fortran suite's job), an unknown one is rejected by the C layer.
     for mode in BIN_COUNT_MODES:
-        result_mode = run_js_comp_test(n_neighbors=1, gene_means=gene_means, gene_means_perms=gene_means_perms,
+        result_mode = run_js_comp_test(n_neighbors=1, gene_means=gene_means,
                                        residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
                                        min_residuals_per_bin=1, bin_count_mode=mode)
         assert result_mode["n_bins_per_point"].shape == (n_points,), f"{mode}: n_bins_per_point shape"
@@ -784,7 +784,7 @@ def test_run_js_comp_test_two_studies_hand_traceable():
         assert result_mode["occupancy_failed"].dtype == np.bool_, f"{mode}: occupancy_failed dtype"
         assert result_mode["pmfs"].shape == (n_points, 256, n_studies), f"{mode}: pmfs shape"
         assert result_mode["global_js_divergence"].shape == (n_studies,), f"{mode}: global_js_divergence shape"
-    assert_error(lambda: run_js_comp_test(n_neighbors=1, gene_means=gene_means, gene_means_perms=gene_means_perms,
+    assert_error(lambda: run_js_comp_test(n_neighbors=1, gene_means=gene_means,
                                           residuals=residuals, x_star=x_star, n_permutations=0,
                                           bin_count_mode="nonsense"),
                  "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
@@ -795,24 +795,67 @@ def test_run_js_comp_test_zero_permutations_gives_nan_p_values():
     # 0.0 (which would read as "maximally significant"). The control with permutations gives finite
     # p-values in (0, 1]. Same tiny fixture as test_run_js_comp_test_two_studies_hand_traceable.
     gene_means = np.array([[1.0, 1.0], [5.0, 5.0]], dtype=np.float64, order='F')
-    gene_means_perms = np.array([[1, 1], [2, 2]], dtype=np.int32, order='F')
     residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
     residuals[:, 0, 0] = [-1.0, 1.0]
     residuals[:, 0, 1] = [-3.0, 3.0]
     x_star = np.array([1.0], dtype=np.float64)
 
-    skipped = run_js_comp_test(n_neighbors=1, gene_means=gene_means, gene_means_perms=gene_means_perms,
+    skipped = run_js_comp_test(n_neighbors=1, gene_means=gene_means,
                                residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
                                min_residuals_per_bin=1)
     for key in ("p_values", "p_values_observed_consensus"):
         assert np.all(np.isnan(skipped[key])), f"{key}: n_permutations=0 must give NaN"
     assert np.all(np.isfinite(skipped["global_js_divergence"])), "the JSDs are still computed"
 
-    control = run_js_comp_test(n_neighbors=1, gene_means=gene_means, gene_means_perms=gene_means_perms,
+    control = run_js_comp_test(n_neighbors=1, gene_means=gene_means,
                                residuals=residuals, x_star=x_star, n_permutations=2, random_seed=1,
                                min_residuals_per_bin=1)
     for key in ("p_values", "p_values_observed_consensus"):
         assert np.all((control[key] > 0.0) & (control[key] <= 1.0)), f"{key}: control expected in (0, 1]"
+
+
+def test_run_js_comp_test_expert_takes_the_callers_permutations():
+    # run_js_comp_test sorts each study's gene means itself; run_js_comp_test_expert takes that
+    # order from the caller (1-based, one column per study). Fixture 1, no ties: the expert tier
+    # with the ascending order (np.argsort + 1, the only ascending order without ties) gives exactly
+    # what the plain call gives, every output. Fixture 2: study 1's genes 1 and 2 tie at 1.0 and
+    # x_star = 0.5 lies below every mean, so with one neighbor study 1's neighborhood is the first
+    # gene of the caller's order: [1, 2, 3] takes gene 1, [2, 1, 3] gene 2
+    # (test_run_js_comp_test_expert_uses_caller_tie_order in the Fortran suite).
+    gene_means = np.array([[1.0, 1.0], [5.0, 5.0]], dtype=np.float64, order='F')
+    residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
+    residuals[:, 0, 0] = [-1.0, 1.0]
+    residuals[:, 0, 1] = [-3.0, 3.0]
+    x_star = np.array([1.0], dtype=np.float64)
+    options = dict(n_permutations=2, random_seed=1, min_residuals_per_bin=1)
+
+    plain = run_js_comp_test(n_neighbors=1, gene_means=gene_means, residuals=residuals, x_star=x_star, **options)
+    ascending = np.asfortranarray(np.argsort(gene_means, axis=0, kind='stable') + 1, dtype=np.int32)
+    expert = run_js_comp_test_expert(n_neighbors=1, gene_means=gene_means, gene_means_perms=ascending,
+                                     residuals=residuals, x_star=x_star, **options)
+    assert set(expert) == set(plain), "both tiers return the same outputs"
+    for key, value in plain.items():
+        value = np.asarray(value)
+        is_real = np.issubdtype(value.dtype, np.floating)
+        assert np.array_equal(np.asarray(expert[key]), value, equal_nan=is_real), \
+            f"{key}: expert tier with the ascending order differs from the plain call"
+
+    tied_means = np.array([[1.0, 1.0], [1.0, 5.0], [5.0, 9.0]], dtype=np.float64, order='F')
+    tied_residuals = np.empty((2, 3, 2), dtype=np.float64, order='F')
+    tied_residuals[:, 0, 0] = [-1.0, 1.0]
+    tied_residuals[:, 1, 0] = [-3.0, 3.0]
+    tied_residuals[:, 2, 0] = [0.5, -0.5]
+    tied_residuals[:, 0, 1] = [-2.0, 2.0]
+    tied_residuals[:, 1, 1] = [0.25, -0.25]
+    tied_residuals[:, 2, 1] = [0.75, -0.75]
+    below = np.array([0.5], dtype=np.float64)
+    for order, gene in (([1, 2, 3], 1), ([2, 1, 3], 2)):
+        perms = np.array([order, [1, 2, 3]], dtype=np.int32).T.copy(order='F')
+        result = run_js_comp_test_expert(n_neighbors=1, gene_means=tied_means, gene_means_perms=perms,
+                                         residuals=tied_residuals, x_star=below, n_permutations=0,
+                                         min_residuals_per_bin=1)
+        assert result["neighborhood_indices"][0, 0, 0] == gene, f"order {order}: study 1 should take gene {gene}"
+        assert result["neighborhood_indices"][0, 0, 1] == 1, f"order {order}: study 2 should take gene 1"
 
 
 def test_run_js_comp_test_parameter_search():
@@ -1021,14 +1064,13 @@ def test_run_js_comp_test_rejects_reversed_residual_range_quantiles():
     # input instead of collapsing every histogram into one bin
     # (test_run_js_comp_test_rejects_reversed_residual_range_quantiles in the Fortran suite).
     gene_means = np.array([[1.0, 1.0], [5.0, 5.0]], dtype=np.float64, order='F')
-    gene_means_perms = np.array([[1, 1], [2, 2]], dtype=np.int32, order='F')
     residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
     residuals[:, 0, 0] = [-1.0, 1.0]
     residuals[:, 0, 1] = [-3.0, 3.0]
     x_star = np.array([1.0], dtype=np.float64)
 
     def call():
-        return run_js_comp_test(n_neighbors=1, gene_means=gene_means, gene_means_perms=gene_means_perms,
+        return run_js_comp_test(n_neighbors=1, gene_means=gene_means,
                                 residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
                                 min_residuals_per_bin=1, lower_residual_range_quantile=0.95,
                                 upper_residual_range_quantile=0.05)
@@ -1047,14 +1089,13 @@ def test_run_js_comp_test_rejects_nan_x_star():
     # lowest-mean genes as its neighborhood (test_run_js_comp_test_rejects_nan_x_star in the
     # Fortran suite).
     gene_means = np.array([[1.0, 1.0], [5.0, 5.0]], dtype=np.float64, order='F')
-    gene_means_perms = np.array([[1, 1], [2, 2]], dtype=np.int32, order='F')
     residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
     residuals[:, 0, 0] = [-1.0, 1.0]
     residuals[:, 0, 1] = [-3.0, 3.0]
     x_star = np.array([1.0, np.nan], dtype=np.float64)
 
     def call():
-        return run_js_comp_test(n_neighbors=1, gene_means=gene_means, gene_means_perms=gene_means_perms,
+        return run_js_comp_test(n_neighbors=1, gene_means=gene_means,
                                 residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
                                 min_residuals_per_bin=1)
 
@@ -1070,14 +1111,13 @@ def test_run_js_comp_test_rejects_empty_study():
     # point, so the equal-weight consensus is undefined and the call fails with invalid input, not
     # tied to any one argument (test_run_js_comp_test_empty_study_sets_ierr in the Fortran suite).
     gene_means = np.array([[1.0, np.nan], [5.0, np.nan]], dtype=np.float64, order='F')
-    gene_means_perms = np.array([[1, 1], [2, 2]], dtype=np.int32, order='F')
     residuals = np.full((2, 2, 2), np.nan, dtype=np.float64, order='F')
     residuals[:, 0, 0] = [-1.0, 1.0]
     residuals[:, 1, 0] = [-3.0, 3.0]
     x_star = np.array([1.0], dtype=np.float64)
 
     def call():
-        return run_js_comp_test(n_neighbors=1, gene_means=gene_means, gene_means_perms=gene_means_perms,
+        return run_js_comp_test(n_neighbors=1, gene_means=gene_means,
                                 residuals=residuals, x_star=x_star, n_permutations=0, random_seed=1,
                                 min_residuals_per_bin=1)
 

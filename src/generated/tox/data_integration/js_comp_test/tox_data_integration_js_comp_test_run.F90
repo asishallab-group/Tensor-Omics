@@ -14,7 +14,7 @@
 !| Generated from [[tox_data_integration_js_comp_test_run_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_js_comp_test_run
     use f42_safeguard
-    use tox_data_integration_js_comp_test_run_impl, only: run_js_comp_test_adaptive_impl, run_js_comp_test_impl
+    use tox_data_integration_js_comp_test_run_impl, only: prepare_gene_means_perms, run_js_comp_test_adaptive_impl, run_js_comp_test_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_math_impl, only: above
@@ -73,6 +73,12 @@ contains
     !| generator; `pmfs`, `js_divergences`, `weights` and `global_js_divergence` then hold their
     !| values from before the permutation test. An out-of-range neighbor index is also reported
     !| as `ERR_INVALID_INPUT`, a safeguard valid input cannot reach.
+    !|
+    !| The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
+    !| last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
+    !| caller instead. That order must still be ascending with NaN last (only the order among tied
+    !| genes is the caller's choice); it is not checked to be sorted.
+    !| The allocating wrapper runs [[tox_data_integration_js_comp_test_run_impl(module):prepare_gene_means_perms]] first, which may handle the call and skip this one.
     subroutine run_js_comp_test(&
             n_studies,&
             max_n_genes_all_studies,&
@@ -80,7 +86,6 @@ contains
             n_points,&
             n_neighbors,&
             gene_means,&
-            gene_means_perms,&
             residuals,&
             x_star,&
             neighborhood_indices,&
@@ -137,10 +142,6 @@ contains
         real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
             !! Per-gene mean expression values for all studies
             !! NaN is permitted for this value.
-        integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means_perms
-            !! Per-study sorting permutation for `gene_means` (ascending, NaN last)
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `max_n_genes_all_studies`.
         real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
             !! Matrix of signed residuals per study
             !! NaN is permitted for this value.
@@ -252,6 +253,7 @@ contains
             !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT or ERR_ALLOC_FAIL (see above)
+        integer(int32), dimension(:, :), allocatable :: gene_means_perms
         real(real64), dimension(:, :, :), allocatable :: tmp_neighborhood_residuals_gathered
         real(real64), dimension(:, :), allocatable :: tmp_permutation_mean_pmf
         integer(int32), dimension(:), allocatable :: tmp_permutation_point_pool
@@ -269,6 +271,7 @@ contains
         real(real64), dimension(:, :), allocatable :: tmp_permutation_js_divergences
         real(real64), dimension(:, :), allocatable :: tmp_permutation_weights
         real(real64), dimension(:), allocatable :: tmp_permutation_global_js_divergence
+        logical :: handled
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -277,21 +280,21 @@ contains
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_int(n_points, ierr, arg_pos=4_int32, min=1_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32, max=max_n_genes_all_studies)
-        call validate_in_range_int(n_permutations, ierr, arg_pos=34_int32, min=0_int32)
-        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=36_int32, min=0_int32)
-        call validate_in_range_int(m_min, ierr, arg_pos=37_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_int(m_max, ierr, arg_pos=38_int32, min=1_int32, max=MAX_N_BINS)
-        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=39_int32, min=above(1.0_real64))
-        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=40_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=41_int32, min=lower_residual_range_quantile, max=1.0_real64)
+        call validate_in_range_int(n_permutations, ierr, arg_pos=33_int32, min=0_int32)
+        call validate_in_range_int(min_residuals_per_bin, ierr, arg_pos=35_int32, min=0_int32)
+        call validate_in_range_int(m_min, ierr, arg_pos=36_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_int(m_max, ierr, arg_pos=37_int32, min=1_int32, max=MAX_N_BINS)
+        call validate_in_range_real(gamma_occupancy, ierr, arg_pos=38_int32, min=above(1.0_real64))
+        call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=39_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=40_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
-        call validate_all_in_range_int(gene_means_perms, max_n_genes_all_studies * n_studies, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies)
-        call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, allow_nan=.true._c_bool)
-        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=9_int32)
-        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=42_int32); end if
+        call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=7_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=8_int32)
+        if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=41_int32); end if
         if (is_err(ierr)) return
 #endif
 
+        M_ALLOCATE(gene_means_perms(max_n_genes_all_studies, n_studies))
         M_ALLOCATE(tmp_neighborhood_residuals_gathered(max_n_reps_all_studies, n_neighbors, n_points))
         M_ALLOCATE(tmp_permutation_mean_pmf(n_points, 256))
         M_ALLOCATE(tmp_permutation_point_pool(256))
@@ -309,6 +312,18 @@ contains
         M_ALLOCATE(tmp_permutation_js_divergences(n_points, n_studies))
         M_ALLOCATE(tmp_permutation_weights(n_points, n_studies))
         M_ALLOCATE(tmp_permutation_global_js_divergence(n_studies))
+
+        call prepare_gene_means_perms(&
+            gene_means = gene_means,&
+            max_n_genes_all_studies = max_n_genes_all_studies,&
+            n_studies = n_studies,&
+            gene_means_perms = gene_means_perms,&
+            handled = handled,&
+            ierr = ierr&
+        )
+        call clear_err_arg_pos(ierr)
+        if (is_err(ierr)) return
+        if (handled) return
 
         call run_js_comp_test_impl(&
             n_studies = n_studies,&
@@ -415,6 +430,12 @@ contains
     !| generator; `pmfs`, `js_divergences`, `weights` and `global_js_divergence` then hold their
     !| values from before the permutation test. An out-of-range neighbor index is also reported
     !| as `ERR_INVALID_INPUT`, a safeguard valid input cannot reach.
+    !|
+    !| The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
+    !| last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
+    !| caller instead. That order must still be ascending with NaN last (only the order among tied
+    !| genes is the caller's choice); it is not checked to be sorted.
+    !| The allocating wrapper runs [[tox_data_integration_js_comp_test_run_impl(module):prepare_gene_means_perms]] first, which may handle the call and skip this one.
     subroutine run_js_comp_test_expert(&
             n_studies,&
             max_n_genes_all_studies,&
@@ -497,7 +518,10 @@ contains
             !! Per-gene mean expression values for all studies
             !! NaN is permitted for this value.
         integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means_perms
-            !! Per-study sorting permutation for `gene_means` (ascending, NaN last)
+            !! Per study (column), a permutation of that study's `gene_means` in ascending order, NaN last.
+            !! The plain entry point builds it for you (heapsort); the expert one takes yours, which
+            !! must be sorted that way too (only the order among tied genes is free) and is not
+            !! checked to be sorted.
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `max_n_genes_all_studies`.
         real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
