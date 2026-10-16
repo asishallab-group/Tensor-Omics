@@ -32,6 +32,9 @@ contains
     !| [[tox_data_integration_stats_impl(module):bootstrap_histogram_impl(interface)]] uses
     !| for the interval's endpoints: `n_top_k = max(1, floor(level/100 * n_bootstraps))`, e.g. 25 for
     !| the default 2.5 and `n_bootstraps=1000`.
+    !|
+    !| Rejects an out-of-range argument with invalid input and a non-finite significance level with
+    !| `ERR_NAN_INF`; `n_top_k` is then left undefined.
     subroutine calc_js_comp_test_n_top_k_jsds_c(&
             n_bootstraps,&
             two_sided_bootstrapping_significance_level,&
@@ -52,7 +55,7 @@ contains
         integer(c_int), intent(out), target :: n_top_k
             !! Number of elements to keep at each end of the bootstrap distribution, at least 1
         integer(c_int), intent(out), target :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -63,7 +66,8 @@ contains
         call calc_js_comp_test_n_top_k_jsds(&
             n_bootstraps = n_bootstraps,&
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
-            n_top_k = n_top_k&
+            n_top_k = n_top_k,&
+            ierr = ierr&
         )
     end subroutine calc_js_comp_test_n_top_k_jsds_c
 

@@ -149,9 +149,10 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies) {
 #'   \item{n_points}{a integer scalar. The finally chosen candidate's `n_points`}
 #'   \item{n_neighbors}{a integer scalar. The finally chosen candidate's `n_neighbors`}
 #'   \item{n_bins_per_point}{a integer vector. The chosen candidate's bin count per reference point; the first `n_points` entries
-#'     are meaningful}
+#'     are meaningful, the rest are 0}
 #'   \item{shared_residual_range_low}{a numeric vector. The chosen candidate's lower residual-range bound (R_low) per reference point; the
-#'     first `n_points` entries are meaningful, `0.0` when no candidate was admissible}
+#'     first `n_points` entries are meaningful, `0.0` when no candidate was admissible; the
+#'     rest are `0.0`}
 #'   \item{shared_residual_range_high}{a numeric vector. The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`}
 #'   \item{best_candidate_pair_confidence_interval}{a numeric matrix. The chosen candidate's bootstrapped JSD confidence interval; `-1.0` when no candidate
 #'     was admissible}
@@ -188,11 +189,12 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies) {
 #'   \item{trace_delta_max}{a numeric vector. Per-admissible-candidate maximum of trace_delta across studies; `-1.0` for the first
 #'     The first `n_admissible_evaluated` elements will hold the results.}
 #'   \item{trace_selected_n_bins}{a integer matrix. Per-admissible-candidate, per-reference-point bin count `M_j`. Jagged: only rows
-#'     `1:trace_n_points(t)` of column `t` are meaningful, so a Python/R caller slices
-#'     `[:trace_n_points[t], t]`
+#'     `1:trace_n_points(t)` of column `t` are meaningful (the rest are 0), so a Python/R
+#'     caller slices `[:trace_n_points[t], t]`
 #'     The first `n_admissible_evaluated` elements will hold the results.}
 #'   \item{trace_occupancy_failed}{a logical matrix. Per-admissible-candidate, per-reference-point flag: `TRUE` iff the bin-count search
-#'     failed and the point used `m_min` bins. Jagged like trace_selected_n_bins
+#'     failed and the point used `m_min` bins. Jagged like trace_selected_n_bins (`FALSE`
+#'     beyond)
 #'     The first `n_admissible_evaluated` elements will hold the results.}
 #'   \item{trace_n_pooled_residuals}{a integer matrix. Per-admissible-candidate, per-reference-point pooled residual count (`N_j`). Jagged
 #'     like trace_selected_n_bins

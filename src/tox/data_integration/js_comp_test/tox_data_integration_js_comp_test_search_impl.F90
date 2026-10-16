@@ -38,6 +38,7 @@ module tox_data_integration_js_comp_test_search_impl
              MODE_PLATEAU_BOTH, MAX_CANDIDATE_PAIRS
 
     ! `join_method`'s mode table; the `METHOD_` prefix follows from the argument name `join_method`.
+    ! Plain parameters: no DM_DEFAULT and no other module needs the numbers themselves.
     integer(int32), parameter :: METHOD_JOIN_MIN = 0_int32
         !! Join method: succeeds only once every study's confidence-interval overlap exceeds the
         !! threshold, in [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]]
@@ -57,14 +58,14 @@ module tox_data_integration_js_comp_test_search_impl
         !! [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):KX_FACTORS(variable)]]);
         !! the adaptive search caps its candidate count at the same value
 
-    ! `plateau_mode`'s mode table. M_MODE_PLATEAU_CI_OVERLAP, defined in
-    ! src/tox/data_integration/macros.h, is also both searches' DM_DEFAULT, which cannot name a
-    ! Fortran parameter.
+    ! `plateau_mode`'s mode table, from the M_MODE_PLATEAU_* of src/tox/data_integration/macros.h:
+    ! M_MODE_PLATEAU_CI_OVERLAP is also both searches' DM_DEFAULT, which cannot name a Fortran
+    ! parameter, and the family is kept together.
     integer(int32), parameter :: MODE_PLATEAU_CI_OVERLAP = M_MODE_PLATEAU_CI_OVERLAP
         !! Plateau mode: CI overlap only
-    integer(int32), parameter :: MODE_PLATEAU_EFFECT_SIZE = 1_int32
+    integer(int32), parameter :: MODE_PLATEAU_EFFECT_SIZE = M_MODE_PLATEAU_EFFECT_SIZE
         !! Plateau mode: relative-effect-size stability only
-    integer(int32), parameter :: MODE_PLATEAU_BOTH = 2_int32
+    integer(int32), parameter :: MODE_PLATEAU_BOTH = M_MODE_PLATEAU_BOTH
         !! Plateau mode: either CI overlap or relative-effect-size stability
 
 contains
@@ -315,7 +316,9 @@ contains
         plateau_found = logical(n_consecutive_ok >= delta_min_consecutive_transitions, kind=c_bool)
     end subroutine check_effect_size_plateau_condition_impl
 
-    !> The second admissibility gate and the observed JSD of one parameter-search candidate,
+    !> summary: Apply the second admissibility gate to one parameter-search candidate and compute its observed JSD
+    !| AUTHOR_LASZLO_LANG
+    !| The second admissibility gate and the observed JSD of one parameter-search candidate,
     !| shared by both searches. First, every study must include at least one residual at every
     !| reference point (`has_empty_study` otherwise, and nothing else is computed): the
     !| equal-weight consensus divides by `n_studies`, so an empty study would leave it
@@ -403,7 +406,8 @@ contains
     !| and updates the running state: the best and the smallest-uncertainty candidate with their
     !| per-point snapshots, the previous candidate's JSD and the effect-size run. `plateau_found`
     !| is the criterion `plateau_mode` selects; an effect-size plateau it selects makes this
-    !| candidate the best.
+    !| candidate the best. Rows `n_points + 1` onwards of the per-point trace column are set to 0
+    !| (`.false.` for the failure flags).
     !|
     !| Internal helper, not published; public because both parameter searches call it, and impure
     !| because the bootstrap is. Every candidate-sized dummy is a search buffer viewed packed at
@@ -606,6 +610,17 @@ contains
         trace_fd_bins(1:n_points, n_admissible_evaluated) = fd_bins
         trace_shared_residual_range_low(1:n_points, n_admissible_evaluated) = shared_residual_range_low
         trace_shared_residual_range_high(1:n_points, n_admissible_evaluated) = shared_residual_range_high
+        ! The rows beyond this candidate's points are padding: 0, as the final runs' unused bins.
+        trace_selected_n_bins(n_points + 1:max_n_points_candidate, n_admissible_evaluated) = 0_int32
+        trace_occupancy_failed(n_points + 1:max_n_points_candidate, n_admissible_evaluated) = .false.
+        trace_n_pooled_residuals(n_points + 1:max_n_points_candidate, n_admissible_evaluated) = 0_int32
+        trace_min_bin_occupancy(n_points + 1:max_n_points_candidate, n_admissible_evaluated) = 0_int32
+        trace_mean_bin_occupancy(n_points + 1:max_n_points_candidate, n_admissible_evaluated) = 0.0_real64
+        trace_max_bin_occupancy(n_points + 1:max_n_points_candidate, n_admissible_evaluated) = 0_int32
+        trace_sturges_bins(n_points + 1:max_n_points_candidate, n_admissible_evaluated) = 0_int32
+        trace_fd_bins(n_points + 1:max_n_points_candidate, n_admissible_evaluated) = 0_int32
+        trace_shared_residual_range_low(n_points + 1:max_n_points_candidate, n_admissible_evaluated) = 0.0_real64
+        trace_shared_residual_range_high(n_points + 1:max_n_points_candidate, n_admissible_evaluated) = 0.0_real64
 
         ! The first admissible candidate has no previous one.
         call check_effect_size_plateau_condition_impl(global_js_divergence, prev_global_js_divergence, &
@@ -701,7 +716,8 @@ contains
     !| admissible: the one with the smallest median confidence-interval width, with its interval.
     !| Case 3, nothing was admissible: candidate 1, every bin count `m_min`, both ranges `0.0`
     !| (for at most `max_n_points_candidate` points) and the interval `-1.0`. Cases 2 and 3 set
-    !| `plateau_established = .false.`. The search reads the selected candidate's identity at
+    !| `plateau_established = .false.`. In every case the per-point entries beyond those points
+    !| are 0. The search reads the selected candidate's identity at
     !| `selected_candidate_index`. Internal helper, not published; public because both parameter
     !| searches call it.
     pure subroutine select_final_candidate(max_n_points_candidate, n_studies, n_candidates, n_admissible_evaluated, &
@@ -755,7 +771,8 @@ contains
         integer(int32), intent(out) :: n_points
             !! The returned candidate's number of reference points
         integer(int32), intent(out) :: n_bins_per_point(max_n_points_candidate)
-            !! The returned bin counts; the first `min(n_points, max_n_points_candidate)` are set
+            !! The returned bin counts; the first `min(n_points, max_n_points_candidate)` are set,
+            !! the rest are 0
         real(real64), intent(out) :: shared_residual_range_low(max_n_points_candidate)
             !! The returned R_low, like `n_bins_per_point`
         real(real64), intent(out) :: shared_residual_range_high(max_n_points_candidate)
@@ -764,6 +781,8 @@ contains
             !! The best candidate's interval on entry; the returned candidate's on return
         logical(c_bool), intent(out) :: plateau_established
             !! `.true.` in case 1 only
+
+        integer(int32) :: n_filled
 
         ! In case 1 some candidate was admissible, so the best-candidate snapshot exists;
         ! n_candidates counts gate-failed candidates too.
@@ -794,6 +813,12 @@ contains
             best_candidate_confidence_interval = -1.0_real64
             plateau_established = logical(.false., kind=c_bool)
         end if
+
+        ! The entries beyond the returned points are padding: 0, as the final runs' unused bins.
+        n_filled = min(n_points, max_n_points_candidate)
+        n_bins_per_point(n_filled + 1:max_n_points_candidate) = 0_int32
+        shared_residual_range_low(n_filled + 1:max_n_points_candidate) = 0.0_real64
+        shared_residual_range_high(n_filled + 1:max_n_points_candidate) = 0.0_real64
     end subroutine select_final_candidate
 
 end module tox_data_integration_js_comp_test_search_impl

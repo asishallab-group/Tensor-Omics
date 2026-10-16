@@ -45,7 +45,8 @@
 #' The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
 #' last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
 #' caller instead. That order must still be ascending with NaN last (only the order among tied
-#' genes is the caller's choice); it is not checked to be sorted.
+#' genes is the caller's choice); it is checked neither to be a permutation of
+#' `1..max_n_genes_all_studies` per column nor to be sorted.
 #' The allocating wrapper runs \code{prepare_gene_means_perms} first, which may handle the call and skip this one.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_run::run_js_comp_test}, whose argument names
@@ -226,7 +227,8 @@ run_js_comp_test <- function(n_neighbors, gene_means, residuals, x_star, n_permu
 #' The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
 #' last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
 #' caller instead. That order must still be ascending with NaN last (only the order among tied
-#' genes is the caller's choice); it is not checked to be sorted.
+#' genes is the caller's choice); it is checked neither to be a permutation of
+#' `1..max_n_genes_all_studies` per column nor to be sorted.
 #' The allocating wrapper runs \code{prepare_gene_means_perms} first, which may handle the call and skip this one.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_run::run_js_comp_test_expert}, whose argument names
@@ -242,8 +244,8 @@ run_js_comp_test <- function(n_neighbors, gene_means, residuals, x_star, n_permu
 #'   NaN is permitted for this value.
 #' @param gene_means_perms a integer matrix. Per study (column), a permutation of that study's `gene_means` in ascending order, NaN last.
 #'   The plain entry point builds it for you (heapsort); the expert one takes yours, which
-#'   must be sorted that way too (only the order among tied genes is free) and is not
-#'   checked to be sorted.
+#'   must be sorted that way too (only the order among tied genes is free). It is checked
+#'   neither to be a permutation of `1..max_n_genes_all_studies` per column nor to be sorted.
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `max_n_genes_all_studies`.
 #' @param residuals a numeric array of rank 3. Matrix of signed residuals per study

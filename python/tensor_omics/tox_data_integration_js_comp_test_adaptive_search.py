@@ -428,11 +428,12 @@ def run_js_comp_test_adaptive_parameter_search(
         n_bins_per_point : np.ndarray[np.int32] of shape (max_n_points_candidate,), read-only
             The chosen candidate's bin count per reference point; the first `n_points` entries
             are meaningful. Without an admissible candidate, the first
-            `min(n_points, max_n_points_candidate)` entries are `m_min`
+            `min(n_points, max_n_points_candidate)` entries are `m_min`. The rest are 0
             A result is a value; call `.copy()` to obtain a modifiable array.
         shared_residual_range_low : np.ndarray[np.float64] of shape (max_n_points_candidate,), read-only
             The chosen candidate's lower residual-range bound (R_low) per reference point; the
-            first `n_points` entries are meaningful, `0.0` without an admissible candidate
+            first `n_points` entries are meaningful, `0.0` without an admissible candidate; the
+            rest are `0.0`
             A result is a value; call `.copy()` to obtain a modifiable array.
         shared_residual_range_high : np.ndarray[np.float64] of shape (max_n_points_candidate,), read-only
             The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`
@@ -502,13 +503,14 @@ def run_js_comp_test_adaptive_parameter_search(
             A result is a value; call `.copy()` to obtain a modifiable array.
         trace_selected_n_bins : np.ndarray[np.int32] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
             Per-admissible-candidate, per-reference-point bin count `M_j`. Jagged: only rows
-            `1:trace_n_points(t)` of column `t` are meaningful, so a Python/R caller slices
-            `[:trace_n_points[t], t]`
+            `1:trace_n_points(t)` of column `t` are meaningful (the rest are 0), so a Python/R
+            caller slices `[:trace_n_points[t], t]`
             The first `n_admissible_evaluated` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
         trace_occupancy_failed : np.ndarray[np.bool_] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only
             Per-admissible-candidate, per-reference-point flag: `True` iff the bin-count search
-            failed and the point used `m_min` bins. Jagged like trace_selected_n_bins
+            failed and the point used `m_min` bins. Jagged like trace_selected_n_bins (`False`
+            beyond)
             The first `n_admissible_evaluated` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
         trace_n_pooled_residuals : np.ndarray[np.int32] of shape (max_n_points_candidate, 16,), column-major (order='F'), read-only

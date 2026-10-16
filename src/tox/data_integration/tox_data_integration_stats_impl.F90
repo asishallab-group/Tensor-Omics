@@ -24,7 +24,8 @@ module tox_data_integration_stats_impl
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
                                              compute_weighted_global_divergence_impl, calc_pmf_impl, &
                                              create_mean_pmf_only_impl
-    use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, ERR_INVALID_INPUT
+    use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, validate_in_range_int, validate_in_range_real, &
+                          ERR_INVALID_INPUT
     M_IMPLICIT_NONE
     private
     public :: gjct_permutation_test_impl, calc_js_comp_test_n_top_k_jsds, bootstrap_histogram_impl
@@ -223,7 +224,11 @@ contains
     !| [[tox_data_integration_stats_impl(module):bootstrap_histogram_impl(interface)]] uses
     !| for the interval's endpoints: `n_top_k = max(1, floor(level/100 * n_bootstraps))`, e.g. 25 for
     !| the default 2.5 and `n_bootstraps=1000`.
-    pure subroutine calc_js_comp_test_n_top_k_jsds(n_bootstraps, two_sided_bootstrapping_significance_level, n_top_k)
+    !|
+    !| Rejects an out-of-range argument with invalid input and a non-finite significance level with
+    !| `ERR_NAN_INF`; `n_top_k` is then left undefined.
+    pure subroutine calc_js_comp_test_n_top_k_jsds(n_bootstraps, two_sided_bootstrapping_significance_level, n_top_k, &
+                                                   ierr)
         integer(int32), intent(in) :: n_bootstraps
             !! Number of bootstrap resamples that will be performed
             !! DM_MIN(1_int32)
@@ -235,8 +240,16 @@ contains
             !! DM_DEFAULT(M_TWO_SIDED_BOOTSTRAPPING_SIGNIFICANCE_LEVEL_DEFAULT)
         integer(int32), intent(out) :: n_top_k
             !! Number of elements to keep at each end of the bootstrap distribution, at least 1
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure
 
         real(real64) :: sig_level
+
+        call set_ok(ierr)
+        call validate_in_range_int(n_bootstraps, ierr, arg_pos=1_int32, min=1_int32)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=2_int32, &
+                                    min=0.0_real64, max=100.0_real64)
+        if (is_err(ierr)) return
 
         M_DEFAULT_VAL(two_sided_bootstrapping_significance_level, sig_level, M_TWO_SIDED_BOOTSTRAPPING_SIGNIFICANCE_LEVEL_DEFAULT)
 

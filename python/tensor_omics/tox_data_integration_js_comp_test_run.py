@@ -253,7 +253,8 @@ def run_js_comp_test(
     The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
     last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
     caller instead. That order must still be ascending with NaN last (only the order among tied
-    genes is the caller's choice); it is not checked to be sorted.
+    genes is the caller's choice); it is checked neither to be a permutation of
+    `1..max_n_genes_all_studies` per column nor to be sorted.
     The allocating wrapper runs ``prepare_gene_means_perms`` first, which may handle the call and skip this one.
 
     Parameters
@@ -635,7 +636,8 @@ def run_js_comp_test_expert(
     The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
     last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
     caller instead. That order must still be ascending with NaN last (only the order among tied
-    genes is the caller's choice); it is not checked to be sorted.
+    genes is the caller's choice); it is checked neither to be a permutation of
+    `1..max_n_genes_all_studies` per column nor to be sorted.
     The allocating wrapper runs ``prepare_gene_means_perms`` first, which may handle the call and skip this one.
 
     Parameters
@@ -650,8 +652,8 @@ def run_js_comp_test_expert(
     gene_means_perms : np.ndarray[np.int32] of shape (max_n_genes_all_studies, n_studies,), column-major (order='F')
         Per study (column), a permutation of that study's `gene_means` in ascending order, NaN last.
         The plain entry point builds it for you (heapsort); the expert one takes yours, which
-        must be sorted that way too (only the order among tied genes is free) and is not
-        checked to be sorted.
+        must be sorted that way too (only the order among tied genes is free). It is checked
+        neither to be a permutation of `1..max_n_genes_all_studies` per column nor to be sorted.
         The minimum valid value is `1`.
         The maximum valid value is `max_n_genes_all_studies`.
     residuals : np.ndarray[np.float64] of shape (max_n_reps_all_studies, max_n_genes_all_studies, n_studies,), column-major (order='F')

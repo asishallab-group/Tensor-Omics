@@ -231,7 +231,8 @@ contains
     !| The plain `run_js_comp_test` sorts each study's gene means itself (heapsort, ascending, NaN
     !| last) and takes no permutation; `run_js_comp_test_expert` takes `gene_means_perms` from the
     !| caller instead. That order must still be ascending with NaN last (only the order among tied
-    !| genes is the caller's choice); it is not checked to be sorted.
+    !| genes is the caller's choice); it is checked neither to be a permutation of
+    !| `1..max_n_genes_all_studies` per column nor to be sorted.
     !| DM_PROLOGUE(prepare_gene_means_perms, tox_data_integration_js_comp_test_run_impl)
     subroutine run_js_comp_test_impl(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
                                      gene_means, gene_means_perms, residuals, x_star, &
@@ -273,8 +274,8 @@ contains
         integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means_perms
             !! Per study (column), a permutation of that study's `gene_means` in ascending order, NaN last.
             !! The plain entry point builds it for you (heapsort); the expert one takes yours, which
-            !! must be sorted that way too (only the order among tied genes is free) and is not
-            !! checked to be sorted.
+            !! must be sorted that way too (only the order among tied genes is free). It is checked
+            !! neither to be a permutation of `1..max_n_genes_all_studies` per column nor to be sorted.
             !! DM_MIN(1_int32)
             !! DM_MAX(max_n_genes_all_studies)
         real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals

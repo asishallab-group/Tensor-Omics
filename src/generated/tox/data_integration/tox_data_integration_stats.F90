@@ -404,8 +404,10 @@ contains
         call calc_js_comp_test_n_top_k_jsds(&
             n_bootstraps = n_bootstraps,&
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
-            n_top_k = n_bootstrapping_top_k_jsds&
+            n_top_k = n_bootstrapping_top_k_jsds,&
+            ierr = ierr&
         )
+        if (is_err(ierr)) return
         M_ALLOCATE(tmp_bootstrapping_top_k_jsds(n_bootstrapping_top_k_jsds, 2, n_studies))
         M_ALLOCATE(tmp_counts(n_points, n_bins))
         M_ALLOCATE(tmp_pmfs(n_points, n_bins, n_studies))

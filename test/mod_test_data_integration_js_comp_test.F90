@@ -136,7 +136,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(236))
+        allocate (all_tests(239))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -618,6 +618,12 @@ contains
                                    test_run_js_comp_test_expert_uses_caller_tie_order)
         all_tests(236) = test_case("test_fixed_k_grid_fills_max_candidate_pairs_exactly", &
                                    test_fixed_k_grid_fills_max_candidate_pairs_exactly)
+        all_tests(237) = test_case("test_calc_js_comp_test_n_top_k_jsds_validation", &
+                                   test_calc_js_comp_test_n_top_k_jsds_validation)
+        all_tests(238) = test_case("test_param_search_pads_unused_per_point_slots_with_zero", &
+                                   test_param_search_pads_unused_per_point_slots_with_zero)
+        all_tests(239) = test_case("test_adaptive_search_pads_unused_per_point_slots_with_zero", &
+                                   test_adaptive_search_pads_unused_per_point_slots_with_zero)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -2020,9 +2026,12 @@ contains
     !> Hand-computed: `n_bootstraps=1000` with the default significance level (2.5%, not passed)
     !| gives `n_top_k = max(1, floor(0.025 * 1000)) = 25`.
     subroutine test_calc_js_comp_test_n_top_k_jsds_default_hand_computed()
-        integer(int32) :: n_top_k
+        integer(int32) :: n_top_k, ierr
 
-        call calc_js_comp_test_n_top_k_jsds(1000_int32, n_top_k=n_top_k)
+        call calc_js_comp_test_n_top_k_jsds(1000_int32, n_top_k=n_top_k, ierr=ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_calc_js_comp_test_n_top_k_jsds_default_hand_computed: ierr should be OK")
 
         call assert_equal_int(n_top_k, 25_int32, &
                               "test_calc_js_comp_test_n_top_k_jsds_default_hand_computed: "// &
@@ -2032,10 +2041,13 @@ contains
     !> Hand-computed with an explicit significance level: `n_bootstraps=200`, `significance=5.0`
     !| gives `n_top_k = max(1, floor(0.05 * 200)) = 10`.
     subroutine test_calc_js_comp_test_n_top_k_jsds_explicit_significance_level()
-        integer(int32) :: n_top_k
+        integer(int32) :: n_top_k, ierr
 
         call calc_js_comp_test_n_top_k_jsds(200_int32, two_sided_bootstrapping_significance_level=5.0_real64, &
-                                            n_top_k=n_top_k)
+                                            n_top_k=n_top_k, ierr=ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_calc_js_comp_test_n_top_k_jsds_explicit_significance_level: ierr should be OK")
 
         call assert_equal_int(n_top_k, 10_int32, &
                               "test_calc_js_comp_test_n_top_k_jsds_explicit_significance_level: "// &
@@ -2045,14 +2057,54 @@ contains
     !> `n_bootstraps=10` with the default 2.5% significance level gives `floor(0.025*10) = floor(0.25) = 0`,
     !| which must clamp up to the documented minimum of 1, never 0 (an empty heap).
     subroutine test_calc_js_comp_test_n_top_k_jsds_clamped_to_at_least_one()
-        integer(int32) :: n_top_k
+        integer(int32) :: n_top_k, ierr
 
-        call calc_js_comp_test_n_top_k_jsds(10_int32, n_top_k=n_top_k)
+        call calc_js_comp_test_n_top_k_jsds(10_int32, n_top_k=n_top_k, ierr=ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_calc_js_comp_test_n_top_k_jsds_clamped_to_at_least_one: ierr should be OK")
 
         call assert_equal_int(n_top_k, 1_int32, &
                               "test_calc_js_comp_test_n_top_k_jsds_clamped_to_at_least_one: "// &
                               "floor(0.025*10)=0 must clamp up to 1")
     end subroutine test_calc_js_comp_test_n_top_k_jsds_clamped_to_at_least_one
+
+    !> The sizing routine validates its own arguments (it is exported by hand): `n_bootstraps < 1`
+    !| (position 1) and a significance level below 0 or above 100 (position 2) are invalid input, a
+    !| NaN level is `ERR_NAN_INF` (position 2); both bounds themselves are accepted (level 0 gives
+    !| `floor(0) = 0`, clamped to 1).
+    subroutine test_calc_js_comp_test_n_top_k_jsds_validation()
+        integer(int32) :: n_top_k, ierr
+
+        call calc_js_comp_test_n_top_k_jsds(0_int32, n_top_k=n_top_k, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_calc_js_comp_test_n_top_k_jsds_validation: n_bootstraps=0 rejected", arg_pos=1_int32)
+        call calc_js_comp_test_n_top_k_jsds(100_int32, two_sided_bootstrapping_significance_level=-0.5_real64, &
+                                            n_top_k=n_top_k, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_calc_js_comp_test_n_top_k_jsds_validation: level=-0.5 rejected", arg_pos=2_int32)
+        call calc_js_comp_test_n_top_k_jsds(100_int32, two_sided_bootstrapping_significance_level=100.5_real64, &
+                                            n_top_k=n_top_k, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, &
+                        "test_calc_js_comp_test_n_top_k_jsds_validation: level=100.5 rejected", arg_pos=2_int32)
+        call calc_js_comp_test_n_top_k_jsds(100_int32, &
+                                            two_sided_bootstrapping_significance_level=ieee_value(1.0_real64, ieee_quiet_nan), &
+                                            n_top_k=n_top_k, ierr=ierr)
+        call assert_err(ierr, ERR_NAN_INF, &
+                        "test_calc_js_comp_test_n_top_k_jsds_validation: level=NaN rejected", arg_pos=2_int32)
+        call calc_js_comp_test_n_top_k_jsds(100_int32, two_sided_bootstrapping_significance_level=0.0_real64, &
+                                            n_top_k=n_top_k, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_calc_js_comp_test_n_top_k_jsds_validation: level=0 accepted")
+        call assert_equal_int(n_top_k, 1_int32, &
+                              "test_calc_js_comp_test_n_top_k_jsds_validation: level=0 clamps to 1")
+        call calc_js_comp_test_n_top_k_jsds(100_int32, two_sided_bootstrapping_significance_level=100.0_real64, &
+                                            n_top_k=n_top_k, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_calc_js_comp_test_n_top_k_jsds_validation: level=100 accepted")
+        call assert_equal_int(n_top_k, 100_int32, &
+                              "test_calc_js_comp_test_n_top_k_jsds_validation: level=100 keeps all 100")
+    end subroutine test_calc_js_comp_test_n_top_k_jsds_validation
 
     !> Calling `bootstrap_histogram` twice with the same `random_seed` and otherwise identical
     !| inputs must produce bit-for-bit identical `confidence_interval` output: the GSL stream is
@@ -8586,9 +8638,20 @@ contains
                   out%trace_max_occ(cap, MAX_CANDIDATE_PAIRS), out%trace_sturges(cap, MAX_CANDIDATE_PAIRS), &
                   out%trace_fd(cap, MAX_CANDIDATE_PAIRS), &
                   out%trace_range_low(cap, MAX_CANDIDATE_PAIRS), out%trace_range_high(cap, MAX_CANDIDATE_PAIRS))
+        ! Pre-filled, so a test can tell a slot the search set to its padding value from one it never wrote.
         out%n_bins = -7_int32
         out%range_low = -7.0_real64
         out%range_high = -7.0_real64
+        out%trace_n_bins = -7_int32
+        out%trace_occ_failed = .true.
+        out%trace_n_pooled = -7_int32
+        out%trace_min_occ = -7_int32
+        out%trace_mean_occ = -7.0_real64
+        out%trace_max_occ = -7_int32
+        out%trace_sturges = -7_int32
+        out%trace_fd = -7_int32
+        out%trace_range_low = -7.0_real64
+        out%trace_range_high = -7.0_real64
 
         call run_js_comp_test_adaptive_parameter_search(n_studies, n_genes, n_reps, gene_means, residuals, 10_int32, &
                                                         METHOD_JOIN_MIN, cap, out%k_start, out%k_step, out%k_max, &
@@ -12332,5 +12395,205 @@ contains
 
         call assert_true(all(transfer(a, 0_int64, n) == transfer(b, 0_int64, n)), msg//" (bit patterns)")
     end subroutine assert_bits_equal
+
+    !> Test helper: every per-point slot a parameter search leaves unused holds its documented
+    !| padding value, 0 (`.false.` for the failure flags): the returned arrays beyond the selected
+    !| `min(n_points, capacity)` points, and in each evaluated trace column `t` the rows beyond
+    !| `trace_n_points(t)`. The caller pre-fills every array with -7 (`.true.`), so a slot the search
+    !| never wrote fails here. Also asserts that some slot was unused, so the check is not empty.
+    subroutine assert_search_padding_zero(n_points, n_admissible, trace_n_points, n_bins, range_low, range_high, &
+                                          trace_n_bins, trace_occ_failed, trace_n_pooled, trace_min_occ, &
+                                          trace_mean_occ, trace_max_occ, trace_sturges, trace_fd, trace_range_low, &
+                                          trace_range_high, name)
+        integer(int32), intent(in) :: n_points
+            !! The search's selected point count
+        integer(int32), intent(in) :: n_admissible
+            !! The search's number of evaluated trace columns
+        integer(int32), intent(in) :: trace_n_points(:)
+            !! Each trace column's point count
+        integer(int32), intent(in) :: n_bins(:)
+            !! The returned bin counts, sized by the capacity
+        real(real64), intent(in) :: range_low(:)
+            !! The returned R_low
+        real(real64), intent(in) :: range_high(:)
+            !! The returned R_high
+        integer(int32), intent(in) :: trace_n_bins(:, :)
+            !! The trace of the bin counts
+        logical(c_bool), intent(in) :: trace_occ_failed(:, :)
+            !! The trace of the bin-count failure flags
+        integer(int32), intent(in) :: trace_n_pooled(:, :)
+            !! The trace of the pooled residual counts
+        integer(int32), intent(in) :: trace_min_occ(:, :)
+            !! The trace of the minimum bin occupancy
+        real(real64), intent(in) :: trace_mean_occ(:, :)
+            !! The trace of the mean bin occupancy
+        integer(int32), intent(in) :: trace_max_occ(:, :)
+            !! The trace of the maximum bin occupancy
+        integer(int32), intent(in) :: trace_sturges(:, :)
+            !! The trace of the Sturges diagnostic
+        integer(int32), intent(in) :: trace_fd(:, :)
+            !! The trace of the Freedman-Diaconis diagnostic
+        real(real64), intent(in) :: trace_range_low(:, :)
+            !! The trace of R_low
+        real(real64), intent(in) :: trace_range_high(:, :)
+            !! The trace of R_high
+        character(len=*), intent(in) :: name
+            !! Message prefix
+        integer(int32) :: capacity, n_filled, i_col, first
+        logical(c_bool) :: any_padding
+
+        capacity = size(n_bins, kind=int32)
+        n_filled = min(n_points, capacity)
+        any_padding = n_filled < capacity
+        call assert_true(all(n_bins(n_filled + 1:) == 0_int32), name//"n_bins_per_point beyond n_points is 0")
+        call assert_true(all(range_low(n_filled + 1:) == 0.0_real64), name//"R_low beyond n_points is 0")
+        call assert_true(all(range_high(n_filled + 1:) == 0.0_real64), name//"R_high beyond n_points is 0")
+        do i_col = 1, n_admissible
+            first = trace_n_points(i_col) + 1_int32
+            any_padding = any_padding .or. first <= capacity
+            call assert_true(all(trace_n_bins(first:, i_col) == 0_int32), name//"trace_selected_n_bins padding is 0")
+            call assert_true(.not. any(trace_occ_failed(first:, i_col)), name//"trace_occupancy_failed padding is .false.")
+            call assert_true(all(trace_n_pooled(first:, i_col) == 0_int32), name//"trace_n_pooled_residuals padding is 0")
+            call assert_true(all(trace_min_occ(first:, i_col) == 0_int32), name//"trace_min_bin_occupancy padding is 0")
+            call assert_true(all(trace_mean_occ(first:, i_col) == 0.0_real64), name//"trace_mean_bin_occupancy padding is 0")
+            call assert_true(all(trace_max_occ(first:, i_col) == 0_int32), name//"trace_max_bin_occupancy padding is 0")
+            call assert_true(all(trace_sturges(first:, i_col) == 0_int32), name//"trace_sturges_bins padding is 0")
+            call assert_true(all(trace_fd(first:, i_col) == 0_int32), name//"trace_fd_bins padding is 0")
+            call assert_true(all(trace_range_low(first:, i_col) == 0.0_real64), &
+                             name//"trace_shared_residual_range_low padding is 0")
+            call assert_true(all(trace_range_high(first:, i_col) == 0.0_real64), &
+                             name//"trace_shared_residual_range_high padding is 0")
+        end do
+        call assert_true(any_padding, name//"the fixture leaves some per-point slot unused")
+    end subroutine assert_search_padding_zero
+
+    !> Padding of the fixed-k search: test_param_search_finds_plateau_mid_grid's fixture (grid
+    !| `[(400,100), (400,50), (320,125), (320,62)]`), but with 7 spare rows (`max_n_points_candidate =
+    !| 407`) and `MODE_PLATEAU_EFFECT_SIZE` needing 16 consecutive transitions, so no plateau is found:
+    !| all four candidates are evaluated (columns of 400 and 320 points) and the smallest-uncertainty
+    !| fallback returns a 400- or 320-point candidate. Every output is pre-filled with -7 (`.true.`);
+    !| every unused slot must come back as 0 (`.false.`).
+    subroutine test_param_search_pads_unused_per_point_slots_with_zero()
+        character(len=*), parameter :: name = "test_param_search_pads_unused_per_point_slots_with_zero: "
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 10000, max_n_reps_all_studies = 3
+        real(real64), allocatable :: gene_means(:, :), residuals(:, :, :)
+        integer(int32) :: n_points, n_neighbors, ierr, n_admissible_evaluated
+        integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate
+        integer(int32), allocatable :: n_bins_per_point(:), trace_selected_n_bins(:, :), trace_n_pooled_residuals(:, :)
+        real(real64), allocatable :: shared_residual_range_low(:), shared_residual_range_high(:)
+        real(real64), allocatable :: trace_shared_residual_range_low(:, :), trace_shared_residual_range_high(:, :)
+        integer(int32), allocatable :: trace_min_bin_occupancy(:, :), trace_max_bin_occupancy(:, :)
+        integer(int32), allocatable :: trace_sturges_bins(:, :), trace_fd_bins(:, :)
+        real(real64), allocatable :: trace_mean_bin_occupancy(:, :)
+        logical(c_bool), allocatable :: trace_occupancy_failed(:, :)
+        real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        logical(c_bool) :: plateau_established
+        integer(int32) :: trace_n_points(MAX_CANDIDATE_PAIRS), trace_n_neighbors(MAX_CANDIDATE_PAIRS)
+        real(real64), dimension(n_studies, MAX_CANDIDATE_PAIRS) :: trace_global_js_divergence, trace_ci_lower, &
+            trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_ci_overlap, trace_delta
+        real(real64) :: trace_delta_median(MAX_CANDIDATE_PAIRS), trace_delta_max(MAX_CANDIDATE_PAIRS)
+
+        allocate (gene_means(max_n_genes_all_studies, n_studies), &
+                  residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies))
+        gene_means = 5.0_real64
+        residuals = 0.0_real64
+
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"candidate bounds ierr")
+        max_n_points_candidate = max_n_points_candidate + 7_int32
+        allocate (n_bins_per_point(max_n_points_candidate), shared_residual_range_low(max_n_points_candidate), &
+                  shared_residual_range_high(max_n_points_candidate))
+        allocate (trace_selected_n_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_occupancy_failed(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_n_pooled_residuals(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_min_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_mean_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_max_bin_occupancy(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_sturges_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_fd_bins(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_shared_residual_range_low(max_n_points_candidate, MAX_CANDIDATE_PAIRS), &
+                  trace_shared_residual_range_high(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
+        n_bins_per_point = -7_int32
+        shared_residual_range_low = -7.0_real64
+        shared_residual_range_high = -7.0_real64
+        trace_selected_n_bins = -7_int32
+        trace_occupancy_failed = .true.
+        trace_n_pooled_residuals = -7_int32
+        trace_min_bin_occupancy = -7_int32
+        trace_mean_bin_occupancy = -7.0_real64
+        trace_max_bin_occupancy = -7_int32
+        trace_sturges_bins = -7_int32
+        trace_fd_bins = -7_int32
+        trace_shared_residual_range_low = -7.0_real64
+        trace_shared_residual_range_high = -7.0_real64
+
+        call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
+                                               residuals, 10_int32, METHOD_JOIN_MIN, &
+                                               max_n_points_candidate, max_n_neighbors_candidate, n_points, n_neighbors, &
+                                               n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                                               best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_admissible_evaluated, &
+                                               trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, &
+                                               trace_ci_overlap, trace_delta, trace_delta_median, trace_delta_max, &
+                                               trace_selected_n_bins, trace_occupancy_failed, trace_n_pooled_residuals, &
+                                               trace_min_bin_occupancy, trace_mean_bin_occupancy, trace_max_bin_occupancy, &
+                                               trace_sturges_bins, trace_fd_bins, &
+                                               trace_shared_residual_range_low, trace_shared_residual_range_high, &
+                                               ierr=ierr, min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
+                                               plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
+                                               delta_min_consecutive_transitions=16_int32, random_seed=1_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
+        call assert_false(plateau_established, name//"no plateau")
+        call assert_equal_int(n_admissible_evaluated, 4_int32, name//"all four candidates evaluated")
+        call assert_equal_array_int(trace_n_points(1:4), [400_int32, 400_int32, 320_int32, 320_int32], 4_int32, &
+                                    name//"trace_n_points")
+        call assert_search_padding_zero(n_points, n_admissible_evaluated, trace_n_points, n_bins_per_point, &
+                                        shared_residual_range_low, shared_residual_range_high, trace_selected_n_bins, &
+                                        trace_occupancy_failed, trace_n_pooled_residuals, trace_min_bin_occupancy, &
+                                        trace_mean_bin_occupancy, trace_max_bin_occupancy, trace_sturges_bins, &
+                                        trace_fd_bins, trace_shared_residual_range_low, trace_shared_residual_range_high, &
+                                        name)
+    end subroutine test_param_search_pads_unused_per_point_slots_with_zero
+
+    !> Padding of the adaptive search, on fixture A (candidates of 71, 91, 125 and 166 points;
+    !| run_adaptive_search pre-fills every output with -7, `.true.` for the flags):
+    !| - `MODE_PLATEAU_EFFECT_SIZE` needing 16 consecutive transitions: no plateau, every
+    !|   admissible candidate gets a column of its own length, and the smallest-uncertainty
+    !|   fallback returns one of them (result case 2);
+    !| - `min_neighbor_overlap = 0.5`: nothing admissible, candidate 1's 71 points (case 3).
+    !| Every unused per-point slot must come back as 0 (`.false.`).
+    subroutine test_adaptive_search_pads_unused_per_point_slots_with_zero()
+        character(len=*), parameter :: name = "test_adaptive_search_pads_unused_per_point_slots_with_zero: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: out
+        integer(int32) :: ierr
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
+
+        call run_adaptive_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32, &
+                                 plateau_mode=MODE_PLATEAU_EFFECT_SIZE, delta_min_consecutive_transitions=16_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"no plateau: ierr")
+        call assert_false(out%plateau, name//"no plateau")
+        call assert_true(out%n_admissible >= 2_int32, name//"no plateau: several admissible candidates")
+        call assert_true(out%trace_n_points(1) /= out%trace_n_points(2), name//"no plateau: columns of different lengths")
+        call assert_search_padding_zero(out%n_points, out%n_admissible, out%trace_n_points, out%n_bins, out%range_low, &
+                                        out%range_high, out%trace_n_bins, out%trace_occ_failed, out%trace_n_pooled, &
+                                        out%trace_min_occ, out%trace_mean_occ, out%trace_max_occ, out%trace_sturges, &
+                                        out%trace_fd, out%trace_range_low, out%trace_range_high, name//"no plateau: ")
+
+        call run_adaptive_search(gene_means, residuals, out, ierr, min_residuals_per_bin=0_int32, &
+                                 min_neighbor_overlap=0.5_real64)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"nothing admissible: ierr")
+        call assert_equal_int(out%n_admissible, 0_int32, name//"nothing admissible")
+        call assert_equal_int(out%n_points, 71_int32, name//"nothing admissible: candidate 1's points")
+        call assert_search_padding_zero(out%n_points, out%n_admissible, out%trace_n_points, out%n_bins, out%range_low, &
+                                        out%range_high, out%trace_n_bins, out%trace_occ_failed, out%trace_n_pooled, &
+                                        out%trace_min_occ, out%trace_mean_occ, out%trace_max_occ, out%trace_sturges, &
+                                        out%trace_fd, out%trace_range_low, out%trace_range_high, &
+                                        name//"nothing admissible: ")
+    end subroutine test_adaptive_search_pads_unused_per_point_slots_with_zero
 
 end module mod_test_data_integration_js_comp_test

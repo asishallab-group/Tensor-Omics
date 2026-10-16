@@ -37,7 +37,7 @@ _lib.calc_js_comp_test_n_top_k_jsds_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CALC_JS_COMP_TEST_N_TOP_K_JSDS_ARGUMENTS = ("n_bootstraps", "two_sided_bootstrapping_significance_level", "n_top_k",)
+_CALC_JS_COMP_TEST_N_TOP_K_JSDS_ARGUMENTS = ("n_bootstraps", "two_sided_bootstrapping_significance_level", "n_top_k", "ierr",)
 
 def calc_js_comp_test_n_top_k_jsds(
         n_bootstraps,
@@ -49,6 +49,9 @@ def calc_js_comp_test_n_top_k_jsds(
     :func:`tensor_omics.bootstrap_histogram` uses
     for the interval's endpoints: `n_top_k = max(1, floor(level/100 * n_bootstraps))`, e.g. 25 for
     the default 2.5 and `n_bootstraps=1000`.
+
+    Rejects an out-of-range argument with invalid input and a non-finite significance level with
+    `ERR_NAN_INF`; `n_top_k` is then left undefined.
 
     Parameters
     ----------

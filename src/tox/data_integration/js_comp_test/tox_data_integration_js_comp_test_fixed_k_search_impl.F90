@@ -133,7 +133,9 @@ contains
         end do
     end subroutine generate_js_comp_test_candidates_impl
 
-    !> Pass A of the fixed-k parameter search for one candidate: builds every study's
+    !> summary: Build one fixed-k candidate's neighborhoods for every study and check the first admissibility gate
+    !| AUTHOR_LASZLO_LANG
+    !| Pass A of the fixed-k parameter search for one candidate: builds every study's
     !| neighborhoods into `neighborhood_indices` and checks the first admissibility gate
     !| ([[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]])
     !| study by study, stopping at the first study that fails it. Private helper; its
@@ -180,7 +182,9 @@ contains
         end do
     end subroutine construct_fixed_k_candidate_neighborhoods
 
-    !> Pass C of the fixed-k parameter search for one candidate: every study's histograms, by
+    !> summary: Build every study's histograms for one fixed-k candidate
+    !| AUTHOR_LASZLO_LANG
+    !| Pass C of the fixed-k parameter search for one candidate: every study's histograms, by
     !| `build_fixed_k_study_histograms`. Private helper; every array dummy is a search buffer
     !| viewed packed at the candidate's sizes.
     pure subroutine build_fixed_k_candidate_histograms(residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
@@ -359,10 +363,11 @@ contains
             !! The finally chosen candidate's `n_neighbors`
         integer(int32), dimension(max_n_points_candidate), intent(out) :: n_bins_per_point
             !! The chosen candidate's bin count per reference point; the first `n_points` entries
-            !! are meaningful
+            !! are meaningful, the rest are 0
         real(real64), dimension(max_n_points_candidate), intent(out) :: shared_residual_range_low
             !! The chosen candidate's lower residual-range bound (R_low) per reference point; the
-            !! first `n_points` entries are meaningful, `0.0` when no candidate was admissible
+            !! first `n_points` entries are meaningful, `0.0` when no candidate was admissible; the
+            !! rest are `0.0`
         real(real64), dimension(max_n_points_candidate), intent(out) :: shared_residual_range_high
             !! The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`
         real(real64), dimension(2, n_studies), intent(out) :: best_candidate_pair_confidence_interval
@@ -417,12 +422,13 @@ contains
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         integer(int32), dimension(max_n_points_candidate, M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_selected_n_bins
             !! Per-admissible-candidate, per-reference-point bin count `M_j`. Jagged: only rows
-            !! `1:trace_n_points(t)` of column `t` are meaningful, so a Python/R caller slices
-            !! `[:trace_n_points[t], t]`
+            !! `1:trace_n_points(t)` of column `t` are meaningful (the rest are 0), so a Python/R
+            !! caller slices `[:trace_n_points[t], t]`
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         logical(c_bool), dimension(max_n_points_candidate, M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_occupancy_failed
             !! Per-admissible-candidate, per-reference-point flag: `.true.` iff the bin-count search
-            !! failed and the point used `m_min` bins. Jagged like trace_selected_n_bins
+            !! failed and the point used `m_min` bins. Jagged like trace_selected_n_bins (`.false.`
+            !! beyond)
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         integer(int32), dimension(max_n_points_candidate, M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_n_pooled_residuals
             !! Per-admissible-candidate, per-reference-point pooled residual count (`N_j`). Jagged

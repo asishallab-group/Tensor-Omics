@@ -553,9 +553,11 @@ contains
         end do
         if (is_err(ierr)) return
 
-        do concurrent(i_study=1:n_studies)
+        do concurrent(i_study=1:n_studies) local(gene_idx, n_predecessors) &
+                shared(neighborhood_indices_point, max_n_reps_all_studies, n_neighbors, pooled_residuals, residuals)
             do concurrent(i_neighbor=1:n_neighbors) local(gene_idx, n_predecessors) &
-                    shared(neighborhood_indices_point, max_n_reps_all_studies, n_neighbors, i_study)
+                    shared(neighborhood_indices_point, max_n_reps_all_studies, n_neighbors, i_study, &
+                           pooled_residuals, residuals)
                 gene_idx = neighborhood_indices_point(i_neighbor, i_study)
                 n_predecessors = ((i_study - 1)*n_neighbors + (i_neighbor - 1))*max_n_reps_all_studies
                 do concurrent(i_rep=1:max_n_reps_all_studies) shared(pooled_residuals, residuals, n_predecessors, &

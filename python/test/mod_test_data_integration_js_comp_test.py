@@ -29,6 +29,7 @@ from tensor_omics import (
     check_neighborhood_overlaps,
     check_mean_pmf_min_counts,
     check_plateau_condition,
+    check_effect_size_plateau_condition,
     create_mean_pmf,
     create_mean_pmf_only,
     bootstrap_histogram,
@@ -472,6 +473,45 @@ def test_check_plateau_condition():
     np.testing.assert_array_almost_equal(result_frac["ci_overlap"], [1.0, 0.5, 0.0, 0.5], decimal=12)
 
 
+def test_check_effect_size_plateau_condition():
+    # Call-ability and return type/shape (Fortran_Coding_Guides.pdf Sec 17.1); the counting rules
+    # themselves are the Fortran suite's test_effect_size_plateau_* tests.
+    # ============================================================
+    # Test 1 -- first admissible candidate (test_effect_size_plateau_first_candidate_no_delta):
+    # no transition, so delta/delta_median/delta_max are the documented -1.0 and the count resets.
+    # ============================================================
+    result = check_effect_size_plateau_condition(np.array([0.1, 0.2]), np.array([0.0, 0.0]), has_previous=False,
+                                                 delta_median_threshold=0.05, delta_max_threshold=0.10,
+                                                 delta_epsilon=1.0e-10, delta_min_consecutive_transitions=2,
+                                                 n_consecutive_ok=5)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    assert isinstance(result["delta"], np.ndarray), f"expected an ndarray, got {type(result['delta'])}"
+    assert result["delta"].dtype == np.float64, f"expected float64, got {result['delta'].dtype}"
+    assert result["delta"].shape == (2,), f"expected shape (2,), got {result['delta'].shape}"
+    np.testing.assert_array_equal(result["delta"], [-1.0, -1.0])
+    assert result["delta_median"] == -1.0 and result["delta_max"] == -1.0, "Test 1 failed: expected the -1.0 sentinel"
+    assert result["n_consecutive_ok"] == 0, "Test 1 failed: n_consecutive_ok must reset to 0"
+    assert not result["plateau_found"], "Test 1 failed: no plateau on the first admissible candidate"
+
+    # ============================================================
+    # Test 2 -- a qualifying transition (|0.101 - 0.100| / 0.100 = 0.01 for both studies): one alone
+    # is not enough (test_effect_size_plateau_single_transition_insufficient), the second in a row
+    # is (test_effect_size_plateau_two_consecutive_transitions).
+    # ============================================================
+    for n_ok_before, plateau_expected in ((0, False), (1, True)):
+        result = check_effect_size_plateau_condition(np.array([0.101, 0.101]), np.array([0.100, 0.100]),
+                                                     has_previous=True, delta_median_threshold=0.05,
+                                                     delta_max_threshold=0.10, delta_epsilon=1.0e-10,
+                                                     delta_min_consecutive_transitions=2,
+                                                     n_consecutive_ok=n_ok_before)
+        assert result["n_consecutive_ok"] == n_ok_before + 1, \
+            f"Test 2 failed: expected n_consecutive_ok={n_ok_before + 1}, got {result['n_consecutive_ok']}"
+        assert bool(result["plateau_found"]) == plateau_expected, \
+            f"Test 2 failed: plateau_found should be {plateau_expected} after {n_ok_before + 1} transition(s)"
+        assert isinstance(result["delta_median"], float) and isinstance(result["delta_max"], float), \
+            "Test 2 failed: delta_median and delta_max must be floats"
+
+
 def test_create_mean_pmf():
     # ============================================================
     # Test 1 -- two studies, hand-computed (test_create_mean_pmf_two_studies_hand_computed):
@@ -709,6 +749,12 @@ def test_calc_js_comp_test_n_top_k_jsds():
     # n_bootstraps=10 -> floor(0.025*10)=0, must clamp up to 1.
     # ============================================================
     assert calc_js_comp_test_n_top_k_jsds(10) == 1, "Test 3 failed: expected n_top_k=1"
+
+    # The routine validates its own arguments (test_calc_js_comp_test_n_top_k_jsds_validation).
+    assert_error(lambda: calc_js_comp_test_n_top_k_jsds(0),
+                 "expected ERR_INVALID_INPUT for n_bootstraps=0", ERR_INVALID_INPUT)
+    assert_error(lambda: calc_js_comp_test_n_top_k_jsds(100, two_sided_bootstrapping_significance_level=100.5),
+                 "expected ERR_INVALID_INPUT for a significance level above 100", ERR_INVALID_INPUT)
 
 
 def test_run_js_comp_test_two_studies_hand_traceable():

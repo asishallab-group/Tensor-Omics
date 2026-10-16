@@ -404,6 +404,47 @@ test_check_plateau_condition <- function() {
                         "Test 5 failed: fractional ci_overlap values")
 }
 
+test_check_effect_size_plateau_condition <- function() {
+  # Call-ability and return type/shape (Fortran_Coding_Guides.pdf Sec 17.1); the counting rules
+  # themselves are the Fortran suite's test_effect_size_plateau_* tests.
+  # ============================================================
+  # Test 1 -- first admissible candidate (test_effect_size_plateau_first_candidate_no_delta):
+  # no transition, so delta/delta_median/delta_max are the documented -1.0 and the count resets.
+  # ============================================================
+  result <- check_effect_size_plateau_condition(c(0.1, 0.2), c(0.0, 0.0), has_previous = FALSE,
+                                                delta_median_threshold = 0.05, delta_max_threshold = 0.10,
+                                                delta_epsilon = 1.0e-10, delta_min_consecutive_transitions = 2L,
+                                                n_consecutive_ok = 5L)
+  assert_true(is.list(result), "expected a named list")
+  assert_true(is.numeric(result$delta), "expected delta to be numeric")
+  assert_equal_int(length(result$delta), 2L, "expected delta of length n_studies")
+  assert_equal_numeric(as.numeric(result$delta), c(-1.0, -1.0), TOL, "Test 1 failed: delta is the -1.0 sentinel")
+  assert_equal_numeric(c(result$delta_median, result$delta_max), c(-1.0, -1.0), TOL,
+                       "Test 1 failed: delta_median and delta_max are the -1.0 sentinel")
+  assert_equal_int(as.integer(result$n_consecutive_ok), 0L, "Test 1 failed: n_consecutive_ok must reset to 0")
+  assert_false(result$plateau_found, "Test 1 failed: no plateau on the first admissible candidate")
+
+  # ============================================================
+  # Test 2 -- a qualifying transition (|0.101 - 0.100| / 0.100 = 0.01 for both studies): one alone
+  # is not enough (test_effect_size_plateau_single_transition_insufficient), the second in a row
+  # is (test_effect_size_plateau_two_consecutive_transitions).
+  # ============================================================
+  for (n_ok_before in 0:1) {
+    result <- check_effect_size_plateau_condition(c(0.101, 0.101), c(0.100, 0.100), has_previous = TRUE,
+                                                  delta_median_threshold = 0.05, delta_max_threshold = 0.10,
+                                                  delta_epsilon = 1.0e-10, delta_min_consecutive_transitions = 2L,
+                                                  n_consecutive_ok = n_ok_before)
+    assert_equal_int(as.integer(result$n_consecutive_ok), n_ok_before + 1L,
+                     paste("Test 2 failed: n_consecutive_ok after", n_ok_before + 1L, "transition(s)"))
+    assert_true(is.logical(result$plateau_found) && length(result$plateau_found) == 1,
+                "Test 2 failed: plateau_found must be a single logical")
+    assert_true(identical(result$plateau_found, n_ok_before == 1L),
+                paste("Test 2 failed: plateau_found after", n_ok_before + 1L, "transition(s)"))
+    assert_true(is.numeric(result$delta_median) && is.numeric(result$delta_max),
+                "Test 2 failed: delta_median and delta_max must be numeric")
+  }
+}
+
 test_create_mean_pmf <- function() {
   # ============================================================
   # Test 1 -- two studies, hand-computed (test_create_mean_pmf_two_studies_hand_computed):
@@ -628,6 +669,12 @@ test_calc_js_comp_test_n_top_k_jsds <- function() {
 
   # Test 3 -- clamped to 1 (test_calc_js_comp_test_n_top_k_jsds_clamped_to_at_least_one): 10 -> floor(0.25)=0 -> 1.
   assert_equal_int(as.integer(calc_js_comp_test_n_top_k_jsds(10L)), 1L, "Test 3 failed: expected n_top_k=1")
+
+  # The routine validates its own arguments (test_calc_js_comp_test_n_top_k_jsds_validation).
+  assert_error(calc_js_comp_test_n_top_k_jsds(0L),
+               "expected ERR_INVALID_INPUT for n_bootstraps=0", ERR_INVALID_INPUT)
+  assert_error(calc_js_comp_test_n_top_k_jsds(100L, two_sided_bootstrapping_significance_level = 100.5),
+               "expected ERR_INVALID_INPUT for a significance level above 100", ERR_INVALID_INPUT)
 }
 
 test_run_js_comp_test_two_studies_hand_traceable <- function() {

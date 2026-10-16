@@ -7,6 +7,9 @@
 #' for the interval's endpoints: `n_top_k = max(1, floor(level/100 * n_bootstraps))`, e.g. 25 for
 #' the default 2.5 and `n_bootstraps=1000`.
 #'
+#' Rejects an out-of-range argument with invalid input and a non-finite significance level with
+#' `ERR_NAN_INF`; `n_top_k` is then left undefined.
+#'
 #' Generated from the Fortran procedure \code{tox_data_integration_stats_impl::calc_js_comp_test_n_top_k_jsds}, whose argument names
 #' are the ones an error message reports.
 #'
@@ -23,7 +26,7 @@ calc_js_comp_test_n_top_k_jsds <- function(n_bootstraps, two_sided_bootstrapping
     n_bootstraps <- .tox_as_integer_scalar(n_bootstraps, "n_bootstraps")
     two_sided_bootstrapping_significance_level <- .tox_as_double_scalar(two_sided_bootstrapping_significance_level, "two_sided_bootstrapping_significance_level")
     .result <- .Call("calc_js_comp_test_n_top_k_jsds_call", n_bootstraps, two_sided_bootstrapping_significance_level)
-    .arguments <- c("n_bootstraps", "two_sided_bootstrapping_significance_level", "n_top_k")
+    .arguments <- c("n_bootstraps", "two_sided_bootstrapping_significance_level", "n_top_k", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
     .result$n_top_k

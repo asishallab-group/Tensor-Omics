@@ -2,9 +2,10 @@
 ! tox_data_integration family needs. A dummy extent or a DM_DEFAULT cannot name a Fortran
 ! parameter -- the generated C and R bindings need the number itself -- so each such value is a
 ! macro, written once, here, and every module that needs the literal includes this file.
-! M_MAX_N_BINS, the M_MODE_BIN_COUNT_* values, M_MAX_CANDIDATE_PAIRS and M_MODE_PLATEAU_CI_OVERLAP
-! also back a parameter of the module that owns them; the *_DEFAULT values have no parameter and
-! are used directly. A value only one module uses stays in that module as a CM_ macro.
+! M_MAX_N_BINS, M_MAX_CANDIDATE_PAIRS and the M_MODE_BIN_COUNT_* and M_MODE_PLATEAU_* values also
+! back a parameter of the module that owns them; the *_DEFAULT values have no parameter and are
+! used directly. A value only one module uses stays in that module as a CM_ macro, except that a
+! mode's values are kept together: once one of them is needed here, the whole mode family is here.
 
 ! Fixed ceiling on any histogram bin count: MAX_N_BINS of tox_data_integration_js_comp_test_binning_impl,
 ! and the extent of the bin-sized work arrays of the bin-count, search and final-run modules.
@@ -40,9 +41,11 @@
 ! of the fixed-k and adaptive parameter searches.
 #define M_MAX_CANDIDATE_PAIRS 16
 
-! `plateau_mode`'s default, MODE_PLATEAU_CI_OVERLAP of tox_data_integration_js_comp_test_search_impl:
-! the DM_DEFAULT and M_DEFAULT_VAL of both parameter searches.
+! `plateau_mode`'s values (the MODE_PLATEAU_* of tox_data_integration_js_comp_test_search_impl).
+! CI overlap is the DM_DEFAULT and M_DEFAULT_VAL of both parameter searches.
 #define M_MODE_PLATEAU_CI_OVERLAP 0_int32
+#define M_MODE_PLATEAU_EFFECT_SIZE 1_int32
+#define M_MODE_PLATEAU_BOTH 2_int32
 
 ! Defaults of the two admissibility/plateau thresholds `min_neighbor_overlap` (gate 1) and
 ! `succeeding_ci_overlap`, shared by DM_DEFAULT and M_DEFAULT_VAL in both parameter searches.

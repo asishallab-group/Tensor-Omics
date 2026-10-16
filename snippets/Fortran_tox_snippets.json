@@ -2482,7 +2482,20 @@
       "call calc_js_comp_test_n_top_k_jsds( &",
       "    n_bootstraps=${1:n_bootstraps}, &",
       "    two_sided_bootstrapping_significance_level=${2:two_sided_bootstrapping_significance_level}, &",
-      "    n_top_k=${3:n_top_k})"
+      "    n_top_k=${3:n_top_k}, &",
+      "    ierr=${4:ierr})"
+    ]
+  },
+  "calc_js_comp_test_n_top_k_jsds (call, checked)": {
+    "prefix": "tox:calc_js_comp_test_n_top_k_jsds.checked",
+    "description": "Sizes the top-k/bottom-k heaps (with error check)",
+    "body": [
+      "call calc_js_comp_test_n_top_k_jsds( &",
+      "    n_bootstraps=${1:n_bootstraps}, &",
+      "    two_sided_bootstrapping_significance_level=${2:two_sided_bootstrapping_significance_level}, &",
+      "    n_top_k=${3:n_top_k}, &",
+      "    ierr=${4:ierr})",
+      "if (is_err(ierr)) return"
     ]
   },
   "tox_data_tools (use)": {

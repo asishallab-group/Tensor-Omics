@@ -37,7 +37,8 @@ module tox_data_integration_js_comp_test_binning_impl
              MODE_BIN_COUNT_STONE_POOLED
 
     ! M_MAX_N_BINS and the M_MODE_BIN_COUNT_* values are defined in src/tox/data_integration/macros.h:
-    ! the search and final-run modules need the same literals as dummy extents and DM_DEFAULTs.
+    ! the search and final-run modules need M_MAX_N_BINS and M_MODE_BIN_COUNT_OCCUPANCY as dummy
+    ! extents and DM_DEFAULTs, and the other modes are kept with their family.
     integer(int32), parameter :: MAX_N_BINS = M_MAX_N_BINS
         !! Fixed ceiling on any histogram bin count; histogram work arrays are sized by it
 

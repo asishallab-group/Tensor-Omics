@@ -286,10 +286,11 @@ contains
         integer(int32), dimension(max_n_points_candidate), intent(out) :: n_bins_per_point
             !! The chosen candidate's bin count per reference point; the first `n_points` entries
             !! are meaningful. Without an admissible candidate, the first
-            !! `min(n_points, max_n_points_candidate)` entries are `m_min`
+            !! `min(n_points, max_n_points_candidate)` entries are `m_min`. The rest are 0
         real(real64), dimension(max_n_points_candidate), intent(out) :: shared_residual_range_low
             !! The chosen candidate's lower residual-range bound (R_low) per reference point; the
-            !! first `n_points` entries are meaningful, `0.0` without an admissible candidate
+            !! first `n_points` entries are meaningful, `0.0` without an admissible candidate; the
+            !! rest are `0.0`
         real(real64), dimension(max_n_points_candidate), intent(out) :: shared_residual_range_high
             !! The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`
         real(real64), dimension(2, n_studies), intent(out) :: best_candidate_confidence_interval
@@ -346,12 +347,13 @@ contains
             !! The first `n_admissible_evaluated` elements will hold the results.
         integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_selected_n_bins
             !! Per-admissible-candidate, per-reference-point bin count `M_j`. Jagged: only rows
-            !! `1:trace_n_points(t)` of column `t` are meaningful, so a Python/R caller slices
-            !! `[:trace_n_points[t], t]`
+            !! `1:trace_n_points(t)` of column `t` are meaningful (the rest are 0), so a Python/R
+            !! caller slices `[:trace_n_points[t], t]`
             !! The first `n_admissible_evaluated` elements will hold the results.
         logical(c_bool), dimension(max_n_points_candidate, 16), intent(out) :: trace_occupancy_failed
             !! Per-admissible-candidate, per-reference-point flag: `.true.` iff the bin-count search
-            !! failed and the point used `m_min` bins. Jagged like trace_selected_n_bins
+            !! failed and the point used `m_min` bins. Jagged like trace_selected_n_bins (`.false.`
+            !! beyond)
             !! The first `n_admissible_evaluated` elements will hold the results.
         integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_n_pooled_residuals
             !! Per-admissible-candidate, per-reference-point pooled non-NaN residual count (`N_j`);
@@ -596,8 +598,10 @@ contains
         call calc_js_comp_test_n_top_k_jsds(&
             n_bootstraps = n_bootstraps,&
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
-            n_top_k = n_bootstrapping_top_k_jsds&
+            n_top_k = n_bootstrapping_top_k_jsds,&
+            ierr = ierr&
         )
+        if (is_err(ierr)) return
         M_ALLOCATE(tmp_gene_means_perm_all(max_n_genes_all_studies*n_studies))
         M_ALLOCATE(tmp_x_star(max_n_genes_all_studies*n_studies))
         M_ALLOCATE(tmp_pooled_neighborhood_range(2, max_n_genes_all_studies*n_studies))
@@ -997,10 +1001,11 @@ contains
         integer(int32), dimension(max_n_points_candidate), intent(out) :: n_bins_per_point
             !! The chosen candidate's bin count per reference point; the first `n_points` entries
             !! are meaningful. Without an admissible candidate, the first
-            !! `min(n_points, max_n_points_candidate)` entries are `m_min`
+            !! `min(n_points, max_n_points_candidate)` entries are `m_min`. The rest are 0
         real(real64), dimension(max_n_points_candidate), intent(out) :: shared_residual_range_low
             !! The chosen candidate's lower residual-range bound (R_low) per reference point; the
-            !! first `n_points` entries are meaningful, `0.0` without an admissible candidate
+            !! first `n_points` entries are meaningful, `0.0` without an admissible candidate; the
+            !! rest are `0.0`
         real(real64), dimension(max_n_points_candidate), intent(out) :: shared_residual_range_high
             !! The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`
         real(real64), dimension(2, n_studies), intent(out) :: best_candidate_confidence_interval
@@ -1057,12 +1062,13 @@ contains
             !! The first `n_admissible_evaluated` elements will hold the results.
         integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_selected_n_bins
             !! Per-admissible-candidate, per-reference-point bin count `M_j`. Jagged: only rows
-            !! `1:trace_n_points(t)` of column `t` are meaningful, so a Python/R caller slices
-            !! `[:trace_n_points[t], t]`
+            !! `1:trace_n_points(t)` of column `t` are meaningful (the rest are 0), so a Python/R
+            !! caller slices `[:trace_n_points[t], t]`
             !! The first `n_admissible_evaluated` elements will hold the results.
         logical(c_bool), dimension(max_n_points_candidate, 16), intent(out) :: trace_occupancy_failed
             !! Per-admissible-candidate, per-reference-point flag: `.true.` iff the bin-count search
-            !! failed and the point used `m_min` bins. Jagged like trace_selected_n_bins
+            !! failed and the point used `m_min` bins. Jagged like trace_selected_n_bins (`.false.`
+            !! beyond)
             !! The first `n_admissible_evaluated` elements will hold the results.
         integer(int32), dimension(max_n_points_candidate, 16), intent(out) :: trace_n_pooled_residuals
             !! Per-admissible-candidate, per-reference-point pooled non-NaN residual count (`N_j`);
