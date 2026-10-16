@@ -574,7 +574,8 @@ contains
     !| parameter search can grow every candidate on one shared sort.
     !| `pooled_means` and `pooled_residuals` are `gene_means(G, S)` and `residuals(R, G, S)` seen
     !| through sequence association as `G*S` flat entries, entry `(s - 1)*G + g` being gene `g` of
-    !| study `s`.
+    !| study `s`. Internal helper, not published; public because the adaptive parameter search calls
+    !| it besides `construct_adaptive_neighborhoods_impl`.
     pure subroutine grow_adaptive_neighborhoods(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, &
                                                 pooled_means, pooled_residuals, pooled_means_perm, k_start, k_step, &
                                                 k_max, tau, mad_distance_factor, max_pooled_residuals, &
@@ -1021,29 +1022,29 @@ contains
         real(real64), intent(in), optional :: tau
             !! Largest relative dispersion increase a growth round may cause and still be committed
             !! DM_MIN(0.0_real64)
-            !! DM_DEFAULT(CM_ADAPTIVE_TAU_DEFAULT)
+            !! DM_DEFAULT(M_ADAPTIVE_TAU_DEFAULT)
         real(real64), intent(in), optional :: mad_distance_factor
             !! Multiple of a neighborhood's MAD that the next reference point's target lies beyond
             !! the neighborhood's largest mean
             !! DM_MIN(0.0_real64)
-            !! DM_DEFAULT(CM_ADAPTIVE_MAD_DISTANCE_FACTOR_DEFAULT)
+            !! DM_DEFAULT(M_ADAPTIVE_MAD_DISTANCE_FACTOR_DEFAULT)
         integer(int32), intent(in), optional :: max_pooled_residuals
             !! Cap on a neighborhood's non-NaN residuals in the growth rounds; 0 for no cap
             !! DM_MIN(0_int32)
-            !! DM_DEFAULT(CM_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT)
+            !! DM_DEFAULT(M_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT)
         integer(int32), intent(in), optional :: min_study_neighbors
             !! Fewest entries of each study every neighborhood must have for the construction
             !! status to stay ok
             !! DM_MIN(1_int32)
-            !! DM_DEFAULT(CM_ADAPTIVE_MIN_STUDY_NEIGHBORS_DEFAULT)
+            !! DM_DEFAULT(M_ADAPTIVE_MIN_STUDY_NEIGHBORS_DEFAULT)
 
         real(real64) :: actual_tau, actual_mad_distance_factor
         integer(int32) :: actual_max_pooled_residuals, actual_min_study_neighbors
 
-        M_DEFAULT_VAL(tau, actual_tau, CM_ADAPTIVE_TAU_DEFAULT)
-        M_DEFAULT_VAL(mad_distance_factor, actual_mad_distance_factor, CM_ADAPTIVE_MAD_DISTANCE_FACTOR_DEFAULT)
-        M_DEFAULT_VAL(max_pooled_residuals, actual_max_pooled_residuals, CM_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT)
-        M_DEFAULT_VAL(min_study_neighbors, actual_min_study_neighbors, CM_ADAPTIVE_MIN_STUDY_NEIGHBORS_DEFAULT)
+        M_DEFAULT_VAL(tau, actual_tau, M_ADAPTIVE_TAU_DEFAULT)
+        M_DEFAULT_VAL(mad_distance_factor, actual_mad_distance_factor, M_ADAPTIVE_MAD_DISTANCE_FACTOR_DEFAULT)
+        M_DEFAULT_VAL(max_pooled_residuals, actual_max_pooled_residuals, M_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT)
+        M_DEFAULT_VAL(min_study_neighbors, actual_min_study_neighbors, M_ADAPTIVE_MIN_STUDY_NEIGHBORS_DEFAULT)
 
         ! The same pooled sort as the fixed-k search, so an adaptive search can share this order.
         call init_perm(tmp_gene_means_perm_all)

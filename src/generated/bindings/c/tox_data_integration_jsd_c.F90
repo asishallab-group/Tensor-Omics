@@ -830,7 +830,7 @@ contains
 
     !> summary: C-wrapper for [[tox_data_integration_jsd(module):create_mean_pmf_only(subroutine)]]
     !| As [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]], for
-    !| callers that need no counts (the bootstrap). Same known limitation: the consensus includes
+    !| callers that need no counts (the bootstrap and the permutation test). Same known limitation: the consensus includes
     !| the study compared against it.
     subroutine create_mean_pmf_only_c(&
             pmfs,&

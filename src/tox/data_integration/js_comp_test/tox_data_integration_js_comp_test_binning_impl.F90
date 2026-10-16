@@ -36,22 +36,22 @@ module tox_data_integration_js_comp_test_binning_impl
              MAX_N_BINS, MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, &
              MODE_BIN_COUNT_STONE_POOLED
 
-    ! CM_MAX_N_BINS and the CM_MODE_BIN_COUNT_* values are defined in src/tox/data_integration/macros.h:
+    ! M_MAX_N_BINS and the M_MODE_BIN_COUNT_* values are defined in src/tox/data_integration/macros.h:
     ! the search and final-run modules need the same literals as dummy extents and DM_DEFAULTs.
-    integer(int32), parameter :: MAX_N_BINS = CM_MAX_N_BINS
+    integer(int32), parameter :: MAX_N_BINS = M_MAX_N_BINS
         !! Fixed ceiling on any histogram bin count; histogram work arrays are sized by it
 
     ! `bin_count_mode`'s values: how a reference point's histogram bin count is chosen. Occupancy
     ! is the default of all four pipeline entry points; determine_bin_count_stone_impl rejects it.
-    integer(int32), parameter :: MODE_BIN_COUNT_OCCUPANCY = CM_MODE_BIN_COUNT_OCCUPANCY
+    integer(int32), parameter :: MODE_BIN_COUNT_OCCUPANCY = M_MODE_BIN_COUNT_OCCUPANCY
         !! Bin-count mode: the largest bin count whose pooled histogram has every bin at or above
         !! the occupancy floor
-    integer(int32), parameter :: MODE_BIN_COUNT_STONE_EQUAL = CM_MODE_BIN_COUNT_STONE_EQUAL
+    integer(int32), parameter :: MODE_BIN_COUNT_STONE_EQUAL = M_MODE_BIN_COUNT_STONE_EQUAL
         !! Bin-count mode: Stone's cross-validation score of every study, summed with equal weights
-    integer(int32), parameter :: MODE_BIN_COUNT_STONE_SIZE_WEIGHTED = CM_MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
+    integer(int32), parameter :: MODE_BIN_COUNT_STONE_SIZE_WEIGHTED = M_MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
         !! Bin-count mode: Stone's cross-validation score of every study, weighted by the study's
         !! residual count inside the range
-    integer(int32), parameter :: MODE_BIN_COUNT_STONE_POOLED = CM_MODE_BIN_COUNT_STONE_POOLED
+    integer(int32), parameter :: MODE_BIN_COUNT_STONE_POOLED = M_MODE_BIN_COUNT_STONE_POOLED
         !! Bin-count mode: Stone's cross-validation score of the pooled residuals of all studies
 
 contains
@@ -205,29 +205,29 @@ contains
             !! Sturges' rule estimate from estimate_bin_count_impl (diagnostic only)
         integer(int32), intent(out) :: fd_bins
             !! Freedman-Diaconis rule estimate from estimate_bin_count_impl (diagnostic only)
-        integer(int32), intent(out) :: tmp_bin_counts(CM_MAX_N_BINS)
+        integer(int32), intent(out) :: tmp_bin_counts(M_MAX_N_BINS)
             !! Working array: per-bin counts of the candidate bin count under test
         integer(int32), intent(in), optional :: m_min
             !! Smallest candidate bin count the search will ever test (M_min)
             !! DM_MIN(1_int32)
             !! DM_MAX(MAX_N_BINS)
-            !! DM_DEFAULT(CM_OCCUPANCY_M_MIN_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_M_MIN_DEFAULT)
         integer(int32), intent(in), optional :: m_max
             !! Largest candidate bin count the search will ever test (M_max); raised to `m_min` if
             !! smaller
             !! DM_MIN(1_int32)
             !! DM_MAX(MAX_N_BINS)
-            !! DM_DEFAULT(CM_OCCUPANCY_M_MAX_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_M_MAX_DEFAULT)
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
             !! be admissible (n_min)
             !! DM_MIN(0_int32)
-            !! DM_DEFAULT(CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
         real(real64), intent(in), optional :: gamma_occupancy
             !! Geometric growth factor for the coarse search stage; must exceed 1 or the search
             !! never advances
             !! DM_MIN(above(1.0_real64))
-            !! DM_DEFAULT(CM_OCCUPANCY_GAMMA_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_GAMMA_DEFAULT)
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for this neighborhood's own lower residual-range bound
             !! (shared_residual_range_low)
@@ -235,7 +235,7 @@ contains
             !! with invalid input reported on upper_residual_range_quantile.
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         ! The lower bound below (lower_residual_range_quantile) is inclusive on purpose: above() must not be
         ! used, because the wrapper would evaluate above() with an absent optional when a Fortran
         ! caller omits lower_residual_range_quantile.
@@ -244,7 +244,7 @@ contains
             !! (shared_residual_range_high)
             !! DM_MIN(lower_residual_range_quantile)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
 
         integer(int32) :: actual_m_min, actual_m_max, actual_min_residuals_per_bin
         real(real64) :: actual_gamma_occupancy, actual_lower_residual_range_quantile, actual_upper_residual_range_quantile
@@ -253,12 +253,12 @@ contains
         real(real64) :: half_span
         logical(c_bool) :: found_valid
 
-        M_DEFAULT_VAL(m_min, actual_m_min, CM_OCCUPANCY_M_MIN_DEFAULT)
-        M_DEFAULT_VAL(m_max, actual_m_max, CM_OCCUPANCY_M_MAX_DEFAULT)
-        M_DEFAULT_VAL(min_residuals_per_bin, actual_min_residuals_per_bin, CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
-        M_DEFAULT_VAL(gamma_occupancy, actual_gamma_occupancy, CM_OCCUPANCY_GAMMA_DEFAULT)
-        M_DEFAULT_VAL(lower_residual_range_quantile, actual_lower_residual_range_quantile, CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
-        M_DEFAULT_VAL(upper_residual_range_quantile, actual_upper_residual_range_quantile, CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+        M_DEFAULT_VAL(m_min, actual_m_min, M_OCCUPANCY_M_MIN_DEFAULT)
+        M_DEFAULT_VAL(m_max, actual_m_max, M_OCCUPANCY_M_MAX_DEFAULT)
+        M_DEFAULT_VAL(min_residuals_per_bin, actual_min_residuals_per_bin, M_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
+        M_DEFAULT_VAL(gamma_occupancy, actual_gamma_occupancy, M_OCCUPANCY_GAMMA_DEFAULT)
+        M_DEFAULT_VAL(lower_residual_range_quantile, actual_lower_residual_range_quantile, M_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+        M_DEFAULT_VAL(upper_residual_range_quantile, actual_upper_residual_range_quantile, M_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         actual_m_max = max(actual_m_min, actual_m_max)
 
         ! NaN sorts last under the ascending permutation: scan back for the last non-NaN position.
@@ -420,25 +420,25 @@ contains
             !! Smallest candidate bin count tested (M_min)
             !! DM_MIN(1_int32)
             !! DM_MAX(MAX_N_BINS)
-            !! DM_DEFAULT(CM_OCCUPANCY_M_MIN_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_M_MIN_DEFAULT)
         integer(int32), intent(in), optional :: m_max
             !! Largest candidate bin count tested (M_max); raised to `m_min` if smaller
             !! DM_MIN(1_int32)
             !! DM_MAX(MAX_N_BINS)
-            !! DM_DEFAULT(CM_OCCUPANCY_M_MAX_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_M_MAX_DEFAULT)
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
             !! be admissible (n_min)
             !! DM_MIN(0_int32)
-            !! DM_DEFAULT(CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
 
         integer(int32) :: actual_m_min, actual_m_max, actual_min_residuals_per_bin
         integer(int32) :: trial_m, best_m, min_occ
         integer(int32) :: candidate_bin_counts(MAX_N_BINS)
 
-        M_DEFAULT_VAL(m_min, actual_m_min, CM_OCCUPANCY_M_MIN_DEFAULT)
-        M_DEFAULT_VAL(m_max, actual_m_max, CM_OCCUPANCY_M_MAX_DEFAULT)
-        M_DEFAULT_VAL(min_residuals_per_bin, actual_min_residuals_per_bin, CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
+        M_DEFAULT_VAL(m_min, actual_m_min, M_OCCUPANCY_M_MIN_DEFAULT)
+        M_DEFAULT_VAL(m_max, actual_m_max, M_OCCUPANCY_M_MAX_DEFAULT)
+        M_DEFAULT_VAL(min_residuals_per_bin, actual_min_residuals_per_bin, M_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
         actual_m_max = max(actual_m_min, actual_m_max)
 
         best_m = actual_m_min - 1_int32 ! sentinel: stays below actual_m_min if nothing passes
@@ -586,16 +586,16 @@ contains
         integer(int32), intent(out) :: tmp_bin_counts(MAX_N_BINS)
             !! Working array: one study's inside counts at the bin count under test
         integer(int32), intent(in), optional :: m_min
-            !! Smallest bin count tested; default CM_OCCUPANCY_M_MIN_DEFAULT
+            !! Smallest bin count tested; default M_OCCUPANCY_M_MIN_DEFAULT
         integer(int32), intent(in), optional :: m_max
-            !! Largest bin count tested, raised to m_min if smaller; default CM_OCCUPANCY_M_MAX_DEFAULT
+            !! Largest bin count tested, raised to m_min if smaller; default M_OCCUPANCY_M_MAX_DEFAULT
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Floor on every bin of the pooled clamped histogram; default
-            !! CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT
+            !! M_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT
         real(real64), intent(in), optional :: lower_residual_range_quantile
-            !! Quantile of R_low; default CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT
+            !! Quantile of R_low; default M_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT
         real(real64), intent(in), optional :: upper_residual_range_quantile
-            !! Quantile of R_high; default CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT
+            !! Quantile of R_high; default M_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT
 
         integer(int32) :: actual_m_min, actual_m_max, actual_min_residuals_per_bin
         real(real64) :: actual_lower_residual_range_quantile, actual_upper_residual_range_quantile
@@ -606,11 +606,11 @@ contains
         real(real64) :: half_span, range_width, score, best_score
         logical(c_bool) :: pooled_scoring, size_weighted, found_admissible
 
-        M_DEFAULT_VAL(m_min, actual_m_min, CM_OCCUPANCY_M_MIN_DEFAULT)
-        M_DEFAULT_VAL(m_max, actual_m_max, CM_OCCUPANCY_M_MAX_DEFAULT)
-        M_DEFAULT_VAL(min_residuals_per_bin, actual_min_residuals_per_bin, CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
-        M_DEFAULT_VAL(lower_residual_range_quantile, actual_lower_residual_range_quantile, CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
-        M_DEFAULT_VAL(upper_residual_range_quantile, actual_upper_residual_range_quantile, CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+        M_DEFAULT_VAL(m_min, actual_m_min, M_OCCUPANCY_M_MIN_DEFAULT)
+        M_DEFAULT_VAL(m_max, actual_m_max, M_OCCUPANCY_M_MAX_DEFAULT)
+        M_DEFAULT_VAL(min_residuals_per_bin, actual_min_residuals_per_bin, M_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
+        M_DEFAULT_VAL(lower_residual_range_quantile, actual_lower_residual_range_quantile, M_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+        M_DEFAULT_VAL(upper_residual_range_quantile, actual_upper_residual_range_quantile, M_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         actual_m_max = max(actual_m_min, actual_m_max)
         pooled_scoring = bin_count_mode == MODE_BIN_COUNT_STONE_POOLED
         size_weighted = bin_count_mode == MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
@@ -939,7 +939,7 @@ contains
             !! Sturges' rule estimate from estimate_bin_count_impl (diagnostic only)
         integer(int32), intent(out) :: fd_bins
             !! Freedman-Diaconis rule estimate from estimate_bin_count_impl (diagnostic only)
-        integer(int32), intent(out) :: tmp_bin_counts(CM_MAX_N_BINS)
+        integer(int32), intent(out) :: tmp_bin_counts(M_MAX_N_BINS)
             !! Working array: one study's bin counts at the bin count under test
         integer(int32), intent(out) :: tmp_residual_to_study_perm(n_residuals)
             !! Working array: indices of `pooled_residuals` grouped by study, each study sorted
@@ -953,22 +953,22 @@ contains
             !! | Minimise the sum of the per-study scores (default) | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]] |
             !! | Minimise the sum of the per-study scores, each multiplied by the study's inside count | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Minimise the score of all studies' residuals pooled | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]] |
-            !! DM_DEFAULT(CM_MODE_BIN_COUNT_STONE_EQUAL)
+            !! DM_DEFAULT(M_MODE_BIN_COUNT_STONE_EQUAL)
         integer(int32), intent(in), optional :: m_min
             !! Smallest candidate bin count tested (M_min)
             !! DM_MIN(1_int32)
             !! DM_MAX(MAX_N_BINS)
-            !! DM_DEFAULT(CM_OCCUPANCY_M_MIN_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_M_MIN_DEFAULT)
         integer(int32), intent(in), optional :: m_max
             !! Largest candidate bin count tested (M_max); raised to `m_min` if smaller
             !! DM_MIN(1_int32)
             !! DM_MAX(MAX_N_BINS)
-            !! DM_DEFAULT(CM_OCCUPANCY_M_MAX_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_M_MAX_DEFAULT)
         integer(int32), intent(in), optional :: min_residuals_per_bin
             !! Minimum number of pooled residuals every bin of the pooled clamped histogram must
             !! reach for a candidate bin count to be admissible (0 turns the floor off)
             !! DM_MIN(0_int32)
-            !! DM_DEFAULT(CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for this neighborhood's own lower residual-range bound
             !! (shared_residual_range_low)
@@ -976,7 +976,7 @@ contains
             !! with invalid input reported on upper_residual_range_quantile.
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         ! The lower bound below (lower_residual_range_quantile) is inclusive on purpose: above() must not be
         ! used, because the wrapper would evaluate above() with an absent optional when a Fortran
         ! caller omits lower_residual_range_quantile.
@@ -985,11 +985,11 @@ contains
             !! (shared_residual_range_high)
             !! DM_MIN(lower_residual_range_quantile)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
 
         integer(int32) :: actual_bin_count_mode
 
-        M_DEFAULT_VAL(bin_count_mode, actual_bin_count_mode, CM_MODE_BIN_COUNT_STONE_EQUAL)
+        M_DEFAULT_VAL(bin_count_mode, actual_bin_count_mode, M_MODE_BIN_COUNT_STONE_EQUAL)
 
         call build_residual_to_study_perm(pooled_residuals_perm, n_residuals, residual_to_study, n_studies, &
                                           tmp_residual_to_study_perm, tmp_study_block_sizes)
@@ -1002,7 +1002,9 @@ contains
                                   min_residuals_per_bin, lower_residual_range_quantile, upper_residual_range_quantile)
     end subroutine determine_bin_count_stone_impl
 
-    !> Chooses one reference point's bin count from its gathered, sorted pool with the rule
+    !> summary: Choose one reference point's histogram bin count with the rule `bin_count_mode` names
+    !| AUTHOR_LASZLO_LANG
+    !| Chooses one reference point's bin count from its gathered, sorted pool with the rule
     !| `bin_count_mode` names.
     !|
     !| The pool `pooled_residuals(1:n_residuals)` holds every study's residuals as one contiguous
@@ -1020,8 +1022,9 @@ contains
     !|   `stone_bin_count_core` chooses the bin count. Its `stone_failed` is returned as
     !|   `bin_count_failed`. `gamma_occupancy` is not used.
     !|
-    !| Both rules get `n_neighbors` only for the Sturges/Freedman-Diaconis diagnostics. Private
-    !| helper of `determine_point_bin_count` and of the fixed-k parameter search.
+    !| Both rules get `n_neighbors` only for the Sturges/Freedman-Diaconis diagnostics. Internal
+    !| helper, not published; public only because the fixed-k parameter search calls it besides
+    !| `determine_point_bin_count`.
     !| Precondition, not checked: `bin_count_mode` is one of
     !| the four `MODE_BIN_COUNT_*` values (any other is treated as a Stone mode with equal weights),
     !| and `study_block_ends` ascends to `n_residuals`.
@@ -1215,13 +1218,13 @@ contains
             !! Forwarded to the bin-count search
         integer(int32), intent(in), optional :: bin_count_mode
             !! Which bin-count search runs, one of the four `MODE_BIN_COUNT_*` values; default
-            !! CM_MODE_BIN_COUNT_OCCUPANCY
+            !! M_MODE_BIN_COUNT_OCCUPANCY
 
         integer(int32) :: i_study, n_study_neighbors, pool_offset, gather_ierr, diagnostic_n_neighbors
         integer(int32) :: actual_bin_count_mode
 
         call set_ok(ierr)
-        M_DEFAULT_VAL(bin_count_mode, actual_bin_count_mode, CM_MODE_BIN_COUNT_OCCUPANCY)
+        M_DEFAULT_VAL(bin_count_mode, actual_bin_count_mode, M_MODE_BIN_COUNT_OCCUPANCY)
 
         ! Sequential: each study's block starts where the previous one ended. The index column is
         ! passed by its first element, so nothing is copied.
@@ -1317,9 +1320,11 @@ contains
         point_range_low(1) = shared_residual_range_low
         point_range_high(1) = shared_residual_range_high
 
+        ! point_counts/point_pmf passed whole: with one row, the callee's (1, max_n_bins) dummies are
+        ! exactly their first max_n_bins elements (max_n_bins <= MAX_N_BINS by the precondition).
         call build_residual_histograms_impl(tmp_neighbor_residuals, max_n_reps_all_studies, n_neighbors, 1_int32, &
                                             point_range_low, point_range_high, max_n_bins, point_n_bins, &
-                                            point_counts(1:1, 1:max_n_bins), point_pmf(1:1, 1:max_n_bins), &
+                                            point_counts, point_pmf, &
                                             point_included_n_reps)
 
         counts(i_point, :) = point_counts(1, 1:max_n_bins)
@@ -1327,12 +1332,14 @@ contains
         included_n_reps = point_included_n_reps(1)
     end subroutine build_point_study_histogram
 
-    !> Pass C of the fixed-k pipeline for ONE study: gathers every reference point's neighbor
+    !> summary: Build one study's fixed-k histograms for every reference point
+    !| AUTHOR_LASZLO_LANG
+    !| Pass C of the fixed-k pipeline for ONE study: gathers every reference point's neighbor
     !| residuals into `tmp_neighborhood_residuals_gathered`, then builds all of the study's
     !| histograms with one
     !| [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]] call at
-    !| the per-point bin counts. Private helper of `run_js_comp_test_impl` and the fixed-k
-    !| parameter search. Precondition, not checked here: every index is in
+    !| the per-point bin counts. Internal helper, not published; public because
+    !| `run_js_comp_test_impl` and the fixed-k parameter search call it. Precondition, not checked here: every index is in
     !| `[1, max_n_genes_all_studies]` and `1 <= n_bins_per_point <= max_n_bins`.
     pure subroutine build_fixed_k_study_histograms(residuals_study, max_n_reps_all_studies, max_n_genes_all_studies, &
                                                    n_neighbors, n_points, neighborhood_indices_study, &
@@ -1381,13 +1388,16 @@ contains
                                             n_bins_per_point, counts, pmfs, included_n_reps)
     end subroutine build_fixed_k_study_histograms
 
-    !> Pass C on adaptive neighborhoods: decodes every reference point's pooled range into
+    !> summary: Build every (reference point, study) histogram on adaptive neighborhoods
+    !| AUTHOR_LASZLO_LANG
+    !| Pass C on adaptive neighborhoods: decodes every reference point's pooled range into
     !| per-study gene lists
     !| ([[tox_data_integration_preprocessing_impl(module):materialize_pooled_neighborhood(subroutine)]])
     !| and builds each (point, study) histogram with `build_point_study_histogram` into bins
     !| `1:max_n_bins` of `counts`/`pmfs`. Sequential, so one gather buffer serves every pair.
-    !| Private helper of `run_js_comp_test_adaptive_impl` (`n_bins_extent = CM_MAX_N_BINS`) and the
-    !| adaptive parameter search (`n_bins_extent = max_n_bins`, its buffers viewed packed).
+    !| Internal helper, not published; public because `run_js_comp_test_adaptive_impl`
+    !| (`n_bins_extent = M_MAX_N_BINS`) and the adaptive parameter search (`n_bins_extent =
+    !| max_n_bins`, its buffers viewed packed) call it.
     pure subroutine build_adaptive_histograms(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, &
                                               n_points, max_n_bins, n_bins_extent, gene_means_perm_all, &
                                               pooled_neighborhood_range, n_neighbors_per_point, &

@@ -8064,7 +8064,8 @@ contains
     !| order (nearest first against ascending mean), which cannot matter: the pool is sorted
     !| before the occupancy search, and histogram counts are order-free. The occupancy knobs make
     !| the points pick different bin counts, so the zero padding up to max_n_bins_per_point is
-    !| compared too.
+    !| compared too. Beyond max_n_bins_per_point, both runs must write exactly 0 into pmfs,
+    !| counts, mean_pmf and mean_pmf_counts (all pre-filled with -7).
     subroutine test_run_adaptive_matches_fixed_k_exactly()
         integer(int32), parameter :: n_studies = 2, n_genes = 8, n_reps = 4, n_points = 3, n_neighbors = 3
         real(real64) :: gene_means(n_genes, n_studies), residuals(n_reps, n_genes, n_studies), x_star(n_points)
@@ -8101,6 +8102,12 @@ contains
         residuals(2, 5, 1) = ieee_value(0.0_real64, ieee_quiet_nan)
         x_star = [1.9_real64, 4.2_real64, 6.9_real64]
         ranges = reshape([1, 6, 5, 10, 11, 16], [2, n_points])
+        ! non-zero sentinels, so the padding checks below prove the routine writes the zeros
+        ! (run_adaptive_final pre-fills its outputs with -7 the same way)
+        pmfs = -7.0_real64
+        counts = -7_int32
+        mean_pmf = -7.0_real64
+        mean_pmf_counts = -7_int32
 
         call run_js_comp_test(n_studies, n_genes, n_reps, n_points, n_neighbors, gene_means, gene_means_perms, residuals, &
                               x_star, neighborhood_indices, neighborhood_range, n_bins_per_point, &
@@ -8164,6 +8171,19 @@ contains
         call assert_equal_array_real(out%p_values, p_values, n_studies, 0.0_real64, name//"p_values")
         call assert_equal_array_real(out%p_values_observed_consensus, p_values_observed_consensus, n_studies, &
                                      0.0_real64, name//"p_values_observed_consensus")
+
+        ! bins max_n_bins_per_point+1:MAX_N_BINS of both runs' bin-sized outputs are exactly zero,
+        ! which finish_js_comp_test's consensus over all MAX_N_BINS bins relies on
+        call assert_true(n_bins < MAX_N_BINS, name//"the fixture leaves padding bins")
+        call assert_true(all(counts(:, n_bins + 1:, :) == 0_int32), name//"fixed-k counts padding is zero")
+        call assert_true(all(pmfs(:, n_bins + 1:, :) == 0.0_real64), name//"fixed-k pmfs padding is zero")
+        call assert_true(all(mean_pmf_counts(:, n_bins + 1:) == 0_int32), name//"fixed-k mean_pmf_counts padding is zero")
+        call assert_true(all(mean_pmf(:, n_bins + 1:) == 0.0_real64), name//"fixed-k mean_pmf padding is zero")
+        call assert_true(all(out%counts(:, n_bins + 1:, :) == 0_int32), name//"adaptive counts padding is zero")
+        call assert_true(all(out%pmfs(:, n_bins + 1:, :) == 0.0_real64), name//"adaptive pmfs padding is zero")
+        call assert_true(all(out%mean_pmf_counts(:, n_bins + 1:) == 0_int32), &
+                         name//"adaptive mean_pmf_counts padding is zero")
+        call assert_true(all(out%mean_pmf(:, n_bins + 1:) == 0.0_real64), name//"adaptive mean_pmf padding is zero")
     end subroutine test_run_adaptive_matches_fixed_k_exactly
 
     !> Issue #217 (D3), a ragged point traced by hand on build_adaptive_final_fixture: the pooled

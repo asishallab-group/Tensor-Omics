@@ -1153,7 +1153,7 @@ def create_mean_pmf_only(
     r"""Build only the consensus pmf from all studies' pmfs, without its histogram counts
 
     As :func:`tensor_omics.create_mean_pmf`, for
-    callers that need no counts (the bootstrap). Same known limitation: the consensus includes
+    callers that need no counts (the bootstrap and the permutation test). Same known limitation: the consensus includes
     the study compared against it.
 
     Parameters

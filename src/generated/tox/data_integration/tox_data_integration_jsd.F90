@@ -817,7 +817,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_data_integration_jsd_impl(module):create_mean_pmf_only_impl]].
     !| As [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]], for
-    !| callers that need no counts (the bootstrap). Same known limitation: the consensus includes
+    !| callers that need no counts (the bootstrap and the permutation test). Same known limitation: the consensus includes
     !| the study compared against it.
     pure subroutine create_mean_pmf_only(&
             pmfs,&

@@ -179,9 +179,8 @@ contains
                 end if
             end do
 
-            ! Same formula and accumulation order as create_mean_pmf_impl, so the permuted consensus
-            ! matches the observed one bit for bit (including its few-ulp excess over 1.0 for some
-            ! study counts, deliberately not clamped).
+            ! The observed consensus's arithmetic, so the two match bit for bit (a few-ulp excess
+            ! over 1.0 included, deliberately not clamped).
             call create_mean_pmf_only_impl(tmp_pmfs, n_bins, n_points, n_studies, tmp_permuted_mean_pmf)
 
             do concurrent(i_study=1:n_studies) shared(tmp_pmfs, tmp_permuted_mean_pmf, n_points, n_bins, tmp_js_divergences, &

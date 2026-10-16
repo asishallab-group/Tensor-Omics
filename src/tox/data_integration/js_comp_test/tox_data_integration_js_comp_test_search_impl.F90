@@ -1104,9 +1104,9 @@ contains
         real(real64), dimension(max_n_reps_all_studies, max_n_neighbors_candidate, max_n_points_candidate), &
             intent(out) :: tmp_neighborhood_residuals_gathered
             !! Working array: one study's gathered neighborhood residuals, reused per study
-        integer(int32), dimension(CM_MAX_N_BINS), intent(out) :: tmp_point_pool
+        integer(int32), dimension(M_MAX_N_BINS), intent(out) :: tmp_point_pool
             !! Working array of the bootstrap: one point's pool
-        integer(int32), dimension(CM_MAX_N_BINS), intent(out) :: tmp_point_draw
+        integer(int32), dimension(M_MAX_N_BINS), intent(out) :: tmp_point_draw
             !! Working array of the bootstrap: one study's draw at one point
         integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_n_bins_per_point
             !! Working array: the current candidate's bin count per reference point
@@ -1114,15 +1114,15 @@ contains
             !! Working array: the current candidate's R_low per reference point
         real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_shared_residual_range_high
             !! Working array: the current candidate's R_high per reference point
-        real(real64), dimension(max_n_points_candidate, CM_MAX_N_BINS, n_studies), intent(out) :: tmp_pmfs
+        real(real64), dimension(max_n_points_candidate, M_MAX_N_BINS, n_studies), intent(out) :: tmp_pmfs
             !! Working array: every study's pmf for the current candidate
-        integer(int32), dimension(max_n_points_candidate, CM_MAX_N_BINS, n_studies), intent(out) :: tmp_counts
+        integer(int32), dimension(max_n_points_candidate, M_MAX_N_BINS, n_studies), intent(out) :: tmp_counts
             !! Working array: every study's histogram counts for the current candidate
         integer(int32), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_included_n_reps
             !! Working array: every study's included-replicate counts for the current candidate
-        real(real64), dimension(max_n_points_candidate, CM_MAX_N_BINS), intent(out) :: tmp_mean_pmf
+        real(real64), dimension(max_n_points_candidate, M_MAX_N_BINS), intent(out) :: tmp_mean_pmf
             !! Working array: the current candidate's consensus pmf
-        integer(int32), dimension(max_n_points_candidate, CM_MAX_N_BINS), intent(out) :: tmp_mean_pmf_counts
+        integer(int32), dimension(max_n_points_candidate, M_MAX_N_BINS), intent(out) :: tmp_mean_pmf_counts
             !! Working array: the current candidate's consensus histogram counts
         integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_mean_pmf_included_n_reps
             !! Working array: the current candidate's consensus included-replicate counts
@@ -1148,7 +1148,7 @@ contains
         integer(int32), dimension(max_n_reps_all_studies*max_n_neighbors_candidate*n_studies), intent(out) :: &
             tmp_pooled_residuals_perm
             !! Working array: sorting permutation for tmp_pooled_residuals, reused per point
-        integer(int32), dimension(CM_MAX_N_BINS), intent(out) :: tmp_bin_counts_search
+        integer(int32), dimension(M_MAX_N_BINS), intent(out) :: tmp_bin_counts_search
             !! Working array: bin counts of the bin-count search, reused per point
         integer(int32), dimension(max_n_reps_all_studies*max_n_neighbors_candidate*n_studies), intent(out) :: &
             tmp_residual_to_study_perm
@@ -1188,7 +1188,7 @@ contains
             !! Minimum count of every consensus bin (gate 2) and the floor of the bin-count search,
             !! one threshold for both, so a point the search marks as failed also fails the gate
             !! DM_MIN(0_int32)
-            !! DM_DEFAULT(CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
         real(real64), intent(in), optional :: min_neighbor_overlap
             !! Minimum fractional overlap of two consecutive neighborhoods (gate 1)
             !! DM_MIN(0.0_real64)
@@ -1230,23 +1230,23 @@ contains
             !! Smallest bin count the bin-count search tests (M_min)
             !! DM_MIN(1_int32)
             !! DM_MAX(MAX_N_BINS)
-            !! DM_DEFAULT(CM_OCCUPANCY_M_MIN_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_M_MIN_DEFAULT)
         integer(int32), intent(in), optional :: m_max
             !! Largest bin count the bin-count search tests (M_max); raised to `m_min` if smaller
             !! DM_MIN(1_int32)
             !! DM_MAX(MAX_N_BINS)
-            !! DM_DEFAULT(CM_OCCUPANCY_M_MAX_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_M_MAX_DEFAULT)
         real(real64), intent(in), optional :: gamma_occupancy
             !! Geometric growth factor of the occupancy search; unused in the Stone modes
             !! DM_MIN(above(1.0_real64))
-            !! DM_DEFAULT(CM_OCCUPANCY_GAMMA_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_GAMMA_DEFAULT)
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] of each reference point's lower residual-range bound
             !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
             !! with invalid input reported on upper_residual_range_quantile.
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         ! The lower bound below (lower_residual_range_quantile) is inclusive on purpose: above() must not be
         ! used, because the wrapper would evaluate above() with an absent optional when a Fortran
         ! caller omits lower_residual_range_quantile.
@@ -1254,7 +1254,7 @@ contains
             !! Quantile in [0,1] of each reference point's upper residual-range bound
             !! DM_MIN(lower_residual_range_quantile)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
             !! Two-sided significance level of the bootstrap interval, in percent per end
             !! DM_MIN(0.0_real64)
@@ -1275,7 +1275,7 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's own score | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]] |
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]] |
-            !! DM_DEFAULT(CM_MODE_BIN_COUNT_OCCUPANCY)
+            !! DM_DEFAULT(M_MODE_BIN_COUNT_OCCUPANCY)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
 
@@ -1292,7 +1292,7 @@ contains
         logical(c_bool) :: ci_plateau_found, effect_size_plateau_found, has_previous_admissible
 
         call set_ok(ierr)
-        M_DEFAULT_VAL(min_residuals_per_bin, actual_min_residuals_per_bin, CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
+        M_DEFAULT_VAL(min_residuals_per_bin, actual_min_residuals_per_bin, M_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
         M_DEFAULT_VAL(min_neighbor_overlap, actual_min_neighbor_overlap, 0.1_real64)
         M_DEFAULT_VAL(succeeding_ci_overlap, actual_succeeding_ci_overlap, 0.9_real64)
         M_DEFAULT_VAL(plateau_mode, actual_plateau_mode, CM_MODE_PLATEAU_CI_OVERLAP)
@@ -1300,8 +1300,8 @@ contains
         M_DEFAULT_VAL(delta_max_threshold, actual_delta_max_threshold, CM_DELTA_MAX_THRESHOLD_DEFAULT)
         M_DEFAULT_VAL(delta_epsilon, actual_delta_epsilon, CM_DELTA_EPSILON_DEFAULT)
         M_DEFAULT_VAL(delta_min_consecutive_transitions, actual_delta_min_consecutive_transitions, CM_DELTA_MIN_CONSECUTIVE_TRANSITIONS_DEFAULT)
-        M_DEFAULT_VAL(m_min, actual_m_min, CM_OCCUPANCY_M_MIN_DEFAULT)
-        M_DEFAULT_VAL(bin_count_mode, actual_bin_count_mode, CM_MODE_BIN_COUNT_OCCUPANCY)
+        M_DEFAULT_VAL(m_min, actual_m_min, M_OCCUPANCY_M_MIN_DEFAULT)
+        M_DEFAULT_VAL(bin_count_mode, actual_bin_count_mode, M_MODE_BIN_COUNT_OCCUPANCY)
 
         pool_size = max_n_genes_all_studies*n_studies
 
@@ -1341,7 +1341,7 @@ contains
             ! ===== PASS A (per study): neighborhood construction + first admissibility gate.
             !
             ! The work arrays sized by an upper bound (max_n_neighbors_candidate,
-            ! max_n_points_candidate, CM_MAX_N_BINS) are used at the candidate's own sizes. They are
+            ! max_n_points_candidate, M_MAX_N_BINS) are used at the candidate's own sizes. They are
             ! always passed whole to explicit-shape dummies declared with the candidate's sizes, so
             ! every routine sees their leading elements packed (sequence association) and nothing is
             ! copied; every use of such a buffer goes through such a dummy, so all agree on the
@@ -1853,15 +1853,15 @@ contains
             !! Working array: the current candidate's per-point R_low
         real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_shared_residual_range_high
             !! Working array: the current candidate's per-point R_high
-        real(real64), dimension(max_n_points_candidate, CM_MAX_N_BINS, n_studies), intent(out) :: tmp_pmfs
+        real(real64), dimension(max_n_points_candidate, M_MAX_N_BINS, n_studies), intent(out) :: tmp_pmfs
             !! Working array: every study's pmf for the current candidate
-        integer(int32), dimension(max_n_points_candidate, CM_MAX_N_BINS, n_studies), intent(out) :: tmp_counts
+        integer(int32), dimension(max_n_points_candidate, M_MAX_N_BINS, n_studies), intent(out) :: tmp_counts
             !! Working array: every study's histogram counts for the current candidate
         integer(int32), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_included_n_reps
             !! Working array: every study's included-replicate counts for the current candidate
-        real(real64), dimension(max_n_points_candidate, CM_MAX_N_BINS), intent(out) :: tmp_mean_pmf
+        real(real64), dimension(max_n_points_candidate, M_MAX_N_BINS), intent(out) :: tmp_mean_pmf
             !! Working array: the current candidate's consensus pmf
-        integer(int32), dimension(max_n_points_candidate, CM_MAX_N_BINS), intent(out) :: tmp_mean_pmf_counts
+        integer(int32), dimension(max_n_points_candidate, M_MAX_N_BINS), intent(out) :: tmp_mean_pmf_counts
             !! Working array: the current candidate's consensus histogram counts
         integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_mean_pmf_included_n_reps
             !! Working array: the current candidate's consensus included-replicate counts
@@ -1871,9 +1871,9 @@ contains
             !! Working array: the current candidate's per-point weights, then bootstrap scratch
         real(real64), dimension(n_studies), intent(out) :: tmp_global_js_divergence
             !! Working array: the current candidate's observed global JSD, then bootstrap scratch
-        integer(int32), dimension(CM_MAX_N_BINS), intent(out) :: tmp_point_pool
+        integer(int32), dimension(M_MAX_N_BINS), intent(out) :: tmp_point_pool
             !! Working array of the bootstrap: one point's pool
-        integer(int32), dimension(CM_MAX_N_BINS), intent(out) :: tmp_point_draw
+        integer(int32), dimension(M_MAX_N_BINS), intent(out) :: tmp_point_draw
             !! Working array of the bootstrap: one study's draw at one point
         real(real64), dimension(2, n_studies), intent(out) :: tmp_confidence_interval
             !! Working array: the current candidate's confidence interval, bootstrapped in place
@@ -1891,7 +1891,7 @@ contains
         integer(int32), dimension(max_n_reps_all_studies*max_n_genes_all_studies*n_studies), intent(out) :: &
             tmp_pooled_residuals_perm
             !! Working array: sorting permutation for `tmp_pooled_residuals`, reused per point
-        integer(int32), dimension(CM_MAX_N_BINS), intent(out) :: tmp_bin_counts_search
+        integer(int32), dimension(M_MAX_N_BINS), intent(out) :: tmp_bin_counts_search
             !! Working array: bin counts of the bin-count search, reused per point
         integer(int32), dimension(max_n_reps_all_studies*max_n_genes_all_studies*n_studies), intent(out) :: &
             tmp_residual_to_study_perm
@@ -1931,7 +1931,7 @@ contains
             !! Minimum count every bin must reach, both in the bin-count search (the floor in every
             !! `bin_count_mode`) and in the second admissibility gate (the consensus pmf)
             !! DM_MIN(0_int32)
-            !! DM_DEFAULT(CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
         real(real64), intent(in), optional :: min_neighbor_overlap
             !! Minimum fractional overlap of two consecutive neighborhoods' pooled ranges (gate 1)
             !! DM_MIN(0.0_real64)
@@ -1973,23 +1973,23 @@ contains
             !! Smallest bin count the bin-count search tests (M_min)
             !! DM_MIN(1_int32)
             !! DM_MAX(MAX_N_BINS)
-            !! DM_DEFAULT(CM_OCCUPANCY_M_MIN_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_M_MIN_DEFAULT)
         integer(int32), intent(in), optional :: m_max
             !! Largest bin count the bin-count search tests (M_max); raised to `m_min` if smaller
             !! DM_MIN(1_int32)
             !! DM_MAX(MAX_N_BINS)
-            !! DM_DEFAULT(CM_OCCUPANCY_M_MAX_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_M_MAX_DEFAULT)
         real(real64), intent(in), optional :: gamma_occupancy
             !! Geometric growth factor of the occupancy search; unused in the Stone modes
             !! DM_MIN(above(1.0_real64))
-            !! DM_DEFAULT(CM_OCCUPANCY_GAMMA_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_GAMMA_DEFAULT)
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] of each reference point's lower residual-range bound
             !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
             !! with invalid input reported on upper_residual_range_quantile.
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(CM_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         ! The lower bound below (lower_residual_range_quantile) is inclusive on purpose: above() must not be
         ! used, because the wrapper would evaluate above() with an absent optional when a Fortran
         ! caller omits lower_residual_range_quantile.
@@ -1997,7 +1997,7 @@ contains
             !! Quantile in [0,1] of each reference point's upper residual-range bound
             !! DM_MIN(lower_residual_range_quantile)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(CM_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
+            !! DM_DEFAULT(M_OCCUPANCY_UPPER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
         real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
             !! Two-sided significance level of the bootstrap interval, in percent per end
             !! DM_MIN(0.0_real64)
@@ -2009,20 +2009,20 @@ contains
         real(real64), intent(in), optional :: tau
             !! Largest relative dispersion increase a growth round may cause and still be committed
             !! DM_MIN(0.0_real64)
-            !! DM_DEFAULT(CM_ADAPTIVE_TAU_DEFAULT)
+            !! DM_DEFAULT(M_ADAPTIVE_TAU_DEFAULT)
         real(real64), intent(in), optional :: mad_distance_factor
             !! Multiple of a neighborhood's MAD that the next reference point's target lies beyond it
             !! DM_MIN(0.0_real64)
-            !! DM_DEFAULT(CM_ADAPTIVE_MAD_DISTANCE_FACTOR_DEFAULT)
+            !! DM_DEFAULT(M_ADAPTIVE_MAD_DISTANCE_FACTOR_DEFAULT)
         integer(int32), intent(in), optional :: max_pooled_residuals
             !! Cap on a neighborhood's non-NaN residuals in the growth rounds; 0 for no cap
             !! DM_MIN(0_int32)
-            !! DM_DEFAULT(CM_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT)
+            !! DM_DEFAULT(M_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT)
         integer(int32), intent(in), optional :: min_study_neighbors
             !! Fewest entries of each study every neighborhood must have for a candidate to be
             !! admissible
             !! DM_MIN(1_int32)
-            !! DM_DEFAULT(CM_ADAPTIVE_MIN_STUDY_NEIGHBORS_DEFAULT)
+            !! DM_DEFAULT(M_ADAPTIVE_MIN_STUDY_NEIGHBORS_DEFAULT)
         integer(int32), intent(in), optional :: bin_count_mode
             !! How each reference point's histogram bin count is chosen, for every candidate; the
             !! Stone modes test every bin count from `m_min` to `m_max`
@@ -2035,7 +2035,7 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's own score | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_EQUAL(variable)]] |
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]] |
-            !! DM_DEFAULT(CM_MODE_BIN_COUNT_OCCUPANCY)
+            !! DM_DEFAULT(M_MODE_BIN_COUNT_OCCUPANCY)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
 
@@ -2053,7 +2053,7 @@ contains
         logical(c_bool) :: ci_plateau_found, effect_size_plateau_found, has_previous_admissible
 
         call set_ok(ierr)
-        M_DEFAULT_VAL(min_residuals_per_bin, actual_min_residuals_per_bin, CM_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
+        M_DEFAULT_VAL(min_residuals_per_bin, actual_min_residuals_per_bin, M_OCCUPANCY_MIN_RESIDUALS_PER_BIN_DEFAULT)
         M_DEFAULT_VAL(min_neighbor_overlap, actual_min_neighbor_overlap, 0.1_real64)
         M_DEFAULT_VAL(succeeding_ci_overlap, actual_succeeding_ci_overlap, 0.9_real64)
         M_DEFAULT_VAL(plateau_mode, actual_plateau_mode, CM_MODE_PLATEAU_CI_OVERLAP)
@@ -2061,11 +2061,11 @@ contains
         M_DEFAULT_VAL(delta_max_threshold, actual_delta_max_threshold, CM_DELTA_MAX_THRESHOLD_DEFAULT)
         M_DEFAULT_VAL(delta_epsilon, actual_delta_epsilon, CM_DELTA_EPSILON_DEFAULT)
         M_DEFAULT_VAL(delta_min_consecutive_transitions, actual_delta_min_consecutive_transitions, CM_DELTA_MIN_CONSECUTIVE_TRANSITIONS_DEFAULT)
-        M_DEFAULT_VAL(m_min, actual_m_min, CM_OCCUPANCY_M_MIN_DEFAULT)
-        M_DEFAULT_VAL(tau, actual_tau, CM_ADAPTIVE_TAU_DEFAULT)
-        M_DEFAULT_VAL(mad_distance_factor, actual_mad_distance_factor, CM_ADAPTIVE_MAD_DISTANCE_FACTOR_DEFAULT)
-        M_DEFAULT_VAL(max_pooled_residuals, actual_max_pooled_residuals, CM_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT)
-        M_DEFAULT_VAL(min_study_neighbors, actual_min_study_neighbors, CM_ADAPTIVE_MIN_STUDY_NEIGHBORS_DEFAULT)
+        M_DEFAULT_VAL(m_min, actual_m_min, M_OCCUPANCY_M_MIN_DEFAULT)
+        M_DEFAULT_VAL(tau, actual_tau, M_ADAPTIVE_TAU_DEFAULT)
+        M_DEFAULT_VAL(mad_distance_factor, actual_mad_distance_factor, M_ADAPTIVE_MAD_DISTANCE_FACTOR_DEFAULT)
+        M_DEFAULT_VAL(max_pooled_residuals, actual_max_pooled_residuals, M_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT)
+        M_DEFAULT_VAL(min_study_neighbors, actual_min_study_neighbors, M_ADAPTIVE_MIN_STUDY_NEIGHBORS_DEFAULT)
 
         pool_size = max_n_genes_all_studies*n_studies
 
@@ -2162,7 +2162,7 @@ contains
 
             ! ===== PASS C (per point, per study, sequential: one gather buffer serves every pair).
             ! From here on the work arrays sized by an upper bound (max_n_points_candidate,
-            ! CM_MAX_N_BINS) are passed whole to explicit-shape dummies declared with the
+            ! M_MAX_N_BINS) are passed whole to explicit-shape dummies declared with the
             ! candidate's own sizes, so every routine sees their leading elements packed
             ! (sequence association) and nothing is copied.
             max_n_bins = maxval(tmp_n_bins_per_point(1:n_points))

@@ -371,7 +371,7 @@ create_mean_pmf <- function(pmfs, counts, included_n_reps) {
 #' Build only the consensus pmf from all studies' pmfs, without its histogram counts
 #'
 #' As \code{\link{create_mean_pmf}}, for
-#' callers that need no counts (the bootstrap). Same known limitation: the consensus includes
+#' callers that need no counts (the bootstrap and the permutation test). Same known limitation: the consensus includes
 #' the study compared against it.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_jsd::create_mean_pmf_only}, whose argument names
