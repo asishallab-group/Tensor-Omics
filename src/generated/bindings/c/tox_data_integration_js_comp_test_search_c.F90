@@ -12,8 +12,11 @@
 !| enough residuals, and both stop at the first such candidate whose bootstrapped JSDs have
 !| reached a plateau.
 !|
-!| [[tox_data_integration_js_comp_test_search_impl(module):check_mean_pmf_min_counts_impl(interface)]] is the second of those
-!| admissibility gates. The plateau checks are
+!| The admissibility gates are
+!| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]]
+!| (consecutive neighborhoods overlap by at least `min_neighbor_overlap`) and
+!| [[tox_data_integration_js_comp_test_search_impl(module):check_mean_pmf_min_counts_impl(interface)]]
+!| (every consensus bin reaches the minimum count). The plateau checks are
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]]
 !| (the confidence-interval overlap with the best candidate so far, joined over the studies by
 !| `join_method`) and
@@ -29,6 +32,7 @@ module tox_data_integration_js_comp_test_search_c
     M_IMPLICIT_NONE
     private
 
+    public :: check_neighborhood_overlaps_c
     public :: check_mean_pmf_min_counts_c
     public :: check_plateau_condition_c
     public :: check_effect_size_plateau_condition_c
@@ -36,9 +40,57 @@ module tox_data_integration_js_comp_test_search_c
 
 contains
 
+    !> summary: C-wrapper for [[tox_data_integration_js_comp_test_search(module):check_neighborhood_overlaps(subroutine)]]
+    !| The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`
+    !| neighborhood spans of
+    !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_ranged_impl(interface)]]
+    !| (or the adaptive `pooled_neighborhood_range`). The overlap of two consecutive spans is the
+    !| number of positions they share divided by the length of the earlier span; a reversed span
+    !| (`max < min`) counts as empty. Not named `test_*`: the R test harness would run every
+    !| `test_`-prefixed export as a test case.
+    subroutine check_neighborhood_overlaps_c(&
+            neighborhood_range,&
+            n_points,&
+            min_neighbor_overlap,&
+            all_have_min_neighbor_overlap,&
+            ierr&
+        ) bind(C, name="check_neighborhood_overlaps_c")
+        use tox_data_integration_js_comp_test_search, only: check_neighborhood_overlaps
+
+        integer(c_int), intent(in), target :: n_points
+            !! Number of reference points
+        integer(c_int), dimension(2, n_points), intent(in), target :: neighborhood_range
+            !! For each reference point, the `[min_idx, max_idx]` neighborhood span
+            !! The minimum valid value is `1_int32`.
+        real(c_double), intent(in), target :: min_neighbor_overlap
+            !! Minimum fractional overlap two consecutive neighborhoods must have
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+        logical(c_bool), intent(out), target :: all_have_min_neighbor_overlap
+            !! `.true.` if every pair of consecutive neighborhoods overlaps by at least
+            !! `min_neighbor_overlap`
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_points)
+        M_CHECK_NON_NULL(min_neighbor_overlap)
+        M_CHECK_NON_NULL(all_have_min_neighbor_overlap)
+        M_CHECK_ARRAY_NON_NULL(neighborhood_range, 2 * n_points)
+
+        call check_neighborhood_overlaps(&
+            neighborhood_range = neighborhood_range,&
+            n_points = n_points,&
+            min_neighbor_overlap = min_neighbor_overlap,&
+            all_have_min_neighbor_overlap = all_have_min_neighbor_overlap,&
+            ierr = ierr&
+        )
+    end subroutine check_neighborhood_overlaps_c
+
     !> summary: C-wrapper for [[tox_data_integration_js_comp_test_search(module):check_mean_pmf_min_counts(subroutine)]]
     !| The second admissibility gate of a parameter-search candidate, checked after
-    !| [[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]].
+    !| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]].
     !| Each point is checked over its own `n_bins_per_point` bins only, so the zero padding beyond
     !| them does not count as a failure.
     subroutine check_mean_pmf_min_counts_c(&

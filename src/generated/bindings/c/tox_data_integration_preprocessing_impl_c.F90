@@ -11,9 +11,7 @@
 !|
 !| Besides neighborhoods of a fixed size, the adaptive construction
 !| [[tox_data_integration_preprocessing_impl(module):construct_adaptive_neighborhoods_impl(interface)]]
-!| grows each reference point's neighborhood while its residual dispersion stays stable, and
-!| [[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]]
-!| checks that consecutive neighborhoods overlap enough.
+!| grows each reference point's neighborhood while its residual dispersion stays stable.
 !|
 !| `calc_neighborhood_size` sizes a neighborhood for a caller that allocates its own, and
 !| `gather_pooled_neighborhood_residuals` gathers a neighborhood's residuals of all studies.

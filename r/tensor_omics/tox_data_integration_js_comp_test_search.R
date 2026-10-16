@@ -1,5 +1,37 @@
 # Generated. Do not edit.
 
+#' Test whether every pair of consecutive neighborhoods overlaps by at least a minimum fraction
+#'
+#' The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`
+#' neighborhood spans of
+#' \code{\link{construct_neighborhoods_ranged}}
+#' (or the adaptive `pooled_neighborhood_range`). The overlap of two consecutive spans is the
+#' number of positions they share divided by the length of the earlier span; a reversed span
+#' (`max < min`) counts as empty. Not named `test_*`: the R test harness would run every
+#' `test_`-prefixed export as a test case.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_search::check_neighborhood_overlaps}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param neighborhood_range a integer matrix. For each reference point, the `[min_idx, max_idx]` neighborhood span
+#'   The minimum valid value is `1`.
+#' @param min_neighbor_overlap a numeric scalar. Minimum fractional overlap two consecutive neighborhoods must have
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#' @return a logical scalar. `TRUE` if every pair of consecutive neighborhoods overlaps by at least
+#'   `min_neighbor_overlap`
+#' @export
+check_neighborhood_overlaps <- function(neighborhood_range, min_neighbor_overlap) {
+    neighborhood_range <- .tox_as_integer_matrix(neighborhood_range, "neighborhood_range")
+    min_neighbor_overlap <- .tox_as_double_scalar(min_neighbor_overlap, "min_neighbor_overlap")
+    .result <- .Call("check_neighborhood_overlaps_call", neighborhood_range, min_neighbor_overlap)
+    .arguments <- c("neighborhood_range", "n_points", "min_neighbor_overlap", "all_have_min_neighbor_overlap", "ierr")
+    .sources <- c(NA_character_, "neighborhood_range", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    .result$all_have_min_neighbor_overlap
+}
+
 #' Test whether every bin of a mean pmf reaches a minimum absolute count
 #'
 #' The second admissibility gate of a parameter-search candidate, checked after

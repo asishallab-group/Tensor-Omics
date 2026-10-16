@@ -11,15 +11,13 @@
 !|
 !| Besides neighborhoods of a fixed size, the adaptive construction
 !| [[tox_data_integration_preprocessing_impl(module):construct_adaptive_neighborhoods_impl(interface)]]
-!| grows each reference point's neighborhood while its residual dispersion stays stable, and
-!| [[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]]
-!| checks that consecutive neighborhoods overlap enough.
+!| grows each reference point's neighborhood while its residual dispersion stays stable.
 !|
 !| `calc_neighborhood_size` sizes a neighborhood for a caller that allocates its own, and
 !| `gather_pooled_neighborhood_residuals` gathers a neighborhood's residuals of all studies.
 module tox_data_integration_preprocessing_c
     use f42_safeguard
-    use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
+    use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc
     use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
     M_IMPLICIT_NONE
     private
@@ -36,7 +34,6 @@ module tox_data_integration_preprocessing_c
     public :: construct_neighborhoods_ranged_expert_c
     public :: construct_adaptive_neighborhoods_c
     public :: construct_adaptive_neighborhoods_expert_c
-    public :: check_neighborhood_overlaps_c
 
 contains
 
@@ -662,7 +659,7 @@ contains
     !| n_studies` entries (entry `(s - 1)*G + g` is gene `g` of study `s`) and sorted ascending; NaN
     !| means take no part. A neighborhood is a contiguous run `a..b` of that order
     !| (`pooled_neighborhood_range`, the input of
-    !| [[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]]),
+    !| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]]),
     !| and its per-study counts `n_neighbors_per_point` add up to `b - a + 1`.
     !|
     !| **Growth** around the reference point `x_star` (the mean at the seed position): entries join
@@ -869,7 +866,7 @@ contains
     !| n_studies` entries (entry `(s - 1)*G + g` is gene `g` of study `s`) and sorted ascending; NaN
     !| means take no part. A neighborhood is a contiguous run `a..b` of that order
     !| (`pooled_neighborhood_range`, the input of
-    !| [[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]]),
+    !| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]]),
     !| and its per-study counts `n_neighbors_per_point` add up to `b - a + 1`.
     !|
     !| **Growth** around the reference point `x_star` (the mean at the seed position): entries join
@@ -1070,54 +1067,6 @@ contains
             ierr = ierr&
         )
     end subroutine construct_adaptive_neighborhoods_expert_c
-
-    !> summary: C-wrapper for [[tox_data_integration_preprocessing(module):check_neighborhood_overlaps(subroutine)]]
-    !| The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`
-    !| neighborhood spans of
-    !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_ranged_impl(interface)]]
-    !| (or the adaptive `pooled_neighborhood_range`). The overlap of two consecutive spans is the
-    !| number of positions they share divided by the length of the earlier span; a reversed span
-    !| (`max < min`) counts as empty. Not named `test_*`: the R test harness would run every
-    !| `test_`-prefixed export as a test case.
-    subroutine check_neighborhood_overlaps_c(&
-            neighborhood_range,&
-            n_points,&
-            min_neighbor_overlap,&
-            all_have_min_neighbor_overlap,&
-            ierr&
-        ) bind(C, name="check_neighborhood_overlaps_c")
-        use tox_data_integration_preprocessing, only: check_neighborhood_overlaps
-
-        integer(c_int), intent(in), target :: n_points
-            !! Number of reference points
-        integer(c_int), dimension(2, n_points), intent(in), target :: neighborhood_range
-            !! For each reference point, the `[min_idx, max_idx]` neighborhood span
-            !! The minimum valid value is `1_int32`.
-        real(c_double), intent(in), target :: min_neighbor_overlap
-            !! Minimum fractional overlap two consecutive neighborhoods must have
-            !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `1.0_real64`.
-        logical(c_bool), intent(out), target :: all_have_min_neighbor_overlap
-            !! `.true.` if every pair of consecutive neighborhoods overlaps by at least
-            !! `min_neighbor_overlap`
-        integer(c_int), intent(out), target :: ierr
-            !! Error code; zero on success, non-zero on failure.
-
-        M_CHECK_IERR_NON_NULL
-        call set_ok(ierr)
-        M_CHECK_NON_NULL(n_points)
-        M_CHECK_NON_NULL(min_neighbor_overlap)
-        M_CHECK_NON_NULL(all_have_min_neighbor_overlap)
-        M_CHECK_ARRAY_NON_NULL(neighborhood_range, 2 * n_points)
-
-        call check_neighborhood_overlaps(&
-            neighborhood_range = neighborhood_range,&
-            n_points = n_points,&
-            min_neighbor_overlap = min_neighbor_overlap,&
-            all_have_min_neighbor_overlap = all_have_min_neighbor_overlap,&
-            ierr = ierr&
-        )
-    end subroutine check_neighborhood_overlaps_c
 
 end module tox_data_integration_preprocessing_c
 #endif

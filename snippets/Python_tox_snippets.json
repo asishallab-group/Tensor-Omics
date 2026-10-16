@@ -452,7 +452,17 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter-Search Criteria",
     "body": [
       "from tensor_omics.tox_data_integration_js_comp_test_search import (",
-      "    ${1|check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition|},",
+      "    ${1|check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition|},",
+      ")"
+    ]
+  },
+  "check_neighborhood_overlaps (call)": {
+    "prefix": "tox:check_neighborhood_overlaps",
+    "description": "The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`",
+    "body": [
+      "${1:result} = check_neighborhood_overlaps(",
+      "    neighborhood_range=${2:neighborhood_range},",
+      "    min_neighbor_overlap=${3:min_neighbor_overlap},",
       ")"
     ]
   },
@@ -673,7 +683,7 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing",
     "body": [
       "from tensor_omics.tox_data_integration_preprocessing import (",
-      "    ${1|compute_gene_means,compute_residuals,pool_means,pool_means_expert,pool_study_means,construct_neighborhoods,construct_neighborhoods_ranged,construct_neighborhoods_ranged_expert,construct_adaptive_neighborhoods,check_neighborhood_overlaps|},",
+      "    ${1|compute_gene_means,compute_residuals,pool_means,pool_means_expert,pool_study_means,construct_neighborhoods,construct_neighborhoods_ranged,construct_neighborhoods_ranged_expert,construct_adaptive_neighborhoods|},",
       ")"
     ]
   },
@@ -777,16 +787,6 @@
       "    mad_distance_factor=${8:1.0},",
       "    max_pooled_residuals=${9:0},",
       "    min_study_neighbors=${10:1},",
-      ")"
-    ]
-  },
-  "check_neighborhood_overlaps (call)": {
-    "prefix": "tox:check_neighborhood_overlaps",
-    "description": "The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`",
-    "body": [
-      "${1:result} = check_neighborhood_overlaps(",
-      "    neighborhood_range=${2:neighborhood_range},",
-      "    min_neighbor_overlap=${3:min_neighbor_overlap},",
       ")"
     ]
   },

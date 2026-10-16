@@ -11,8 +11,11 @@
 !| enough residuals, and both stop at the first such candidate whose bootstrapped JSDs have
 !| reached a plateau.
 !|
-!| [[tox_data_integration_js_comp_test_search_impl(module):check_mean_pmf_min_counts_impl(interface)]] is the second of those
-!| admissibility gates. The plateau checks are
+!| The admissibility gates are
+!| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]]
+!| (consecutive neighborhoods overlap by at least `min_neighbor_overlap`) and
+!| [[tox_data_integration_js_comp_test_search_impl(module):check_mean_pmf_min_counts_impl(interface)]]
+!| (every consensus bin reaches the minimum count). The plateau checks are
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]]
 !| (the confidence-interval overlap with the best candidate so far, joined over the studies by
 !| `join_method`) and
@@ -24,15 +27,13 @@ module tox_data_integration_js_comp_test_search_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
-    use f42_stats_impl, only: calc_quantile_impl
-    use f42_sort_impl, only: init_perm, sort_array_heapsort
+    use f42_stats_impl, only: calc_median
     use tox_errors, only: set_ok, set_err_once, is_err, get_err_code
-    use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
-                                             compute_weighted_global_divergence_impl, create_mean_pmf_impl
+    use tox_data_integration_jsd_impl, only: compute_consensus_divergences, create_mean_pmf_impl
     use tox_data_integration_stats_impl, only: bootstrap_histogram_impl
     M_IMPLICIT_NONE
     private
-    public :: check_mean_pmf_min_counts_impl, check_plateau_condition_impl, check_effect_size_plateau_condition_impl, &
+    public :: check_neighborhood_overlaps_impl, check_mean_pmf_min_counts_impl, check_plateau_condition_impl, check_effect_size_plateau_condition_impl, &
              score_candidate_histograms, evaluate_admissible_candidate, select_final_candidate, &
              METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, &
              MODE_PLATEAU_BOTH, MAX_CANDIDATE_PAIRS
@@ -70,10 +71,76 @@ module tox_data_integration_js_comp_test_search_impl
 
 contains
 
+    !> summary: Test whether every pair of consecutive neighborhoods overlaps by at least a minimum fraction
+    !| AUTHOR_LASZLO_LANG
+    !| The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`
+    !| neighborhood spans of
+    !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_ranged_impl(interface)]]
+    !| (or the adaptive `pooled_neighborhood_range`). The overlap of two consecutive spans is the
+    !| number of positions they share divided by the length of the earlier span; a reversed span
+    !| (`max < min`) counts as empty. Not named `test_*`: the R test harness would run every
+    !| `test_`-prefixed export as a test case.
+    pure subroutine check_neighborhood_overlaps_impl(neighborhood_range, n_points, min_neighbor_overlap, &
+                                                      all_have_min_neighbor_overlap)
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), intent(in) :: neighborhood_range(2, n_points)
+            !! For each reference point, the `[min_idx, max_idx]` neighborhood span
+            !! DM_MIN(1_int32)
+        real(real64), intent(in) :: min_neighbor_overlap
+            !! Minimum fractional overlap two consecutive neighborhoods must have
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(1.0_real64)
+        logical(c_bool), intent(out) :: all_have_min_neighbor_overlap
+            !! `.true.` if every pair of consecutive neighborhoods overlaps by at least
+            !! `min_neighbor_overlap`
+
+        integer(int32) :: i_point
+        real(real64) :: overlap
+        logical(c_bool) :: all_pass
+
+        all_pass = .true.
+        do concurrent(i_point=1:n_points - 1) local(overlap) shared(neighborhood_range, min_neighbor_overlap) &
+                reduce(.and.:all_pass)
+            overlap = compute_index_span_overlap(neighborhood_range(1, i_point), neighborhood_range(2, i_point), &
+                                                 neighborhood_range(1, i_point + 1), neighborhood_range(2, i_point + 1))
+            all_pass = all_pass .and. (overlap >= min_neighbor_overlap)
+        end do
+        all_have_min_neighbor_overlap = logical(all_pass, kind=c_bool)
+    end subroutine check_neighborhood_overlaps_impl
+
+    !> Counts the positions two inclusive integer runs `[a_min, a_max]` and `[b_min, b_max]` share,
+    !| relative to the number of positions in the first run:
+    !| \[ \frac{\max(0, \min(\texttt{a\_max}, \texttt{b\_max}) - \max(\texttt{a\_min}, \texttt{b\_min}) + 1)}{\texttt{a\_max} - \texttt{a\_min} + 1} \]
+    !| For example `[5,6]` and `[6,7]` give 0.5. A reversed run (`max < min`) is empty, so the
+    !| result is 0 rather than a division by zero. Private helper of
+    !| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]].
+    pure real(real64) function compute_index_span_overlap(a_min, a_max, b_min, b_max) result(overlap_fraction)
+        integer(int32), intent(in) :: a_min
+            !! First position of the first run
+        integer(int32), intent(in) :: a_max
+            !! Last position of the first run; the run is empty if `a_max < a_min`
+        integer(int32), intent(in) :: b_min
+            !! First position of the second run
+        integer(int32), intent(in) :: b_max
+            !! Last position of the second run; the run is empty if `b_max < b_min`
+
+        integer(int32) :: n_shared
+
+        ! An empty first run shares no position
+        if (a_max < a_min) then
+            overlap_fraction = 0.0_real64
+            return
+        end if
+
+        n_shared = max(0_int32, min(a_max, b_max) - max(a_min, b_min) + 1_int32)
+        overlap_fraction = real(n_shared, real64)/real(a_max - a_min + 1_int32, real64)
+    end function compute_index_span_overlap
+
     !> summary: Test whether every bin of a mean pmf reaches a minimum absolute count
     !| AUTHOR_LASZLO_LANG
     !| The second admissibility gate of a parameter-search candidate, checked after
-    !| [[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]].
+    !| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]].
     !| Each point is checked over its own `n_bins_per_point` bins only, so the zero padding beyond
     !| them does not count as a failure.
     pure subroutine check_mean_pmf_min_counts_impl(mean_pmf_counts, n_bins, n_bins_per_point, n_points, min_count, &
@@ -302,9 +369,7 @@ contains
                             /max(prev_global_js_divergence(i_study), delta_epsilon)
         end do
 
-        call init_perm(tmp_delta_perm)
-        call sort_array_heapsort(delta, tmp_delta_perm)
-        call calc_quantile_impl(delta, n_studies, tmp_delta_perm, 0.5_real64, delta_median)
+        call calc_median(delta, n_studies, tmp_delta_perm, delta_median)
         delta_max = maxval(delta)
 
         if (delta_median < delta_median_threshold .and. delta_max < delta_max_threshold) then
@@ -381,12 +446,9 @@ contains
                                             all_bins_have_min_count)
         if (.not. all_bins_have_min_count) return
 
+        call compute_consensus_divergences(pmfs, mean_pmf, n_points, max_n_bins, max_n_bins, n_studies, included_n_reps, &
+                                           mean_pmf_included_n_reps, js_divergences, global_js_divergence, weights)
         do i_study = 1, n_studies
-            call compute_divergence_per_reference_point_impl(pmfs(:, :, i_study), mean_pmf, n_points, max_n_bins, &
-                                                             js_divergences(:, i_study))
-            call compute_weighted_global_divergence_impl(js_divergences(:, i_study), n_points, included_n_reps(:, i_study), &
-                                                          mean_pmf_included_n_reps, global_js_divergence(i_study), &
-                                                          weights(:, i_study))
             confidence_interval(1, i_study) = global_js_divergence(i_study)
             confidence_interval(2, i_study) = global_js_divergence(i_study)
         end do
@@ -660,12 +722,9 @@ contains
             / max(trace_global_js_divergence(1:n_studies, n_admissible_evaluated), delta_epsilon)
 
         ! Track the admissible candidate with the smallest median CI width (the no-plateau
-        ! fallback). tmp_delta_perm must be re-sorted for trace_ci_width: calc_quantile_impl
-        ! trusts the order it is handed.
-        call init_perm(tmp_delta_perm)
-        call sort_array_heapsort(trace_ci_width(1:n_studies, n_admissible_evaluated), tmp_delta_perm)
-        call calc_quantile_impl(trace_ci_width(1:n_studies, n_admissible_evaluated), n_studies, tmp_delta_perm, &
-                                0.5_real64, median_ci_width)
+        ! fallback). calc_median re-sorts tmp_delta_perm for trace_ci_width.
+        call calc_median(trace_ci_width(1:n_studies, n_admissible_evaluated), n_studies, tmp_delta_perm, &
+                         median_ci_width)
         if (median_ci_width < best_uncertainty_value) then
             best_uncertainty_value = median_ci_width
             best_uncertainty_candidate_index = candidate_index

@@ -9,9 +9,7 @@ conditioned on expression level rather than pooled across it.
 
 Besides neighborhoods of a fixed size, the adaptive construction
 :func:`tensor_omics.construct_adaptive_neighborhoods`
-grows each reference point's neighborhood while its residual dispersion stays stable, and
-:func:`tensor_omics.check_neighborhood_overlaps`
-checks that consecutive neighborhoods overlap enough.
+grows each reference point's neighborhood while its residual dispersion stays stable.
 
 `calc_neighborhood_size` sizes a neighborhood for a caller that allocates its own, and
 `gather_pooled_neighborhood_residuals` gathers a neighborhood's residuals of all studies.

@@ -26,7 +26,7 @@
 !| (default) or by Stone's cross-validation
 !| [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_stone_impl(interface)]]
 !| (`bin_count_mode`). The building blocks are published too: the admissibility gates
-!| [[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]] and
+!| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]] and
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_mean_pmf_min_counts_impl(interface)]], the
 !| plateau checks
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]] and
@@ -38,11 +38,12 @@
 !| `calc_js_comp_test_candidate_bounds`, `calc_adaptive_js_comp_test_bounds` and
 !| `calc_js_comp_test_n_top_k_jsds` size the work arrays for a caller that allocates its own.
 !|
-!| The pipeline is split over five modules -- bin counts, the criteria both parameter searches
-!| share, the fixed-k search, the adaptive search and the final run -- which this one gathers, so
-!| a caller reaches all of them through it.
+!| The pipeline is split over six modules -- bin counts, histograms, the criteria both parameter
+!| searches share, the fixed-k search, the adaptive search and the final run -- which this one
+!| gathers, so a caller reaches all of them through it.
 module tox_data_integration_js_comp_test_impl
     use tox_data_integration_js_comp_test_binning_impl
+    use tox_data_integration_js_comp_test_histograms_impl
     use tox_data_integration_js_comp_test_search_impl
     use tox_data_integration_js_comp_test_fixed_k_search_impl
     use tox_data_integration_js_comp_test_adaptive_search_impl

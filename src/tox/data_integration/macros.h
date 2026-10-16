@@ -64,3 +64,9 @@
 #define M_DELTA_MAX_THRESHOLD_DEFAULT 0.10_real64
 #define M_DELTA_EPSILON_DEFAULT 1.0e-10_real64
 #define M_DELTA_MIN_CONSECUTIVE_TRANSITIONS_DEFAULT 2_int32
+
+! The order condition of `lower_residual_range_quantile`, one doc sentence for every routine that
+! takes both quantiles (the occupancy and Stone bin-count searches, both parameter searches and
+! both final runs), written once. It names no default: the docs of upper_residual_range_quantile
+! show it.
+#define M_LOWER_RESIDUAL_RANGE_QUANTILE_ORDER_DOC Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.

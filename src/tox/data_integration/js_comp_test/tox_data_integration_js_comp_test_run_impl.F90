@@ -16,16 +16,15 @@ module tox_data_integration_js_comp_test_run_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
-    use f42_sort_impl, only: init_perm, sort_array_heapsort, sort_real_heapsort_expl_size
+    use f42_sort_impl, only: init_perm, sort_real_heapsort_expl_size
     use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, ERR_INVALID_INPUT
-    use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
-                                             compute_weighted_global_divergence_impl, calc_pmf_impl, &
-                                             create_mean_pmf_impl
+    use tox_data_integration_jsd_impl, only: compute_consensus_divergences, calc_pmf_impl, create_mean_pmf_impl
     use tox_data_integration_preprocessing_impl, only: construct_neighborhoods_ranged_impl, &
-                                                       materialize_pooled_neighborhood
+                                                       materialize_pooled_neighborhood, sort_gene_means_per_study
     use tox_data_integration_stats_impl, only: gjct_permutation_test_impl
     use tox_data_integration_js_comp_test_binning_impl, only: MAX_N_BINS, determine_point_bin_count, &
-                                                              build_fixed_k_study_histograms, build_adaptive_histograms
+                                                              determine_adaptive_point_bin_counts
+    use tox_data_integration_js_comp_test_histograms_impl, only: build_fixed_k_histograms, build_adaptive_histograms
     M_IMPLICIT_NONE
     private
     public :: run_js_comp_test_impl, run_js_comp_test_adaptive_impl, prepare_gene_means_perms
@@ -118,15 +117,9 @@ contains
         call create_mean_pmf_impl(pmfs, counts, MAX_N_BINS, n_points, n_studies, included_n_reps, mean_pmf, &
                                   mean_pmf_included_n_reps, mean_pmf_counts)
 
-        do concurrent(i_study=1:n_studies) shared(pmfs, mean_pmf, n_points, max_n_bins_per_point, js_divergences, included_n_reps, &
-                                                  mean_pmf_included_n_reps, global_js_divergence, weights)
-            call compute_divergence_per_reference_point_impl(pmfs(:, 1:max_n_bins_per_point, i_study), &
-                                                             mean_pmf(:, 1:max_n_bins_per_point), n_points, &
-                                                             max_n_bins_per_point, js_divergences(:, i_study))
-            call compute_weighted_global_divergence_impl(js_divergences(:, i_study), n_points, included_n_reps(:, i_study), &
-                                                          mean_pmf_included_n_reps, global_js_divergence(i_study), &
-                                                          weights(:, i_study))
-        end do
+        call compute_consensus_divergences(pmfs, mean_pmf, n_points, max_n_bins_per_point, MAX_N_BINS, n_studies, &
+                                           included_n_reps, mean_pmf_included_n_reps, js_divergences, &
+                                           global_js_divergence, weights)
 
         call gjct_permutation_test_impl(n_permutations, max_n_bins_per_point, n_points, n_studies, &
                                         mean_pmf_counts(:, 1:max_n_bins_per_point), mean_pmf(:, 1:max_n_bins_per_point), &
@@ -146,20 +139,18 @@ contains
         do i_study = 1, n_studies
             call calc_pmf_impl(counts(:, 1:max_n_bins_per_point, i_study), included_n_reps(:, i_study), n_points, &
                                max_n_bins_per_point, pmfs(:, 1:max_n_bins_per_point, i_study))
-            call compute_divergence_per_reference_point_impl(pmfs(:, 1:max_n_bins_per_point, i_study), &
-                                                             mean_pmf(:, 1:max_n_bins_per_point), n_points, &
-                                                             max_n_bins_per_point, js_divergences(:, i_study))
-            call compute_weighted_global_divergence_impl(js_divergences(:, i_study), n_points, included_n_reps(:, i_study), &
-                                                          mean_pmf_included_n_reps, global_js_divergence(i_study), &
-                                                          weights(:, i_study))
         end do
+        call compute_consensus_divergences(pmfs, mean_pmf, n_points, max_n_bins_per_point, MAX_N_BINS, n_studies, &
+                                           included_n_reps, mean_pmf_included_n_reps, js_divergences, &
+                                           global_js_divergence, weights)
     end subroutine finish_js_comp_test
 
     !> summary: Sort each study's gene means: one ascending, NaN-last permutation per study
     !| AUTHOR_LASZLO_LANG
     !| The prologue of the plain `run_js_comp_test`: column `i_study` of `gene_means_perms` is the
-    !| heapsort permutation of `gene_means(:, i_study)`, built exactly as the fixed-k parameter
-    !| search builds its own. Never handles the call itself (`handled` is always `.false.`).
+    !| heapsort permutation of `gene_means(:, i_study)`, built by
+    !| [[tox_data_integration_preprocessing_impl(module):sort_gene_means_per_study(subroutine)]] exactly
+    !| as the fixed-k parameter search builds its own. Never handles the call itself (`handled` is always `.false.`).
     pure subroutine prepare_gene_means_perms(gene_means, max_n_genes_all_studies, n_studies, gene_means_perms, &
                                              handled, ierr)
         integer(int32), intent(in) :: max_n_genes_all_studies
@@ -176,12 +167,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code; always success
 
-        integer(int32) :: i_study
-
-        do i_study = 1, n_studies
-            call init_perm(gene_means_perms(:, i_study))
-            call sort_array_heapsort(gene_means(:, i_study), gene_means_perms(:, i_study))
-        end do
+        call sort_gene_means_per_study(gene_means, max_n_genes_all_studies, n_studies, gene_means_perms)
         handled = .false.
         call set_ok(ierr)
     end subroutine prepare_gene_means_perms
@@ -400,8 +386,7 @@ contains
             !! DM_DEFAULT(M_OCCUPANCY_GAMMA_DEFAULT)
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] of each reference point's lower residual-range bound
-            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-            !! with invalid input reported on upper_residual_range_quantile.
+            !! M_LOWER_RESIDUAL_RANGE_QUANTILE_ORDER_DOC
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(M_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
@@ -429,7 +414,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT or ERR_ALLOC_FAIL (see above)
 
-        integer(int32) :: i_study, i_point, actual_n_permutations, point_ierr, finish_ierr
+        integer(int32) :: i_study, i_point, actual_n_permutations, finish_ierr
 
         call set_ok(ierr)
         M_DEFAULT_VAL(n_permutations, actual_n_permutations, CM_N_PERMUTATIONS_DEFAULT)
@@ -440,6 +425,12 @@ contains
                                                      gene_means_perms(:, i_study), n_neighbors, &
                                                      neighborhood_indices(:, :, i_study), neighborhood_range(:, :, i_study))
         end do
+        ! Safeguard for direct callers: n_neighbors above max_n_genes_all_studies (which the wrapper's
+        ! bounds exclude) leaves indices past it, and Pass B would read out of bounds.
+        if (any(neighborhood_indices < 1_int32 .or. neighborhood_indices > max_n_genes_all_studies)) then
+            call set_err_once(ierr, ERR_INVALID_INPUT)
+            return
+        end if
 
         ! ===== PASS B (per point): pool all studies' residuals and run the bin-count search.
         ! Sequential, so one tmp_pooled_residuals buffer serves every point (do concurrent would
@@ -454,31 +445,21 @@ contains
                                            mean_bin_occupancy(i_point), max_bin_occupancy(i_point), &
                                            sturges_bins(i_point), fd_bins(i_point), tmp_pooled_residuals, &
                                            tmp_pooled_residuals_perm, tmp_bin_counts_search, tmp_residual_to_study_perm, &
-                                           tmp_study_block_ends, tmp_study_block_sizes, point_ierr, &
+                                           tmp_study_block_ends, tmp_study_block_sizes, &
                                            m_min=m_min, m_max=m_max, min_residuals_per_bin=min_residuals_per_bin, &
                                            gamma_occupancy=gamma_occupancy, &
                                            lower_residual_range_quantile=lower_residual_range_quantile, &
                                            upper_residual_range_quantile=upper_residual_range_quantile, &
                                            bin_count_mode=bin_count_mode)
-            ! Defensive: only an out-of-range gene index fails here, which the wrapper's bounds
-            ! exclude. Kept for direct callers, since Pass C would read out of bounds; untested.
-            if (is_err(point_ierr)) then
-                call set_err_once(ierr, get_err_code(point_ierr))
-                return
-            end if
         end do
 
         ! ===== PASS C (per study): build every (point, study) histogram at the chosen bin counts.
         ! The bins beyond max_n_bins_per_point are zeroed, as finish_js_comp_test requires.
         max_n_bins_per_point = maxval(n_bins_per_point(1:n_points))
-        do i_study = 1, n_studies
-            call build_fixed_k_study_histograms(residuals(:, :, i_study), max_n_reps_all_studies, max_n_genes_all_studies, &
-                                                n_neighbors, n_points, neighborhood_indices(:, :, i_study), &
-                                                shared_residual_range_low, shared_residual_range_high, n_bins_per_point, &
-                                                max_n_bins_per_point, counts(:, 1:max_n_bins_per_point, i_study), &
-                                                pmfs(:, 1:max_n_bins_per_point, i_study), included_n_reps(:, i_study), &
-                                                tmp_neighborhood_residuals_gathered)
-        end do
+        call build_fixed_k_histograms(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, n_neighbors, &
+                                      n_points, max_n_bins_per_point, M_MAX_N_BINS, neighborhood_indices, &
+                                      shared_residual_range_low, shared_residual_range_high, n_bins_per_point, counts, &
+                                      pmfs, included_n_reps, tmp_neighborhood_residuals_gathered)
         counts(:, max_n_bins_per_point + 1:, :) = 0_int32
         pmfs(:, max_n_bins_per_point + 1:, :) = 0.0_real64
 
@@ -688,8 +669,7 @@ contains
             !! DM_DEFAULT(M_OCCUPANCY_GAMMA_DEFAULT)
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] of each reference point's lower residual-range bound
-            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-            !! with invalid input reported on upper_residual_range_quantile.
+            !! M_LOWER_RESIDUAL_RANGE_QUANTILE_ORDER_DOC
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(M_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
@@ -717,7 +697,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT or ERR_ALLOC_FAIL (see above)
 
-        integer(int32) :: i_point, n_valid_means, actual_n_permutations, point_ierr, finish_ierr
+        integer(int32) :: i_point, n_valid_means, actual_n_permutations, finish_ierr
 
         call set_ok(ierr)
         M_DEFAULT_VAL(n_permutations, actual_n_permutations, CM_N_PERMUTATIONS_DEFAULT)
@@ -747,32 +727,19 @@ contains
         end do
 
         ! ===== PASS B (per point, sequential: one pooling buffer serves every point).
-        do i_point = 1, n_points
-            call materialize_pooled_neighborhood(tmp_gene_means_perm_all, max_n_genes_all_studies, n_studies, &
-                                                 pooled_neighborhood_range(1, i_point), &
-                                                 pooled_neighborhood_range(2, i_point), max_n_genes_all_studies, &
-                                                 tmp_point_neighborhood_indices, n_neighbors_per_point(:, i_point))
-            call determine_point_bin_count(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, &
-                                           max_n_genes_all_studies, 1_int32, tmp_point_neighborhood_indices, 1_int32, &
-                                           n_neighbors_per_point(:, i_point), n_bins_per_point(i_point), &
-                                           occupancy_failed(i_point), shared_residual_range_low(i_point), &
-                                           shared_residual_range_high(i_point), n_pooled_residuals(i_point), &
-                                           min_bin_occupancy(i_point), mean_bin_occupancy(i_point), &
-                                           max_bin_occupancy(i_point), sturges_bins(i_point), fd_bins(i_point), &
-                                           tmp_pooled_residuals, tmp_pooled_residuals_perm, tmp_bin_counts_search, &
-                                           tmp_residual_to_study_perm, tmp_study_block_ends, tmp_study_block_sizes, &
-                                           point_ierr, m_min=m_min, m_max=m_max, &
-                                           min_residuals_per_bin=min_residuals_per_bin, gamma_occupancy=gamma_occupancy, &
-                                           lower_residual_range_quantile=lower_residual_range_quantile, &
-                                           upper_residual_range_quantile=upper_residual_range_quantile, &
-                                           bin_count_mode=bin_count_mode)
-            ! Defensive: only an out-of-range gene index fails here, and every decoded index is in
-            ! range; unreachable and untested.
-            if (is_err(point_ierr)) then
-                call set_err_once(ierr, get_err_code(point_ierr))
-                return
-            end if
-        end do
+        call determine_adaptive_point_bin_counts(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, &
+                                                 n_points, tmp_gene_means_perm_all, pooled_neighborhood_range, &
+                                                 n_neighbors_per_point, n_bins_per_point, occupancy_failed, &
+                                                 shared_residual_range_low, shared_residual_range_high, n_pooled_residuals, &
+                                                 min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, sturges_bins, &
+                                                 fd_bins, tmp_point_neighborhood_indices, tmp_pooled_residuals, &
+                                                 tmp_pooled_residuals_perm, tmp_bin_counts_search, &
+                                                 tmp_residual_to_study_perm, tmp_study_block_ends, tmp_study_block_sizes, &
+                                                 m_min=m_min, m_max=m_max, min_residuals_per_bin=min_residuals_per_bin, &
+                                                 gamma_occupancy=gamma_occupancy, &
+                                                 lower_residual_range_quantile=lower_residual_range_quantile, &
+                                                 upper_residual_range_quantile=upper_residual_range_quantile, &
+                                                 bin_count_mode=bin_count_mode)
 
         ! ===== PASS C (per point, per study, sequential: one gather buffer serves every pair).
         ! The bins beyond max_n_bins_per_point are zeroed, as finish_js_comp_test requires.

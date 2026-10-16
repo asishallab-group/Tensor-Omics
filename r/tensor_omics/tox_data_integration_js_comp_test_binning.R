@@ -148,8 +148,7 @@ estimate_bin_count_expert <- function(residuals, residuals_perm, max_n_reps_all_
 #'   The default value is `1.25`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own lower residual-range bound
 #'   (shared_residual_range_low)
-#'   Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-#'   with invalid input reported on upper_residual_range_quantile.
+#'   Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.05`.
@@ -254,8 +253,7 @@ determine_bin_count_occupancy <- function(pooled_residuals, max_n_reps_all_studi
 #'   The default value is `1.25`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own lower residual-range bound
 #'   (shared_residual_range_low)
-#'   Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-#'   with invalid input reported on upper_residual_range_quantile.
+#'   Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.05`.
@@ -530,8 +528,7 @@ determine_bin_count_occupancy_exhaustive_expert <- function(pooled_residuals, po
 #'   The default value is `10`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own lower residual-range bound
 #'   (shared_residual_range_low)
-#'   Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-#'   with invalid input reported on upper_residual_range_quantile.
+#'   Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.05`.
@@ -663,8 +660,7 @@ determine_bin_count_stone <- function(pooled_residuals, residual_to_study, n_stu
 #'   The default value is `10`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] for this neighborhood's own lower residual-range bound
 #'   (shared_residual_range_low)
-#'   Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-#'   with invalid input reported on upper_residual_range_quantile.
+#'   Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.05`.

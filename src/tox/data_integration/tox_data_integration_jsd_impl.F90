@@ -16,13 +16,14 @@ module tox_data_integration_jsd_impl
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use f42_math_impl, only: clamp, is_close, LOG_2, IS_CLOSE_ABS_TOL
     use f42_sort_impl, only: sort_array_heapsort
-    use f42_stats_impl, only: calc_quantile_impl
+    use f42_stats_impl, only: calc_quantile_impl, last_non_nan_position
     M_IMPLICIT_NONE
     private
     public :: determine_shared_residual_range_impl, determine_study_shared_residual_range_impl, &
              build_residual_histograms_impl, calc_pmf_impl, &
              compute_divergence_per_reference_point_impl, compute_weighted_global_divergence_impl, &
-             jct_compute_jsd_pipeline_impl, create_mean_pmf_impl, create_mean_pmf_only_impl
+             jct_compute_jsd_pipeline_impl, create_mean_pmf_impl, create_mean_pmf_only_impl, &
+             compute_consensus_divergences
 
     ! `residual_range_quantile_level`'s default, shared by DM_DEFAULT and M_DEFAULT_VAL of both
     ! residual-range routines.
@@ -51,20 +52,13 @@ contains
             !! DM_MIN(1_int32)
             !! DM_MAX(pool_size)
 
-        integer(int32) :: i_pool, last_non_nan
+        integer(int32) :: last_non_nan
         real(real64) :: actual_quantile_level
 
         M_DEFAULT_VAL(residual_range_quantile_level, actual_quantile_level, CM_RESIDUAL_RANGE_QUANTILE_LEVEL_DEFAULT)
 
-        last_non_nan = pool_size
         ! NaN is always last -> find last non-NaN index for the quantile calculation
-        do i_pool = last_non_nan, 1, -1
-            if (ieee_is_nan(abs_residual_pool(abs_residual_pool_perm(i_pool)))) then
-                last_non_nan = last_non_nan - 1
-            else
-                exit
-            end if
-        end do
+        last_non_nan = last_non_nan_position(abs_residual_pool, pool_size, abs_residual_pool_perm)
 
         if (last_non_nan == 0) then
             shared_residual_range = 0.0_real64
@@ -395,6 +389,55 @@ contains
             end do
         end if
     end subroutine compute_weighted_global_divergence_impl
+
+    !> summary: Each of K studies' per-point JSD against the consensus pmf, and its weighted global JSD
+    !| AUTHOR_LASZLO_LANG
+    !| For every study `i_study`:
+    !| [[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl(interface)]]
+    !| of `pmfs(:, 1:n_bins, i_study)` against `mean_pmf(:, 1:n_bins)`, then
+    !| [[tox_data_integration_jsd_impl(module):compute_weighted_global_divergence_impl(interface)]]
+    !| with the study's and the consensus's included counts. The studies are independent, so the
+    !| loop over them is concurrent. Internal helper, not published; public because the final runs,
+    !| the parameter searches, the bootstrap and the permutation test call it. `n_bins_extent` is the
+    !| second extent of `pmfs`/`mean_pmf`, so a caller can pass bin-sized arrays declared wider than
+    !| the bins in use (the final runs' fixed maximum bin extent) without slicing them itself.
+    pure subroutine compute_consensus_divergences(pmfs, mean_pmf, n_points, n_bins, n_bins_extent, n_studies, &
+                                                  included_n_reps, mean_pmf_included_n_reps, js_divergences, &
+                                                  global_js_divergence, weights)
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), intent(in) :: n_bins
+            !! Number of meaningful leading bins: the widest bin count of any reference point
+        integer(int32), intent(in) :: n_bins_extent
+            !! Second extent of `pmfs` and `mean_pmf`, at least `n_bins`
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        real(real64), dimension(n_points, n_bins_extent, n_studies), intent(in) :: pmfs
+            !! Every study's pmfs; only bins `1:n_bins` are read
+        real(real64), dimension(n_points, n_bins_extent), intent(in) :: mean_pmf
+            !! The consensus pmf of the studies; only bins `1:n_bins` are read
+        integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
+            !! Count of non-NaN residuals per reference point, per study
+        integer(int32), dimension(n_points), intent(in) :: mean_pmf_included_n_reps
+            !! Count of non-NaN residuals per reference point of the consensus
+        real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
+            !! Per-reference-point JSD of each study against the consensus pmf
+        real(real64), dimension(n_studies), intent(out) :: global_js_divergence
+            !! Weighted global JSD of each study against the consensus pmf
+        real(real64), dimension(n_points, n_studies), intent(out) :: weights
+            !! Per-reference-point weights of each study's `global_js_divergence`
+
+        integer(int32) :: i_study
+
+        do concurrent(i_study=1:n_studies) shared(pmfs, mean_pmf, n_points, n_bins, js_divergences, included_n_reps, &
+                                                  mean_pmf_included_n_reps, global_js_divergence, weights)
+            call compute_divergence_per_reference_point_impl(pmfs(:, 1:n_bins, i_study), mean_pmf(:, 1:n_bins), &
+                                                             n_points, n_bins, js_divergences(:, i_study))
+            call compute_weighted_global_divergence_impl(js_divergences(:, i_study), n_points, included_n_reps(:, i_study), &
+                                                          mean_pmf_included_n_reps, global_js_divergence(i_study), &
+                                                          weights(:, i_study))
+        end do
+    end subroutine compute_consensus_divergences
 
     !> summary: Compute the JSD of two studies from their neighborhood residuals in one call
     !| AUTHOR_FRANZ_ERIC_SILL

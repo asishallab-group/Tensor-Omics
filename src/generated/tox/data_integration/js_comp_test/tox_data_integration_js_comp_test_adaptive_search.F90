@@ -123,7 +123,7 @@ contains
     !| 2. Reject it if the construction status is not ok, or if more than `max_n_points_candidate`
     !| reference points emerged.
     !| 3. Gate 1:
-    !| [[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]]
+    !| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]]
     !| on the pooled ranges.
     !| 4. The pipeline of
     !| [[tox_data_integration_js_comp_test_run_impl(module):run_js_comp_test_adaptive_impl(interface)]]
@@ -464,8 +464,7 @@ contains
             !! The default value is `1.25_real64`.
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] of each reference point's lower residual-range bound
-            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-            !! with invalid input reported on upper_residual_range_quantile.
+            !! Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
@@ -786,7 +785,7 @@ contains
     !| 2. Reject it if the construction status is not ok, or if more than `max_n_points_candidate`
     !| reference points emerged.
     !| 3. Gate 1:
-    !| [[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]]
+    !| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]]
     !| on the pooled ranges.
     !| 4. The pipeline of
     !| [[tox_data_integration_js_comp_test_run_impl(module):run_js_comp_test_adaptive_impl(interface)]]
@@ -1274,8 +1273,7 @@ contains
             !! The default value is `1.25_real64`.
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] of each reference point's lower residual-range bound
-            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-            !! with invalid input reported on upper_residual_range_quantile.
+            !! Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.

@@ -99,6 +99,7 @@ from .tox_data_integration_js_comp_test_run import (
     run_js_comp_test_adaptive,
 )
 from .tox_data_integration_js_comp_test_search import (
+    check_neighborhood_overlaps,
     check_mean_pmf_min_counts,
     check_plateau_condition,
     check_effect_size_plateau_condition,
@@ -130,7 +131,6 @@ from .tox_data_integration_preprocessing import (
     construct_neighborhoods_ranged,
     construct_neighborhoods_ranged_expert,
     construct_adaptive_neighborhoods,
-    check_neighborhood_overlaps,
 )
 from .tox_data_integration_preprocessing_impl import (
     calc_neighborhood_size,

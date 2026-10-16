@@ -10,9 +10,7 @@
 !|
 !| Besides neighborhoods of a fixed size, the adaptive construction
 !| [[tox_data_integration_preprocessing_impl(module):construct_adaptive_neighborhoods_impl(interface)]]
-!| grows each reference point's neighborhood while its residual dispersion stays stable, and
-!| [[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]]
-!| checks that consecutive neighborhoods overlap enough.
+!| grows each reference point's neighborhood while its residual dispersion stays stable.
 !|
 !| `calc_neighborhood_size` sizes a neighborhood for a caller that allocates its own, and
 !| `gather_pooled_neighborhood_residuals` gathers a neighborhood's residuals of all studies.
@@ -23,14 +21,15 @@ module tox_data_integration_preprocessing_impl
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite, ieee_value, ieee_quiet_nan
     use f42_math_impl, only: clamp
     use f42_sort_impl, only: sort_array_heapsort, binary_search_insertion, init_perm, sort_real_heapsort_expl_size
-    use f42_stats_impl, only: calc_quantile_impl, calc_sorted_slice_mad
+    use f42_stats_impl, only: calc_quantile_impl, calc_sorted_slice_mad, last_non_nan_position
     use tox_errors, only: set_ok, set_err_once, is_err, validate_dimension_size, ERR_INVALID_INPUT
     M_IMPLICIT_NONE
     private
     public :: compute_gene_means_impl, compute_residuals_impl, pool_means_impl, pool_study_means_impl, &
              calc_neighborhood_size, construct_neighborhoods_impl, construct_neighborhoods_ranged_impl, &
              gather_pooled_neighborhood_residuals, grow_adaptive_neighborhoods, &
-             construct_adaptive_neighborhoods_impl, materialize_pooled_neighborhood, check_neighborhood_overlaps_impl, &
+             construct_adaptive_neighborhoods_impl, materialize_pooled_neighborhood, &
+             gather_pooled_neighborhood_residuals_core, sort_gene_means_per_study, &
              ADAPTIVE_MIN_VALID_RESIDUALS, ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_K_MAX, ADAPTIVE_STOP_RESIDUAL_CAP, &
              ADAPTIVE_STOP_EXHAUSTED, ADAPTIVE_STOP_ZERO_DISPERSION, ADAPTIVE_STOP_TOO_FEW_RESIDUALS, &
              ADAPTIVE_STATUS_OK, ADAPTIVE_STATUS_TOO_FEW_MEANS, ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD, &
@@ -164,19 +163,11 @@ contains
             !! Mean-expression reference points. If every pooled mean is NaN, every reference
             !! point is NaN, and `construct_neighborhoods_ranged` rejects such points.
 
-        integer(int32) :: i_gene, i_point
+        integer(int32) :: i_point
         real(real64) :: quantile_level
 
-        n_pool = size(pooled_means, kind=int32)
-
         ! NaN is always last -> find last non-NaN index for the quantile calculation
-        do i_gene = n_pool, 1, -1
-            if (ieee_is_nan(pooled_means(pooled_means_perm(i_gene)))) then
-                n_pool = n_pool - 1
-            else
-                exit
-            end if
-        end do
+        n_pool = last_non_nan_position(pooled_means, pool_size, pooled_means_perm)
 
         if (n_pool == 0) then
             x_star = M_NAN
@@ -358,6 +349,31 @@ contains
         end do
     end subroutine construct_neighborhoods_impl
 
+    !> summary: Sort each study's gene means: one ascending, NaN-last heapsort permutation per study
+    !| AUTHOR_LASZLO_LANG
+    !| Column `i_study` of `gene_means_perms` becomes the identity, heapsorted against
+    !| `gene_means(:, i_study)`: the `mean_S_perm` that
+    !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_ranged_impl(interface)]]
+    !| takes per study. Internal helper, not published; public because the plain `run_js_comp_test`'s
+    !| prologue and the fixed-k parameter search both build their per-study orders with it.
+    pure subroutine sort_gene_means_per_study(gene_means, max_n_genes_all_studies, n_studies, gene_means_perms)
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
+            !! Per-gene mean expression values for all studies, NaN allowed
+        integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(out) :: gene_means_perms
+            !! Per study (column), the permutation that sorts that study's `gene_means` ascending, NaN last
+
+        integer(int32) :: i_study
+
+        do i_study = 1, n_studies
+            call init_perm(gene_means_perms(:, i_study))
+            call sort_array_heapsort(gene_means(:, i_study), gene_means_perms(:, i_study))
+        end do
+    end subroutine sort_gene_means_per_study
+
     !> summary: Construct neighborhood-based residual sets (kNN), with a `[min_idx, max_idx]` range per reference point
     !| AUTHOR_LASZLO_LANG
     !| Ported from 125-stabilize-jscomp's `construct_neighborhoods_helper`: a binary-search +
@@ -532,7 +548,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure
 
-        integer(int32) :: i_study, i_neighbor, i_rep, gene_idx, n_predecessors
+        integer(int32) :: i_study, i_neighbor, gene_idx
 
         call set_ok(ierr)
         call validate_dimension_size(max_n_reps_all_studies, ierr, arg_pos=2_int32)
@@ -553,6 +569,39 @@ contains
         end do
         if (is_err(ierr)) return
 
+        call gather_pooled_neighborhood_residuals_core(residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
+                                                       n_neighbors, n_studies, neighborhood_indices_point, pooled_residuals)
+    end subroutine gather_pooled_neighborhood_residuals
+
+    !> summary: Pool one reference point's residuals across every neighbor and every study, unchecked
+    !| AUTHOR_LASZLO_LANG
+    !| The pooling of `gather_pooled_neighborhood_residuals`, same layout, without its input checks,
+    !| so the bin-count search can pool every reference point without validating each one again.
+    !| Internal helper, not published; public because `determine_point_bin_count` calls it.
+    !| Precondition, not checked: every extent is at least 1 and every gene index is in
+    !| `[1, max_n_genes_all_studies]`.
+    pure subroutine gather_pooled_neighborhood_residuals_core(residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
+                                                              n_neighbors, n_studies, neighborhood_indices_point, &
+                                                              pooled_residuals)
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+        integer(int32), intent(in) :: n_neighbors
+            !! Number of neighbors per neighborhood
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        real(real64), intent(in) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+            !! Matrix of signed residuals per study, NaN allowed for missing values
+        integer(int32), intent(in) :: neighborhood_indices_point(n_neighbors, n_studies)
+            !! Gene indices of one reference point's neighborhood, per study; each in
+            !! [1, max_n_genes_all_studies]
+        real(real64), intent(out) :: pooled_residuals(max_n_reps_all_studies*n_neighbors*n_studies)
+            !! This reference point's pooled residuals, laid out as a
+            !! (max_n_reps_all_studies, n_neighbors, n_studies) array
+
+        integer(int32) :: i_study, i_neighbor, i_rep, gene_idx, n_predecessors
+
         do concurrent(i_study=1:n_studies) local(gene_idx, n_predecessors) &
                 shared(neighborhood_indices_point, max_n_reps_all_studies, n_neighbors, pooled_residuals, residuals)
             do concurrent(i_neighbor=1:n_neighbors) local(gene_idx, n_predecessors) &
@@ -566,7 +615,7 @@ contains
                 end do
             end do
         end do
-    end subroutine gather_pooled_neighborhood_residuals
+    end subroutine gather_pooled_neighborhood_residuals_core
 
     !> summary: Grow Issue #217's adaptive neighborhoods over an already-sorted pool of gene means
     !| AUTHOR_LASZLO_LANG
@@ -638,14 +687,7 @@ contains
         pool_size = max_n_genes_all_studies*n_studies
 
         ! NaN sorts last: every position after n_valid_means holds a NaN mean.
-        n_valid_means = pool_size
-        do i_pos = pool_size, 1_int32, -1_int32
-            if (ieee_is_nan(pooled_means(pooled_means_perm(i_pos)))) then
-                n_valid_means = n_valid_means - 1_int32
-            else
-                exit
-            end if
-        end do
+        n_valid_means = last_non_nan_position(pooled_means, pool_size, pooled_means_perm)
 
         n_points = 0_int32
         max_n_neighbors = 0_int32
@@ -912,7 +954,7 @@ contains
     !| n_studies` entries (entry `(s - 1)*G + g` is gene `g` of study `s`) and sorted ascending; NaN
     !| means take no part. A neighborhood is a contiguous run `a..b` of that order
     !| (`pooled_neighborhood_range`, the input of
-    !| [[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]]),
+    !| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]]),
     !| and its per-study counts `n_neighbors_per_point` add up to `b - a + 1`.
     !|
     !| **Growth** around the reference point `x_star` (the mean at the seed position): entries join
@@ -1102,71 +1144,5 @@ contains
             point_neighborhood_indices(point_n_neighbors(study_idx), study_idx) = mod(flat_idx, max_n_genes_all_studies) + 1_int32
         end do
     end subroutine materialize_pooled_neighborhood
-
-    !> summary: Test whether every pair of consecutive neighborhoods overlaps by at least a minimum fraction
-    !| AUTHOR_LASZLO_LANG
-    !| The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`
-    !| neighborhood spans of
-    !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_ranged_impl(interface)]]
-    !| (or the adaptive `pooled_neighborhood_range`). The overlap of two consecutive spans is the
-    !| number of positions they share divided by the length of the earlier span; a reversed span
-    !| (`max < min`) counts as empty. Not named `test_*`: the R test harness would run every
-    !| `test_`-prefixed export as a test case.
-    pure subroutine check_neighborhood_overlaps_impl(neighborhood_range, n_points, min_neighbor_overlap, &
-                                                      all_have_min_neighbor_overlap)
-        integer(int32), intent(in) :: n_points
-            !! Number of reference points
-        integer(int32), intent(in) :: neighborhood_range(2, n_points)
-            !! For each reference point, the `[min_idx, max_idx]` neighborhood span
-            !! DM_MIN(1_int32)
-        real(real64), intent(in) :: min_neighbor_overlap
-            !! Minimum fractional overlap two consecutive neighborhoods must have
-            !! DM_MIN(0.0_real64)
-            !! DM_MAX(1.0_real64)
-        logical(c_bool), intent(out) :: all_have_min_neighbor_overlap
-            !! `.true.` if every pair of consecutive neighborhoods overlaps by at least
-            !! `min_neighbor_overlap`
-
-        integer(int32) :: i_point
-        real(real64) :: overlap
-        logical(c_bool) :: all_pass
-
-        all_pass = .true.
-        do concurrent(i_point=1:n_points - 1) local(overlap) shared(neighborhood_range, min_neighbor_overlap) &
-                reduce(.and.:all_pass)
-            overlap = compute_index_span_overlap(neighborhood_range(1, i_point), neighborhood_range(2, i_point), &
-                                                 neighborhood_range(1, i_point + 1), neighborhood_range(2, i_point + 1))
-            all_pass = all_pass .and. (overlap >= min_neighbor_overlap)
-        end do
-        all_have_min_neighbor_overlap = logical(all_pass, kind=c_bool)
-    end subroutine check_neighborhood_overlaps_impl
-
-    !> Counts the positions two inclusive integer runs `[a_min, a_max]` and `[b_min, b_max]` share,
-    !| relative to the number of positions in the first run:
-    !| \[ \frac{\max(0, \min(\texttt{a\_max}, \texttt{b\_max}) - \max(\texttt{a\_min}, \texttt{b\_min}) + 1)}{\texttt{a\_max} - \texttt{a\_min} + 1} \]
-    !| For example `[5,6]` and `[6,7]` give 0.5. A reversed run (`max < min`) is empty, so the
-    !| result is 0 rather than a division by zero. Private helper of
-    !| [[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]].
-    pure real(real64) function compute_index_span_overlap(a_min, a_max, b_min, b_max) result(overlap_fraction)
-        integer(int32), intent(in) :: a_min
-            !! First position of the first run
-        integer(int32), intent(in) :: a_max
-            !! Last position of the first run; the run is empty if `a_max < a_min`
-        integer(int32), intent(in) :: b_min
-            !! First position of the second run
-        integer(int32), intent(in) :: b_max
-            !! Last position of the second run; the run is empty if `b_max < b_min`
-
-        integer(int32) :: n_shared
-
-        ! An empty first run shares no position
-        if (a_max < a_min) then
-            overlap_fraction = 0.0_real64
-            return
-        end if
-
-        n_shared = max(0_int32, min(a_max, b_max) - max(a_min, b_min) + 1_int32)
-        overlap_fraction = real(n_shared, real64)/real(a_max - a_min + 1_int32, real64)
-    end function compute_index_span_overlap
 
 end module tox_data_integration_preprocessing_impl

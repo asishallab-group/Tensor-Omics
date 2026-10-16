@@ -7,7 +7,8 @@ module mod_test_sorted_stats
     use, intrinsic :: iso_fortran_env, only: real64, int32, int64
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use f42_sort_impl, only: init_perm, sort_array_heapsort
-    use f42_stats_impl, only: calc_sorted_slice_mad, sorted_bin_counts, histogram_bin_counts
+    use f42_stats_impl, only: calc_sorted_slice_mad, sorted_bin_counts, histogram_bin_counts, last_non_nan_position, &
+                              calc_median, calc_quantile_impl
     use test_suite, only: test_case
     implicit none
     public
@@ -19,7 +20,7 @@ contains
     !> Get array of all available sorted-slice statistics tests.
     function get_all_tests_sorted_stats() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(6))
+        allocate (all_tests(8))
         all_tests(1) = test_case("test_sorted_slice_mad_odd_length", test_sorted_slice_mad_odd_length)
         all_tests(2) = test_case("test_sorted_slice_mad_even_length", test_sorted_slice_mad_even_length)
         all_tests(3) = test_case("test_sorted_slice_mad_all_equal", test_sorted_slice_mad_all_equal)
@@ -27,6 +28,8 @@ contains
         all_tests(5) = test_case("test_sorted_slice_mad_offset_slice", test_sorted_slice_mad_offset_slice)
         all_tests(6) = test_case("test_sorted_bin_counts_matches_histogram_bin_counts", &
                                  test_sorted_bin_counts_matches_histogram_bin_counts)
+        all_tests(7) = test_case("test_last_non_nan_position", test_last_non_nan_position)
+        all_tests(8) = test_case("test_calc_median", test_calc_median)
     end function get_all_tests_sorted_stats
 
     !> Issue #217 (C1), odd length, and the merge's left-only branch. Sorted slice
@@ -182,4 +185,59 @@ contains
             values(i) = low + (high - low)*real(state, real64)/real(lcg_mod, real64)
         end do
     end subroutine lcg_values
+    !> last_non_nan_position on NaN-last sorted permutations: two NaN at the end of five values
+    !| (heapsorted, so NaN really sorts last) give 3; no NaN gives the full length; all NaN give 0;
+    !| a single non-NaN value gives 1. A NaN placed before a non-NaN position is not the tail and is
+    !| not counted away: the scan stops at the first non-NaN value from the end.
+    subroutine test_last_non_nan_position()
+        character(len=*), parameter :: name = "test_last_non_nan_position: "
+        real(real64) :: nan, values(5)
+        integer(int32) :: perm(5)
+
+        nan = ieee_value(1.0_real64, ieee_quiet_nan)
+        values = [3.0_real64, nan, 1.0_real64, nan, 2.0_real64]
+        call init_perm(perm)
+        call sort_array_heapsort(values, perm)
+        call assert_equal_int(last_non_nan_position(values, 5_int32, perm), 3_int32, name//"two NaN at the end")
+
+        values = [3.0_real64, 5.0_real64, 1.0_real64, 4.0_real64, 2.0_real64]
+        call init_perm(perm)
+        call sort_array_heapsort(values, perm)
+        call assert_equal_int(last_non_nan_position(values, 5_int32, perm), 5_int32, name//"no NaN")
+
+        values = nan
+        call init_perm(perm)
+        call assert_equal_int(last_non_nan_position(values, 5_int32, perm), 0_int32, name//"all NaN")
+
+        call assert_equal_int(last_non_nan_position([7.0_real64], 1_int32, [1_int32]), 1_int32, name//"one value")
+
+        ! Not a NaN-last order: position 1 holds a NaN, positions 2 and 3 do not.
+        call assert_equal_int(last_non_nan_position([nan, 1.0_real64, 2.0_real64], 3_int32, [1_int32, 2_int32, 3_int32]), &
+                              3_int32, name//"stops at the first non-NaN from the end")
+    end subroutine test_last_non_nan_position
+
+    !> calc_median: odd count [5, 1, 3] -> 3; even count [4, 1, 3, 2] -> 2.5 (the two middle values
+    !| interpolated); a single value is its own median; `tmp_perm` holds the ascending order on
+    !| return; and the result equals calc_quantile_impl at 0.5 on the same permutation, bit for bit.
+    subroutine test_calc_median()
+        character(len=*), parameter :: name = "test_calc_median: "
+        integer(int32) :: perm3(3), perm4(4), perm1(1)
+        real(real64) :: median, reference, values4(4)
+
+        call calc_median([5.0_real64, 1.0_real64, 3.0_real64], 3_int32, perm3, median)
+        call assert_equal_real(median, 3.0_real64, TOL, name//"odd count")
+        call assert_equal_int(perm3(1), 2_int32, name//"perm ascending (1)")
+        call assert_equal_int(perm3(2), 3_int32, name//"perm ascending (2)")
+        call assert_equal_int(perm3(3), 1_int32, name//"perm ascending (3)")
+
+        values4 = [4.0_real64, 1.0_real64, 3.0_real64, 2.0_real64]
+        call calc_median(values4, 4_int32, perm4, median)
+        call assert_equal_real(median, 2.5_real64, TOL, name//"even count")
+        call calc_quantile_impl(values4, 4_int32, perm4, 0.5_real64, reference)
+        call assert_true(median == reference, name//"bit-identical to calc_quantile_impl at 0.5")
+
+        call calc_median([-2.0_real64], 1_int32, perm1, median)
+        call assert_equal_real(median, -2.0_real64, TOL, name//"single value")
+    end subroutine test_calc_median
+
 end module mod_test_sorted_stats

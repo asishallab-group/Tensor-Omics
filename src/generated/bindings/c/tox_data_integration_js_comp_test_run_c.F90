@@ -226,8 +226,7 @@ contains
             !! The default value is `1.25_real64`.
         real(c_double), intent(in), target :: lower_residual_range_quantile
             !! Quantile in [0,1] of each reference point's lower residual-range bound
-            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-            !! with invalid input reported on upper_residual_range_quantile.
+            !! Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
@@ -621,8 +620,7 @@ contains
             !! The default value is `1.25_real64`.
         real(c_double), intent(in), target :: lower_residual_range_quantile
             !! Quantile in [0,1] of each reference point's lower residual-range bound
-            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-            !! with invalid input reported on upper_residual_range_quantile.
+            !! Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
@@ -963,8 +961,7 @@ contains
             !! The default value is `1.25_real64`.
         real(c_double), intent(in), target :: lower_residual_range_quantile
             !! Quantile in [0,1] of each reference point's lower residual-range bound
-            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-            !! with invalid input reported on upper_residual_range_quantile.
+            !! Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
@@ -1320,8 +1317,7 @@ contains
             !! The default value is `1.25_real64`.
         real(c_double), intent(in), target :: lower_residual_range_quantile
             !! Quantile in [0,1] of each reference point's lower residual-range bound
-            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-            !! with invalid input reported on upper_residual_range_quantile.
+            !! Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.

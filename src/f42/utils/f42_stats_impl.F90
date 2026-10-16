@@ -7,7 +7,8 @@ module f42_stats_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
-    use f42_sort_impl, only: binary_search_insertion
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
+    use f42_sort_impl, only: binary_search_insertion, init_perm, sort_array_heapsort
     use f42_math_impl, only: clamp
     M_IMPLICIT_NONE
 
@@ -236,6 +237,57 @@ contains
             value = lower_value + fraction*(upper_value - lower_value)
         end if
     end subroutine calc_quantile_impl
+
+    !> summary: Count the non-NaN values of a NaN-last sorted permutation
+    !| AUTHOR_LASZLO_LANG
+    !| For a `perm` that orders `values` ascending with NaN last: the last position `i` with
+    !| `values(perm(i))` not NaN, found by scanning back from position `n_values` and stopping at the
+    !| first non-NaN value; 0 when every value is NaN. Every NaN then sits in `perm(i+1:n_values)`,
+    !| so the result is the `n_considered` of
+    !| [[f42_stats_impl(module):calc_quantile_impl(interface)]] for a quantile of the non-NaN
+    !| values. Precondition, not checked: NaN sorts last under `perm`.
+    pure integer(int32) function last_non_nan_position(values, n_values, perm) result(n_non_nan)
+        integer(int32), intent(in) :: n_values
+            !! Number of elements in `values` and `perm`
+        real(real64), intent(in) :: values(n_values)
+            !! Values, NaN allowed
+        integer(int32), intent(in) :: perm(n_values)
+            !! Permutation ordering `values` ascending, NaN last
+
+        integer(int32) :: i_pos
+
+        ! Sequential: the scan stops at the first non-NaN value from the end.
+        n_non_nan = n_values
+        do i_pos = n_values, 1, -1
+            if (ieee_is_nan(values(perm(i_pos)))) then
+                n_non_nan = n_non_nan - 1_int32
+            else
+                exit
+            end if
+        end do
+    end function last_non_nan_position
+
+    !> summary: Median of a small array by heapsort and calc_quantile_impl
+    !| AUTHOR_LASZLO_LANG
+    !| Seeds `tmp_perm` with the identity, heapsorts it against `values` and takes
+    !| [[f42_stats_impl(module):calc_quantile_impl(interface)]] at level 0.5 over all `n_values`
+    !| values, so the median interpolates the two middle values of an even count. `tmp_perm` holds
+    !| the ascending order on return. Meant for a handful of values (one per study); NaN would sort
+    !| last and take part.
+    pure subroutine calc_median(values, n_values, tmp_perm, median)
+        integer(int32), intent(in) :: n_values
+            !! Number of values, at least 1
+        real(real64), intent(in) :: values(n_values)
+            !! Values whose median is taken
+        integer(int32), intent(out) :: tmp_perm(n_values)
+            !! Working array: the sorting permutation of `values`
+        real(real64), intent(out) :: median
+            !! The median of `values`
+
+        call init_perm(tmp_perm)
+        call sort_array_heapsort(values, tmp_perm)
+        call calc_quantile_impl(values, n_values, tmp_perm, 0.5_real64, median)
+    end subroutine calc_median
 
     !> AUTHOR_LASZLO_LANG
     !| Median and raw (unscaled) median absolute deviation (MAD) of the values

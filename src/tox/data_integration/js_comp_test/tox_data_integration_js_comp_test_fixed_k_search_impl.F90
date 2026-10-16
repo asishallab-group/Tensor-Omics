@@ -18,13 +18,15 @@ module tox_data_integration_js_comp_test_fixed_k_search_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use f42_math_impl, only: clamp
-    use f42_sort_impl, only: init_perm, sort_array_heapsort, sort_real_heapsort_expl_size
-    use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, validate_in_range_int
+    use f42_sort_impl, only: init_perm, sort_real_heapsort_expl_size
+    use tox_errors, only: set_ok, is_err, validate_in_range_int
     use tox_data_integration_preprocessing_impl, only: construct_neighborhoods_ranged_impl, pool_means_impl, &
-                                                       check_neighborhood_overlaps_impl
-    use tox_data_integration_js_comp_test_binning_impl, only: determine_point_bin_count, build_fixed_k_study_histograms
-    use tox_data_integration_js_comp_test_search_impl, only: score_candidate_histograms, evaluate_admissible_candidate, &
-                                                             select_final_candidate, MAX_CANDIDATE_PAIRS
+                                                       sort_gene_means_per_study
+    use tox_data_integration_js_comp_test_binning_impl, only: determine_point_bin_count
+    use tox_data_integration_js_comp_test_histograms_impl, only: build_fixed_k_histograms
+    use tox_data_integration_js_comp_test_search_impl, only: check_neighborhood_overlaps_impl, score_candidate_histograms, &
+                                                             evaluate_admissible_candidate, select_final_candidate, &
+                                                             MAX_CANDIDATE_PAIRS
     M_IMPLICIT_NONE
     private
     public :: calc_js_comp_test_candidate_bounds, generate_js_comp_test_candidates_impl, &
@@ -137,7 +139,7 @@ contains
     !| AUTHOR_LASZLO_LANG
     !| Pass A of the fixed-k parameter search for one candidate: builds every study's
     !| neighborhoods into `neighborhood_indices` and checks the first admissibility gate
-    !| ([[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]])
+    !| ([[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]])
     !| study by study, stopping at the first study that fails it. Private helper; its
     !| explicit-shape dummies take the search's upper-bound-sized buffers whole and view their
     !| leading elements packed at the candidate's own sizes (see the parameter search).
@@ -182,58 +184,6 @@ contains
         end do
     end subroutine construct_fixed_k_candidate_neighborhoods
 
-    !> summary: Build every study's histograms for one fixed-k candidate
-    !| AUTHOR_LASZLO_LANG
-    !| Pass C of the fixed-k parameter search for one candidate: every study's histograms, by
-    !| `build_fixed_k_study_histograms`. Private helper; every array dummy is a search buffer
-    !| viewed packed at the candidate's sizes.
-    pure subroutine build_fixed_k_candidate_histograms(residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
-                                                       n_studies, n_neighbors, n_points, max_n_bins, neighborhood_indices, &
-                                                       shared_residual_range_low, shared_residual_range_high, &
-                                                       n_bins_per_point, counts, pmfs, included_n_reps, &
-                                                       tmp_neighborhood_residuals_gathered)
-        integer(int32), intent(in) :: max_n_reps_all_studies
-            !! Maximum number of replicates across all studies
-        integer(int32), intent(in) :: max_n_genes_all_studies
-            !! Maximum number of genes across all studies
-        integer(int32), intent(in) :: n_studies
-            !! Number of studies
-        integer(int32), intent(in) :: n_neighbors
-            !! The candidate's number of neighbors per reference point
-        integer(int32), intent(in) :: n_points
-            !! The candidate's number of reference points
-        integer(int32), intent(in) :: max_n_bins
-            !! The candidate's widest per-point bin count
-        real(real64), intent(in) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-            !! Matrix of signed residuals per study, NaN allowed for missing values
-        integer(int32), intent(in) :: neighborhood_indices(n_neighbors, n_points, n_studies)
-            !! Every study's neighbor gene indices
-        real(real64), intent(in) :: shared_residual_range_low(n_points)
-            !! Lower histogram range bound (R_low) per reference point
-        real(real64), intent(in) :: shared_residual_range_high(n_points)
-            !! Upper histogram range bound (R_high) per reference point
-        integer(int32), intent(in) :: n_bins_per_point(n_points)
-            !! Bin count per reference point
-        integer(int32), intent(out) :: counts(n_points, max_n_bins, n_studies)
-            !! Every study's histogram counts
-        real(real64), intent(out) :: pmfs(n_points, max_n_bins, n_studies)
-            !! Every study's pmfs
-        integer(int32), intent(out) :: included_n_reps(n_points, n_studies)
-            !! Every study's included-replicate counts
-        real(real64), intent(out) :: tmp_neighborhood_residuals_gathered(max_n_reps_all_studies, n_neighbors, n_points)
-            !! Working array: one study's gathered residuals, reused per study
-
-        integer(int32) :: i_study
-
-        do i_study = 1, n_studies
-            call build_fixed_k_study_histograms(residuals(:, :, i_study), max_n_reps_all_studies, max_n_genes_all_studies, &
-                                                n_neighbors, n_points, neighborhood_indices(:, :, i_study), &
-                                                shared_residual_range_low, shared_residual_range_high, n_bins_per_point, &
-                                                max_n_bins, counts(:, :, i_study), pmfs(:, :, i_study), &
-                                                included_n_reps(:, i_study), tmp_neighborhood_residuals_gathered)
-        end do
-    end subroutine build_fixed_k_candidate_histograms
-
     !> summary: Search a GAMMA-decay (n_points, n_neighbors) candidate grid for a stable JSD parameter setting
     !| AUTHOR_LASZLO_LANG
     !| Walks the candidates of
@@ -243,7 +193,7 @@ contains
     !| 1. Reference points from the pooled gene means
     !|    ([[tox_data_integration_preprocessing_impl(module):pool_means_impl(interface)]]) and every
     !|    study's neighborhoods; gate 1: consecutive neighborhoods overlap enough
-    !|    ([[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]]).
+    !|    ([[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]]).
     !| 2. Per reference point, the bin-count search `bin_count_mode` names on all studies' pooled
     !|    residuals, then every study's histograms.
     !| 3. Gate 2: every study has a non-NaN residual at every point, and every consensus bin reaches
@@ -615,8 +565,7 @@ contains
             !! DM_DEFAULT(M_OCCUPANCY_GAMMA_DEFAULT)
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] of each reference point's lower residual-range bound
-            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-            !! with invalid input reported on upper_residual_range_quantile.
+            !! M_LOWER_RESIDUAL_RANGE_QUANTILE_ORDER_DOC
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(M_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
@@ -653,7 +602,7 @@ contains
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
 
         integer(int32) :: candidates_n_points_n_neighbors(2, MAX_CANDIDATE_PAIRS)
-        integer(int32) :: i_candidate, i_study, i_point, n_pool, max_n_bins, point_ierr
+        integer(int32) :: i_candidate, i_point, n_pool, max_n_bins
         integer(int32) :: prev_n_points, best_candidate_index, best_exceeded_ci_overlap_count, n_candidates
         integer(int32) :: pool_size, actual_min_residuals_per_bin, selected_candidate_index
         integer(int32) :: actual_plateau_mode, actual_delta_min_consecutive_transitions, n_consecutive_effect_size_ok
@@ -680,10 +629,7 @@ contains
 
         ! Sort each study's own gene means (for construct_neighborhoods_ranged_impl) and the
         ! flattened, all-studies-pooled gene means (for pool_means_impl's x_star).
-        do i_study = 1, n_studies
-            call init_perm(tmp_gene_means_perms(:, i_study))
-            call sort_array_heapsort(gene_means(:, i_study), tmp_gene_means_perms(:, i_study))
-        end do
+        call sort_gene_means_per_study(gene_means, max_n_genes_all_studies, n_studies, tmp_gene_means_perms)
         call init_perm(tmp_gene_means_perm_all)
         call sort_real_heapsort_expl_size(gene_means, tmp_gene_means_perm_all, pool_size)
 
@@ -738,28 +684,21 @@ contains
                                                tmp_max_bin_occupancy(i_point), tmp_sturges_bins(i_point), &
                                                tmp_fd_bins(i_point), tmp_pooled_residuals, tmp_pooled_residuals_perm, &
                                                tmp_bin_counts_search, tmp_residual_to_study_perm, tmp_study_block_ends, &
-                                               tmp_study_block_sizes, point_ierr, m_min=m_min, m_max=m_max, &
+                                               tmp_study_block_sizes, m_min=m_min, m_max=m_max, &
                                                min_residuals_per_bin=actual_min_residuals_per_bin, &
                                                gamma_occupancy=gamma_occupancy, &
                                                lower_residual_range_quantile=lower_residual_range_quantile, &
                                                upper_residual_range_quantile=upper_residual_range_quantile, &
                                                bin_count_mode=bin_count_mode)
-                ! Defensive: only an out-of-range gene index fails here, and every index comes from
-                ! permutations this routine builds. Kept for direct callers, since Pass C would read
-                ! out of bounds; untested.
-                if (is_err(point_ierr)) then
-                    call set_err_once(ierr, get_err_code(point_ierr))
-                    return
-                end if
             end do
 
             ! ===== PASS C (per study): every study's histograms at the chosen bin counts.
             max_n_bins = maxval(tmp_n_bins_per_point(1:n_points))
-            call build_fixed_k_candidate_histograms(residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
-                                                    n_studies, n_neighbors, n_points, max_n_bins, &
-                                                    tmp_neighborhood_indices_all_studies, tmp_shared_residual_range_low, &
-                                                    tmp_shared_residual_range_high, tmp_n_bins_per_point, tmp_counts, &
-                                                    tmp_pmfs, tmp_included_n_reps, tmp_neighborhood_residuals_gathered)
+            call build_fixed_k_histograms(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, &
+                                          n_neighbors, n_points, max_n_bins, max_n_bins, &
+                                          tmp_neighborhood_indices_all_studies, tmp_shared_residual_range_low, &
+                                          tmp_shared_residual_range_high, tmp_n_bins_per_point, tmp_counts, &
+                                          tmp_pmfs, tmp_included_n_reps, tmp_neighborhood_residuals_gathered)
 
             ! Second admissibility gate; an empty study (an error in run_js_comp_test_impl) only
             ! makes the candidate inadmissible here.

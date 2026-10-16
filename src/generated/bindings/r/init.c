@@ -89,6 +89,7 @@ SEXP calc_js_comp_test_candidate_bounds_call(SEXP);
 SEXP run_js_comp_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP run_js_comp_test_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP run_js_comp_test_adaptive_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP check_neighborhood_overlaps_call(SEXP, SEXP);
 SEXP check_mean_pmf_min_counts_call(SEXP, SEXP, SEXP);
 SEXP check_plateau_condition_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP check_effect_size_plateau_condition_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -114,7 +115,6 @@ SEXP construct_neighborhoods_call(SEXP, SEXP, SEXP, SEXP);
 SEXP construct_neighborhoods_ranged_call(SEXP, SEXP, SEXP);
 SEXP construct_neighborhoods_ranged_expert_call(SEXP, SEXP, SEXP, SEXP);
 SEXP construct_adaptive_neighborhoods_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP check_neighborhood_overlaps_call(SEXP, SEXP);
 SEXP calc_neighborhood_size_call(SEXP, SEXP, SEXP, SEXP);
 SEXP gather_pooled_neighborhood_residuals_call(SEXP, SEXP);
 SEXP gjct_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -230,6 +230,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"run_js_comp_test_call", (DL_FUNC) &run_js_comp_test_call, 13},
     {"run_js_comp_test_expert_call", (DL_FUNC) &run_js_comp_test_expert_call, 14},
     {"run_js_comp_test_adaptive_call", (DL_FUNC) &run_js_comp_test_adaptive_call, 12},
+    {"check_neighborhood_overlaps_call", (DL_FUNC) &check_neighborhood_overlaps_call, 2},
     {"check_mean_pmf_min_counts_call", (DL_FUNC) &check_mean_pmf_min_counts_call, 3},
     {"check_plateau_condition_call", (DL_FUNC) &check_plateau_condition_call, 7},
     {"check_effect_size_plateau_condition_call", (DL_FUNC) &check_effect_size_plateau_condition_call, 8},
@@ -255,7 +256,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"construct_neighborhoods_ranged_call", (DL_FUNC) &construct_neighborhoods_ranged_call, 3},
     {"construct_neighborhoods_ranged_expert_call", (DL_FUNC) &construct_neighborhoods_ranged_expert_call, 4},
     {"construct_adaptive_neighborhoods_call", (DL_FUNC) &construct_adaptive_neighborhoods_call, 9},
-    {"check_neighborhood_overlaps_call", (DL_FUNC) &check_neighborhood_overlaps_call, 2},
     {"calc_neighborhood_size_call", (DL_FUNC) &calc_neighborhood_size_call, 4},
     {"gather_pooled_neighborhood_residuals_call", (DL_FUNC) &gather_pooled_neighborhood_residuals_call, 2},
     {"gjct_permutation_test_call", (DL_FUNC) &gjct_permutation_test_call, 7},

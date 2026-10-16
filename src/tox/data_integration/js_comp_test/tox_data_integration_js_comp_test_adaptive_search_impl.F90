@@ -21,13 +21,14 @@ module tox_data_integration_js_comp_test_adaptive_search_impl
     use, intrinsic :: iso_fortran_env, only: int32, int64, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use f42_sort_impl, only: init_perm, sort_real_heapsort_expl_size
-    use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, validate_in_range_int, ERR_INVALID_INPUT
-    use tox_data_integration_preprocessing_impl, only: grow_adaptive_neighborhoods, materialize_pooled_neighborhood, &
-                                                       check_neighborhood_overlaps_impl, ADAPTIVE_STATUS_OK, &
+    use tox_errors, only: set_ok, set_err_once, is_err, validate_in_range_int, ERR_INVALID_INPUT
+    use tox_data_integration_preprocessing_impl, only: grow_adaptive_neighborhoods, ADAPTIVE_STATUS_OK, &
                                                        ADAPTIVE_STATUS_EMPTY_STUDY_NEIGHBORHOOD
-    use tox_data_integration_js_comp_test_binning_impl, only: determine_point_bin_count, build_adaptive_histograms
-    use tox_data_integration_js_comp_test_search_impl, only: score_candidate_histograms, evaluate_admissible_candidate, &
-                                                             select_final_candidate, MAX_CANDIDATE_PAIRS
+    use tox_data_integration_js_comp_test_binning_impl, only: determine_adaptive_point_bin_counts
+    use tox_data_integration_js_comp_test_histograms_impl, only: build_adaptive_histograms
+    use tox_data_integration_js_comp_test_search_impl, only: check_neighborhood_overlaps_impl, score_candidate_histograms, &
+                                                             evaluate_admissible_candidate, select_final_candidate, &
+                                                             MAX_CANDIDATE_PAIRS
     M_IMPLICIT_NONE
     private
     public :: calc_adaptive_js_comp_test_bounds, generate_adaptive_js_comp_test_candidates_impl, &
@@ -269,7 +270,7 @@ contains
     !| 2. Reject it if the construction status is not ok, or if more than `max_n_points_candidate`
     !|    reference points emerged.
     !| 3. Gate 1:
-    !|    [[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]]
+    !|    [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]]
     !|    on the pooled ranges.
     !| 4. The pipeline of
     !|    [[tox_data_integration_js_comp_test_run_impl(module):run_js_comp_test_adaptive_impl(interface)]]
@@ -695,8 +696,7 @@ contains
             !! DM_DEFAULT(M_OCCUPANCY_GAMMA_DEFAULT)
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] of each reference point's lower residual-range bound
-            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-            !! with invalid input reported on upper_residual_range_quantile.
+            !! M_LOWER_RESIDUAL_RANGE_QUANTILE_ORDER_DOC
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(M_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
@@ -750,7 +750,7 @@ contains
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
 
         integer(int32) :: candidates_k_start_k_step_k_max(3, MAX_CANDIDATE_PAIRS)
-        integer(int32) :: i_candidate, i_point, max_n_bins, point_ierr
+        integer(int32) :: i_candidate, max_n_bins
         integer(int32) :: best_candidate_index, best_exceeded_ci_overlap_count, n_candidates
         integer(int32) :: pool_size, actual_min_residuals_per_bin, selected_candidate_index
         integer(int32) :: actual_plateau_mode, actual_delta_min_consecutive_transitions, n_consecutive_effect_size_ok
@@ -837,36 +837,24 @@ contains
                 cycle
             end if
 
-            ! ===== PASS B (per point, sequential: one pooling buffer serves every point), exactly
-            ! as run_js_comp_test_adaptive_impl.
-            do i_point = 1, n_points
-                call materialize_pooled_neighborhood(tmp_gene_means_perm_all, max_n_genes_all_studies, n_studies, &
-                                                     tmp_pooled_neighborhood_range(1, i_point), &
-                                                     tmp_pooled_neighborhood_range(2, i_point), max_n_genes_all_studies, &
-                                                     tmp_point_neighborhood_indices, tmp_n_neighbors_per_point(:, i_point))
-                call determine_point_bin_count(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, &
-                                               max_n_genes_all_studies, 1_int32, tmp_point_neighborhood_indices, 1_int32, &
-                                               tmp_n_neighbors_per_point(:, i_point), tmp_n_bins_per_point(i_point), &
-                                               tmp_occupancy_failed(i_point), tmp_shared_residual_range_low(i_point), &
-                                               tmp_shared_residual_range_high(i_point), tmp_n_pooled_residuals(i_point), &
-                                               tmp_min_bin_occupancy(i_point), tmp_mean_bin_occupancy(i_point), &
-                                               tmp_max_bin_occupancy(i_point), tmp_sturges_bins(i_point), &
-                                               tmp_fd_bins(i_point), tmp_pooled_residuals, tmp_pooled_residuals_perm, &
-                                               tmp_bin_counts_search, tmp_residual_to_study_perm, tmp_study_block_ends, &
-                                               tmp_study_block_sizes, point_ierr, m_min=m_min, m_max=m_max, &
-                                               min_residuals_per_bin=actual_min_residuals_per_bin, &
-                                               gamma_occupancy=gamma_occupancy, &
-                                               lower_residual_range_quantile=lower_residual_range_quantile, &
-                                               upper_residual_range_quantile=upper_residual_range_quantile, &
-                                               bin_count_mode=bin_count_mode)
-                ! Defensive: determine_point_bin_count only fails on an out-of-range gene index, and
-                ! every decoded index lies in [1, max_n_genes_all_studies], so this branch cannot be
-                ! reached and has no test.
-                if (is_err(point_ierr)) then
-                    call set_err_once(ierr, get_err_code(point_ierr))
-                    return
-                end if
-            end do
+            ! ===== PASS B (per point, sequential: one pooling buffer serves every point), the same
+            ! helper as run_js_comp_test_adaptive_impl.
+            call determine_adaptive_point_bin_counts(residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
+                                                     n_studies, n_points, tmp_gene_means_perm_all, &
+                                                     tmp_pooled_neighborhood_range, tmp_n_neighbors_per_point, &
+                                                     tmp_n_bins_per_point, tmp_occupancy_failed, &
+                                                     tmp_shared_residual_range_low, tmp_shared_residual_range_high, &
+                                                     tmp_n_pooled_residuals, tmp_min_bin_occupancy, tmp_mean_bin_occupancy, &
+                                                     tmp_max_bin_occupancy, tmp_sturges_bins, tmp_fd_bins, &
+                                                     tmp_point_neighborhood_indices, tmp_pooled_residuals, &
+                                                     tmp_pooled_residuals_perm, tmp_bin_counts_search, &
+                                                     tmp_residual_to_study_perm, tmp_study_block_ends, tmp_study_block_sizes, &
+                                                     m_min=m_min, m_max=m_max, &
+                                                     min_residuals_per_bin=actual_min_residuals_per_bin, &
+                                                     gamma_occupancy=gamma_occupancy, &
+                                                     lower_residual_range_quantile=lower_residual_range_quantile, &
+                                                     upper_residual_range_quantile=upper_residual_range_quantile, &
+                                                     bin_count_mode=bin_count_mode)
 
             ! ===== PASS C (per point, per study, sequential: one gather buffer serves every pair).
             ! From here on the work arrays sized by an upper bound (max_n_points_candidate,

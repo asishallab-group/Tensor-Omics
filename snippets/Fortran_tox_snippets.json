@@ -1417,7 +1417,32 @@
     "prefix": "tox:data_integration_js_comp_test_search.use",
     "description": "use tox_data_integration_js_comp_test_search, only: ...",
     "body": [
-      "use tox_data_integration_js_comp_test_search, only: ${1|check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition|}"
+      "use tox_data_integration_js_comp_test_search, only: ${1|check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition|}"
+    ]
+  },
+  "check_neighborhood_overlaps (call)": {
+    "prefix": "tox:check_neighborhood_overlaps",
+    "description": "The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`",
+    "body": [
+      "call check_neighborhood_overlaps( &",
+      "    neighborhood_range=${1:neighborhood_range}, &",
+      "    n_points=${2:n_points}, &",
+      "    min_neighbor_overlap=${3:min_neighbor_overlap}, &",
+      "    all_have_min_neighbor_overlap=${4:all_have_min_neighbor_overlap}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "check_neighborhood_overlaps (call, checked)": {
+    "prefix": "tox:check_neighborhood_overlaps.checked",
+    "description": "The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]` (with error check)",
+    "body": [
+      "call check_neighborhood_overlaps( &",
+      "    neighborhood_range=${1:neighborhood_range}, &",
+      "    n_points=${2:n_points}, &",
+      "    min_neighbor_overlap=${3:min_neighbor_overlap}, &",
+      "    all_have_min_neighbor_overlap=${4:all_have_min_neighbor_overlap}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
     ]
   },
   "check_mean_pmf_min_counts (call)": {
@@ -2008,7 +2033,7 @@
     "prefix": "tox:data_integration_preprocessing.use",
     "description": "use tox_data_integration_preprocessing, only: ...",
     "body": [
-      "use tox_data_integration_preprocessing, only: ${1|compute_gene_means,compute_residuals,pool_means,pool_means_expert,pool_study_means,construct_neighborhoods,construct_neighborhoods_ranged,construct_neighborhoods_ranged_expert,construct_adaptive_neighborhoods,check_neighborhood_overlaps|}"
+      "use tox_data_integration_preprocessing, only: ${1|compute_gene_means,compute_residuals,pool_means,pool_means_expert,pool_study_means,construct_neighborhoods,construct_neighborhoods_ranged,construct_neighborhoods_ranged_expert,construct_adaptive_neighborhoods|}"
     ]
   },
   "compute_gene_means (call)": {
@@ -2305,31 +2330,6 @@
       "    max_pooled_residuals=${20:max_pooled_residuals}, &",
       "    min_study_neighbors=${21:min_study_neighbors}, &",
       "    ierr=${22:ierr})",
-      "if (is_err(ierr)) return"
-    ]
-  },
-  "check_neighborhood_overlaps (call)": {
-    "prefix": "tox:check_neighborhood_overlaps",
-    "description": "The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`",
-    "body": [
-      "call check_neighborhood_overlaps( &",
-      "    neighborhood_range=${1:neighborhood_range}, &",
-      "    n_points=${2:n_points}, &",
-      "    min_neighbor_overlap=${3:min_neighbor_overlap}, &",
-      "    all_have_min_neighbor_overlap=${4:all_have_min_neighbor_overlap}, &",
-      "    ierr=${5:ierr})"
-    ]
-  },
-  "check_neighborhood_overlaps (call, checked)": {
-    "prefix": "tox:check_neighborhood_overlaps.checked",
-    "description": "The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]` (with error check)",
-    "body": [
-      "call check_neighborhood_overlaps( &",
-      "    neighborhood_range=${1:neighborhood_range}, &",
-      "    n_points=${2:n_points}, &",
-      "    min_neighbor_overlap=${3:min_neighbor_overlap}, &",
-      "    all_have_min_neighbor_overlap=${4:all_have_min_neighbor_overlap}, &",
-      "    ierr=${5:ierr})",
       "if (is_err(ierr)) return"
     ]
   },

@@ -21,18 +21,15 @@ module tox_data_integration_js_comp_test_binning_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use f42_math_impl, only: is_close, LOG_2
-    use f42_stats_impl, only: calc_quantile_impl, histogram_bin_counts, sorted_bin_counts
+    use f42_stats_impl, only: calc_quantile_impl, histogram_bin_counts, sorted_bin_counts, last_non_nan_position
     use f42_sort_impl, only: init_perm, sort_array_heapsort, block_containing_index
-    use tox_errors, only: set_ok, set_err_once, is_err, get_err_code
-    use tox_data_integration_jsd_impl, only: build_residual_histograms_impl
-    use tox_data_integration_preprocessing_impl, only: gather_pooled_neighborhood_residuals, &
+    use tox_data_integration_preprocessing_impl, only: gather_pooled_neighborhood_residuals_core, &
                                                        materialize_pooled_neighborhood
     M_IMPLICIT_NONE
     private
     public :: estimate_bin_count_impl, determine_bin_count_occupancy_impl, &
              determine_bin_count_occupancy_exhaustive_impl, determine_bin_count_stone_impl, &
-             group_sorted_perm_by_study, determine_point_bin_count, &
-             build_point_study_histogram, build_fixed_k_study_histograms, build_adaptive_histograms, &
+             group_sorted_perm_by_study, determine_point_bin_count, determine_adaptive_point_bin_counts, &
              MAX_N_BINS, MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, &
              MODE_BIN_COUNT_STONE_POOLED
 
@@ -94,18 +91,11 @@ contains
             !! Freedman-Diaconis rule estimate alone, at least 1 and at most MAX_N_BINS; falls back
             !! to sturges_bins when the interquartile range is (close to) zero or the ratio is NaN
 
-        integer(int32) :: i_pool, n_pool, sturges_raw, fd_raw
+        integer(int32) :: n_pool, sturges_raw, fd_raw
         real(real64) :: half_bin_width, quartile_25, quartile_75, n_reps_neighborhood, fd_ratio
 
         ! NaN sorts last under the ascending permutation: scan back for the last non-NaN position.
-        n_pool = n_residuals
-        do i_pool = n_pool, 1, -1
-            if (ieee_is_nan(residuals(residuals_perm(i_pool)))) then
-                n_pool = n_pool - 1
-            else
-                exit
-            end if
-        end do
+        n_pool = last_non_nan_position(residuals, n_residuals, residuals_perm)
 
         if (n_pool == 0) then
             n_bins = 1_int32
@@ -232,8 +222,7 @@ contains
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for this neighborhood's own lower residual-range bound
             !! (shared_residual_range_low)
-            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-            !! with invalid input reported on upper_residual_range_quantile.
+            !! M_LOWER_RESIDUAL_RANGE_QUANTILE_ORDER_DOC
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(M_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
@@ -249,7 +238,7 @@ contains
 
         integer(int32) :: actual_m_min, actual_m_max, actual_min_residuals_per_bin
         real(real64) :: actual_gamma_occupancy, actual_lower_residual_range_quantile, actual_upper_residual_range_quantile
-        integer(int32) :: i_pool, trial_m, next_m, m_valid, m_invalid, best_m, min_occ, best_min_occ, best_max_occ
+        integer(int32) :: trial_m, next_m, m_valid, m_invalid, best_m, min_occ, best_min_occ, best_max_occ
         integer(int32) :: combined_n_bins_unused
         real(real64) :: half_span
         logical(c_bool) :: found_valid
@@ -263,14 +252,7 @@ contains
         actual_m_max = max(actual_m_min, actual_m_max)
 
         ! NaN sorts last under the ascending permutation: scan back for the last non-NaN position.
-        n_pooled_residuals = n_residuals
-        do i_pool = n_pooled_residuals, 1, -1
-            if (ieee_is_nan(pooled_residuals(pooled_residuals_perm(i_pool)))) then
-                n_pooled_residuals = n_pooled_residuals - 1_int32
-            else
-                exit
-            end if
-        end do
+        n_pooled_residuals = last_non_nan_position(pooled_residuals, n_residuals, pooled_residuals_perm)
 
         ! This neighborhood's own range; 0.0/0.0 when every pooled residual is NaN.
         if (n_pooled_residuals == 0_int32) then
@@ -600,7 +582,7 @@ contains
 
         integer(int32) :: actual_m_min, actual_m_max, actual_min_residuals_per_bin
         real(real64) :: actual_lower_residual_range_quantile, actual_upper_residual_range_quantile
-        integer(int32) :: i_pool, i_study, block_start, block_end, trial_m, best_m, best_min_occ, best_max_occ
+        integer(int32) :: i_study, block_start, block_end, trial_m, best_m, best_min_occ, best_max_occ
         integer(int32) :: n_eligible_studies, n_total_inside, n_study_below, n_study_inside
         integer(int32) :: pooled_n_below, pooled_n_inside, pooled_n_above, min_occ, max_occ, combined_n_bins_unused
         integer(int32) :: pooled_counts(MAX_N_BINS)
@@ -617,14 +599,7 @@ contains
         size_weighted = bin_count_mode == MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
 
         ! NaN sorts last -- same scan-back as determine_bin_count_occupancy_impl.
-        n_pooled_residuals = n_residuals
-        do i_pool = n_pooled_residuals, 1, -1
-            if (ieee_is_nan(pooled_residuals(pooled_residuals_perm(i_pool)))) then
-                n_pooled_residuals = n_pooled_residuals - 1_int32
-            else
-                exit
-            end if
-        end do
+        n_pooled_residuals = last_non_nan_position(pooled_residuals, n_residuals, pooled_residuals_perm)
 
         ! The range, exactly as in determine_bin_count_occupancy_impl (0.0/0.0 for an all-NaN pool).
         if (n_pooled_residuals == 0_int32) then
@@ -973,8 +948,7 @@ contains
         real(real64), intent(in), optional :: lower_residual_range_quantile
             !! Quantile in [0,1] for this neighborhood's own lower residual-range bound
             !! (shared_residual_range_low)
-            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-            !! with invalid input reported on upper_residual_range_quantile.
+            !! M_LOWER_RESIDUAL_RANGE_QUANTILE_ORDER_DOC
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(M_OCCUPANCY_LOWER_RESIDUAL_RANGE_QUANTILE_DEFAULT)
@@ -1136,11 +1110,9 @@ contains
     !| not published.
     !|
     !| Precondition, not checked here: every `point_n_neighbors(i_study)` is at least 1 and at most
-    !| `max_n_neighbors`, and `bin_count_mode` is one of the four `MODE_BIN_COUNT_*` values. A gene
-    !| index outside `[1, max_n_genes_all_studies]` is reported by
-    !| `gather_pooled_neighborhood_residuals` itself; its error code (without its argument position,
-    !| which numbers that routine's own arguments) is returned in `ierr` and this helper returns at
-    !| once, leaving every other output undefined.
+    !| `max_n_neighbors`, every gene index read is in `[1, max_n_genes_all_studies]`, and
+    !| `bin_count_mode` is one of the four `MODE_BIN_COUNT_*` values. The pooling is
+    !| `gather_pooled_neighborhood_residuals_core`, which checks nothing, so this helper cannot fail.
     pure subroutine determine_point_bin_count(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, &
                                               max_n_neighbors, n_index_points, neighborhood_indices, i_index_point, &
                                               point_n_neighbors, selected_n_bins, occupancy_failed, shared_residual_range_low, &
@@ -1148,7 +1120,7 @@ contains
                                               mean_bin_occupancy, max_bin_occupancy, sturges_bins, fd_bins, &
                                               tmp_pooled_residuals, tmp_pooled_residuals_perm, tmp_bin_counts, &
                                               tmp_residual_to_study_perm, tmp_study_block_ends, tmp_study_block_sizes, &
-                                              ierr, m_min, m_max, min_residuals_per_bin, gamma_occupancy, &
+                                              m_min, m_max, min_residuals_per_bin, gamma_occupancy, &
                                               lower_residual_range_quantile, upper_residual_range_quantile, bin_count_mode)
         integer(int32), intent(in) :: max_n_reps_all_studies
             !! Maximum number of replicates across all studies
@@ -1202,8 +1174,6 @@ contains
             !! Working array: the last pool index of each study's block
         integer(int32), intent(out) :: tmp_study_block_sizes(n_studies)
             !! Working array (Stone modes): the number of pooled residuals of each study
-        integer(int32), intent(out) :: ierr
-            !! Error code; ERR_INVALID_INPUT if a gene index is out of range (see above)
         integer(int32), intent(in), optional :: m_min
             !! Forwarded to the bin-count search
         integer(int32), intent(in), optional :: m_max
@@ -1220,10 +1190,9 @@ contains
             !! Which bin-count search runs, one of the four `MODE_BIN_COUNT_*` values; default
             !! M_MODE_BIN_COUNT_OCCUPANCY
 
-        integer(int32) :: i_study, n_study_neighbors, pool_offset, gather_ierr, diagnostic_n_neighbors
+        integer(int32) :: i_study, n_study_neighbors, pool_offset, diagnostic_n_neighbors
         integer(int32) :: actual_bin_count_mode
 
-        call set_ok(ierr)
         M_DEFAULT_VAL(bin_count_mode, actual_bin_count_mode, M_MODE_BIN_COUNT_OCCUPANCY)
 
         ! Sequential: each study's block starts where the previous one ended. The index column is
@@ -1231,16 +1200,11 @@ contains
         pool_offset = 0_int32
         do i_study = 1, n_studies
             n_study_neighbors = point_n_neighbors(i_study)
-            call gather_pooled_neighborhood_residuals(residuals(:, :, i_study:i_study), max_n_reps_all_studies, &
-                                                      max_n_genes_all_studies, n_study_neighbors, 1_int32, &
-                                                      neighborhood_indices(1, i_index_point, i_study), &
-                                                      tmp_pooled_residuals(pool_offset + 1: &
-                                                                           pool_offset + max_n_reps_all_studies*n_study_neighbors), &
-                                                      gather_ierr)
-            if (is_err(gather_ierr)) then
-                call set_err_once(ierr, get_err_code(gather_ierr))
-                return
-            end if
+            call gather_pooled_neighborhood_residuals_core(residuals(:, :, i_study:i_study), max_n_reps_all_studies, &
+                                                           max_n_genes_all_studies, n_study_neighbors, 1_int32, &
+                                                           neighborhood_indices(1, i_index_point, i_study), &
+                                                           tmp_pooled_residuals(pool_offset + 1: &
+                                                                                pool_offset + max_n_reps_all_studies*n_study_neighbors))
             pool_offset = pool_offset + max_n_reps_all_studies*n_study_neighbors
             tmp_study_block_ends(i_study) = pool_offset
         end do
@@ -1260,150 +1224,28 @@ contains
                                     lower_residual_range_quantile, upper_residual_range_quantile)
     end subroutine determine_point_bin_count
 
-    !> summary: Build one study's residual histogram for one reference point
+    !> summary: Pass B on adaptive neighborhoods: every reference point's bin count
     !| AUTHOR_LASZLO_LANG
-    !| For ONE (reference point, study) pair: gathers the neighbors' residuals and bins them with
-    !| [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]] for a
-    !| single point, which gives exactly the matching row of a call over all points. Only row
-    !| `i_point` of `counts`/`pmf` is written, zero beyond `n_bins`; NaN residuals are skipped.
-    !| Internal helper, not published.
-    !|
-    !| Precondition, not checked here: every entry of `neighbor_indices` is in
-    !| `[1, max_n_genes_all_studies]`, `1 <= n_bins <= max_n_bins <= MAX_N_BINS`, and
-    !| `1 <= i_point <= n_points`.
-    pure subroutine build_point_study_histogram(residuals_study, max_n_reps_all_studies, max_n_genes_all_studies, &
-                                                n_neighbors, neighbor_indices, shared_residual_range_low, &
-                                                shared_residual_range_high, n_bins, n_points, max_n_bins, i_point, &
-                                                counts, pmf, included_n_reps, tmp_neighbor_residuals)
-        integer(int32), intent(in) :: max_n_reps_all_studies
-            !! Maximum number of replicates across all studies
-        integer(int32), intent(in) :: max_n_genes_all_studies
-            !! Maximum number of genes across all studies
-        integer(int32), intent(in) :: n_neighbors
-            !! Number of neighbors of this reference point in this study
-        real(real64), intent(in) :: residuals_study(max_n_reps_all_studies, max_n_genes_all_studies)
-            !! This study's signed residuals, NaN allowed for missing values
-        integer(int32), intent(in) :: neighbor_indices(n_neighbors)
-            !! Gene indices of this reference point's neighbors in this study
-        real(real64), intent(in) :: shared_residual_range_low
-            !! Lower bound of this reference point's histogram range (R_low)
-        real(real64), intent(in) :: shared_residual_range_high
-            !! Upper bound of this reference point's histogram range (R_high)
-        integer(int32), intent(in) :: n_bins
-            !! This reference point's bin count
-        integer(int32), intent(in) :: n_points
-            !! First extent of `counts`/`pmf`: the number of reference points
-        integer(int32), intent(in) :: max_n_bins
-            !! Second extent of `counts`/`pmf`: the widest bin count of any reference point
-        integer(int32), intent(in) :: i_point
-            !! The row of `counts`/`pmf` this reference point's histogram is written to
-        integer(int32), intent(inout) :: counts(n_points, max_n_bins)
-            !! The study's histogram counts; row `i_point` is overwritten, zero beyond `n_bins`
-        real(real64), intent(inout) :: pmf(n_points, max_n_bins)
-            !! The study's pmfs; row `i_point` is overwritten (all zero when `included_n_reps` is 0)
-        integer(int32), intent(out) :: included_n_reps
-            !! Number of non-NaN residuals that were binned
-        real(real64), intent(out) :: tmp_neighbor_residuals(max_n_reps_all_studies, n_neighbors)
-            !! Working array: the gathered residuals of this reference point's neighbors
-
-        integer(int32) :: i_neighbor
-        integer(int32) :: point_n_bins(1), point_included_n_reps(1)
-        integer(int32) :: point_counts(1, MAX_N_BINS)
-        real(real64) :: point_range_low(1), point_range_high(1)
-        real(real64) :: point_pmf(1, MAX_N_BINS)
-
-        do concurrent(i_neighbor=1:n_neighbors) shared(tmp_neighbor_residuals, residuals_study, neighbor_indices)
-            tmp_neighbor_residuals(:, i_neighbor) = residuals_study(:, neighbor_indices(i_neighbor))
-        end do
-
-        point_n_bins(1) = n_bins
-        point_range_low(1) = shared_residual_range_low
-        point_range_high(1) = shared_residual_range_high
-
-        ! point_counts/point_pmf passed whole: with one row, the callee's (1, max_n_bins) dummies are
-        ! exactly their first max_n_bins elements (max_n_bins <= MAX_N_BINS by the precondition).
-        call build_residual_histograms_impl(tmp_neighbor_residuals, max_n_reps_all_studies, n_neighbors, 1_int32, &
-                                            point_range_low, point_range_high, max_n_bins, point_n_bins, &
-                                            point_counts, point_pmf, &
-                                            point_included_n_reps)
-
-        counts(i_point, :) = point_counts(1, 1:max_n_bins)
-        pmf(i_point, :) = point_pmf(1, 1:max_n_bins)
-        included_n_reps = point_included_n_reps(1)
-    end subroutine build_point_study_histogram
-
-    !> summary: Build one study's fixed-k histograms for every reference point
-    !| AUTHOR_LASZLO_LANG
-    !| Pass C of the fixed-k pipeline for ONE study: gathers every reference point's neighbor
-    !| residuals into `tmp_neighborhood_residuals_gathered`, then builds all of the study's
-    !| histograms with one
-    !| [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]] call at
-    !| the per-point bin counts. Internal helper, not published; public because
-    !| `run_js_comp_test_impl` and the fixed-k parameter search call it. Precondition, not checked here: every index is in
-    !| `[1, max_n_genes_all_studies]` and `1 <= n_bins_per_point <= max_n_bins`.
-    pure subroutine build_fixed_k_study_histograms(residuals_study, max_n_reps_all_studies, max_n_genes_all_studies, &
-                                                   n_neighbors, n_points, neighborhood_indices_study, &
-                                                   shared_residual_range_low, shared_residual_range_high, &
-                                                   n_bins_per_point, max_n_bins, counts, pmfs, included_n_reps, &
-                                                   tmp_neighborhood_residuals_gathered)
-        integer(int32), intent(in) :: max_n_reps_all_studies
-            !! Maximum number of replicates across all studies
-        integer(int32), intent(in) :: max_n_genes_all_studies
-            !! Maximum number of genes across all studies
-        integer(int32), intent(in) :: n_neighbors
-            !! Number of neighbors per reference point
-        integer(int32), intent(in) :: n_points
-            !! Number of reference points
-        real(real64), intent(in) :: residuals_study(max_n_reps_all_studies, max_n_genes_all_studies)
-            !! This study's signed residuals, NaN allowed for missing values
-        integer(int32), intent(in) :: neighborhood_indices_study(n_neighbors, n_points)
-            !! This study's neighbor gene indices per reference point
-        real(real64), intent(in) :: shared_residual_range_low(n_points)
-            !! Lower histogram range bound (R_low) per reference point
-        real(real64), intent(in) :: shared_residual_range_high(n_points)
-            !! Upper histogram range bound (R_high) per reference point
-        integer(int32), intent(in) :: n_bins_per_point(n_points)
-            !! Bin count per reference point
-        integer(int32), intent(in) :: max_n_bins
-            !! Second extent of `counts`/`pmfs`: the widest bin count of any reference point
-        integer(int32), intent(out) :: counts(n_points, max_n_bins)
-            !! Residual count per bin, per reference point; zero beyond each point's bin count
-        real(real64), intent(out) :: pmfs(n_points, max_n_bins)
-            !! `counts` normalized per reference point
-        integer(int32), intent(out) :: included_n_reps(n_points)
-            !! Number of non-NaN residuals binned per reference point
-        real(real64), intent(out) :: tmp_neighborhood_residuals_gathered(max_n_reps_all_studies, n_neighbors, n_points)
-            !! Working array: the gathered residuals of every reference point's neighbors
-
-        integer(int32) :: i_point, i_neighbor, gene_idx
-
-        do concurrent(i_point=1:n_points, i_neighbor=1:n_neighbors) local(gene_idx) &
-                shared(tmp_neighborhood_residuals_gathered, residuals_study, neighborhood_indices_study)
-            gene_idx = neighborhood_indices_study(i_neighbor, i_point)
-            tmp_neighborhood_residuals_gathered(:, i_neighbor, i_point) = residuals_study(:, gene_idx)
-        end do
-
-        call build_residual_histograms_impl(tmp_neighborhood_residuals_gathered, max_n_reps_all_studies, n_neighbors, &
-                                            n_points, shared_residual_range_low, shared_residual_range_high, max_n_bins, &
-                                            n_bins_per_point, counts, pmfs, included_n_reps)
-    end subroutine build_fixed_k_study_histograms
-
-    !> summary: Build every (reference point, study) histogram on adaptive neighborhoods
-    !| AUTHOR_LASZLO_LANG
-    !| Pass C on adaptive neighborhoods: decodes every reference point's pooled range into
-    !| per-study gene lists
+    !| For every reference point in turn: decodes its pooled range into per-study gene lists
     !| ([[tox_data_integration_preprocessing_impl(module):materialize_pooled_neighborhood(subroutine)]])
-    !| and builds each (point, study) histogram with `build_point_study_histogram` into bins
-    !| `1:max_n_bins` of `counts`/`pmfs`. Sequential, so one gather buffer serves every pair.
-    !| Internal helper, not published; public because `run_js_comp_test_adaptive_impl`
-    !| (`n_bins_extent = M_MAX_N_BINS`) and the adaptive parameter search (`n_bins_extent =
-    !| max_n_bins`, its buffers viewed packed) call it.
-    pure subroutine build_adaptive_histograms(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, &
-                                              n_points, max_n_bins, n_bins_extent, gene_means_perm_all, &
-                                              pooled_neighborhood_range, n_neighbors_per_point, &
-                                              shared_residual_range_low, shared_residual_range_high, n_bins_per_point, &
-                                              counts, pmfs, included_n_reps, tmp_point_neighborhood_indices, &
-                                              tmp_neighbor_residuals)
+    !| and chooses its bin count with `determine_point_bin_count`. Sequential, so one pooling buffer
+    !| serves every point. The optional arguments are forwarded as they come, absent or not, so a
+    !| caller may pass either its own optional dummies or resolved values. Internal helper, not
+    !| published; public because `run_js_comp_test_adaptive_impl` and the adaptive parameter search
+    !| call it (the search's buffers viewed packed at the candidate's sizes). Precondition, not
+    !| checked: every range is ascending and within the non-NaN pooled means, as both callers ensure.
+    pure subroutine determine_adaptive_point_bin_counts(residuals, max_n_reps_all_studies, max_n_genes_all_studies, &
+                                                        n_studies, n_points, gene_means_perm_all, pooled_neighborhood_range, &
+                                                        n_neighbors_per_point, n_bins_per_point, occupancy_failed, &
+                                                        shared_residual_range_low, shared_residual_range_high, &
+                                                        n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, &
+                                                        max_bin_occupancy, sturges_bins, fd_bins, &
+                                                        tmp_point_neighborhood_indices, tmp_pooled_residuals, &
+                                                        tmp_pooled_residuals_perm, tmp_bin_counts, &
+                                                        tmp_residual_to_study_perm, tmp_study_block_ends, &
+                                                        tmp_study_block_sizes, m_min, m_max, min_residuals_per_bin, &
+                                                        gamma_occupancy, lower_residual_range_quantile, &
+                                                        upper_residual_range_quantile, bin_count_mode)
         integer(int32), intent(in) :: max_n_reps_all_studies
             !! Maximum number of replicates across all studies
         integer(int32), intent(in) :: max_n_genes_all_studies
@@ -1412,10 +1254,6 @@ contains
             !! Number of studies
         integer(int32), intent(in) :: n_points
             !! Number of reference points
-        integer(int32), intent(in) :: max_n_bins
-            !! Widest per-point bin count; only bins `1:max_n_bins` of `counts`/`pmfs` are written
-        integer(int32), intent(in) :: n_bins_extent
-            !! Second extent of `counts`/`pmfs`, at least `max_n_bins`
         real(real64), intent(in) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
             !! Matrix of signed residuals per study, NaN allowed for missing values
         integer(int32), intent(in) :: gene_means_perm_all(max_n_genes_all_studies*n_studies)
@@ -1424,42 +1262,77 @@ contains
             !! Each reference point's `[first, last]` pooled position
         integer(int32), intent(out) :: n_neighbors_per_point(n_studies, n_points)
             !! Each reference point's per-study gene count, as decoded
-        real(real64), intent(in) :: shared_residual_range_low(n_points)
-            !! Lower histogram range bound (R_low) per reference point
-        real(real64), intent(in) :: shared_residual_range_high(n_points)
-            !! Upper histogram range bound (R_high) per reference point
-        integer(int32), intent(in) :: n_bins_per_point(n_points)
-            !! Bin count per reference point
-        integer(int32), intent(inout) :: counts(n_points, n_bins_extent, n_studies)
-            !! Every study's histogram counts; bins `1:max_n_bins` are overwritten
-        real(real64), intent(inout) :: pmfs(n_points, n_bins_extent, n_studies)
-            !! Every study's pmfs; bins `1:max_n_bins` are overwritten
-        integer(int32), intent(out) :: included_n_reps(n_points, n_studies)
-            !! Number of non-NaN residuals binned per reference point, per study
+        integer(int32), intent(out) :: n_bins_per_point(n_points)
+            !! Each reference point's bin count
+        logical(c_bool), intent(out) :: occupancy_failed(n_points)
+            !! `.true.` iff the bin-count search failed for this point
+        real(real64), intent(out) :: shared_residual_range_low(n_points)
+            !! Each reference point's lower residual-range bound (R_low)
+        real(real64), intent(out) :: shared_residual_range_high(n_points)
+            !! Each reference point's upper residual-range bound (R_high)
+        integer(int32), intent(out) :: n_pooled_residuals(n_points)
+            !! Each reference point's non-NaN pooled residual count (N_j)
+        integer(int32), intent(out) :: min_bin_occupancy(n_points)
+            !! Each reference point's minimum bin occupancy
+        real(real64), intent(out) :: mean_bin_occupancy(n_points)
+            !! Each reference point's mean bin occupancy
+        integer(int32), intent(out) :: max_bin_occupancy(n_points)
+            !! Each reference point's maximum bin occupancy
+        integer(int32), intent(out) :: sturges_bins(n_points)
+            !! Each reference point's Sturges' rule diagnostic
+        integer(int32), intent(out) :: fd_bins(n_points)
+            !! Each reference point's Freedman-Diaconis rule diagnostic
         integer(int32), intent(out) :: tmp_point_neighborhood_indices(max_n_genes_all_studies, n_studies)
             !! Working array: one reference point's gene indices per study, reused per point
-        real(real64), intent(out) :: tmp_neighbor_residuals(max_n_reps_all_studies, max_n_genes_all_studies)
-            !! Working array: one (reference point, study) pair's gathered residuals, reused per pair
+        real(real64), intent(out) :: tmp_pooled_residuals(max_n_reps_all_studies*max_n_genes_all_studies*n_studies)
+            !! Working array: one reference point's pooled residuals, reused per point
+        integer(int32), intent(out) :: tmp_pooled_residuals_perm(max_n_reps_all_studies*max_n_genes_all_studies*n_studies)
+            !! Working array: sorting permutation for `tmp_pooled_residuals`, reused per point
+        integer(int32), intent(out) :: tmp_bin_counts(MAX_N_BINS)
+            !! Working array: bin counts of the bin-count search, reused per point
+        integer(int32), intent(out) :: tmp_residual_to_study_perm(max_n_reps_all_studies*max_n_genes_all_studies*n_studies)
+            !! Working array (Stone modes): pool indices grouped by study, each study sorted
+        integer(int32), intent(out) :: tmp_study_block_ends(n_studies)
+            !! Working array: the last pool index of each study's block
+        integer(int32), intent(out) :: tmp_study_block_sizes(n_studies)
+            !! Working array (Stone modes): the number of pooled residuals of each study
+        integer(int32), intent(in), optional :: m_min
+            !! Forwarded to the bin-count search
+        integer(int32), intent(in), optional :: m_max
+            !! Forwarded to the bin-count search
+        integer(int32), intent(in), optional :: min_residuals_per_bin
+            !! Forwarded to the bin-count search, the occupancy floor in every mode
+        real(real64), intent(in), optional :: gamma_occupancy
+            !! Forwarded to the occupancy search; unused in the Stone modes
+        real(real64), intent(in), optional :: lower_residual_range_quantile
+            !! Forwarded to the bin-count search
+        real(real64), intent(in), optional :: upper_residual_range_quantile
+            !! Forwarded to the bin-count search
+        integer(int32), intent(in), optional :: bin_count_mode
+            !! Forwarded to the bin-count search; default M_MODE_BIN_COUNT_OCCUPANCY
 
-        integer(int32) :: i_point, i_study, n_study_neighbors
+        integer(int32) :: i_point
 
         do i_point = 1, n_points
             call materialize_pooled_neighborhood(gene_means_perm_all, max_n_genes_all_studies, n_studies, &
                                                  pooled_neighborhood_range(1, i_point), &
                                                  pooled_neighborhood_range(2, i_point), max_n_genes_all_studies, &
                                                  tmp_point_neighborhood_indices, n_neighbors_per_point(:, i_point))
-            do i_study = 1, n_studies
-                n_study_neighbors = n_neighbors_per_point(i_study, i_point)
-                call build_point_study_histogram(residuals(:, :, i_study), max_n_reps_all_studies, &
-                                                 max_n_genes_all_studies, n_study_neighbors, &
-                                                 tmp_point_neighborhood_indices(1:n_study_neighbors, i_study), &
-                                                 shared_residual_range_low(i_point), shared_residual_range_high(i_point), &
-                                                 n_bins_per_point(i_point), n_points, max_n_bins, i_point, &
-                                                 counts(:, 1:max_n_bins, i_study), pmfs(:, 1:max_n_bins, i_study), &
-                                                 included_n_reps(i_point, i_study), &
-                                                 tmp_neighbor_residuals(:, 1:n_study_neighbors))
-            end do
+            call determine_point_bin_count(residuals, max_n_reps_all_studies, max_n_genes_all_studies, n_studies, &
+                                           max_n_genes_all_studies, 1_int32, tmp_point_neighborhood_indices, 1_int32, &
+                                           n_neighbors_per_point(:, i_point), n_bins_per_point(i_point), &
+                                           occupancy_failed(i_point), shared_residual_range_low(i_point), &
+                                           shared_residual_range_high(i_point), n_pooled_residuals(i_point), &
+                                           min_bin_occupancy(i_point), mean_bin_occupancy(i_point), &
+                                           max_bin_occupancy(i_point), sturges_bins(i_point), fd_bins(i_point), &
+                                           tmp_pooled_residuals, tmp_pooled_residuals_perm, tmp_bin_counts, &
+                                           tmp_residual_to_study_perm, tmp_study_block_ends, tmp_study_block_sizes, &
+                                           m_min=m_min, m_max=m_max, min_residuals_per_bin=min_residuals_per_bin, &
+                                           gamma_occupancy=gamma_occupancy, &
+                                           lower_residual_range_quantile=lower_residual_range_quantile, &
+                                           upper_residual_range_quantile=upper_residual_range_quantile, &
+                                           bin_count_mode=bin_count_mode)
         end do
-    end subroutine build_adaptive_histograms
+    end subroutine determine_adaptive_point_bin_counts
 
 end module tox_data_integration_js_comp_test_binning_impl

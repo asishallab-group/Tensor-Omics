@@ -369,8 +369,7 @@ def run_js_comp_test_adaptive_parameter_search(
         The default value is `1.25`.
     lower_residual_range_quantile : float, optional, default 0.05
         Quantile in [0,1] of each reference point's lower residual-range bound
-        Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-        with invalid input reported on upper_residual_range_quantile.
+        Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.05`.

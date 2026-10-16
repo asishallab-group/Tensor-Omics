@@ -15,7 +15,6 @@ void construct_neighborhoods_c(const int*, const double*, const int*, const doub
 void construct_neighborhoods_ranged_c(const int*, const double*, const int*, const double*, const int*, int*, int*, int*);
 void construct_neighborhoods_ranged_expert_c(const int*, const double*, const int*, const double*, const int*, const int*, int*, int*, int*);
 void construct_adaptive_neighborhoods_c(const int*, const int*, const int*, const double*, const double*, const int*, const int*, const int*, int*, double*, int*, int*, int*, double*, double*, int*, int*, const double*, const double*, const int*, const int*, int*);
-void check_neighborhood_overlaps_c(const int*, const int*, const double*, unsigned char*, int*);
 
 SEXP compute_gene_means_call(SEXP expr) {
     int nprot = 0;
@@ -387,37 +386,6 @@ SEXP construct_adaptive_neighborhoods_call(SEXP gene_means, SEXP residuals, SEXP
     SET_STRING_ELT(_nms, 7, Rf_mkChar("max_n_neighbors"));
     SET_STRING_ELT(_nms, 8, Rf_mkChar("construction_status"));
     SET_STRING_ELT(_nms, 9, Rf_mkChar("ierr"));
-    Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
-    return _out;
-}
-
-SEXP check_neighborhood_overlaps_call(SEXP neighborhood_range, SEXP min_neighbor_overlap) {
-    int nprot = 0;
-    // derived from the inputs, not asked of the caller
-    int n_points = INTEGER(Rf_getAttrib(neighborhood_range, R_DimSymbol))[1];
-
-    // scalar inputs, pulled from their length-1 vectors
-    double min_neighbor_overlap_v = Rf_asReal(min_neighbor_overlap);
-
-    // outputs and work space
-    unsigned char all_have_min_neighbor_overlap = 0;
-    int ierr = 0;
-
-    check_neighborhood_overlaps_c(
-        INTEGER(neighborhood_range),
-        &n_points,
-        &min_neighbor_overlap_v,
-        &all_have_min_neighbor_overlap,
-        &ierr
-    );
-
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
-    SET_VECTOR_ELT(_out, 0, Rf_ScalarLogical(all_have_min_neighbor_overlap != 0));
-    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
-    SET_STRING_ELT(_nms, 0, Rf_mkChar("all_have_min_neighbor_overlap"));
-    SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;

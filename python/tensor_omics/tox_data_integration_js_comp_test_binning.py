@@ -510,8 +510,7 @@ def determine_bin_count_occupancy(
     lower_residual_range_quantile : float, optional, default 0.05
         Quantile in [0,1] for this neighborhood's own lower residual-range bound
         (shared_residual_range_low)
-        Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-        with invalid input reported on upper_residual_range_quantile.
+        Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.05`.
@@ -696,8 +695,7 @@ def determine_bin_count_occupancy_expert(
     lower_residual_range_quantile : float, optional, default 0.05
         Quantile in [0,1] for this neighborhood's own lower residual-range bound
         (shared_residual_range_low)
-        Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-        with invalid input reported on upper_residual_range_quantile.
+        Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.05`.
@@ -1194,8 +1192,7 @@ def determine_bin_count_stone(
     lower_residual_range_quantile : float, optional, default 0.05
         Quantile in [0,1] for this neighborhood's own lower residual-range bound
         (shared_residual_range_low)
-        Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-        with invalid input reported on upper_residual_range_quantile.
+        Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.05`.
@@ -1421,8 +1418,7 @@ def determine_bin_count_stone_expert(
     lower_residual_range_quantile : float, optional, default 0.05
         Quantile in [0,1] for this neighborhood's own lower residual-range bound
         (shared_residual_range_low)
-        Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-        with invalid input reported on upper_residual_range_quantile.
+        Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.05`.

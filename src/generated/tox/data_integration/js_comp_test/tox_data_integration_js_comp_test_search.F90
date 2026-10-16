@@ -10,8 +10,11 @@
 !| enough residuals, and both stop at the first such candidate whose bootstrapped JSDs have
 !| reached a plateau.
 !|
-!| [[tox_data_integration_js_comp_test_search_impl(module):check_mean_pmf_min_counts_impl(interface)]] is the second of those
-!| admissibility gates. The plateau checks are
+!| The admissibility gates are
+!| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]]
+!| (consecutive neighborhoods overlap by at least `min_neighbor_overlap`) and
+!| [[tox_data_integration_js_comp_test_search_impl(module):check_mean_pmf_min_counts_impl(interface)]]
+!| (every consensus bin reaches the minimum count). The plateau checks are
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]]
 !| (the confidence-interval overlap with the best candidate so far, joined over the studies by
 !| `join_method`) and
@@ -24,7 +27,7 @@
 module tox_data_integration_js_comp_test_search
     use f42_safeguard
     use tox_data_integration_js_comp_test_search_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, check_effect_size_plateau_condition_impl
-    use tox_data_integration_js_comp_test_search_impl, only: check_mean_pmf_min_counts_impl, check_plateau_condition_impl
+    use tox_data_integration_js_comp_test_search_impl, only: check_mean_pmf_min_counts_impl, check_neighborhood_overlaps_impl, check_plateau_condition_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_math_impl, only: above
@@ -34,6 +37,7 @@ module tox_data_integration_js_comp_test_search
     M_IMPLICIT_NONE
     private
 
+    public :: check_neighborhood_overlaps
     public :: check_mean_pmf_min_counts
     public :: check_plateau_condition
     public :: check_effect_size_plateau_condition
@@ -41,9 +45,55 @@ module tox_data_integration_js_comp_test_search
 
 contains
 
+    !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl]].
+    !| The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`
+    !| neighborhood spans of
+    !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_ranged_impl(interface)]]
+    !| (or the adaptive `pooled_neighborhood_range`). The overlap of two consecutive spans is the
+    !| number of positions they share divided by the length of the earlier span; a reversed span
+    !| (`max < min`) counts as empty. Not named `test_*`: the R test harness would run every
+    !| `test_`-prefixed export as a test case.
+    pure subroutine check_neighborhood_overlaps(&
+            neighborhood_range,&
+            n_points,&
+            min_neighbor_overlap,&
+            all_have_min_neighbor_overlap,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), dimension(2, n_points), intent(in) :: neighborhood_range
+            !! For each reference point, the `[min_idx, max_idx]` neighborhood span
+            !! The minimum valid value is `1_int32`.
+        real(real64), intent(in) :: min_neighbor_overlap
+            !! Minimum fractional overlap two consecutive neighborhoods must have
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+        logical(c_bool), intent(out) :: all_have_min_neighbor_overlap
+            !! `.true.` if every pair of consecutive neighborhoods overlaps by at least
+            !! `min_neighbor_overlap`
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_points, ierr, arg_pos=2_int32)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=3_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_int(neighborhood_range, 2 * n_points, ierr, arg_pos=1_int32, min=1_int32)
+        if (is_err(ierr)) return
+#endif
+
+        call check_neighborhood_overlaps_impl(&
+            neighborhood_range = neighborhood_range,&
+            n_points = n_points,&
+            min_neighbor_overlap = min_neighbor_overlap,&
+            all_have_min_neighbor_overlap = all_have_min_neighbor_overlap&
+        )
+    end subroutine check_neighborhood_overlaps
+
     !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_search_impl(module):check_mean_pmf_min_counts_impl]].
     !| The second admissibility gate of a parameter-search candidate, checked after
-    !| [[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]].
+    !| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]].
     !| Each point is checked over its own `n_bins_per_point` bins only, so the zero padding beyond
     !| them does not count as a failure.
     pure subroutine check_mean_pmf_min_counts(&

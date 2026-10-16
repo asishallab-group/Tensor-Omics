@@ -9,9 +9,7 @@ conditioned on expression level rather than pooled across it.
 
 Besides neighborhoods of a fixed size, the adaptive construction
 :func:`tensor_omics.construct_adaptive_neighborhoods`
-grows each reference point's neighborhood while its residual dispersion stays stable, and
-:func:`tensor_omics.check_neighborhood_overlaps`
-checks that consecutive neighborhoods overlap enough.
+grows each reference point's neighborhood while its residual dispersion stays stable.
 
 `calc_neighborhood_size` sizes a neighborhood for a caller that allocates its own, and
 `gather_pooled_neighborhood_residuals` gathers a neighborhood's residuals of all studies.
@@ -190,20 +188,6 @@ _lib.construct_adaptive_neighborhoods_c.argtypes = (
 _CONSTRUCT_ADAPTIVE_NEIGHBORHOODS_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "k_start", "k_step", "k_max", "n_points", "x_star", "pooled_neighborhood_range", "n_neighbors_per_point", "stop_reason", "neighborhood_dispersion", "neighborhood_mad", "max_n_neighbors", "construction_status", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _CONSTRUCT_ADAPTIVE_NEIGHBORHOODS_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
-
-_lib.check_neighborhood_overlaps_c.restype = None
-_lib.check_neighborhood_overlaps_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_int),
-)
-
-#: The wrapped procedure's arguments, so an error can name one
-_CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENTS = ("neighborhood_range", "n_points", "min_neighbor_overlap", "all_have_min_neighbor_overlap", "ierr",)
-#: For a derived argument, the one the caller passed it in
-_CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENT_SOURCES = (None, "neighborhood_range", None, None, None,)
 
 def compute_gene_means(
         expr,
@@ -1181,70 +1165,3 @@ def construct_adaptive_neighborhoods(
         "max_n_neighbors": max_n_neighbors.value,
         "construction_status": construction_status.value,
     }
-
-def check_neighborhood_overlaps(
-        neighborhood_range,
-        min_neighbor_overlap,
-):
-    r"""Test whether every pair of consecutive neighborhoods overlaps by at least a minimum fraction
-
-    The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`
-    neighborhood spans of
-    :func:`tensor_omics.construct_neighborhoods_ranged`
-    (or the adaptive `pooled_neighborhood_range`). The overlap of two consecutive spans is the
-    number of positions they share divided by the length of the earlier span; a reversed span
-    (`max < min`) counts as empty. Not named `test_*`: the R test harness would run every
-    `test_`-prefixed export as a test case.
-
-    Parameters
-    ----------
-    neighborhood_range : np.ndarray[np.int32] of shape (2, n_points,), column-major (order='F')
-        For each reference point, the `[min_idx, max_idx]` neighborhood span
-        The minimum valid value is `1`.
-    min_neighbor_overlap : float
-        Minimum fractional overlap two consecutive neighborhoods must have
-        The minimum valid value is `0.0`.
-        The maximum valid value is `1.0`.
-
-    Returns
-    -------
-    all_have_min_neighbor_overlap : bool
-        `True` if every pair of consecutive neighborhoods overlaps by at least
-        `min_neighbor_overlap`
-
-    Raises
-    ------
-    ToxError
-        If the underlying Fortran reports an error.
-
-    Notes
-    -----
-    Generated from the Fortran procedure `tox_data_integration_preprocessing::check_neighborhood_overlaps`, whose argument names are
-    the ones an error message reports.
-    """
-    # accept anything array-like, converting only when C needs it
-    try:
-        neighborhood_range = np.asfortranarray(neighborhood_range, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_range' must be an array of np.int32: {error}") from None
-    if neighborhood_range.ndim != 2:
-        raise ValueError(f"'neighborhood_range' must have 2 dimensions, but has {neighborhood_range.ndim}")
-
-    # what the inputs already say, rather than asking for it again
-    n_points = neighborhood_range.shape[1]
-
-    # outputs and work arrays, which the caller never sees
-    all_have_min_neighbor_overlap = ctypes.c_bool(0)
-    ierr = ctypes.c_int(0)
-
-    _lib.check_neighborhood_overlaps_c(
-        neighborhood_range,
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_double(min_neighbor_overlap)),
-        ctypes.byref(all_have_min_neighbor_overlap),
-        ctypes.byref(ierr),
-    )
-
-    check_err_code(ierr.value, _CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENTS, _CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENT_SOURCES)
-
-    return all_have_min_neighbor_overlap.value

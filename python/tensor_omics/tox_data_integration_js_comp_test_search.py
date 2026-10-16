@@ -10,8 +10,11 @@ Both accept a candidate when its neighborhoods overlap enough and every consensu
 enough residuals, and both stop at the first such candidate whose bootstrapped JSDs have
 reached a plateau.
 
-:func:`tensor_omics.check_mean_pmf_min_counts` is the second of those
-admissibility gates. The plateau checks are
+The admissibility gates are
+:func:`tensor_omics.check_neighborhood_overlaps`
+(consecutive neighborhoods overlap by at least `min_neighbor_overlap`) and
+:func:`tensor_omics.check_mean_pmf_min_counts`
+(every consensus bin reaches the minimum count). The plateau checks are
 :func:`tensor_omics.check_plateau_condition`
 (the confidence-interval overlap with the best candidate so far, joined over the studies by
 `join_method`) and
@@ -32,6 +35,20 @@ from .error_handling import check_err_code
 from .library import load_library, nullable
 
 _lib = load_library()
+
+_lib.check_neighborhood_overlaps_c.restype = None
+_lib.check_neighborhood_overlaps_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_bool),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENTS = ("neighborhood_range", "n_points", "min_neighbor_overlap", "all_have_min_neighbor_overlap", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENT_SOURCES = (None, "neighborhood_range", None, None, None,)
 
 _lib.check_mean_pmf_min_counts_c.restype = None
 _lib.check_mean_pmf_min_counts_c.argtypes = (
@@ -91,6 +108,73 @@ _lib.check_effect_size_plateau_condition_c.argtypes = (
 _CHECK_EFFECT_SIZE_PLATEAU_CONDITION_ARGUMENTS = ("global_js_divergence", "prev_global_js_divergence", "n_studies", "has_previous", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "n_consecutive_ok", "delta", "delta_median", "delta_max", "plateau_found", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _CHECK_EFFECT_SIZE_PLATEAU_CONDITION_ARGUMENT_SOURCES = (None, None, "global_js_divergence", None, None, None, None, None, None, None, None, None, None, None,)
+
+def check_neighborhood_overlaps(
+        neighborhood_range,
+        min_neighbor_overlap,
+):
+    r"""Test whether every pair of consecutive neighborhoods overlaps by at least a minimum fraction
+
+    The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`
+    neighborhood spans of
+    :func:`tensor_omics.construct_neighborhoods_ranged`
+    (or the adaptive `pooled_neighborhood_range`). The overlap of two consecutive spans is the
+    number of positions they share divided by the length of the earlier span; a reversed span
+    (`max < min`) counts as empty. Not named `test_*`: the R test harness would run every
+    `test_`-prefixed export as a test case.
+
+    Parameters
+    ----------
+    neighborhood_range : np.ndarray[np.int32] of shape (2, n_points,), column-major (order='F')
+        For each reference point, the `[min_idx, max_idx]` neighborhood span
+        The minimum valid value is `1`.
+    min_neighbor_overlap : float
+        Minimum fractional overlap two consecutive neighborhoods must have
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+
+    Returns
+    -------
+    all_have_min_neighbor_overlap : bool
+        `True` if every pair of consecutive neighborhoods overlaps by at least
+        `min_neighbor_overlap`
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_js_comp_test_search::check_neighborhood_overlaps`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        neighborhood_range = np.asfortranarray(neighborhood_range, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'neighborhood_range' must be an array of np.int32: {error}") from None
+    if neighborhood_range.ndim != 2:
+        raise ValueError(f"'neighborhood_range' must have 2 dimensions, but has {neighborhood_range.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_points = neighborhood_range.shape[1]
+
+    # outputs and work arrays, which the caller never sees
+    all_have_min_neighbor_overlap = ctypes.c_bool(0)
+    ierr = ctypes.c_int(0)
+
+    _lib.check_neighborhood_overlaps_c(
+        neighborhood_range,
+        ctypes.byref(ctypes.c_int(n_points)),
+        ctypes.byref(ctypes.c_double(min_neighbor_overlap)),
+        ctypes.byref(all_have_min_neighbor_overlap),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENTS, _CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENT_SOURCES)
+
+    return all_have_min_neighbor_overlap.value
 
 def check_mean_pmf_min_counts(
         mean_pmf_counts,

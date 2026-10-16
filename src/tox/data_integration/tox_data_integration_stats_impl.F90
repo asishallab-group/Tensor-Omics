@@ -21,9 +21,7 @@ module tox_data_integration_stats_impl
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use f42_random_gsl, only: rng_t, create_rng, destroy_rng, random_multiv_hypergeom, random_multinomial
     use f42_sort_impl, only: top_k_heap_push, bottom_k_heap_push
-    use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
-                                             compute_weighted_global_divergence_impl, calc_pmf_impl, &
-                                             create_mean_pmf_only_impl
+    use tox_data_integration_jsd_impl, only: compute_consensus_divergences, calc_pmf_impl, create_mean_pmf_only_impl
     use tox_errors, only: set_ok, set_err_once, is_err, get_err_code, validate_in_range_int, validate_in_range_real, &
                           ERR_INVALID_INPUT
     M_IMPLICIT_NONE
@@ -168,15 +166,11 @@ contains
             end do
 
             ! Observed-consensus null first: the block below overwrites the tmp_* arrays.
-            do concurrent(i_study=1:n_studies) shared(tmp_pmfs, mean_pmf, n_points, n_bins, tmp_js_divergences, &
-                                                      included_n_reps, mean_pmf_included_n_reps, tmp_global_js_divergence, &
-                                                      tmp_weights, global_jsd_observed, p_values_observed_consensus)
-                call compute_divergence_per_reference_point_impl(tmp_pmfs(:, :, i_study), mean_pmf, &
-                                                                 n_points, n_bins, tmp_js_divergences(:, i_study))
-                call compute_weighted_global_divergence_impl(tmp_js_divergences(:, i_study), n_points, &
-                                                              included_n_reps(:, i_study), mean_pmf_included_n_reps, &
-                                                              tmp_global_js_divergence(i_study), tmp_weights(:, i_study))
-
+            call compute_consensus_divergences(tmp_pmfs, mean_pmf, n_points, n_bins, n_bins, n_studies, included_n_reps, &
+                                               mean_pmf_included_n_reps, tmp_js_divergences, tmp_global_js_divergence, &
+                                               tmp_weights)
+            do concurrent(i_study=1:n_studies) shared(tmp_global_js_divergence, global_jsd_observed, &
+                                                      p_values_observed_consensus)
                 if (tmp_global_js_divergence(i_study) >= global_jsd_observed(i_study)) then
                     p_values_observed_consensus(i_study) = p_values_observed_consensus(i_study) + 1.0_real64
                 end if
@@ -186,15 +180,10 @@ contains
             ! over 1.0 included, deliberately not clamped).
             call create_mean_pmf_only_impl(tmp_pmfs, n_bins, n_points, n_studies, tmp_permuted_mean_pmf)
 
-            do concurrent(i_study=1:n_studies) shared(tmp_pmfs, tmp_permuted_mean_pmf, n_points, n_bins, tmp_js_divergences, &
-                                                      included_n_reps, mean_pmf_included_n_reps, tmp_global_js_divergence, &
-                                                      tmp_weights, global_jsd_observed, p_values)
-                call compute_divergence_per_reference_point_impl(tmp_pmfs(:, :, i_study), tmp_permuted_mean_pmf, &
-                                                                 n_points, n_bins, tmp_js_divergences(:, i_study))
-                call compute_weighted_global_divergence_impl(tmp_js_divergences(:, i_study), n_points, &
-                                                              included_n_reps(:, i_study), mean_pmf_included_n_reps, &
-                                                              tmp_global_js_divergence(i_study), tmp_weights(:, i_study))
-
+            call compute_consensus_divergences(tmp_pmfs, tmp_permuted_mean_pmf, n_points, n_bins, n_bins, n_studies, &
+                                               included_n_reps, mean_pmf_included_n_reps, tmp_js_divergences, &
+                                               tmp_global_js_divergence, tmp_weights)
+            do concurrent(i_study=1:n_studies) shared(tmp_global_js_divergence, global_jsd_observed, p_values)
                 if (tmp_global_js_divergence(i_study) >= global_jsd_observed(i_study)) then
                     p_values(i_study) = p_values(i_study) + 1.0_real64
                 end if
@@ -396,15 +385,11 @@ contains
             ! Drawn with replacement, so the consensus changes too.
             call create_mean_pmf_only_impl(tmp_pmfs, n_bins, n_points, n_studies, tmp_mean_pmf)
 
-            do concurrent(i_study=1:n_studies) shared(tmp_pmfs, tmp_mean_pmf, n_points, n_bins, tmp_js_divergences, &
-                                                      included_n_reps, mean_pmf_included_n_reps, tmp_global_js_divergence, &
-                                                      tmp_weights, tmp_bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds)
-                call compute_divergence_per_reference_point_impl(tmp_pmfs(:, :, i_study), tmp_mean_pmf, &
-                                                                 n_points, n_bins, tmp_js_divergences(:, i_study))
-                call compute_weighted_global_divergence_impl(tmp_js_divergences(:, i_study), n_points, &
-                                                              included_n_reps(:, i_study), mean_pmf_included_n_reps, &
-                                                              tmp_global_js_divergence(i_study), tmp_weights(:, i_study))
-
+            call compute_consensus_divergences(tmp_pmfs, tmp_mean_pmf, n_points, n_bins, n_bins, n_studies, &
+                                               included_n_reps, mean_pmf_included_n_reps, tmp_js_divergences, &
+                                               tmp_global_js_divergence, tmp_weights)
+            do concurrent(i_study=1:n_studies) shared(tmp_bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds, &
+                                                      tmp_global_js_divergence)
                 ! Keep the highest and lowest values seen so far.
                 call bottom_k_heap_push(tmp_bootstrapping_top_k_jsds(:, 1, i_study), n_bootstrapping_top_k_jsds, &
                                         tmp_global_js_divergence(i_study))

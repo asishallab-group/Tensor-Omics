@@ -84,8 +84,7 @@
 #'   The minimum valid value is `above(1.0)`.
 #'   The default value is `1.25`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] of each reference point's lower residual-range bound
-#'   Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-#'   with invalid input reported on upper_residual_range_quantile.
+#'   Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.05`.
@@ -272,8 +271,7 @@ run_js_comp_test <- function(n_neighbors, gene_means, residuals, x_star, n_permu
 #'   The minimum valid value is `above(1.0)`.
 #'   The default value is `1.25`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] of each reference point's lower residual-range bound
-#'   Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-#'   with invalid input reported on upper_residual_range_quantile.
+#'   Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.05`.
@@ -432,8 +430,7 @@ run_js_comp_test_expert <- function(n_neighbors, gene_means, gene_means_perms, r
 #'   The minimum valid value is `above(1.0)`.
 #'   The default value is `1.25`.
 #' @param lower_residual_range_quantile a numeric scalar. Quantile in [0,1] of each reference point's lower residual-range bound
-#'   Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-#'   with invalid input reported on upper_residual_range_quantile.
+#'   Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.05`.

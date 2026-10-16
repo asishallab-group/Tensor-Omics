@@ -76,7 +76,7 @@ contains
     !| 1. Reference points from the pooled gene means
     !| ([[tox_data_integration_preprocessing_impl(module):pool_means_impl(interface)]]) and every
     !| study's neighborhoods; gate 1: consecutive neighborhoods overlap enough
-    !| ([[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]]).
+    !| ([[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]]).
     !| 2. Per reference point, the bin-count search `bin_count_mode` names on all studies' pooled
     !| residuals, then every study's histograms.
     !| 3. Gate 2: every study has a non-NaN residual at every point, and every consensus bin reaches
@@ -365,8 +365,7 @@ contains
             !! The default value is `1.25_real64`.
         real(c_double), intent(in), target :: lower_residual_range_quantile
             !! Quantile in [0,1] of each reference point's lower residual-range bound
-            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-            !! with invalid input reported on upper_residual_range_quantile.
+            !! Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
@@ -577,7 +576,7 @@ contains
     !| 1. Reference points from the pooled gene means
     !| ([[tox_data_integration_preprocessing_impl(module):pool_means_impl(interface)]]) and every
     !| study's neighborhoods; gate 1: consecutive neighborhoods overlap enough
-    !| ([[tox_data_integration_preprocessing_impl(module):check_neighborhood_overlaps_impl(interface)]]).
+    !| ([[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]]).
     !| 2. Per reference point, the bin-count search `bin_count_mode` names on all studies' pooled
     !| residuals, then every study's histograms.
     !| 3. Gate 2: every study has a non-NaN residual at every point, and every consensus bin reaches
@@ -1005,8 +1004,7 @@ contains
             !! The default value is `1.25_real64`.
         real(c_double), intent(in), target :: lower_residual_range_quantile
             !! Quantile in [0,1] of each reference point's lower residual-range bound
-            !! Must not exceed upper_residual_range_quantile (default 0.95); otherwise the call fails
-            !! with invalid input reported on upper_residual_range_quantile.
+            !! Must not exceed upper_residual_range_quantile; otherwise the call fails with invalid input reported on upper_residual_range_quantile.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.05_real64`.
