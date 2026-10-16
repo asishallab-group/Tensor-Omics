@@ -69,6 +69,13 @@ from .tox_data_archive import (
     get_tox_data_dims,
     read_tox_data_into,
 )
+from .tox_data_integration_js_comp_test_adaptive_search import (
+    generate_adaptive_js_comp_test_candidates,
+    run_js_comp_test_adaptive_parameter_search,
+)
+from .tox_data_integration_js_comp_test_adaptive_search_impl import (
+    calc_adaptive_js_comp_test_bounds,
+)
 from .tox_data_integration_js_comp_test_binning import (
     estimate_bin_count,
     estimate_bin_count_expert,
@@ -79,23 +86,22 @@ from .tox_data_integration_js_comp_test_binning import (
     determine_bin_count_stone,
     determine_bin_count_stone_expert,
 )
+from .tox_data_integration_js_comp_test_fixed_k_search import (
+    generate_js_comp_test_candidates,
+    run_js_comp_test_parameter_search,
+)
+from .tox_data_integration_js_comp_test_fixed_k_search_impl import (
+    calc_js_comp_test_candidate_bounds,
+)
 from .tox_data_integration_js_comp_test_run import (
     run_js_comp_test,
     run_js_comp_test_expert,
     run_js_comp_test_adaptive,
 )
 from .tox_data_integration_js_comp_test_search import (
-    generate_js_comp_test_candidates,
-    generate_adaptive_js_comp_test_candidates,
     check_mean_pmf_min_counts,
     check_plateau_condition,
     check_effect_size_plateau_condition,
-    run_js_comp_test_parameter_search,
-    run_js_comp_test_adaptive_parameter_search,
-)
-from .tox_data_integration_js_comp_test_search_impl import (
-    calc_js_comp_test_candidate_bounds,
-    calc_adaptive_js_comp_test_bounds,
 )
 from .tox_data_integration_jsd import (
     determine_shared_residual_range,

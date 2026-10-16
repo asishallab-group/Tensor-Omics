@@ -86,7 +86,7 @@ contains
     !| Study `s` fills pool block `(s - 1)*max_n_reps_all_studies*n_neighbors + 1` to
     !| `s*max_n_reps_all_studies*n_neighbors`. This is the pooling
     !| [[tox_data_integration_js_comp_test_run_impl(module):run_js_comp_test_impl(interface)]] and
-    !| [[tox_data_integration_js_comp_test_search_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
+    !| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
     !| feed to the bin-count search, so a caller can pass the same input to
     !| [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_occupancy_exhaustive_impl(interface)]]
     !| on real data.

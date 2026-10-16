@@ -2,9 +2,9 @@
 ! tox_data_integration family needs. A dummy extent or a DM_DEFAULT cannot name a Fortran
 ! parameter -- the generated C and R bindings need the number itself -- so each such value is a
 ! macro, written once, here, and every module that needs the literal includes this file.
-! M_MAX_N_BINS and the M_MODE_BIN_COUNT_* values also back a parameter of the module that owns
-! them; the *_DEFAULT values have no parameter and are used directly. A value only one module
-! uses stays in that module as a CM_ macro.
+! M_MAX_N_BINS, the M_MODE_BIN_COUNT_* values, M_MAX_CANDIDATE_PAIRS and M_MODE_PLATEAU_CI_OVERLAP
+! also back a parameter of the module that owns them; the *_DEFAULT values have no parameter and
+! are used directly. A value only one module uses stays in that module as a CM_ macro.
 
 ! Fixed ceiling on any histogram bin count: MAX_N_BINS of tox_data_integration_js_comp_test_binning_impl,
 ! and the extent of the bin-sized work arrays of the bin-count, search and final-run modules.
@@ -34,3 +34,19 @@
 #define M_ADAPTIVE_MAD_DISTANCE_FACTOR_DEFAULT 1.0_real64
 #define M_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT 0_int32
 #define M_ADAPTIVE_MIN_STUDY_NEIGHBORS_DEFAULT 1_int32
+
+! Ceiling on the number of parameter-search candidates: MAX_CANDIDATE_PAIRS of
+! tox_data_integration_js_comp_test_search_impl, and the extent of the candidate and trace arrays
+! of the fixed-k and adaptive parameter searches.
+#define M_MAX_CANDIDATE_PAIRS 16
+
+! `plateau_mode`'s default, MODE_PLATEAU_CI_OVERLAP of tox_data_integration_js_comp_test_search_impl:
+! the DM_DEFAULT and M_DEFAULT_VAL of both parameter searches.
+#define M_MODE_PLATEAU_CI_OVERLAP 0_int32
+
+! Defaults of the relative-effect-size plateau criterion (provisional, to be validated
+! empirically), shared by DM_DEFAULT and M_DEFAULT_VAL in both parameter searches.
+#define M_DELTA_MEDIAN_THRESHOLD_DEFAULT 0.05_real64
+#define M_DELTA_MAX_THRESHOLD_DEFAULT 0.10_real64
+#define M_DELTA_EPSILON_DEFAULT 1.0e-10_real64
+#define M_DELTA_MIN_CONSECUTIVE_TRANSITIONS_DEFAULT 2_int32

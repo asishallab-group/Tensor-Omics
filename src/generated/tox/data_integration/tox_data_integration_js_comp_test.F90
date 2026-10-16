@@ -3,17 +3,17 @@
 !| The global JS-Comp-Test of K studies, with a data-driven choice of its neighborhood parameters.
 !|
 !| Fixed-k neighborhoods (`n_points` reference points of `n_neighbors` genes each):
-!| [[tox_data_integration_js_comp_test_search_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
+!| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
 !| searches the `(n_points, n_neighbors)` candidates of
-!| [[tox_data_integration_js_comp_test_search_impl(module):generate_js_comp_test_candidates_impl(interface)]]
+!| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):generate_js_comp_test_candidates_impl(interface)]]
 !| for a bootstrap plateau, and
 !| [[tox_data_integration_js_comp_test_run_impl(module):run_js_comp_test_impl(interface)]] runs the
 !| final test (histograms, JSDs, weighting, permutation test) for the chosen pair.
 !|
 !| Adaptive neighborhoods, grown per reference point while the residual dispersion stays stable:
-!| [[tox_data_integration_js_comp_test_search_impl(module):run_js_comp_test_adaptive_parameter_search_impl(interface)]]
+!| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):run_js_comp_test_adaptive_parameter_search_impl(interface)]]
 !| searches the `(k_start, k_step, k_max)` candidates of
-!| [[tox_data_integration_js_comp_test_search_impl(module):generate_adaptive_js_comp_test_candidates_impl(interface)]],
+!| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):generate_adaptive_js_comp_test_candidates_impl(interface)]],
 !| [[tox_data_integration_preprocessing_impl(module):construct_adaptive_neighborhoods_impl(interface)]]
 !| builds the neighborhoods for the chosen knobs, and
 !| [[tox_data_integration_js_comp_test_run_impl(module):run_js_comp_test_adaptive_impl(interface)]] runs
@@ -36,12 +36,15 @@
 !| `calc_js_comp_test_candidate_bounds`, `calc_adaptive_js_comp_test_bounds` and
 !| `calc_js_comp_test_n_top_k_jsds` size the work arrays for a caller that allocates its own.
 !|
-!| The pipeline is split over three modules -- bin counts, parameter search and final run -- which
-!| this one gathers, so a caller reaches all of them through it.
+!| The pipeline is split over five modules -- bin counts, the criteria both parameter searches
+!| share, the fixed-k search, the adaptive search and the final run -- which this one gathers, so
+!| a caller reaches all of them through it.
 !|
 !| Generated from [[tox_data_integration_js_comp_test_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_js_comp_test
+    use tox_data_integration_js_comp_test_adaptive_search
     use tox_data_integration_js_comp_test_binning
+    use tox_data_integration_js_comp_test_fixed_k_search
     use tox_data_integration_js_comp_test_run
     use tox_data_integration_js_comp_test_search
 end module tox_data_integration_js_comp_test

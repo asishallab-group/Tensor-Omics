@@ -16,33 +16,35 @@ module mod_test_data_integration_js_comp_test
                                                   determine_bin_count_occupancy_expert, &
                                                   determine_bin_count_stone, determine_bin_count_stone_expert, &
                                                   determine_bin_count_occupancy_exhaustive, &
-                                                  generate_js_comp_test_candidates, &
                                                   check_mean_pmf_min_counts, check_plateau_condition, &
                                                   check_effect_size_plateau_condition, run_js_comp_test, &
                                                   run_js_comp_test_expert, &
-                                                  run_js_comp_test_parameter_search, &
-                                                  generate_adaptive_js_comp_test_candidates, &
-                                                  run_js_comp_test_adaptive, &
-                                                  run_js_comp_test_adaptive_parameter_search
+                                                  run_js_comp_test_adaptive
+    use tox_data_integration_js_comp_test_fixed_k_search, only: generate_js_comp_test_candidates, &
+                                                                run_js_comp_test_parameter_search
+    use tox_data_integration_js_comp_test_adaptive_search, only: generate_adaptive_js_comp_test_candidates, &
+                                                                 run_js_comp_test_adaptive_parameter_search
     use tox_data_integration_jsd, only: create_mean_pmf, create_mean_pmf_only
     use tox_data_integration_stats, only: bootstrap_histogram
     use tox_data_integration_preprocessing, only: check_neighborhood_overlaps, construct_adaptive_neighborhoods
     use tox_data_integration_js_comp_test_impl, only: METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, &
                                                        MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, &
                                                        MODE_PLATEAU_BOTH, &
-                                                       calc_js_comp_test_candidate_bounds, &
                                                        determine_point_bin_count, build_point_study_histogram, &
-                                                       calc_adaptive_js_comp_test_bounds, ADAPTIVE_GAMMA, &
-                                                       ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_K_STEP_FRACTION, &
-                                                       ADAPTIVE_K_MAX_FACTOR, ADAPTIVE_CANDIDATE_EVALUATED, &
-                                                       ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, ADAPTIVE_CANDIDATE_EMPTY_STUDY, &
-                                                       ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, ADAPTIVE_CANDIDATE_OVERLAP_FAILED, &
-                                                       ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED, &
                                                        group_sorted_perm_by_study, &
                                                        MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, &
                                                        MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, MODE_BIN_COUNT_STONE_POOLED, &
-                                                       MAX_N_BINS, MAX_CANDIDATE_PAIRS, &
-                                                       generate_js_comp_test_candidates_impl, prepare_gene_means_perms
+                                                       MAX_N_BINS, MAX_CANDIDATE_PAIRS, prepare_gene_means_perms
+    use tox_data_integration_js_comp_test_fixed_k_search_impl, only: calc_js_comp_test_candidate_bounds, &
+                                                                     generate_js_comp_test_candidates_impl
+    use tox_data_integration_js_comp_test_adaptive_search_impl, only: calc_adaptive_js_comp_test_bounds, ADAPTIVE_GAMMA, &
+                                                                      ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_K_STEP_FRACTION, &
+                                                                      ADAPTIVE_K_MAX_FACTOR, ADAPTIVE_CANDIDATE_EVALUATED, &
+                                                                      ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED, &
+                                                                      ADAPTIVE_CANDIDATE_EMPTY_STUDY, &
+                                                                      ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, &
+                                                                      ADAPTIVE_CANDIDATE_OVERLAP_FAILED, &
+                                                                      ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED
     use tox_data_integration_stats_impl, only: calc_js_comp_test_n_top_k_jsds
     use tox_data_integration_preprocessing_impl, only: gather_pooled_neighborhood_residuals, &
                                                        ADAPTIVE_MIN_VALID_RESIDUALS, ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_K_MAX, &

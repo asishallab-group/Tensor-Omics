@@ -209,7 +209,7 @@ contains
     !| There is no admissibility gate: a point whose bin-count search fails (`occupancy_failed`)
     !| still gets a histogram at `m_min` bins and still contributes to `global_js_divergence`. A
     !| caller that needs such neighborhoods rejected should use
-    !| [[tox_data_integration_js_comp_test_search_impl(module):run_js_comp_test_parameter_search_impl(interface)]].
+    !| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):run_js_comp_test_parameter_search_impl(interface)]].
     !|
     !| The bin-sized arrays (`pmfs`, `counts`, `mean_pmf`, `mean_pmf_counts`) have the fixed
     !| second extent [[tox_data_integration_js_comp_test_binning_impl(module):MAX_N_BINS(variable)]]

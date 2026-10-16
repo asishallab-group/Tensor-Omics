@@ -99,6 +99,77 @@
       ")"
     ]
   },
+  "tox_data_integration_js_comp_test_adaptive_search (import)": {
+    "prefix": "tox:data_integration_js_comp_test_adaptive_search.setup",
+    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Adaptive Parameter Search",
+    "body": [
+      "from tensor_omics.tox_data_integration_js_comp_test_adaptive_search import (",
+      "    ${1|generate_adaptive_js_comp_test_candidates,run_js_comp_test_adaptive_parameter_search|},",
+      ")"
+    ]
+  },
+  "generate_adaptive_js_comp_test_candidates (call)": {
+    "prefix": "tox:generate_adaptive_js_comp_test_candidates",
+    "description": "The adaptive counterpart of",
+    "body": [
+      "${1:result} = generate_adaptive_js_comp_test_candidates(",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
+      "    n_studies=${3:n_studies},",
+      ")"
+    ]
+  },
+  "run_js_comp_test_adaptive_parameter_search (call)": {
+    "prefix": "tox:run_js_comp_test_adaptive_parameter_search",
+    "description": "The adaptive-neighborhood counterpart of",
+    "body": [
+      "${1:result} = run_js_comp_test_adaptive_parameter_search(",
+      "    gene_means=${2:gene_means},",
+      "    residuals=${3:residuals},",
+      "    n_bootstraps=${4:n_bootstraps},",
+      "    join_method=${5|join_min,join_max,join_median|},",
+      "    max_n_points_candidate=${6:max_n_points_candidate},",
+      "    min_residuals_per_bin=${7:10},",
+      "    min_neighbor_overlap=${8:0.1},",
+      "    succeeding_ci_overlap=${9:0.9},",
+      "    plateau_mode=${10|plateau_ci_overlap,plateau_effect_size,plateau_both|},",
+      "    delta_median_threshold=${11:0.05},",
+      "    delta_max_threshold=${12:0.1},",
+      "    delta_epsilon=${13:1e-10},",
+      "    delta_min_consecutive_transitions=${14:2},",
+      "    m_min=${15:3},",
+      "    m_max=${16:120},",
+      "    gamma_occupancy=${17:1.25},",
+      "    lower_residual_range_quantile=${18:0.05},",
+      "    upper_residual_range_quantile=${19:0.95},",
+      "    two_sided_bootstrapping_significance_level=${20:2.5},",
+      "    random_seed=${21:42},",
+      "    tau=${22:0.1},",
+      "    mad_distance_factor=${23:1.0},",
+      "    max_pooled_residuals=${24:0},",
+      "    min_study_neighbors=${25:1},",
+      "    bin_count_mode=${26|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
+      ")"
+    ]
+  },
+  "tox_data_integration_js_comp_test_adaptive_search_impl (import)": {
+    "prefix": "tox:data_integration_js_comp_test_adaptive_search_impl.setup",
+    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Adaptive Parameter Search",
+    "body": [
+      "from tensor_omics.tox_data_integration_js_comp_test_adaptive_search_impl import (",
+      "    ${1|calc_adaptive_js_comp_test_bounds|},",
+      ")"
+    ]
+  },
+  "calc_adaptive_js_comp_test_bounds (call)": {
+    "prefix": "tox:calc_adaptive_js_comp_test_bounds",
+    "description": "Sizes the per-point work arrays of the adaptive parameter search over the candidates of",
+    "body": [
+      "${1:result} = calc_adaptive_js_comp_test_bounds(",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
+      "    n_studies=${3:n_studies},",
+      ")"
+    ]
+  },
   "tox_data_integration_js_comp_test_binning (import)": {
     "prefix": "tox:data_integration_js_comp_test_binning.setup",
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Bin Counts",
@@ -238,6 +309,72 @@
       ")"
     ]
   },
+  "tox_data_integration_js_comp_test_fixed_k_search (import)": {
+    "prefix": "tox:data_integration_js_comp_test_fixed_k_search.setup",
+    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Fixed-k Parameter Search",
+    "body": [
+      "from tensor_omics.tox_data_integration_js_comp_test_fixed_k_search import (",
+      "    ${1|generate_js_comp_test_candidates,run_js_comp_test_parameter_search|},",
+      ")"
+    ]
+  },
+  "generate_js_comp_test_candidates (call)": {
+    "prefix": "tox:generate_js_comp_test_candidates",
+    "description": "Starting from `n_points_high = clamp(ceiling(4*sqrt(G)), MIN_POINTS, MAX_POINTS)` (`G` =",
+    "body": [
+      "${1:result} = generate_js_comp_test_candidates(",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
+      ")"
+    ]
+  },
+  "run_js_comp_test_parameter_search (call)": {
+    "prefix": "tox:run_js_comp_test_parameter_search",
+    "description": "Walks the candidates of",
+    "body": [
+      "${1:result} = run_js_comp_test_parameter_search(",
+      "    gene_means=${2:gene_means},",
+      "    residuals=${3:residuals},",
+      "    n_bootstraps=${4:n_bootstraps},",
+      "    join_method=${5|join_min,join_max,join_median|},",
+      "    max_n_points_candidate=${6:max_n_points_candidate},",
+      "    max_n_neighbors_candidate=${7:max_n_neighbors_candidate},",
+      "    min_residuals_per_bin=${8:10},",
+      "    min_neighbor_overlap=${9:0.1},",
+      "    succeeding_ci_overlap=${10:0.9},",
+      "    plateau_mode=${11|plateau_ci_overlap,plateau_effect_size,plateau_both|},",
+      "    delta_median_threshold=${12:0.05},",
+      "    delta_max_threshold=${13:0.1},",
+      "    delta_epsilon=${14:1e-10},",
+      "    delta_min_consecutive_transitions=${15:2},",
+      "    m_min=${16:3},",
+      "    m_max=${17:120},",
+      "    gamma_occupancy=${18:1.25},",
+      "    lower_residual_range_quantile=${19:0.05},",
+      "    upper_residual_range_quantile=${20:0.95},",
+      "    two_sided_bootstrapping_significance_level=${21:2.5},",
+      "    random_seed=${22:42},",
+      "    bin_count_mode=${23|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
+      ")"
+    ]
+  },
+  "tox_data_integration_js_comp_test_fixed_k_search_impl (import)": {
+    "prefix": "tox:data_integration_js_comp_test_fixed_k_search_impl.setup",
+    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Fixed-k Parameter Search",
+    "body": [
+      "from tensor_omics.tox_data_integration_js_comp_test_fixed_k_search_impl import (",
+      "    ${1|calc_js_comp_test_candidate_bounds|},",
+      ")"
+    ]
+  },
+  "calc_js_comp_test_candidate_bounds (call)": {
+    "prefix": "tox:calc_js_comp_test_candidate_bounds",
+    "description": "For the candidate grid of",
+    "body": [
+      "${1:result} = calc_js_comp_test_candidate_bounds(",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
+      ")"
+    ]
+  },
   "tox_data_integration_js_comp_test_run (import)": {
     "prefix": "tox:data_integration_js_comp_test_run.setup",
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Final Run",
@@ -312,29 +449,10 @@
   },
   "tox_data_integration_js_comp_test_search (import)": {
     "prefix": "tox:data_integration_js_comp_test_search.setup",
-    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter Search",
+    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter-Search Criteria",
     "body": [
       "from tensor_omics.tox_data_integration_js_comp_test_search import (",
-      "    ${1|generate_js_comp_test_candidates,generate_adaptive_js_comp_test_candidates,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,run_js_comp_test_parameter_search,run_js_comp_test_adaptive_parameter_search|},",
-      ")"
-    ]
-  },
-  "generate_js_comp_test_candidates (call)": {
-    "prefix": "tox:generate_js_comp_test_candidates",
-    "description": "Starting from `n_points_high = clamp(ceiling(4*sqrt(G)), MIN_POINTS, MAX_POINTS)` (`G` =",
-    "body": [
-      "${1:result} = generate_js_comp_test_candidates(",
-      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
-      ")"
-    ]
-  },
-  "generate_adaptive_js_comp_test_candidates (call)": {
-    "prefix": "tox:generate_adaptive_js_comp_test_candidates",
-    "description": "The adaptive counterpart of",
-    "body": [
-      "${1:result} = generate_adaptive_js_comp_test_candidates(",
-      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
-      "    n_studies=${3:n_studies},",
+      "    ${1|check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition|},",
       ")"
     ]
   },
@@ -377,97 +495,6 @@
       "    delta_epsilon=${7:delta_epsilon},",
       "    delta_min_consecutive_transitions=${8:delta_min_consecutive_transitions},",
       "    n_consecutive_ok=${9:n_consecutive_ok},",
-      ")"
-    ]
-  },
-  "run_js_comp_test_parameter_search (call)": {
-    "prefix": "tox:run_js_comp_test_parameter_search",
-    "description": "Walks the candidates of",
-    "body": [
-      "${1:result} = run_js_comp_test_parameter_search(",
-      "    gene_means=${2:gene_means},",
-      "    residuals=${3:residuals},",
-      "    n_bootstraps=${4:n_bootstraps},",
-      "    join_method=${5|join_min,join_max,join_median|},",
-      "    max_n_points_candidate=${6:max_n_points_candidate},",
-      "    max_n_neighbors_candidate=${7:max_n_neighbors_candidate},",
-      "    min_residuals_per_bin=${8:10},",
-      "    min_neighbor_overlap=${9:0.1},",
-      "    succeeding_ci_overlap=${10:0.9},",
-      "    plateau_mode=${11|plateau_ci_overlap,plateau_effect_size,plateau_both|},",
-      "    delta_median_threshold=${12:0.05},",
-      "    delta_max_threshold=${13:0.1},",
-      "    delta_epsilon=${14:1e-10},",
-      "    delta_min_consecutive_transitions=${15:2},",
-      "    m_min=${16:3},",
-      "    m_max=${17:120},",
-      "    gamma_occupancy=${18:1.25},",
-      "    lower_residual_range_quantile=${19:0.05},",
-      "    upper_residual_range_quantile=${20:0.95},",
-      "    two_sided_bootstrapping_significance_level=${21:2.5},",
-      "    random_seed=${22:42},",
-      "    bin_count_mode=${23|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
-      ")"
-    ]
-  },
-  "run_js_comp_test_adaptive_parameter_search (call)": {
-    "prefix": "tox:run_js_comp_test_adaptive_parameter_search",
-    "description": "The adaptive-neighborhood counterpart of",
-    "body": [
-      "${1:result} = run_js_comp_test_adaptive_parameter_search(",
-      "    gene_means=${2:gene_means},",
-      "    residuals=${3:residuals},",
-      "    n_bootstraps=${4:n_bootstraps},",
-      "    join_method=${5|join_min,join_max,join_median|},",
-      "    max_n_points_candidate=${6:max_n_points_candidate},",
-      "    min_residuals_per_bin=${7:10},",
-      "    min_neighbor_overlap=${8:0.1},",
-      "    succeeding_ci_overlap=${9:0.9},",
-      "    plateau_mode=${10|plateau_ci_overlap,plateau_effect_size,plateau_both|},",
-      "    delta_median_threshold=${11:0.05},",
-      "    delta_max_threshold=${12:0.1},",
-      "    delta_epsilon=${13:1e-10},",
-      "    delta_min_consecutive_transitions=${14:2},",
-      "    m_min=${15:3},",
-      "    m_max=${16:120},",
-      "    gamma_occupancy=${17:1.25},",
-      "    lower_residual_range_quantile=${18:0.05},",
-      "    upper_residual_range_quantile=${19:0.95},",
-      "    two_sided_bootstrapping_significance_level=${20:2.5},",
-      "    random_seed=${21:42},",
-      "    tau=${22:0.1},",
-      "    mad_distance_factor=${23:1.0},",
-      "    max_pooled_residuals=${24:0},",
-      "    min_study_neighbors=${25:1},",
-      "    bin_count_mode=${26|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
-      ")"
-    ]
-  },
-  "tox_data_integration_js_comp_test_search_impl (import)": {
-    "prefix": "tox:data_integration_js_comp_test_search_impl.setup",
-    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter Search",
-    "body": [
-      "from tensor_omics.tox_data_integration_js_comp_test_search_impl import (",
-      "    ${1|calc_js_comp_test_candidate_bounds,calc_adaptive_js_comp_test_bounds|},",
-      ")"
-    ]
-  },
-  "calc_js_comp_test_candidate_bounds (call)": {
-    "prefix": "tox:calc_js_comp_test_candidate_bounds",
-    "description": "For the candidate grid of",
-    "body": [
-      "${1:result} = calc_js_comp_test_candidate_bounds(",
-      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
-      ")"
-    ]
-  },
-  "calc_adaptive_js_comp_test_bounds (call)": {
-    "prefix": "tox:calc_adaptive_js_comp_test_bounds",
-    "description": "Sizes the per-point work arrays of the adaptive parameter search over the candidates of",
-    "body": [
-      "${1:result} = calc_adaptive_js_comp_test_bounds(",
-      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
-      "    n_studies=${3:n_studies},",
       ")"
     ]
   },
