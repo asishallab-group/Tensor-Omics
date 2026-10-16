@@ -2,13 +2,10 @@
 
 #' Recommend upper bounds for the js-comp-test candidate-grid work arrays
 #'
-#' Closed-form from the GAMMA-decay candidate-grid formula
-#' \code{\link{generate_js_comp_test_candidates}}
-#' uses: `max_n_points_candidate` is exactly the grid's first (largest) `n_points` candidate.
-#' `max_n_neighbors_candidate` is a safe, not necessarily tight, upper bound on the grid's
-#' largest `n_neighbors` candidate -- reached with the smallest `KX_FACTORS` entry at the
-#' smallest `n_points_high` the grid loop ever uses, which by construction never drops below
-#' `n_points_low`.
+#' For the candidate grid of
+#' \code{\link{generate_js_comp_test_candidates}}:
+#' `max_n_points_candidate` is exactly its largest `n_points` candidate, and
+#' `max_n_neighbors_candidate` a safe (not necessarily tight) bound on its largest `n_neighbors`.
 #'
 #' Rejects a non-positive `max_n_genes_all_studies` with invalid input; both outputs are then
 #' left undefined.
@@ -36,30 +33,20 @@ calc_js_comp_test_candidate_bounds <- function(max_n_genes_all_studies) {
 
 #' Recommend a reference-point capacity for the adaptive js-comp-test candidate sequence
 #'
-#' Sizes the per-point work arrays of the adaptive (Issue #217) parameter search, whose
-#' candidates come from
+#' Sizes the per-point work arrays of the adaptive parameter search over the candidates of
 #' \code{\link{generate_adaptive_js_comp_test_candidates}}.
-#' An adaptive candidate's reference-point count is not known before its neighborhoods are
-#' grown, so this is a **practical capacity, not a proven bound**:
-#' `max_n_points_candidate = min(N, ceiling(2 * N / k_start_last) + 1)`, with the safety factor
-#' 2 being \code{ADAPTIVE_POINT_CAPACITY_FACTOR},
-#' `N = max_n_genes_all_studies * n_studies` the padded pool size and `k_start_last` the
-#' smallest `k_start` the candidate sequence contains (the candidate expected to emerge with
-#' the most reference points). The only provable bound is `N` itself, because every new
-#' reference point's seed strictly advances through the pool; sizing every per-point array by
-#' `N` would be prohibitive, so a candidate that emerges with more points than this capacity is
-#' rejected by the adaptive search with a capacity status rather than stored.
+#' A candidate's reference-point count is only known after its neighborhoods are grown, so this
+#' is a **practical capacity, not a proven bound**:
+#' `max_n_points_candidate = min(N, ceiling(2 * N / k_start_last) + 1)`, with the factor 2 being
+#' \code{ADAPTIVE_POINT_CAPACITY_FACTOR},
+#' `N = max_n_genes_all_studies * n_studies` the padded pool size and `k_start_last` the smallest
+#' candidate `k_start`. The search rejects a candidate that exceeds it with a capacity status.
 #'
-#' Computed in 64-bit integer / double precision throughout, so `N` itself never overflows.
-#' Enforces the candidate generator's representability bound, which the generator itself
-#' cannot check: the first candidate's `k_start_1 = max(10, 2*n_studies, ceiling(0.02 * N))`
-#' must not exceed `huge(1)/4 = 536870911`, so that its `k_max = 4*k_start_1` fits a
-#' 32-bit integer; otherwise this routine reports invalid input. The bound is joint in both
-#' arguments, so the error names neither.
-#'
-#' Rejects a `max_n_genes_all_studies` or `n_studies` below 1, or a pair beyond that
-#' representability bound, with invalid input; the output is then left undefined. A pair is
-#' also invalid when `max_n_genes_all_studies * n_studies` does not fit in a 32-bit integer.
+#' Rejects, with invalid input naming neither argument when the bound is joint, a
+#' `max_n_genes_all_studies` or `n_studies` below 1, a product `N` beyond the 32-bit range, or a
+#' first candidate `k_start_1 = max(10, 2*n_studies, ceiling(0.02 * N))` above
+#' `huge(1)/4 = 536870911` (so that its `k_max = 4*k_start_1` fits); the output is then
+#' left undefined.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_impl::calc_adaptive_js_comp_test_bounds}, whose argument names
 #' are the ones an error message reports.
@@ -83,35 +70,26 @@ calc_adaptive_js_comp_test_bounds <- function(max_n_genes_all_studies, n_studies
 
 #' Pool one reference point's residuals across every neighbor and every study
 #'
-#' Given one reference point's own per-study neighbor gene indices (one column of a larger
-#' `neighborhood_indices_all_studies(n_neighbors, n_points, n_studies)`, as produced by
-#' \code{\link{construct_neighborhoods_ranged}}),
-#' gathers that point's residual values from every neighbor gene, across every study, into one
-#' flat pooled array. This is the exact same pooling
+#' Gathers one reference point's residuals from every neighbor gene of every study into one flat
+#' array, given that point's per-study neighbor gene indices (one column of the
+#' `neighborhood_indices_all_studies(n_neighbors, n_points, n_studies)` of
+#' \code{\link{construct_neighborhoods_ranged}}).
+#' Study `s` fills pool block `(s - 1)*max_n_reps_all_studies*n_neighbors + 1` to
+#' `s*max_n_reps_all_studies*n_neighbors`. This is the pooling
 #' \code{\link{run_js_comp_test}} and
 #' \code{\link{run_js_comp_test_parameter_search}}
-#' perform internally, per reference point, before handing the result to the bin-count search
-#' their `bin_count_mode` names (by default
-#' \code{\link{determine_bin_count_occupancy}}'s
-#' own occupancy search; in the Stone modes, study `s` is pool block
-#' `(s - 1)*max_n_reps_all_studies*n_neighbors + 1` to `s*max_n_reps_all_studies*n_neighbors`)
-#' -- published so a caller can reconstruct that exact same input directly
-#' on real data and feed it to
+#' feed to the bin-count search, so a caller can pass the same input to
 #' \code{\link{determine_bin_count_occupancy_exhaustive}}
-#' (or to `determine_bin_count_occupancy` itself), to check whether the fast search and the
-#' exhaustive reference ever actually disagree in practice, not just on a synthetic fixture.
+#' on real data.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_impl::gather_pooled_neighborhood_residuals}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param residuals a numeric array of rank 3. Matrix of signed residuals per study, NaN explicitly allowed for missing values;
-#'   unvalidated on this export path, so any value passes through as-is
-#' @param neighborhood_indices_point a integer matrix. Gene indices of one reference point's neighborhood, per study -- one column of a
-#'   larger neighborhood_indices_all_studies(n_neighbors, n_points, n_studies), as sliced
-#'   by the caller
-#' @return a numeric vector. The pooled residual values for this reference point, across every neighbor and every
-#'   study, laid out exactly as a (max_n_reps_all_studies, n_neighbors, n_studies) array
-#'   would be
+#' @param residuals a numeric array of rank 3. Matrix of signed residuals per study, NaN allowed for missing values; not validated
+#' @param neighborhood_indices_point a integer matrix. Gene indices of one reference point's neighborhood, per study; each in
+#'   [1, max_n_genes_all_studies]
+#' @return a numeric vector. This reference point's pooled residuals, laid out as a
+#'   (max_n_reps_all_studies, n_neighbors, n_studies) array
 #' @export
 gather_pooled_neighborhood_residuals <- function(residuals, neighborhood_indices_point) {
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
@@ -129,12 +107,10 @@ gather_pooled_neighborhood_residuals <- function(residuals, neighborhood_indices
 
 #' Recommend the bootstrap top-/bottom-k heap size for a two-sided confidence interval
 #'
-#' Ported from 125-stabilize-jscomp's inline `n_bootstrapping_top_k_jsds` computation in
-#' `determine_js_comp_test_n_points_n_neighbors_alloc`: sizes the top-k/bottom-k heaps
+#' Sizes the top-k/bottom-k heaps
 #' \code{\link{bootstrap_histogram}} uses
-#' to track a two-sided bootstrap confidence interval's endpoints. E.g. for a 95% two-sided
-#' interval (2.5% reserved at each end, the default) with `n_bootstraps=1000`,
-#' `n_top_k = max(1, floor(0.025*1000)) = 25`.
+#' for the interval's endpoints: `n_top_k = max(1, floor(level/100 * n_bootstraps))`, e.g. 25 for
+#' the default 2.5 and `n_bootstraps=1000`.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_impl::calc_js_comp_test_n_top_k_jsds}, whose argument names
 #' are the ones an error message reports.

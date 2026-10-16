@@ -2,79 +2,47 @@
 
 #' Estimate how likely each study's observed weighted global JSD is to occur by chance
 #'
-#' Ported from 125-stabilize-jscomp's `gjct_permutation_test_helper`, generalized from its
-#' hardcoded 2-study shuffle to a K-study GSL `random_multiv_hypergeom` resample from the
-#' pooled `mean_pmf_counts` (without replacement, per reference point, per study). Impure:
-#' draws random numbers, so it carries `ierr` for the genuine runtime failure a validated
-#' caller cannot foresee -- `create_rng` failing to allocate the GSL generator -- folded in as
-#' `ERR_ALLOC_FAIL` -- and for inconsistent inputs (see below); a later `random_multiv_hypergeom` failure (which validated,
-#' internally-consistent inputs should never trigger) is likewise folded in, first failure
-#' only, without stopping the resampling already in flight, matching
-#' \code{\link{bootstrap_histogram}}'s own
-#' precedent.
+#' In every permutation, each reference point's pooled consensus counts (`mean_pmf_counts`) are
+#' drawn without replacement (multivariate hypergeometric) into the studies, each study taking
+#' as many residuals as it observed (`included_n_reps`). The permuted pmfs, their equal-weight
+#' consensus (built exactly as
+#' \code{\link{create_mean_pmf}} builds the
+#' observed one) and each study's weighted global JSD against that consensus are recomputed, and
+#' compared with the observed `global_jsd_observed`. `p_values_observed_consensus` comes from the
+#' same draws, taking each permuted study's JSD against the fixed observed `mean_pmf` instead.
 #'
-#' Inconsistent inputs are rejected before any draw. At every reference point, the studies'
-#' counts (`included_n_reps`) must add up to the pool's total (`mean_pmf_included_n_reps`), and
-#' that total must equal the sum of the pool's bin counts (`mean_pmf_counts`), as
-#' \code{\link{create_mean_pmf}} produces
-#' them: a permutation splits the pool exactly between the studies. Otherwise the call fails
-#' with `ERR_INVALID_INPUT`, not tied to any one argument, and no permutation runs. No p-values
-#' are computed then (a Fortran caller gets them as NaN).
+#' Both p-values are `(count + 1)/(n_permutations + 1)`, so never exactly 0. With
+#' `n_permutations = 0` no permutation runs and both are NaN ("not computed").
 #'
-#' The consensus pmf is recomputed from the permuted pmfs in every permutation, as the
-#' equal-weight mean of all studies' pmfs, exactly as
-#' \code{\link{create_mean_pmf}} builds
-#' the observed one. So each permuted study's JSD is taken against the consensus of the
-#' permuted studies, and the null statistic is computed exactly like the observed one. This is
-#' required because the equal-weight mixture is not invariant under the permutation when the
-#' studies differ in size: the permuted studies follow the pooled, replicate-weighted
-#' distribution, whose equal-weight mean moves with every draw, so a fixed observed consensus
-#' would shift the whole null distribution.
-#'
-#' A second p-value, `p_values_observed_consensus`, is computed from the same permutations (no
-#' further random draws) with the null this test used before: each permuted study's JSD
-#' against the fixed observed consensus `mean_pmf`. It is kept to compare the two nulls on data
-#' with known batch effects; `p_values` stays the primary result.
-#'
-#' Both p-values apply the `(1+count)/(n+1)` Laplace add-one correction --
-#' `p_values(i) = anint(count(i)+1)/(n_permutations+1)` -- so a study whose observed JSD is
-#' never reached by any permutation gets `p = 1/(n_permutations+1)`, never `p = 0.0` exactly.
-#' With `n_permutations = 0` there is nothing to test: no permutation runs, and both p-values
-#' are NaN ("not computed"), not `0.0`.
+#' Errors (`ierr`): `ERR_INVALID_INPUT`, before any draw, when at some reference point the
+#' studies' counts do not add up to the pool's total (`mean_pmf_included_n_reps`) or that total
+#' is not the sum of the pool's bin counts; `ERR_ALLOC_FAIL` when the random number generator
+#' cannot be created. The p-values are then NaN. A failed draw later on is recorded (first
+#' failure only) without stopping the remaining permutations.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_stats::gjct_permutation_test}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param n_permutations a integer scalar. Number of permutations to perform. `0` skips the test: no permutation runs, and
-#'   `p_values` and `p_values_observed_consensus` are then NaN ("not computed")
+#' @param n_permutations a integer scalar. Number of permutations; `0` skips the test (both p-value outputs are then NaN)
 #'   The minimum valid value is `0`.
-#' @param mean_pmf_counts a integer matrix. Absolute counts of a residual per bin for the consensus pmf -- the pool each
-#'   permutation resamples from without replacement, per reference point
+#' @param mean_pmf_counts a integer matrix. Pooled residual counts per bin of the consensus pmf: the pool each permutation draws from
 #'   The minimum valid value is `0`.
-#' @param mean_pmf a numeric matrix. The consensus pmf built from all studies' pmfs; each permuted study is compared
-#'   against it for `p_values_observed_consensus` only
+#' @param mean_pmf a numeric matrix. Observed consensus pmf; used only for `p_values_observed_consensus`
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #' @param mean_pmf_included_n_reps a integer vector. Count of non-NaN replicates (included ones) per reference point for the consensus pmf
 #'   The minimum valid value is `0`.
-#' @param included_n_reps a integer matrix. Count of non-NaN replicates (included ones) per reference point, per study -- how
-#'   many elements are drawn (without replacement) from the pooled pool per study. Every
-#'   study needs at least one at every reference point
+#' @param included_n_reps a integer matrix. Count of non-NaN replicates per reference point, per study: the size of each study's
+#'   draw. Every study needs at least one at every reference point
 #'   The minimum valid value is `1`.
 #' @param global_jsd_observed a numeric vector. Observed weighted global JSD of each study against the consensus pmf
 #' @param random_seed a integer scalar. Seed for the GSL random number generator
 #'   The default value is `42`.
 #' @return a named list with elements:
-#'   \item{p_values}{a numeric vector. Empirical p-value per study: the Laplace-corrected fraction of permutations whose
-#'     resampled global JSD reached or exceeded the observed value -- see the correction
-#'     note above. NaN when `n_permutations` is 0: no permutation was run, so no p-value
-#'     was computed}
-#'   \item{p_values_observed_consensus}{a numeric vector. Empirical p-value per study from the same permutations as `p_values`, but with each
-#'     permuted study's JSD taken against the fixed observed consensus `mean_pmf` instead of
-#'     the consensus of the permuted studies -- the null this test used before it recomputed
-#'     the consensus per permutation. Kept for comparison only; `p_values` is the primary
-#'     result. The same Laplace correction applies. NaN when `n_permutations` is 0: no
-#'     permutation was run, so no p-value was computed}
+#'   \item{p_values}{a numeric vector. Empirical p-value per study, `(count + 1)/(n_permutations + 1)` over the permutations
+#'     whose global JSD reached the observed one; NaN when `n_permutations` is 0}
+#'   \item{p_values_observed_consensus}{a numeric vector. Like `p_values`, from the same permutations, but against the fixed observed consensus
+#'     `mean_pmf`; kept for comparison only. NaN when `n_permutations` is 0}
 #' @export
 gjct_permutation_test <- function(n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, random_seed = 42L) {
     n_permutations <- .tox_as_integer_scalar(n_permutations, "n_permutations")

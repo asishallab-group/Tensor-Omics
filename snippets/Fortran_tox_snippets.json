@@ -281,7 +281,7 @@
   },
   "estimate_bin_count (call)": {
     "prefix": "tox:estimate_bin_count",
-    "description": "Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Computes Sturges' rule and",
+    "description": "Sturges' rule and the Freedman-Diaconis rule for a histogram over `[-R, R]`",
     "body": [
       "call estimate_bin_count( &",
       "    residuals=${1:residuals}, &",
@@ -297,7 +297,7 @@
   },
   "estimate_bin_count (call, checked)": {
     "prefix": "tox:estimate_bin_count.checked",
-    "description": "Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Computes Sturges' rule and (with error check)",
+    "description": "Sturges' rule and the Freedman-Diaconis rule for a histogram over `[-R, R]` (with error check)",
     "body": [
       "call estimate_bin_count( &",
       "    residuals=${1:residuals}, &",
@@ -314,7 +314,7 @@
   },
   "estimate_bin_count_expert (call)": {
     "prefix": "tox:estimate_bin_count_expert",
-    "description": "Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Computes Sturges' rule and",
+    "description": "Sturges' rule and the Freedman-Diaconis rule for a histogram over `[-R, R]`",
     "body": [
       "call estimate_bin_count_expert( &",
       "    residuals=${1:residuals}, &",
@@ -331,7 +331,7 @@
   },
   "estimate_bin_count_expert (call, checked)": {
     "prefix": "tox:estimate_bin_count_expert.checked",
-    "description": "Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Computes Sturges' rule and (with error check)",
+    "description": "Sturges' rule and the Freedman-Diaconis rule for a histogram over `[-R, R]` (with error check)",
     "body": [
       "call estimate_bin_count_expert( &",
       "    residuals=${1:residuals}, &",
@@ -349,7 +349,7 @@
   },
   "determine_bin_count_occupancy (call)": {
     "prefix": "tox:determine_bin_count_occupancy",
-    "description": "Implements Issue #187's two-stage geometric-search-then-local-refinement algorithm for one",
+    "description": "For one neighborhood's pooled residuals (all its neighbors, all studies), finds the largest",
     "body": [
       "call determine_bin_count_occupancy( &",
       "    pooled_residuals=${1:pooled_residuals}, &",
@@ -377,7 +377,7 @@
   },
   "determine_bin_count_occupancy (call, checked)": {
     "prefix": "tox:determine_bin_count_occupancy.checked",
-    "description": "Implements Issue #187's two-stage geometric-search-then-local-refinement algorithm for one (with error check)",
+    "description": "For one neighborhood's pooled residuals (all its neighbors, all studies), finds the largest (with error check)",
     "body": [
       "call determine_bin_count_occupancy( &",
       "    pooled_residuals=${1:pooled_residuals}, &",
@@ -406,7 +406,7 @@
   },
   "determine_bin_count_occupancy_expert (call)": {
     "prefix": "tox:determine_bin_count_occupancy_expert",
-    "description": "Implements Issue #187's two-stage geometric-search-then-local-refinement algorithm for one",
+    "description": "For one neighborhood's pooled residuals (all its neighbors, all studies), finds the largest",
     "body": [
       "call determine_bin_count_occupancy_expert( &",
       "    pooled_residuals=${1:pooled_residuals}, &",
@@ -436,7 +436,7 @@
   },
   "determine_bin_count_occupancy_expert (call, checked)": {
     "prefix": "tox:determine_bin_count_occupancy_expert.checked",
-    "description": "Implements Issue #187's two-stage geometric-search-then-local-refinement algorithm for one (with error check)",
+    "description": "For one neighborhood's pooled residuals (all its neighbors, all studies), finds the largest (with error check)",
     "body": [
       "call determine_bin_count_occupancy_expert( &",
       "    pooled_residuals=${1:pooled_residuals}, &",
@@ -467,7 +467,7 @@
   },
   "determine_bin_count_occupancy_exhaustive (call)": {
     "prefix": "tox:determine_bin_count_occupancy_exhaustive",
-    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest",
+    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` and keeps the largest one whose",
     "body": [
       "call determine_bin_count_occupancy_exhaustive( &",
       "    pooled_residuals=${1:pooled_residuals}, &",
@@ -488,7 +488,7 @@
   },
   "determine_bin_count_occupancy_exhaustive (call, checked)": {
     "prefix": "tox:determine_bin_count_occupancy_exhaustive.checked",
-    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest (with error check)",
+    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` and keeps the largest one whose (with error check)",
     "body": [
       "call determine_bin_count_occupancy_exhaustive( &",
       "    pooled_residuals=${1:pooled_residuals}, &",
@@ -510,7 +510,7 @@
   },
   "determine_bin_count_occupancy_exhaustive_expert (call)": {
     "prefix": "tox:determine_bin_count_occupancy_exhaustive_expert",
-    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest",
+    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` and keeps the largest one whose",
     "body": [
       "call determine_bin_count_occupancy_exhaustive_expert( &",
       "    pooled_residuals=${1:pooled_residuals}, &",
@@ -532,7 +532,7 @@
   },
   "determine_bin_count_occupancy_exhaustive_expert (call, checked)": {
     "prefix": "tox:determine_bin_count_occupancy_exhaustive_expert.checked",
-    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` independently and keeps the largest (with error check)",
+    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` and keeps the largest one whose (with error check)",
     "body": [
       "call determine_bin_count_occupancy_exhaustive_expert( &",
       "    pooled_residuals=${1:pooled_residuals}, &",
@@ -685,7 +685,7 @@
   },
   "generate_js_comp_test_candidates (call)": {
     "prefix": "tox:generate_js_comp_test_candidates",
-    "description": "Ported from the grid-building half of 125-stabilize-jscomp's",
+    "description": "Starting from `n_points_high = clamp(ceiling(4*sqrt(G)), MIN_POINTS, MAX_POINTS)` (`G` =",
     "body": [
       "call generate_js_comp_test_candidates( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
@@ -696,7 +696,7 @@
   },
   "generate_js_comp_test_candidates (call, checked)": {
     "prefix": "tox:generate_js_comp_test_candidates.checked",
-    "description": "Ported from the grid-building half of 125-stabilize-jscomp's (with error check)",
+    "description": "Starting from `n_points_high = clamp(ceiling(4*sqrt(G)), MIN_POINTS, MAX_POINTS)` (`G` = (with error check)",
     "body": [
       "call generate_js_comp_test_candidates( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
@@ -708,7 +708,7 @@
   },
   "generate_adaptive_js_comp_test_candidates (call)": {
     "prefix": "tox:generate_adaptive_js_comp_test_candidates",
-    "description": "The adaptive-neighborhood counterpart (Issue #217) of",
+    "description": "The adaptive counterpart of",
     "body": [
       "call generate_adaptive_js_comp_test_candidates( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
@@ -720,7 +720,7 @@
   },
   "generate_adaptive_js_comp_test_candidates (call, checked)": {
     "prefix": "tox:generate_adaptive_js_comp_test_candidates.checked",
-    "description": "The adaptive-neighborhood counterpart (Issue #217) of (with error check)",
+    "description": "The adaptive counterpart of (with error check)",
     "body": [
       "call generate_adaptive_js_comp_test_candidates( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
@@ -733,7 +733,7 @@
   },
   "construct_adaptive_neighborhoods (call)": {
     "prefix": "tox:construct_adaptive_neighborhoods",
-    "description": "The heteroscedastic neighborhood construction of Issue #217, after Aaron Schroeder's",
+    "description": "Instead of one fixed neighbor count, each neighborhood grows while the mean absolute residual",
     "body": [
       "call construct_adaptive_neighborhoods( &",
       "    n_studies=${1:n_studies}, &",
@@ -762,7 +762,7 @@
   },
   "construct_adaptive_neighborhoods (call, checked)": {
     "prefix": "tox:construct_adaptive_neighborhoods.checked",
-    "description": "The heteroscedastic neighborhood construction of Issue #217, after Aaron Schroeder's (with error check)",
+    "description": "Instead of one fixed neighbor count, each neighborhood grows while the mean absolute residual (with error check)",
     "body": [
       "call construct_adaptive_neighborhoods( &",
       "    n_studies=${1:n_studies}, &",
@@ -792,7 +792,7 @@
   },
   "check_neighborhood_overlaps (call)": {
     "prefix": "tox:check_neighborhood_overlaps",
-    "description": "Ported from 125-stabilize-jscomp's `test_neighborhood_overlaps_helper`: the first",
+    "description": "The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`",
     "body": [
       "call check_neighborhood_overlaps( &",
       "    neighborhood_range=${1:neighborhood_range}, &",
@@ -804,7 +804,7 @@
   },
   "check_neighborhood_overlaps (call, checked)": {
     "prefix": "tox:check_neighborhood_overlaps.checked",
-    "description": "Ported from 125-stabilize-jscomp's `test_neighborhood_overlaps_helper`: the first (with error check)",
+    "description": "The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]` (with error check)",
     "body": [
       "call check_neighborhood_overlaps( &",
       "    neighborhood_range=${1:neighborhood_range}, &",
@@ -817,7 +817,7 @@
   },
   "check_mean_pmf_min_counts (call)": {
     "prefix": "tox:check_mean_pmf_min_counts",
-    "description": "Ported from 125-stabilize-jscomp's `test_mean_pmf_min_counts_helper`: the second",
+    "description": "The second admissibility gate of a parameter-search candidate, checked after",
     "body": [
       "call check_mean_pmf_min_counts( &",
       "    mean_pmf_counts=${1:mean_pmf_counts}, &",
@@ -831,7 +831,7 @@
   },
   "check_mean_pmf_min_counts (call, checked)": {
     "prefix": "tox:check_mean_pmf_min_counts.checked",
-    "description": "Ported from 125-stabilize-jscomp's `test_mean_pmf_min_counts_helper`: the second (with error check)",
+    "description": "The second admissibility gate of a parameter-search candidate, checked after (with error check)",
     "body": [
       "call check_mean_pmf_min_counts( &",
       "    mean_pmf_counts=${1:mean_pmf_counts}, &",
@@ -846,7 +846,7 @@
   },
   "check_plateau_condition (call)": {
     "prefix": "tox:check_plateau_condition",
-    "description": "Ported from 125-stabilize-jscomp's `check_plateau_condition_helper`. A search over",
+    "description": "For each study, the overlap of the new candidate's interval with the best one so far is",
     "body": [
       "call check_plateau_condition( &",
       "    confidence_interval=${1:confidence_interval}, &",
@@ -864,7 +864,7 @@
   },
   "check_plateau_condition (call, checked)": {
     "prefix": "tox:check_plateau_condition.checked",
-    "description": "Ported from 125-stabilize-jscomp's `check_plateau_condition_helper`. A search over (with error check)",
+    "description": "For each study, the overlap of the new candidate's interval with the best one so far is (with error check)",
     "body": [
       "call check_plateau_condition( &",
       "    confidence_interval=${1:confidence_interval}, &",
@@ -883,7 +883,7 @@
   },
   "check_effect_size_plateau_condition (call)": {
     "prefix": "tox:check_effect_size_plateau_condition",
-    "description": "Implements Issue #178's relative-effect-size plateau criterion, complementary to",
+    "description": "The relative-effect-size alternative to",
     "body": [
       "call check_effect_size_plateau_condition( &",
       "    global_js_divergence=${1:global_js_divergence}, &",
@@ -904,7 +904,7 @@
   },
   "check_effect_size_plateau_condition (call, checked)": {
     "prefix": "tox:check_effect_size_plateau_condition.checked",
-    "description": "Implements Issue #178's relative-effect-size plateau criterion, complementary to (with error check)",
+    "description": "The relative-effect-size alternative to (with error check)",
     "body": [
       "call check_effect_size_plateau_condition( &",
       "    global_js_divergence=${1:global_js_divergence}, &",
@@ -926,7 +926,7 @@
   },
   "create_mean_pmf (call)": {
     "prefix": "tox:create_mean_pmf",
-    "description": "Ported verbatim from 125-stabilize-jscomp's `create_mean_pmf_helper`.",
+    "description": "`mean_pmf` is the equal-weight mean of all studies' pmfs, `mean_pmf_counts` and",
     "body": [
       "call create_mean_pmf( &",
       "    pmfs=${1:pmfs}, &",
@@ -943,7 +943,7 @@
   },
   "create_mean_pmf (call, checked)": {
     "prefix": "tox:create_mean_pmf.checked",
-    "description": "Ported verbatim from 125-stabilize-jscomp's `create_mean_pmf_helper`. (with error check)",
+    "description": "`mean_pmf` is the equal-weight mean of all studies' pmfs, `mean_pmf_counts` and (with error check)",
     "body": [
       "call create_mean_pmf( &",
       "    pmfs=${1:pmfs}, &",
@@ -961,7 +961,7 @@
   },
   "create_mean_pmf_only (call)": {
     "prefix": "tox:create_mean_pmf_only",
-    "description": "Ported verbatim from 125-stabilize-jscomp's `create_mean_pmf_only_helper`: useful where the",
+    "description": "As [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]], for",
     "body": [
       "call create_mean_pmf_only( &",
       "    pmfs=${1:pmfs}, &",
@@ -974,7 +974,7 @@
   },
   "create_mean_pmf_only (call, checked)": {
     "prefix": "tox:create_mean_pmf_only.checked",
-    "description": "Ported verbatim from 125-stabilize-jscomp's `create_mean_pmf_only_helper`: useful where the (with error check)",
+    "description": "As [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]], for (with error check)",
     "body": [
       "call create_mean_pmf_only( &",
       "    pmfs=${1:pmfs}, &",
@@ -988,7 +988,7 @@
   },
   "bootstrap_histogram (call)": {
     "prefix": "tox:bootstrap_histogram",
-    "description": "Ported from 125-stabilize-jscomp's `bootstrap_histogram_helper`. Resamples from the",
+    "description": "In every bootstrap, each study's histogram at each reference point is drawn with replacement",
     "body": [
       "call bootstrap_histogram( &",
       "    n_bootstraps=${1:n_bootstraps}, &",
@@ -1006,7 +1006,7 @@
   },
   "bootstrap_histogram (call, checked)": {
     "prefix": "tox:bootstrap_histogram.checked",
-    "description": "Ported from 125-stabilize-jscomp's `bootstrap_histogram_helper`. Resamples from the (with error check)",
+    "description": "In every bootstrap, each study's histogram at each reference point is drawn with replacement (with error check)",
     "body": [
       "call bootstrap_histogram( &",
       "    n_bootstraps=${1:n_bootstraps}, &",
@@ -1025,7 +1025,7 @@
   },
   "run_js_comp_test (call)": {
     "prefix": "tox:run_js_comp_test",
-    "description": "Ported from 125-stabilize-jscomp's `js_comp_test_helper`, restructured for Issue #187's",
+    "description": "The final JS-Comp-Test of K studies for one fixed `(n_points, n_neighbors)` setting:",
     "body": [
       "call run_js_comp_test( &",
       "    n_studies=${1:n_studies}, &",
@@ -1075,7 +1075,7 @@
   },
   "run_js_comp_test (call, checked)": {
     "prefix": "tox:run_js_comp_test.checked",
-    "description": "Ported from 125-stabilize-jscomp's `js_comp_test_helper`, restructured for Issue #187's (with error check)",
+    "description": "The final JS-Comp-Test of K studies for one fixed `(n_points, n_neighbors)` setting: (with error check)",
     "body": [
       "call run_js_comp_test( &",
       "    n_studies=${1:n_studies}, &",
@@ -1221,7 +1221,7 @@
   },
   "run_js_comp_test_parameter_search (call)": {
     "prefix": "tox:run_js_comp_test_parameter_search",
-    "description": "Ported from 125-stabilize-jscomp's `determine_js_comp_test_n_points_n_neighbors_helper` and",
+    "description": "Walks the candidates of",
     "body": [
       "call run_js_comp_test_parameter_search( &",
       "    n_studies=${1:n_studies}, &",
@@ -1283,7 +1283,7 @@
   },
   "run_js_comp_test_parameter_search (call, checked)": {
     "prefix": "tox:run_js_comp_test_parameter_search.checked",
-    "description": "Ported from 125-stabilize-jscomp's `determine_js_comp_test_n_points_n_neighbors_helper` and (with error check)",
+    "description": "Walks the candidates of (with error check)",
     "body": [
       "call run_js_comp_test_parameter_search( &",
       "    n_studies=${1:n_studies}, &",
@@ -1500,7 +1500,7 @@
   },
   "calc_js_comp_test_candidate_bounds (call)": {
     "prefix": "tox:calc_js_comp_test_candidate_bounds",
-    "description": "Closed-form from the GAMMA-decay candidate-grid formula",
+    "description": "For the candidate grid of",
     "body": [
       "call calc_js_comp_test_candidate_bounds( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
@@ -1511,7 +1511,7 @@
   },
   "calc_js_comp_test_candidate_bounds (call, checked)": {
     "prefix": "tox:calc_js_comp_test_candidate_bounds.checked",
-    "description": "Closed-form from the GAMMA-decay candidate-grid formula (with error check)",
+    "description": "For the candidate grid of (with error check)",
     "body": [
       "call calc_js_comp_test_candidate_bounds( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
@@ -1523,7 +1523,7 @@
   },
   "calc_adaptive_js_comp_test_bounds (call)": {
     "prefix": "tox:calc_adaptive_js_comp_test_bounds",
-    "description": "Sizes the per-point work arrays of the adaptive (Issue #217) parameter search, whose",
+    "description": "Sizes the per-point work arrays of the adaptive parameter search over the candidates of",
     "body": [
       "call calc_adaptive_js_comp_test_bounds( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
@@ -1534,7 +1534,7 @@
   },
   "calc_adaptive_js_comp_test_bounds (call, checked)": {
     "prefix": "tox:calc_adaptive_js_comp_test_bounds.checked",
-    "description": "Sizes the per-point work arrays of the adaptive (Issue #217) parameter search, whose (with error check)",
+    "description": "Sizes the per-point work arrays of the adaptive parameter search over the candidates of (with error check)",
     "body": [
       "call calc_adaptive_js_comp_test_bounds( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
@@ -1546,7 +1546,7 @@
   },
   "gather_pooled_neighborhood_residuals (call)": {
     "prefix": "tox:gather_pooled_neighborhood_residuals",
-    "description": "Given one reference point's own per-study neighbor gene indices (one column of a larger",
+    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat",
     "body": [
       "call gather_pooled_neighborhood_residuals( &",
       "    residuals=${1:residuals}, &",
@@ -1561,7 +1561,7 @@
   },
   "gather_pooled_neighborhood_residuals (call, checked)": {
     "prefix": "tox:gather_pooled_neighborhood_residuals.checked",
-    "description": "Given one reference point's own per-study neighbor gene indices (one column of a larger (with error check)",
+    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat (with error check)",
     "body": [
       "call gather_pooled_neighborhood_residuals( &",
       "    residuals=${1:residuals}, &",
@@ -1577,7 +1577,7 @@
   },
   "calc_js_comp_test_n_top_k_jsds (call)": {
     "prefix": "tox:calc_js_comp_test_n_top_k_jsds",
-    "description": "Ported from 125-stabilize-jscomp's inline `n_bootstrapping_top_k_jsds` computation in",
+    "description": "Sizes the top-k/bottom-k heaps",
     "body": [
       "call calc_js_comp_test_n_top_k_jsds( &",
       "    n_bootstraps=${1:n_bootstraps}, &",
@@ -2271,7 +2271,7 @@
   },
   "gjct_permutation_test (call)": {
     "prefix": "tox:gjct_permutation_test",
-    "description": "Ported from 125-stabilize-jscomp's `gjct_permutation_test_helper`, generalized from its",
+    "description": "In every permutation, each reference point's pooled consensus counts (`mean_pmf_counts`) are",
     "body": [
       "call gjct_permutation_test( &",
       "    n_permutations=${1:n_permutations}, &",
@@ -2291,7 +2291,7 @@
   },
   "gjct_permutation_test (call, checked)": {
     "prefix": "tox:gjct_permutation_test.checked",
-    "description": "Ported from 125-stabilize-jscomp's `gjct_permutation_test_helper`, generalized from its (with error check)",
+    "description": "In every permutation, each reference point's pooled consensus counts (`mean_pmf_counts`) are (with error check)",
     "body": [
       "call gjct_permutation_test( &",
       "    n_permutations=${1:n_permutations}, &",

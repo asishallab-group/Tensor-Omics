@@ -2,49 +2,41 @@ r"""tox_data_integration_js_comp_test_impl
 
 # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter Search
 
-The data-driven `(n_points, n_neighbors)` parameter-stabilization search this pipeline runs
-before the JSD-Comp-Test proper (Issue #126): a GAMMA-decay candidate grid
-(:func:`tensor_omics.generate_js_comp_test_candidates`
-generates candidate `(n_points, n_neighbors)` pairs only -- each candidate's real
-per-neighborhood histogram bin count is decided later, per reference point, by Issue #187's
-occupancy search
-:func:`tensor_omics.determine_bin_count_occupancy` (the
-default) or by Stone's cross-validation rule
-:func:`tensor_omics.determine_bin_count_stone`, chosen by
-the switch `bin_count_mode` that both parameter searches and both final runs take),
-two admissibility gates a candidate must pass before it is bootstrapped
-(:func:`tensor_omics.check_neighborhood_overlaps`,
-:func:`tensor_omics.check_mean_pmf_min_counts`),
-and the plateau check that decides when the search has converged
-(:func:`tensor_omics.check_plateau_condition`).
-:func:`tensor_omics.determine_bin_count_occupancy_exhaustive`
-is a brute-force reference implementation of the same per-point bin-count search, exhaustively
-testing every candidate `M` instead of the fast geometric-search-then-refinement the production
-routine uses, for validating that the fast search's own result is correct.
-:func:`tensor_omics.determine_bin_count_stone`
-is the alternative bin-count rule: Stone's leave-one-out cross-validation, scored per study or
-on the pooled residuals, with the same range and the same occupancy floor.
-`calc_js_comp_test_candidate_bounds` sizes the candidate-grid work arrays for a caller that
-allocates its own. For adaptive (heteroscedastic, Issue #217) neighborhood construction,
-:func:`tensor_omics.generate_adaptive_js_comp_test_candidates`
-generates the ascending `(k_start, k_step, k_max)` growth-knob candidates instead, and
-`calc_adaptive_js_comp_test_bounds` recommends the reference-point capacity their search's
-per-point arrays are sized by;
+The global JS-Comp-Test of K studies, with a data-driven choice of its neighborhood parameters.
+
+Fixed-k neighborhoods (`n_points` reference points of `n_neighbors` genes each):
+:func:`tensor_omics.run_js_comp_test_parameter_search`
+searches the `(n_points, n_neighbors)` candidates of
+:func:`tensor_omics.generate_js_comp_test_candidates`
+for a bootstrap plateau, and
+:func:`tensor_omics.run_js_comp_test` runs the
+final test (histograms, JSDs, weighting, permutation test) for the chosen pair.
+
+Adaptive neighborhoods, grown per reference point while the residual dispersion stays stable:
 :func:`tensor_omics.run_js_comp_test_adaptive_parameter_search`
-is that search, the adaptive counterpart of the fixed-k parameter search, with the same
-plateau criteria. For the selected knobs,
+searches the `(k_start, k_step, k_max)` candidates of
+:func:`tensor_omics.generate_adaptive_js_comp_test_candidates`,
 :func:`tensor_omics.construct_adaptive_neighborhoods`
-rebuilds the reference points and their neighborhoods, pooled across all studies, and
-:func:`tensor_omics.run_js_comp_test_adaptive`
-runs the final test on them. Together they reproduce exactly what the search traced for that
-candidate. Once a candidate has passed both gates, its bootstrap confidence interval
-is resampled from the pooled consensus histogram by
-:func:`tensor_omics.bootstrap_histogram` (heap
-size recommended by
-:func:`tensor_omics.calc_js_comp_test_n_top_k_jsds`).
-For fixed-k neighborhoods, the final test itself (histograms, JSDs, weighting and the K-study
-permutation test) is
-:func:`tensor_omics.run_js_comp_test`.
+builds the neighborhoods for the chosen knobs, and
+:func:`tensor_omics.run_js_comp_test_adaptive` runs
+the final test on them.
+
+Each reference point's histogram bin count is chosen by the occupancy search
+:func:`tensor_omics.determine_bin_count_occupancy`
+(default) or by Stone's cross-validation
+:func:`tensor_omics.determine_bin_count_stone`
+(`bin_count_mode`). The building blocks are published too: the admissibility gates
+:func:`tensor_omics.check_neighborhood_overlaps` and
+:func:`tensor_omics.check_mean_pmf_min_counts`, the
+plateau checks
+:func:`tensor_omics.check_plateau_condition` and
+:func:`tensor_omics.check_effect_size_plateau_condition`,
+the bootstrap
+:func:`tensor_omics.bootstrap_histogram`, and the
+brute-force reference
+:func:`tensor_omics.determine_bin_count_occupancy_exhaustive`.
+`calc_js_comp_test_candidate_bounds`, `calc_adaptive_js_comp_test_bounds` and
+`calc_js_comp_test_n_top_k_jsds` size the work arrays for a caller that allocates its own.
 
 Python binding, generated from tox_data_integration_js_comp_test_impl. Do not edit.
 """
@@ -114,13 +106,10 @@ def calc_js_comp_test_candidate_bounds(
 ):
     r"""Recommend upper bounds for the js-comp-test candidate-grid work arrays
 
-    Closed-form from the GAMMA-decay candidate-grid formula
-    :func:`tensor_omics.generate_js_comp_test_candidates`
-    uses: `max_n_points_candidate` is exactly the grid's first (largest) `n_points` candidate.
-    `max_n_neighbors_candidate` is a safe, not necessarily tight, upper bound on the grid's
-    largest `n_neighbors` candidate -- reached with the smallest `KX_FACTORS` entry at the
-    smallest `n_points_high` the grid loop ever uses, which by construction never drops below
-    `n_points_low`.
+    For the candidate grid of
+    :func:`tensor_omics.generate_js_comp_test_candidates`:
+    `max_n_points_candidate` is exactly its largest `n_points` candidate, and
+    `max_n_neighbors_candidate` a safe (not necessarily tight) bound on its largest `n_neighbors`.
 
     Rejects a non-positive `max_n_genes_all_studies` with invalid input; both outputs are then
     left undefined.
@@ -176,30 +165,20 @@ def calc_adaptive_js_comp_test_bounds(
 ):
     r"""Recommend a reference-point capacity for the adaptive js-comp-test candidate sequence
 
-    Sizes the per-point work arrays of the adaptive (Issue #217) parameter search, whose
-    candidates come from
+    Sizes the per-point work arrays of the adaptive parameter search over the candidates of
     :func:`tensor_omics.generate_adaptive_js_comp_test_candidates`.
-    An adaptive candidate's reference-point count is not known before its neighborhoods are
-    grown, so this is a **practical capacity, not a proven bound**:
-    `max_n_points_candidate = min(N, ceiling(2 * N / k_start_last) + 1)`, with the safety factor
-    2 being ``ADAPTIVE_POINT_CAPACITY_FACTOR``,
-    `N = max_n_genes_all_studies * n_studies` the padded pool size and `k_start_last` the
-    smallest `k_start` the candidate sequence contains (the candidate expected to emerge with
-    the most reference points). The only provable bound is `N` itself, because every new
-    reference point's seed strictly advances through the pool; sizing every per-point array by
-    `N` would be prohibitive, so a candidate that emerges with more points than this capacity is
-    rejected by the adaptive search with a capacity status rather than stored.
+    A candidate's reference-point count is only known after its neighborhoods are grown, so this
+    is a **practical capacity, not a proven bound**:
+    `max_n_points_candidate = min(N, ceiling(2 * N / k_start_last) + 1)`, with the factor 2 being
+    ``ADAPTIVE_POINT_CAPACITY_FACTOR``,
+    `N = max_n_genes_all_studies * n_studies` the padded pool size and `k_start_last` the smallest
+    candidate `k_start`. The search rejects a candidate that exceeds it with a capacity status.
 
-    Computed in 64-bit integer / double precision throughout, so `N` itself never overflows.
-    Enforces the candidate generator's representability bound, which the generator itself
-    cannot check: the first candidate's `k_start_1 = max(10, 2*n_studies, ceiling(0.02 * N))`
-    must not exceed `huge(1)/4 = 536870911`, so that its `k_max = 4*k_start_1` fits a
-    32-bit integer; otherwise this routine reports invalid input. The bound is joint in both
-    arguments, so the error names neither.
-
-    Rejects a `max_n_genes_all_studies` or `n_studies` below 1, or a pair beyond that
-    representability bound, with invalid input; the output is then left undefined. A pair is
-    also invalid when `max_n_genes_all_studies * n_studies` does not fit in a 32-bit integer.
+    Rejects, with invalid input naming neither argument when the bound is joint, a
+    `max_n_genes_all_studies` or `n_studies` below 1, a product `N` beyond the 32-bit range, or a
+    first candidate `k_start_1 = max(10, 2*n_studies, ceiling(0.02 * N))` above
+    `huge(1)/4 = 536870911` (so that its `k_max = 4*k_start_1` fits); the output is then
+    left undefined.
 
     Parameters
     ----------
@@ -247,40 +226,31 @@ def gather_pooled_neighborhood_residuals(
 ):
     r"""Pool one reference point's residuals across every neighbor and every study
 
-    Given one reference point's own per-study neighbor gene indices (one column of a larger
-    `neighborhood_indices_all_studies(n_neighbors, n_points, n_studies)`, as produced by
-    :func:`tensor_omics.construct_neighborhoods_ranged`),
-    gathers that point's residual values from every neighbor gene, across every study, into one
-    flat pooled array. This is the exact same pooling
+    Gathers one reference point's residuals from every neighbor gene of every study into one flat
+    array, given that point's per-study neighbor gene indices (one column of the
+    `neighborhood_indices_all_studies(n_neighbors, n_points, n_studies)` of
+    :func:`tensor_omics.construct_neighborhoods_ranged`).
+    Study `s` fills pool block `(s - 1)*max_n_reps_all_studies*n_neighbors + 1` to
+    `s*max_n_reps_all_studies*n_neighbors`. This is the pooling
     :func:`tensor_omics.run_js_comp_test` and
     :func:`tensor_omics.run_js_comp_test_parameter_search`
-    perform internally, per reference point, before handing the result to the bin-count search
-    their `bin_count_mode` names (by default
-    :func:`tensor_omics.determine_bin_count_occupancy`'s
-    own occupancy search; in the Stone modes, study `s` is pool block
-    `(s - 1)*max_n_reps_all_studies*n_neighbors + 1` to `s*max_n_reps_all_studies*n_neighbors`)
-    -- published so a caller can reconstruct that exact same input directly
-    on real data and feed it to
+    feed to the bin-count search, so a caller can pass the same input to
     :func:`tensor_omics.determine_bin_count_occupancy_exhaustive`
-    (or to `determine_bin_count_occupancy` itself), to check whether the fast search and the
-    exhaustive reference ever actually disagree in practice, not just on a synthetic fixture.
+    on real data.
 
     Parameters
     ----------
     residuals : np.ndarray[np.float64] of shape (max_n_reps_all_studies, max_n_genes_all_studies, n_studies,), column-major (order='F')
-        Matrix of signed residuals per study, NaN explicitly allowed for missing values;
-        unvalidated on this export path, so any value passes through as-is
+        Matrix of signed residuals per study, NaN allowed for missing values; not validated
     neighborhood_indices_point : np.ndarray[np.int32] of shape (n_neighbors, n_studies,), column-major (order='F')
-        Gene indices of one reference point's neighborhood, per study -- one column of a
-        larger neighborhood_indices_all_studies(n_neighbors, n_points, n_studies), as sliced
-        by the caller
+        Gene indices of one reference point's neighborhood, per study; each in
+        [1, max_n_genes_all_studies]
 
     Returns
     -------
     pooled_residuals : np.ndarray[np.float64] of shape (max_n_reps_all_studies*n_neighbors*n_studies,), read-only
-        The pooled residual values for this reference point, across every neighbor and every
-        study, laid out exactly as a (max_n_reps_all_studies, n_neighbors, n_studies) array
-        would be
+        This reference point's pooled residuals, laid out as a
+        (max_n_reps_all_studies, n_neighbors, n_studies) array
         A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -347,12 +317,10 @@ def calc_js_comp_test_n_top_k_jsds(
 ):
     r"""Recommend the bootstrap top-/bottom-k heap size for a two-sided confidence interval
 
-    Ported from 125-stabilize-jscomp's inline `n_bootstrapping_top_k_jsds` computation in
-    `determine_js_comp_test_n_points_n_neighbors_alloc`: sizes the top-k/bottom-k heaps
+    Sizes the top-k/bottom-k heaps
     :func:`tensor_omics.bootstrap_histogram` uses
-    to track a two-sided bootstrap confidence interval's endpoints. E.g. for a 95% two-sided
-    interval (2.5% reserved at each end, the default) with `n_bootstraps=1000`,
-    `n_top_k = max(1, floor(0.025*1000)) = 25`.
+    for the interval's endpoints: `n_top_k = max(1, floor(level/100 * n_bootstraps))`, e.g. 25 for
+    the default 2.5 and `n_bootstraps=1000`.
 
     Parameters
     ----------
