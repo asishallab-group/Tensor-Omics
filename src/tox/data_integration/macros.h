@@ -107,3 +107,34 @@
 ! (check_effect_size_plateau_condition_impl, both parameter searches and the four study-label
 ! Permutation-Test routines), written once. It names no default: the generated docs show it.
 #define M_DELTA_ABS_TOLERANCE_DOC Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+
+! Experiment switches (2026-10-17, experiment branch only): the values and defaults of the fixed-k
+! grid switches (the MODE_GRID_* of tox_data_integration_js_comp_test_fixed_k_search_impl) and of
+! the adaptive growth switches (the MODE_TAU_REFERENCE_*, MODE_OVERLAP_EXTENSION_* and
+! MODE_SEED_STEP_* of tox_data_integration_preprocessing_impl). Here because the fixed-k or adaptive
+! search and the study-label Permutation-Test name the defaults too.
+! `grid_sample_size_mode`: the sample size N in the grid's first n_points, ceiling(factor*sqrt(N)) --
+! 0 one study's gene count G (the default), 1 the pooled count G*S.
+#define M_MODE_GRID_SAMPLE_SIZE_PER_STUDY 0_int32
+#define M_MODE_GRID_SAMPLE_SIZE_POOLED 1_int32
+! `grid_points_factor`'s default: the factor in front of sqrt(N).
+#define M_GRID_POINTS_FACTOR_DEFAULT 4.0_real64
+! `grid_min_points`'s default: the grid's floor (the lower clamp of its first n_points and the least
+! n_points it keeps). 200 on this experiment branch; 300 (MIN_POINTS) reproduces the grid before.
+#define M_GRID_MIN_POINTS_DEFAULT 200_int32
+! `grid_floor_mode`: what the grid does when the next GAMMA-decayed n_points would fall below the
+! floor -- 0 stop there (the grid before), 1 add one last candidate at the floor (the default here).
+#define M_MODE_GRID_FLOOR_STOP 0_int32
+#define M_MODE_GRID_FLOOR_CLAMP 1_int32
+! `tau_reference_mode`: what an adaptive growth round's dispersion change is measured against --
+! 0 the previous committed round (the default), 1 the dispersion right after the k_start phase.
+#define M_MODE_TAU_REFERENCE_PREVIOUS_ROUND 0_int32
+#define M_MODE_TAU_REFERENCE_K_START 1_int32
+! `overlap_extension_mode`: 0 an adaptive neighborhood keeps the range it grew to (the default),
+! 1 it is extended toward lower means until it overlaps the previous one by min_neighbor_overlap.
+#define M_MODE_OVERLAP_EXTENSION_NONE 0_int32
+#define M_MODE_OVERLAP_EXTENSION_BACKWARD 1_int32
+! `seed_step_mode`: 0 the MAD rule alone places the next adaptive seed (the default), 1 the seed lies
+! at least k_step sorted positions past the previous neighborhood.
+#define M_MODE_SEED_STEP_MAD 0_int32
+#define M_MODE_SEED_STEP_MIN_K_STEP 1_int32

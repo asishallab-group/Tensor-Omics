@@ -6,17 +6,23 @@
 // tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
-void calc_js_comp_test_permutation_bounds_c(const int*, const int*, const int*, const int*, const double*, int*, int*, int*, int*);
+void calc_js_comp_test_permutation_bounds_c(const int*, const int*, const int*, const int*, const int*, const double*, int*, int*, int*, const char*, const double*, const int*, int*);
 void calc_adaptive_js_comp_test_permutation_bounds_c(const int*, const int*, const int*, const int*, const double*, int*, int*, int*);
 
-SEXP calc_js_comp_test_permutation_bounds_call(SEXP max_n_genes_all_studies, SEXP n_points, SEXP n_neighbors, SEXP n_bootstraps, SEXP two_sided_bootstrapping_significance_level) {
+SEXP calc_js_comp_test_permutation_bounds_call(SEXP max_n_genes_all_studies, SEXP n_studies, SEXP n_points, SEXP n_neighbors, SEXP n_bootstraps, SEXP two_sided_bootstrapping_significance_level, SEXP grid_sample_size_mode, SEXP grid_points_factor, SEXP grid_min_points) {
     int nprot = 0;
     // scalar inputs, pulled from their length-1 vectors
     int max_n_genes_all_studies_v = Rf_asInteger(max_n_genes_all_studies);
+    int n_studies_v = Rf_asInteger(n_studies);
     int n_points_v = Rf_asInteger(n_points);
     int n_neighbors_v = Rf_asInteger(n_neighbors);
     int n_bootstraps_v = Rf_asInteger(n_bootstraps);
     double two_sided_bootstrapping_significance_level_v = Rf_asReal(two_sided_bootstrapping_significance_level);
+    double grid_points_factor_v = Rf_asReal(grid_points_factor);
+    int grid_min_points_v = Rf_asInteger(grid_min_points);
+
+    // convert what Fortran cannot take from R directly
+    char* grid_sample_size_mode_c = tox_char_in(grid_sample_size_mode, 26);
 
     // outputs and work space
     int max_n_points_candidate = 0;
@@ -26,6 +32,7 @@ SEXP calc_js_comp_test_permutation_bounds_call(SEXP max_n_genes_all_studies, SEX
 
     calc_js_comp_test_permutation_bounds_c(
         &max_n_genes_all_studies_v,
+        &n_studies_v,
         &n_points_v,
         &n_neighbors_v,
         &n_bootstraps_v,
@@ -33,6 +40,9 @@ SEXP calc_js_comp_test_permutation_bounds_call(SEXP max_n_genes_all_studies, SEX
         &max_n_points_candidate,
         &max_n_neighbors_candidate,
         &n_bootstrapping_top_k_jsds,
+        grid_sample_size_mode_c,
+        &grid_points_factor_v,
+        &grid_min_points_v,
         &ierr
     );
 

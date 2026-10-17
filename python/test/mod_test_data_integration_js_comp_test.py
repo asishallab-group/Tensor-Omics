@@ -280,7 +280,7 @@ def test_generate_js_comp_test_candidates():
     # Issue #187, Step 2.7: candidates_n_points_n_neighbors is now the routine's only
     # DM_RESULT_SIZE_IS output, so the generated Python wrapper returns the already-trimmed
     # array directly rather than a dict.
-    candidates = generate_js_comp_test_candidates(8742)
+    candidates = generate_js_comp_test_candidates(8742, 1, grid_min_points=300, grid_floor_mode="grid_floor_stop")
     n_candidates = candidates.shape[1]
     assert n_candidates >= 1, "Test 1 failed: expected at least one candidate"
     assert np.all(candidates[0, :] == candidates[0, 0]), \
@@ -293,7 +293,7 @@ def test_generate_js_comp_test_candidates():
     # n_points_low=300; after one iteration n_points_high becomes 375*0.8=300.0, which is NOT
     # less than n_points_low=300, so a second, distinct n_points=300 candidate appears.
     # ============================================================
-    candidates2 = generate_js_comp_test_candidates(8743)
+    candidates2 = generate_js_comp_test_candidates(8743, 1, grid_min_points=300, grid_floor_mode="grid_floor_stop")
     n_candidates2 = candidates2.shape[1]
     n_distinct = len(set(candidates2[0, :].tolist()))
     assert n_distinct >= 2, "Test 2 failed: expected at least two distinct n_points values"
@@ -307,7 +307,7 @@ def test_generate_js_comp_test_candidates():
     # tier no longer exists (no tmp_/work-array/permutation left in its signature once the
     # bin-estimate side effect was removed), so this test no longer exercises it.
     # ============================================================
-    assert_error(lambda: generate_js_comp_test_candidates(0),
+    assert_error(lambda: generate_js_comp_test_candidates(0, 1, grid_min_points=300, grid_floor_mode="grid_floor_stop"),
                  "Test 3 failed: expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
 
     # ============================================================
@@ -317,15 +317,15 @@ def test_generate_js_comp_test_candidates():
     # ============================================================
     n_columns = {}
     for mode in ("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both"):
-        candidates_mode = generate_js_comp_test_candidates(2000, neighborhood_size_mode=mode)
+        candidates_mode = generate_js_comp_test_candidates(2000, 1, neighborhood_size_mode=mode, grid_min_points=300, grid_floor_mode="grid_floor_stop")
         assert candidates_mode.dtype == np.int32, f"Test 4 failed: {mode} dtype"
         assert candidates_mode.ndim == 2 and candidates_mode.shape[0] == 2, f"Test 4 failed: {mode} shape"
         assert candidates_mode.shape[1] >= 1 and np.all(candidates_mode > 0), f"Test 4 failed: {mode} values"
         n_columns[mode] = candidates_mode.shape[1]
     assert n_columns["neighborhood_size_both"] == n_columns["neighborhood_size_large"] + \
         n_columns["neighborhood_size_small"], "Test 4 failed: both = large + small"
-    assert generate_js_comp_test_candidates(2000).shape[0] == 2, "Test 4 failed: default shape"
-    assert_error(lambda: generate_js_comp_test_candidates(2000, neighborhood_size_mode="nonsense"),
+    assert generate_js_comp_test_candidates(2000, 1, grid_min_points=300, grid_floor_mode="grid_floor_stop").shape[0] == 2, "Test 4 failed: default shape"
+    assert_error(lambda: generate_js_comp_test_candidates(2000, 1, neighborhood_size_mode="nonsense", grid_min_points=300, grid_floor_mode="grid_floor_stop"),
                  "Test 4 failed: expected an unknown neighborhood_size_mode to be rejected", ERR_INVALID_INPUT)
 
 
@@ -793,15 +793,15 @@ def test_calc_js_comp_test_candidate_bounds():
     # max_n_genes_all_studies=8742 the grid's first (largest) n_points candidate is 374
     # (see test_generate_js_comp_test_candidates), and `max_n_points_candidate` is documented
     # as being exactly that value.
-    bounds = calc_js_comp_test_candidate_bounds(8742)
+    bounds = calc_js_comp_test_candidate_bounds(8742, 1, grid_min_points=300)
     assert bounds["max_n_points_candidate"] == 374, \
         f"expected max_n_points_candidate=374, got {bounds['max_n_points_candidate']}"
 
-    candidates = generate_js_comp_test_candidates(8742)
+    candidates = generate_js_comp_test_candidates(8742, 1, grid_min_points=300, grid_floor_mode="grid_floor_stop")
     assert bounds["max_n_neighbors_candidate"] >= int(np.max(candidates[1, :])), \
         "max_n_neighbors_candidate must be a safe upper bound on the grid's n_neighbors"
 
-    assert_error(lambda: calc_js_comp_test_candidate_bounds(0),
+    assert_error(lambda: calc_js_comp_test_candidate_bounds(0, 1, grid_min_points=300),
                  "expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
 
 
@@ -1022,13 +1022,13 @@ def test_run_js_comp_test_parameter_search():
     # (test_param_search_no_plateau_falls_back_to_finest). Both n_points=300 and n_neighbors=26
     # are derived purely from the GAMMA-decay constants and max_n_genes_all_studies=2000.
     # ============================================================
-    bounds = calc_js_comp_test_candidate_bounds(max_n_genes_all_studies)
+    bounds = calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, 1, grid_min_points=300)
     result = run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=10,
                                                 join_method='join_min',
                                                 max_n_points_candidate=bounds["max_n_points_candidate"],
                                                 max_n_neighbors_candidate=bounds["max_n_neighbors_candidate"],
                                                 min_residuals_per_bin=1000000,
-                                                random_seed=1)
+                                                random_seed=1, grid_min_points=300, grid_floor_mode="grid_floor_stop")
 
     assert result["n_points"] == 300, f"expected n_points=300, got {result['n_points']}"
     assert result["n_neighbors"] == 26, f"expected n_neighbors=26, got {result['n_neighbors']}"
@@ -1052,13 +1052,13 @@ def test_run_js_comp_test_parameter_search():
         gene_means_2[:, i_study] = np.arange(1, max_n_genes_2 + 1, dtype=np.float64)
         residuals_2[:, :, i_study] = np.array([-0.5, 0.0, 0.5]).reshape(3, 1)
 
-    bounds_2 = calc_js_comp_test_candidate_bounds(max_n_genes_2)
+    bounds_2 = calc_js_comp_test_candidate_bounds(max_n_genes_2, 1, grid_min_points=300)
     result2 = run_js_comp_test_parameter_search(gene_means_2, residuals_2,
                                                  n_bootstraps=5, join_method='join_min',
                                                  max_n_points_candidate=bounds_2["max_n_points_candidate"],
                                                  max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
                                                  min_residuals_per_bin=0, min_neighbor_overlap=0.0,
-                                                 random_seed=1)
+                                                 random_seed=1, grid_min_points=300, grid_floor_mode="grid_floor_stop")
 
     assert result2["n_points"] == 300, f"expected n_points=300, got {result2['n_points']}"
     assert result2["n_neighbors"] == 1, f"expected n_neighbors=1, got {result2['n_neighbors']}"
@@ -1081,7 +1081,7 @@ def test_run_js_comp_test_parameter_search():
                                                  min_residuals_per_bin=0, min_neighbor_overlap=0.0,
                                                  plateau_mode='plateau_effect_size', delta_median_threshold=0.05,
                                                  delta_max_threshold=0.10, delta_epsilon=1e-10,
-                                                 delta_min_consecutive_transitions=2, random_seed=1)
+                                                 delta_min_consecutive_transitions=2, random_seed=1, grid_min_points=300, grid_floor_mode="grid_floor_stop")
 
     # n_admissible_evaluated is DM_RESULT_SIZE_IS's own count argument, dropped from the Python
     # return since every trace_* array already comes back trimmed to exactly that length.
@@ -1155,7 +1155,7 @@ def test_run_js_comp_test_parameter_search():
                                                         max_n_points_candidate=bounds_2["max_n_points_candidate"],
                                                         max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
                                                         min_residuals_per_bin=0, min_neighbor_overlap=0.0,
-                                                        random_seed=1, bin_count_mode=mode)
+                                                        random_seed=1, bin_count_mode=mode, grid_min_points=300, grid_floor_mode="grid_floor_stop")
         n_points_mode = result_mode["n_points"]
         assert result_mode["n_bins_per_point"].dtype == np.int32, f"{mode}: n_bins_per_point dtype"
         assert result_mode["n_bins_per_point"].shape == (bounds_2["max_n_points_candidate"],), \
@@ -1171,7 +1171,7 @@ def test_run_js_comp_test_parameter_search():
                                                            n_bootstraps=5, join_method='join_min',
                                                            max_n_points_candidate=bounds_2["max_n_points_candidate"],
                                                            max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
-                                                           bin_count_mode="nonsense"),
+                                                           bin_count_mode="nonsense", grid_min_points=300, grid_floor_mode="grid_floor_stop"),
                  "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
 
     # ============================================================
@@ -1183,14 +1183,14 @@ def test_run_js_comp_test_parameter_search():
                                                         max_n_points_candidate=bounds["max_n_points_candidate"],
                                                         max_n_neighbors_candidate=bounds["max_n_neighbors_candidate"],
                                                         min_residuals_per_bin=1000000, random_seed=1,
-                                                        neighborhood_size_mode=mode)
+                                                        neighborhood_size_mode=mode, grid_min_points=300, grid_floor_mode="grid_floor_stop")
         assert int(result_size["n_points"]) >= 1, f"{mode}: n_points"
         assert int(result_size["n_neighbors"]) >= 1, f"{mode}: n_neighbors"
         assert result_size["n_bins_per_point"].shape == (bounds["max_n_points_candidate"],), f"{mode}: shape"
     assert_error(lambda: run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=10, join_method='join_min',
                                                            max_n_points_candidate=bounds["max_n_points_candidate"],
                                                            max_n_neighbors_candidate=bounds["max_n_neighbors_candidate"],
-                                                           neighborhood_size_mode="nonsense"),
+                                                           neighborhood_size_mode="nonsense", grid_min_points=300, grid_floor_mode="grid_floor_stop"),
                  "expected an unknown neighborhood_size_mode string to be rejected", ERR_INVALID_INPUT)
 
     # ============================================================
@@ -1201,14 +1201,14 @@ def test_run_js_comp_test_parameter_search():
                                                    max_n_points_candidate=bounds_2["max_n_points_candidate"],
                                                    max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
                                                    min_residuals_per_bin=0, min_neighbor_overlap=0.0, random_seed=1,
-                                                   delta_abs_tolerance=0.001)
+                                                   delta_abs_tolerance=0.001, grid_min_points=300, grid_floor_mode="grid_floor_stop")
     assert int(result_tol["n_points"]) >= 1 and int(result_tol["n_neighbors"]) >= 1, "tolerance: a candidate"
     assert result_tol["trace_delta"].shape == (2, 1), f"tolerance: trace_delta shape {result_tol['trace_delta'].shape}"
     assert_error(lambda: run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps=5,
                                                            join_method='join_min',
                                                            max_n_points_candidate=bounds_2["max_n_points_candidate"],
                                                            max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
-                                                           delta_abs_tolerance=-0.1),
+                                                           delta_abs_tolerance=-0.1, grid_min_points=300, grid_floor_mode="grid_floor_stop"),
                  "expected a negative delta_abs_tolerance to be rejected", ERR_INVALID_INPUT)
 
     # ============================================================
@@ -1219,7 +1219,7 @@ def test_run_js_comp_test_parameter_search():
                                                       max_n_points_candidate=bounds_2["max_n_points_candidate"],
                                                       max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
                                                       min_residuals_per_bin=0, min_neighbor_overlap=0.0, random_seed=1,
-                                                      bootstrap_mode='bootstrap_pooled')
+                                                      bootstrap_mode='bootstrap_pooled', grid_min_points=300, grid_floor_mode="grid_floor_stop")
     ci_pooled = result_pooled["best_candidate_pair_confidence_interval"]
     assert ci_pooled.dtype == np.float64 and ci_pooled.shape == (2, 2), f"pooled: CI shape {ci_pooled.shape}"
     assert result_pooled["trace_ci_lower"].shape == (2, 1), "pooled: trace_ci_lower shape"
@@ -1227,7 +1227,7 @@ def test_run_js_comp_test_parameter_search():
                                                            join_method='join_min',
                                                            max_n_points_candidate=bounds_2["max_n_points_candidate"],
                                                            max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
-                                                           bootstrap_mode='no_such_mode'),
+                                                           bootstrap_mode='no_such_mode', grid_min_points=300, grid_floor_mode="grid_floor_stop"),
                  "expected an unknown bootstrap_mode to be rejected", ERR_INVALID_INPUT)
 
 
@@ -1244,20 +1244,20 @@ def test_run_js_comp_test_parameter_search_rejects_undersized_bounds():
         gene_means[:, i_study] = np.arange(1, n_genes + 1, dtype=np.float64)
         residuals[:, :, i_study] = np.array([-0.5, 0.0, 0.5]).reshape(3, 1)
 
-    bounds = calc_js_comp_test_candidate_bounds(n_genes)
+    bounds = calc_js_comp_test_candidate_bounds(n_genes, 1, grid_min_points=300)
     max_points = bounds["max_n_points_candidate"]
     max_neighbors = bounds["max_n_neighbors_candidate"]
     assert_error(lambda: run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=5,
                                                            join_method='join_min',
                                                            max_n_points_candidate=max_points - 1,
                                                            max_n_neighbors_candidate=max_neighbors,
-                                                           min_neighbor_overlap=0.0, random_seed=1),
+                                                           min_neighbor_overlap=0.0, random_seed=1, grid_min_points=300, grid_floor_mode="grid_floor_stop"),
                  "expected ERR_INVALID_INPUT for max_n_points_candidate below its bound", ERR_INVALID_INPUT)
     assert_error(lambda: run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=5,
                                                            join_method='join_min',
                                                            max_n_points_candidate=max_points,
                                                            max_n_neighbors_candidate=max_neighbors - 1,
-                                                           min_neighbor_overlap=0.0, random_seed=1),
+                                                           min_neighbor_overlap=0.0, random_seed=1, grid_min_points=300, grid_floor_mode="grid_floor_stop"),
                  "expected ERR_INVALID_INPUT for max_n_neighbors_candidate below its bound", ERR_INVALID_INPUT)
 
 
@@ -1563,12 +1563,12 @@ def _label_test_expression():
 
 def test_calc_js_comp_test_permutation_bounds():
     # Call + types only; the values are checked by hand in the Fortran suite.
-    result = calc_js_comp_test_permutation_bounds(300, 10, 30)
+    result = calc_js_comp_test_permutation_bounds(300, 1, 10, 30, grid_min_points=300)
     assert isinstance(result, dict), f"expected a dict, got {type(result)}"
     for key in ("max_n_points_candidate", "max_n_neighbors_candidate", "n_bootstrapping_top_k_jsds"):
         assert isinstance(result[key], (int, np.integer)), f"{key}: wrong type {type(result[key])}"
         assert result[key] >= 1, f"{key}: expected at least 1"
-    assert_error(lambda: calc_js_comp_test_permutation_bounds(300, 10, 301),
+    assert_error(lambda: calc_js_comp_test_permutation_bounds(300, 1, 10, 301, grid_min_points=300),
                  "expected ERR_INVALID_INPUT for n_neighbors above the gene count", ERR_INVALID_INPUT)
 
 

@@ -338,6 +338,19 @@ construct_neighborhoods_ranged_expert <- function(x_star, mean_S, mean_S_perm, n
 #' is still evaluated, and growth then stops with
 #' \code{ADAPTIVE_STOP_RESIDUAL_CAP} (`3`).
 #'
+#' **Experiment switches**, each defaulting to the growth before it existed:
+#' `tau_reference_mode` sets what `S_old` is (the previous committed round, or the dispersion
+#' right after the `k_start` phase, kept for the whole growth); `overlap_extension_mode`
+#' extends every neighborhood after the first toward lower means, without the `tau`, `k_max`
+#' or cap checks, until it overlaps the previous one by `min_neighbor_overlap` (measured as
+#' \code{\link{check_neighborhood_overlaps}}
+#' measures it); `seed_step_mode` makes every seed lie at least `k_step` sorted positions past
+#' the previous neighborhood (a closer seed moves to exactly that position, without snapping to
+#' the start of a run of equal means), and, when fewer than `k_step` positions are left, the
+#' neighborhood takes the rest of the pool instead. `n_extension_entries` counts the entries
+#' both extensions added; the MAD that places the next seed is that of the range as grown. An
+#' extended neighborhood can exceed `k_max` or the cap while keeping its growth's stop reason.
+#'
 #' **Reference points.** The first seed is the smallest pooled mean. After a neighborhood ends at
 #' sorted position `b`, the next seed is the first position after `b` whose mean is nearest
 #' `mean(b) + mad_distance_factor * MAD` (ties to the lower mean), `MAD` being the raw median
@@ -369,7 +382,8 @@ construct_neighborhoods_ranged_expert <- function(x_star, mean_S, mean_S_perm, n
 #'   The minimum valid value is `1`.
 #' @param k_step a integer scalar. Pooled entries staged per adaptive growth round
 #'   The minimum valid value is `1`.
-#' @param k_max a integer scalar. Largest number of pooled entries in one neighborhood
+#' @param k_max a integer scalar. Largest number of pooled entries in one neighborhood as grown; the extensions of
+#'   `overlap_extension_mode` and `seed_step_mode` can add entries beyond it
 #'   The minimum valid value is `k_start`.
 #' @param tau a numeric scalar. Largest relative dispersion increase a growth round may cause and still be committed
 #'   The minimum valid value is `0.0`.
@@ -385,6 +399,25 @@ construct_neighborhoods_ranged_expert <- function(x_star, mean_S, mean_S_perm, n
 #'   status to stay ok
 #'   The minimum valid value is `1`.
 #'   The default value is `1`.
+#' @param tau_reference_mode a string, one of "tau_reference_previous_round", "tau_reference_k_start". Which dispersion an adaptive round's relative change is measured against before it
+#'   is compared with `tau`. An experiment switch; the default is the rule before
+#'
+#'   The default value is `"tau_reference_previous_round"`.
+#' @param overlap_extension_mode a string, one of "overlap_extension_none", "overlap_extension_backward". What happens to a neighborhood once its growth has stopped. An experiment switch;
+#'   with the default, every neighborhood keeps the range its growth stopped at, as before
+#'
+#'   The default value is `"overlap_extension_none"`.
+#' @param min_neighbor_overlap a numeric scalar. Overlap with the previous neighborhood the backward extension of
+#'   `overlap_extension_mode` stops at: the shared pooled positions over the previous
+#'   neighborhood's size. Used only by the backward extension; pass the same value as the
+#'   adaptive search's `min_neighbor_overlap`, whose default this is
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.1`.
+#' @param seed_step_mode a string, one of "seed_step_mad", "seed_step_min_k_step". How far past a neighborhood the next reference point's seed must lie. An experiment
+#'   switch; with the default, the MAD rule alone places it, as before
+#'
+#'   The default value is `"seed_step_mad"`.
 #' @return a named list with elements:
 #'   \item{x_star}{a numeric vector. Reference point of each neighborhood: the pooled mean at its seed position
 #'     The first `n_points` elements will hold the results.}
@@ -400,7 +433,13 @@ construct_neighborhoods_ranged_expert <- function(x_star, mean_S, mean_S_perm, n
 #'     The first `n_points` elements will hold the results.}
 #'   \item{neighborhood_dispersion}{a numeric vector. Mean absolute non-NaN residual of each final neighborhood; NaN without any
 #'     The first `n_points` elements will hold the results.}
-#'   \item{neighborhood_mad}{a numeric vector. Raw median absolute deviation of each final neighborhood's pooled means
+#'   \item{neighborhood_mad}{a numeric vector. Raw median absolute deviation of each neighborhood's pooled means as grown, before
+#'     the extensions of `overlap_extension_mode` and `seed_step_mode`; it places the next
+#'     reference point unless the minimum seed step moves it
+#'     The first `n_points` elements will hold the results.}
+#'   \item{n_extension_entries}{a integer vector. Number of pooled entries the backward extension of `overlap_extension_mode` and the
+#'     forward extension of `seed_step_mode` together added to each neighborhood; 0 with both
+#'     defaults
 #'     The first `n_points` elements will hold the results.}
 #'   \item{max_n_neighbors}{a integer scalar. Largest number of entries one study has in one neighborhood; 0 without a neighborhood}
 #'   \item{construction_status}{a integer scalar. Overall outcome: `0` ok, `1` too few
@@ -408,7 +447,7 @@ construct_neighborhoods_ranged_expert <- function(x_star, mean_S, mean_S_perm, n
 #'     `min_study_neighbors`, `3` a neighborhood with too
 #'     few residuals}
 #' @export
-construct_adaptive_neighborhoods <- function(gene_means, residuals, k_start, k_step, k_max, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L) {
+construct_adaptive_neighborhoods <- function(gene_means, residuals, k_start, k_step, k_max, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L, tau_reference_mode = "tau_reference_previous_round", overlap_extension_mode = "overlap_extension_none", min_neighbor_overlap = 0.1, seed_step_mode = "seed_step_mad") {
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
     k_start <- .tox_as_integer_scalar(k_start, "k_start")
@@ -418,14 +457,18 @@ construct_adaptive_neighborhoods <- function(gene_means, residuals, k_start, k_s
     mad_distance_factor <- .tox_as_double_scalar(mad_distance_factor, "mad_distance_factor")
     max_pooled_residuals <- .tox_as_integer_scalar(max_pooled_residuals, "max_pooled_residuals")
     min_study_neighbors <- .tox_as_integer_scalar(min_study_neighbors, "min_study_neighbors")
+    tau_reference_mode <- .tox_as_mode(tau_reference_mode, "tau_reference_mode", c("tau_reference_previous_round", "tau_reference_k_start"))
+    overlap_extension_mode <- .tox_as_mode(overlap_extension_mode, "overlap_extension_mode", c("overlap_extension_none", "overlap_extension_backward"))
+    min_neighbor_overlap <- .tox_as_double_scalar(min_neighbor_overlap, "min_neighbor_overlap")
+    seed_step_mode <- .tox_as_mode(seed_step_mode, "seed_step_mode", c("seed_step_mad", "seed_step_min_k_step"))
     if (dim(residuals)[3] != dim(gene_means)[2])
         .tox_shape_error("residuals", dim(residuals)[3], "gene_means", dim(gene_means)[2])
     if (dim(residuals)[2] != dim(gene_means)[1])
         .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
 
-    .result <- .Call("construct_adaptive_neighborhoods_call", gene_means, residuals, k_start, k_step, k_max, tau, mad_distance_factor, max_pooled_residuals, min_study_neighbors)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "k_start", "k_step", "k_max", "n_points", "x_star", "pooled_neighborhood_range", "n_neighbors_per_point", "stop_reason", "neighborhood_dispersion", "neighborhood_mad", "max_n_neighbors", "construction_status", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "ierr")
-    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("construct_adaptive_neighborhoods_call", gene_means, residuals, k_start, k_step, k_max, tau, mad_distance_factor, max_pooled_residuals, min_study_neighbors, tau_reference_mode, overlap_extension_mode, min_neighbor_overlap, seed_step_mode)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "k_start", "k_step", "k_max", "n_points", "x_star", "pooled_neighborhood_range", "n_neighbors_per_point", "stop_reason", "neighborhood_dispersion", "neighborhood_mad", "n_extension_entries", "max_n_neighbors", "construction_status", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "tau_reference_mode", "overlap_extension_mode", "min_neighbor_overlap", "seed_step_mode", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -435,6 +478,7 @@ construct_adaptive_neighborhoods <- function(gene_means, residuals, k_start, k_s
         stop_reason = utils::head(.result$stop_reason, .result$n_points),
         neighborhood_dispersion = utils::head(.result$neighborhood_dispersion, .result$n_points),
         neighborhood_mad = utils::head(.result$neighborhood_mad, .result$n_points),
+        n_extension_entries = utils::head(.result$n_extension_entries, .result$n_points),
         max_n_neighbors = .result$max_n_neighbors,
         construction_status = .result$construction_status
     )

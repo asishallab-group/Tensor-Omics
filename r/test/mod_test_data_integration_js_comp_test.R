@@ -212,7 +212,7 @@ test_generate_js_comp_test_candidates <- function() {
   # Test 1 -- small-N candidate-grid collapse at its exact threshold
   # (test_generate_js_comp_test_candidates_collapses_at_8742): every candidate shares n_points=374.
   # ============================================================
-  candidates <- generate_js_comp_test_candidates(8742L)
+  candidates <- generate_js_comp_test_candidates(8742L, 1L, grid_min_points = 300L, grid_floor_mode = "grid_floor_stop")
   # Issue #187, Step 2.7: `candidates_n_points_n_neighbors` is now the routine's only
   # DM_RESULT_SIZE_IS output, so the generated R wrapper's own bracket slice
   # (`[, seq_len(n_candidates), drop = FALSE]`) already returns it correctly trimmed by column --
@@ -228,7 +228,7 @@ test_generate_js_comp_test_candidates <- function() {
   # Test 2 -- the other side of the bracket (test_generate_js_comp_test_candidates_has_two_distinct_at_8743):
   # at least two distinct n_points values, first=375, last=300.
   # ============================================================
-  candidates2 <- generate_js_comp_test_candidates(8743L)
+  candidates2 <- generate_js_comp_test_candidates(8743L, 1L, grid_min_points = 300L, grid_floor_mode = "grid_floor_stop")
   n_candidates2 <- ncol(candidates2)
   n_distinct <- length(unique(candidates2[1, ]))
   assert_true(n_distinct >= 2, "Test 2 failed: expected at least two distinct n_points values")
@@ -242,7 +242,7 @@ test_generate_js_comp_test_candidates <- function() {
   # signature once the bin-estimate side effect was removed), so this test no longer exercises it.
   # ============================================================
   assert_error(
-    generate_js_comp_test_candidates(0L),
+    generate_js_comp_test_candidates(0L, 1L, grid_min_points = 300L, grid_floor_mode = "grid_floor_stop"),
     "Test 3 failed: expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT
   )
 
@@ -253,7 +253,7 @@ test_generate_js_comp_test_candidates <- function() {
   # ============================================================
   n_columns <- c()
   for (mode in c("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both")) {
-    candidates_mode <- generate_js_comp_test_candidates(2000L, neighborhood_size_mode = mode)
+    candidates_mode <- generate_js_comp_test_candidates(2000L, 1L, neighborhood_size_mode = mode, grid_min_points = 300L, grid_floor_mode = "grid_floor_stop")
     assert_true(is.matrix(candidates_mode) && nrow(candidates_mode) == 2L, paste("Test 4 failed:", mode, "shape"))
     assert_true(is.integer(candidates_mode) && ncol(candidates_mode) >= 1L && all(candidates_mode > 0L),
                 paste("Test 4 failed:", mode, "values"))
@@ -262,8 +262,8 @@ test_generate_js_comp_test_candidates <- function() {
   assert_true(n_columns[["neighborhood_size_both"]] ==
                 n_columns[["neighborhood_size_large"]] + n_columns[["neighborhood_size_small"]],
               "Test 4 failed: both = large + small")
-  assert_true(nrow(generate_js_comp_test_candidates(2000L)) == 2L, "Test 4 failed: default shape")
-  assert_error(generate_js_comp_test_candidates(2000L, neighborhood_size_mode = "nonsense"),
+  assert_true(nrow(generate_js_comp_test_candidates(2000L, 1L, grid_min_points = 300L, grid_floor_mode = "grid_floor_stop")) == 2L, "Test 4 failed: default shape")
+  assert_error(generate_js_comp_test_candidates(2000L, 1L, neighborhood_size_mode = "nonsense", grid_min_points = 300L, grid_floor_mode = "grid_floor_stop"),
                "Test 4 failed: expected an unknown neighborhood_size_mode to be rejected before Fortran")
 }
 
@@ -714,16 +714,16 @@ test_calc_js_comp_test_candidate_bounds <- function() {
   # Cross-check against the already-verified candidate-grid collapse fixture: with
   # max_n_genes_all_studies=8742 the grid's first (largest) n_points candidate is 374, and
   # `max_n_points_candidate` is documented as being exactly that value.
-  bounds <- calc_js_comp_test_candidate_bounds(8742L)
+  bounds <- calc_js_comp_test_candidate_bounds(8742L, 1L, grid_min_points = 300L)
   assert_equal_int(as.integer(bounds$max_n_points_candidate), 374L, "expected max_n_points_candidate=374")
 
   # Issue #187, Step 2.7: generate_js_comp_test_candidates now returns the already-correctly-
   # trimmed matrix directly (see the NOTE in test_generate_js_comp_test_candidates).
-  candidates <- generate_js_comp_test_candidates(8742L)
+  candidates <- generate_js_comp_test_candidates(8742L, 1L, grid_min_points = 300L, grid_floor_mode = "grid_floor_stop")
   assert_true(bounds$max_n_neighbors_candidate >= max(candidates[2, ]),
               "max_n_neighbors_candidate must be a safe upper bound on the grid's n_neighbors")
 
-  assert_error(calc_js_comp_test_candidate_bounds(0L),
+  assert_error(calc_js_comp_test_candidate_bounds(0L, 1L, grid_min_points = 300L),
                "expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
 }
 
@@ -944,13 +944,13 @@ test_run_js_comp_test_parameter_search <- function() {
   # best_candidate_pair_confidence_interval to -1.0 throughout
   # (test_param_search_no_plateau_falls_back_to_finest).
   # ============================================================
-  bounds <- calc_js_comp_test_candidate_bounds(max_n_genes_all_studies)
+  bounds <- calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, 1L, grid_min_points = 300L)
   result <- run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps = 10L,
                                                join_method = "join_min",
                                                max_n_points_candidate = bounds$max_n_points_candidate,
                                                max_n_neighbors_candidate = bounds$max_n_neighbors_candidate,
                                                min_residuals_per_bin = 1000000L,
-                                               random_seed = 1L)
+                                               random_seed = 1L, grid_min_points = 300L, grid_floor_mode = "grid_floor_stop")
 
   assert_equal_int(as.integer(result$n_points), 300L, "expected n_points=300")
   assert_equal_int(as.integer(result$n_neighbors), 26L, "expected n_neighbors=26")
@@ -974,13 +974,13 @@ test_run_js_comp_test_parameter_search <- function() {
     }
   }
 
-  bounds_2 <- calc_js_comp_test_candidate_bounds(max_n_genes_2)
+  bounds_2 <- calc_js_comp_test_candidate_bounds(max_n_genes_2, 1L, grid_min_points = 300L)
   result2 <- run_js_comp_test_parameter_search(gene_means_2, residuals_2,
                                                 n_bootstraps = 5L, join_method = "join_min",
                                                 max_n_points_candidate = bounds_2$max_n_points_candidate,
                                                 max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
                                                 min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
-                                                random_seed = 1L)
+                                                random_seed = 1L, grid_min_points = 300L, grid_floor_mode = "grid_floor_stop")
 
   assert_equal_int(as.integer(result2$n_points), 300L, "expected n_points=300")
   assert_equal_int(as.integer(result2$n_neighbors), 1L, "expected n_neighbors=1")
@@ -1002,7 +1002,7 @@ test_run_js_comp_test_parameter_search <- function() {
                                                 min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
                                                 plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05,
                                                 delta_max_threshold = 0.10, delta_epsilon = 1e-10,
-                                                delta_min_consecutive_transitions = 2L, random_seed = 1L)
+                                                delta_min_consecutive_transitions = 2L, random_seed = 1L, grid_min_points = 300L, grid_floor_mode = "grid_floor_stop")
 
   # n_admissible_evaluated is DM_RESULT_SIZE_IS's own count argument, dropped from the R return
   # since every trace_* output already comes back trimmed to exactly that length.
@@ -1078,7 +1078,7 @@ test_run_js_comp_test_parameter_search <- function() {
                                                      max_n_points_candidate = bounds_2$max_n_points_candidate,
                                                      max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
                                                      min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
-                                                     random_seed = 1L, bin_count_mode = mode)
+                                                     random_seed = 1L, bin_count_mode = mode, grid_min_points = 300L, grid_floor_mode = "grid_floor_stop")
     n_points_mode <- result_mode$n_points
     assert_true(is.integer(result_mode$n_bins_per_point), paste(mode, "n_bins_per_point must be integer"))
     assert_equal_int(length(result_mode$n_bins_per_point), bounds_2$max_n_points_candidate,
@@ -1095,7 +1095,7 @@ test_run_js_comp_test_parameter_search <- function() {
                                                  n_bootstraps = 5L, join_method = "join_min",
                                                  max_n_points_candidate = bounds_2$max_n_points_candidate,
                                                  max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
-                                                 bin_count_mode = "nonsense"),
+                                                 bin_count_mode = "nonsense", grid_min_points = 300L, grid_floor_mode = "grid_floor_stop"),
                "expected an unknown bin_count_mode string to be rejected before Fortran")
 
   # ============================================================
@@ -1107,7 +1107,7 @@ test_run_js_comp_test_parameter_search <- function() {
                                                      max_n_points_candidate = bounds$max_n_points_candidate,
                                                      max_n_neighbors_candidate = bounds$max_n_neighbors_candidate,
                                                      min_residuals_per_bin = 1000000L, random_seed = 1L,
-                                                     neighborhood_size_mode = mode)
+                                                     neighborhood_size_mode = mode, grid_min_points = 300L, grid_floor_mode = "grid_floor_stop")
     assert_true(result_size$n_points >= 1L, paste(mode, "n_points"))
     assert_true(result_size$n_neighbors >= 1L, paste(mode, "n_neighbors"))
     assert_equal_int(length(result_size$n_bins_per_point), bounds$max_n_points_candidate, paste(mode, "length"))
@@ -1115,7 +1115,7 @@ test_run_js_comp_test_parameter_search <- function() {
   assert_error(run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps = 10L, join_method = "join_min",
                                                  max_n_points_candidate = bounds$max_n_points_candidate,
                                                  max_n_neighbors_candidate = bounds$max_n_neighbors_candidate,
-                                                 neighborhood_size_mode = "nonsense"),
+                                                 neighborhood_size_mode = "nonsense", grid_min_points = 300L, grid_floor_mode = "grid_floor_stop"),
                "expected an unknown neighborhood_size_mode string to be rejected before Fortran")
 
   # ============================================================
@@ -1126,13 +1126,13 @@ test_run_js_comp_test_parameter_search <- function() {
                                                   max_n_points_candidate = bounds_2$max_n_points_candidate,
                                                   max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
                                                   min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
-                                                  random_seed = 1L, delta_abs_tolerance = 0.001)
+                                                  random_seed = 1L, delta_abs_tolerance = 0.001, grid_min_points = 300L, grid_floor_mode = "grid_floor_stop")
   assert_true(result_tol$n_points >= 1L && result_tol$n_neighbors >= 1L, "tolerance: a candidate")
   assert_equal_int(dim(result_tol$trace_delta), c(2L, 1L), "tolerance: trace_delta shape")
   assert_error(run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps = 5L, join_method = "join_min",
                                                  max_n_points_candidate = bounds_2$max_n_points_candidate,
                                                  max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
-                                                 delta_abs_tolerance = -0.1),
+                                                 delta_abs_tolerance = -0.1, grid_min_points = 300L, grid_floor_mode = "grid_floor_stop"),
                "expected a negative delta_abs_tolerance to be rejected", ERR_INVALID_INPUT)
 
   # ============================================================
@@ -1144,13 +1144,13 @@ test_run_js_comp_test_parameter_search <- function() {
                                                      max_n_points_candidate = bounds_2$max_n_points_candidate,
                                                      max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
                                                      min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
-                                                     random_seed = 1L, bootstrap_mode = "bootstrap_pooled")
+                                                     random_seed = 1L, bootstrap_mode = "bootstrap_pooled", grid_min_points = 300L, grid_floor_mode = "grid_floor_stop")
   assert_equal_int(dim(result_pooled$best_candidate_pair_confidence_interval), c(2L, 2L), "pooled: CI shape")
   assert_equal_int(dim(result_pooled$trace_ci_lower), c(2L, 1L), "pooled: trace_ci_lower shape")
   assert_error(run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps = 5L, join_method = "join_min",
                                                  max_n_points_candidate = bounds_2$max_n_points_candidate,
                                                  max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
-                                                 bootstrap_mode = "no_such_mode"),
+                                                 bootstrap_mode = "no_such_mode", grid_min_points = 300L, grid_floor_mode = "grid_floor_stop"),
                "expected an unknown bootstrap_mode to be rejected before Fortran")
 }
 
@@ -1166,16 +1166,16 @@ test_run_js_comp_test_parameter_search_rejects_undersized_bounds <- function() {
   gene_means <- matrix(rep(as.numeric(seq_len(n_genes)), n_studies), nrow = n_genes, ncol = n_studies)
   residuals <- array(rep(c(-0.5, 0.0, 0.5), n_genes * n_studies), dim = c(n_reps, n_genes, n_studies))
 
-  bounds <- calc_js_comp_test_candidate_bounds(n_genes)
+  bounds <- calc_js_comp_test_candidate_bounds(n_genes, 1L, grid_min_points = 300L)
   assert_error(run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps = 5L, join_method = "join_min",
                                                  max_n_points_candidate = bounds$max_n_points_candidate - 1L,
                                                  max_n_neighbors_candidate = bounds$max_n_neighbors_candidate,
-                                                 min_neighbor_overlap = 0.0, random_seed = 1L),
+                                                 min_neighbor_overlap = 0.0, random_seed = 1L, grid_min_points = 300L, grid_floor_mode = "grid_floor_stop"),
                "expected ERR_INVALID_INPUT for max_n_points_candidate below its bound", ERR_INVALID_INPUT)
   assert_error(run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps = 5L, join_method = "join_min",
                                                  max_n_points_candidate = bounds$max_n_points_candidate,
                                                  max_n_neighbors_candidate = bounds$max_n_neighbors_candidate - 1L,
-                                                 min_neighbor_overlap = 0.0, random_seed = 1L),
+                                                 min_neighbor_overlap = 0.0, random_seed = 1L, grid_min_points = 300L, grid_floor_mode = "grid_floor_stop"),
                "expected ERR_INVALID_INPUT for max_n_neighbors_candidate below its bound", ERR_INVALID_INPUT)
 }
 
@@ -1491,12 +1491,12 @@ label_test_expression <- function() {
 
 test_calc_js_comp_test_permutation_bounds <- function() {
   # Call + types only; the values are checked by hand in the Fortran suite.
-  bounds <- calc_js_comp_test_permutation_bounds(300L, 10L, 30L)
+  bounds <- calc_js_comp_test_permutation_bounds(300L, 1L, 10L, 30L, grid_min_points = 300L)
   for (key in c("max_n_points_candidate", "max_n_neighbors_candidate", "n_bootstrapping_top_k_jsds")) {
     assert_true(is.numeric(bounds[[key]]) && length(bounds[[key]]) == 1 && bounds[[key]] >= 1,
                 paste(key, "must be a single number of at least 1"))
   }
-  assert_error(calc_js_comp_test_permutation_bounds(300L, 10L, 301L),
+  assert_error(calc_js_comp_test_permutation_bounds(300L, 1L, 10L, 301L, grid_min_points = 300L),
                "expected ERR_INVALID_INPUT for n_neighbors above the gene count", ERR_INVALID_INPUT)
 }
 

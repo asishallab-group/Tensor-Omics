@@ -45,18 +45,32 @@ contains
     !| neighborhoods only shows that they are too small. Duplicate values from
     !| clamping or rounding collapse, so a small enough `G` yields a single candidate. Bin counts
     !| are not part of a candidate; they are chosen per reference point later.
+    !|
+    !| **Experiment switches** (each documented on its argument): `grid_sample_size_mode` and
+    !| `grid_points_factor` set `N` and the factor in `n_points_high`, `grid_min_points` replaces
+    !| `MIN_POINTS` as the floor, and `grid_floor_mode` adds one last candidate at the floor. Their
+    !| defaults here (floor 200 and the clamp) differ from the grid before; `grid_min_points = 300`
+    !| with `grid_floor_mode` stop reproduces it.
     subroutine generate_js_comp_test_candidates_c(&
             max_n_genes_all_studies,&
+            n_studies,&
             candidates_n_points_n_neighbors,&
             n_candidates,&
             neighborhood_size_mode,&
+            grid_sample_size_mode,&
+            grid_points_factor,&
+            grid_min_points,&
+            grid_floor_mode,&
             ierr&
         ) bind(C, name="generate_js_comp_test_candidates_c")
         use tox_data_integration_js_comp_test_fixed_k_search, only: generate_js_comp_test_candidates
-        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_BOTH, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
+        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_GRID_FLOOR_CLAMP, MODE_GRID_FLOOR_STOP, MODE_GRID_SAMPLE_SIZE_PER_STUDY, MODE_GRID_SAMPLE_SIZE_POOLED, MODE_NEIGHBORHOOD_SIZE_BOTH, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
 
         integer(c_int), intent(in), target :: max_n_genes_all_studies
             !! Maximum number of genes across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(c_int), intent(in), target :: n_studies
+            !! Number of studies; used only by the pooled grid sample size
             !! The minimum valid value is `1_int32`.
         integer(c_int), dimension(2, 16), intent(out), target :: candidates_n_points_n_neighbors
             !! Candidate `[n_points, n_neighbors]` pairs, `n_points` descending
@@ -72,16 +86,53 @@ contains
             !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
             !! The default value is `'neighborhood_size_large'`.
+        character(len=1, kind=c_char), dimension(26), intent(in), target :: grid_sample_size_mode
+            !! Sample size `N` in the grid's first reference-point count
+            !! `ceiling(grid_points_factor * sqrt(N))`. An experiment switch
+            !!
+            !! | Mode                                                                   | Value                                                                                                       |
+            !! |------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
+            !! | One study's gene count, `max_n_genes_all_studies` (default, as before) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_SAMPLE_SIZE_PER_STUDY(variable)]] |
+            !! | The pooled gene count, `max_n_genes_all_studies * n_studies`           | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_SAMPLE_SIZE_POOLED(variable)]]    |
+            !! The default value is `'grid_sample_size_per_study'`.
+        real(c_double), intent(in), target :: grid_points_factor
+            !! Factor in the grid's first reference-point count `ceiling(grid_points_factor * sqrt(N))`.
+            !! An experiment switch; the default 4 is the factor before
+            !! The minimum valid value is `above(0.0_real64)`.
+            !! The default value is `4.0_real64`.
+        integer(c_int), intent(in), target :: grid_min_points
+            !! The grid's floor: the lower clamp of its first `n_points` and the least `n_points` it
+            !! keeps. An experiment switch; the default here is 200, the floor before was 300
+            !! (`MIN_POINTS`)
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_POINTS`.
+            !! The default value is `200_int32`.
+        character(len=1, kind=c_char), dimension(16), intent(in), target :: grid_floor_mode
+            !! What the grid does when the next GAMMA-decayed `n_points` would fall below the floor.
+            !! An experiment switch; the default here is the clamp, the grid before stopped
+            !!
+            !! | Mode                                                                                           | Value                                                                                             |
+            !! |------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
+            !! | Stop: the coarsest candidate is the last decayed value at or above the floor (the grid before) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_FLOOR_STOP(variable)]]  |
+            !! | Clamp: add one last candidate at the floor, unless the coarsest one already is (default)       | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_FLOOR_CLAMP(variable)]] |
+            !! The default value is `'grid_floor_clamp'`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
         integer(int32) :: neighborhood_size_mode_mode_f
+        integer(int32) :: grid_sample_size_mode_mode_f
+        integer(int32) :: grid_floor_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
         M_CHECK_NON_NULL(max_n_genes_all_studies)
+        M_CHECK_NON_NULL(n_studies)
         M_CHECK_NON_NULL(n_candidates)
+        M_CHECK_NON_NULL(grid_points_factor)
+        M_CHECK_NON_NULL(grid_min_points)
         M_CHECK_ARRAY_NON_NULL(candidates_n_points_n_neighbors, 2 * 16)
         M_CHECK_ARRAY_NON_NULL(neighborhood_size_mode, 23)
+        M_CHECK_ARRAY_NON_NULL(grid_sample_size_mode, 26)
+        M_CHECK_ARRAY_NON_NULL(grid_floor_mode, 16)
 
         block
             character(len=:), pointer :: neighborhood_size_mode_f
@@ -99,12 +150,45 @@ contains
                     return
             end select
         end block
+        block
+            character(len=:), pointer :: grid_sample_size_mode_f
+            grid_sample_size_mode_f => c_char_as_view(grid_sample_size_mode)
+
+            select case (grid_sample_size_mode_f)
+                case ("grid_sample_size_per_study")
+                    grid_sample_size_mode_mode_f = MODE_GRID_SAMPLE_SIZE_PER_STUDY
+                case ("grid_sample_size_pooled")
+                    grid_sample_size_mode_mode_f = MODE_GRID_SAMPLE_SIZE_POOLED
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
+        block
+            character(len=:), pointer :: grid_floor_mode_f
+            grid_floor_mode_f => c_char_as_view(grid_floor_mode)
+
+            select case (grid_floor_mode_f)
+                case ("grid_floor_stop")
+                    grid_floor_mode_mode_f = MODE_GRID_FLOOR_STOP
+                case ("grid_floor_clamp")
+                    grid_floor_mode_mode_f = MODE_GRID_FLOOR_CLAMP
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
 
         call generate_js_comp_test_candidates(&
             max_n_genes_all_studies = max_n_genes_all_studies,&
+            n_studies = n_studies,&
             candidates_n_points_n_neighbors = candidates_n_points_n_neighbors,&
             n_candidates = n_candidates,&
             neighborhood_size_mode = neighborhood_size_mode_mode_f,&
+            grid_sample_size_mode = grid_sample_size_mode_mode_f,&
+            grid_points_factor = grid_points_factor,&
+            grid_min_points = grid_min_points,&
+            grid_floor_mode = grid_floor_mode_mode_f,&
             ierr = ierr&
         )
     end subroutine generate_js_comp_test_candidates_c
@@ -206,11 +290,15 @@ contains
             neighborhood_size_mode,&
             delta_abs_tolerance,&
             bootstrap_mode,&
+            grid_sample_size_mode,&
+            grid_points_factor,&
+            grid_min_points,&
+            grid_floor_mode,&
             ierr&
         ) bind(C, name="run_js_comp_test_parameter_search_c")
         use tox_data_integration_js_comp_test_fixed_k_search, only: run_js_comp_test_parameter_search
         use tox_data_integration_js_comp_test_binning_impl, only: MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_POOLED, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
-        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_BOTH, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
+        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_GRID_FLOOR_CLAMP, MODE_GRID_FLOOR_STOP, MODE_GRID_SAMPLE_SIZE_PER_STUDY, MODE_GRID_SAMPLE_SIZE_POOLED, MODE_NEIGHBORHOOD_SIZE_BOTH, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
         use tox_data_integration_js_comp_test_search_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, MODE_PLATEAU_BOTH, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE
         use tox_data_integration_stats_impl, only: MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED
 
@@ -225,9 +313,11 @@ contains
             !! The minimum valid value is `1_int32`.
         integer(c_int), intent(in), target :: max_n_points_candidate
             !! Upper bound on the grid's `n_points` candidates, which sizes the per-point outputs;
-            !! at least what `calc_js_comp_test_candidate_bounds` returns, else invalid input
+            !! at least what `calc_js_comp_test_candidate_bounds` returns for the same grid
+            !! switches, else invalid input (checked by the search once the grid is built, as the
+            !! bound depends on the optional grid switches)
             !! It is recommended to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):calc_js_comp_test_candidate_bounds]].
-            !! The minimum valid value is `max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS))`.
+            !! The minimum valid value is `1_int32`.
         real(c_double), dimension(max_n_genes_all_studies, n_studies), intent(in), target :: gene_means
             !! Per-gene mean expression values for all studies
             !! NaN is permitted for this value.
@@ -247,9 +337,10 @@ contains
             !! | Median overlap (a majority must pass)   | [[tox_data_integration_js_comp_test_search_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
         integer(c_int), intent(in), target :: max_n_neighbors_candidate
             !! Upper bound on the grid's `n_neighbors` candidates; at least what
-            !! `calc_js_comp_test_candidate_bounds` returns, else invalid input
+            !! `calc_js_comp_test_candidate_bounds` returns for the same grid switches, else
+            !! invalid input (checked by the search once the grid is built)
             !! It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):calc_js_comp_test_candidate_bounds]].
-            !! The minimum valid value is `max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32))`.
+            !! The minimum valid value is `1_int32`.
         integer(c_int), intent(out), target :: n_points
             !! The finally chosen candidate's `n_points`
         integer(c_int), intent(out), target :: n_neighbors
@@ -480,13 +571,48 @@ contains
             !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
             !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
             !! The default value is `'bootstrap_per_study'`.
+        character(len=1, kind=c_char), dimension(26), intent(in), target :: grid_sample_size_mode
+            !! Sample size `N` in the candidate grid's first reference-point count
+            !! `ceiling(grid_points_factor * sqrt(N))`. An experiment switch
+            !!
+            !! | Mode                                                                   | Value                                                                                                       |
+            !! |------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
+            !! | One study's gene count, `max_n_genes_all_studies` (default, as before) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_SAMPLE_SIZE_PER_STUDY(variable)]] |
+            !! | The pooled gene count, `max_n_genes_all_studies * n_studies`           | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_SAMPLE_SIZE_POOLED(variable)]]    |
+            !! The default value is `'grid_sample_size_per_study'`.
+        real(c_double), intent(in), target :: grid_points_factor
+            !! Factor in the grid's first reference-point count `ceiling(grid_points_factor * sqrt(N))`.
+            !! An experiment switch; the default 4 is the factor before
+            !! The minimum valid value is `above(0.0_real64)`.
+            !! The default value is `4.0_real64`.
+        integer(c_int), intent(in), target :: grid_min_points
+            !! The grid's floor: the lower clamp of its first `n_points` and the least `n_points` it
+            !! keeps. An experiment switch; the default here is 200, the floor before was 300
+            !! (`MIN_POINTS`)
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_POINTS`.
+            !! The default value is `200_int32`.
+        character(len=1, kind=c_char), dimension(16), intent(in), target :: grid_floor_mode
+            !! What the grid does when the next GAMMA-decayed `n_points` would fall below the floor.
+            !! An experiment switch; the default here is the clamp, the grid before stopped
+            !!
+            !! | Mode                                                                                           | Value                                                                                             |
+            !! |------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
+            !! | Stop: the coarsest candidate is the last decayed value at or above the floor (the grid before) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_FLOOR_STOP(variable)]]  |
+            !! | Clamp: add one last candidate at the floor, unless the coarsest one already is (default)       | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_FLOOR_CLAMP(variable)]] |
+            !! The default value is `'grid_floor_clamp'`.
         integer(c_int), intent(out), target :: ierr
-            !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
+            !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be
+            !! created; invalid input (not tied to an argument through the wrappers) when
+            !! `max_n_points_candidate` or `max_n_neighbors_candidate` is below the grid's largest
+            !! candidate (`n_admissible_evaluated` is then 0, every other output undefined)
         integer(int32) :: join_method_mode_f
         integer(int32) :: plateau_mode_mode_f
         integer(int32) :: bin_count_mode_mode_f
         integer(int32) :: neighborhood_size_mode_mode_f
         integer(int32) :: bootstrap_mode_mode_f
+        integer(int32) :: grid_sample_size_mode_mode_f
+        integer(int32) :: grid_floor_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -515,6 +641,8 @@ contains
         M_CHECK_NON_NULL(two_sided_bootstrapping_significance_level)
         M_CHECK_NON_NULL(random_seed)
         M_CHECK_NON_NULL(delta_abs_tolerance)
+        M_CHECK_NON_NULL(grid_points_factor)
+        M_CHECK_NON_NULL(grid_min_points)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(join_method, 11)
@@ -547,6 +675,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(bin_count_mode, 29)
         M_CHECK_ARRAY_NON_NULL(neighborhood_size_mode, 23)
         M_CHECK_ARRAY_NON_NULL(bootstrap_mode, 19)
+        M_CHECK_ARRAY_NON_NULL(grid_sample_size_mode, 26)
+        M_CHECK_ARRAY_NON_NULL(grid_floor_mode, 16)
 
         block
             character(len=:), pointer :: join_method_f
@@ -628,6 +758,34 @@ contains
                     return
             end select
         end block
+        block
+            character(len=:), pointer :: grid_sample_size_mode_f
+            grid_sample_size_mode_f => c_char_as_view(grid_sample_size_mode)
+
+            select case (grid_sample_size_mode_f)
+                case ("grid_sample_size_per_study")
+                    grid_sample_size_mode_mode_f = MODE_GRID_SAMPLE_SIZE_PER_STUDY
+                case ("grid_sample_size_pooled")
+                    grid_sample_size_mode_mode_f = MODE_GRID_SAMPLE_SIZE_POOLED
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
+        block
+            character(len=:), pointer :: grid_floor_mode_f
+            grid_floor_mode_f => c_char_as_view(grid_floor_mode)
+
+            select case (grid_floor_mode_f)
+                case ("grid_floor_stop")
+                    grid_floor_mode_mode_f = MODE_GRID_FLOOR_STOP
+                case ("grid_floor_clamp")
+                    grid_floor_mode_mode_f = MODE_GRID_FLOOR_CLAMP
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
 
         call run_js_comp_test_parameter_search(&
             n_studies = n_studies,&
@@ -687,6 +845,10 @@ contains
             neighborhood_size_mode = neighborhood_size_mode_mode_f,&
             delta_abs_tolerance = delta_abs_tolerance,&
             bootstrap_mode = bootstrap_mode_mode_f,&
+            grid_sample_size_mode = grid_sample_size_mode_mode_f,&
+            grid_points_factor = grid_points_factor,&
+            grid_min_points = grid_min_points,&
+            grid_floor_mode = grid_floor_mode_mode_f,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_parameter_search_c
@@ -833,11 +995,15 @@ contains
             neighborhood_size_mode,&
             delta_abs_tolerance,&
             bootstrap_mode,&
+            grid_sample_size_mode,&
+            grid_points_factor,&
+            grid_min_points,&
+            grid_floor_mode,&
             ierr&
         ) bind(C, name="run_js_comp_test_parameter_search_expert_c")
         use tox_data_integration_js_comp_test_fixed_k_search, only: run_js_comp_test_parameter_search_expert
         use tox_data_integration_js_comp_test_binning_impl, only: MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_POOLED, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
-        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_BOTH, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
+        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_GRID_FLOOR_CLAMP, MODE_GRID_FLOOR_STOP, MODE_GRID_SAMPLE_SIZE_PER_STUDY, MODE_GRID_SAMPLE_SIZE_POOLED, MODE_NEIGHBORHOOD_SIZE_BOTH, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
         use tox_data_integration_js_comp_test_search_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, MODE_PLATEAU_BOTH, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE
         use tox_data_integration_stats_impl, only: MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED
 
@@ -852,14 +1018,17 @@ contains
             !! The minimum valid value is `1_int32`.
         integer(c_int), intent(in), target :: max_n_points_candidate
             !! Upper bound on the grid's `n_points` candidates, which sizes the per-point outputs;
-            !! at least what `calc_js_comp_test_candidate_bounds` returns, else invalid input
+            !! at least what `calc_js_comp_test_candidate_bounds` returns for the same grid
+            !! switches, else invalid input (checked by the search once the grid is built, as the
+            !! bound depends on the optional grid switches)
             !! It is recommended to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):calc_js_comp_test_candidate_bounds]].
-            !! The minimum valid value is `max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS))`.
+            !! The minimum valid value is `1_int32`.
         integer(c_int), intent(in), target :: max_n_neighbors_candidate
             !! Upper bound on the grid's `n_neighbors` candidates; at least what
-            !! `calc_js_comp_test_candidate_bounds` returns, else invalid input
+            !! `calc_js_comp_test_candidate_bounds` returns for the same grid switches, else
+            !! invalid input (checked by the search once the grid is built)
             !! It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):calc_js_comp_test_candidate_bounds]].
-            !! The minimum valid value is `max(1_int32, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32))`.
+            !! The minimum valid value is `1_int32`.
         integer(c_int), intent(in), target :: n_bootstrapping_top_k_jsds
             !! Number of values kept at each end of the bootstrap distribution (heap size)
             !! It is *VERY IMPORTANT* to compute this argument from the `n_top_k` output produced by [[tox_data_integration_stats_impl(module):calc_js_comp_test_n_top_k_jsds]].
@@ -1201,13 +1370,48 @@ contains
             !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
             !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
             !! The default value is `'bootstrap_per_study'`.
+        character(len=1, kind=c_char), dimension(26), intent(in), target :: grid_sample_size_mode
+            !! Sample size `N` in the candidate grid's first reference-point count
+            !! `ceiling(grid_points_factor * sqrt(N))`. An experiment switch
+            !!
+            !! | Mode                                                                   | Value                                                                                                       |
+            !! |------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
+            !! | One study's gene count, `max_n_genes_all_studies` (default, as before) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_SAMPLE_SIZE_PER_STUDY(variable)]] |
+            !! | The pooled gene count, `max_n_genes_all_studies * n_studies`           | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_SAMPLE_SIZE_POOLED(variable)]]    |
+            !! The default value is `'grid_sample_size_per_study'`.
+        real(c_double), intent(in), target :: grid_points_factor
+            !! Factor in the grid's first reference-point count `ceiling(grid_points_factor * sqrt(N))`.
+            !! An experiment switch; the default 4 is the factor before
+            !! The minimum valid value is `above(0.0_real64)`.
+            !! The default value is `4.0_real64`.
+        integer(c_int), intent(in), target :: grid_min_points
+            !! The grid's floor: the lower clamp of its first `n_points` and the least `n_points` it
+            !! keeps. An experiment switch; the default here is 200, the floor before was 300
+            !! (`MIN_POINTS`)
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_POINTS`.
+            !! The default value is `200_int32`.
+        character(len=1, kind=c_char), dimension(16), intent(in), target :: grid_floor_mode
+            !! What the grid does when the next GAMMA-decayed `n_points` would fall below the floor.
+            !! An experiment switch; the default here is the clamp, the grid before stopped
+            !!
+            !! | Mode                                                                                           | Value                                                                                             |
+            !! |------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
+            !! | Stop: the coarsest candidate is the last decayed value at or above the floor (the grid before) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_FLOOR_STOP(variable)]]  |
+            !! | Clamp: add one last candidate at the floor, unless the coarsest one already is (default)       | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_FLOOR_CLAMP(variable)]] |
+            !! The default value is `'grid_floor_clamp'`.
         integer(c_int), intent(out), target :: ierr
-            !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
+            !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be
+            !! created; invalid input (not tied to an argument through the wrappers) when
+            !! `max_n_points_candidate` or `max_n_neighbors_candidate` is below the grid's largest
+            !! candidate (`n_admissible_evaluated` is then 0, every other output undefined)
         integer(int32) :: join_method_mode_f
         integer(int32) :: plateau_mode_mode_f
         integer(int32) :: bin_count_mode_mode_f
         integer(int32) :: neighborhood_size_mode_mode_f
         integer(int32) :: bootstrap_mode_mode_f
+        integer(int32) :: grid_sample_size_mode_mode_f
+        integer(int32) :: grid_floor_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -1237,6 +1441,8 @@ contains
         M_CHECK_NON_NULL(two_sided_bootstrapping_significance_level)
         M_CHECK_NON_NULL(random_seed)
         M_CHECK_NON_NULL(delta_abs_tolerance)
+        M_CHECK_NON_NULL(grid_points_factor)
+        M_CHECK_NON_NULL(grid_min_points)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(join_method, 11)
@@ -1313,6 +1519,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(bin_count_mode, 29)
         M_CHECK_ARRAY_NON_NULL(neighborhood_size_mode, 23)
         M_CHECK_ARRAY_NON_NULL(bootstrap_mode, 19)
+        M_CHECK_ARRAY_NON_NULL(grid_sample_size_mode, 26)
+        M_CHECK_ARRAY_NON_NULL(grid_floor_mode, 16)
 
         block
             character(len=:), pointer :: join_method_f
@@ -1389,6 +1597,34 @@ contains
                     bootstrap_mode_mode_f = MODE_BOOTSTRAP_PER_STUDY
                 case ("bootstrap_pooled")
                     bootstrap_mode_mode_f = MODE_BOOTSTRAP_POOLED
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
+        block
+            character(len=:), pointer :: grid_sample_size_mode_f
+            grid_sample_size_mode_f => c_char_as_view(grid_sample_size_mode)
+
+            select case (grid_sample_size_mode_f)
+                case ("grid_sample_size_per_study")
+                    grid_sample_size_mode_mode_f = MODE_GRID_SAMPLE_SIZE_PER_STUDY
+                case ("grid_sample_size_pooled")
+                    grid_sample_size_mode_mode_f = MODE_GRID_SAMPLE_SIZE_POOLED
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
+        block
+            character(len=:), pointer :: grid_floor_mode_f
+            grid_floor_mode_f => c_char_as_view(grid_floor_mode)
+
+            select case (grid_floor_mode_f)
+                case ("grid_floor_stop")
+                    grid_floor_mode_mode_f = MODE_GRID_FLOOR_STOP
+                case ("grid_floor_clamp")
+                    grid_floor_mode_mode_f = MODE_GRID_FLOOR_CLAMP
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
@@ -1498,6 +1734,10 @@ contains
             neighborhood_size_mode = neighborhood_size_mode_mode_f,&
             delta_abs_tolerance = delta_abs_tolerance,&
             bootstrap_mode = bootstrap_mode_mode_f,&
+            grid_sample_size_mode = grid_sample_size_mode_mode_f,&
+            grid_points_factor = grid_points_factor,&
+            grid_min_points = grid_min_points,&
+            grid_floor_mode = grid_floor_mode_mode_f,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_parameter_search_expert_c

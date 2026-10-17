@@ -66,8 +66,11 @@ generate_adaptive_js_comp_test_candidates <- function(max_n_genes_all_studies, n
 #'
 #' 1. Grow its neighborhoods exactly as
 #' \code{\link{construct_adaptive_neighborhoods}}
-#' does with the same `tau`, `mad_distance_factor`, `max_pooled_residuals` and
-#' `min_study_neighbors`.
+#' does with the same `tau`, `mad_distance_factor`, `max_pooled_residuals`,
+#' `min_study_neighbors` and experiment switches `tau_reference_mode`,
+#' `overlap_extension_mode` (its backward extension uses this search's own
+#' `min_neighbor_overlap`; pass the same value to the construction to rebuild a candidate) and
+#' `seed_step_mode`.
 #' 2. Reject it if the construction status is not ok, or if more than `max_n_points_candidate`
 #' reference points emerged.
 #' 3. Gate 1:
@@ -83,7 +86,9 @@ generate_adaptive_js_comp_test_candidates <- function(max_n_genes_all_studies, n
 #' first plateau `plateau_mode` selects.
 #'
 #' **Candidate log.** Every candidate tried gets an entry in `candidate_k_start`,
-#' `candidate_n_points` and `candidate_status`, until the search stops. The status is the first
+#' `candidate_n_points`, `candidate_status` and `candidate_n_extension_entries` (the entries the
+#' extensions of `overlap_extension_mode` and `seed_step_mode` added, 0 with both defaults),
+#' until the search stops. The status is the first
 #' failing check, in the order above:
 #' \code{ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED}
 #' (too few means or residuals),
@@ -231,6 +236,22 @@ generate_adaptive_js_comp_test_candidates <- function(max_n_genes_all_studies, n
 #'   studies did not differ (a noise band) instead, kept for comparison
 #'
 #'   The default value is `"bootstrap_per_study"`.
+#' @param tau_reference_mode a string, one of "tau_reference_previous_round", "tau_reference_k_start". Which dispersion an adaptive growth round's relative change is measured against
+#'   before it is compared with `tau`, as in `construct_adaptive_neighborhoods`. An
+#'   experiment switch; the default is the rule before
+#'
+#'   The default value is `"tau_reference_previous_round"`.
+#' @param overlap_extension_mode a string, one of "overlap_extension_none", "overlap_extension_backward". What happens to an adaptive neighborhood once its growth has stopped, as in
+#'   `construct_adaptive_neighborhoods`; the backward extension uses this search's
+#'   `min_neighbor_overlap`, so the overlap gate then always passes. An experiment switch;
+#'   the default keeps every neighborhood as grown, as before
+#'
+#'   The default value is `"overlap_extension_none"`.
+#' @param seed_step_mode a string, one of "seed_step_mad", "seed_step_min_k_step". How far past an adaptive neighborhood the next reference point's seed must lie, as
+#'   in `construct_adaptive_neighborhoods`. An experiment switch; the default is the MAD
+#'   rule alone, as before
+#'
+#'   The default value is `"seed_step_mad"`.
 #' @return a named list with elements:
 #'   \item{k_start}{a integer scalar. The finally chosen candidate's `k_start`}
 #'   \item{k_step}{a integer scalar. The finally chosen candidate's `k_step`}
@@ -326,8 +347,13 @@ generate_adaptive_js_comp_test_candidates <- function(max_n_genes_all_studies, n
 #'     `4` overlap gate failed,
 #'     `5` consensus-pmf count gate failed
 #'     The first `n_candidates_tried` elements will hold the results.}
+#'   \item{candidate_n_extension_entries}{a integer vector. Total number of pooled entries the backward extension of `overlap_extension_mode` and
+#'     the forward extension of `seed_step_mode` added to every tried candidate's
+#'     neighborhoods, whether or not the candidate was admissible; 0 with both defaults and
+#'     for too few means
+#'     The first `n_candidates_tried` elements will hold the results.}
 #' @export
-run_js_comp_test_adaptive_parameter_search <- function(gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L, bin_count_mode = "bin_count_occupancy", delta_abs_tolerance = 0.0, bootstrap_mode = "bootstrap_per_study") {
+run_js_comp_test_adaptive_parameter_search <- function(gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L, bin_count_mode = "bin_count_occupancy", delta_abs_tolerance = 0.0, bootstrap_mode = "bootstrap_per_study", tau_reference_mode = "tau_reference_previous_round", overlap_extension_mode = "overlap_extension_none", seed_step_mode = "seed_step_mad") {
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
     n_bootstraps <- .tox_as_integer_scalar(n_bootstraps, "n_bootstraps")
@@ -355,14 +381,17 @@ run_js_comp_test_adaptive_parameter_search <- function(gene_means, residuals, n_
     bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
     delta_abs_tolerance <- .tox_as_double_scalar(delta_abs_tolerance, "delta_abs_tolerance")
     bootstrap_mode <- .tox_as_mode(bootstrap_mode, "bootstrap_mode", c("bootstrap_per_study", "bootstrap_pooled"))
+    tau_reference_mode <- .tox_as_mode(tau_reference_mode, "tau_reference_mode", c("tau_reference_previous_round", "tau_reference_k_start"))
+    overlap_extension_mode <- .tox_as_mode(overlap_extension_mode, "overlap_extension_mode", c("overlap_extension_none", "overlap_extension_backward"))
+    seed_step_mode <- .tox_as_mode(seed_step_mode, "seed_step_mode", c("seed_step_mad", "seed_step_min_k_step"))
     if (dim(residuals)[3] != dim(gene_means)[2])
         .tox_shape_error("residuals", dim(residuals)[3], "gene_means", dim(gene_means)[2])
     if (dim(residuals)[2] != dim(gene_means)[1])
         .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
 
-    .result <- .Call("run_js_comp_test_adaptive_parameter_search_call", gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, tau, mad_distance_factor, max_pooled_residuals, min_study_neighbors, bin_count_mode, delta_abs_tolerance, bootstrap_mode)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "bootstrap_mode", "ierr")
-    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, "n_bins_per_point", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("run_js_comp_test_adaptive_parameter_search_call", gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, tau, mad_distance_factor, max_pooled_residuals, min_study_neighbors, bin_count_mode, delta_abs_tolerance, bootstrap_mode, tau_reference_mode, overlap_extension_mode, seed_step_mode)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "candidate_n_extension_entries", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "bootstrap_mode", "tau_reference_mode", "overlap_extension_mode", "seed_step_mode", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, "n_bins_per_point", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -400,6 +429,7 @@ run_js_comp_test_adaptive_parameter_search <- function(gene_means, residuals, n_
         trace_shared_residual_range_high = .result$trace_shared_residual_range_high[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
         candidate_k_start = utils::head(.result$candidate_k_start, .result$n_candidates_tried),
         candidate_n_points = utils::head(.result$candidate_n_points, .result$n_candidates_tried),
-        candidate_status = utils::head(.result$candidate_status, .result$n_candidates_tried)
+        candidate_status = utils::head(.result$candidate_status, .result$n_candidates_tried),
+        candidate_n_extension_entries = utils::head(.result$candidate_n_extension_entries, .result$n_candidates_tried)
     )
 }

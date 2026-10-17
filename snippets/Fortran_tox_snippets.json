@@ -354,29 +354,33 @@
       "    candidate_k_start=${43:candidate_k_start}, &",
       "    candidate_n_points=${44:candidate_n_points}, &",
       "    candidate_status=${45:candidate_status}, &",
-      "    min_residuals_per_bin=${46:min_residuals_per_bin}, &",
-      "    min_neighbor_overlap=${47:min_neighbor_overlap}, &",
-      "    succeeding_ci_overlap=${48:succeeding_ci_overlap}, &",
-      "    plateau_mode=${49|MODE_PLATEAU_CI_OVERLAP,MODE_PLATEAU_EFFECT_SIZE,MODE_PLATEAU_BOTH|}, &",
-      "    delta_median_threshold=${50:delta_median_threshold}, &",
-      "    delta_max_threshold=${51:delta_max_threshold}, &",
-      "    delta_epsilon=${52:delta_epsilon}, &",
-      "    delta_min_consecutive_transitions=${53:delta_min_consecutive_transitions}, &",
-      "    m_min=${54:m_min}, &",
-      "    m_max=${55:m_max}, &",
-      "    gamma_occupancy=${56:gamma_occupancy}, &",
-      "    lower_residual_range_quantile=${57:lower_residual_range_quantile}, &",
-      "    upper_residual_range_quantile=${58:upper_residual_range_quantile}, &",
-      "    two_sided_bootstrapping_significance_level=${59:two_sided_bootstrapping_significance_level}, &",
-      "    random_seed=${60:random_seed}, &",
-      "    tau=${61:tau}, &",
-      "    mad_distance_factor=${62:mad_distance_factor}, &",
-      "    max_pooled_residuals=${63:max_pooled_residuals}, &",
-      "    min_study_neighbors=${64:min_study_neighbors}, &",
-      "    bin_count_mode=${65|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    delta_abs_tolerance=${66:delta_abs_tolerance}, &",
-      "    bootstrap_mode=${67|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${68:ierr})"
+      "    candidate_n_extension_entries=${46:candidate_n_extension_entries}, &",
+      "    min_residuals_per_bin=${47:min_residuals_per_bin}, &",
+      "    min_neighbor_overlap=${48:min_neighbor_overlap}, &",
+      "    succeeding_ci_overlap=${49:succeeding_ci_overlap}, &",
+      "    plateau_mode=${50|MODE_PLATEAU_CI_OVERLAP,MODE_PLATEAU_EFFECT_SIZE,MODE_PLATEAU_BOTH|}, &",
+      "    delta_median_threshold=${51:delta_median_threshold}, &",
+      "    delta_max_threshold=${52:delta_max_threshold}, &",
+      "    delta_epsilon=${53:delta_epsilon}, &",
+      "    delta_min_consecutive_transitions=${54:delta_min_consecutive_transitions}, &",
+      "    m_min=${55:m_min}, &",
+      "    m_max=${56:m_max}, &",
+      "    gamma_occupancy=${57:gamma_occupancy}, &",
+      "    lower_residual_range_quantile=${58:lower_residual_range_quantile}, &",
+      "    upper_residual_range_quantile=${59:upper_residual_range_quantile}, &",
+      "    two_sided_bootstrapping_significance_level=${60:two_sided_bootstrapping_significance_level}, &",
+      "    random_seed=${61:random_seed}, &",
+      "    tau=${62:tau}, &",
+      "    mad_distance_factor=${63:mad_distance_factor}, &",
+      "    max_pooled_residuals=${64:max_pooled_residuals}, &",
+      "    min_study_neighbors=${65:min_study_neighbors}, &",
+      "    bin_count_mode=${66|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
+      "    delta_abs_tolerance=${67:delta_abs_tolerance}, &",
+      "    bootstrap_mode=${68|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
+      "    tau_reference_mode=${69|MODE_TAU_REFERENCE_PREVIOUS_ROUND,MODE_TAU_REFERENCE_K_START|}, &",
+      "    overlap_extension_mode=${70|MODE_OVERLAP_EXTENSION_NONE,MODE_OVERLAP_EXTENSION_BACKWARD|}, &",
+      "    seed_step_mode=${71|MODE_SEED_STEP_MAD,MODE_SEED_STEP_MIN_K_STEP|}, &",
+      "    ierr=${72:ierr})"
     ]
   },
   "run_js_comp_test_adaptive_parameter_search (call, checked)": {
@@ -429,29 +433,33 @@
       "    candidate_k_start=${43:candidate_k_start}, &",
       "    candidate_n_points=${44:candidate_n_points}, &",
       "    candidate_status=${45:candidate_status}, &",
-      "    min_residuals_per_bin=${46:min_residuals_per_bin}, &",
-      "    min_neighbor_overlap=${47:min_neighbor_overlap}, &",
-      "    succeeding_ci_overlap=${48:succeeding_ci_overlap}, &",
-      "    plateau_mode=${49|MODE_PLATEAU_CI_OVERLAP,MODE_PLATEAU_EFFECT_SIZE,MODE_PLATEAU_BOTH|}, &",
-      "    delta_median_threshold=${50:delta_median_threshold}, &",
-      "    delta_max_threshold=${51:delta_max_threshold}, &",
-      "    delta_epsilon=${52:delta_epsilon}, &",
-      "    delta_min_consecutive_transitions=${53:delta_min_consecutive_transitions}, &",
-      "    m_min=${54:m_min}, &",
-      "    m_max=${55:m_max}, &",
-      "    gamma_occupancy=${56:gamma_occupancy}, &",
-      "    lower_residual_range_quantile=${57:lower_residual_range_quantile}, &",
-      "    upper_residual_range_quantile=${58:upper_residual_range_quantile}, &",
-      "    two_sided_bootstrapping_significance_level=${59:two_sided_bootstrapping_significance_level}, &",
-      "    random_seed=${60:random_seed}, &",
-      "    tau=${61:tau}, &",
-      "    mad_distance_factor=${62:mad_distance_factor}, &",
-      "    max_pooled_residuals=${63:max_pooled_residuals}, &",
-      "    min_study_neighbors=${64:min_study_neighbors}, &",
-      "    bin_count_mode=${65|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    delta_abs_tolerance=${66:delta_abs_tolerance}, &",
-      "    bootstrap_mode=${67|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${68:ierr})",
+      "    candidate_n_extension_entries=${46:candidate_n_extension_entries}, &",
+      "    min_residuals_per_bin=${47:min_residuals_per_bin}, &",
+      "    min_neighbor_overlap=${48:min_neighbor_overlap}, &",
+      "    succeeding_ci_overlap=${49:succeeding_ci_overlap}, &",
+      "    plateau_mode=${50|MODE_PLATEAU_CI_OVERLAP,MODE_PLATEAU_EFFECT_SIZE,MODE_PLATEAU_BOTH|}, &",
+      "    delta_median_threshold=${51:delta_median_threshold}, &",
+      "    delta_max_threshold=${52:delta_max_threshold}, &",
+      "    delta_epsilon=${53:delta_epsilon}, &",
+      "    delta_min_consecutive_transitions=${54:delta_min_consecutive_transitions}, &",
+      "    m_min=${55:m_min}, &",
+      "    m_max=${56:m_max}, &",
+      "    gamma_occupancy=${57:gamma_occupancy}, &",
+      "    lower_residual_range_quantile=${58:lower_residual_range_quantile}, &",
+      "    upper_residual_range_quantile=${59:upper_residual_range_quantile}, &",
+      "    two_sided_bootstrapping_significance_level=${60:two_sided_bootstrapping_significance_level}, &",
+      "    random_seed=${61:random_seed}, &",
+      "    tau=${62:tau}, &",
+      "    mad_distance_factor=${63:mad_distance_factor}, &",
+      "    max_pooled_residuals=${64:max_pooled_residuals}, &",
+      "    min_study_neighbors=${65:min_study_neighbors}, &",
+      "    bin_count_mode=${66|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
+      "    delta_abs_tolerance=${67:delta_abs_tolerance}, &",
+      "    bootstrap_mode=${68|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
+      "    tau_reference_mode=${69|MODE_TAU_REFERENCE_PREVIOUS_ROUND,MODE_TAU_REFERENCE_K_START|}, &",
+      "    overlap_extension_mode=${70|MODE_OVERLAP_EXTENSION_NONE,MODE_OVERLAP_EXTENSION_BACKWARD|}, &",
+      "    seed_step_mode=${71|MODE_SEED_STEP_MAD,MODE_SEED_STEP_MIN_K_STEP|}, &",
+      "    ierr=${72:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -909,10 +917,15 @@
     "body": [
       "call generate_js_comp_test_candidates( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
-      "    candidates_n_points_n_neighbors=${2:candidates_n_points_n_neighbors}, &",
-      "    n_candidates=${3:n_candidates}, &",
-      "    neighborhood_size_mode=${4|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
-      "    ierr=${5:ierr})"
+      "    n_studies=${2:n_studies}, &",
+      "    candidates_n_points_n_neighbors=${3:candidates_n_points_n_neighbors}, &",
+      "    n_candidates=${4:n_candidates}, &",
+      "    neighborhood_size_mode=${5|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
+      "    grid_sample_size_mode=${6|MODE_GRID_SAMPLE_SIZE_PER_STUDY,MODE_GRID_SAMPLE_SIZE_POOLED|}, &",
+      "    grid_points_factor=${7:grid_points_factor}, &",
+      "    grid_min_points=${8:grid_min_points}, &",
+      "    grid_floor_mode=${9|MODE_GRID_FLOOR_STOP,MODE_GRID_FLOOR_CLAMP|}, &",
+      "    ierr=${10:ierr})"
     ]
   },
   "generate_js_comp_test_candidates (call, checked)": {
@@ -921,10 +934,15 @@
     "body": [
       "call generate_js_comp_test_candidates( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
-      "    candidates_n_points_n_neighbors=${2:candidates_n_points_n_neighbors}, &",
-      "    n_candidates=${3:n_candidates}, &",
-      "    neighborhood_size_mode=${4|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
-      "    ierr=${5:ierr})",
+      "    n_studies=${2:n_studies}, &",
+      "    candidates_n_points_n_neighbors=${3:candidates_n_points_n_neighbors}, &",
+      "    n_candidates=${4:n_candidates}, &",
+      "    neighborhood_size_mode=${5|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
+      "    grid_sample_size_mode=${6|MODE_GRID_SAMPLE_SIZE_PER_STUDY,MODE_GRID_SAMPLE_SIZE_POOLED|}, &",
+      "    grid_points_factor=${7:grid_points_factor}, &",
+      "    grid_min_points=${8:grid_min_points}, &",
+      "    grid_floor_mode=${9|MODE_GRID_FLOOR_STOP,MODE_GRID_FLOOR_CLAMP|}, &",
+      "    ierr=${10:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -990,7 +1008,11 @@
       "    neighborhood_size_mode=${55|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
       "    delta_abs_tolerance=${56:delta_abs_tolerance}, &",
       "    bootstrap_mode=${57|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${58:ierr})"
+      "    grid_sample_size_mode=${58|MODE_GRID_SAMPLE_SIZE_PER_STUDY,MODE_GRID_SAMPLE_SIZE_POOLED|}, &",
+      "    grid_points_factor=${59:grid_points_factor}, &",
+      "    grid_min_points=${60:grid_min_points}, &",
+      "    grid_floor_mode=${61|MODE_GRID_FLOOR_STOP,MODE_GRID_FLOOR_CLAMP|}, &",
+      "    ierr=${62:ierr})"
     ]
   },
   "run_js_comp_test_parameter_search (call, checked)": {
@@ -1055,7 +1077,11 @@
       "    neighborhood_size_mode=${55|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
       "    delta_abs_tolerance=${56:delta_abs_tolerance}, &",
       "    bootstrap_mode=${57|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${58:ierr})",
+      "    grid_sample_size_mode=${58|MODE_GRID_SAMPLE_SIZE_PER_STUDY,MODE_GRID_SAMPLE_SIZE_POOLED|}, &",
+      "    grid_points_factor=${59:grid_points_factor}, &",
+      "    grid_min_points=${60:grid_min_points}, &",
+      "    grid_floor_mode=${61|MODE_GRID_FLOOR_STOP,MODE_GRID_FLOOR_CLAMP|}, &",
+      "    ierr=${62:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1072,9 +1098,13 @@
     "body": [
       "call calc_js_comp_test_candidate_bounds( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
-      "    max_n_points_candidate=${2:max_n_points_candidate}, &",
-      "    max_n_neighbors_candidate=${3:max_n_neighbors_candidate}, &",
-      "    ierr=${4:ierr})"
+      "    n_studies=${2:n_studies}, &",
+      "    max_n_points_candidate=${3:max_n_points_candidate}, &",
+      "    max_n_neighbors_candidate=${4:max_n_neighbors_candidate}, &",
+      "    grid_sample_size_mode=${5|MODE_GRID_SAMPLE_SIZE_PER_STUDY,MODE_GRID_SAMPLE_SIZE_POOLED|}, &",
+      "    grid_points_factor=${6:grid_points_factor}, &",
+      "    grid_min_points=${7:grid_min_points}, &",
+      "    ierr=${8:ierr})"
     ]
   },
   "calc_js_comp_test_candidate_bounds (call, checked)": {
@@ -1083,9 +1113,13 @@
     "body": [
       "call calc_js_comp_test_candidate_bounds( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
-      "    max_n_points_candidate=${2:max_n_points_candidate}, &",
-      "    max_n_neighbors_candidate=${3:max_n_neighbors_candidate}, &",
-      "    ierr=${4:ierr})",
+      "    n_studies=${2:n_studies}, &",
+      "    max_n_points_candidate=${3:max_n_points_candidate}, &",
+      "    max_n_neighbors_candidate=${4:max_n_neighbors_candidate}, &",
+      "    grid_sample_size_mode=${5|MODE_GRID_SAMPLE_SIZE_PER_STUDY,MODE_GRID_SAMPLE_SIZE_POOLED|}, &",
+      "    grid_points_factor=${6:grid_points_factor}, &",
+      "    grid_min_points=${7:grid_min_points}, &",
+      "    ierr=${8:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1134,7 +1168,11 @@
       "    neighborhood_size_mode=${31|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
       "    delta_abs_tolerance=${32:delta_abs_tolerance}, &",
       "    bootstrap_mode=${33|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${34:ierr})"
+      "    grid_sample_size_mode=${34|MODE_GRID_SAMPLE_SIZE_PER_STUDY,MODE_GRID_SAMPLE_SIZE_POOLED|}, &",
+      "    grid_points_factor=${35:grid_points_factor}, &",
+      "    grid_min_points=${36:grid_min_points}, &",
+      "    grid_floor_mode=${37|MODE_GRID_FLOOR_STOP,MODE_GRID_FLOOR_CLAMP|}, &",
+      "    ierr=${38:ierr})"
     ]
   },
   "run_js_comp_test_on_sample_assignment (call, checked)": {
@@ -1175,7 +1213,11 @@
       "    neighborhood_size_mode=${31|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
       "    delta_abs_tolerance=${32:delta_abs_tolerance}, &",
       "    bootstrap_mode=${33|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${34:ierr})",
+      "    grid_sample_size_mode=${34|MODE_GRID_SAMPLE_SIZE_PER_STUDY,MODE_GRID_SAMPLE_SIZE_POOLED|}, &",
+      "    grid_points_factor=${35:grid_points_factor}, &",
+      "    grid_min_points=${36:grid_min_points}, &",
+      "    grid_floor_mode=${37|MODE_GRID_FLOOR_STOP,MODE_GRID_FLOOR_CLAMP|}, &",
+      "    ierr=${38:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1223,7 +1265,10 @@
       "    bin_count_mode=${37|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    delta_abs_tolerance=${38:delta_abs_tolerance}, &",
       "    bootstrap_mode=${39|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${40:ierr})"
+      "    tau_reference_mode=${40|MODE_TAU_REFERENCE_PREVIOUS_ROUND,MODE_TAU_REFERENCE_K_START|}, &",
+      "    overlap_extension_mode=${41|MODE_OVERLAP_EXTENSION_NONE,MODE_OVERLAP_EXTENSION_BACKWARD|}, &",
+      "    seed_step_mode=${42|MODE_SEED_STEP_MAD,MODE_SEED_STEP_MIN_K_STEP|}, &",
+      "    ierr=${43:ierr})"
     ]
   },
   "run_js_comp_test_adaptive_on_sample_assignment (call, checked)": {
@@ -1270,7 +1315,10 @@
       "    bin_count_mode=${37|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    delta_abs_tolerance=${38:delta_abs_tolerance}, &",
       "    bootstrap_mode=${39|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${40:ierr})",
+      "    tau_reference_mode=${40|MODE_TAU_REFERENCE_PREVIOUS_ROUND,MODE_TAU_REFERENCE_K_START|}, &",
+      "    overlap_extension_mode=${41|MODE_OVERLAP_EXTENSION_NONE,MODE_OVERLAP_EXTENSION_BACKWARD|}, &",
+      "    seed_step_mode=${42|MODE_SEED_STEP_MAD,MODE_SEED_STEP_MIN_K_STEP|}, &",
+      "    ierr=${43:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1312,7 +1360,11 @@
       "    neighborhood_size_mode=${31|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
       "    delta_abs_tolerance=${32:delta_abs_tolerance}, &",
       "    bootstrap_mode=${33|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${34:ierr})"
+      "    grid_sample_size_mode=${34|MODE_GRID_SAMPLE_SIZE_PER_STUDY,MODE_GRID_SAMPLE_SIZE_POOLED|}, &",
+      "    grid_points_factor=${35:grid_points_factor}, &",
+      "    grid_min_points=${36:grid_min_points}, &",
+      "    grid_floor_mode=${37|MODE_GRID_FLOOR_STOP,MODE_GRID_FLOOR_CLAMP|}, &",
+      "    ierr=${38:ierr})"
     ]
   },
   "run_js_comp_test_label_permutation_test (call, checked)": {
@@ -1353,7 +1405,11 @@
       "    neighborhood_size_mode=${31|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
       "    delta_abs_tolerance=${32:delta_abs_tolerance}, &",
       "    bootstrap_mode=${33|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${34:ierr})",
+      "    grid_sample_size_mode=${34|MODE_GRID_SAMPLE_SIZE_PER_STUDY,MODE_GRID_SAMPLE_SIZE_POOLED|}, &",
+      "    grid_points_factor=${35:grid_points_factor}, &",
+      "    grid_min_points=${36:grid_min_points}, &",
+      "    grid_floor_mode=${37|MODE_GRID_FLOOR_STOP,MODE_GRID_FLOOR_CLAMP|}, &",
+      "    ierr=${38:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1399,7 +1455,10 @@
       "    bin_count_mode=${35|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    delta_abs_tolerance=${36:delta_abs_tolerance}, &",
       "    bootstrap_mode=${37|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${38:ierr})"
+      "    tau_reference_mode=${38|MODE_TAU_REFERENCE_PREVIOUS_ROUND,MODE_TAU_REFERENCE_K_START|}, &",
+      "    overlap_extension_mode=${39|MODE_OVERLAP_EXTENSION_NONE,MODE_OVERLAP_EXTENSION_BACKWARD|}, &",
+      "    seed_step_mode=${40|MODE_SEED_STEP_MAD,MODE_SEED_STEP_MIN_K_STEP|}, &",
+      "    ierr=${41:ierr})"
     ]
   },
   "run_js_comp_test_adaptive_label_permutation_test (call, checked)": {
@@ -1444,7 +1503,10 @@
       "    bin_count_mode=${35|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    delta_abs_tolerance=${36:delta_abs_tolerance}, &",
       "    bootstrap_mode=${37|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${38:ierr})",
+      "    tau_reference_mode=${38|MODE_TAU_REFERENCE_PREVIOUS_ROUND,MODE_TAU_REFERENCE_K_START|}, &",
+      "    overlap_extension_mode=${39|MODE_OVERLAP_EXTENSION_NONE,MODE_OVERLAP_EXTENSION_BACKWARD|}, &",
+      "    seed_step_mode=${40|MODE_SEED_STEP_MAD,MODE_SEED_STEP_MIN_K_STEP|}, &",
+      "    ierr=${41:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1461,14 +1523,18 @@
     "body": [
       "call calc_js_comp_test_permutation_bounds( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
-      "    n_points=${2:n_points}, &",
-      "    n_neighbors=${3:n_neighbors}, &",
-      "    n_bootstraps=${4:n_bootstraps}, &",
-      "    two_sided_bootstrapping_significance_level=${5:two_sided_bootstrapping_significance_level}, &",
-      "    max_n_points_candidate=${6:max_n_points_candidate}, &",
-      "    max_n_neighbors_candidate=${7:max_n_neighbors_candidate}, &",
-      "    n_bootstrapping_top_k_jsds=${8:n_bootstrapping_top_k_jsds}, &",
-      "    ierr=${9:ierr})"
+      "    n_studies=${2:n_studies}, &",
+      "    n_points=${3:n_points}, &",
+      "    n_neighbors=${4:n_neighbors}, &",
+      "    n_bootstraps=${5:n_bootstraps}, &",
+      "    two_sided_bootstrapping_significance_level=${6:two_sided_bootstrapping_significance_level}, &",
+      "    max_n_points_candidate=${7:max_n_points_candidate}, &",
+      "    max_n_neighbors_candidate=${8:max_n_neighbors_candidate}, &",
+      "    n_bootstrapping_top_k_jsds=${9:n_bootstrapping_top_k_jsds}, &",
+      "    grid_sample_size_mode=${10|MODE_GRID_SAMPLE_SIZE_PER_STUDY,MODE_GRID_SAMPLE_SIZE_POOLED|}, &",
+      "    grid_points_factor=${11:grid_points_factor}, &",
+      "    grid_min_points=${12:grid_min_points}, &",
+      "    ierr=${13:ierr})"
     ]
   },
   "calc_js_comp_test_permutation_bounds (call, checked)": {
@@ -1477,14 +1543,18 @@
     "body": [
       "call calc_js_comp_test_permutation_bounds( &",
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
-      "    n_points=${2:n_points}, &",
-      "    n_neighbors=${3:n_neighbors}, &",
-      "    n_bootstraps=${4:n_bootstraps}, &",
-      "    two_sided_bootstrapping_significance_level=${5:two_sided_bootstrapping_significance_level}, &",
-      "    max_n_points_candidate=${6:max_n_points_candidate}, &",
-      "    max_n_neighbors_candidate=${7:max_n_neighbors_candidate}, &",
-      "    n_bootstrapping_top_k_jsds=${8:n_bootstrapping_top_k_jsds}, &",
-      "    ierr=${9:ierr})",
+      "    n_studies=${2:n_studies}, &",
+      "    n_points=${3:n_points}, &",
+      "    n_neighbors=${4:n_neighbors}, &",
+      "    n_bootstraps=${5:n_bootstraps}, &",
+      "    two_sided_bootstrapping_significance_level=${6:two_sided_bootstrapping_significance_level}, &",
+      "    max_n_points_candidate=${7:max_n_points_candidate}, &",
+      "    max_n_neighbors_candidate=${8:max_n_neighbors_candidate}, &",
+      "    n_bootstrapping_top_k_jsds=${9:n_bootstrapping_top_k_jsds}, &",
+      "    grid_sample_size_mode=${10|MODE_GRID_SAMPLE_SIZE_PER_STUDY,MODE_GRID_SAMPLE_SIZE_POOLED|}, &",
+      "    grid_points_factor=${11:grid_points_factor}, &",
+      "    grid_min_points=${12:grid_min_points}, &",
+      "    ierr=${13:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -2738,13 +2808,18 @@
       "    stop_reason=${13:stop_reason}, &",
       "    neighborhood_dispersion=${14:neighborhood_dispersion}, &",
       "    neighborhood_mad=${15:neighborhood_mad}, &",
-      "    max_n_neighbors=${16:max_n_neighbors}, &",
-      "    construction_status=${17:construction_status}, &",
-      "    tau=${18:tau}, &",
-      "    mad_distance_factor=${19:mad_distance_factor}, &",
-      "    max_pooled_residuals=${20:max_pooled_residuals}, &",
-      "    min_study_neighbors=${21:min_study_neighbors}, &",
-      "    ierr=${22:ierr})"
+      "    n_extension_entries=${16:n_extension_entries}, &",
+      "    max_n_neighbors=${17:max_n_neighbors}, &",
+      "    construction_status=${18:construction_status}, &",
+      "    tau=${19:tau}, &",
+      "    mad_distance_factor=${20:mad_distance_factor}, &",
+      "    max_pooled_residuals=${21:max_pooled_residuals}, &",
+      "    min_study_neighbors=${22:min_study_neighbors}, &",
+      "    tau_reference_mode=${23|MODE_TAU_REFERENCE_PREVIOUS_ROUND,MODE_TAU_REFERENCE_K_START|}, &",
+      "    overlap_extension_mode=${24|MODE_OVERLAP_EXTENSION_NONE,MODE_OVERLAP_EXTENSION_BACKWARD|}, &",
+      "    min_neighbor_overlap=${25:min_neighbor_overlap}, &",
+      "    seed_step_mode=${26|MODE_SEED_STEP_MAD,MODE_SEED_STEP_MIN_K_STEP|}, &",
+      "    ierr=${27:ierr})"
     ]
   },
   "construct_adaptive_neighborhoods (call, checked)": {
@@ -2767,13 +2842,18 @@
       "    stop_reason=${13:stop_reason}, &",
       "    neighborhood_dispersion=${14:neighborhood_dispersion}, &",
       "    neighborhood_mad=${15:neighborhood_mad}, &",
-      "    max_n_neighbors=${16:max_n_neighbors}, &",
-      "    construction_status=${17:construction_status}, &",
-      "    tau=${18:tau}, &",
-      "    mad_distance_factor=${19:mad_distance_factor}, &",
-      "    max_pooled_residuals=${20:max_pooled_residuals}, &",
-      "    min_study_neighbors=${21:min_study_neighbors}, &",
-      "    ierr=${22:ierr})",
+      "    n_extension_entries=${16:n_extension_entries}, &",
+      "    max_n_neighbors=${17:max_n_neighbors}, &",
+      "    construction_status=${18:construction_status}, &",
+      "    tau=${19:tau}, &",
+      "    mad_distance_factor=${20:mad_distance_factor}, &",
+      "    max_pooled_residuals=${21:max_pooled_residuals}, &",
+      "    min_study_neighbors=${22:min_study_neighbors}, &",
+      "    tau_reference_mode=${23|MODE_TAU_REFERENCE_PREVIOUS_ROUND,MODE_TAU_REFERENCE_K_START|}, &",
+      "    overlap_extension_mode=${24|MODE_OVERLAP_EXTENSION_NONE,MODE_OVERLAP_EXTENSION_BACKWARD|}, &",
+      "    min_neighbor_overlap=${25:min_neighbor_overlap}, &",
+      "    seed_step_mode=${26|MODE_SEED_STEP_MAD,MODE_SEED_STEP_MIN_K_STEP|}, &",
+      "    ierr=${27:ierr})",
       "if (is_err(ierr)) return"
     ]
   },

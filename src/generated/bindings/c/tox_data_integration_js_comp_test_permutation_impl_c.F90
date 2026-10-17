@@ -39,8 +39,9 @@
 !| the data and the histograms fixed and only reshuffles the pooled histogram counts.
 module tox_data_integration_js_comp_test_permutation_impl_c
     use f42_safeguard
-    use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
+    use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_int, c_loc
+    use tox_conversions, only: c_char_as_view
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
     M_IMPLICIT_NONE
     private
 
@@ -58,6 +59,8 @@ contains
     !| `max_n_points_candidate = max(n_points, P)` and `max_n_neighbors_candidate = max(n_neighbors,
     !| K)`, with `P` and `K` the bounds of
     !| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):calc_js_comp_test_candidate_bounds(subroutine)]].
+    !| `P` and `K` follow the grid switches given (pass the rerun search's own); `grid_floor_mode`
+    !| needs no argument here, as its floor candidate never exceeds `P` or `K`.
     !| `n_bootstrapping_top_k_jsds` is the bootstrap heap size, exactly as
     !| [[tox_data_integration_stats_impl(module):calc_js_comp_test_n_top_k_jsds(subroutine)]] computes it.
     !|
@@ -65,6 +68,7 @@ contains
     !| `ERR_NAN_INF`); the outputs are then left undefined.
     subroutine calc_js_comp_test_permutation_bounds_c(&
             max_n_genes_all_studies,&
+            n_studies,&
             n_points,&
             n_neighbors,&
             n_bootstraps,&
@@ -72,12 +76,19 @@ contains
             max_n_points_candidate,&
             max_n_neighbors_candidate,&
             n_bootstrapping_top_k_jsds,&
+            grid_sample_size_mode,&
+            grid_points_factor,&
+            grid_min_points,&
             ierr&
         ) bind(C, name="calc_js_comp_test_permutation_bounds_c")
         use tox_data_integration_js_comp_test_permutation_impl, only: calc_js_comp_test_permutation_bounds
+        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_GRID_SAMPLE_SIZE_PER_STUDY, MODE_GRID_SAMPLE_SIZE_POOLED
 
         integer(c_int), intent(in), target :: max_n_genes_all_studies
             !! Maximum number of genes across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(c_int), intent(in), target :: n_studies
+            !! Number of studies; used only by the pooled grid sample size of the rerun search
             !! The minimum valid value is `1_int32`.
         integer(c_int), intent(in), target :: n_points
             !! Number of reference points of the fixed-parameter run
@@ -101,12 +112,34 @@ contains
             !! Capacity for neighbors per neighborhood
         integer(c_int), intent(out), target :: n_bootstrapping_top_k_jsds
             !! Bootstrap heap size (values kept at each end of the bootstrap distribution)
+        character(len=1, kind=c_char), dimension(26), intent(in), target :: grid_sample_size_mode
+            !! Rerun search's k-NN candidate grid (an experiment switch): the sample size `N` in its first
+            !! reference-point count `ceiling(grid_points_factor * sqrt(N))`
+            !!
+            !! | Mode                                                                   | Value                                                                                                       |
+            !! |------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
+            !! | One study's gene count, `max_n_genes_all_studies` (default, as before) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_SAMPLE_SIZE_PER_STUDY(variable)]] |
+            !! | The pooled gene count, `max_n_genes_all_studies * n_studies`           | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_SAMPLE_SIZE_POOLED(variable)]]    |
+            !! The default value is `'grid_sample_size_per_study'`.
+        real(c_double), intent(in), target :: grid_points_factor
+            !! Rerun search's k-NN candidate grid (an experiment switch): the factor in its first reference-point count;
+            !! the default 4 is the factor before
+            !! The minimum valid value is `above(0.0_real64)`.
+            !! The default value is `4.0_real64`.
+        integer(c_int), intent(in), target :: grid_min_points
+            !! Rerun search's k-NN candidate grid (an experiment switch): its floor; the default here is 200, the floor
+            !! before was 300
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_POINTS`.
+            !! The default value is `200_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure
+        integer(int32) :: grid_sample_size_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
         M_CHECK_NON_NULL(max_n_genes_all_studies)
+        M_CHECK_NON_NULL(n_studies)
         M_CHECK_NON_NULL(n_points)
         M_CHECK_NON_NULL(n_neighbors)
         M_CHECK_NON_NULL(n_bootstraps)
@@ -114,9 +147,28 @@ contains
         M_CHECK_NON_NULL(max_n_points_candidate)
         M_CHECK_NON_NULL(max_n_neighbors_candidate)
         M_CHECK_NON_NULL(n_bootstrapping_top_k_jsds)
+        M_CHECK_NON_NULL(grid_points_factor)
+        M_CHECK_NON_NULL(grid_min_points)
+        M_CHECK_ARRAY_NON_NULL(grid_sample_size_mode, 26)
+
+        block
+            character(len=:), pointer :: grid_sample_size_mode_f
+            grid_sample_size_mode_f => c_char_as_view(grid_sample_size_mode)
+
+            select case (grid_sample_size_mode_f)
+                case ("grid_sample_size_per_study")
+                    grid_sample_size_mode_mode_f = MODE_GRID_SAMPLE_SIZE_PER_STUDY
+                case ("grid_sample_size_pooled")
+                    grid_sample_size_mode_mode_f = MODE_GRID_SAMPLE_SIZE_POOLED
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
 
         call calc_js_comp_test_permutation_bounds(&
             max_n_genes_all_studies = max_n_genes_all_studies,&
+            n_studies = n_studies,&
             n_points = n_points,&
             n_neighbors = n_neighbors,&
             n_bootstraps = n_bootstraps,&
@@ -124,6 +176,9 @@ contains
             max_n_points_candidate = max_n_points_candidate,&
             max_n_neighbors_candidate = max_n_neighbors_candidate,&
             n_bootstrapping_top_k_jsds = n_bootstrapping_top_k_jsds,&
+            grid_sample_size_mode = grid_sample_size_mode_mode_f,&
+            grid_points_factor = grid_points_factor,&
+            grid_min_points = grid_min_points,&
             ierr = ierr&
         )
     end subroutine calc_js_comp_test_permutation_bounds_c

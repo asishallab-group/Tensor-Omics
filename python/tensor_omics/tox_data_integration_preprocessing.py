@@ -175,19 +175,24 @@ _lib.construct_adaptive_neighborhoods_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
+    ctypes.POINTER(ctypes.c_double),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CONSTRUCT_ADAPTIVE_NEIGHBORHOODS_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "k_start", "k_step", "k_max", "n_points", "x_star", "pooled_neighborhood_range", "n_neighbors_per_point", "stop_reason", "neighborhood_dispersion", "neighborhood_mad", "max_n_neighbors", "construction_status", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "ierr",)
+_CONSTRUCT_ADAPTIVE_NEIGHBORHOODS_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "k_start", "k_step", "k_max", "n_points", "x_star", "pooled_neighborhood_range", "n_neighbors_per_point", "stop_reason", "neighborhood_dispersion", "neighborhood_mad", "n_extension_entries", "max_n_neighbors", "construction_status", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "tau_reference_mode", "overlap_extension_mode", "min_neighbor_overlap", "seed_step_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_CONSTRUCT_ADAPTIVE_NEIGHBORHOODS_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_CONSTRUCT_ADAPTIVE_NEIGHBORHOODS_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def compute_gene_means(
         expr,
@@ -934,6 +939,10 @@ def construct_adaptive_neighborhoods(
         mad_distance_factor=1.0,
         max_pooled_residuals=0,
         min_study_neighbors=1,
+        tau_reference_mode='tau_reference_previous_round',
+        overlap_extension_mode='overlap_extension_none',
+        min_neighbor_overlap=0.1,
+        seed_step_mode='seed_step_mad',
 ):
     r"""Grow adaptive, dispersion-controlled neighborhoods over all studies' pooled gene means (Issue #217)
 
@@ -972,6 +981,19 @@ def construct_adaptive_neighborhoods(
     is still evaluated, and growth then stops with
     ``ADAPTIVE_STOP_RESIDUAL_CAP`` (`3`).
 
+    **Experiment switches**, each defaulting to the growth before it existed:
+    `tau_reference_mode` sets what `S_old` is (the previous committed round, or the dispersion
+    right after the `k_start` phase, kept for the whole growth); `overlap_extension_mode`
+    extends every neighborhood after the first toward lower means, without the `tau`, `k_max`
+    or cap checks, until it overlaps the previous one by `min_neighbor_overlap` (measured as
+    :func:`tensor_omics.check_neighborhood_overlaps`
+    measures it); `seed_step_mode` makes every seed lie at least `k_step` sorted positions past
+    the previous neighborhood (a closer seed moves to exactly that position, without snapping to
+    the start of a run of equal means), and, when fewer than `k_step` positions are left, the
+    neighborhood takes the rest of the pool instead. `n_extension_entries` counts the entries
+    both extensions added; the MAD that places the next seed is that of the range as grown. An
+    extended neighborhood can exceed `k_max` or the cap while keeping its growth's stop reason.
+
     **Reference points.** The first seed is the smallest pooled mean. After a neighborhood ends at
     sorted position `b`, the next seed is the first position after `b` whose mean is nearest
     `mean(b) + mad_distance_factor * MAD` (ties to the lower mean), `MAD` being the raw median
@@ -1007,7 +1029,8 @@ def construct_adaptive_neighborhoods(
         Pooled entries staged per adaptive growth round
         The minimum valid value is `1`.
     k_max : int
-        Largest number of pooled entries in one neighborhood
+        Largest number of pooled entries in one neighborhood as grown; the extensions of
+        `overlap_extension_mode` and `seed_step_mode` can add entries beyond it
         The minimum valid value is `k_start`.
     tau : float, optional, default 0.1
         Largest relative dispersion increase a growth round may cause and still be committed
@@ -1027,6 +1050,29 @@ def construct_adaptive_neighborhoods(
         status to stay ok
         The minimum valid value is `1`.
         The default value is `1`.
+    tau_reference_mode : str, one of 'tau_reference_previous_round' | 'tau_reference_k_start', optional, default 'tau_reference_previous_round'
+        Which dispersion an adaptive round's relative change is measured against before it
+        is compared with `tau`. An experiment switch; the default is the rule before
+
+        The default value is `'tau_reference_previous_round'`.
+    overlap_extension_mode : str, one of 'overlap_extension_none' | 'overlap_extension_backward', optional, default 'overlap_extension_none'
+        What happens to a neighborhood once its growth has stopped. An experiment switch;
+        with the default, every neighborhood keeps the range its growth stopped at, as before
+
+        The default value is `'overlap_extension_none'`.
+    min_neighbor_overlap : float, optional, default 0.1
+        Overlap with the previous neighborhood the backward extension of
+        `overlap_extension_mode` stops at: the shared pooled positions over the previous
+        neighborhood's size. Used only by the backward extension; pass the same value as the
+        adaptive search's `min_neighbor_overlap`, whose default this is
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.1`.
+    seed_step_mode : str, one of 'seed_step_mad' | 'seed_step_min_k_step', optional, default 'seed_step_mad'
+        How far past a neighborhood the next reference point's seed must lie. An experiment
+        switch; with the default, the MAD rule alone places it, as before
+
+        The default value is `'seed_step_mad'`.
 
     Returns
     -------
@@ -1058,7 +1104,15 @@ def construct_adaptive_neighborhoods(
             The first `n_points` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
         neighborhood_mad : np.ndarray[np.float64] of shape (max_n_genes_all_studies*n_studies,), read-only
-            Raw median absolute deviation of each final neighborhood's pooled means
+            Raw median absolute deviation of each neighborhood's pooled means as grown, before
+            the extensions of `overlap_extension_mode` and `seed_step_mode`; it places the next
+            reference point unless the minimum seed step moves it
+            The first `n_points` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        n_extension_entries : np.ndarray[np.int32] of shape (max_n_genes_all_studies*n_studies,), read-only
+            Number of pooled entries the backward extension of `overlap_extension_mode` and the
+            forward extension of `seed_step_mode` together added to each neighborhood; 0 with both
+            defaults
             The first `n_points` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
         max_n_neighbors : int
@@ -1092,6 +1146,9 @@ def construct_adaptive_neighborhoods(
         raise TypeError(f"'residuals' must be an array of np.float64: {error}") from None
     if residuals.ndim != 3:
         raise ValueError(f"'residuals' must have 3 dimensions, but has {residuals.ndim}")
+    tau_reference_mode = np.array([str(tau_reference_mode).lower().encode().ljust(28)], dtype="S28")
+    overlap_extension_mode = np.array([str(overlap_extension_mode).lower().encode().ljust(26)], dtype="S26")
+    seed_step_mode = np.array([str(seed_step_mode).lower().encode().ljust(20)], dtype="S20")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
@@ -1116,6 +1173,7 @@ def construct_adaptive_neighborhoods(
     stop_reason = np.empty((max_n_genes_all_studies*n_studies,), dtype=np.int32, order='C')
     neighborhood_dispersion = np.empty((max_n_genes_all_studies*n_studies,), dtype=np.float64, order='C')
     neighborhood_mad = np.empty((max_n_genes_all_studies*n_studies,), dtype=np.float64, order='C')
+    n_extension_entries = np.empty((max_n_genes_all_studies*n_studies,), dtype=np.int32, order='C')
     max_n_neighbors = ctypes.c_int(0)
     construction_status = ctypes.c_int(0)
     ierr = ctypes.c_int(0)
@@ -1136,12 +1194,17 @@ def construct_adaptive_neighborhoods(
         stop_reason,
         neighborhood_dispersion,
         neighborhood_mad,
+        n_extension_entries,
         ctypes.byref(max_n_neighbors),
         ctypes.byref(construction_status),
         ctypes.byref(ctypes.c_double(tau)),
         ctypes.byref(ctypes.c_double(mad_distance_factor)),
         ctypes.byref(ctypes.c_int(max_pooled_residuals)),
         ctypes.byref(ctypes.c_int(min_study_neighbors)),
+        tau_reference_mode,
+        overlap_extension_mode,
+        ctypes.byref(ctypes.c_double(min_neighbor_overlap)),
+        seed_step_mode,
         ctypes.byref(ierr),
     )
 
@@ -1154,6 +1217,7 @@ def construct_adaptive_neighborhoods(
     stop_reason.flags.writeable = False
     neighborhood_dispersion.flags.writeable = False
     neighborhood_mad.flags.writeable = False
+    n_extension_entries.flags.writeable = False
 
     return {
         "x_star": x_star[..., :n_points.value],
@@ -1162,6 +1226,7 @@ def construct_adaptive_neighborhoods(
         "stop_reason": stop_reason[..., :n_points.value],
         "neighborhood_dispersion": neighborhood_dispersion[..., :n_points.value],
         "neighborhood_mad": neighborhood_mad[..., :n_points.value],
+        "n_extension_entries": n_extension_entries[..., :n_points.value],
         "max_n_neighbors": max_n_neighbors.value,
         "construction_status": construction_status.value,
     }

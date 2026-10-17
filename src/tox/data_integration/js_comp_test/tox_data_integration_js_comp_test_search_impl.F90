@@ -34,6 +34,7 @@ module tox_data_integration_js_comp_test_search_impl
     use tox_data_integration_stats_impl, only: bootstrap_histogram_impl
     M_IMPLICIT_NONE
     private
+    public :: compute_index_span_overlap
     public :: check_neighborhood_overlaps_impl, check_mean_pmf_min_counts_impl, check_plateau_condition_impl, check_effect_size_plateau_condition_impl, &
              score_candidate_histograms, evaluate_admissible_candidate, select_final_candidate, &
              METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, &
@@ -123,8 +124,10 @@ contains
     !| relative to the number of positions in the first run:
     !| \[ \frac{\max(0, \min(\texttt{a\_max}, \texttt{b\_max}) - \max(\texttt{a\_min}, \texttt{b\_min}) + 1)}{\texttt{a\_max} - \texttt{a\_min} + 1} \]
     !| For example `[5,6]` and `[6,7]` give 0.5. A reversed run (`max < min`) is empty, so the
-    !| result is 0 rather than a division by zero. Private helper of
-    !| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]].
+    !| result is 0 rather than a division by zero. Internal helper of
+    !| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]],
+    !| not published; public because the backward extension of the adaptive growth (an experiment
+    !| switch) measures the overlap with it too.
     pure real(real64) function compute_index_span_overlap(a_min, a_max, b_min, b_max) result(overlap_fraction)
         integer(int32), intent(in) :: a_min
             !! First position of the first run

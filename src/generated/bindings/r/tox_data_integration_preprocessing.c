@@ -14,7 +14,7 @@ void pool_study_means_c(const int*, const double*, const int*, const double*, co
 void construct_neighborhoods_c(const int*, const double*, const int*, const double*, const int*, const double*, double*, int*, const int*, int*);
 void construct_neighborhoods_ranged_c(const int*, const double*, const int*, const double*, const int*, int*, int*, int*);
 void construct_neighborhoods_ranged_expert_c(const int*, const double*, const int*, const double*, const int*, const int*, int*, int*, int*);
-void construct_adaptive_neighborhoods_c(const int*, const int*, const int*, const double*, const double*, const int*, const int*, const int*, int*, double*, int*, int*, int*, double*, double*, int*, int*, const double*, const double*, const int*, const int*, int*);
+void construct_adaptive_neighborhoods_c(const int*, const int*, const int*, const double*, const double*, const int*, const int*, const int*, int*, double*, int*, int*, int*, double*, double*, int*, int*, int*, const double*, const double*, const int*, const int*, const char*, const char*, const double*, const char*, int*);
 
 SEXP compute_gene_means_call(SEXP expr) {
     int nprot = 0;
@@ -309,7 +309,7 @@ SEXP construct_neighborhoods_ranged_expert_call(SEXP x_star, SEXP mean_S, SEXP m
     return _out;
 }
 
-SEXP construct_adaptive_neighborhoods_call(SEXP gene_means, SEXP residuals, SEXP k_start, SEXP k_step, SEXP k_max, SEXP tau, SEXP mad_distance_factor, SEXP max_pooled_residuals, SEXP min_study_neighbors) {
+SEXP construct_adaptive_neighborhoods_call(SEXP gene_means, SEXP residuals, SEXP k_start, SEXP k_step, SEXP k_max, SEXP tau, SEXP mad_distance_factor, SEXP max_pooled_residuals, SEXP min_study_neighbors, SEXP tau_reference_mode, SEXP overlap_extension_mode, SEXP min_neighbor_overlap, SEXP seed_step_mode) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(gene_means, R_DimSymbol))[1];
@@ -324,6 +324,12 @@ SEXP construct_adaptive_neighborhoods_call(SEXP gene_means, SEXP residuals, SEXP
     double mad_distance_factor_v = Rf_asReal(mad_distance_factor);
     int max_pooled_residuals_v = Rf_asInteger(max_pooled_residuals);
     int min_study_neighbors_v = Rf_asInteger(min_study_neighbors);
+    double min_neighbor_overlap_v = Rf_asReal(min_neighbor_overlap);
+
+    // convert what Fortran cannot take from R directly
+    char* tau_reference_mode_c = tox_char_in(tau_reference_mode, 28);
+    char* overlap_extension_mode_c = tox_char_in(overlap_extension_mode, 26);
+    char* seed_step_mode_c = tox_char_in(seed_step_mode, 20);
 
     // outputs and work space
     int n_points = 0;
@@ -335,6 +341,7 @@ SEXP construct_adaptive_neighborhoods_call(SEXP gene_means, SEXP residuals, SEXP
     SEXP stop_reason = PROTECT(Rf_allocVector(INTSXP, (max_n_genes_all_studies*n_studies))); nprot++;
     SEXP neighborhood_dispersion = PROTECT(Rf_allocVector(REALSXP, (max_n_genes_all_studies*n_studies))); nprot++;
     SEXP neighborhood_mad = PROTECT(Rf_allocVector(REALSXP, (max_n_genes_all_studies*n_studies))); nprot++;
+    SEXP n_extension_entries = PROTECT(Rf_allocVector(INTSXP, (max_n_genes_all_studies*n_studies))); nprot++;
     int max_n_neighbors = 0;
     int construction_status = 0;
     int ierr = 0;
@@ -355,16 +362,21 @@ SEXP construct_adaptive_neighborhoods_call(SEXP gene_means, SEXP residuals, SEXP
         INTEGER(stop_reason),
         REAL(neighborhood_dispersion),
         REAL(neighborhood_mad),
+        INTEGER(n_extension_entries),
         &max_n_neighbors,
         &construction_status,
         &tau_v,
         &mad_distance_factor_v,
         &max_pooled_residuals_v,
         &min_study_neighbors_v,
+        tau_reference_mode_c,
+        overlap_extension_mode_c,
+        &min_neighbor_overlap_v,
+        seed_step_mode_c,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 10)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 11)); nprot++;
     SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(n_points));
     SET_VECTOR_ELT(_out, 1, x_star);
     SET_VECTOR_ELT(_out, 2, pooled_neighborhood_range);
@@ -372,10 +384,11 @@ SEXP construct_adaptive_neighborhoods_call(SEXP gene_means, SEXP residuals, SEXP
     SET_VECTOR_ELT(_out, 4, stop_reason);
     SET_VECTOR_ELT(_out, 5, neighborhood_dispersion);
     SET_VECTOR_ELT(_out, 6, neighborhood_mad);
-    SET_VECTOR_ELT(_out, 7, Rf_ScalarInteger(max_n_neighbors));
-    SET_VECTOR_ELT(_out, 8, Rf_ScalarInteger(construction_status));
-    SET_VECTOR_ELT(_out, 9, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 10)); nprot++;
+    SET_VECTOR_ELT(_out, 7, n_extension_entries);
+    SET_VECTOR_ELT(_out, 8, Rf_ScalarInteger(max_n_neighbors));
+    SET_VECTOR_ELT(_out, 9, Rf_ScalarInteger(construction_status));
+    SET_VECTOR_ELT(_out, 10, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 11)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("n_points"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("x_star"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("pooled_neighborhood_range"));
@@ -383,9 +396,10 @@ SEXP construct_adaptive_neighborhoods_call(SEXP gene_means, SEXP residuals, SEXP
     SET_STRING_ELT(_nms, 4, Rf_mkChar("stop_reason"));
     SET_STRING_ELT(_nms, 5, Rf_mkChar("neighborhood_dispersion"));
     SET_STRING_ELT(_nms, 6, Rf_mkChar("neighborhood_mad"));
-    SET_STRING_ELT(_nms, 7, Rf_mkChar("max_n_neighbors"));
-    SET_STRING_ELT(_nms, 8, Rf_mkChar("construction_status"));
-    SET_STRING_ELT(_nms, 9, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 7, Rf_mkChar("n_extension_entries"));
+    SET_STRING_ELT(_nms, 8, Rf_mkChar("max_n_neighbors"));
+    SET_STRING_ELT(_nms, 9, Rf_mkChar("construction_status"));
+    SET_STRING_ELT(_nms, 10, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;

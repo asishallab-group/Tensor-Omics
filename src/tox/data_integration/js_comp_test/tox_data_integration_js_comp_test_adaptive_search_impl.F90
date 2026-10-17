@@ -266,8 +266,11 @@ contains
     !|
     !| 1. Grow its neighborhoods exactly as
     !|    [[tox_data_integration_preprocessing_impl(module):construct_adaptive_neighborhoods_impl(interface)]]
-    !|    does with the same `tau`, `mad_distance_factor`, `max_pooled_residuals` and
-    !|    `min_study_neighbors`.
+    !|    does with the same `tau`, `mad_distance_factor`, `max_pooled_residuals`,
+    !|    `min_study_neighbors` and experiment switches `tau_reference_mode`,
+    !|    `overlap_extension_mode` (its backward extension uses this search's own
+    !|    `min_neighbor_overlap`; pass the same value to the construction to rebuild a candidate) and
+    !|    `seed_step_mode`.
     !| 2. Reject it if the construction status is not ok, or if more than `max_n_points_candidate`
     !|    reference points emerged.
     !| 3. Gate 1:
@@ -283,7 +286,9 @@ contains
     !|    first plateau `plateau_mode` selects.
     !|
     !| **Candidate log.** Every candidate tried gets an entry in `candidate_k_start`,
-    !| `candidate_n_points` and `candidate_status`, until the search stops. The status is the first
+    !| `candidate_n_points`, `candidate_status` and `candidate_n_extension_entries` (the entries the
+    !| extensions of `overlap_extension_mode` and `seed_step_mode` added, 0 with both defaults),
+    !| until the search stops. The status is the first
     !| failing check, in the order above:
     !| [[tox_data_integration_js_comp_test_adaptive_search_impl(module):ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED(variable)]]
     !| (too few means or residuals),
@@ -341,9 +346,11 @@ contains
                                                                 trace_shared_residual_range_low, &
                                                                 trace_shared_residual_range_high, n_candidates_tried, &
                                                                 candidate_k_start, candidate_n_points, candidate_status, &
+                                                                candidate_n_extension_entries, &
                                                                 tmp_gene_means_perm_all, tmp_x_star, &
                                                                 tmp_pooled_neighborhood_range, tmp_n_neighbors_per_point, &
-                                                                tmp_stop_reason, tmp_neighborhood_dispersion, &
+                                                                tmp_stop_reason, tmp_n_extension_entries, &
+                                                                tmp_neighborhood_dispersion, &
                                                                 tmp_neighborhood_mad, tmp_point_neighborhood_indices, &
                                                                 tmp_neighbor_residuals, tmp_n_bins_per_point, &
                                                                 tmp_shared_residual_range_low, tmp_shared_residual_range_high, &
@@ -374,7 +381,8 @@ contains
                                                                 two_sided_bootstrapping_significance_level, random_seed, &
                                                                 tau, mad_distance_factor, max_pooled_residuals, &
                                                                 min_study_neighbors, bin_count_mode, delta_abs_tolerance, &
-                                                                bootstrap_mode, ierr)
+                                                                bootstrap_mode, tau_reference_mode, overlap_extension_mode, &
+                                                                seed_step_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -546,6 +554,12 @@ contains
             !! `CM_ADAPTIVE_CANDIDATE_OVERLAP_FAILED` overlap gate failed,
             !! `CM_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED` consensus-pmf count gate failed
             !! DM_RESULT_SIZE_IS(n_candidates_tried)
+        integer(int32), dimension(M_MAX_CANDIDATE_PAIRS), intent(out) :: candidate_n_extension_entries
+            !! Total number of pooled entries the backward extension of `overlap_extension_mode` and
+            !! the forward extension of `seed_step_mode` added to every tried candidate's
+            !! neighborhoods, whether or not the candidate was admissible; 0 with both defaults and
+            !! for too few means
+            !! DM_RESULT_SIZE_IS(n_candidates_tried)
         integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_gene_means_perm_all
             !! Working array: sorting permutation of the pooled `gene_means`, as in the construction
         real(real64), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_x_star
@@ -556,6 +570,8 @@ contains
             !! Working array: the current candidate's per-study entry count per neighborhood
         integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_stop_reason
             !! Working array: the current candidate's stop reason per neighborhood
+        integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_n_extension_entries
+            !! Working array: the current candidate's extension entry count per neighborhood
         real(real64), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_neighborhood_dispersion
             !! Working array: the current candidate's dispersion per neighborhood
         real(real64), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_neighborhood_mad
@@ -776,6 +792,37 @@ contains
             !! | Each study's own counts, a robustness interval (default) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
             !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]] |
             !! DM_DEFAULT(M_MODE_BOOTSTRAP_PER_STUDY)
+        integer(int32), intent(in), optional :: tau_reference_mode
+            !! Which dispersion an adaptive growth round's relative change is measured against
+            !! before it is compared with `tau`, as in `construct_adaptive_neighborhoods`. An
+            !! experiment switch; the default is the rule before
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | The dispersion after the previous committed round (default) | [[tox_data_integration_preprocessing_impl(module):MODE_TAU_REFERENCE_PREVIOUS_ROUND(variable)]] |
+            !! | The dispersion right after the `k_start` phase, fixed for the whole growth | [[tox_data_integration_preprocessing_impl(module):MODE_TAU_REFERENCE_K_START(variable)]] |
+            !! DM_DEFAULT(M_MODE_TAU_REFERENCE_PREVIOUS_ROUND)
+        integer(int32), intent(in), optional :: overlap_extension_mode
+            !! What happens to an adaptive neighborhood once its growth has stopped, as in
+            !! `construct_adaptive_neighborhoods`; the backward extension uses this search's
+            !! `min_neighbor_overlap`, so the overlap gate then always passes. An experiment switch;
+            !! the default keeps every neighborhood as grown, as before
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Keep each neighborhood as grown (default) | [[tox_data_integration_preprocessing_impl(module):MODE_OVERLAP_EXTENSION_NONE(variable)]] |
+            !! | Extend each neighborhood after the first toward lower means until it overlaps the previous one by at least `min_neighbor_overlap` | [[tox_data_integration_preprocessing_impl(module):MODE_OVERLAP_EXTENSION_BACKWARD(variable)]] |
+            !! DM_DEFAULT(M_MODE_OVERLAP_EXTENSION_NONE)
+        integer(int32), intent(in), optional :: seed_step_mode
+            !! How far past an adaptive neighborhood the next reference point's seed must lie, as
+            !! in `construct_adaptive_neighborhoods`. An experiment switch; the default is the MAD
+            !! rule alone, as before
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | The seed the MAD rule places (default) | [[tox_data_integration_preprocessing_impl(module):MODE_SEED_STEP_MAD(variable)]] |
+            !! | At least `k_step` sorted positions past the neighborhood, which takes the rest of the pool when fewer are left | [[tox_data_integration_preprocessing_impl(module):MODE_SEED_STEP_MIN_K_STEP(variable)]] |
+            !! DM_DEFAULT(M_MODE_SEED_STEP_MAD)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
 
@@ -790,6 +837,7 @@ contains
         real(real64) :: actual_delta_median_threshold, actual_delta_max_threshold, actual_delta_epsilon
         real(real64) :: actual_delta_abs_tolerance
         integer(int32) :: actual_bootstrap_mode
+        integer(int32) :: actual_tau_reference_mode, actual_overlap_extension_mode, actual_seed_step_mode
         real(real64) :: best_uncertainty_value, actual_tau, actual_mad_distance_factor
         logical(c_bool) :: all_have_min_neighbor_overlap, all_bins_have_min_count, plateau_found, has_empty_study
 
@@ -809,6 +857,9 @@ contains
         M_DEFAULT_VAL(mad_distance_factor, actual_mad_distance_factor, M_ADAPTIVE_MAD_DISTANCE_FACTOR_DEFAULT)
         M_DEFAULT_VAL(max_pooled_residuals, actual_max_pooled_residuals, M_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT)
         M_DEFAULT_VAL(min_study_neighbors, actual_min_study_neighbors, M_ADAPTIVE_MIN_STUDY_NEIGHBORS_DEFAULT)
+        M_DEFAULT_VAL(tau_reference_mode, actual_tau_reference_mode, M_MODE_TAU_REFERENCE_PREVIOUS_ROUND)
+        M_DEFAULT_VAL(overlap_extension_mode, actual_overlap_extension_mode, M_MODE_OVERLAP_EXTENSION_NONE)
+        M_DEFAULT_VAL(seed_step_mode, actual_seed_step_mode, M_MODE_SEED_STEP_MAD)
 
         call generate_adaptive_js_comp_test_candidates_impl(max_n_genes_all_studies, n_studies, &
                                                             candidates_k_start_k_step_k_max, n_candidates)
@@ -836,14 +887,17 @@ contains
             call grow_adaptive_neighborhoods(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                              residuals, tmp_gene_means_perm_all, k_start, k_step, k_max, actual_tau, &
                                              actual_mad_distance_factor, actual_max_pooled_residuals, &
-                                             actual_min_study_neighbors, n_points, tmp_x_star, &
+                                             actual_min_study_neighbors, actual_tau_reference_mode, &
+                                             actual_overlap_extension_mode, actual_min_neighbor_overlap, &
+                                             actual_seed_step_mode, n_points, tmp_x_star, &
                                              tmp_pooled_neighborhood_range, tmp_n_neighbors_per_point, tmp_stop_reason, &
-                                             tmp_neighborhood_dispersion, tmp_neighborhood_mad, max_n_neighbors, &
-                                             construction_status)
+                                             tmp_neighborhood_dispersion, tmp_neighborhood_mad, tmp_n_extension_entries, &
+                                             max_n_neighbors, construction_status)
 
             n_candidates_tried = i_candidate
             candidate_k_start(i_candidate) = k_start
             candidate_n_points(i_candidate) = n_points
+            candidate_n_extension_entries(i_candidate) = sum(tmp_n_extension_entries(1:n_points))
             candidate_status(i_candidate) = ADAPTIVE_CANDIDATE_EVALUATED
 
             ! Construction status first: an empty study neighborhood leaves that study's pmf

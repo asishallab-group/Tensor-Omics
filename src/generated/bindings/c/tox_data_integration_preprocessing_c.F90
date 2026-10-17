@@ -17,8 +17,9 @@
 !| `gather_pooled_neighborhood_residuals` gathers a neighborhood's residuals of all studies.
 module tox_data_integration_preprocessing_c
     use f42_safeguard
-    use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
+    use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_int, c_loc
+    use tox_conversions, only: c_char_as_view
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
     M_IMPLICIT_NONE
     private
 
@@ -685,6 +686,19 @@ contains
     !| is still evaluated, and growth then stops with
     !| [[tox_data_integration_preprocessing_impl(module):ADAPTIVE_STOP_RESIDUAL_CAP(variable)]] (`3_int32`).
     !|
+    !| **Experiment switches**, each defaulting to the growth before it existed:
+    !| `tau_reference_mode` sets what `S_old` is (the previous committed round, or the dispersion
+    !| right after the `k_start` phase, kept for the whole growth); `overlap_extension_mode`
+    !| extends every neighborhood after the first toward lower means, without the `tau`, `k_max`
+    !| or cap checks, until it overlaps the previous one by `min_neighbor_overlap` (measured as
+    !| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]]
+    !| measures it); `seed_step_mode` makes every seed lie at least `k_step` sorted positions past
+    !| the previous neighborhood (a closer seed moves to exactly that position, without snapping to
+    !| the start of a run of equal means), and, when fewer than `k_step` positions are left, the
+    !| neighborhood takes the rest of the pool instead. `n_extension_entries` counts the entries
+    !| both extensions added; the MAD that places the next seed is that of the range as grown. An
+    !| extended neighborhood can exceed `k_max` or the cap while keeping its growth's stop reason.
+    !|
     !| **Reference points.** The first seed is the smallest pooled mean. After a neighborhood ends at
     !| sorted position `b`, the next seed is the first position after `b` whose mean is nearest
     !| `mean(b) + mad_distance_factor * MAD` (ties to the lower mean), `MAD` being the raw median
@@ -720,15 +734,21 @@ contains
             stop_reason,&
             neighborhood_dispersion,&
             neighborhood_mad,&
+            n_extension_entries,&
             max_n_neighbors,&
             construction_status,&
             tau,&
             mad_distance_factor,&
             max_pooled_residuals,&
             min_study_neighbors,&
+            tau_reference_mode,&
+            overlap_extension_mode,&
+            min_neighbor_overlap,&
+            seed_step_mode,&
             ierr&
         ) bind(C, name="construct_adaptive_neighborhoods_c")
         use tox_data_integration_preprocessing, only: construct_adaptive_neighborhoods
+        use tox_data_integration_preprocessing_impl, only: MODE_OVERLAP_EXTENSION_BACKWARD, MODE_OVERLAP_EXTENSION_NONE, MODE_SEED_STEP_MAD, MODE_SEED_STEP_MIN_K_STEP, MODE_TAU_REFERENCE_K_START, MODE_TAU_REFERENCE_PREVIOUS_ROUND
 
         integer(c_int), intent(in), target :: n_studies
             !! Number of studies
@@ -752,7 +772,8 @@ contains
             !! Pooled entries staged per adaptive growth round
             !! The minimum valid value is `1_int32`.
         integer(c_int), intent(in), target :: k_max
-            !! Largest number of pooled entries in one neighborhood
+            !! Largest number of pooled entries in one neighborhood as grown; the extensions of
+            !! `overlap_extension_mode` and `seed_step_mode` can add entries beyond it
             !! The minimum valid value is `k_start`.
         integer(c_int), intent(out), target :: n_points
             !! Number of reference points (neighborhoods) built; 0 when the status is too few means
@@ -776,7 +797,14 @@ contains
             !! Mean absolute non-NaN residual of each final neighborhood; NaN without any
             !! The first `n_points` elements will hold the results.
         real(c_double), dimension(max_n_genes_all_studies*n_studies), intent(out), target :: neighborhood_mad
-            !! Raw median absolute deviation of each final neighborhood's pooled means
+            !! Raw median absolute deviation of each neighborhood's pooled means as grown, before
+            !! the extensions of `overlap_extension_mode` and `seed_step_mode`; it places the next
+            !! reference point unless the minimum seed step moves it
+            !! The first `n_points` elements will hold the results.
+        integer(c_int), dimension(max_n_genes_all_studies*n_studies), intent(out), target :: n_extension_entries
+            !! Number of pooled entries the backward extension of `overlap_extension_mode` and the
+            !! forward extension of `seed_step_mode` together added to each neighborhood; 0 with both
+            !! defaults
             !! The first `n_points` elements will hold the results.
         integer(c_int), intent(out), target :: max_n_neighbors
             !! Largest number of entries one study has in one neighborhood; 0 without a neighborhood
@@ -803,8 +831,46 @@ contains
             !! status to stay ok
             !! The minimum valid value is `1_int32`.
             !! The default value is `1_int32`.
+        character(len=1, kind=c_char), dimension(28), intent(in), target :: tau_reference_mode
+            !! Which dispersion an adaptive round's relative change is measured against before it
+            !! is compared with `tau`. An experiment switch; the default is the rule before
+            !!
+            !! | Mode                                                                       | Value                                                                                           |
+            !! |----------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+            !! | The dispersion after the previous committed round (default)                | [[tox_data_integration_preprocessing_impl(module):MODE_TAU_REFERENCE_PREVIOUS_ROUND(variable)]] |
+            !! | The dispersion right after the `k_start` phase, fixed for the whole growth | [[tox_data_integration_preprocessing_impl(module):MODE_TAU_REFERENCE_K_START(variable)]]        |
+            !! The default value is `'tau_reference_previous_round'`.
+        character(len=1, kind=c_char), dimension(26), intent(in), target :: overlap_extension_mode
+            !! What happens to a neighborhood once its growth has stopped. An experiment switch;
+            !! with the default, every neighborhood keeps the range its growth stopped at, as before
+            !!
+            !! | Mode                                                                                                                              | Value                                                                                         |
+            !! |-----------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
+            !! | Keep each neighborhood as grown (default)                                                                                         | [[tox_data_integration_preprocessing_impl(module):MODE_OVERLAP_EXTENSION_NONE(variable)]]     |
+            !! | Extend each neighborhood after the first toward lower means until it overlaps the previous one by at least `min_neighbor_overlap` | [[tox_data_integration_preprocessing_impl(module):MODE_OVERLAP_EXTENSION_BACKWARD(variable)]] |
+            !! The default value is `'overlap_extension_none'`.
+        real(c_double), intent(in), target :: min_neighbor_overlap
+            !! Overlap with the previous neighborhood the backward extension of
+            !! `overlap_extension_mode` stops at: the shared pooled positions over the previous
+            !! neighborhood's size. Used only by the backward extension; pass the same value as the
+            !! adaptive search's `min_neighbor_overlap`, whose default this is
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.1_real64`.
+        character(len=1, kind=c_char), dimension(20), intent(in), target :: seed_step_mode
+            !! How far past a neighborhood the next reference point's seed must lie. An experiment
+            !! switch; with the default, the MAD rule alone places it, as before
+            !!
+            !! | Mode                                                                                                           | Value                                                                                   |
+            !! |----------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+            !! | The seed the MAD rule places (default)                                                                         | [[tox_data_integration_preprocessing_impl(module):MODE_SEED_STEP_MAD(variable)]]        |
+            !! | At least `k_step` sorted positions past the neighborhood, which takes the rest of the pool when fewer are left | [[tox_data_integration_preprocessing_impl(module):MODE_SEED_STEP_MIN_K_STEP(variable)]] |
+            !! The default value is `'seed_step_mad'`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
+        integer(int32) :: tau_reference_mode_mode_f
+        integer(int32) :: overlap_extension_mode_mode_f
+        integer(int32) :: seed_step_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -821,6 +887,7 @@ contains
         M_CHECK_NON_NULL(mad_distance_factor)
         M_CHECK_NON_NULL(max_pooled_residuals)
         M_CHECK_NON_NULL(min_study_neighbors)
+        M_CHECK_NON_NULL(min_neighbor_overlap)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(x_star, (max_n_genes_all_studies*n_studies))
@@ -829,6 +896,53 @@ contains
         M_CHECK_ARRAY_NON_NULL(stop_reason, (max_n_genes_all_studies*n_studies))
         M_CHECK_ARRAY_NON_NULL(neighborhood_dispersion, (max_n_genes_all_studies*n_studies))
         M_CHECK_ARRAY_NON_NULL(neighborhood_mad, (max_n_genes_all_studies*n_studies))
+        M_CHECK_ARRAY_NON_NULL(n_extension_entries, (max_n_genes_all_studies*n_studies))
+        M_CHECK_ARRAY_NON_NULL(tau_reference_mode, 28)
+        M_CHECK_ARRAY_NON_NULL(overlap_extension_mode, 26)
+        M_CHECK_ARRAY_NON_NULL(seed_step_mode, 20)
+
+        block
+            character(len=:), pointer :: tau_reference_mode_f
+            tau_reference_mode_f => c_char_as_view(tau_reference_mode)
+
+            select case (tau_reference_mode_f)
+                case ("tau_reference_previous_round")
+                    tau_reference_mode_mode_f = MODE_TAU_REFERENCE_PREVIOUS_ROUND
+                case ("tau_reference_k_start")
+                    tau_reference_mode_mode_f = MODE_TAU_REFERENCE_K_START
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
+        block
+            character(len=:), pointer :: overlap_extension_mode_f
+            overlap_extension_mode_f => c_char_as_view(overlap_extension_mode)
+
+            select case (overlap_extension_mode_f)
+                case ("overlap_extension_none")
+                    overlap_extension_mode_mode_f = MODE_OVERLAP_EXTENSION_NONE
+                case ("overlap_extension_backward")
+                    overlap_extension_mode_mode_f = MODE_OVERLAP_EXTENSION_BACKWARD
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
+        block
+            character(len=:), pointer :: seed_step_mode_f
+            seed_step_mode_f => c_char_as_view(seed_step_mode)
+
+            select case (seed_step_mode_f)
+                case ("seed_step_mad")
+                    seed_step_mode_mode_f = MODE_SEED_STEP_MAD
+                case ("seed_step_min_k_step")
+                    seed_step_mode_mode_f = MODE_SEED_STEP_MIN_K_STEP
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
 
         call construct_adaptive_neighborhoods(&
             n_studies = n_studies,&
@@ -846,12 +960,17 @@ contains
             stop_reason = stop_reason,&
             neighborhood_dispersion = neighborhood_dispersion,&
             neighborhood_mad = neighborhood_mad,&
+            n_extension_entries = n_extension_entries,&
             max_n_neighbors = max_n_neighbors,&
             construction_status = construction_status,&
             tau = tau,&
             mad_distance_factor = mad_distance_factor,&
             max_pooled_residuals = max_pooled_residuals,&
             min_study_neighbors = min_study_neighbors,&
+            tau_reference_mode = tau_reference_mode_mode_f,&
+            overlap_extension_mode = overlap_extension_mode_mode_f,&
+            min_neighbor_overlap = min_neighbor_overlap,&
+            seed_step_mode = seed_step_mode_mode_f,&
             ierr = ierr&
         )
     end subroutine construct_adaptive_neighborhoods_c
@@ -892,6 +1011,19 @@ contains
     !| is still evaluated, and growth then stops with
     !| [[tox_data_integration_preprocessing_impl(module):ADAPTIVE_STOP_RESIDUAL_CAP(variable)]] (`3_int32`).
     !|
+    !| **Experiment switches**, each defaulting to the growth before it existed:
+    !| `tau_reference_mode` sets what `S_old` is (the previous committed round, or the dispersion
+    !| right after the `k_start` phase, kept for the whole growth); `overlap_extension_mode`
+    !| extends every neighborhood after the first toward lower means, without the `tau`, `k_max`
+    !| or cap checks, until it overlaps the previous one by `min_neighbor_overlap` (measured as
+    !| [[tox_data_integration_js_comp_test_search_impl(module):check_neighborhood_overlaps_impl(interface)]]
+    !| measures it); `seed_step_mode` makes every seed lie at least `k_step` sorted positions past
+    !| the previous neighborhood (a closer seed moves to exactly that position, without snapping to
+    !| the start of a run of equal means), and, when fewer than `k_step` positions are left, the
+    !| neighborhood takes the rest of the pool instead. `n_extension_entries` counts the entries
+    !| both extensions added; the MAD that places the next seed is that of the range as grown. An
+    !| extended neighborhood can exceed `k_max` or the cap while keeping its growth's stop reason.
+    !|
     !| **Reference points.** The first seed is the smallest pooled mean. After a neighborhood ends at
     !| sorted position `b`, the next seed is the first position after `b` whose mean is nearest
     !| `mean(b) + mad_distance_factor * MAD` (ties to the lower mean), `MAD` being the raw median
@@ -927,6 +1059,7 @@ contains
             stop_reason,&
             neighborhood_dispersion,&
             neighborhood_mad,&
+            n_extension_entries,&
             max_n_neighbors,&
             construction_status,&
             tmp_gene_means_perm_all,&
@@ -934,9 +1067,14 @@ contains
             mad_distance_factor,&
             max_pooled_residuals,&
             min_study_neighbors,&
+            tau_reference_mode,&
+            overlap_extension_mode,&
+            min_neighbor_overlap,&
+            seed_step_mode,&
             ierr&
         ) bind(C, name="construct_adaptive_neighborhoods_expert_c")
         use tox_data_integration_preprocessing, only: construct_adaptive_neighborhoods_expert
+        use tox_data_integration_preprocessing_impl, only: MODE_OVERLAP_EXTENSION_BACKWARD, MODE_OVERLAP_EXTENSION_NONE, MODE_SEED_STEP_MAD, MODE_SEED_STEP_MIN_K_STEP, MODE_TAU_REFERENCE_K_START, MODE_TAU_REFERENCE_PREVIOUS_ROUND
 
         integer(c_int), intent(in), target :: n_studies
             !! Number of studies
@@ -960,7 +1098,8 @@ contains
             !! Pooled entries staged per adaptive growth round
             !! The minimum valid value is `1_int32`.
         integer(c_int), intent(in), target :: k_max
-            !! Largest number of pooled entries in one neighborhood
+            !! Largest number of pooled entries in one neighborhood as grown; the extensions of
+            !! `overlap_extension_mode` and `seed_step_mode` can add entries beyond it
             !! The minimum valid value is `k_start`.
         integer(c_int), intent(out), target :: n_points
             !! Number of reference points (neighborhoods) built; 0 when the status is too few means
@@ -984,7 +1123,14 @@ contains
             !! Mean absolute non-NaN residual of each final neighborhood; NaN without any
             !! The first `n_points` elements will hold the results.
         real(c_double), dimension(max_n_genes_all_studies*n_studies), intent(out), target :: neighborhood_mad
-            !! Raw median absolute deviation of each final neighborhood's pooled means
+            !! Raw median absolute deviation of each neighborhood's pooled means as grown, before
+            !! the extensions of `overlap_extension_mode` and `seed_step_mode`; it places the next
+            !! reference point unless the minimum seed step moves it
+            !! The first `n_points` elements will hold the results.
+        integer(c_int), dimension(max_n_genes_all_studies*n_studies), intent(out), target :: n_extension_entries
+            !! Number of pooled entries the backward extension of `overlap_extension_mode` and the
+            !! forward extension of `seed_step_mode` together added to each neighborhood; 0 with both
+            !! defaults
             !! The first `n_points` elements will hold the results.
         integer(c_int), intent(out), target :: max_n_neighbors
             !! Largest number of entries one study has in one neighborhood; 0 without a neighborhood
@@ -1013,8 +1159,46 @@ contains
             !! status to stay ok
             !! The minimum valid value is `1_int32`.
             !! The default value is `1_int32`.
+        character(len=1, kind=c_char), dimension(28), intent(in), target :: tau_reference_mode
+            !! Which dispersion an adaptive round's relative change is measured against before it
+            !! is compared with `tau`. An experiment switch; the default is the rule before
+            !!
+            !! | Mode                                                                       | Value                                                                                           |
+            !! |----------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+            !! | The dispersion after the previous committed round (default)                | [[tox_data_integration_preprocessing_impl(module):MODE_TAU_REFERENCE_PREVIOUS_ROUND(variable)]] |
+            !! | The dispersion right after the `k_start` phase, fixed for the whole growth | [[tox_data_integration_preprocessing_impl(module):MODE_TAU_REFERENCE_K_START(variable)]]        |
+            !! The default value is `'tau_reference_previous_round'`.
+        character(len=1, kind=c_char), dimension(26), intent(in), target :: overlap_extension_mode
+            !! What happens to a neighborhood once its growth has stopped. An experiment switch;
+            !! with the default, every neighborhood keeps the range its growth stopped at, as before
+            !!
+            !! | Mode                                                                                                                              | Value                                                                                         |
+            !! |-----------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
+            !! | Keep each neighborhood as grown (default)                                                                                         | [[tox_data_integration_preprocessing_impl(module):MODE_OVERLAP_EXTENSION_NONE(variable)]]     |
+            !! | Extend each neighborhood after the first toward lower means until it overlaps the previous one by at least `min_neighbor_overlap` | [[tox_data_integration_preprocessing_impl(module):MODE_OVERLAP_EXTENSION_BACKWARD(variable)]] |
+            !! The default value is `'overlap_extension_none'`.
+        real(c_double), intent(in), target :: min_neighbor_overlap
+            !! Overlap with the previous neighborhood the backward extension of
+            !! `overlap_extension_mode` stops at: the shared pooled positions over the previous
+            !! neighborhood's size. Used only by the backward extension; pass the same value as the
+            !! adaptive search's `min_neighbor_overlap`, whose default this is
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.1_real64`.
+        character(len=1, kind=c_char), dimension(20), intent(in), target :: seed_step_mode
+            !! How far past a neighborhood the next reference point's seed must lie. An experiment
+            !! switch; with the default, the MAD rule alone places it, as before
+            !!
+            !! | Mode                                                                                                           | Value                                                                                   |
+            !! |----------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+            !! | The seed the MAD rule places (default)                                                                         | [[tox_data_integration_preprocessing_impl(module):MODE_SEED_STEP_MAD(variable)]]        |
+            !! | At least `k_step` sorted positions past the neighborhood, which takes the rest of the pool when fewer are left | [[tox_data_integration_preprocessing_impl(module):MODE_SEED_STEP_MIN_K_STEP(variable)]] |
+            !! The default value is `'seed_step_mad'`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
+        integer(int32) :: tau_reference_mode_mode_f
+        integer(int32) :: overlap_extension_mode_mode_f
+        integer(int32) :: seed_step_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -1031,6 +1215,7 @@ contains
         M_CHECK_NON_NULL(mad_distance_factor)
         M_CHECK_NON_NULL(max_pooled_residuals)
         M_CHECK_NON_NULL(min_study_neighbors)
+        M_CHECK_NON_NULL(min_neighbor_overlap)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(x_star, (max_n_genes_all_studies*n_studies))
@@ -1039,7 +1224,54 @@ contains
         M_CHECK_ARRAY_NON_NULL(stop_reason, (max_n_genes_all_studies*n_studies))
         M_CHECK_ARRAY_NON_NULL(neighborhood_dispersion, (max_n_genes_all_studies*n_studies))
         M_CHECK_ARRAY_NON_NULL(neighborhood_mad, (max_n_genes_all_studies*n_studies))
+        M_CHECK_ARRAY_NON_NULL(n_extension_entries, (max_n_genes_all_studies*n_studies))
         M_CHECK_ARRAY_NON_NULL(tmp_gene_means_perm_all, (max_n_genes_all_studies*n_studies))
+        M_CHECK_ARRAY_NON_NULL(tau_reference_mode, 28)
+        M_CHECK_ARRAY_NON_NULL(overlap_extension_mode, 26)
+        M_CHECK_ARRAY_NON_NULL(seed_step_mode, 20)
+
+        block
+            character(len=:), pointer :: tau_reference_mode_f
+            tau_reference_mode_f => c_char_as_view(tau_reference_mode)
+
+            select case (tau_reference_mode_f)
+                case ("tau_reference_previous_round")
+                    tau_reference_mode_mode_f = MODE_TAU_REFERENCE_PREVIOUS_ROUND
+                case ("tau_reference_k_start")
+                    tau_reference_mode_mode_f = MODE_TAU_REFERENCE_K_START
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
+        block
+            character(len=:), pointer :: overlap_extension_mode_f
+            overlap_extension_mode_f => c_char_as_view(overlap_extension_mode)
+
+            select case (overlap_extension_mode_f)
+                case ("overlap_extension_none")
+                    overlap_extension_mode_mode_f = MODE_OVERLAP_EXTENSION_NONE
+                case ("overlap_extension_backward")
+                    overlap_extension_mode_mode_f = MODE_OVERLAP_EXTENSION_BACKWARD
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
+        block
+            character(len=:), pointer :: seed_step_mode_f
+            seed_step_mode_f => c_char_as_view(seed_step_mode)
+
+            select case (seed_step_mode_f)
+                case ("seed_step_mad")
+                    seed_step_mode_mode_f = MODE_SEED_STEP_MAD
+                case ("seed_step_min_k_step")
+                    seed_step_mode_mode_f = MODE_SEED_STEP_MIN_K_STEP
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
 
         call construct_adaptive_neighborhoods_expert(&
             n_studies = n_studies,&
@@ -1057,6 +1289,7 @@ contains
             stop_reason = stop_reason,&
             neighborhood_dispersion = neighborhood_dispersion,&
             neighborhood_mad = neighborhood_mad,&
+            n_extension_entries = n_extension_entries,&
             max_n_neighbors = max_n_neighbors,&
             construction_status = construction_status,&
             tmp_gene_means_perm_all = tmp_gene_means_perm_all,&
@@ -1064,6 +1297,10 @@ contains
             mad_distance_factor = mad_distance_factor,&
             max_pooled_residuals = max_pooled_residuals,&
             min_study_neighbors = min_study_neighbors,&
+            tau_reference_mode = tau_reference_mode_mode_f,&
+            overlap_extension_mode = overlap_extension_mode_mode_f,&
+            min_neighbor_overlap = min_neighbor_overlap,&
+            seed_step_mode = seed_step_mode_mode_f,&
             ierr = ierr&
         )
     end subroutine construct_adaptive_neighborhoods_expert_c

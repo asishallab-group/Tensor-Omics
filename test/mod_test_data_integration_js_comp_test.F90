@@ -43,7 +43,9 @@ module mod_test_data_integration_js_comp_test
                                                                      calc_fixed_k_n_points_range, &
                                                                      MODE_NEIGHBORHOOD_SIZE_LARGE, &
                                                                      MODE_NEIGHBORHOOD_SIZE_SMALL, &
-                                                                     MODE_NEIGHBORHOOD_SIZE_BOTH
+                                                                     MODE_NEIGHBORHOOD_SIZE_BOTH, MIN_POINTS, &
+                                                                     N_POINTS_HIGH_FACTOR, MODE_GRID_FLOOR_STOP, &
+                                                                     MODE_GRID_SAMPLE_SIZE_PER_STUDY
     use tox_data_integration_js_comp_test_adaptive_search_impl, only: calc_adaptive_js_comp_test_bounds, ADAPTIVE_GAMMA, &
                                                                       ADAPTIVE_K_START_MIN_ABS, ADAPTIVE_K_STEP_FRACTION, &
                                                                       ADAPTIVE_K_MAX_FACTOR, ADAPTIVE_CANDIDATE_EVALUATED, &
@@ -92,7 +94,7 @@ module mod_test_data_integration_js_comp_test
         integer(int32) :: trace_k_start(MAX_CANDIDATE_PAIRS), trace_k_step(MAX_CANDIDATE_PAIRS), &
             trace_k_max(MAX_CANDIDATE_PAIRS), trace_n_points(MAX_CANDIDATE_PAIRS)
         integer(int32) :: cand_k_start(MAX_CANDIDATE_PAIRS), cand_n_points(MAX_CANDIDATE_PAIRS), &
-            cand_status(MAX_CANDIDATE_PAIRS)
+            cand_status(MAX_CANDIDATE_PAIRS), cand_n_ext(MAX_CANDIDATE_PAIRS)
         logical(c_bool) :: plateau
         real(real64) :: trace_delta_median(MAX_CANDIDATE_PAIRS), trace_delta_max(MAX_CANDIDATE_PAIRS)
         integer(int32), allocatable :: n_bins(:), trace_n_bins(:, :), trace_n_pooled(:, :), trace_min_occ(:, :)
@@ -1142,7 +1144,8 @@ contains
     subroutine test_generate_js_comp_test_candidates_collapses_at_8742()
         integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr
 
-        call generate_js_comp_test_candidates(8742_int32, candidates, n_candidates, ierr=ierr)
+        call generate_js_comp_test_candidates(8742_int32, 1_int32, candidates, n_candidates, &
+                                              grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_generate_js_comp_test_candidates_collapses_at_8742: ierr should be OK")
@@ -1164,7 +1167,8 @@ contains
         integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr
         integer(int32) :: n_distinct_n_points, i_candidate
 
-        call generate_js_comp_test_candidates(8743_int32, candidates, n_candidates, ierr=ierr)
+        call generate_js_comp_test_candidates(8743_int32, 1_int32, candidates, n_candidates, &
+                                              grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_generate_js_comp_test_candidates_has_two_distinct_at_8743: ierr should be OK")
@@ -1194,7 +1198,8 @@ contains
     subroutine test_generate_js_comp_test_candidates_validation()
         integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr
 
-        call generate_js_comp_test_candidates(0_int32, candidates, n_candidates, ierr=ierr)
+        call generate_js_comp_test_candidates(0_int32, 1_int32, candidates, n_candidates, &
+                                              grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP, ierr=ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, &
                         "test_generate_js_comp_test_candidates_validation: max_n_genes_all_studies=0 rejected", &
                         arg_pos=1_int32)
@@ -3502,8 +3507,9 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, 1_int32, max_n_points_candidate, &
+                                                max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_falls_back_to_finest: "// &
                               "candidate bounds ierr should be OK")
@@ -3536,7 +3542,8 @@ contains
                                                trace_shared_residual_range_low, trace_shared_residual_range_high, &
                                                ierr=ierr, &
                                                min_residuals_per_bin=1000000_int32, plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
+                                               grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_falls_back_to_finest: ierr should be OK")
@@ -3607,8 +3614,9 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, 1_int32, max_n_points_candidate, &
+                                                max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_single_candidate_bypasses_plateau: "// &
                               "candidate bounds ierr should be OK")
@@ -3642,7 +3650,8 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
+                                               grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_single_candidate_bypasses_plateau: ierr should be OK")
@@ -3740,8 +3749,9 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, 1_int32, max_n_points_candidate, &
+                                                max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_finds_plateau_mid_grid: "// &
                               "candidate bounds ierr should be OK")
@@ -3775,7 +3785,8 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
+                                               grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_finds_plateau_mid_grid: ierr should be OK")
@@ -3899,8 +3910,9 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, 1_int32, max_n_points_candidate, &
+                                                max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_effect_size_mode_plateau: "// &
                               "candidate bounds ierr should be OK")
@@ -3934,7 +3946,8 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
+                                               grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_effect_size_mode_plateau: ierr should be OK")
@@ -3996,8 +4009,9 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, 1_int32, max_n_points_candidate, &
+                                                max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_both_mode_uses_earlier_trigger: "// &
                               "candidate bounds ierr should be OK")
@@ -4031,7 +4045,8 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_BOTH, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
+                                               grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_both_mode_uses_earlier_trigger: ierr should be OK")
@@ -4217,8 +4232,9 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, 1_int32, max_n_points_candidate, &
+                                                max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_uses_smallest_uncertainty: "// &
                               "candidate bounds ierr should be OK")
@@ -4253,7 +4269,8 @@ contains
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
                                                neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
-                                               bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+                                               bootstrap_mode=MODE_BOOTSTRAP_POOLED, &
+                                               grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_uses_smallest_uncertainty: ierr should be OK")
@@ -4343,8 +4360,9 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, 1_int32, max_n_points_candidate, &
+                                                max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_effect_size_smallest_uncertainty: "// &
                               "candidate bounds ierr should be OK")
@@ -4379,7 +4397,8 @@ contains
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
                                                neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
-                                               bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+                                               bootstrap_mode=MODE_BOOTSTRAP_POOLED, &
+                                               grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_effect_size_smallest_uncertainty: ierr should be OK")
@@ -4460,8 +4479,9 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, 1_int32, max_n_points_candidate, &
+                                                max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_both_uses_smallest_uncertainty: "// &
                               "candidate bounds ierr should be OK")
@@ -4496,7 +4516,8 @@ contains
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_BOTH, &
                                                neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
-                                               bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+                                               bootstrap_mode=MODE_BOOTSTRAP_POOLED, &
+                                               grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_both_uses_smallest_uncertainty: ierr should be OK")
@@ -4592,8 +4613,9 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, 1_int32, max_n_points_candidate, &
+                                                max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_occupancy_failure_rejects_candidate: "// &
                               "candidate bounds ierr should be OK")
@@ -4627,7 +4649,8 @@ contains
                                                trace_shared_residual_range_low, trace_shared_residual_range_high, &
                                                ierr=ierr, &
                                                min_neighbor_overlap=0.0_real64, plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
+                                               grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_occupancy_failure_rejects_candidate: ierr should be OK")
@@ -4748,8 +4771,9 @@ contains
             residuals(3, i_gene, 2) = 2.5_real64
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, 1_int32, max_n_points_candidate, &
+                                                max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_different_neighborhoods_different_m_j: "// &
                               "candidate bounds ierr should be OK")
@@ -4784,7 +4808,8 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=1_int32, min_neighbor_overlap=0.0_real64, &
                                                m_min=1_int32, plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
+                                               grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_different_neighborhoods_different_m_j: ierr should be OK")
@@ -4877,8 +4902,9 @@ contains
             end do
         end do
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, 1_int32, max_n_points_candidate, &
+                                                max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_final_n_bins_matches_selected_trace_column: "// &
                               "candidate bounds ierr should be OK")
@@ -4913,7 +4939,8 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=30_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
+                                               grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_final_n_bins_matches_selected_trace_column: ierr should be OK")
@@ -6778,8 +6805,9 @@ contains
         call assert_equal_array_int(candidates(:, 1:10), expected, 30_int32, &
                                     "test_adaptive_candidates_small_n_does_not_collapse: full sequence", n_rows=3_int32)
 
-        call generate_js_comp_test_candidates(2000_int32, fixed_candidates, n_fixed_candidates, &
-                                              neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, ierr=ierr)
+        call generate_js_comp_test_candidates(2000_int32, 1_int32, fixed_candidates, n_fixed_candidates, &
+                                              neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, &
+                                              grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_adaptive_candidates_small_n_does_not_collapse: fixed-k ierr should be OK")
         call assert_equal_int(n_fixed_candidates, 2_int32, &
@@ -7029,13 +7057,16 @@ contains
     subroutine test_candidate_bounds_rejects_nonpositive_genes()
         integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate, ierr
 
-        call calc_js_comp_test_candidate_bounds(0_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call calc_js_comp_test_candidate_bounds(0_int32, 1_int32, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, &
                         "test_candidate_bounds_rejects_nonpositive_genes: G=0 rejected", arg_pos=1_int32)
-        call calc_js_comp_test_candidate_bounds(-5_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call calc_js_comp_test_candidate_bounds(-5_int32, 1_int32, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, &
                         "test_candidate_bounds_rejects_nonpositive_genes: G=-5 rejected", arg_pos=1_int32)
-        call calc_js_comp_test_candidate_bounds(1_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call calc_js_comp_test_candidate_bounds(1_int32, 1_int32, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_candidate_bounds_rejects_nonpositive_genes: G=1 accepted")
     end subroutine test_candidate_bounds_rejects_nonpositive_genes
@@ -7113,10 +7144,13 @@ contains
         integer(int32), intent(in), optional :: min_study
             !! Fewest entries of each study every neighborhood must have for the status to stay ok
         integer(int32) :: ierr
+        integer(int32), allocatable :: n_ext(:)
 
+        if (allocated(n_ext)) deallocate (n_ext)
+        allocate (n_ext(size(mads)))
         call construct_adaptive_neighborhoods(size(gene_means, 2, kind=int32), size(gene_means, 1, kind=int32), &
                                               size(residuals, 1, kind=int32), gene_means, residuals, k_start, k_step, &
-                                              k_max, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, &
+                                              k_max, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, n_ext, &
                                               max_nn, status, tau=tau, mad_distance_factor=factor, &
                                               max_pooled_residuals=cap, min_study_neighbors=min_study, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "run_adaptive_construction: ierr should be OK")
@@ -7967,6 +8001,7 @@ contains
         real(real64) :: x_star(n_genes), dispersion(n_genes), mads(n_genes)
         integer(int32) :: ranges(2, n_genes), n_per_point(1, n_genes), stops(n_genes)
         integer(int32) :: n_points, max_nn, status, ierr, i_gene
+        integer(int32), allocatable :: n_ext(:)
 
         gene_means(:, 1) = [0.0_real64, 1.0_real64, ieee_value(0.0_real64, ieee_quiet_nan)]
         do i_gene = 1, n_genes
@@ -7977,45 +8012,65 @@ contains
         bad_residuals = residuals
         bad_residuals(1, 1, 1) = ieee_value(0.0_real64, ieee_negative_inf)
 
+        if (allocated(n_ext)) deallocate (n_ext)
+        allocate (n_ext(size(mads)))
         call construct_adaptive_neighborhoods(1_int32, n_genes, 10_int32, gene_means, residuals, 1_int32, 1_int32, &
-                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, &
+                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, n_ext, &
                                               max_nn, status, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_adaptive_wrapper_validation: NaN accepted")
 
+        if (allocated(n_ext)) deallocate (n_ext)
+        allocate (n_ext(size(mads)))
         call construct_adaptive_neighborhoods(1_int32, n_genes, 10_int32, gene_means, residuals, 0_int32, 1_int32, &
-                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, &
+                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, n_ext, &
                                               max_nn, status, ierr=ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, "test_adaptive_wrapper_validation: k_start 0", arg_pos=6_int32)
+        if (allocated(n_ext)) deallocate (n_ext)
+        allocate (n_ext(size(mads)))
         call construct_adaptive_neighborhoods(1_int32, n_genes, 10_int32, gene_means, residuals, 1_int32, 0_int32, &
-                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, &
+                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, n_ext, &
                                               max_nn, status, ierr=ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, "test_adaptive_wrapper_validation: k_step 0", arg_pos=7_int32)
+        if (allocated(n_ext)) deallocate (n_ext)
+        allocate (n_ext(size(mads)))
         call construct_adaptive_neighborhoods(1_int32, n_genes, 10_int32, gene_means, residuals, 2_int32, 1_int32, &
-                                              1_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, &
+                                              1_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, n_ext, &
                                               max_nn, status, ierr=ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, "test_adaptive_wrapper_validation: k_max < k_start", arg_pos=8_int32)
+        if (allocated(n_ext)) deallocate (n_ext)
+        allocate (n_ext(size(mads)))
         call construct_adaptive_neighborhoods(1_int32, n_genes, 10_int32, gene_means, residuals, 1_int32, 1_int32, &
-                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, &
+                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, n_ext, &
                                               max_nn, status, tau=-0.1_real64, ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, "test_adaptive_wrapper_validation: tau < 0", arg_pos=18_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_adaptive_wrapper_validation: tau < 0", arg_pos=19_int32)
+        if (allocated(n_ext)) deallocate (n_ext)
+        allocate (n_ext(size(mads)))
         call construct_adaptive_neighborhoods(1_int32, n_genes, 10_int32, gene_means, residuals, 1_int32, 1_int32, &
-                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, &
+                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, n_ext, &
                                               max_nn, status, mad_distance_factor=-1.0_real64, ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, "test_adaptive_wrapper_validation: factor < 0", arg_pos=19_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_adaptive_wrapper_validation: factor < 0", arg_pos=20_int32)
+        if (allocated(n_ext)) deallocate (n_ext)
+        allocate (n_ext(size(mads)))
         call construct_adaptive_neighborhoods(1_int32, n_genes, 10_int32, gene_means, residuals, 1_int32, 1_int32, &
-                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, &
+                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, n_ext, &
                                               max_nn, status, max_pooled_residuals=-1_int32, ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, "test_adaptive_wrapper_validation: cap < 0", arg_pos=20_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_adaptive_wrapper_validation: cap < 0", arg_pos=21_int32)
+        if (allocated(n_ext)) deallocate (n_ext)
+        allocate (n_ext(size(mads)))
         call construct_adaptive_neighborhoods(1_int32, n_genes, 10_int32, gene_means, residuals, 1_int32, 1_int32, &
-                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, &
+                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, n_ext, &
                                               max_nn, status, min_study_neighbors=0_int32, ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, "test_adaptive_wrapper_validation: min_study 0", arg_pos=21_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_adaptive_wrapper_validation: min_study 0", arg_pos=22_int32)
+        if (allocated(n_ext)) deallocate (n_ext)
+        allocate (n_ext(size(mads)))
         call construct_adaptive_neighborhoods(1_int32, n_genes, 10_int32, bad_means, residuals, 1_int32, 1_int32, &
-                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, &
+                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, n_ext, &
                                               max_nn, status, ierr=ierr)
         call assert_err(ierr, ERR_NAN_INF, "test_adaptive_wrapper_validation: infinite mean", arg_pos=4_int32)
+        if (allocated(n_ext)) deallocate (n_ext)
+        allocate (n_ext(size(mads)))
         call construct_adaptive_neighborhoods(1_int32, n_genes, 10_int32, gene_means, bad_residuals, 1_int32, 1_int32, &
-                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, &
+                                              2_int32, n_points, x_star, ranges, n_per_point, stops, dispersion, mads, n_ext, &
                                               max_nn, status, ierr=ierr)
         call assert_err(ierr, ERR_NAN_INF, "test_adaptive_wrapper_validation: infinite residual", arg_pos=5_int32)
     end subroutine test_adaptive_wrapper_validation
@@ -8800,7 +8855,7 @@ contains
                                                         out%trace_n_pooled, out%trace_min_occ, out%trace_mean_occ, &
                                                         out%trace_max_occ, out%trace_sturges, out%trace_fd, &
                                                         out%trace_range_low, out%trace_range_high, out%n_tried, &
-                                                        out%cand_k_start, out%cand_n_points, out%cand_status, &
+                                                        out%cand_k_start, out%cand_n_points, out%cand_status, out%cand_n_ext, &
                                                         min_residuals_per_bin=min_residuals_per_bin, &
                                                         min_neighbor_overlap=min_neighbor_overlap, &
                                                         plateau_mode=forwarded_plateau_mode, &
@@ -9315,6 +9370,7 @@ contains
         integer(int32) :: ierr, t, n_pts, n_points, max_nn, status
         real(real64) :: x_star(n_genes*n_studies), dispersion(n_genes*n_studies), mads(n_genes*n_studies)
         integer(int32) :: ranges(2, n_genes*n_studies), n_per_point(n_studies, n_genes*n_studies), stops(n_genes*n_studies)
+        integer(int32), allocatable :: n_ext(:)
 
         call build_adaptive_search_fixture(n_genes, n_studies, n_reps, .true._c_bool, n_genes, gene_means, residuals)
         call run_adaptive_search(gene_means, residuals, out, ierr, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
@@ -9331,9 +9387,11 @@ contains
         trace_n_bins_1 = out%trace_n_bins(1:17, 1)
 
         do t = 1, out%n_admissible
+            if (allocated(n_ext)) deallocate (n_ext)
+            allocate (n_ext(size(mads)))
             call construct_adaptive_neighborhoods(n_studies, n_genes, n_reps, gene_means, residuals, out%trace_k_start(t), &
                                                   out%trace_k_step(t), out%trace_k_max(t), n_points, x_star, ranges, &
-                                                  n_per_point, stops, dispersion, mads, max_nn, status, tau=tau, &
+                                                  n_per_point, stops, dispersion, mads, n_ext, max_nn, status, tau=tau, &
                                                   mad_distance_factor=mad_distance_factor, &
                                                   max_pooled_residuals=max_pooled_residuals, &
                                                   min_study_neighbors=min_study_neighbors, ierr=ierr)
@@ -10793,10 +10851,13 @@ contains
             !! Number of points
         real(real64) :: x_star(900), dispersion(900), mads(900)
         integer(int32) :: all_ranges(2, 900), all_n_per_point(3, 900), stops(900), max_nn, status, ierr
+        integer(int32), allocatable :: n_ext(:)
 
+        if (allocated(n_ext)) deallocate (n_ext)
+        allocate (n_ext(size(mads)))
         call construct_adaptive_neighborhoods(3_int32, 300_int32, 4_int32, gene_means, residuals, 10_int32, 3_int32, &
                                               40_int32, n_points, x_star, all_ranges, all_n_per_point, stops, dispersion, &
-                                              mads, max_nn, status, ierr=ierr)
+                                              mads, n_ext, max_nn, status, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "construct_adaptive_stone_fixture: ierr")
         call assert_equal_int(status, ADAPTIVE_STATUS_OK, "construct_adaptive_stone_fixture: status")
         ranges = all_ranges(:, 1:n_points)
@@ -10948,6 +11009,7 @@ contains
     !| 0 in every mode (simulated with the Python bindings; floors 10 to 30 do not bind there).
     subroutine test_adaptive_search_stone_matches_standalone()
         character(len=*), parameter :: name = "test_adaptive_search_stone_matches_standalone: "
+        integer(int32), allocatable :: n_ext(:)
         integer(int32), parameter :: modes(3) = [MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED, &
                                                   MODE_BIN_COUNT_STONE_POOLED]
         integer(int32), parameter :: floors(2) = [0_int32, 40_int32]
@@ -10970,9 +11032,11 @@ contains
                 call assert_true(logical(out%n_admissible >= 1_int32, kind=c_bool), &
                                  name//trim(case_text)//"some candidate traced")
                 do t = 1, out%n_admissible
+                    if (allocated(n_ext)) deallocate (n_ext)
+                    allocate (n_ext(size(mads)))
                     call construct_adaptive_neighborhoods(3_int32, 300_int32, 4_int32, gene_means, residuals, &
                                                           out%trace_k_start(t), out%trace_k_step(t), out%trace_k_max(t), &
-                                                          n_points, x_star, ranges, n_per_point, stops, dispersion, mads, &
+                                                          n_points, x_star, ranges, n_per_point, stops, dispersion, mads, n_ext, &
                                                           max_nn, status, ierr=ierr)
                     call assert_equal_int(get_err_code(ierr), ERR_OK, name//trim(case_text)//"construct ierr")
                     n_pts = out%trace_n_points(t)
@@ -11098,7 +11162,8 @@ contains
         n_genes = size(gene_means, 1, kind=int32)
         n_studies = size(gene_means, 2, kind=int32)
         n_reps = size(residuals, 1, kind=int32)
-        call calc_js_comp_test_candidate_bounds(n_genes, max_points, max_neighbors, bounds_ierr)
+        call calc_js_comp_test_candidate_bounds(n_genes, 1_int32, max_points, max_neighbors, &
+                                                grid_min_points=MIN_POINTS, ierr=bounds_ierr)
         call assert_equal_int(get_err_code(bounds_ierr), ERR_OK, "run_fixed_k_search: bounds ierr")
         actual_plateau_mode = MODE_PLATEAU_EFFECT_SIZE
         if (present(plateau_mode)) actual_plateau_mode = plateau_mode
@@ -11140,7 +11205,8 @@ contains
                                                neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
                                                bin_count_mode=bin_count_mode, delta_abs_tolerance=delta_abs_tolerance, &
                                                delta_min_consecutive_transitions=delta_min_consecutive_transitions, &
-                                               bootstrap_mode=bootstrap_mode)
+                                               bootstrap_mode=bootstrap_mode, &
+                                               grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
     end subroutine run_fixed_k_search
 
     !> Test helper: two fixed-k searches returned the same selection, the same final bin counts and
@@ -11369,7 +11435,8 @@ contains
                                                out%trace_max_occ, out%trace_sturges, out%trace_fd, &
                                                out%trace_range_low, out%trace_range_high, ierr=ierr, &
                                                min_neighbor_overlap=0.0_real64, plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
+                                               grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
     end subroutine run_fixed_k_search_with_bounds
 
     !> A `max_n_points_candidate` one below the bound (299 for the grid's first `n_points` of 300,
@@ -11380,12 +11447,13 @@ contains
         character(len=*), parameter :: name = "test_param_search_rejects_undersized_max_n_points_candidate: "
         integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate, ierr
 
-        call calc_js_comp_test_candidate_bounds(300_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call calc_js_comp_test_candidate_bounds(300_int32, 1_int32, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_equal_array_int([get_err_code(ierr), max_n_points_candidate, max_n_neighbors_candidate], &
                                     [ERR_OK, 300_int32, 4_int32], 3_int32, name//"bounds of the 300-gene grid")
 
         call run_fixed_k_search_with_bounds(max_n_points_candidate - 1_int32, max_n_neighbors_candidate, ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, name//"rejected at argument 8", 8_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"rejected by the search (argument 8, position cleared by the wrapper)", 0_int32)
 
         call run_fixed_k_search_with_bounds(max_n_points_candidate, max_n_neighbors_candidate, ierr)
         call assert_err(ierr, ERR_OK, name//"the exact bounds are accepted")
@@ -11398,12 +11466,13 @@ contains
         character(len=*), parameter :: name = "test_param_search_rejects_undersized_max_n_neighbors_candidate: "
         integer(int32) :: max_n_points_candidate, max_n_neighbors_candidate, ierr
 
-        call calc_js_comp_test_candidate_bounds(300_int32, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+        call calc_js_comp_test_candidate_bounds(300_int32, 1_int32, max_n_points_candidate, max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_equal_array_int([get_err_code(ierr), max_n_points_candidate, max_n_neighbors_candidate], &
                                     [ERR_OK, 300_int32, 4_int32], 3_int32, name//"bounds of the 300-gene grid")
 
         call run_fixed_k_search_with_bounds(max_n_points_candidate, max_n_neighbors_candidate - 1_int32, ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, name//"rejected at argument 9", 9_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"rejected by the search (argument 9, position cleared by the wrapper)", 0_int32)
     end subroutine test_param_search_rejects_undersized_max_n_neighbors_candidate
 
     !> Test helper: validation-only call of run_js_comp_test_parameter_search for `n_genes` genes
@@ -11411,7 +11480,8 @@ contains
     !| `min_residuals_per_bin = -1` (argument 39) is always invalid and is validated after the two
     !| bounds, so the call returns before any search work: at argument 39 when both bounds pass,
     !| at 8 or 9 when one of them fails.
-    subroutine validate_fixed_k_bounds(n_genes, max_n_points_candidate, max_n_neighbors_candidate, ierr)
+    subroutine validate_fixed_k_bounds(n_genes, max_n_points_candidate, max_n_neighbors_candidate, ierr, &
+                                       min_residuals_per_bin)
         integer(int32), intent(in) :: n_genes
             !! Number of genes of the single study
         integer(int32), intent(in) :: max_n_points_candidate
@@ -11420,10 +11490,15 @@ contains
             !! Passed as the search's `max_n_neighbors_candidate`
         integer(int32), intent(out) :: ierr
             !! The search's error code
+        integer(int32), intent(in), optional :: min_residuals_per_bin
+            !! Passed to the search; default -1, which the wrapper rejects at argument 39 so no
+            !! search runs. A valid value lets a call reach the search's own capacity check
         real(real64), allocatable :: gene_means(:, :), residuals(:, :, :)
         type(fixed_k_search_outputs) :: out
-        integer(int32) :: n_points_alloc
+        integer(int32) :: n_points_alloc, actual_min_residuals_per_bin
 
+        actual_min_residuals_per_bin = -1_int32
+        if (present(min_residuals_per_bin)) actual_min_residuals_per_bin = min_residuals_per_bin
         n_points_alloc = max(1_int32, max_n_points_candidate)
         allocate (gene_means(n_genes, 1), residuals(1, n_genes, 1))
         gene_means = 1.0_real64
@@ -11456,7 +11531,8 @@ contains
                                                out%trace_n_pooled, out%trace_min_occ, out%trace_mean_occ, &
                                                out%trace_max_occ, out%trace_sturges, out%trace_fd, &
                                                out%trace_range_low, out%trace_range_high, ierr=ierr, &
-                                               min_residuals_per_bin=-1_int32)
+                                               min_residuals_per_bin=actual_min_residuals_per_bin, &
+                                               grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
     end subroutine validate_fixed_k_bounds
 
     !> The two lower bounds of run_js_comp_test_parameter_search stay in sync with
@@ -11479,21 +11555,26 @@ contains
         n_genes = 1_int32
         do while (n_genes <= 200406_int32)
             write (genes_text, '(i0)') n_genes
-            call calc_js_comp_test_candidate_bounds(n_genes, max_points, max_neighbors, ierr)
+            call calc_js_comp_test_candidate_bounds(n_genes, 1_int32, max_points, max_neighbors, &
+                                                    grid_min_points=MIN_POINTS, ierr=ierr)
             call assert_err(ierr, ERR_OK, name//"bounds ierr, G="//trim(genes_text))
             ! Every neighborhood_size_mode's grid lies within the same bounds.
             do i_mode = 1, 3
-                call generate_js_comp_test_candidates_impl(n_genes, candidates, n_candidates, modes(i_mode))
+                call generate_js_comp_test_candidates_impl(n_genes, 1_int32, candidates, n_candidates, modes(i_mode), &
+                                                           grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
                 if (maxval(candidates(1, 1:n_candidates)) /= max_points .or. &
                     maxval(candidates(2, 1:n_candidates)) > max_neighbors) n_mismatches = n_mismatches + 1_int32
             end do
 
             call validate_fixed_k_bounds(n_genes, max_points, max_neighbors, ierr)
             call assert_err(ierr, ERR_INVALID_INPUT, name//"exact bounds pass, G="//trim(genes_text), 39_int32)
-            call validate_fixed_k_bounds(n_genes, max_points - 1_int32, max_neighbors, ierr)
-            call assert_err(ierr, ERR_INVALID_INPUT, name//"points bound - 1 fails, G="//trim(genes_text), 8_int32)
-            call validate_fixed_k_bounds(n_genes, max_points, max_neighbors - 1_int32, ierr)
-            call assert_err(ierr, ERR_INVALID_INPUT, name//"neighbors bound - 1 fails, G="//trim(genes_text), 9_int32)
+            call validate_fixed_k_bounds(n_genes, max_points - 1_int32, max_neighbors, ierr, min_residuals_per_bin=0_int32)
+            call assert_err(ierr, ERR_INVALID_INPUT, name//"points bound - 1 fails, G="//trim(genes_text), 0_int32)
+            call validate_fixed_k_bounds(n_genes, max_points, max_neighbors - 1_int32, ierr, min_residuals_per_bin=0_int32)
+            ! A bound of 1 minus 1 is 0, below the wrapper's DM_MIN(1), which names argument 9; any
+            ! other undersized value reaches the search's own check, whose position the wrapper clears.
+            call assert_err(ierr, ERR_INVALID_INPUT, name//"neighbors bound - 1 fails, G="//trim(genes_text), &
+                            merge(9_int32, 0_int32, max_neighbors == 1_int32))
 
             if (n_genes < 3000_int32) then
                 n_genes = n_genes + 1_int32
@@ -11980,7 +12061,8 @@ contains
             !! Fixture residuals
         integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr, i_gene
 
-        call generate_js_comp_test_candidates(100_int32, candidates, n_candidates, ierr=ierr)
+        call generate_js_comp_test_candidates(100_int32, 1_int32, candidates, n_candidates, &
+                                              grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP, ierr=ierr)
         call assert_err(ierr, ERR_OK, name//"candidate grid ierr")
         call assert_equal_int(n_candidates, 1_int32, name//"the grid has exactly one candidate")
         call assert_equal_array_int(candidates(:, 1), [300_int32, 1_int32], 2_int32, name//"the lone candidate is (300, 1)")
@@ -12360,10 +12442,12 @@ contains
 
         do i_case = 1, n_cases
             write (genes_text, '(i0)') gene_counts(i_case)
-            call calc_fixed_k_n_points_range(gene_counts(i_case), n_points_high, n_points_low)
+            call calc_fixed_k_n_points_range(gene_counts(i_case), 1_int32, MODE_GRID_SAMPLE_SIZE_PER_STUDY, &
+                                             N_POINTS_HIGH_FACTOR, MIN_POINTS, n_points_high, n_points_low)
             call assert_equal_int(n_points_high, expected_high(i_case), name//"n_points_high, G="//trim(genes_text))
             call assert_equal_int(n_points_low, 300_int32, name//"n_points_low, G="//trim(genes_text))
-            call calc_js_comp_test_candidate_bounds(gene_counts(i_case), bound_n_points, bound_n_neighbors, ierr)
+            call calc_js_comp_test_candidate_bounds(gene_counts(i_case), 1_int32, bound_n_points, bound_n_neighbors, &
+                                                    grid_min_points=MIN_POINTS, ierr=ierr)
             call assert_err(ierr, ERR_OK, name//"bounds ierr, G="//trim(genes_text))
             call assert_equal_int(bound_n_points, n_points_high, name//"bounds producer agrees, G="//trim(genes_text))
         end do
@@ -12717,8 +12801,9 @@ contains
         gene_means = 5.0_real64
         residuals = 0.0_real64
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                ierr)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, 1_int32, max_n_points_candidate, &
+                                                max_n_neighbors_candidate, &
+                                                grid_min_points=MIN_POINTS, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"candidate bounds ierr")
         max_n_points_candidate = max_n_points_candidate + 7_int32
         allocate (n_bins_per_point(max_n_points_candidate), shared_residual_range_low(max_n_points_candidate), &
@@ -12763,7 +12848,8 @@ contains
                                                ierr=ierr, min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
                                                delta_min_consecutive_transitions=16_int32, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
+                                               grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_false(plateau_established, name//"no plateau")
@@ -12849,7 +12935,8 @@ contains
         allocate (gene_means(n_genes, n_studies), residuals(n_reps, n_genes, n_studies))
         gene_means = 5.0_real64
         residuals = 0.0_real64
-        call calc_js_comp_test_candidate_bounds(n_genes, max_points, max_neighbors, bounds_ierr)
+        call calc_js_comp_test_candidate_bounds(n_genes, 1_int32, max_points, max_neighbors, &
+                                                grid_min_points=MIN_POINTS, ierr=bounds_ierr)
         call assert_equal_int(get_err_code(bounds_ierr), ERR_OK, "run_fixed_k_constant_fixture: bounds ierr")
 
         allocate (out%n_bins(max_points), out%range_low(max_points), out%range_high(max_points), &
@@ -12883,7 +12970,8 @@ contains
                                                out%trace_sturges, out%trace_fd, out%trace_range_low, &
                                                out%trace_range_high, ierr=ierr, min_residuals_per_bin=0_int32, &
                                                min_neighbor_overlap=0.0_real64, plateau_mode=plateau_mode, &
-                                               neighborhood_size_mode=neighborhood_size_mode, random_seed=1_int32)
+                                               neighborhood_size_mode=neighborhood_size_mode, random_seed=1_int32, &
+                                               grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP)
     end subroutine run_fixed_k_constant_fixture
 
     !> Test helper: two fixed-k searches agree on every output exactly -- the selection, the final
@@ -13101,7 +13189,8 @@ contains
         integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr, n_expected
 
         n_expected = size(expected, 2, kind=int32)
-        call generate_js_comp_test_candidates(n_genes, candidates, n_candidates, neighborhood_size_mode=mode, ierr=ierr)
+        call generate_js_comp_test_candidates(n_genes, 1_int32, candidates, n_candidates, neighborhood_size_mode=mode, &
+                                              grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP, ierr=ierr)
         call assert_err(ierr, ERR_OK, name//"ierr")
         call assert_equal_int(n_candidates, n_expected, name//"number of candidates")
         if (n_candidates == n_expected) &
@@ -13128,9 +13217,9 @@ contains
         call assert_fixed_k_grid(name//"default: ", 2000_int32, reshape([300_int32, 26_int32], [2, 1]))
 
         ! The wrapper rejects a value outside the mode table, naming the argument.
-        call generate_js_comp_test_candidates(2000_int32, candidates, n_candidates, neighborhood_size_mode=99_int32, &
-                                              ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, name//"unknown neighborhood_size_mode rejected", arg_pos=4_int32)
+        call generate_js_comp_test_candidates(2000_int32, 1_int32, candidates, n_candidates, neighborhood_size_mode=99_int32, &
+                                              grid_min_points=MIN_POINTS, grid_floor_mode=MODE_GRID_FLOOR_STOP, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"unknown neighborhood_size_mode rejected", arg_pos=5_int32)
     end subroutine test_fixed_k_grid_neighborhood_size_modes_2000
 
     !> G = 26097 (Kidney-sized): `4*sqrt(26097) = 646.18`, so `n_points_high = 647`,

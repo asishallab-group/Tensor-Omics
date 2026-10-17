@@ -51,7 +51,7 @@ module tox_data_integration_js_comp_test_permutation_impl
     use tox_data_integration_stats_impl, only: calc_js_comp_test_n_top_k_jsds
     use tox_data_integration_js_comp_test_binning_impl, only: MAX_N_BINS
     use tox_data_integration_js_comp_test_fixed_k_search_impl, only: calc_js_comp_test_candidate_bounds, &
-                                                                     run_js_comp_test_parameter_search_impl
+                                                                     run_js_comp_test_parameter_search_impl, MAX_POINTS
     use tox_data_integration_js_comp_test_adaptive_search_impl, only: calc_adaptive_js_comp_test_bounds, &
                                                                       run_js_comp_test_adaptive_parameter_search_impl, &
                                                                       ADAPTIVE_POINT_CAPACITY_FACTOR
@@ -81,16 +81,23 @@ contains
     !| `max_n_points_candidate = max(n_points, P)` and `max_n_neighbors_candidate = max(n_neighbors,
     !| K)`, with `P` and `K` the bounds of
     !| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):calc_js_comp_test_candidate_bounds(subroutine)]].
+    !| `P` and `K` follow the grid switches given (pass the rerun search's own); `grid_floor_mode`
+    !| needs no argument here, as its floor candidate never exceeds `P` or `K`.
     !| `n_bootstrapping_top_k_jsds` is the bootstrap heap size, exactly as
     !| [[tox_data_integration_stats_impl(module):calc_js_comp_test_n_top_k_jsds(subroutine)]] computes it.
     !|
     !| Rejects an out-of-range argument with invalid input (a non-finite significance level with
     !| `ERR_NAN_INF`); the outputs are then left undefined.
-    pure subroutine calc_js_comp_test_permutation_bounds(max_n_genes_all_studies, n_points, n_neighbors, n_bootstraps, &
-                                                         two_sided_bootstrapping_significance_level, max_n_points_candidate, &
-                                                         max_n_neighbors_candidate, n_bootstrapping_top_k_jsds, ierr)
+    pure subroutine calc_js_comp_test_permutation_bounds(max_n_genes_all_studies, n_studies, n_points, n_neighbors, &
+                                                         n_bootstraps, two_sided_bootstrapping_significance_level, &
+                                                         max_n_points_candidate, max_n_neighbors_candidate, &
+                                                         n_bootstrapping_top_k_jsds, grid_sample_size_mode, &
+                                                         grid_points_factor, grid_min_points, ierr)
         integer(int32), intent(in) :: max_n_genes_all_studies
             !! Maximum number of genes across all studies
+            !! DM_MIN(1_int32)
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies; used only by the pooled grid sample size of the rerun search
             !! DM_MIN(1_int32)
         integer(int32), intent(in) :: n_points
             !! Number of reference points of the fixed-parameter run
@@ -114,6 +121,26 @@ contains
             !! Capacity for neighbors per neighborhood
         integer(int32), intent(out) :: n_bootstrapping_top_k_jsds
             !! Bootstrap heap size (values kept at each end of the bootstrap distribution)
+        integer(int32), intent(in), optional :: grid_sample_size_mode
+            !! Rerun search's k-NN candidate grid (an experiment switch): the sample size `N` in its first
+            !! reference-point count `ceiling(grid_points_factor * sqrt(N))`
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | One study's gene count, `max_n_genes_all_studies` (default, as before) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_SAMPLE_SIZE_PER_STUDY(variable)]] |
+            !! | The pooled gene count, `max_n_genes_all_studies * n_studies` | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_SAMPLE_SIZE_POOLED(variable)]] |
+            !! DM_DEFAULT(M_MODE_GRID_SAMPLE_SIZE_PER_STUDY)
+        real(real64), intent(in), optional :: grid_points_factor
+            !! Rerun search's k-NN candidate grid (an experiment switch): the factor in its first reference-point count;
+            !! the default 4 is the factor before
+            !! DM_MIN(above(0.0_real64))
+            !! DM_DEFAULT(M_GRID_POINTS_FACTOR_DEFAULT)
+        integer(int32), intent(in), optional :: grid_min_points
+            !! Rerun search's k-NN candidate grid (an experiment switch): its floor; the default here is 200, the floor
+            !! before was 300
+            !! DM_MIN(1_int32)
+            !! DM_MAX(MAX_POINTS)
+            !! DM_DEFAULT(M_GRID_MIN_POINTS_DEFAULT)
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure
 
@@ -121,15 +148,18 @@ contains
 
         call set_ok(ierr)
         call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=1_int32, min=1_int32)
-        call validate_in_range_int(n_points, ierr, arg_pos=2_int32, min=1_int32)
-        call validate_in_range_int(n_neighbors, ierr, arg_pos=3_int32, min=1_int32, max=max(1_int32, max_n_genes_all_studies))
-        call validate_in_range_int(n_bootstraps, ierr, arg_pos=4_int32, min=1_int32)
-        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=5_int32, &
+        call validate_in_range_int(n_studies, ierr, arg_pos=2_int32, min=1_int32)
+        call validate_in_range_int(n_points, ierr, arg_pos=3_int32, min=1_int32)
+        call validate_in_range_int(n_neighbors, ierr, arg_pos=4_int32, min=1_int32, max=max(1_int32, max_n_genes_all_studies))
+        call validate_in_range_int(n_bootstraps, ierr, arg_pos=5_int32, min=1_int32)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=6_int32, &
                                     min=0.0_real64, max=100.0_real64)
         if (is_err(ierr)) return
         M_DEFAULT_VAL(n_bootstraps, actual_n_bootstraps, CM_N_BOOTSTRAPS_DEFAULT)
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, search_n_points, search_n_neighbors, ierr)
+        ! Its argument positions differ from this routine's; the grid switches are validated there.
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, n_studies, search_n_points, search_n_neighbors, &
+                                                grid_sample_size_mode, grid_points_factor, grid_min_points, ierr)
         if (is_err(ierr)) return
         max_n_points_candidate = max(n_points, search_n_points)
         max_n_neighbors_candidate = max(n_neighbors, search_n_neighbors)
@@ -349,10 +379,13 @@ contains
     !| AUTHOR_LASZLO_LANG
     !| Private. `points_fit`/`neighbors_fit` are `.true.` iff the capacity reaches the bound of
     !| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):calc_js_comp_test_candidate_bounds(subroutine)]].
-    pure subroutine check_fixed_k_rerun_capacities(max_n_genes_all_studies, max_n_points_candidate, &
-                                                   max_n_neighbors_candidate, points_fit, neighbors_fit)
+    pure subroutine check_fixed_k_rerun_capacities(max_n_genes_all_studies, n_studies, max_n_points_candidate, &
+                                                   max_n_neighbors_candidate, points_fit, neighbors_fit, &
+                                                   grid_sample_size_mode, grid_points_factor, grid_min_points)
         integer(int32), intent(in) :: max_n_genes_all_studies
             !! Maximum number of genes across all studies, at least 1
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies, at least 1
         integer(int32), intent(in) :: max_n_points_candidate
             !! Capacity for reference points
         integer(int32), intent(in) :: max_n_neighbors_candidate
@@ -361,10 +394,17 @@ contains
             !! `.true.` iff `max_n_points_candidate` reaches the search's bound
         logical(c_bool), intent(out) :: neighbors_fit
             !! `.true.` iff `max_n_neighbors_candidate` reaches the search's bound
+        integer(int32), intent(in), optional :: grid_sample_size_mode
+            !! The rerun search's grid sample-size mode, passed on as given
+        real(real64), intent(in), optional :: grid_points_factor
+            !! The rerun search's grid points factor, passed on as given
+        integer(int32), intent(in), optional :: grid_min_points
+            !! The rerun search's grid floor, passed on as given
 
         integer(int32) :: search_n_points, search_n_neighbors, bounds_ierr
 
-        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, search_n_points, search_n_neighbors, bounds_ierr)
+        call calc_js_comp_test_candidate_bounds(max_n_genes_all_studies, n_studies, search_n_points, search_n_neighbors, &
+                                                grid_sample_size_mode, grid_points_factor, grid_min_points, bounds_ierr)
         points_fit = (.not. is_err(bounds_ierr)) .and. max_n_points_candidate >= search_n_points
         neighbors_fit = (.not. is_err(bounds_ierr)) .and. max_n_neighbors_candidate >= search_n_neighbors
     end subroutine check_fixed_k_rerun_capacities
@@ -471,7 +511,8 @@ contains
                                                           two_sided_bootstrapping_significance_level, random_seed, &
                                                           bin_count_mode, &
                                                           neighborhood_size_mode, &
-                                                          delta_abs_tolerance, bootstrap_mode, ierr)
+                                                          delta_abs_tolerance, bootstrap_mode, grid_sample_size_mode, &
+                                                          grid_points_factor, grid_min_points, grid_floor_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -831,6 +872,36 @@ contains
             !! | Each study's own counts, a robustness interval (default) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
             !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]] |
             !! DM_DEFAULT(M_MODE_BOOTSTRAP_PER_STUDY)
+        integer(int32), intent(in), optional :: grid_sample_size_mode
+            !! Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: the sample size `N` in its first
+            !! reference-point count `ceiling(grid_points_factor * sqrt(N))`; also sizes the work
+            !! arrays through `calc_js_comp_test_permutation_bounds`
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | One study's gene count, `max_n_genes_all_studies` (default, as before) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_SAMPLE_SIZE_PER_STUDY(variable)]] |
+            !! | The pooled gene count, `max_n_genes_all_studies * n_studies` | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_SAMPLE_SIZE_POOLED(variable)]] |
+            !! DM_DEFAULT(M_MODE_GRID_SAMPLE_SIZE_PER_STUDY)
+        real(real64), intent(in), optional :: grid_points_factor
+            !! Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: the factor in its first reference-point count;
+            !! the default 4 is the factor before
+            !! DM_MIN(above(0.0_real64))
+            !! DM_DEFAULT(M_GRID_POINTS_FACTOR_DEFAULT)
+        integer(int32), intent(in), optional :: grid_min_points
+            !! Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: its floor; the default here is 200, the floor
+            !! before was 300
+            !! DM_MIN(1_int32)
+            !! DM_MAX(MAX_POINTS)
+            !! DM_DEFAULT(M_GRID_MIN_POINTS_DEFAULT)
+        integer(int32), intent(in), optional :: grid_floor_mode
+            !! Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: what it does when the next decayed `n_points`
+            !! would fall below the floor; the default here is the clamp, the grid before stopped
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Stop: the coarsest candidate is the last decayed value at or above the floor (the grid before) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_FLOOR_STOP(variable)]] |
+            !! | Clamp: add one last candidate at the floor, unless the coarsest one already is (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_FLOOR_CLAMP(variable)]] |
+            !! DM_DEFAULT(M_MODE_GRID_FLOOR_CLAMP)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -864,8 +935,9 @@ contains
             return
         end if
         if (actual_rerun) then
-            call check_fixed_k_rerun_capacities(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                points_fit, neighbors_fit)
+            call check_fixed_k_rerun_capacities(max_n_genes_all_studies, n_studies, max_n_points_candidate, &
+                                                max_n_neighbors_candidate, points_fit, neighbors_fit, &
+                                                grid_sample_size_mode, grid_points_factor, grid_min_points)
             if (.not. points_fit) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=9_int32)
             if (.not. neighbors_fit) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=10_int32)
             if (is_err(ierr)) return
@@ -941,7 +1013,9 @@ contains
                 two_sided_bootstrapping_significance_level=two_sided_bootstrapping_significance_level, &
                 random_seed=random_seed, bin_count_mode=bin_count_mode, &
                 neighborhood_size_mode=neighborhood_size_mode, &
-                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, ierr=callee_ierr)
+                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, &
+                grid_sample_size_mode=grid_sample_size_mode, grid_points_factor=grid_points_factor, &
+                grid_min_points=grid_min_points, grid_floor_mode=grid_floor_mode, ierr=callee_ierr)
             if (is_err(callee_ierr)) then
                 call set_err_once(ierr, get_err_code(callee_ierr))
                 return
@@ -1036,7 +1110,7 @@ contains
                                                                    tmp_permuted_expression, tmp_gene_means, tmp_residuals, &
                                                                    tmp_gene_means_perm_all, tmp_x_star, &
                                                                    tmp_pooled_neighborhood_range, tmp_n_neighbors_per_point, &
-                                                                   tmp_stop_reason, tmp_neighborhood_dispersion, &
+                                                                   tmp_stop_reason, tmp_n_extension_entries, tmp_neighborhood_dispersion, &
                                                                    tmp_neighborhood_mad, tmp_point_neighborhood_indices, &
                                                                    tmp_neighbor_residuals, tmp_point_pool, tmp_point_draw, &
                                                                    tmp_n_bins_per_point, tmp_shared_residual_range_low, &
@@ -1078,6 +1152,7 @@ contains
                                                                    tmp_search_candidate_k_start, &
                                                                    tmp_search_candidate_n_points, &
                                                                    tmp_search_candidate_status, &
+                                                                   tmp_search_candidate_n_extension_entries, &
                                                                    tmp_candidate_confidence_interval, &
                                                                    tmp_bootstrapping_top_k_jsds, &
                                                                    tmp_prev_global_js_divergence, tmp_delta_perm, &
@@ -1098,7 +1173,8 @@ contains
                                                                    two_sided_bootstrapping_significance_level, random_seed, &
                                                                    tau, mad_distance_factor, max_pooled_residuals, &
                                                                    min_study_neighbors, bin_count_mode, &
-                                                                   delta_abs_tolerance, bootstrap_mode, ierr)
+                                                                   delta_abs_tolerance, bootstrap_mode, tau_reference_mode, &
+                                                                   overlap_extension_mode, seed_step_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -1171,6 +1247,9 @@ contains
             !! neighborhood
         integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_stop_reason
             !! Working array of the search and the construction: stop reason per neighborhood
+        integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_n_extension_entries
+            !! Working array of the search and the construction: entries the growth's extensions
+            !! added per neighborhood
         real(real64), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_neighborhood_dispersion
             !! Working array of the search and the construction: dispersion per neighborhood
         real(real64), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_neighborhood_mad
@@ -1319,6 +1398,8 @@ contains
         integer(int32), dimension(M_MAX_CANDIDATE_PAIRS), intent(out) :: tmp_search_candidate_n_points
             !! Working array: the search's candidate log
         integer(int32), dimension(M_MAX_CANDIDATE_PAIRS), intent(out) :: tmp_search_candidate_status
+            !! Working array of the search: its candidate log's statuses
+        integer(int32), dimension(M_MAX_CANDIDATE_PAIRS), intent(out) :: tmp_search_candidate_n_extension_entries
             !! Working array: the search's candidate log
         real(real64), dimension(2, n_studies), intent(out) :: tmp_candidate_confidence_interval
             !! Working array of the search: the current candidate's confidence interval
@@ -1481,6 +1562,36 @@ contains
             !! | Each study's own counts, a robustness interval (default) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
             !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]] |
             !! DM_DEFAULT(M_MODE_BOOTSTRAP_PER_STUDY)
+        integer(int32), intent(in), optional :: tau_reference_mode
+            !! Construction and rerun search, an experiment switch of the adaptive growth: which
+            !! dispersion a growth round's relative change is measured against, as in
+            !! `construct_adaptive_neighborhoods`
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | The dispersion after the previous committed round (default, as before) | [[tox_data_integration_preprocessing_impl(module):MODE_TAU_REFERENCE_PREVIOUS_ROUND(variable)]] |
+            !! | The dispersion right after the `k_start` phase, fixed for the whole growth | [[tox_data_integration_preprocessing_impl(module):MODE_TAU_REFERENCE_K_START(variable)]] |
+            !! DM_DEFAULT(M_MODE_TAU_REFERENCE_PREVIOUS_ROUND)
+        integer(int32), intent(in), optional :: overlap_extension_mode
+            !! Construction and rerun search, an experiment switch of the adaptive growth: what
+            !! happens to a neighborhood once its growth has stopped, as in
+            !! `construct_adaptive_neighborhoods`; the backward extension uses `min_neighbor_overlap`
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Keep each neighborhood as grown (default, as before) | [[tox_data_integration_preprocessing_impl(module):MODE_OVERLAP_EXTENSION_NONE(variable)]] |
+            !! | Extend each neighborhood after the first toward lower means until it overlaps the previous one by at least `min_neighbor_overlap` | [[tox_data_integration_preprocessing_impl(module):MODE_OVERLAP_EXTENSION_BACKWARD(variable)]] |
+            !! DM_DEFAULT(M_MODE_OVERLAP_EXTENSION_NONE)
+        integer(int32), intent(in), optional :: seed_step_mode
+            !! Construction and rerun search, an experiment switch of the adaptive growth: how far
+            !! past a neighborhood the next reference point's seed must lie, as in
+            !! `construct_adaptive_neighborhoods`
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | The seed the MAD rule places (default, as before) | [[tox_data_integration_preprocessing_impl(module):MODE_SEED_STEP_MAD(variable)]] |
+            !! | At least `k_step` sorted positions past the neighborhood, which takes the rest of the pool when fewer are left | [[tox_data_integration_preprocessing_impl(module):MODE_SEED_STEP_MIN_K_STEP(variable)]] |
+            !! DM_DEFAULT(M_MODE_SEED_STEP_MAD)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -1563,9 +1674,10 @@ contains
                 trace_shared_residual_range_high=tmp_search_trace_shared_residual_range_high, &
                 n_candidates_tried=search_n_candidates_tried, candidate_k_start=tmp_search_candidate_k_start, &
                 candidate_n_points=tmp_search_candidate_n_points, candidate_status=tmp_search_candidate_status, &
+                candidate_n_extension_entries=tmp_search_candidate_n_extension_entries, &
                 tmp_gene_means_perm_all=tmp_gene_means_perm_all, tmp_x_star=tmp_x_star, &
                 tmp_pooled_neighborhood_range=tmp_pooled_neighborhood_range, &
-                tmp_n_neighbors_per_point=tmp_n_neighbors_per_point, tmp_stop_reason=tmp_stop_reason, &
+                tmp_n_neighbors_per_point=tmp_n_neighbors_per_point, tmp_stop_reason=tmp_stop_reason, tmp_n_extension_entries=tmp_n_extension_entries, &
                 tmp_neighborhood_dispersion=tmp_neighborhood_dispersion, tmp_neighborhood_mad=tmp_neighborhood_mad, &
                 tmp_point_neighborhood_indices=tmp_point_neighborhood_indices, &
                 tmp_neighbor_residuals=tmp_neighbor_residuals, tmp_n_bins_per_point=tmp_n_bins_per_point, &
@@ -1602,7 +1714,9 @@ contains
                 random_seed=random_seed, tau=tau, mad_distance_factor=mad_distance_factor, &
                 max_pooled_residuals=max_pooled_residuals, min_study_neighbors=min_study_neighbors, &
                 bin_count_mode=bin_count_mode, &
-                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, ierr=callee_ierr)
+                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, &
+                tau_reference_mode=tau_reference_mode, overlap_extension_mode=overlap_extension_mode, &
+                seed_step_mode=seed_step_mode, ierr=callee_ierr)
             if (is_err(callee_ierr)) then
                 call set_err_once(ierr, get_err_code(callee_ierr))
                 return
@@ -1615,10 +1729,13 @@ contains
             k_start=used_k_start, k_step=used_k_step, k_max=used_k_max, n_points=n_points, x_star=tmp_x_star, &
             pooled_neighborhood_range=tmp_pooled_neighborhood_range, n_neighbors_per_point=tmp_n_neighbors_per_point, &
             stop_reason=tmp_stop_reason, neighborhood_dispersion=tmp_neighborhood_dispersion, &
-            neighborhood_mad=tmp_neighborhood_mad, max_n_neighbors=max_n_neighbors, &
+            neighborhood_mad=tmp_neighborhood_mad, n_extension_entries=tmp_n_extension_entries, &
+            max_n_neighbors=max_n_neighbors, &
             construction_status=construction_status, tmp_gene_means_perm_all=tmp_gene_means_perm_all, tau=tau, &
             mad_distance_factor=mad_distance_factor, max_pooled_residuals=max_pooled_residuals, &
-            min_study_neighbors=min_study_neighbors)
+            min_study_neighbors=min_study_neighbors, tau_reference_mode=tau_reference_mode, &
+            overlap_extension_mode=overlap_extension_mode, min_neighbor_overlap=min_neighbor_overlap, &
+            seed_step_mode=seed_step_mode)
         ! Not one argument's fault: the relabelled data decide how many neighborhoods emerge.
         if (n_points < 1_int32 .or. n_points > max_n_points_candidate) then
             call set_err_once(ierr, ERR_INVALID_INPUT)
@@ -1839,7 +1956,8 @@ contains
                                                             two_sided_bootstrapping_significance_level, random_seed, &
                                                             bin_count_mode, &
                                                             neighborhood_size_mode, &
-                                                            delta_abs_tolerance, bootstrap_mode, ierr)
+                                                            delta_abs_tolerance, bootstrap_mode, grid_sample_size_mode, &
+                                                            grid_points_factor, grid_min_points, grid_floor_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -2202,6 +2320,36 @@ contains
             !! | Each study's own counts, a robustness interval (default) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
             !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]] |
             !! DM_DEFAULT(M_MODE_BOOTSTRAP_PER_STUDY)
+        integer(int32), intent(in), optional :: grid_sample_size_mode
+            !! Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: the sample size `N` in its first
+            !! reference-point count `ceiling(grid_points_factor * sqrt(N))`; also sizes the work
+            !! arrays through `calc_js_comp_test_permutation_bounds`
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | One study's gene count, `max_n_genes_all_studies` (default, as before) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_SAMPLE_SIZE_PER_STUDY(variable)]] |
+            !! | The pooled gene count, `max_n_genes_all_studies * n_studies` | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_SAMPLE_SIZE_POOLED(variable)]] |
+            !! DM_DEFAULT(M_MODE_GRID_SAMPLE_SIZE_PER_STUDY)
+        real(real64), intent(in), optional :: grid_points_factor
+            !! Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: the factor in its first reference-point count;
+            !! the default 4 is the factor before
+            !! DM_MIN(above(0.0_real64))
+            !! DM_DEFAULT(M_GRID_POINTS_FACTOR_DEFAULT)
+        integer(int32), intent(in), optional :: grid_min_points
+            !! Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: its floor; the default here is 200, the floor
+            !! before was 300
+            !! DM_MIN(1_int32)
+            !! DM_MAX(MAX_POINTS)
+            !! DM_DEFAULT(M_GRID_MIN_POINTS_DEFAULT)
+        integer(int32), intent(in), optional :: grid_floor_mode
+            !! Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: what it does when the next decayed `n_points`
+            !! would fall below the floor; the default here is the clamp, the grid before stopped
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Stop: the coarsest candidate is the last decayed value at or above the floor (the grid before) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_FLOOR_STOP(variable)]] |
+            !! | Clamp: add one last candidate at the floor, unless the coarsest one already is (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_GRID_FLOOR_CLAMP(variable)]] |
+            !! DM_DEFAULT(M_MODE_GRID_FLOOR_CLAMP)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -2228,8 +2376,9 @@ contains
             return
         end if
         if (actual_rerun) then
-            call check_fixed_k_rerun_capacities(max_n_genes_all_studies, max_n_points_candidate, max_n_neighbors_candidate, &
-                                                points_fit, neighbors_fit)
+            call check_fixed_k_rerun_capacities(max_n_genes_all_studies, n_studies, max_n_points_candidate, &
+                                                max_n_neighbors_candidate, points_fit, neighbors_fit, &
+                                                grid_sample_size_mode, grid_points_factor, grid_min_points)
             if (.not. points_fit) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
             if (.not. neighbors_fit) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
             if (is_err(ierr)) return
@@ -2313,7 +2462,9 @@ contains
             two_sided_bootstrapping_significance_level=two_sided_bootstrapping_significance_level, &
             random_seed=actual_random_seed, bin_count_mode=bin_count_mode, &
                 neighborhood_size_mode=neighborhood_size_mode, &
-                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, ierr=callee_ierr)
+                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, &
+                grid_sample_size_mode=grid_sample_size_mode, grid_points_factor=grid_points_factor, &
+                grid_min_points=grid_min_points, grid_floor_mode=grid_floor_mode, ierr=callee_ierr)
         if (is_err(callee_ierr)) then
             call set_err_once(ierr, get_err_code(callee_ierr))
             global_js_divergence_observed = M_NAN
@@ -2415,7 +2566,9 @@ contains
                 two_sided_bootstrapping_significance_level=two_sided_bootstrapping_significance_level, &
                 random_seed=actual_random_seed, bin_count_mode=bin_count_mode, &
                 neighborhood_size_mode=neighborhood_size_mode, &
-                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, ierr=callee_ierr)
+                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, &
+                grid_sample_size_mode=grid_sample_size_mode, grid_points_factor=grid_points_factor, &
+                grid_min_points=grid_min_points, grid_floor_mode=grid_floor_mode, ierr=callee_ierr)
             if (is_err(callee_ierr)) then
                 ! Invalid input of a relabelled data set (e.g. a study without residuals at some
                 ! reference point) fails this permutation only; anything else ends the test.
@@ -2478,7 +2631,7 @@ contains
                                                                      tmp_gene_means, tmp_residuals, &
                                                                      tmp_gene_means_perm_all, tmp_x_star, &
                                                                      tmp_pooled_neighborhood_range, &
-                                                                     tmp_n_neighbors_per_point, tmp_stop_reason, &
+                                                                     tmp_n_neighbors_per_point, tmp_stop_reason, tmp_n_extension_entries, &
                                                                      tmp_neighborhood_dispersion, &
                                                                      tmp_neighborhood_mad, &
                                                                      tmp_point_neighborhood_indices, &
@@ -2534,6 +2687,7 @@ contains
                                                                      tmp_search_candidate_k_start, &
                                                                      tmp_search_candidate_n_points, &
                                                                      tmp_search_candidate_status, &
+                                                                     tmp_search_candidate_n_extension_entries, &
                                                                      tmp_candidate_confidence_interval, &
                                                                      tmp_bootstrapping_top_k_jsds, &
                                                                      tmp_prev_global_js_divergence, tmp_delta_perm, &
@@ -2556,7 +2710,8 @@ contains
                                                                      random_seed, tau, mad_distance_factor, &
                                                                      max_pooled_residuals, min_study_neighbors, &
                                                                      bin_count_mode, &
-                                                                     delta_abs_tolerance, bootstrap_mode, ierr)
+                                                                     delta_abs_tolerance, bootstrap_mode, tau_reference_mode, &
+                                                                     overlap_extension_mode, seed_step_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -2627,6 +2782,9 @@ contains
             !! neighborhood
         integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_stop_reason
             !! Working array of the search and the construction: stop reason per neighborhood
+        integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_n_extension_entries
+            !! Working array of the search and the construction: entries the growth's extensions
+            !! added per neighborhood
         real(real64), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_neighborhood_dispersion
             !! Working array of the search and the construction: dispersion per neighborhood
         real(real64), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_neighborhood_mad
@@ -2776,6 +2934,8 @@ contains
             !! Working array: the search's candidate log
         integer(int32), dimension(M_MAX_CANDIDATE_PAIRS), intent(out) :: tmp_search_candidate_status
             !! Working array: the search's candidate log
+        integer(int32), dimension(M_MAX_CANDIDATE_PAIRS), intent(out) :: tmp_search_candidate_n_extension_entries
+            !! Working array of the search: its candidate log's extension entry totals
         real(real64), dimension(2, n_studies), intent(out) :: tmp_candidate_confidence_interval
             !! Working array of the search: the current candidate's confidence interval
         real(real64), dimension(n_bootstrapping_top_k_jsds, 2, n_studies), intent(out) :: tmp_bootstrapping_top_k_jsds
@@ -2938,6 +3098,36 @@ contains
             !! | Each study's own counts, a robustness interval (default) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
             !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]] |
             !! DM_DEFAULT(M_MODE_BOOTSTRAP_PER_STUDY)
+        integer(int32), intent(in), optional :: tau_reference_mode
+            !! Construction and rerun search, an experiment switch of the adaptive growth: which
+            !! dispersion a growth round's relative change is measured against, as in
+            !! `construct_adaptive_neighborhoods`
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | The dispersion after the previous committed round (default, as before) | [[tox_data_integration_preprocessing_impl(module):MODE_TAU_REFERENCE_PREVIOUS_ROUND(variable)]] |
+            !! | The dispersion right after the `k_start` phase, fixed for the whole growth | [[tox_data_integration_preprocessing_impl(module):MODE_TAU_REFERENCE_K_START(variable)]] |
+            !! DM_DEFAULT(M_MODE_TAU_REFERENCE_PREVIOUS_ROUND)
+        integer(int32), intent(in), optional :: overlap_extension_mode
+            !! Construction and rerun search, an experiment switch of the adaptive growth: what
+            !! happens to a neighborhood once its growth has stopped, as in
+            !! `construct_adaptive_neighborhoods`; the backward extension uses `min_neighbor_overlap`
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Keep each neighborhood as grown (default, as before) | [[tox_data_integration_preprocessing_impl(module):MODE_OVERLAP_EXTENSION_NONE(variable)]] |
+            !! | Extend each neighborhood after the first toward lower means until it overlaps the previous one by at least `min_neighbor_overlap` | [[tox_data_integration_preprocessing_impl(module):MODE_OVERLAP_EXTENSION_BACKWARD(variable)]] |
+            !! DM_DEFAULT(M_MODE_OVERLAP_EXTENSION_NONE)
+        integer(int32), intent(in), optional :: seed_step_mode
+            !! Construction and rerun search, an experiment switch of the adaptive growth: how far
+            !! past a neighborhood the next reference point's seed must lie, as in
+            !! `construct_adaptive_neighborhoods`
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | The seed the MAD rule places (default, as before) | [[tox_data_integration_preprocessing_impl(module):MODE_SEED_STEP_MAD(variable)]] |
+            !! | At least `k_step` sorted positions past the neighborhood, which takes the rest of the pool when fewer are left | [[tox_data_integration_preprocessing_impl(module):MODE_SEED_STEP_MIN_K_STEP(variable)]] |
+            !! DM_DEFAULT(M_MODE_SEED_STEP_MAD)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -2987,7 +3177,7 @@ contains
             tmp_gene_means=tmp_gene_means, tmp_residuals=tmp_residuals, &
             tmp_gene_means_perm_all=tmp_gene_means_perm_all, tmp_x_star=tmp_x_star, &
             tmp_pooled_neighborhood_range=tmp_pooled_neighborhood_range, &
-            tmp_n_neighbors_per_point=tmp_n_neighbors_per_point, tmp_stop_reason=tmp_stop_reason, &
+            tmp_n_neighbors_per_point=tmp_n_neighbors_per_point, tmp_stop_reason=tmp_stop_reason, tmp_n_extension_entries=tmp_n_extension_entries, &
             tmp_neighborhood_dispersion=tmp_neighborhood_dispersion, tmp_neighborhood_mad=tmp_neighborhood_mad, &
             tmp_point_neighborhood_indices=tmp_point_neighborhood_indices, &
             tmp_neighbor_residuals=tmp_neighbor_residuals, tmp_point_pool=tmp_point_pool, &
@@ -3035,6 +3225,7 @@ contains
             tmp_search_candidate_k_start=tmp_search_candidate_k_start, &
             tmp_search_candidate_n_points=tmp_search_candidate_n_points, &
             tmp_search_candidate_status=tmp_search_candidate_status, &
+            tmp_search_candidate_n_extension_entries=tmp_search_candidate_n_extension_entries, &
             tmp_candidate_confidence_interval=tmp_candidate_confidence_interval, &
             tmp_bootstrapping_top_k_jsds=tmp_bootstrapping_top_k_jsds, &
             tmp_prev_global_js_divergence=tmp_prev_global_js_divergence, tmp_delta_perm=tmp_delta_perm, &
@@ -3057,7 +3248,9 @@ contains
             random_seed=actual_random_seed, tau=tau, mad_distance_factor=mad_distance_factor, &
             max_pooled_residuals=max_pooled_residuals, min_study_neighbors=min_study_neighbors, &
             bin_count_mode=bin_count_mode, &
-                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, ierr=callee_ierr)
+                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, &
+                tau_reference_mode=tau_reference_mode, overlap_extension_mode=overlap_extension_mode, &
+                seed_step_mode=seed_step_mode, ierr=callee_ierr)
         if (is_err(callee_ierr)) then
             call set_err_once(ierr, get_err_code(callee_ierr))
             global_js_divergence_observed = M_NAN
@@ -3088,7 +3281,7 @@ contains
                 tmp_gene_means=tmp_gene_means, tmp_residuals=tmp_residuals, &
                 tmp_gene_means_perm_all=tmp_gene_means_perm_all, tmp_x_star=tmp_x_star, &
                 tmp_pooled_neighborhood_range=tmp_pooled_neighborhood_range, &
-                tmp_n_neighbors_per_point=tmp_n_neighbors_per_point, tmp_stop_reason=tmp_stop_reason, &
+                tmp_n_neighbors_per_point=tmp_n_neighbors_per_point, tmp_stop_reason=tmp_stop_reason, tmp_n_extension_entries=tmp_n_extension_entries, &
                 tmp_neighborhood_dispersion=tmp_neighborhood_dispersion, tmp_neighborhood_mad=tmp_neighborhood_mad, &
                 tmp_point_neighborhood_indices=tmp_point_neighborhood_indices, &
                 tmp_neighbor_residuals=tmp_neighbor_residuals, tmp_point_pool=tmp_point_pool, &
@@ -3140,6 +3333,7 @@ contains
                 tmp_search_candidate_k_start=tmp_search_candidate_k_start, &
                 tmp_search_candidate_n_points=tmp_search_candidate_n_points, &
                 tmp_search_candidate_status=tmp_search_candidate_status, &
+            tmp_search_candidate_n_extension_entries=tmp_search_candidate_n_extension_entries, &
                 tmp_candidate_confidence_interval=tmp_candidate_confidence_interval, &
                 tmp_bootstrapping_top_k_jsds=tmp_bootstrapping_top_k_jsds, &
                 tmp_prev_global_js_divergence=tmp_prev_global_js_divergence, tmp_delta_perm=tmp_delta_perm, &
@@ -3162,7 +3356,9 @@ contains
                 random_seed=actual_random_seed, tau=tau, mad_distance_factor=mad_distance_factor, &
                 max_pooled_residuals=max_pooled_residuals, min_study_neighbors=min_study_neighbors, &
                 bin_count_mode=bin_count_mode, &
-                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, ierr=callee_ierr)
+                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, &
+                tau_reference_mode=tau_reference_mode, overlap_extension_mode=overlap_extension_mode, &
+                seed_step_mode=seed_step_mode, ierr=callee_ierr)
             if (is_err(callee_ierr)) then
                 ! Invalid input of a relabelled data set (e.g. a study without residuals at some
                 ! reference point) fails this permutation only; anything else ends the test.

@@ -84,13 +84,17 @@ _lib.run_js_comp_test_on_sample_assignment_c.argtypes = (
     np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_double),
     np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ON_SAMPLE_ASSIGNMENT_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_samples", "sample_assignment", "n_points", "n_neighbors", "global_js_divergence", "used_n_points", "used_n_neighbors", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "bootstrap_mode", "ierr",)
+_RUN_JS_COMP_TEST_ON_SAMPLE_ASSIGNMENT_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_samples", "sample_assignment", "n_points", "n_neighbors", "global_js_divergence", "used_n_points", "used_n_neighbors", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "bootstrap_mode", "grid_sample_size_mode", "grid_points_factor", "grid_min_points", "grid_floor_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ON_SAMPLE_ASSIGNMENT_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, "sample_assignment", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ON_SAMPLE_ASSIGNMENT_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, "sample_assignment", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_adaptive_on_sample_assignment_c.restype = None
 _lib.run_js_comp_test_adaptive_on_sample_assignment_c.argtypes = (
@@ -133,13 +137,16 @@ _lib.run_js_comp_test_adaptive_on_sample_assignment_c.argtypes = (
     np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_double),
     np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ADAPTIVE_ON_SAMPLE_ASSIGNMENT_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_samples", "sample_assignment", "k_start", "k_step", "k_max", "global_js_divergence", "used_k_start", "used_k_step", "used_k_max", "n_points", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "bootstrap_mode", "ierr",)
+_RUN_JS_COMP_TEST_ADAPTIVE_ON_SAMPLE_ASSIGNMENT_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_samples", "sample_assignment", "k_start", "k_step", "k_max", "global_js_divergence", "used_k_start", "used_k_step", "used_k_max", "n_points", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "bootstrap_mode", "tau_reference_mode", "overlap_extension_mode", "seed_step_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ADAPTIVE_ON_SAMPLE_ASSIGNMENT_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, "sample_assignment", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ADAPTIVE_ON_SAMPLE_ASSIGNMENT_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, "sample_assignment", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_label_permutation_test_c.restype = None
 _lib.run_js_comp_test_label_permutation_test_c.argtypes = (
@@ -176,13 +183,17 @@ _lib.run_js_comp_test_label_permutation_test_c.argtypes = (
     np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_double),
     np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_LABEL_PERMUTATION_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_points", "n_neighbors", "n_permutations", "global_js_divergence_observed", "p_values", "jsd_null", "n_failed_permutations", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "bootstrap_mode", "ierr",)
+_RUN_JS_COMP_TEST_LABEL_PERMUTATION_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_points", "n_neighbors", "n_permutations", "global_js_divergence_observed", "p_values", "jsd_null", "n_failed_permutations", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "bootstrap_mode", "grid_sample_size_mode", "grid_points_factor", "grid_min_points", "grid_floor_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_LABEL_PERMUTATION_TEST_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, None, None, "jsd_null", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_LABEL_PERMUTATION_TEST_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, None, None, "jsd_null", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_adaptive_label_permutation_test_c.restype = None
 _lib.run_js_comp_test_adaptive_label_permutation_test_c.argtypes = (
@@ -223,13 +234,16 @@ _lib.run_js_comp_test_adaptive_label_permutation_test_c.argtypes = (
     np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_double),
     np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ADAPTIVE_LABEL_PERMUTATION_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "k_start", "k_step", "k_max", "n_permutations", "global_js_divergence_observed", "p_values", "jsd_null", "n_failed_permutations", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "bootstrap_mode", "ierr",)
+_RUN_JS_COMP_TEST_ADAPTIVE_LABEL_PERMUTATION_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "k_start", "k_step", "k_max", "n_permutations", "global_js_divergence_observed", "p_values", "jsd_null", "n_failed_permutations", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "bootstrap_mode", "tau_reference_mode", "overlap_extension_mode", "seed_step_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ADAPTIVE_LABEL_PERMUTATION_TEST_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, None, None, None, "jsd_null", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ADAPTIVE_LABEL_PERMUTATION_TEST_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, None, None, None, "jsd_null", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def run_js_comp_test_on_sample_assignment(
         expression,
@@ -258,6 +272,10 @@ def run_js_comp_test_on_sample_assignment(
         neighborhood_size_mode='neighborhood_size_large',
         delta_abs_tolerance=0.0,
         bootstrap_mode='bootstrap_per_study',
+        grid_sample_size_mode='grid_sample_size_per_study',
+        grid_points_factor=4.0,
+        grid_min_points=200,
+        grid_floor_mode='grid_floor_clamp',
 ):
     r"""Run the k-NN JS-Comp-Test on one assignment of samples to studies
 
@@ -432,6 +450,28 @@ def run_js_comp_test_on_sample_assignment(
         between the studies" instead, kept for comparison
 
         The default value is `'bootstrap_per_study'`.
+    grid_sample_size_mode : str, one of 'grid_sample_size_per_study' | 'grid_sample_size_pooled', optional, default 'grid_sample_size_per_study'
+        Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: the sample size `N` in its first
+        reference-point count `ceiling(grid_points_factor * sqrt(N))`; also sizes the work
+        arrays through `calc_js_comp_test_permutation_bounds`
+
+        The default value is `'grid_sample_size_per_study'`.
+    grid_points_factor : float, optional, default 4.0
+        Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: the factor in its first reference-point count;
+        the default 4 is the factor before
+        The minimum valid value is `above(0.0)`.
+        The default value is `4.0`.
+    grid_min_points : int, optional, default 200
+        Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: its floor; the default here is 200, the floor
+        before was 300
+        The minimum valid value is `1`.
+        The maximum valid value is `MAX_POINTS`.
+        The default value is `200`.
+    grid_floor_mode : str, one of 'grid_floor_stop' | 'grid_floor_clamp', optional, default 'grid_floor_clamp'
+        Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: what it does when the next decayed `n_points`
+        would fall below the floor; the default here is the clamp, the grid before stopped
+
+        The default value is `'grid_floor_clamp'`.
 
     Returns
     -------
@@ -474,6 +514,8 @@ def run_js_comp_test_on_sample_assignment(
     bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
     neighborhood_size_mode = np.array([str(neighborhood_size_mode).lower().encode().ljust(23)], dtype="S23")
     bootstrap_mode = np.array([str(bootstrap_mode).lower().encode().ljust(19)], dtype="S19")
+    grid_sample_size_mode = np.array([str(grid_sample_size_mode).lower().encode().ljust(26)], dtype="S26")
+    grid_floor_mode = np.array([str(grid_floor_mode).lower().encode().ljust(16)], dtype="S16")
 
     # what the inputs already say, rather than asking for it again
     n_studies = expression.shape[2]
@@ -521,6 +563,10 @@ def run_js_comp_test_on_sample_assignment(
         neighborhood_size_mode,
         ctypes.byref(ctypes.c_double(delta_abs_tolerance)),
         bootstrap_mode,
+        grid_sample_size_mode,
+        ctypes.byref(ctypes.c_double(grid_points_factor)),
+        ctypes.byref(ctypes.c_int(grid_min_points)),
+        grid_floor_mode,
         ctypes.byref(ierr),
     )
 
@@ -566,6 +612,9 @@ def run_js_comp_test_adaptive_on_sample_assignment(
         bin_count_mode='bin_count_occupancy',
         delta_abs_tolerance=0.0,
         bootstrap_mode='bootstrap_per_study',
+        tau_reference_mode='tau_reference_previous_round',
+        overlap_extension_mode='overlap_extension_none',
+        seed_step_mode='seed_step_mad',
 ):
     r"""Run the adaptive JS-Comp-Test on one assignment of samples to studies
 
@@ -741,6 +790,24 @@ def run_js_comp_test_adaptive_on_sample_assignment(
         between the studies" instead, kept for comparison
 
         The default value is `'bootstrap_per_study'`.
+    tau_reference_mode : str, one of 'tau_reference_previous_round' | 'tau_reference_k_start', optional, default 'tau_reference_previous_round'
+        Construction and rerun search, an experiment switch of the adaptive growth: which
+        dispersion a growth round's relative change is measured against, as in
+        `construct_adaptive_neighborhoods`
+
+        The default value is `'tau_reference_previous_round'`.
+    overlap_extension_mode : str, one of 'overlap_extension_none' | 'overlap_extension_backward', optional, default 'overlap_extension_none'
+        Construction and rerun search, an experiment switch of the adaptive growth: what
+        happens to a neighborhood once its growth has stopped, as in
+        `construct_adaptive_neighborhoods`; the backward extension uses `min_neighbor_overlap`
+
+        The default value is `'overlap_extension_none'`.
+    seed_step_mode : str, one of 'seed_step_mad' | 'seed_step_min_k_step', optional, default 'seed_step_mad'
+        Construction and rerun search, an experiment switch of the adaptive growth: how far
+        past a neighborhood the next reference point's seed must lie, as in
+        `construct_adaptive_neighborhoods`
+
+        The default value is `'seed_step_mad'`.
 
     Returns
     -------
@@ -786,6 +853,9 @@ def run_js_comp_test_adaptive_on_sample_assignment(
     plateau_mode = np.array([str(plateau_mode).lower().encode().ljust(19)], dtype="S19")
     bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
     bootstrap_mode = np.array([str(bootstrap_mode).lower().encode().ljust(19)], dtype="S19")
+    tau_reference_mode = np.array([str(tau_reference_mode).lower().encode().ljust(28)], dtype="S28")
+    overlap_extension_mode = np.array([str(overlap_extension_mode).lower().encode().ljust(26)], dtype="S26")
+    seed_step_mode = np.array([str(seed_step_mode).lower().encode().ljust(20)], dtype="S20")
 
     # what the inputs already say, rather than asking for it again
     n_studies = expression.shape[2]
@@ -841,6 +911,9 @@ def run_js_comp_test_adaptive_on_sample_assignment(
         bin_count_mode,
         ctypes.byref(ctypes.c_double(delta_abs_tolerance)),
         bootstrap_mode,
+        tau_reference_mode,
+        overlap_extension_mode,
+        seed_step_mode,
         ctypes.byref(ierr),
     )
 
@@ -884,6 +957,10 @@ def run_js_comp_test_label_permutation_test(
         neighborhood_size_mode='neighborhood_size_large',
         delta_abs_tolerance=0.0,
         bootstrap_mode='bootstrap_per_study',
+        grid_sample_size_mode='grid_sample_size_per_study',
+        grid_points_factor=4.0,
+        grid_min_points=200,
+        grid_floor_mode='grid_floor_clamp',
 ):
     r"""Study-label Permutation-Test of the k-NN JS-Comp-Test
 
@@ -1049,6 +1126,28 @@ def run_js_comp_test_label_permutation_test(
         between the studies" instead, kept for comparison
 
         The default value is `'bootstrap_per_study'`.
+    grid_sample_size_mode : str, one of 'grid_sample_size_per_study' | 'grid_sample_size_pooled', optional, default 'grid_sample_size_per_study'
+        Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: the sample size `N` in its first
+        reference-point count `ceiling(grid_points_factor * sqrt(N))`; also sizes the work
+        arrays through `calc_js_comp_test_permutation_bounds`
+
+        The default value is `'grid_sample_size_per_study'`.
+    grid_points_factor : float, optional, default 4.0
+        Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: the factor in its first reference-point count;
+        the default 4 is the factor before
+        The minimum valid value is `above(0.0)`.
+        The default value is `4.0`.
+    grid_min_points : int, optional, default 200
+        Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: its floor; the default here is 200, the floor
+        before was 300
+        The minimum valid value is `1`.
+        The maximum valid value is `MAX_POINTS`.
+        The default value is `200`.
+    grid_floor_mode : str, one of 'grid_floor_stop' | 'grid_floor_clamp', optional, default 'grid_floor_clamp'
+        Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: what it does when the next decayed `n_points`
+        would fall below the floor; the default here is the clamp, the grid before stopped
+
+        The default value is `'grid_floor_clamp'`.
 
     Returns
     -------
@@ -1090,6 +1189,8 @@ def run_js_comp_test_label_permutation_test(
     bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
     neighborhood_size_mode = np.array([str(neighborhood_size_mode).lower().encode().ljust(23)], dtype="S23")
     bootstrap_mode = np.array([str(bootstrap_mode).lower().encode().ljust(19)], dtype="S19")
+    grid_sample_size_mode = np.array([str(grid_sample_size_mode).lower().encode().ljust(26)], dtype="S26")
+    grid_floor_mode = np.array([str(grid_floor_mode).lower().encode().ljust(16)], dtype="S16")
 
     # what the inputs already say, rather than asking for it again
     n_studies = expression.shape[2]
@@ -1137,6 +1238,10 @@ def run_js_comp_test_label_permutation_test(
         neighborhood_size_mode,
         ctypes.byref(ctypes.c_double(delta_abs_tolerance)),
         bootstrap_mode,
+        grid_sample_size_mode,
+        ctypes.byref(ctypes.c_double(grid_points_factor)),
+        ctypes.byref(ctypes.c_int(grid_min_points)),
+        grid_floor_mode,
         ctypes.byref(ierr),
     )
 
@@ -1185,6 +1290,9 @@ def run_js_comp_test_adaptive_label_permutation_test(
         bin_count_mode='bin_count_occupancy',
         delta_abs_tolerance=0.0,
         bootstrap_mode='bootstrap_per_study',
+        tau_reference_mode='tau_reference_previous_round',
+        overlap_extension_mode='overlap_extension_none',
+        seed_step_mode='seed_step_mad',
 ):
     r"""Study-label Permutation-Test of the adaptive JS-Comp-Test
 
@@ -1354,6 +1462,24 @@ def run_js_comp_test_adaptive_label_permutation_test(
         between the studies" instead, kept for comparison
 
         The default value is `'bootstrap_per_study'`.
+    tau_reference_mode : str, one of 'tau_reference_previous_round' | 'tau_reference_k_start', optional, default 'tau_reference_previous_round'
+        Construction and rerun search, an experiment switch of the adaptive growth: which
+        dispersion a growth round's relative change is measured against, as in
+        `construct_adaptive_neighborhoods`
+
+        The default value is `'tau_reference_previous_round'`.
+    overlap_extension_mode : str, one of 'overlap_extension_none' | 'overlap_extension_backward', optional, default 'overlap_extension_none'
+        Construction and rerun search, an experiment switch of the adaptive growth: what
+        happens to a neighborhood once its growth has stopped, as in
+        `construct_adaptive_neighborhoods`; the backward extension uses `min_neighbor_overlap`
+
+        The default value is `'overlap_extension_none'`.
+    seed_step_mode : str, one of 'seed_step_mad' | 'seed_step_min_k_step', optional, default 'seed_step_mad'
+        Construction and rerun search, an experiment switch of the adaptive growth: how far
+        past a neighborhood the next reference point's seed must lie, as in
+        `construct_adaptive_neighborhoods`
+
+        The default value is `'seed_step_mad'`.
 
     Returns
     -------
@@ -1394,6 +1520,9 @@ def run_js_comp_test_adaptive_label_permutation_test(
     plateau_mode = np.array([str(plateau_mode).lower().encode().ljust(19)], dtype="S19")
     bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
     bootstrap_mode = np.array([str(bootstrap_mode).lower().encode().ljust(19)], dtype="S19")
+    tau_reference_mode = np.array([str(tau_reference_mode).lower().encode().ljust(28)], dtype="S28")
+    overlap_extension_mode = np.array([str(overlap_extension_mode).lower().encode().ljust(26)], dtype="S26")
+    seed_step_mode = np.array([str(seed_step_mode).lower().encode().ljust(20)], dtype="S20")
 
     # what the inputs already say, rather than asking for it again
     n_studies = expression.shape[2]
@@ -1445,6 +1574,9 @@ def run_js_comp_test_adaptive_label_permutation_test(
         bin_count_mode,
         ctypes.byref(ctypes.c_double(delta_abs_tolerance)),
         bootstrap_mode,
+        tau_reference_mode,
+        overlap_extension_mode,
+        seed_step_mode,
         ctypes.byref(ierr),
     )
 

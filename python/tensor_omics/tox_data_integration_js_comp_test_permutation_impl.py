@@ -55,15 +55,19 @@ _lib.calc_js_comp_test_permutation_bounds_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(ndim=1),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CALC_JS_COMP_TEST_PERMUTATION_BOUNDS_ARGUMENTS = ("max_n_genes_all_studies", "n_points", "n_neighbors", "n_bootstraps", "two_sided_bootstrapping_significance_level", "max_n_points_candidate", "max_n_neighbors_candidate", "n_bootstrapping_top_k_jsds", "ierr",)
+_CALC_JS_COMP_TEST_PERMUTATION_BOUNDS_ARGUMENTS = ("max_n_genes_all_studies", "n_studies", "n_points", "n_neighbors", "n_bootstraps", "two_sided_bootstrapping_significance_level", "max_n_points_candidate", "max_n_neighbors_candidate", "n_bootstrapping_top_k_jsds", "grid_sample_size_mode", "grid_points_factor", "grid_min_points", "ierr",)
 
 _lib.calc_adaptive_js_comp_test_permutation_bounds_c.restype = None
 _lib.calc_adaptive_js_comp_test_permutation_bounds_c.argtypes = (
@@ -82,10 +86,14 @@ _CALC_ADAPTIVE_JS_COMP_TEST_PERMUTATION_BOUNDS_ARGUMENTS = ("max_n_genes_all_stu
 
 def calc_js_comp_test_permutation_bounds(
         max_n_genes_all_studies,
+        n_studies,
         n_points,
         n_neighbors,
         n_bootstraps=1000,
         two_sided_bootstrapping_significance_level=2.5,
+        grid_sample_size_mode='grid_sample_size_per_study',
+        grid_points_factor=4.0,
+        grid_min_points=200,
 ):
     r"""Recommend the work-array capacities of the k-NN study-label Permutation-Test
 
@@ -97,6 +105,8 @@ def calc_js_comp_test_permutation_bounds(
     `max_n_points_candidate = max(n_points, P)` and `max_n_neighbors_candidate = max(n_neighbors,
     K)`, with `P` and `K` the bounds of
     :func:`tensor_omics.calc_js_comp_test_candidate_bounds`.
+    `P` and `K` follow the grid switches given (pass the rerun search's own); `grid_floor_mode`
+    needs no argument here, as its floor candidate never exceeds `P` or `K`.
     `n_bootstrapping_top_k_jsds` is the bootstrap heap size, exactly as
     :func:`tensor_omics.calc_js_comp_test_n_top_k_jsds` computes it.
 
@@ -107,6 +117,9 @@ def calc_js_comp_test_permutation_bounds(
     ----------
     max_n_genes_all_studies : int
         Maximum number of genes across all studies
+        The minimum valid value is `1`.
+    n_studies : int
+        Number of studies; used only by the pooled grid sample size of the rerun search
         The minimum valid value is `1`.
     n_points : int
         Number of reference points of the fixed-parameter run
@@ -124,6 +137,22 @@ def calc_js_comp_test_permutation_bounds(
         The minimum valid value is `0.0`.
         The maximum valid value is `100.0`.
         The default value is `2.5`.
+    grid_sample_size_mode : str, one of 'grid_sample_size_per_study' | 'grid_sample_size_pooled', optional, default 'grid_sample_size_per_study'
+        Rerun search's k-NN candidate grid (an experiment switch): the sample size `N` in its first
+        reference-point count `ceiling(grid_points_factor * sqrt(N))`
+
+        The default value is `'grid_sample_size_per_study'`.
+    grid_points_factor : float, optional, default 4.0
+        Rerun search's k-NN candidate grid (an experiment switch): the factor in its first reference-point count;
+        the default 4 is the factor before
+        The minimum valid value is `above(0.0)`.
+        The default value is `4.0`.
+    grid_min_points : int, optional, default 200
+        Rerun search's k-NN candidate grid (an experiment switch): its floor; the default here is 200, the floor
+        before was 300
+        The minimum valid value is `1`.
+        The maximum valid value is `MAX_POINTS`.
+        The default value is `200`.
 
     Returns
     -------
@@ -147,6 +176,9 @@ def calc_js_comp_test_permutation_bounds(
     Generated from the Fortran procedure `tox_data_integration_js_comp_test_permutation_impl::calc_js_comp_test_permutation_bounds`, whose argument names are
     the ones an error message reports.
     """
+    # accept anything array-like, converting only when C needs it
+    grid_sample_size_mode = np.array([str(grid_sample_size_mode).lower().encode().ljust(26)], dtype="S26")
+
     # outputs and work arrays, which the caller never sees
     max_n_points_candidate = ctypes.c_int(0)
     max_n_neighbors_candidate = ctypes.c_int(0)
@@ -155,6 +187,7 @@ def calc_js_comp_test_permutation_bounds(
 
     _lib.calc_js_comp_test_permutation_bounds_c(
         ctypes.byref(ctypes.c_int(max_n_genes_all_studies)),
+        ctypes.byref(ctypes.c_int(n_studies)),
         ctypes.byref(ctypes.c_int(n_points)),
         ctypes.byref(ctypes.c_int(n_neighbors)),
         ctypes.byref(ctypes.c_int(n_bootstraps)),
@@ -162,6 +195,9 @@ def calc_js_comp_test_permutation_bounds(
         ctypes.byref(max_n_points_candidate),
         ctypes.byref(max_n_neighbors_candidate),
         ctypes.byref(n_bootstrapping_top_k_jsds),
+        grid_sample_size_mode,
+        ctypes.byref(ctypes.c_double(grid_points_factor)),
+        ctypes.byref(ctypes.c_int(grid_min_points)),
         ctypes.byref(ierr),
     )
 

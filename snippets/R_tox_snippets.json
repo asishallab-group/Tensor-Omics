@@ -122,7 +122,10 @@
       "  min_study_neighbors = ${25:1L},",
       "  bin_count_mode = ${26|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
       "  delta_abs_tolerance = ${27:0.0},",
-      "  bootstrap_mode = ${28|bootstrap_per_study,bootstrap_pooled|}",
+      "  bootstrap_mode = ${28|bootstrap_per_study,bootstrap_pooled|},",
+      "  tau_reference_mode = ${29|tau_reference_previous_round,tau_reference_k_start|},",
+      "  overlap_extension_mode = ${30|overlap_extension_none,overlap_extension_backward|},",
+      "  seed_step_mode = ${31|seed_step_mad,seed_step_min_k_step|}",
       ")"
     ]
   },
@@ -272,7 +275,12 @@
     "body": [
       "${1:result} <- generate_js_comp_test_candidates(",
       "  max_n_genes_all_studies = ${2:max_n_genes_all_studies},",
-      "  neighborhood_size_mode = ${3|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|}",
+      "  n_studies = ${3:n_studies},",
+      "  neighborhood_size_mode = ${4|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|},",
+      "  grid_sample_size_mode = ${5|grid_sample_size_per_study,grid_sample_size_pooled|},",
+      "  grid_points_factor = ${6:4.0},",
+      "  grid_min_points = ${7:200L},",
+      "  grid_floor_mode = ${8|grid_floor_stop,grid_floor_clamp|}",
       ")"
     ]
   },
@@ -305,7 +313,11 @@
       "  bin_count_mode = ${23|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
       "  neighborhood_size_mode = ${24|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|},",
       "  delta_abs_tolerance = ${25:0.0},",
-      "  bootstrap_mode = ${26|bootstrap_per_study,bootstrap_pooled|}",
+      "  bootstrap_mode = ${26|bootstrap_per_study,bootstrap_pooled|},",
+      "  grid_sample_size_mode = ${27|grid_sample_size_per_study,grid_sample_size_pooled|},",
+      "  grid_points_factor = ${28:4.0},",
+      "  grid_min_points = ${29:200L},",
+      "  grid_floor_mode = ${30|grid_floor_stop,grid_floor_clamp|}",
       ")"
     ]
   },
@@ -314,7 +326,11 @@
     "description": "For the candidate grid of",
     "body": [
       "${1:result} <- calc_js_comp_test_candidate_bounds(",
-      "  max_n_genes_all_studies = ${2:max_n_genes_all_studies}",
+      "  max_n_genes_all_studies = ${2:max_n_genes_all_studies},",
+      "  n_studies = ${3:n_studies},",
+      "  grid_sample_size_mode = ${4|grid_sample_size_per_study,grid_sample_size_pooled|},",
+      "  grid_points_factor = ${5:4.0},",
+      "  grid_min_points = ${6:200L}",
       ")"
     ]
   },
@@ -348,7 +364,11 @@
       "  bin_count_mode = ${24|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
       "  neighborhood_size_mode = ${25|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|},",
       "  delta_abs_tolerance = ${26:0.0},",
-      "  bootstrap_mode = ${27|bootstrap_per_study,bootstrap_pooled|}",
+      "  bootstrap_mode = ${27|bootstrap_per_study,bootstrap_pooled|},",
+      "  grid_sample_size_mode = ${28|grid_sample_size_per_study,grid_sample_size_pooled|},",
+      "  grid_points_factor = ${29:4.0},",
+      "  grid_min_points = ${30:200L},",
+      "  grid_floor_mode = ${31|grid_floor_stop,grid_floor_clamp|}",
       ")"
     ]
   },
@@ -386,7 +406,10 @@
       "  min_study_neighbors = ${28:1L},",
       "  bin_count_mode = ${29|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
       "  delta_abs_tolerance = ${30:0.0},",
-      "  bootstrap_mode = ${31|bootstrap_per_study,bootstrap_pooled|}",
+      "  bootstrap_mode = ${31|bootstrap_per_study,bootstrap_pooled|},",
+      "  tau_reference_mode = ${32|tau_reference_previous_round,tau_reference_k_start|},",
+      "  overlap_extension_mode = ${33|overlap_extension_none,overlap_extension_backward|},",
+      "  seed_step_mode = ${34|seed_step_mad,seed_step_min_k_step|}",
       ")"
     ]
   },
@@ -420,7 +443,11 @@
       "  bin_count_mode = ${24|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
       "  neighborhood_size_mode = ${25|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|},",
       "  delta_abs_tolerance = ${26:0.0},",
-      "  bootstrap_mode = ${27|bootstrap_per_study,bootstrap_pooled|}",
+      "  bootstrap_mode = ${27|bootstrap_per_study,bootstrap_pooled|},",
+      "  grid_sample_size_mode = ${28|grid_sample_size_per_study,grid_sample_size_pooled|},",
+      "  grid_points_factor = ${29:4.0},",
+      "  grid_min_points = ${30:200L},",
+      "  grid_floor_mode = ${31|grid_floor_stop,grid_floor_clamp|}",
       ")"
     ]
   },
@@ -458,7 +485,10 @@
       "  min_study_neighbors = ${28:1L},",
       "  bin_count_mode = ${29|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
       "  delta_abs_tolerance = ${30:0.0},",
-      "  bootstrap_mode = ${31|bootstrap_per_study,bootstrap_pooled|}",
+      "  bootstrap_mode = ${31|bootstrap_per_study,bootstrap_pooled|},",
+      "  tau_reference_mode = ${32|tau_reference_previous_round,tau_reference_k_start|},",
+      "  overlap_extension_mode = ${33|overlap_extension_none,overlap_extension_backward|},",
+      "  seed_step_mode = ${34|seed_step_mad,seed_step_min_k_step|}",
       ")"
     ]
   },
@@ -468,10 +498,14 @@
     "body": [
       "${1:result} <- calc_js_comp_test_permutation_bounds(",
       "  max_n_genes_all_studies = ${2:max_n_genes_all_studies},",
-      "  n_points = ${3:n_points},",
-      "  n_neighbors = ${4:n_neighbors},",
-      "  n_bootstraps = ${5:1000L},",
-      "  two_sided_bootstrapping_significance_level = ${6:2.5}",
+      "  n_studies = ${3:n_studies},",
+      "  n_points = ${4:n_points},",
+      "  n_neighbors = ${5:n_neighbors},",
+      "  n_bootstraps = ${6:1000L},",
+      "  two_sided_bootstrapping_significance_level = ${7:2.5},",
+      "  grid_sample_size_mode = ${8|grid_sample_size_per_study,grid_sample_size_pooled|},",
+      "  grid_points_factor = ${9:4.0},",
+      "  grid_min_points = ${10:200L}",
       ")"
     ]
   },
@@ -855,7 +889,11 @@
       "  tau = ${7:0.1},",
       "  mad_distance_factor = ${8:1.0},",
       "  max_pooled_residuals = ${9:0L},",
-      "  min_study_neighbors = ${10:1L}",
+      "  min_study_neighbors = ${10:1L},",
+      "  tau_reference_mode = ${11|tau_reference_previous_round,tau_reference_k_start|},",
+      "  overlap_extension_mode = ${12|overlap_extension_none,overlap_extension_backward|},",
+      "  min_neighbor_overlap = ${13:0.1},",
+      "  seed_step_mode = ${14|seed_step_mad,seed_step_min_k_step|}",
       ")"
     ]
   },

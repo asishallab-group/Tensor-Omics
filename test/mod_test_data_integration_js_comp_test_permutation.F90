@@ -212,7 +212,7 @@ contains
         real(real64), allocatable :: js(:, :), weights(:, :), p(:), p_obs(:)
         integer(int32), allocatable :: ranges(:, :), n_per_point(:, :), stops(:), n_bins(:), n_pooled(:), min_occ(:)
         integer(int32), allocatable :: max_occ(:), sturges(:), fd(:), counts(:, :, :), included(:, :), mean_counts(:, :)
-        integer(int32), allocatable :: mean_included(:), run_n_per_point(:, :)
+        integer(int32), allocatable :: mean_included(:), run_n_per_point(:, :), n_ext(:)
         logical(c_bool), allocatable :: occ_failed(:)
         integer(int32) :: n_studies, n_genes, n_reps, n_pool, max_nn, status, n_bins_used
 
@@ -222,9 +222,9 @@ contains
         n_studies = size(expression, 3, kind=int32)
         n_pool = n_genes*n_studies
         allocate (x_star(n_pool), ranges(2, n_pool), n_per_point(n_studies, n_pool), stops(n_pool), dispersion(n_pool), &
-                  mads(n_pool))
+                  mads(n_pool), n_ext(n_pool))
         call construct_adaptive_neighborhoods(n_studies, n_genes, n_reps, gene_means, residuals, k_start, k_step, k_max, &
-                                              n_points, x_star, ranges, n_per_point, stops, dispersion, mads, max_nn, &
+                                              n_points, x_star, ranges, n_per_point, stops, dispersion, mads, n_ext, max_nn, &
                                               status, ierr=ierr)
         if (is_err(ierr)) return
         allocate (run_n_per_point(n_studies, n_points), n_bins(n_points), n_pooled(n_points), min_occ(n_points), &
@@ -278,7 +278,7 @@ contains
         n_genes = size(gene_means, 1, kind=int32)
         n_studies = size(gene_means, 2, kind=int32)
         n_reps = size(residuals, 1, kind=int32)
-        call calc_js_comp_test_candidate_bounds(n_genes, max_p, max_k, ierr)
+        call calc_js_comp_test_candidate_bounds(n_genes, n_studies, max_p, max_k, ierr=ierr)
         allocate (n_bins(max_p), r_low(max_p), r_high(max_p), ci(2, n_studies), &
                   t_jsd(n_studies, MAX_CANDIDATE_PAIRS), t_lo(n_studies, MAX_CANDIDATE_PAIRS), &
                   t_up(n_studies, MAX_CANDIDATE_PAIRS), t_w(n_studies, MAX_CANDIDATE_PAIRS), &
@@ -330,7 +330,7 @@ contains
         integer(int32), intent(in), optional :: bootstrap_mode
             !! Forwarded to the search as given
         integer(int32) :: n_studies, n_genes, n_reps, cap, ierr, n_points, n_admissible, n_tried
-        integer(int32), dimension(MAX_CANDIDATE_PAIRS) :: t_ks, t_kst, t_km, t_np, c_ks, c_np, c_status
+        integer(int32), dimension(MAX_CANDIDATE_PAIRS) :: t_ks, t_kst, t_km, t_np, c_ks, c_np, c_status, c_ext
         real(real64) :: trace_dmed(MAX_CANDIDATE_PAIRS), trace_dmax(MAX_CANDIDATE_PAIRS)
         logical(c_bool) :: plateau
         integer(int32), allocatable :: n_bins(:), t_bins(:, :), t_pooled(:, :), t_min(:, :), t_max(:, :), t_st(:, :)
@@ -357,7 +357,7 @@ contains
                                                         r_low, r_high, ci, plateau, n_admissible, t_ks, t_kst, t_km, t_np, &
                                                         t_jsd, t_lo, t_up, t_w, t_wr, t_ov, t_d, trace_dmed, trace_dmax, &
                                                         t_bins, t_failed, t_pooled, t_min, t_mean, t_max, t_st, t_fd, &
-                                                        t_rl, t_rh, n_tried, c_ks, c_np, c_status, &
+                                                        t_rl, t_rh, n_tried, c_ks, c_np, c_status, c_ext, &
                                                         delta_median_threshold=delta_median_threshold, &
                                                         delta_max_threshold=delta_max_threshold, &
                                                         delta_abs_tolerance=delta_abs_tolerance, &
@@ -624,7 +624,7 @@ contains
         call assert_err(ierr, ERR_INVALID_INPUT, name//"value 0 rejected by the wrapper", arg_pos=6_int32)
 
         ! Implementation: positions, and the rerun capacity checks.
-        call calc_js_comp_test_permutation_bounds(300_int32, N_POINTS_KNN, N_NEIGHBORS_KNN, max_n_points_candidate=max_p, &
+        call calc_js_comp_test_permutation_bounds(300_int32, 3_int32, N_POINTS_KNN, N_NEIGHBORS_KNN, max_n_points_candidate=max_p, &
                                                   max_n_neighbors_candidate=max_k, n_bootstrapping_top_k_jsds=top_k, &
                                                   ierr=ierr)
         call direct_knn_on_assignment(3_int32, 300_int32, 4_int32, expression, 12_int32, &
@@ -894,10 +894,10 @@ contains
 
         call make_expression(300_int32, [5_int32, 4_int32, 4_int32], [0.5_real64, 0.5_real64, 0.6_real64], 51_int32, &
                              expression)
-        call generate_js_comp_test_candidates(300_int32, large_grid, n_large, &
+        call generate_js_comp_test_candidates(300_int32, 3_int32, large_grid, n_large, &
                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_LARGE, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"large grid ierr")
-        call generate_js_comp_test_candidates(300_int32, small_grid, n_small, &
+        call generate_js_comp_test_candidates(300_int32, 3_int32, small_grid, n_small, &
                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_SMALL, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"small grid ierr")
         call assert_true(.not. any(spread(large_grid(2, 1:n_large), 1, n_small) == &
@@ -1165,33 +1165,33 @@ contains
         character(*), parameter :: name = "test_permutation_bounds_by_hand: "
         integer(int32) :: max_p, max_k, top_k, ierr
 
-        call calc_js_comp_test_permutation_bounds(300_int32, 10_int32, 30_int32, max_n_points_candidate=max_p, &
+        call calc_js_comp_test_permutation_bounds(300_int32, 3_int32, 10_int32, 30_int32, max_n_points_candidate=max_p, &
                                                   max_n_neighbors_candidate=max_k, n_bootstrapping_top_k_jsds=top_k, &
-                                                  ierr=ierr)
+                                                  grid_min_points=300_int32, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"knn ierr")
         call assert_equal_int(max_p, 300_int32, name//"max(10, 300)")
         call assert_equal_int(max_k, 30_int32, name//"max(30, 4)")
         call assert_equal_int(top_k, 25_int32, name//"default heap: floor(2.5% of 1000)")
-        call calc_js_comp_test_permutation_bounds(300_int32, 400_int32, 2_int32, 100_int32, 5.0_real64, max_p, max_k, &
-                                                  top_k, ierr)
+        call calc_js_comp_test_permutation_bounds(300_int32, 3_int32, 400_int32, 2_int32, 100_int32, 5.0_real64, max_p, max_k, &
+                                                  top_k, grid_min_points=300_int32, ierr=ierr)
         call assert_equal_int(max_p, 400_int32, name//"max(400, 300)")
         call assert_equal_int(max_k, 4_int32, name//"max(2, 4)")
         call assert_equal_int(top_k, 5_int32, name//"floor(5% of 100)")
-        call calc_js_comp_test_permutation_bounds(0_int32, 10_int32, 1_int32, max_n_points_candidate=max_p, &
+        call calc_js_comp_test_permutation_bounds(0_int32, 3_int32, 10_int32, 1_int32, max_n_points_candidate=max_p, &
                                                   max_n_neighbors_candidate=max_k, n_bootstrapping_top_k_jsds=top_k, &
                                                   ierr=ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, name//"G = 0", arg_pos=1_int32)
-        call calc_js_comp_test_permutation_bounds(300_int32, 10_int32, 301_int32, max_n_points_candidate=max_p, &
+        call calc_js_comp_test_permutation_bounds(300_int32, 3_int32, 10_int32, 301_int32, max_n_points_candidate=max_p, &
                                                   max_n_neighbors_candidate=max_k, n_bootstrapping_top_k_jsds=top_k, &
                                                   ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, name//"n_neighbors > G", arg_pos=3_int32)
-        call calc_js_comp_test_permutation_bounds(300_int32, 10_int32, 30_int32, 0_int32, max_n_points_candidate=max_p, &
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"n_neighbors > G", arg_pos=4_int32)
+        call calc_js_comp_test_permutation_bounds(300_int32, 3_int32, 10_int32, 30_int32, 0_int32, max_n_points_candidate=max_p, &
                                                   max_n_neighbors_candidate=max_k, n_bootstrapping_top_k_jsds=top_k, &
                                                   ierr=ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, name//"n_bootstraps 0", arg_pos=4_int32)
-        call calc_js_comp_test_permutation_bounds(300_int32, 10_int32, 30_int32, 100_int32, 101.0_real64, max_p, max_k, &
-                                                  top_k, ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, name//"level 101", arg_pos=5_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"n_bootstraps 0", arg_pos=5_int32)
+        call calc_js_comp_test_permutation_bounds(300_int32, 3_int32, 10_int32, 30_int32, 100_int32, 101.0_real64, max_p, max_k, &
+                                                  top_k, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"level 101", arg_pos=6_int32)
 
         call calc_adaptive_js_comp_test_permutation_bounds(300_int32, 3_int32, 30_int32, max_n_points_candidate=max_p, &
                                                            n_bootstrapping_top_k_jsds=top_k, ierr=ierr)
@@ -1224,7 +1224,7 @@ contains
         call make_expression(300_int32, [4_int32, 4_int32, 4_int32], [0.5_real64, 0.5_real64, 0.5_real64], 61_int32, &
                              expression)
         allocate (null(0, 3))
-        call calc_js_comp_test_permutation_bounds(300_int32, N_POINTS_KNN, N_NEIGHBORS_KNN, max_n_points_candidate=max_p, &
+        call calc_js_comp_test_permutation_bounds(300_int32, 3_int32, N_POINTS_KNN, N_NEIGHBORS_KNN, max_n_points_candidate=max_p, &
                                                   max_n_neighbors_candidate=max_k, n_bootstrapping_top_k_jsds=top_k, &
                                                   ierr=ierr)
         call direct_knn_label_test(3_int32, 300_int32, 4_int32, expression, N_POINTS_KNN, N_NEIGHBORS_KNN, max_p, max_k, &
@@ -1323,7 +1323,7 @@ contains
                              expression)
         empty_study = expression
         empty_study(:, :, 1) = ieee_value(1.0_real64, ieee_quiet_nan)
-        call calc_js_comp_test_permutation_bounds(300_int32, N_POINTS_KNN, N_NEIGHBORS_KNN, max_n_points_candidate=max_p, &
+        call calc_js_comp_test_permutation_bounds(300_int32, 3_int32, N_POINTS_KNN, N_NEIGHBORS_KNN, max_n_points_candidate=max_p, &
                                                   max_n_neighbors_candidate=max_k, n_bootstrapping_top_k_jsds=top_k, &
                                                   ierr=ierr)
         call direct_knn_label_test(3_int32, 300_int32, 4_int32, empty_study, N_POINTS_KNN, N_NEIGHBORS_KNN, max_p, max_k, &
@@ -1697,7 +1697,7 @@ contains
         real(real64), allocatable :: tmp_x_star(:)
         integer(int32), allocatable :: tmp_pooled_neighborhood_range(:, :)
         integer(int32), allocatable :: tmp_n_neighbors_per_point(:, :)
-        integer(int32), allocatable :: tmp_stop_reason(:)
+        integer(int32), allocatable :: tmp_stop_reason(:), tmp_n_extension_entries(:)
         real(real64), allocatable :: tmp_neighborhood_dispersion(:)
         real(real64), allocatable :: tmp_neighborhood_mad(:)
         integer(int32), allocatable :: tmp_point_neighborhood_indices(:, :)
@@ -1766,7 +1766,7 @@ contains
         real(real64), allocatable :: tmp_search_trace_shared_residual_range_high(:, :)
         integer(int32), allocatable :: tmp_search_candidate_k_start(:)
         integer(int32), allocatable :: tmp_search_candidate_n_points(:)
-        integer(int32), allocatable :: tmp_search_candidate_status(:)
+        integer(int32), allocatable :: tmp_search_candidate_status(:), tmp_search_candidate_n_extension_entries(:)
         real(real64), allocatable :: tmp_candidate_confidence_interval(:, :)
         real(real64), allocatable :: tmp_bootstrapping_top_k_jsds(:, :, :)
         real(real64), allocatable :: tmp_prev_global_js_divergence(:)
@@ -1787,7 +1787,7 @@ contains
         allocate (tmp_x_star(max_n_genes_all_studies*n_studies))
         allocate (tmp_pooled_neighborhood_range(2, max_n_genes_all_studies*n_studies))
         allocate (tmp_n_neighbors_per_point(n_studies, max_n_genes_all_studies*n_studies))
-        allocate (tmp_stop_reason(max_n_genes_all_studies*n_studies))
+        allocate (tmp_stop_reason(max_n_genes_all_studies*n_studies), tmp_n_extension_entries(max_n_genes_all_studies*n_studies))
         allocate (tmp_neighborhood_dispersion(max_n_genes_all_studies*n_studies))
         allocate (tmp_neighborhood_mad(max_n_genes_all_studies*n_studies))
         allocate (tmp_point_neighborhood_indices(max_n_genes_all_studies, n_studies))
@@ -1856,7 +1856,7 @@ contains
         allocate (tmp_search_trace_shared_residual_range_high(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
         allocate (tmp_search_candidate_k_start(MAX_CANDIDATE_PAIRS))
         allocate (tmp_search_candidate_n_points(MAX_CANDIDATE_PAIRS))
-        allocate (tmp_search_candidate_status(MAX_CANDIDATE_PAIRS))
+        allocate (tmp_search_candidate_status(MAX_CANDIDATE_PAIRS), tmp_search_candidate_n_extension_entries(MAX_CANDIDATE_PAIRS))
         allocate (tmp_candidate_confidence_interval(2, n_studies))
         allocate (tmp_bootstrapping_top_k_jsds(n_bootstrapping_top_k_jsds, 2, n_studies))
         allocate (tmp_prev_global_js_divergence(n_studies))
@@ -1878,7 +1878,7 @@ contains
             tmp_permuted_expression=tmp_permuted_expression, tmp_gene_means=tmp_gene_means, &
             tmp_residuals=tmp_residuals, tmp_gene_means_perm_all=tmp_gene_means_perm_all, tmp_x_star=tmp_x_star, &
             tmp_pooled_neighborhood_range=tmp_pooled_neighborhood_range, &
-            tmp_n_neighbors_per_point=tmp_n_neighbors_per_point, tmp_stop_reason=tmp_stop_reason, &
+            tmp_n_neighbors_per_point=tmp_n_neighbors_per_point, tmp_stop_reason=tmp_stop_reason, tmp_n_extension_entries=tmp_n_extension_entries, &
             tmp_neighborhood_dispersion=tmp_neighborhood_dispersion, tmp_neighborhood_mad=tmp_neighborhood_mad, &
             tmp_point_neighborhood_indices=tmp_point_neighborhood_indices, &
             tmp_neighbor_residuals=tmp_neighbor_residuals, tmp_point_pool=tmp_point_pool, &
@@ -1930,6 +1930,7 @@ contains
             tmp_search_candidate_k_start=tmp_search_candidate_k_start, &
             tmp_search_candidate_n_points=tmp_search_candidate_n_points, &
             tmp_search_candidate_status=tmp_search_candidate_status, &
+            tmp_search_candidate_n_extension_entries=tmp_search_candidate_n_extension_entries, &
             tmp_candidate_confidence_interval=tmp_candidate_confidence_interval, &
             tmp_bootstrapping_top_k_jsds=tmp_bootstrapping_top_k_jsds, &
             tmp_prev_global_js_divergence=tmp_prev_global_js_divergence, tmp_delta_perm=tmp_delta_perm, &
@@ -2283,7 +2284,7 @@ contains
         real(real64), allocatable :: tmp_x_star(:)
         integer(int32), allocatable :: tmp_pooled_neighborhood_range(:, :)
         integer(int32), allocatable :: tmp_n_neighbors_per_point(:, :)
-        integer(int32), allocatable :: tmp_stop_reason(:)
+        integer(int32), allocatable :: tmp_stop_reason(:), tmp_n_extension_entries(:)
         real(real64), allocatable :: tmp_neighborhood_dispersion(:)
         real(real64), allocatable :: tmp_neighborhood_mad(:)
         integer(int32), allocatable :: tmp_point_neighborhood_indices(:, :)
@@ -2352,7 +2353,7 @@ contains
         real(real64), allocatable :: tmp_search_trace_shared_residual_range_high(:, :)
         integer(int32), allocatable :: tmp_search_candidate_k_start(:)
         integer(int32), allocatable :: tmp_search_candidate_n_points(:)
-        integer(int32), allocatable :: tmp_search_candidate_status(:)
+        integer(int32), allocatable :: tmp_search_candidate_status(:), tmp_search_candidate_n_extension_entries(:)
         real(real64), allocatable :: tmp_candidate_confidence_interval(:, :)
         real(real64), allocatable :: tmp_bootstrapping_top_k_jsds(:, :, :)
         real(real64), allocatable :: tmp_prev_global_js_divergence(:)
@@ -2375,7 +2376,7 @@ contains
         allocate (tmp_x_star(max_n_genes_all_studies*n_studies))
         allocate (tmp_pooled_neighborhood_range(2, max_n_genes_all_studies*n_studies))
         allocate (tmp_n_neighbors_per_point(n_studies, max_n_genes_all_studies*n_studies))
-        allocate (tmp_stop_reason(max_n_genes_all_studies*n_studies))
+        allocate (tmp_stop_reason(max_n_genes_all_studies*n_studies), tmp_n_extension_entries(max_n_genes_all_studies*n_studies))
         allocate (tmp_neighborhood_dispersion(max_n_genes_all_studies*n_studies))
         allocate (tmp_neighborhood_mad(max_n_genes_all_studies*n_studies))
         allocate (tmp_point_neighborhood_indices(max_n_genes_all_studies, n_studies))
@@ -2444,7 +2445,7 @@ contains
         allocate (tmp_search_trace_shared_residual_range_high(max_n_points_candidate, MAX_CANDIDATE_PAIRS))
         allocate (tmp_search_candidate_k_start(MAX_CANDIDATE_PAIRS))
         allocate (tmp_search_candidate_n_points(MAX_CANDIDATE_PAIRS))
-        allocate (tmp_search_candidate_status(MAX_CANDIDATE_PAIRS))
+        allocate (tmp_search_candidate_status(MAX_CANDIDATE_PAIRS), tmp_search_candidate_n_extension_entries(MAX_CANDIDATE_PAIRS))
         allocate (tmp_candidate_confidence_interval(2, n_studies))
         allocate (tmp_bootstrapping_top_k_jsds(n_bootstrapping_top_k_jsds, 2, n_studies))
         allocate (tmp_prev_global_js_divergence(n_studies))
@@ -2467,7 +2468,7 @@ contains
             tmp_permuted_expression=tmp_permuted_expression, tmp_gene_means=tmp_gene_means, &
             tmp_residuals=tmp_residuals, tmp_gene_means_perm_all=tmp_gene_means_perm_all, tmp_x_star=tmp_x_star, &
             tmp_pooled_neighborhood_range=tmp_pooled_neighborhood_range, &
-            tmp_n_neighbors_per_point=tmp_n_neighbors_per_point, tmp_stop_reason=tmp_stop_reason, &
+            tmp_n_neighbors_per_point=tmp_n_neighbors_per_point, tmp_stop_reason=tmp_stop_reason, tmp_n_extension_entries=tmp_n_extension_entries, &
             tmp_neighborhood_dispersion=tmp_neighborhood_dispersion, tmp_neighborhood_mad=tmp_neighborhood_mad, &
             tmp_point_neighborhood_indices=tmp_point_neighborhood_indices, &
             tmp_neighbor_residuals=tmp_neighbor_residuals, tmp_point_pool=tmp_point_pool, &
@@ -2519,6 +2520,7 @@ contains
             tmp_search_candidate_k_start=tmp_search_candidate_k_start, &
             tmp_search_candidate_n_points=tmp_search_candidate_n_points, &
             tmp_search_candidate_status=tmp_search_candidate_status, &
+            tmp_search_candidate_n_extension_entries=tmp_search_candidate_n_extension_entries, &
             tmp_candidate_confidence_interval=tmp_candidate_confidence_interval, &
             tmp_bootstrapping_top_k_jsds=tmp_bootstrapping_top_k_jsds, &
             tmp_prev_global_js_divergence=tmp_prev_global_js_divergence, tmp_delta_perm=tmp_delta_perm, &

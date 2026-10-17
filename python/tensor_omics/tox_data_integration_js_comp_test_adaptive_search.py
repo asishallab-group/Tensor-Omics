@@ -88,6 +88,7 @@ _lib.run_js_comp_test_adaptive_parameter_search_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
@@ -109,14 +110,17 @@ _lib.run_js_comp_test_adaptive_parameter_search_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_double),
+    np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
     np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "bootstrap_mode", "ierr",)
+_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "candidate_n_extension_entries", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "bootstrap_mode", "tau_reference_mode", "overlap_extension_mode", "seed_step_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def generate_adaptive_js_comp_test_candidates(
         max_n_genes_all_studies,
@@ -229,6 +233,9 @@ def run_js_comp_test_adaptive_parameter_search(
         bin_count_mode='bin_count_occupancy',
         delta_abs_tolerance=0.0,
         bootstrap_mode='bootstrap_per_study',
+        tau_reference_mode='tau_reference_previous_round',
+        overlap_extension_mode='overlap_extension_none',
+        seed_step_mode='seed_step_mad',
 ):
     r"""Search the ascending adaptive (k_start, k_step, k_max) candidate sequence for a stable JSD parameter setting (Issue #217)
 
@@ -243,8 +250,11 @@ def run_js_comp_test_adaptive_parameter_search(
 
     1. Grow its neighborhoods exactly as
     :func:`tensor_omics.construct_adaptive_neighborhoods`
-    does with the same `tau`, `mad_distance_factor`, `max_pooled_residuals` and
-    `min_study_neighbors`.
+    does with the same `tau`, `mad_distance_factor`, `max_pooled_residuals`,
+    `min_study_neighbors` and experiment switches `tau_reference_mode`,
+    `overlap_extension_mode` (its backward extension uses this search's own
+    `min_neighbor_overlap`; pass the same value to the construction to rebuild a candidate) and
+    `seed_step_mode`.
     2. Reject it if the construction status is not ok, or if more than `max_n_points_candidate`
     reference points emerged.
     3. Gate 1:
@@ -260,7 +270,9 @@ def run_js_comp_test_adaptive_parameter_search(
     first plateau `plateau_mode` selects.
 
     **Candidate log.** Every candidate tried gets an entry in `candidate_k_start`,
-    `candidate_n_points` and `candidate_status`, until the search stops. The status is the first
+    `candidate_n_points`, `candidate_status` and `candidate_n_extension_entries` (the entries the
+    extensions of `overlap_extension_mode` and `seed_step_mode` added, 0 with both defaults),
+    until the search stops. The status is the first
     failing check, in the order above:
     ``ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED``
     (too few means or residuals),
@@ -435,6 +447,25 @@ def run_js_comp_test_adaptive_parameter_search(
         studies did not differ (a noise band) instead, kept for comparison
 
         The default value is `'bootstrap_per_study'`.
+    tau_reference_mode : str, one of 'tau_reference_previous_round' | 'tau_reference_k_start', optional, default 'tau_reference_previous_round'
+        Which dispersion an adaptive growth round's relative change is measured against
+        before it is compared with `tau`, as in `construct_adaptive_neighborhoods`. An
+        experiment switch; the default is the rule before
+
+        The default value is `'tau_reference_previous_round'`.
+    overlap_extension_mode : str, one of 'overlap_extension_none' | 'overlap_extension_backward', optional, default 'overlap_extension_none'
+        What happens to an adaptive neighborhood once its growth has stopped, as in
+        `construct_adaptive_neighborhoods`; the backward extension uses this search's
+        `min_neighbor_overlap`, so the overlap gate then always passes. An experiment switch;
+        the default keeps every neighborhood as grown, as before
+
+        The default value is `'overlap_extension_none'`.
+    seed_step_mode : str, one of 'seed_step_mad' | 'seed_step_min_k_step', optional, default 'seed_step_mad'
+        How far past an adaptive neighborhood the next reference point's seed must lie, as
+        in `construct_adaptive_neighborhoods`. An experiment switch; the default is the MAD
+        rule alone, as before
+
+        The default value is `'seed_step_mad'`.
 
     Returns
     -------
@@ -600,6 +631,13 @@ def run_js_comp_test_adaptive_parameter_search(
             `5` consensus-pmf count gate failed
             The first `n_candidates_tried` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
+        candidate_n_extension_entries : np.ndarray[np.int32] of shape (16,), read-only
+            Total number of pooled entries the backward extension of `overlap_extension_mode` and
+            the forward extension of `seed_step_mode` added to every tried candidate's
+            neighborhoods, whether or not the candidate was admissible; 0 with both defaults and
+            for too few means
+            The first `n_candidates_tried` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -628,6 +666,9 @@ def run_js_comp_test_adaptive_parameter_search(
     plateau_mode = np.array([str(plateau_mode).lower().encode().ljust(19)], dtype="S19")
     bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
     bootstrap_mode = np.array([str(bootstrap_mode).lower().encode().ljust(19)], dtype="S19")
+    tau_reference_mode = np.array([str(tau_reference_mode).lower().encode().ljust(28)], dtype="S28")
+    overlap_extension_mode = np.array([str(overlap_extension_mode).lower().encode().ljust(26)], dtype="S26")
+    seed_step_mode = np.array([str(seed_step_mode).lower().encode().ljust(20)], dtype="S20")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
@@ -682,6 +723,7 @@ def run_js_comp_test_adaptive_parameter_search(
     candidate_k_start = np.empty((16,), dtype=np.int32, order='C')
     candidate_n_points = np.empty((16,), dtype=np.int32, order='C')
     candidate_status = np.empty((16,), dtype=np.int32, order='C')
+    candidate_n_extension_entries = np.empty((16,), dtype=np.int32, order='C')
     ierr = ctypes.c_int(0)
 
     _lib.run_js_comp_test_adaptive_parameter_search_c(
@@ -730,6 +772,7 @@ def run_js_comp_test_adaptive_parameter_search(
         candidate_k_start,
         candidate_n_points,
         candidate_status,
+        candidate_n_extension_entries,
         ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
         ctypes.byref(ctypes.c_double(min_neighbor_overlap)),
         ctypes.byref(ctypes.c_double(succeeding_ci_overlap)),
@@ -752,6 +795,9 @@ def run_js_comp_test_adaptive_parameter_search(
         bin_count_mode,
         ctypes.byref(ctypes.c_double(delta_abs_tolerance)),
         bootstrap_mode,
+        tau_reference_mode,
+        overlap_extension_mode,
+        seed_step_mode,
         ctypes.byref(ierr),
     )
 
@@ -788,6 +834,7 @@ def run_js_comp_test_adaptive_parameter_search(
     candidate_k_start.flags.writeable = False
     candidate_n_points.flags.writeable = False
     candidate_status.flags.writeable = False
+    candidate_n_extension_entries.flags.writeable = False
 
     return {
         "k_start": k_start.value,
@@ -825,4 +872,5 @@ def run_js_comp_test_adaptive_parameter_search(
         "candidate_k_start": candidate_k_start[..., :n_candidates_tried.value],
         "candidate_n_points": candidate_n_points[..., :n_candidates_tried.value],
         "candidate_status": candidate_status[..., :n_candidates_tried.value],
+        "candidate_n_extension_entries": candidate_n_extension_entries[..., :n_candidates_tried.value],
     }

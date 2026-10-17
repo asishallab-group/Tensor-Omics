@@ -13,22 +13,53 @@
 #' clamping or rounding collapse, so a small enough `G` yields a single candidate. Bin counts
 #' are not part of a candidate; they are chosen per reference point later.
 #'
+#' **Experiment switches** (each documented on its argument): `grid_sample_size_mode` and
+#' `grid_points_factor` set `N` and the factor in `n_points_high`, `grid_min_points` replaces
+#' `MIN_POINTS` as the floor, and `grid_floor_mode` adds one last candidate at the floor. Their
+#' defaults here (floor 200 and the clamp) differ from the grid before; `grid_min_points = 300`
+#' with `grid_floor_mode` stop reproduces it.
+#'
 #' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test_fixed_k_search::generate_js_comp_test_candidates}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param max_n_genes_all_studies a integer scalar. Maximum number of genes across all studies
 #'   The minimum valid value is `1`.
+#' @param n_studies a integer scalar. Number of studies; used only by the pooled grid sample size
+#'   The minimum valid value is `1`.
 #' @param neighborhood_size_mode a string, one of "neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both". Which neighborhood sizes the grid pairs with each `n_points`
 #'
 #'   The default value is `"neighborhood_size_large"`.
+#' @param grid_sample_size_mode a string, one of "grid_sample_size_per_study", "grid_sample_size_pooled". Sample size `N` in the grid's first reference-point count
+#'   `ceiling(grid_points_factor * sqrt(N))`. An experiment switch
+#'
+#'   The default value is `"grid_sample_size_per_study"`.
+#' @param grid_points_factor a numeric scalar. Factor in the grid's first reference-point count `ceiling(grid_points_factor * sqrt(N))`.
+#'   An experiment switch; the default 4 is the factor before
+#'   The minimum valid value is `above(0.0)`.
+#'   The default value is `4.0`.
+#' @param grid_min_points a integer scalar. The grid's floor: the lower clamp of its first `n_points` and the least `n_points` it
+#'   keeps. An experiment switch; the default here is 200, the floor before was 300
+#'   (`MIN_POINTS`)
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_POINTS`.
+#'   The default value is `200`.
+#' @param grid_floor_mode a string, one of "grid_floor_stop", "grid_floor_clamp". What the grid does when the next GAMMA-decayed `n_points` would fall below the floor.
+#'   An experiment switch; the default here is the clamp, the grid before stopped
+#'
+#'   The default value is `"grid_floor_clamp"`.
 #' @return a integer matrix. Candidate `[n_points, n_neighbors]` pairs, `n_points` descending
 #'   The first `n_candidates` elements will hold the results.
 #' @export
-generate_js_comp_test_candidates <- function(max_n_genes_all_studies, neighborhood_size_mode = "neighborhood_size_large") {
+generate_js_comp_test_candidates <- function(max_n_genes_all_studies, n_studies, neighborhood_size_mode = "neighborhood_size_large", grid_sample_size_mode = "grid_sample_size_per_study", grid_points_factor = 4.0, grid_min_points = 200L, grid_floor_mode = "grid_floor_clamp") {
     max_n_genes_all_studies <- .tox_as_integer_scalar(max_n_genes_all_studies, "max_n_genes_all_studies")
+    n_studies <- .tox_as_integer_scalar(n_studies, "n_studies")
     neighborhood_size_mode <- .tox_as_mode(neighborhood_size_mode, "neighborhood_size_mode", c("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both"))
-    .result <- .Call("generate_js_comp_test_candidates_call", max_n_genes_all_studies, neighborhood_size_mode)
-    .arguments <- c("max_n_genes_all_studies", "candidates_n_points_n_neighbors", "n_candidates", "neighborhood_size_mode", "ierr")
+    grid_sample_size_mode <- .tox_as_mode(grid_sample_size_mode, "grid_sample_size_mode", c("grid_sample_size_per_study", "grid_sample_size_pooled"))
+    grid_points_factor <- .tox_as_double_scalar(grid_points_factor, "grid_points_factor")
+    grid_min_points <- .tox_as_integer_scalar(grid_min_points, "grid_min_points")
+    grid_floor_mode <- .tox_as_mode(grid_floor_mode, "grid_floor_mode", c("grid_floor_stop", "grid_floor_clamp"))
+    .result <- .Call("generate_js_comp_test_candidates_call", max_n_genes_all_studies, n_studies, neighborhood_size_mode, grid_sample_size_mode, grid_points_factor, grid_min_points, grid_floor_mode)
+    .arguments <- c("max_n_genes_all_studies", "n_studies", "candidates_n_points_n_neighbors", "n_candidates", "neighborhood_size_mode", "grid_sample_size_mode", "grid_points_factor", "grid_min_points", "grid_floor_mode", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
     .result$candidates_n_points_n_neighbors[, seq_len(.result$n_candidates), drop = FALSE]
@@ -86,13 +117,16 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies, neighborho
 #'   The minimum valid value is `1`.
 #' @param join_method a string, one of "join_min", "join_max", "join_median". How the studies' confidence-interval overlaps are joined into the plateau condition
 #' @param max_n_points_candidate a integer scalar. Upper bound on the grid's `n_points` candidates, which sizes the per-point outputs;
-#'   at least what `calc_js_comp_test_candidate_bounds` returns, else invalid input
+#'   at least what `calc_js_comp_test_candidate_bounds` returns for the same grid
+#'   switches, else invalid input (checked by the search once the grid is built, as the
+#'   bound depends on the optional grid switches)
 #'   It is recommended to compute this argument from the `max_n_points_candidate` output produced by \code{\link{calc_js_comp_test_candidate_bounds}}.
-#'   The minimum valid value is `max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS))`.
+#'   The minimum valid value is `1`.
 #' @param max_n_neighbors_candidate a integer scalar. Upper bound on the grid's `n_neighbors` candidates; at least what
-#'   `calc_js_comp_test_candidate_bounds` returns, else invalid input
+#'   `calc_js_comp_test_candidate_bounds` returns for the same grid switches, else
+#'   invalid input (checked by the search once the grid is built)
 #'   It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by \code{\link{calc_js_comp_test_candidate_bounds}}.
-#'   The minimum valid value is `max(1, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32))`.
+#'   The minimum valid value is `1`.
 #' @param min_residuals_per_bin a integer scalar. Minimum count of every consensus bin (gate 2) and the floor of the bin-count search,
 #'   one threshold for both, so a point the search marks as failed also fails the gate
 #'   The minimum valid value is `0`.
@@ -177,6 +211,24 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies, neighborho
 #'   studies did not differ (a noise band) instead, kept for comparison
 #'
 #'   The default value is `"bootstrap_per_study"`.
+#' @param grid_sample_size_mode a string, one of "grid_sample_size_per_study", "grid_sample_size_pooled". Sample size `N` in the candidate grid's first reference-point count
+#'   `ceiling(grid_points_factor * sqrt(N))`. An experiment switch
+#'
+#'   The default value is `"grid_sample_size_per_study"`.
+#' @param grid_points_factor a numeric scalar. Factor in the grid's first reference-point count `ceiling(grid_points_factor * sqrt(N))`.
+#'   An experiment switch; the default 4 is the factor before
+#'   The minimum valid value is `above(0.0)`.
+#'   The default value is `4.0`.
+#' @param grid_min_points a integer scalar. The grid's floor: the lower clamp of its first `n_points` and the least `n_points` it
+#'   keeps. An experiment switch; the default here is 200, the floor before was 300
+#'   (`MIN_POINTS`)
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_POINTS`.
+#'   The default value is `200`.
+#' @param grid_floor_mode a string, one of "grid_floor_stop", "grid_floor_clamp". What the grid does when the next GAMMA-decayed `n_points` would fall below the floor.
+#'   An experiment switch; the default here is the clamp, the grid before stopped
+#'
+#'   The default value is `"grid_floor_clamp"`.
 #' @return a named list with elements:
 #'   \item{n_points}{a integer scalar. The finally chosen candidate's `n_points`}
 #'   \item{n_neighbors}{a integer scalar. The finally chosen candidate's `n_neighbors`}
@@ -255,7 +307,7 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies, neighborho
 #'     Jagged like trace_selected_n_bins
 #'     The first `n_admissible_evaluated` elements will hold the results.}
 #' @export
-run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, max_n_neighbors_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, bin_count_mode = "bin_count_occupancy", neighborhood_size_mode = "neighborhood_size_large", delta_abs_tolerance = 0.0, bootstrap_mode = "bootstrap_per_study") {
+run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, max_n_neighbors_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, bin_count_mode = "bin_count_occupancy", neighborhood_size_mode = "neighborhood_size_large", delta_abs_tolerance = 0.0, bootstrap_mode = "bootstrap_per_study", grid_sample_size_mode = "grid_sample_size_per_study", grid_points_factor = 4.0, grid_min_points = 200L, grid_floor_mode = "grid_floor_clamp") {
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
     n_bootstraps <- .tox_as_integer_scalar(n_bootstraps, "n_bootstraps")
@@ -281,14 +333,18 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstrap
     neighborhood_size_mode <- .tox_as_mode(neighborhood_size_mode, "neighborhood_size_mode", c("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both"))
     delta_abs_tolerance <- .tox_as_double_scalar(delta_abs_tolerance, "delta_abs_tolerance")
     bootstrap_mode <- .tox_as_mode(bootstrap_mode, "bootstrap_mode", c("bootstrap_per_study", "bootstrap_pooled"))
+    grid_sample_size_mode <- .tox_as_mode(grid_sample_size_mode, "grid_sample_size_mode", c("grid_sample_size_per_study", "grid_sample_size_pooled"))
+    grid_points_factor <- .tox_as_double_scalar(grid_points_factor, "grid_points_factor")
+    grid_min_points <- .tox_as_integer_scalar(grid_min_points, "grid_min_points")
+    grid_floor_mode <- .tox_as_mode(grid_floor_mode, "grid_floor_mode", c("grid_floor_stop", "grid_floor_clamp"))
     if (dim(residuals)[3] != dim(gene_means)[2])
         .tox_shape_error("residuals", dim(residuals)[3], "gene_means", dim(gene_means)[2])
     if (dim(residuals)[2] != dim(gene_means)[1])
         .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
 
-    .result <- .Call("run_js_comp_test_parameter_search_call", gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, max_n_neighbors_candidate, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, bin_count_mode, neighborhood_size_mode, delta_abs_tolerance, bootstrap_mode)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "bootstrap_mode", "ierr")
-    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, "n_bins_per_point", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("run_js_comp_test_parameter_search_call", gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, max_n_neighbors_candidate, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, bin_count_mode, neighborhood_size_mode, delta_abs_tolerance, bootstrap_mode, grid_sample_size_mode, grid_points_factor, grid_min_points, grid_floor_mode)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "bootstrap_mode", "grid_sample_size_mode", "grid_points_factor", "grid_min_points", "grid_floor_mode", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, "n_bins_per_point", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(

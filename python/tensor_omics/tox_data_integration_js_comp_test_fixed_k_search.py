@@ -35,14 +35,19 @@ _lib = load_library()
 _lib.generate_js_comp_test_candidates_c.restype = None
 _lib.generate_js_comp_test_candidates_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_GENERATE_JS_COMP_TEST_CANDIDATES_ARGUMENTS = ("max_n_genes_all_studies", "candidates_n_points_n_neighbors", "n_candidates", "neighborhood_size_mode", "ierr",)
+_GENERATE_JS_COMP_TEST_CANDIDATES_ARGUMENTS = ("max_n_genes_all_studies", "n_studies", "candidates_n_points_n_neighbors", "n_candidates", "neighborhood_size_mode", "grid_sample_size_mode", "grid_points_factor", "grid_min_points", "grid_floor_mode", "ierr",)
 
 _lib.run_js_comp_test_parameter_search_c.restype = None
 _lib.run_js_comp_test_parameter_search_c.argtypes = (
@@ -103,17 +108,26 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
     np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_double),
     np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "bootstrap_mode", "ierr",)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "max_n_neighbors_candidate", "n_points", "n_neighbors", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "bootstrap_mode", "grid_sample_size_mode", "grid_points_factor", "grid_min_points", "grid_floor_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def generate_js_comp_test_candidates(
         max_n_genes_all_studies,
+        n_studies,
         neighborhood_size_mode='neighborhood_size_large',
+        grid_sample_size_mode='grid_sample_size_per_study',
+        grid_points_factor=4.0,
+        grid_min_points=200,
+        grid_floor_mode='grid_floor_clamp',
 ):
     r"""Generate the GAMMA-decay (n_points, n_neighbors) candidate grid
 
@@ -128,15 +142,46 @@ def generate_js_comp_test_candidates(
     clamping or rounding collapse, so a small enough `G` yields a single candidate. Bin counts
     are not part of a candidate; they are chosen per reference point later.
 
+    **Experiment switches** (each documented on its argument): `grid_sample_size_mode` and
+    `grid_points_factor` set `N` and the factor in `n_points_high`, `grid_min_points` replaces
+    `MIN_POINTS` as the floor, and `grid_floor_mode` adds one last candidate at the floor. Their
+    defaults here (floor 200 and the clamp) differ from the grid before; `grid_min_points = 300`
+    with `grid_floor_mode` stop reproduces it.
+
     Parameters
     ----------
     max_n_genes_all_studies : int
         Maximum number of genes across all studies
         The minimum valid value is `1`.
+    n_studies : int
+        Number of studies; used only by the pooled grid sample size
+        The minimum valid value is `1`.
     neighborhood_size_mode : str, one of 'neighborhood_size_large' | 'neighborhood_size_small' | 'neighborhood_size_both', optional, default 'neighborhood_size_large'
         Which neighborhood sizes the grid pairs with each `n_points`
 
         The default value is `'neighborhood_size_large'`.
+    grid_sample_size_mode : str, one of 'grid_sample_size_per_study' | 'grid_sample_size_pooled', optional, default 'grid_sample_size_per_study'
+        Sample size `N` in the grid's first reference-point count
+        `ceiling(grid_points_factor * sqrt(N))`. An experiment switch
+
+        The default value is `'grid_sample_size_per_study'`.
+    grid_points_factor : float, optional, default 4.0
+        Factor in the grid's first reference-point count `ceiling(grid_points_factor * sqrt(N))`.
+        An experiment switch; the default 4 is the factor before
+        The minimum valid value is `above(0.0)`.
+        The default value is `4.0`.
+    grid_min_points : int, optional, default 200
+        The grid's floor: the lower clamp of its first `n_points` and the least `n_points` it
+        keeps. An experiment switch; the default here is 200, the floor before was 300
+        (`MIN_POINTS`)
+        The minimum valid value is `1`.
+        The maximum valid value is `MAX_POINTS`.
+        The default value is `200`.
+    grid_floor_mode : str, one of 'grid_floor_stop' | 'grid_floor_clamp', optional, default 'grid_floor_clamp'
+        What the grid does when the next GAMMA-decayed `n_points` would fall below the floor.
+        An experiment switch; the default here is the clamp, the grid before stopped
+
+        The default value is `'grid_floor_clamp'`.
 
     Returns
     -------
@@ -157,6 +202,8 @@ def generate_js_comp_test_candidates(
     """
     # accept anything array-like, converting only when C needs it
     neighborhood_size_mode = np.array([str(neighborhood_size_mode).lower().encode().ljust(23)], dtype="S23")
+    grid_sample_size_mode = np.array([str(grid_sample_size_mode).lower().encode().ljust(26)], dtype="S26")
+    grid_floor_mode = np.array([str(grid_floor_mode).lower().encode().ljust(16)], dtype="S16")
 
     # outputs and work arrays, which the caller never sees
     candidates_n_points_n_neighbors = np.empty((2, 16,), dtype=np.int32, order='F')
@@ -165,9 +212,14 @@ def generate_js_comp_test_candidates(
 
     _lib.generate_js_comp_test_candidates_c(
         ctypes.byref(ctypes.c_int(max_n_genes_all_studies)),
+        ctypes.byref(ctypes.c_int(n_studies)),
         candidates_n_points_n_neighbors,
         ctypes.byref(n_candidates),
         neighborhood_size_mode,
+        grid_sample_size_mode,
+        ctypes.byref(ctypes.c_double(grid_points_factor)),
+        ctypes.byref(ctypes.c_int(grid_min_points)),
+        grid_floor_mode,
         ctypes.byref(ierr),
     )
 
@@ -204,6 +256,10 @@ def run_js_comp_test_parameter_search(
         neighborhood_size_mode='neighborhood_size_large',
         delta_abs_tolerance=0.0,
         bootstrap_mode='bootstrap_per_study',
+        grid_sample_size_mode='grid_sample_size_per_study',
+        grid_points_factor=4.0,
+        grid_min_points=200,
+        grid_floor_mode='grid_floor_clamp',
 ):
     r"""Search a GAMMA-decay (n_points, n_neighbors) candidate grid for a stable JSD parameter setting
 
@@ -262,14 +318,17 @@ def run_js_comp_test_parameter_search(
 
     max_n_points_candidate : int
         Upper bound on the grid's `n_points` candidates, which sizes the per-point outputs;
-        at least what `calc_js_comp_test_candidate_bounds` returns, else invalid input
+        at least what `calc_js_comp_test_candidate_bounds` returns for the same grid
+        switches, else invalid input (checked by the search once the grid is built, as the
+        bound depends on the optional grid switches)
         It is recommended to compute this argument from the `max_n_points_candidate` output produced by :func:`tensor_omics.calc_js_comp_test_candidate_bounds`.
-        The minimum valid value is `max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS))`.
+        The minimum valid value is `1`.
     max_n_neighbors_candidate : int
         Upper bound on the grid's `n_neighbors` candidates; at least what
-        `calc_js_comp_test_candidate_bounds` returns, else invalid input
+        `calc_js_comp_test_candidate_bounds` returns for the same grid switches, else
+        invalid input (checked by the search once the grid is built)
         It is recommended to compute this argument from the `max_n_neighbors_candidate` output produced by :func:`tensor_omics.calc_js_comp_test_candidate_bounds`.
-        The minimum valid value is `max(1, floor(real(max_n_genes_all_studies, real64)/(KX_FACTORS(1)*real(max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*real(max(MIN_POINTS, min(ceiling(N_POINTS_HIGH_FACTOR*sqrt(real(max_n_genes_all_studies, real64)), kind=int32), MAX_POINTS)), real64), kind=int32)), real64)), kind=int32))`.
+        The minimum valid value is `1`.
     min_residuals_per_bin : int, optional, default 10
         Minimum count of every consensus bin (gate 2) and the floor of the bin-count search,
         one threshold for both, so a point the search marks as failed also fails the gate
@@ -373,6 +432,28 @@ def run_js_comp_test_parameter_search(
         studies did not differ (a noise band) instead, kept for comparison
 
         The default value is `'bootstrap_per_study'`.
+    grid_sample_size_mode : str, one of 'grid_sample_size_per_study' | 'grid_sample_size_pooled', optional, default 'grid_sample_size_per_study'
+        Sample size `N` in the candidate grid's first reference-point count
+        `ceiling(grid_points_factor * sqrt(N))`. An experiment switch
+
+        The default value is `'grid_sample_size_per_study'`.
+    grid_points_factor : float, optional, default 4.0
+        Factor in the grid's first reference-point count `ceiling(grid_points_factor * sqrt(N))`.
+        An experiment switch; the default 4 is the factor before
+        The minimum valid value is `above(0.0)`.
+        The default value is `4.0`.
+    grid_min_points : int, optional, default 200
+        The grid's floor: the lower clamp of its first `n_points` and the least `n_points` it
+        keeps. An experiment switch; the default here is 200, the floor before was 300
+        (`MIN_POINTS`)
+        The minimum valid value is `1`.
+        The maximum valid value is `MAX_POINTS`.
+        The default value is `200`.
+    grid_floor_mode : str, one of 'grid_floor_stop' | 'grid_floor_clamp', optional, default 'grid_floor_clamp'
+        What the grid does when the next GAMMA-decayed `n_points` would fall below the floor.
+        An experiment switch; the default here is the clamp, the grid before stopped
+
+        The default value is `'grid_floor_clamp'`.
 
     Returns
     -------
@@ -537,6 +618,8 @@ def run_js_comp_test_parameter_search(
     bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
     neighborhood_size_mode = np.array([str(neighborhood_size_mode).lower().encode().ljust(23)], dtype="S23")
     bootstrap_mode = np.array([str(bootstrap_mode).lower().encode().ljust(19)], dtype="S19")
+    grid_sample_size_mode = np.array([str(grid_sample_size_mode).lower().encode().ljust(26)], dtype="S26")
+    grid_floor_mode = np.array([str(grid_floor_mode).lower().encode().ljust(16)], dtype="S16")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
@@ -643,6 +726,10 @@ def run_js_comp_test_parameter_search(
         neighborhood_size_mode,
         ctypes.byref(ctypes.c_double(delta_abs_tolerance)),
         bootstrap_mode,
+        grid_sample_size_mode,
+        ctypes.byref(ctypes.c_double(grid_points_factor)),
+        ctypes.byref(ctypes.c_int(grid_min_points)),
+        grid_floor_mode,
         ctypes.byref(ierr),
     )
 

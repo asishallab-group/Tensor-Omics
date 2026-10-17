@@ -6,12 +6,18 @@
 // tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
-void calc_js_comp_test_candidate_bounds_c(const int*, int*, int*, int*);
+void calc_js_comp_test_candidate_bounds_c(const int*, const int*, int*, int*, const char*, const double*, const int*, int*);
 
-SEXP calc_js_comp_test_candidate_bounds_call(SEXP max_n_genes_all_studies) {
+SEXP calc_js_comp_test_candidate_bounds_call(SEXP max_n_genes_all_studies, SEXP n_studies, SEXP grid_sample_size_mode, SEXP grid_points_factor, SEXP grid_min_points) {
     int nprot = 0;
     // scalar inputs, pulled from their length-1 vectors
     int max_n_genes_all_studies_v = Rf_asInteger(max_n_genes_all_studies);
+    int n_studies_v = Rf_asInteger(n_studies);
+    double grid_points_factor_v = Rf_asReal(grid_points_factor);
+    int grid_min_points_v = Rf_asInteger(grid_min_points);
+
+    // convert what Fortran cannot take from R directly
+    char* grid_sample_size_mode_c = tox_char_in(grid_sample_size_mode, 26);
 
     // outputs and work space
     int max_n_points_candidate = 0;
@@ -20,8 +26,12 @@ SEXP calc_js_comp_test_candidate_bounds_call(SEXP max_n_genes_all_studies) {
 
     calc_js_comp_test_candidate_bounds_c(
         &max_n_genes_all_studies_v,
+        &n_studies_v,
         &max_n_points_candidate,
         &max_n_neighbors_candidate,
+        grid_sample_size_mode_c,
+        &grid_points_factor_v,
+        &grid_min_points_v,
         &ierr
     );
 

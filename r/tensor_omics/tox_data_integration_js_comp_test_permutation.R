@@ -148,12 +148,30 @@
 #'   between the studies" instead, kept for comparison
 #'
 #'   The default value is `"bootstrap_per_study"`.
+#' @param grid_sample_size_mode a string, one of "grid_sample_size_per_study", "grid_sample_size_pooled". Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: the sample size `N` in its first
+#'   reference-point count `ceiling(grid_points_factor * sqrt(N))`; also sizes the work
+#'   arrays through `calc_js_comp_test_permutation_bounds`
+#'
+#'   The default value is `"grid_sample_size_per_study"`.
+#' @param grid_points_factor a numeric scalar. Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: the factor in its first reference-point count;
+#'   the default 4 is the factor before
+#'   The minimum valid value is `above(0.0)`.
+#'   The default value is `4.0`.
+#' @param grid_min_points a integer scalar. Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: its floor; the default here is 200, the floor
+#'   before was 300
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_POINTS`.
+#'   The default value is `200`.
+#' @param grid_floor_mode a string, one of "grid_floor_stop", "grid_floor_clamp". Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: what it does when the next decayed `n_points`
+#'   would fall below the floor; the default here is the clamp, the grid before stopped
+#'
+#'   The default value is `"grid_floor_clamp"`.
 #' @return a named list with elements:
 #'   \item{global_js_divergence}{a numeric vector. Weighted global JSD of each study against the consensus, for this assignment; NaN on error}
 #'   \item{used_n_points}{a integer scalar. Number of reference points the run used (`n_points`, or the search's choice)}
 #'   \item{used_n_neighbors}{a integer scalar. Number of neighbors per neighborhood the run used (`n_neighbors`, or the search's choice)}
 #' @export
-run_js_comp_test_on_sample_assignment <- function(expression, sample_assignment, n_points, n_neighbors, rerun_parameter_search = FALSE, n_bootstraps = 1000L, join_method = "join_min", min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, bin_count_mode = "bin_count_occupancy", neighborhood_size_mode = "neighborhood_size_large", delta_abs_tolerance = 0.0, bootstrap_mode = "bootstrap_per_study") {
+run_js_comp_test_on_sample_assignment <- function(expression, sample_assignment, n_points, n_neighbors, rerun_parameter_search = FALSE, n_bootstraps = 1000L, join_method = "join_min", min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, bin_count_mode = "bin_count_occupancy", neighborhood_size_mode = "neighborhood_size_large", delta_abs_tolerance = 0.0, bootstrap_mode = "bootstrap_per_study", grid_sample_size_mode = "grid_sample_size_per_study", grid_points_factor = 4.0, grid_min_points = 200L, grid_floor_mode = "grid_floor_clamp") {
     expression <- .tox_as_double_array(expression, "expression", 3L)
     sample_assignment <- .tox_as_integer_vector(sample_assignment, "sample_assignment")
     n_points <- .tox_as_integer_scalar(n_points, "n_points")
@@ -180,9 +198,13 @@ run_js_comp_test_on_sample_assignment <- function(expression, sample_assignment,
     neighborhood_size_mode <- .tox_as_mode(neighborhood_size_mode, "neighborhood_size_mode", c("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both"))
     delta_abs_tolerance <- .tox_as_double_scalar(delta_abs_tolerance, "delta_abs_tolerance")
     bootstrap_mode <- .tox_as_mode(bootstrap_mode, "bootstrap_mode", c("bootstrap_per_study", "bootstrap_pooled"))
-    .result <- .Call("run_js_comp_test_on_sample_assignment_call", expression, sample_assignment, n_points, n_neighbors, rerun_parameter_search, n_bootstraps, join_method, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, bin_count_mode, neighborhood_size_mode, delta_abs_tolerance, bootstrap_mode)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_samples", "sample_assignment", "n_points", "n_neighbors", "global_js_divergence", "used_n_points", "used_n_neighbors", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "bootstrap_mode", "ierr")
-    .sources <- c("expression", "expression", "expression", NA_character_, "sample_assignment", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    grid_sample_size_mode <- .tox_as_mode(grid_sample_size_mode, "grid_sample_size_mode", c("grid_sample_size_per_study", "grid_sample_size_pooled"))
+    grid_points_factor <- .tox_as_double_scalar(grid_points_factor, "grid_points_factor")
+    grid_min_points <- .tox_as_integer_scalar(grid_min_points, "grid_min_points")
+    grid_floor_mode <- .tox_as_mode(grid_floor_mode, "grid_floor_mode", c("grid_floor_stop", "grid_floor_clamp"))
+    .result <- .Call("run_js_comp_test_on_sample_assignment_call", expression, sample_assignment, n_points, n_neighbors, rerun_parameter_search, n_bootstraps, join_method, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, bin_count_mode, neighborhood_size_mode, delta_abs_tolerance, bootstrap_mode, grid_sample_size_mode, grid_points_factor, grid_min_points, grid_floor_mode)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_samples", "sample_assignment", "n_points", "n_neighbors", "global_js_divergence", "used_n_points", "used_n_neighbors", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "bootstrap_mode", "grid_sample_size_mode", "grid_points_factor", "grid_min_points", "grid_floor_mode", "ierr")
+    .sources <- c("expression", "expression", "expression", NA_character_, "sample_assignment", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -337,6 +359,21 @@ run_js_comp_test_on_sample_assignment <- function(expression, sample_assignment,
 #'   between the studies" instead, kept for comparison
 #'
 #'   The default value is `"bootstrap_per_study"`.
+#' @param tau_reference_mode a string, one of "tau_reference_previous_round", "tau_reference_k_start". Construction and rerun search, an experiment switch of the adaptive growth: which
+#'   dispersion a growth round's relative change is measured against, as in
+#'   `construct_adaptive_neighborhoods`
+#'
+#'   The default value is `"tau_reference_previous_round"`.
+#' @param overlap_extension_mode a string, one of "overlap_extension_none", "overlap_extension_backward". Construction and rerun search, an experiment switch of the adaptive growth: what
+#'   happens to a neighborhood once its growth has stopped, as in
+#'   `construct_adaptive_neighborhoods`; the backward extension uses `min_neighbor_overlap`
+#'
+#'   The default value is `"overlap_extension_none"`.
+#' @param seed_step_mode a string, one of "seed_step_mad", "seed_step_min_k_step". Construction and rerun search, an experiment switch of the adaptive growth: how far
+#'   past a neighborhood the next reference point's seed must lie, as in
+#'   `construct_adaptive_neighborhoods`
+#'
+#'   The default value is `"seed_step_mad"`.
 #' @return a named list with elements:
 #'   \item{global_js_divergence}{a numeric vector. Weighted global JSD of each study against the consensus, for this assignment; NaN on error}
 #'   \item{used_k_start}{a integer scalar. `k_start` the construction used (`k_start`, or the search's choice)}
@@ -344,7 +381,7 @@ run_js_comp_test_on_sample_assignment <- function(expression, sample_assignment,
 #'   \item{used_k_max}{a integer scalar. `k_max` the construction used (`k_max`, or the search's choice)}
 #'   \item{n_points}{a integer scalar. Number of neighborhoods the construction built (0 when it built none)}
 #' @export
-run_js_comp_test_adaptive_on_sample_assignment <- function(expression, sample_assignment, k_start, k_step, k_max, rerun_parameter_search = FALSE, n_bootstraps = 1000L, join_method = "join_min", min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L, bin_count_mode = "bin_count_occupancy", delta_abs_tolerance = 0.0, bootstrap_mode = "bootstrap_per_study") {
+run_js_comp_test_adaptive_on_sample_assignment <- function(expression, sample_assignment, k_start, k_step, k_max, rerun_parameter_search = FALSE, n_bootstraps = 1000L, join_method = "join_min", min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L, bin_count_mode = "bin_count_occupancy", delta_abs_tolerance = 0.0, bootstrap_mode = "bootstrap_per_study", tau_reference_mode = "tau_reference_previous_round", overlap_extension_mode = "overlap_extension_none", seed_step_mode = "seed_step_mad") {
     expression <- .tox_as_double_array(expression, "expression", 3L)
     sample_assignment <- .tox_as_integer_vector(sample_assignment, "sample_assignment")
     k_start <- .tox_as_integer_scalar(k_start, "k_start")
@@ -375,9 +412,12 @@ run_js_comp_test_adaptive_on_sample_assignment <- function(expression, sample_as
     bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
     delta_abs_tolerance <- .tox_as_double_scalar(delta_abs_tolerance, "delta_abs_tolerance")
     bootstrap_mode <- .tox_as_mode(bootstrap_mode, "bootstrap_mode", c("bootstrap_per_study", "bootstrap_pooled"))
-    .result <- .Call("run_js_comp_test_adaptive_on_sample_assignment_call", expression, sample_assignment, k_start, k_step, k_max, rerun_parameter_search, n_bootstraps, join_method, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, tau, mad_distance_factor, max_pooled_residuals, min_study_neighbors, bin_count_mode, delta_abs_tolerance, bootstrap_mode)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_samples", "sample_assignment", "k_start", "k_step", "k_max", "global_js_divergence", "used_k_start", "used_k_step", "used_k_max", "n_points", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "bootstrap_mode", "ierr")
-    .sources <- c("expression", "expression", "expression", NA_character_, "sample_assignment", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    tau_reference_mode <- .tox_as_mode(tau_reference_mode, "tau_reference_mode", c("tau_reference_previous_round", "tau_reference_k_start"))
+    overlap_extension_mode <- .tox_as_mode(overlap_extension_mode, "overlap_extension_mode", c("overlap_extension_none", "overlap_extension_backward"))
+    seed_step_mode <- .tox_as_mode(seed_step_mode, "seed_step_mode", c("seed_step_mad", "seed_step_min_k_step"))
+    .result <- .Call("run_js_comp_test_adaptive_on_sample_assignment_call", expression, sample_assignment, k_start, k_step, k_max, rerun_parameter_search, n_bootstraps, join_method, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, tau, mad_distance_factor, max_pooled_residuals, min_study_neighbors, bin_count_mode, delta_abs_tolerance, bootstrap_mode, tau_reference_mode, overlap_extension_mode, seed_step_mode)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_samples", "sample_assignment", "k_start", "k_step", "k_max", "global_js_divergence", "used_k_start", "used_k_step", "used_k_max", "n_points", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "bootstrap_mode", "tau_reference_mode", "overlap_extension_mode", "seed_step_mode", "ierr")
+    .sources <- c("expression", "expression", "expression", NA_character_, "sample_assignment", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -528,6 +568,24 @@ run_js_comp_test_adaptive_on_sample_assignment <- function(expression, sample_as
 #'   between the studies" instead, kept for comparison
 #'
 #'   The default value is `"bootstrap_per_study"`.
+#' @param grid_sample_size_mode a string, one of "grid_sample_size_per_study", "grid_sample_size_pooled". Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: the sample size `N` in its first
+#'   reference-point count `ceiling(grid_points_factor * sqrt(N))`; also sizes the work
+#'   arrays through `calc_js_comp_test_permutation_bounds`
+#'
+#'   The default value is `"grid_sample_size_per_study"`.
+#' @param grid_points_factor a numeric scalar. Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: the factor in its first reference-point count;
+#'   the default 4 is the factor before
+#'   The minimum valid value is `above(0.0)`.
+#'   The default value is `4.0`.
+#' @param grid_min_points a integer scalar. Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: its floor; the default here is 200, the floor
+#'   before was 300
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `MAX_POINTS`.
+#'   The default value is `200`.
+#' @param grid_floor_mode a string, one of "grid_floor_stop", "grid_floor_clamp". Rerun search (used only with `rerun_parameter_search`), an experiment switch of the k-NN candidate grid: what it does when the next decayed `n_points`
+#'   would fall below the floor; the default here is the clamp, the grid before stopped
+#'
+#'   The default value is `"grid_floor_clamp"`.
 #' @return a named list with elements:
 #'   \item{global_js_divergence_observed}{a numeric vector. Weighted global JSD of each study on the observed data (the identity assignment)}
 #'   \item{p_values}{a numeric vector. Empirical p-value per study, `(count + 1)/(n_valid + 1)` over the valid permutations
@@ -535,7 +593,7 @@ run_js_comp_test_adaptive_on_sample_assignment <- function(expression, sample_as
 #'   \item{jsd_null}{a numeric matrix. Row `i`: permutation `i`'s global JSD per study; NaN for a failed permutation}
 #'   \item{n_failed_permutations}{a integer scalar. Number of permutations whose JS-Comp-Test failed with invalid input}
 #' @export
-run_js_comp_test_label_permutation_test <- function(expression, n_points, n_neighbors, n_permutations, rerun_parameter_search = FALSE, n_bootstraps = 1000L, join_method = "join_min", min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, bin_count_mode = "bin_count_occupancy", neighborhood_size_mode = "neighborhood_size_large", delta_abs_tolerance = 0.0, bootstrap_mode = "bootstrap_per_study") {
+run_js_comp_test_label_permutation_test <- function(expression, n_points, n_neighbors, n_permutations, rerun_parameter_search = FALSE, n_bootstraps = 1000L, join_method = "join_min", min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, bin_count_mode = "bin_count_occupancy", neighborhood_size_mode = "neighborhood_size_large", delta_abs_tolerance = 0.0, bootstrap_mode = "bootstrap_per_study", grid_sample_size_mode = "grid_sample_size_per_study", grid_points_factor = 4.0, grid_min_points = 200L, grid_floor_mode = "grid_floor_clamp") {
     expression <- .tox_as_double_array(expression, "expression", 3L)
     n_points <- .tox_as_integer_scalar(n_points, "n_points")
     n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
@@ -562,9 +620,13 @@ run_js_comp_test_label_permutation_test <- function(expression, n_points, n_neig
     neighborhood_size_mode <- .tox_as_mode(neighborhood_size_mode, "neighborhood_size_mode", c("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both"))
     delta_abs_tolerance <- .tox_as_double_scalar(delta_abs_tolerance, "delta_abs_tolerance")
     bootstrap_mode <- .tox_as_mode(bootstrap_mode, "bootstrap_mode", c("bootstrap_per_study", "bootstrap_pooled"))
-    .result <- .Call("run_js_comp_test_label_permutation_test_call", expression, n_points, n_neighbors, n_permutations, rerun_parameter_search, n_bootstraps, join_method, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, bin_count_mode, neighborhood_size_mode, delta_abs_tolerance, bootstrap_mode)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_points", "n_neighbors", "n_permutations", "global_js_divergence_observed", "p_values", "jsd_null", "n_failed_permutations", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "bootstrap_mode", "ierr")
-    .sources <- c("expression", "expression", "expression", NA_character_, NA_character_, NA_character_, "jsd_null", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    grid_sample_size_mode <- .tox_as_mode(grid_sample_size_mode, "grid_sample_size_mode", c("grid_sample_size_per_study", "grid_sample_size_pooled"))
+    grid_points_factor <- .tox_as_double_scalar(grid_points_factor, "grid_points_factor")
+    grid_min_points <- .tox_as_integer_scalar(grid_min_points, "grid_min_points")
+    grid_floor_mode <- .tox_as_mode(grid_floor_mode, "grid_floor_mode", c("grid_floor_stop", "grid_floor_clamp"))
+    .result <- .Call("run_js_comp_test_label_permutation_test_call", expression, n_points, n_neighbors, n_permutations, rerun_parameter_search, n_bootstraps, join_method, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, bin_count_mode, neighborhood_size_mode, delta_abs_tolerance, bootstrap_mode, grid_sample_size_mode, grid_points_factor, grid_min_points, grid_floor_mode)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_points", "n_neighbors", "n_permutations", "global_js_divergence_observed", "p_values", "jsd_null", "n_failed_permutations", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "bootstrap_mode", "grid_sample_size_mode", "grid_points_factor", "grid_min_points", "grid_floor_mode", "ierr")
+    .sources <- c("expression", "expression", "expression", NA_character_, NA_character_, NA_character_, "jsd_null", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -714,6 +776,21 @@ run_js_comp_test_label_permutation_test <- function(expression, n_points, n_neig
 #'   between the studies" instead, kept for comparison
 #'
 #'   The default value is `"bootstrap_per_study"`.
+#' @param tau_reference_mode a string, one of "tau_reference_previous_round", "tau_reference_k_start". Construction and rerun search, an experiment switch of the adaptive growth: which
+#'   dispersion a growth round's relative change is measured against, as in
+#'   `construct_adaptive_neighborhoods`
+#'
+#'   The default value is `"tau_reference_previous_round"`.
+#' @param overlap_extension_mode a string, one of "overlap_extension_none", "overlap_extension_backward". Construction and rerun search, an experiment switch of the adaptive growth: what
+#'   happens to a neighborhood once its growth has stopped, as in
+#'   `construct_adaptive_neighborhoods`; the backward extension uses `min_neighbor_overlap`
+#'
+#'   The default value is `"overlap_extension_none"`.
+#' @param seed_step_mode a string, one of "seed_step_mad", "seed_step_min_k_step". Construction and rerun search, an experiment switch of the adaptive growth: how far
+#'   past a neighborhood the next reference point's seed must lie, as in
+#'   `construct_adaptive_neighborhoods`
+#'
+#'   The default value is `"seed_step_mad"`.
 #' @return a named list with elements:
 #'   \item{global_js_divergence_observed}{a numeric vector. Weighted global JSD of each study on the observed data (the identity assignment)}
 #'   \item{p_values}{a numeric vector. Empirical p-value per study, `(count + 1)/(n_valid + 1)` over the valid permutations
@@ -721,7 +798,7 @@ run_js_comp_test_label_permutation_test <- function(expression, n_points, n_neig
 #'   \item{jsd_null}{a numeric matrix. Row `i`: permutation `i`'s global JSD per study; NaN for a failed permutation}
 #'   \item{n_failed_permutations}{a integer scalar. Number of permutations whose JS-Comp-Test failed with invalid input}
 #' @export
-run_js_comp_test_adaptive_label_permutation_test <- function(expression, k_start, k_step, k_max, n_permutations, rerun_parameter_search = FALSE, n_bootstraps = 1000L, join_method = "join_min", min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L, bin_count_mode = "bin_count_occupancy", delta_abs_tolerance = 0.0, bootstrap_mode = "bootstrap_per_study") {
+run_js_comp_test_adaptive_label_permutation_test <- function(expression, k_start, k_step, k_max, n_permutations, rerun_parameter_search = FALSE, n_bootstraps = 1000L, join_method = "join_min", min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L, bin_count_mode = "bin_count_occupancy", delta_abs_tolerance = 0.0, bootstrap_mode = "bootstrap_per_study", tau_reference_mode = "tau_reference_previous_round", overlap_extension_mode = "overlap_extension_none", seed_step_mode = "seed_step_mad") {
     expression <- .tox_as_double_array(expression, "expression", 3L)
     k_start <- .tox_as_integer_scalar(k_start, "k_start")
     k_step <- .tox_as_integer_scalar(k_step, "k_step")
@@ -752,9 +829,12 @@ run_js_comp_test_adaptive_label_permutation_test <- function(expression, k_start
     bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
     delta_abs_tolerance <- .tox_as_double_scalar(delta_abs_tolerance, "delta_abs_tolerance")
     bootstrap_mode <- .tox_as_mode(bootstrap_mode, "bootstrap_mode", c("bootstrap_per_study", "bootstrap_pooled"))
-    .result <- .Call("run_js_comp_test_adaptive_label_permutation_test_call", expression, k_start, k_step, k_max, n_permutations, rerun_parameter_search, n_bootstraps, join_method, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, tau, mad_distance_factor, max_pooled_residuals, min_study_neighbors, bin_count_mode, delta_abs_tolerance, bootstrap_mode)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "k_start", "k_step", "k_max", "n_permutations", "global_js_divergence_observed", "p_values", "jsd_null", "n_failed_permutations", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "bootstrap_mode", "ierr")
-    .sources <- c("expression", "expression", "expression", NA_character_, NA_character_, NA_character_, NA_character_, "jsd_null", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    tau_reference_mode <- .tox_as_mode(tau_reference_mode, "tau_reference_mode", c("tau_reference_previous_round", "tau_reference_k_start"))
+    overlap_extension_mode <- .tox_as_mode(overlap_extension_mode, "overlap_extension_mode", c("overlap_extension_none", "overlap_extension_backward"))
+    seed_step_mode <- .tox_as_mode(seed_step_mode, "seed_step_mode", c("seed_step_mad", "seed_step_min_k_step"))
+    .result <- .Call("run_js_comp_test_adaptive_label_permutation_test_call", expression, k_start, k_step, k_max, n_permutations, rerun_parameter_search, n_bootstraps, join_method, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, tau, mad_distance_factor, max_pooled_residuals, min_study_neighbors, bin_count_mode, delta_abs_tolerance, bootstrap_mode, tau_reference_mode, overlap_extension_mode, seed_step_mode)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "k_start", "k_step", "k_max", "n_permutations", "global_js_divergence_observed", "p_values", "jsd_null", "n_failed_permutations", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "bootstrap_mode", "tau_reference_mode", "overlap_extension_mode", "seed_step_mode", "ierr")
+    .sources <- c("expression", "expression", "expression", NA_character_, NA_character_, NA_character_, NA_character_, "jsd_null", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(

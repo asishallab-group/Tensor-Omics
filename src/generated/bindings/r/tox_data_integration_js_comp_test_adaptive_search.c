@@ -7,7 +7,7 @@
 
 // the Fortran C-ABI symbols this module calls
 void generate_adaptive_js_comp_test_candidates_c(const int*, const int*, int*, int*, int*);
-void run_js_comp_test_adaptive_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, int*, int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, int*, int*, int*, int*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const double*, const double*, const int*, const int*, const char*, const double*, const char*, int*);
+void run_js_comp_test_adaptive_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, int*, int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, int*, int*, int*, int*, int*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const double*, const double*, const int*, const int*, const char*, const double*, const char*, const char*, const char*, const char*, int*);
 
 SEXP generate_adaptive_js_comp_test_candidates_call(SEXP max_n_genes_all_studies, SEXP n_studies) {
     int nprot = 0;
@@ -42,7 +42,7 @@ SEXP generate_adaptive_js_comp_test_candidates_call(SEXP max_n_genes_all_studies
     return _out;
 }
 
-SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP gene_means, SEXP residuals, SEXP n_bootstraps, SEXP join_method, SEXP max_n_points_candidate, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP tau, SEXP mad_distance_factor, SEXP max_pooled_residuals, SEXP min_study_neighbors, SEXP bin_count_mode, SEXP delta_abs_tolerance, SEXP bootstrap_mode) {
+SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP gene_means, SEXP residuals, SEXP n_bootstraps, SEXP join_method, SEXP max_n_points_candidate, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP tau, SEXP mad_distance_factor, SEXP max_pooled_residuals, SEXP min_study_neighbors, SEXP bin_count_mode, SEXP delta_abs_tolerance, SEXP bootstrap_mode, SEXP tau_reference_mode, SEXP overlap_extension_mode, SEXP seed_step_mode) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(gene_means, R_DimSymbol))[1];
@@ -77,6 +77,9 @@ SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP gene_means, SEXP resid
     char* plateau_mode_c = tox_char_in(plateau_mode, 19);
     char* bin_count_mode_c = tox_char_in(bin_count_mode, 29);
     char* bootstrap_mode_c = tox_char_in(bootstrap_mode, 19);
+    char* tau_reference_mode_c = tox_char_in(tau_reference_mode, 28);
+    char* overlap_extension_mode_c = tox_char_in(overlap_extension_mode, 26);
+    char* seed_step_mode_c = tox_char_in(seed_step_mode, 20);
 
     // outputs and work space
     int k_start = 0;
@@ -133,6 +136,7 @@ SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP gene_means, SEXP resid
     SEXP candidate_k_start = PROTECT(Rf_allocVector(INTSXP, 16)); nprot++;
     SEXP candidate_n_points = PROTECT(Rf_allocVector(INTSXP, 16)); nprot++;
     SEXP candidate_status = PROTECT(Rf_allocVector(INTSXP, 16)); nprot++;
+    SEXP candidate_n_extension_entries = PROTECT(Rf_allocVector(INTSXP, 16)); nprot++;
     int ierr = 0;
 
     run_js_comp_test_adaptive_parameter_search_c(
@@ -181,6 +185,7 @@ SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP gene_means, SEXP resid
         INTEGER(candidate_k_start),
         INTEGER(candidate_n_points),
         INTEGER(candidate_status),
+        INTEGER(candidate_n_extension_entries),
         &min_residuals_per_bin_v,
         &min_neighbor_overlap_v,
         &succeeding_ci_overlap_v,
@@ -203,6 +208,9 @@ SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP gene_means, SEXP resid
         bin_count_mode_c,
         &delta_abs_tolerance_v,
         bootstrap_mode_c,
+        tau_reference_mode_c,
+        overlap_extension_mode_c,
+        seed_step_mode_c,
         &ierr
     );
 
@@ -210,7 +218,7 @@ SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP gene_means, SEXP resid
     SEXP trace_occupancy_failed = PROTECT(tox_bool_out(trace_occupancy_failed_c, max_n_points_candidate_v * 16)); nprot++;
     { SEXP trace_occupancy_failed_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_occupancy_failed_dim)[0] = max_n_points_candidate_v; INTEGER(trace_occupancy_failed_dim)[1] = 16; Rf_setAttrib(trace_occupancy_failed, R_DimSymbol, trace_occupancy_failed_dim); UNPROTECT(1); }
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 38)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 39)); nprot++;
     SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(k_start));
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(k_step));
     SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(k_max));
@@ -248,8 +256,9 @@ SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP gene_means, SEXP resid
     SET_VECTOR_ELT(_out, 34, candidate_k_start);
     SET_VECTOR_ELT(_out, 35, candidate_n_points);
     SET_VECTOR_ELT(_out, 36, candidate_status);
-    SET_VECTOR_ELT(_out, 37, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 38)); nprot++;
+    SET_VECTOR_ELT(_out, 37, candidate_n_extension_entries);
+    SET_VECTOR_ELT(_out, 38, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 39)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("k_start"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("k_step"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("k_max"));
@@ -287,7 +296,8 @@ SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP gene_means, SEXP resid
     SET_STRING_ELT(_nms, 34, Rf_mkChar("candidate_k_start"));
     SET_STRING_ELT(_nms, 35, Rf_mkChar("candidate_n_points"));
     SET_STRING_ELT(_nms, 36, Rf_mkChar("candidate_status"));
-    SET_STRING_ELT(_nms, 37, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 37, Rf_mkChar("candidate_n_extension_entries"));
+    SET_STRING_ELT(_nms, 38, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;
