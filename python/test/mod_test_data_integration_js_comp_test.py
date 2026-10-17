@@ -42,6 +42,12 @@ from tensor_omics import (
     run_js_comp_test_parameter_search,
     run_js_comp_test_adaptive,
     run_js_comp_test_adaptive_parameter_search,
+    run_js_comp_test_on_sample_assignment,
+    run_js_comp_test_adaptive_on_sample_assignment,
+    run_js_comp_test_label_permutation_test,
+    run_js_comp_test_adaptive_label_permutation_test,
+    calc_js_comp_test_permutation_bounds,
+    calc_adaptive_js_comp_test_permutation_bounds,
 )
 from tensor_omics.error_handling import ERR_INVALID_INPUT, ERR_NAN_INF
 
@@ -1389,6 +1395,102 @@ def test_run_js_comp_test_adaptive_parameter_search():
                                                                     max_n_points_candidate=capacity,
                                                                     bin_count_mode="nonsense"),
                  "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
+
+
+
+def _label_test_expression():
+    # Three studies of 5, 4 and 4 samples (the last slot of studies 2 and 3 is NaN padding),
+    # 300 genes spread over the expression range, as the Fortran suite's fixtures.
+    rng = np.random.default_rng(9001)
+    n_genes, n_reps = 300, (5, 4, 4)
+    expression = np.full((5, n_genes, 3), np.nan, dtype=np.float64, order='F')
+    centres = 2.0 + 6.0 * np.arange(n_genes) / (n_genes - 1)
+    for study, reps in enumerate(n_reps):
+        expression[:reps, :, study] = centres[None, :] + rng.normal(0.0, 0.5, size=(reps, n_genes))
+    return expression
+
+
+def test_calc_js_comp_test_permutation_bounds():
+    # Call + types only; the values are checked by hand in the Fortran suite.
+    result = calc_js_comp_test_permutation_bounds(300, 10, 30)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    for key in ("max_n_points_candidate", "max_n_neighbors_candidate", "n_bootstrapping_top_k_jsds"):
+        assert isinstance(result[key], (int, np.integer)), f"{key}: wrong type {type(result[key])}"
+        assert result[key] >= 1, f"{key}: expected at least 1"
+    assert_error(lambda: calc_js_comp_test_permutation_bounds(300, 10, 301),
+                 "expected ERR_INVALID_INPUT for n_neighbors above the gene count", ERR_INVALID_INPUT)
+
+
+def test_calc_adaptive_js_comp_test_permutation_bounds():
+    result = calc_adaptive_js_comp_test_permutation_bounds(300, 3, 30)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    for key in ("max_n_points_candidate", "n_bootstrapping_top_k_jsds"):
+        assert isinstance(result[key], (int, np.integer)), f"{key}: wrong type {type(result[key])}"
+        assert result[key] >= 1, f"{key}: expected at least 1"
+    assert_error(lambda: calc_adaptive_js_comp_test_permutation_bounds(300, 3, 0),
+                 "expected ERR_INVALID_INPUT for k_start = 0", ERR_INVALID_INPUT)
+
+
+def test_run_js_comp_test_on_sample_assignment():
+    # Call-ability and return types/shapes only; the identity/swap equalities are the Fortran
+    # suite's job (test_knn_identity_matches_plain_pipeline and the swap tests).
+    expression = _label_test_expression()
+    assignment = np.array([2, 1] + list(range(3, 14)), dtype=np.int32)
+    result = run_js_comp_test_on_sample_assignment(expression, assignment, 10, 30)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    assert result["global_js_divergence"].shape == (3,)
+    assert np.all(np.isfinite(result["global_js_divergence"]))
+    assert isinstance(result["used_n_points"], (int, np.integer))
+    assert isinstance(result["used_n_neighbors"], (int, np.integer))
+
+    repeated = assignment.copy()
+    repeated[1] = repeated[0]
+    assert_error(lambda: run_js_comp_test_on_sample_assignment(expression, repeated, 10, 30),
+                 "expected ERR_INVALID_INPUT for an assignment that is not a permutation", ERR_INVALID_INPUT)
+
+
+def test_run_js_comp_test_adaptive_on_sample_assignment():
+    expression = _label_test_expression()
+    assignment = np.arange(1, 14, dtype=np.int32)
+    result = run_js_comp_test_adaptive_on_sample_assignment(expression, assignment, 30, 10, 90)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    assert result["global_js_divergence"].shape == (3,)
+    assert np.all(np.isfinite(result["global_js_divergence"]))
+    for key in ("used_k_start", "used_k_step", "used_k_max", "n_points"):
+        assert isinstance(result[key], (int, np.integer)), f"{key}: wrong type {type(result[key])}"
+
+    # k_start beyond the data: the construction builds no neighborhood.
+    assert_error(lambda: run_js_comp_test_adaptive_on_sample_assignment(expression, assignment, 2000, 10, 2000),
+                 "expected ERR_INVALID_INPUT when no neighborhood is built", ERR_INVALID_INPUT)
+
+
+def test_run_js_comp_test_label_permutation_test():
+    expression = _label_test_expression()
+    n_permutations = 4
+    result = run_js_comp_test_label_permutation_test(expression, 10, 30, n_permutations, random_seed=3)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    assert result["global_js_divergence_observed"].shape == (3,)
+    assert result["p_values"].shape == (3,)
+    assert result["jsd_null"].shape == (n_permutations, 3)
+    assert isinstance(result["n_failed_permutations"], (int, np.integer))
+    assert np.all((result["p_values"] > 0.0) & (result["p_values"] <= 1.0))
+
+    assert_error(lambda: run_js_comp_test_label_permutation_test(expression, 10, 30, 0),
+                 "expected ERR_INVALID_INPUT for n_permutations = 0", ERR_INVALID_INPUT)
+
+
+def test_run_js_comp_test_adaptive_label_permutation_test():
+    expression = _label_test_expression()
+    n_permutations = 3
+    result = run_js_comp_test_adaptive_label_permutation_test(expression, 30, 10, 90, n_permutations, random_seed=3)
+    assert isinstance(result, dict), f"expected a dict, got {type(result)}"
+    assert result["global_js_divergence_observed"].shape == (3,)
+    assert result["p_values"].shape == (3,)
+    assert result["jsd_null"].shape == (n_permutations, 3)
+    assert isinstance(result["n_failed_permutations"], (int, np.integer))
+
+    assert_error(lambda: run_js_comp_test_adaptive_label_permutation_test(expression, 30, 10, 90, 0),
+                 "expected ERR_INVALID_INPUT for n_permutations = 0", ERR_INVALID_INPUT)
 
 
 def main():

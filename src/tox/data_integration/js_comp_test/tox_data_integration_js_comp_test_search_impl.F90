@@ -39,14 +39,15 @@ module tox_data_integration_js_comp_test_search_impl
              MODE_PLATEAU_BOTH, MAX_CANDIDATE_PAIRS, NOT_COMPUTED
 
     ! `join_method`'s mode table; the `METHOD_` prefix follows from the argument name `join_method`.
-    ! Plain parameters: no DM_DEFAULT and no other module needs the numbers themselves.
-    integer(int32), parameter :: METHOD_JOIN_MIN = 0_int32
+    ! The numbers are the M_METHOD_JOIN_* of src/tox/data_integration/macros.h: the study-label
+    ! Permutation-Test needs M_METHOD_JOIN_MIN itself as a DM_DEFAULT.
+    integer(int32), parameter :: METHOD_JOIN_MIN = M_METHOD_JOIN_MIN
         !! Join method: succeeds only once every study's confidence-interval overlap exceeds the
         !! threshold, in [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]]
-    integer(int32), parameter :: METHOD_JOIN_MAX = 1_int32
+    integer(int32), parameter :: METHOD_JOIN_MAX = M_METHOD_JOIN_MAX
         !! Join method: succeeds once any one study's confidence-interval overlap exceeds the
         !! threshold, in [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]]
-    integer(int32), parameter :: METHOD_JOIN_MEDIAN = 2_int32
+    integer(int32), parameter :: METHOD_JOIN_MEDIAN = M_METHOD_JOIN_MEDIAN
         !! Join method: succeeds once a majority of studies' confidence-interval overlaps exceed
         !! the threshold, in [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]]
 

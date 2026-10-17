@@ -1323,4 +1323,96 @@ test_run_js_comp_test_adaptive_parameter_search <- function() {
                "expected an unknown bin_count_mode string to be rejected before Fortran")
 }
 
+# Three studies of 5, 4 and 4 samples (the last slot of studies 2 and 3 is NaN padding), 300
+# genes spread over the expression range, as the Fortran suite's fixtures.
+label_test_expression <- function() {
+  set.seed(9001)
+  n_genes <- 300L
+  n_reps <- c(5L, 4L, 4L)
+  expression <- array(NaN, dim = c(5L, n_genes, 3L))
+  centres <- 2.0 + 6.0 * (seq_len(n_genes) - 1) / (n_genes - 1)
+  for (study in 1:3) {
+    for (rep in seq_len(n_reps[study])) {
+      expression[rep, , study] <- centres + rnorm(n_genes, 0.0, 0.5)
+    }
+  }
+  expression
+}
+
+test_calc_js_comp_test_permutation_bounds <- function() {
+  # Call + types only; the values are checked by hand in the Fortran suite.
+  bounds <- calc_js_comp_test_permutation_bounds(300L, 10L, 30L)
+  for (key in c("max_n_points_candidate", "max_n_neighbors_candidate", "n_bootstrapping_top_k_jsds")) {
+    assert_true(is.numeric(bounds[[key]]) && length(bounds[[key]]) == 1 && bounds[[key]] >= 1,
+                paste(key, "must be a single number of at least 1"))
+  }
+  assert_error(calc_js_comp_test_permutation_bounds(300L, 10L, 301L),
+               "expected ERR_INVALID_INPUT for n_neighbors above the gene count", ERR_INVALID_INPUT)
+}
+
+test_calc_adaptive_js_comp_test_permutation_bounds <- function() {
+  bounds <- calc_adaptive_js_comp_test_permutation_bounds(300L, 3L, 30L)
+  for (key in c("max_n_points_candidate", "n_bootstrapping_top_k_jsds")) {
+    assert_true(is.numeric(bounds[[key]]) && length(bounds[[key]]) == 1 && bounds[[key]] >= 1,
+                paste(key, "must be a single number of at least 1"))
+  }
+  assert_error(calc_adaptive_js_comp_test_permutation_bounds(300L, 3L, 0L),
+               "expected ERR_INVALID_INPUT for k_start = 0", ERR_INVALID_INPUT)
+}
+
+test_run_js_comp_test_on_sample_assignment <- function() {
+  # Call-ability and return types/shapes only; the identity/swap equalities are the Fortran
+  # suite's job.
+  expression <- label_test_expression()
+  assignment <- c(2L, 1L, 3:13)
+  result <- run_js_comp_test_on_sample_assignment(expression, assignment, 10L, 30L)
+  assert_true(is.list(result), "expected a list")
+  assert_equal_int(length(result$global_js_divergence), 3L, "global_js_divergence length")
+  assert_true(all(is.finite(result$global_js_divergence)), "global_js_divergence finite")
+  assert_true(length(result$used_n_points) == 1 && length(result$used_n_neighbors) == 1, "used parameters scalars")
+
+  repeated <- assignment
+  repeated[2] <- repeated[1]
+  assert_error(run_js_comp_test_on_sample_assignment(expression, repeated, 10L, 30L),
+               "expected ERR_INVALID_INPUT for an assignment that is not a permutation", ERR_INVALID_INPUT)
+}
+
+test_run_js_comp_test_adaptive_on_sample_assignment <- function() {
+  expression <- label_test_expression()
+  result <- run_js_comp_test_adaptive_on_sample_assignment(expression, 1:13, 30L, 10L, 90L)
+  assert_true(is.list(result), "expected a list")
+  assert_equal_int(length(result$global_js_divergence), 3L, "global_js_divergence length")
+  assert_true(all(is.finite(result$global_js_divergence)), "global_js_divergence finite")
+  for (key in c("used_k_start", "used_k_step", "used_k_max", "n_points")) {
+    assert_true(length(result[[key]]) == 1, paste(key, "must be a scalar"))
+  }
+  assert_error(run_js_comp_test_adaptive_on_sample_assignment(expression, 1:13, 2000L, 10L, 2000L),
+               "expected ERR_INVALID_INPUT when no neighborhood is built", ERR_INVALID_INPUT)
+}
+
+test_run_js_comp_test_label_permutation_test <- function() {
+  expression <- label_test_expression()
+  result <- run_js_comp_test_label_permutation_test(expression, 10L, 30L, 4L, random_seed = 3L)
+  assert_true(is.list(result), "expected a list")
+  assert_equal_int(length(result$global_js_divergence_observed), 3L, "observed length")
+  assert_equal_int(length(result$p_values), 3L, "p_values length")
+  assert_equal_int(dim(result$jsd_null), c(4L, 3L), "jsd_null shape")
+  assert_true(length(result$n_failed_permutations) == 1, "n_failed_permutations scalar")
+  assert_true(all(result$p_values > 0 & result$p_values <= 1), "p-values in (0, 1]")
+  assert_error(run_js_comp_test_label_permutation_test(expression, 10L, 30L, 0L),
+               "expected ERR_INVALID_INPUT for n_permutations = 0", ERR_INVALID_INPUT)
+}
+
+test_run_js_comp_test_adaptive_label_permutation_test <- function() {
+  expression <- label_test_expression()
+  result <- run_js_comp_test_adaptive_label_permutation_test(expression, 30L, 10L, 90L, 3L, random_seed = 3L)
+  assert_true(is.list(result), "expected a list")
+  assert_equal_int(length(result$global_js_divergence_observed), 3L, "observed length")
+  assert_equal_int(length(result$p_values), 3L, "p_values length")
+  assert_equal_int(dim(result$jsd_null), c(3L, 3L), "jsd_null shape")
+  assert_true(length(result$n_failed_permutations) == 1, "n_failed_permutations scalar")
+  assert_error(run_js_comp_test_adaptive_label_permutation_test(expression, 30L, 10L, 90L, 0L),
+               "expected ERR_INVALID_INPUT for n_permutations = 0", ERR_INVALID_INPUT)
+}
+
 run_all_tests()

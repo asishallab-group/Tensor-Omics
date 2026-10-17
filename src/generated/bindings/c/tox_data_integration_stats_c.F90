@@ -43,6 +43,11 @@ contains
     !| Both p-values are `(count + 1)/(n_permutations + 1)`, so never exactly 0. With
     !| `n_permutations = 0` no permutation runs and both are NaN ("not computed").
     !|
+    !| This test permutes the pooled residual counts within fixed histograms (residual level); the
+    !| study-label Permutation-Test, which shuffles the samples' study labels and reruns the whole
+    !| JS-Comp-Test, is
+    !| [[tox_data_integration_js_comp_test_permutation_impl(module):run_js_comp_test_label_permutation_test_impl(interface)]].
+    !|
     !| Errors (`ierr`): `ERR_INVALID_INPUT`, before any draw, when at some reference point the
     !| studies' counts do not add up to the pool's total (`mean_pmf_included_n_reps`) or that total
     !| is not the sum of the pool's bin counts; `ERR_ALLOC_FAIL` when the random number generator
@@ -150,6 +155,11 @@ contains
     !|
     !| Both p-values are `(count + 1)/(n_permutations + 1)`, so never exactly 0. With
     !| `n_permutations = 0` no permutation runs and both are NaN ("not computed").
+    !|
+    !| This test permutes the pooled residual counts within fixed histograms (residual level); the
+    !| study-label Permutation-Test, which shuffles the samples' study labels and reruns the whole
+    !| JS-Comp-Test, is
+    !| [[tox_data_integration_js_comp_test_permutation_impl(module):run_js_comp_test_label_permutation_test_impl(interface)]].
     !|
     !| Errors (`ierr`): `ERR_INVALID_INPUT`, before any draw, when at some reference point the
     !| studies' counts do not add up to the pool's total (`mean_pmf_included_n_reps`) or that total

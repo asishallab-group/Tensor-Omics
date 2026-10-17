@@ -38,6 +38,7 @@ program main
     use mod_test_tail_probability, only: get_all_tests_tail_probability
     use mod_test_random_gsl, only: get_all_tests_random_gsl
     use mod_test_data_integration_js_comp_test, only: get_all_tests_data_integration_js_comp_test
+    use mod_test_data_integration_js_comp_test_permutation, only: get_all_tests_data_integration_js_comp_test_permutation
     implicit none
 
     integer :: nargs
@@ -81,6 +82,7 @@ program main
     call add_suite("root_mean_sq_normalization", get_all_tests_root_mean_sq_normalization)
     call add_suite("random_gsl", get_all_tests_random_gsl)
     call add_suite("data_integration_js_comp_test", get_all_tests_data_integration_js_comp_test)
+    call add_suite("data_integration_js_comp_test_permutation", get_all_tests_data_integration_js_comp_test_permutation)
 
     nargs = command_argument_count()
 

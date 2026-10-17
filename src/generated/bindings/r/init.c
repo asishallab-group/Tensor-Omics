@@ -86,6 +86,12 @@ SEXP determine_bin_count_stone_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, S
 SEXP generate_js_comp_test_candidates_call(SEXP);
 SEXP run_js_comp_test_parameter_search_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_js_comp_test_candidate_bounds_call(SEXP);
+SEXP run_js_comp_test_on_sample_assignment_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_adaptive_on_sample_assignment_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_label_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_adaptive_label_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP calc_js_comp_test_permutation_bounds_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP calc_adaptive_js_comp_test_permutation_bounds_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP run_js_comp_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP run_js_comp_test_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP run_js_comp_test_adaptive_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -227,6 +233,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"generate_js_comp_test_candidates_call", (DL_FUNC) &generate_js_comp_test_candidates_call, 1},
     {"run_js_comp_test_parameter_search_call", (DL_FUNC) &run_js_comp_test_parameter_search_call, 22},
     {"calc_js_comp_test_candidate_bounds_call", (DL_FUNC) &calc_js_comp_test_candidate_bounds_call, 1},
+    {"run_js_comp_test_on_sample_assignment_call", (DL_FUNC) &run_js_comp_test_on_sample_assignment_call, 23},
+    {"run_js_comp_test_adaptive_on_sample_assignment_call", (DL_FUNC) &run_js_comp_test_adaptive_on_sample_assignment_call, 28},
+    {"run_js_comp_test_label_permutation_test_call", (DL_FUNC) &run_js_comp_test_label_permutation_test_call, 23},
+    {"run_js_comp_test_adaptive_label_permutation_test_call", (DL_FUNC) &run_js_comp_test_adaptive_label_permutation_test_call, 28},
+    {"calc_js_comp_test_permutation_bounds_call", (DL_FUNC) &calc_js_comp_test_permutation_bounds_call, 5},
+    {"calc_adaptive_js_comp_test_permutation_bounds_call", (DL_FUNC) &calc_adaptive_js_comp_test_permutation_bounds_call, 5},
     {"run_js_comp_test_call", (DL_FUNC) &run_js_comp_test_call, 13},
     {"run_js_comp_test_expert_call", (DL_FUNC) &run_js_comp_test_expert_call, 14},
     {"run_js_comp_test_adaptive_call", (DL_FUNC) &run_js_comp_test_adaptive_call, 12},

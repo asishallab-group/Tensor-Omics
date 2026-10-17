@@ -2,10 +2,11 @@
 ! tox_data_integration family needs. A dummy extent or a DM_DEFAULT cannot name a Fortran
 ! parameter -- the generated C and R bindings need the number itself -- so each such value is a
 ! macro, written once, here, and every module that needs the literal includes this file.
-! M_MAX_N_BINS, M_MAX_CANDIDATE_PAIRS and the M_MODE_BIN_COUNT_* and M_MODE_PLATEAU_* values also
-! back a parameter of the module that owns them; the *_DEFAULT values have no parameter and are
-! used directly. A value only one module uses stays in that module as a CM_ macro, except that a
-! mode's values are kept together: once one of them is needed here, the whole mode family is here.
+! M_MAX_N_BINS, M_MAX_CANDIDATE_PAIRS and the M_MODE_BIN_COUNT_*, M_MODE_PLATEAU_* and
+! M_METHOD_JOIN_* values also back a parameter of the module that owns them; the *_DEFAULT values
+! have no parameter and are used directly. A value only one module uses stays in that module as a
+! CM_ macro, except that a mode's values are kept together: once one of them is needed here, the
+! whole mode family is here.
 
 ! Fixed ceiling on any histogram bin count: MAX_N_BINS of tox_data_integration_js_comp_test_binning_impl,
 ! and the extent of the bin-sized work arrays of the bin-count, search and final-run modules.
@@ -46,6 +47,14 @@
 #define M_MODE_PLATEAU_CI_OVERLAP 0_int32
 #define M_MODE_PLATEAU_EFFECT_SIZE 1_int32
 #define M_MODE_PLATEAU_BOTH 2_int32
+
+! `join_method`'s values (the METHOD_JOIN_* of tox_data_integration_js_comp_test_search_impl): how the
+! studies' confidence-interval overlaps are joined. Both parameter searches take it mandatory; the
+! study-label Permutation-Test (tox_data_integration_js_comp_test_permutation_impl) forwards it with
+! M_METHOD_JOIN_MIN as its DM_DEFAULT and M_DEFAULT_VAL.
+#define M_METHOD_JOIN_MIN 0_int32
+#define M_METHOD_JOIN_MAX 1_int32
+#define M_METHOD_JOIN_MEDIAN 2_int32
 
 ! Defaults of the two admissibility/plateau thresholds `min_neighbor_overlap` (gate 1) and
 ! `succeeding_ci_overlap`, shared by DM_DEFAULT and M_DEFAULT_VAL in both parameter searches.
