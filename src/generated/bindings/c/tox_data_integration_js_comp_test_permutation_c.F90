@@ -133,10 +133,12 @@ contains
             two_sided_bootstrapping_significance_level,&
             random_seed,&
             bin_count_mode,&
+            neighborhood_size_mode,&
             ierr&
         ) bind(C, name="run_js_comp_test_on_sample_assignment_c")
         use tox_data_integration_js_comp_test_permutation, only: run_js_comp_test_on_sample_assignment
         use tox_data_integration_js_comp_test_binning_impl, only: MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_POOLED, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
+        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_BOTH, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
         use tox_data_integration_js_comp_test_search_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, MODE_PLATEAU_BOTH, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE
 
         integer(c_int), intent(in), target :: n_studies
@@ -278,11 +280,24 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `'bin_count_occupancy'`.
+        character(len=1, kind=c_char), dimension(23), intent(in), target :: neighborhood_size_mode
+            !! Rerun search: which neighborhood sizes the k-NN candidate grid pairs with each
+            !! `n_points` (used only with `rerun_parameter_search`). Small neighborhoods are left out
+            !! by default: a higher JSCompTest value from small neighborhoods only shows that they are
+            !! too small
+            !!
+            !! | Mode                                                       | Value                                                                                                    |
+            !! |------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+            !! | Large neighborhoods only, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
+            !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
+            !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
+            !! The default value is `'neighborhood_size_large'`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: join_method_mode_f
         integer(int32) :: plateau_mode_mode_f
         integer(int32) :: bin_count_mode_mode_f
+        integer(int32) :: neighborhood_size_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -316,6 +331,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(join_method, 11)
         M_CHECK_ARRAY_NON_NULL(plateau_mode, 19)
         M_CHECK_ARRAY_NON_NULL(bin_count_mode, 29)
+        M_CHECK_ARRAY_NON_NULL(neighborhood_size_mode, 23)
 
         block
             character(len=:), pointer :: join_method_f
@@ -367,6 +383,22 @@ contains
                     return
             end select
         end block
+        block
+            character(len=:), pointer :: neighborhood_size_mode_f
+            neighborhood_size_mode_f => c_char_as_view(neighborhood_size_mode)
+
+            select case (neighborhood_size_mode_f)
+                case ("neighborhood_size_large")
+                    neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_LARGE
+                case ("neighborhood_size_small")
+                    neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_SMALL
+                case ("neighborhood_size_both")
+                    neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_BOTH
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
 
         call run_js_comp_test_on_sample_assignment(&
             n_studies = n_studies,&
@@ -399,6 +431,7 @@ contains
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode_mode_f,&
+            neighborhood_size_mode = neighborhood_size_mode_mode_f,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_on_sample_assignment_c
@@ -565,10 +598,12 @@ contains
             two_sided_bootstrapping_significance_level,&
             random_seed,&
             bin_count_mode,&
+            neighborhood_size_mode,&
             ierr&
         ) bind(C, name="run_js_comp_test_on_sample_assignment_expert_c")
         use tox_data_integration_js_comp_test_permutation, only: run_js_comp_test_on_sample_assignment_expert
         use tox_data_integration_js_comp_test_binning_impl, only: MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_POOLED, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
+        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_BOTH, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
         use tox_data_integration_js_comp_test_search_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, MODE_PLATEAU_BOTH, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE
 
         integer(c_int), intent(in), target :: n_studies
@@ -886,11 +921,24 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `'bin_count_occupancy'`.
+        character(len=1, kind=c_char), dimension(23), intent(in), target :: neighborhood_size_mode
+            !! Rerun search: which neighborhood sizes the k-NN candidate grid pairs with each
+            !! `n_points` (used only with `rerun_parameter_search`). Small neighborhoods are left out
+            !! by default: a higher JSCompTest value from small neighborhoods only shows that they are
+            !! too small
+            !!
+            !! | Mode                                                       | Value                                                                                                    |
+            !! |------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+            !! | Large neighborhoods only, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
+            !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
+            !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
+            !! The default value is `'neighborhood_size_large'`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: join_method_mode_f
         integer(int32) :: plateau_mode_mode_f
         integer(int32) :: bin_count_mode_mode_f
+        integer(int32) :: neighborhood_size_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -1009,6 +1057,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(join_method, 11)
         M_CHECK_ARRAY_NON_NULL(plateau_mode, 19)
         M_CHECK_ARRAY_NON_NULL(bin_count_mode, 29)
+        M_CHECK_ARRAY_NON_NULL(neighborhood_size_mode, 23)
 
         block
             character(len=:), pointer :: join_method_f
@@ -1055,6 +1104,22 @@ contains
                     bin_count_mode_mode_f = MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
                 case ("bin_count_stone_pooled")
                     bin_count_mode_mode_f = MODE_BIN_COUNT_STONE_POOLED
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
+        block
+            character(len=:), pointer :: neighborhood_size_mode_f
+            neighborhood_size_mode_f => c_char_as_view(neighborhood_size_mode)
+
+            select case (neighborhood_size_mode_f)
+                case ("neighborhood_size_large")
+                    neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_LARGE
+                case ("neighborhood_size_small")
+                    neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_SMALL
+                case ("neighborhood_size_both")
+                    neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_BOTH
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
@@ -1177,6 +1242,7 @@ contains
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode_mode_f,&
+            neighborhood_size_mode = neighborhood_size_mode_mode_f,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_on_sample_assignment_expert_c
@@ -2477,10 +2543,12 @@ contains
             two_sided_bootstrapping_significance_level,&
             random_seed,&
             bin_count_mode,&
+            neighborhood_size_mode,&
             ierr&
         ) bind(C, name="run_js_comp_test_label_permutation_test_c")
         use tox_data_integration_js_comp_test_permutation, only: run_js_comp_test_label_permutation_test
         use tox_data_integration_js_comp_test_binning_impl, only: MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_POOLED, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
+        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_BOTH, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
         use tox_data_integration_js_comp_test_search_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, MODE_PLATEAU_BOTH, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE
 
         integer(c_int), intent(in), target :: n_studies
@@ -2621,11 +2689,24 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `'bin_count_occupancy'`.
+        character(len=1, kind=c_char), dimension(23), intent(in), target :: neighborhood_size_mode
+            !! Rerun search: which neighborhood sizes the k-NN candidate grid pairs with each
+            !! `n_points` (used only with `rerun_parameter_search`). Small neighborhoods are left out
+            !! by default: a higher JSCompTest value from small neighborhoods only shows that they are
+            !! too small
+            !!
+            !! | Mode                                                       | Value                                                                                                    |
+            !! |------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+            !! | Large neighborhoods only, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
+            !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
+            !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
+            !! The default value is `'neighborhood_size_large'`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: join_method_mode_f
         integer(int32) :: plateau_mode_mode_f
         integer(int32) :: bin_count_mode_mode_f
+        integer(int32) :: neighborhood_size_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -2659,6 +2740,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(join_method, 11)
         M_CHECK_ARRAY_NON_NULL(plateau_mode, 19)
         M_CHECK_ARRAY_NON_NULL(bin_count_mode, 29)
+        M_CHECK_ARRAY_NON_NULL(neighborhood_size_mode, 23)
 
         block
             character(len=:), pointer :: join_method_f
@@ -2710,6 +2792,22 @@ contains
                     return
             end select
         end block
+        block
+            character(len=:), pointer :: neighborhood_size_mode_f
+            neighborhood_size_mode_f => c_char_as_view(neighborhood_size_mode)
+
+            select case (neighborhood_size_mode_f)
+                case ("neighborhood_size_large")
+                    neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_LARGE
+                case ("neighborhood_size_small")
+                    neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_SMALL
+                case ("neighborhood_size_both")
+                    neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_BOTH
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
 
         call run_js_comp_test_label_permutation_test(&
             n_studies = n_studies,&
@@ -2742,6 +2840,7 @@ contains
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode_mode_f,&
+            neighborhood_size_mode = neighborhood_size_mode_mode_f,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_label_permutation_test_c
@@ -2902,10 +3001,12 @@ contains
             two_sided_bootstrapping_significance_level,&
             random_seed,&
             bin_count_mode,&
+            neighborhood_size_mode,&
             ierr&
         ) bind(C, name="run_js_comp_test_label_permutation_test_expert_c")
         use tox_data_integration_js_comp_test_permutation, only: run_js_comp_test_label_permutation_test_expert
         use tox_data_integration_js_comp_test_binning_impl, only: MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_POOLED, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
+        use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_BOTH, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
         use tox_data_integration_js_comp_test_search_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, MODE_PLATEAU_BOTH, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE
 
         integer(c_int), intent(in), target :: n_studies
@@ -3226,11 +3327,24 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `'bin_count_occupancy'`.
+        character(len=1, kind=c_char), dimension(23), intent(in), target :: neighborhood_size_mode
+            !! Rerun search: which neighborhood sizes the k-NN candidate grid pairs with each
+            !! `n_points` (used only with `rerun_parameter_search`). Small neighborhoods are left out
+            !! by default: a higher JSCompTest value from small neighborhoods only shows that they are
+            !! too small
+            !!
+            !! | Mode                                                       | Value                                                                                                    |
+            !! |------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+            !! | Large neighborhoods only, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
+            !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
+            !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
+            !! The default value is `'neighborhood_size_large'`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: join_method_mode_f
         integer(int32) :: plateau_mode_mode_f
         integer(int32) :: bin_count_mode_mode_f
+        integer(int32) :: neighborhood_size_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -3351,6 +3465,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(join_method, 11)
         M_CHECK_ARRAY_NON_NULL(plateau_mode, 19)
         M_CHECK_ARRAY_NON_NULL(bin_count_mode, 29)
+        M_CHECK_ARRAY_NON_NULL(neighborhood_size_mode, 23)
 
         block
             character(len=:), pointer :: join_method_f
@@ -3397,6 +3512,22 @@ contains
                     bin_count_mode_mode_f = MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
                 case ("bin_count_stone_pooled")
                     bin_count_mode_mode_f = MODE_BIN_COUNT_STONE_POOLED
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
+        block
+            character(len=:), pointer :: neighborhood_size_mode_f
+            neighborhood_size_mode_f => c_char_as_view(neighborhood_size_mode)
+
+            select case (neighborhood_size_mode_f)
+                case ("neighborhood_size_large")
+                    neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_LARGE
+                case ("neighborhood_size_small")
+                    neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_SMALL
+                case ("neighborhood_size_both")
+                    neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_BOTH
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
@@ -3521,6 +3652,7 @@ contains
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode_mode_f,&
+            neighborhood_size_mode = neighborhood_size_mode_mode_f,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_label_permutation_test_expert_c

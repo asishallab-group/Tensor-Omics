@@ -6,13 +6,16 @@
 // tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
-void generate_js_comp_test_candidates_c(const int*, int*, int*, int*);
-void run_js_comp_test_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, const int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const char*, int*);
+void generate_js_comp_test_candidates_c(const int*, int*, int*, const char*, int*);
+void run_js_comp_test_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const int*, const char*, const int*, const int*, int*, int*, int*, double*, double*, double*, unsigned char*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, double*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const char*, const char*, int*);
 
-SEXP generate_js_comp_test_candidates_call(SEXP max_n_genes_all_studies) {
+SEXP generate_js_comp_test_candidates_call(SEXP max_n_genes_all_studies, SEXP neighborhood_size_mode) {
     int nprot = 0;
     // scalar inputs, pulled from their length-1 vectors
     int max_n_genes_all_studies_v = Rf_asInteger(max_n_genes_all_studies);
+
+    // convert what Fortran cannot take from R directly
+    char* neighborhood_size_mode_c = tox_char_in(neighborhood_size_mode, 23);
 
     // outputs and work space
     SEXP candidates_n_points_n_neighbors = PROTECT(Rf_allocVector(INTSXP, 2 * 16)); nprot++;
@@ -24,6 +27,7 @@ SEXP generate_js_comp_test_candidates_call(SEXP max_n_genes_all_studies) {
         &max_n_genes_all_studies_v,
         INTEGER(candidates_n_points_n_neighbors),
         &n_candidates,
+        neighborhood_size_mode_c,
         &ierr
     );
 
@@ -40,7 +44,7 @@ SEXP generate_js_comp_test_candidates_call(SEXP max_n_genes_all_studies) {
     return _out;
 }
 
-SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEXP n_bootstraps, SEXP join_method, SEXP max_n_points_candidate, SEXP max_n_neighbors_candidate, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP bin_count_mode) {
+SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEXP n_bootstraps, SEXP join_method, SEXP max_n_points_candidate, SEXP max_n_neighbors_candidate, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP bin_count_mode, SEXP neighborhood_size_mode) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(gene_means, R_DimSymbol))[1];
@@ -70,6 +74,7 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
     char* join_method_c = tox_char_in(join_method, 11);
     char* plateau_mode_c = tox_char_in(plateau_mode, 19);
     char* bin_count_mode_c = tox_char_in(bin_count_mode, 29);
+    char* neighborhood_size_mode_c = tox_char_in(neighborhood_size_mode, 23);
 
     // outputs and work space
     int n_points = 0;
@@ -175,6 +180,7 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
         &two_sided_bootstrapping_significance_level_v,
         &random_seed_v,
         bin_count_mode_c,
+        neighborhood_size_mode_c,
         &ierr
     );
 

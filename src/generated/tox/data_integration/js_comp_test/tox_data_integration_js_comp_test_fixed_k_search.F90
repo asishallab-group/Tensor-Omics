@@ -11,13 +11,20 @@
 !| have reached a plateau, by the criteria of
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]] and
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_effect_size_plateau_condition_impl(interface)]].
+!| By default the grid holds only the large neighborhoods
+!| ([[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]]);
+!| `neighborhood_size_mode` selects the small ones
+!| ([[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]])
+!| or both
+!| ([[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]).
 !| `calc_js_comp_test_candidate_bounds` sizes the work arrays for a caller that allocates its own.
 !|
 !| Generated from [[tox_data_integration_js_comp_test_fixed_k_search_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_js_comp_test_fixed_k_search
     use f42_safeguard
-    use tox_data_integration_js_comp_test_fixed_k_search_impl, only: KX_FACTORS, MAX_POINTS, MIN_POINTS, N_POINTS_HIGH_FACTOR
-    use tox_data_integration_js_comp_test_fixed_k_search_impl, only: N_POINTS_LOW_FRACTION, generate_js_comp_test_candidates_impl, run_js_comp_test_parameter_search_impl
+    use tox_data_integration_js_comp_test_fixed_k_search_impl, only: KX_FACTORS, MAX_POINTS, MIN_POINTS, MODE_NEIGHBORHOOD_SIZE_BOTH
+    use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL, N_POINTS_HIGH_FACTOR, N_POINTS_LOW_FRACTION
+    use tox_data_integration_js_comp_test_fixed_k_search_impl, only: generate_js_comp_test_candidates_impl, run_js_comp_test_parameter_search_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_math_impl, only: above
@@ -42,13 +49,18 @@ contains
     !| Starting from `n_points_high = clamp(ceiling(N_POINTS_HIGH_FACTOR*sqrt(G)), MIN_POINTS, MAX_POINTS)`
     !| (`G` = `max_n_genes_all_studies`), multiplies it by GAMMA until it drops below
     !| `n_points_low = max(MIN_POINTS, ceiling(N_POINTS_LOW_FRACTION*n_points_high))`, and pairs each distinct
-    !| `n_points` with up to `size(KX_FACTORS)` distinct `n_neighbors = max(1, floor(G/(f*n_points_high)))`.
-    !| Duplicate values from clamping or rounding collapse, so a small enough `G` yields a single
-    !| candidate. Bin counts are not part of a candidate; they are chosen per reference point later.
+    !| `n_points` with the distinct `n_neighbors = max(1, floor(G/(f*n_points_high)))` of the
+    !| factors `f` of `KX_FACTORS` that `neighborhood_size_mode` selects: by default only `f = 0.25`
+    !| (the large neighborhoods), so `n_neighbors` grows smoothly from one candidate to the next.
+    !| Small neighborhoods are left out by default: a higher JSCompTest value from small
+    !| neighborhoods only shows that they are too small. Duplicate values from
+    !| clamping or rounding collapse, so a small enough `G` yields a single candidate. Bin counts
+    !| are not part of a candidate; they are chosen per reference point later.
     pure subroutine generate_js_comp_test_candidates(&
             max_n_genes_all_studies,&
             candidates_n_points_n_neighbors,&
             n_candidates,&
+            neighborhood_size_mode,&
             ierr&
         )
         integer(int32), intent(in) :: max_n_genes_all_studies
@@ -59,26 +71,38 @@ contains
             !! The first `n_candidates` elements will hold the results.
         integer(int32), intent(out) :: n_candidates
             !! Number of candidate pairs actually filled (at most 16)
+        integer(int32), intent(in), optional :: neighborhood_size_mode
+            !! Which neighborhood sizes the grid pairs with each `n_points`
+            !!
+            !! | Mode                                                       | Value                                                                                                    |
+            !! |------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+            !! | Large neighborhoods only, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
+            !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
+            !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=1_int32, min=1_int32)
+        if (present(neighborhood_size_mode)) then; if (neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_LARGE .and. neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_SMALL .and. neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32); end if
         if (is_err(ierr)) return
 #endif
 
         call generate_js_comp_test_candidates_impl(&
             max_n_genes_all_studies = max_n_genes_all_studies,&
             candidates_n_points_n_neighbors = candidates_n_points_n_neighbors,&
-            n_candidates = n_candidates&
+            n_candidates = n_candidates,&
+            neighborhood_size_mode = neighborhood_size_mode&
         )
     end subroutine generate_js_comp_test_candidates
 
     !> summary: Validates its inputs, prepares what [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):run_js_comp_test_parameter_search_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_js_comp_test_fixed_k_search(module):run_js_comp_test_parameter_search_expert]] to prepare it yourself.
     !| Walks the candidates of
     !| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):generate_js_comp_test_candidates_impl(interface)]]
-    !| from finest to coarsest resolution. For each candidate:
+    !| from finest to coarsest resolution, by default only the large neighborhoods
+    !| (`neighborhood_size_mode`). For each candidate:
     !|
     !| 1. Reference points from the pooled gene means
     !| ([[tox_data_integration_preprocessing_impl(module):pool_means_impl(interface)]]) and every
@@ -168,6 +192,7 @@ contains
             two_sided_bootstrapping_significance_level,&
             random_seed,&
             bin_count_mode,&
+            neighborhood_size_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -404,6 +429,17 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `0_int32`.
+        integer(int32), intent(in), optional :: neighborhood_size_mode
+            !! Which neighborhood sizes the candidate grid pairs with each `n_points`. Small
+            !! neighborhoods are left out by default: if they already give higher JSCompTest values,
+            !! that only shows they are too small
+            !!
+            !! | Mode                                                       | Value                                                                                                    |
+            !! |------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+            !! | Large neighborhoods only, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
+            !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
+            !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
         integer(int32) :: n_bootstrapping_top_k_jsds
@@ -478,6 +514,7 @@ contains
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
         if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=42_int32); end if
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=54_int32); end if
+        if (present(neighborhood_size_mode)) then; if (neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_LARGE .and. neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_SMALL .and. neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=55_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -633,6 +670,7 @@ contains
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode,&
+            neighborhood_size_mode = neighborhood_size_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -641,7 +679,8 @@ contains
     !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):run_js_comp_test_parameter_search_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_data_integration_js_comp_test_fixed_k_search(module):run_js_comp_test_parameter_search]] does both.
     !| Walks the candidates of
     !| [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):generate_js_comp_test_candidates_impl(interface)]]
-    !| from finest to coarsest resolution. For each candidate:
+    !| from finest to coarsest resolution, by default only the large neighborhoods
+    !| (`neighborhood_size_mode`). For each candidate:
     !|
     !| 1. Reference points from the pooled gene means
     !| ([[tox_data_integration_preprocessing_impl(module):pool_means_impl(interface)]]) and every
@@ -776,6 +815,7 @@ contains
             two_sided_bootstrapping_significance_level,&
             random_seed,&
             bin_count_mode,&
+            neighborhood_size_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -1106,6 +1146,17 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `0_int32`.
+        integer(int32), intent(in), optional :: neighborhood_size_mode
+            !! Which neighborhood sizes the candidate grid pairs with each `n_points`. Small
+            !! neighborhoods are left out by default: if they already give higher JSCompTest values,
+            !! that only shows they are too small
+            !!
+            !! | Mode                                                       | Value                                                                                                    |
+            !! |------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+            !! | Large neighborhoods only, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
+            !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
+            !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
 
@@ -1136,6 +1187,7 @@ contains
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
         if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=87_int32); end if
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=99_int32); end if
+        if (present(neighborhood_size_mode)) then; if (neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_LARGE .and. neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_SMALL .and. neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=100_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -1239,6 +1291,7 @@ contains
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode,&
+            neighborhood_size_mode = neighborhood_size_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)

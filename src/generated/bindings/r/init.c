@@ -83,12 +83,12 @@ SEXP determine_bin_count_occupancy_exhaustive_call(SEXP, SEXP, SEXP, SEXP, SEXP,
 SEXP determine_bin_count_occupancy_exhaustive_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP determine_bin_count_stone_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP determine_bin_count_stone_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP generate_js_comp_test_candidates_call(SEXP);
-SEXP run_js_comp_test_parameter_search_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP generate_js_comp_test_candidates_call(SEXP, SEXP);
+SEXP run_js_comp_test_parameter_search_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_js_comp_test_candidate_bounds_call(SEXP);
-SEXP run_js_comp_test_on_sample_assignment_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_on_sample_assignment_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP run_js_comp_test_adaptive_on_sample_assignment_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP run_js_comp_test_label_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_label_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP run_js_comp_test_adaptive_label_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_js_comp_test_permutation_bounds_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_adaptive_js_comp_test_permutation_bounds_call(SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -230,12 +230,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"determine_bin_count_occupancy_exhaustive_expert_call", (DL_FUNC) &determine_bin_count_occupancy_exhaustive_expert_call, 8},
     {"determine_bin_count_stone_call", (DL_FUNC) &determine_bin_count_stone_call, 11},
     {"determine_bin_count_stone_expert_call", (DL_FUNC) &determine_bin_count_stone_expert_call, 12},
-    {"generate_js_comp_test_candidates_call", (DL_FUNC) &generate_js_comp_test_candidates_call, 1},
-    {"run_js_comp_test_parameter_search_call", (DL_FUNC) &run_js_comp_test_parameter_search_call, 22},
+    {"generate_js_comp_test_candidates_call", (DL_FUNC) &generate_js_comp_test_candidates_call, 2},
+    {"run_js_comp_test_parameter_search_call", (DL_FUNC) &run_js_comp_test_parameter_search_call, 23},
     {"calc_js_comp_test_candidate_bounds_call", (DL_FUNC) &calc_js_comp_test_candidate_bounds_call, 1},
-    {"run_js_comp_test_on_sample_assignment_call", (DL_FUNC) &run_js_comp_test_on_sample_assignment_call, 23},
+    {"run_js_comp_test_on_sample_assignment_call", (DL_FUNC) &run_js_comp_test_on_sample_assignment_call, 24},
     {"run_js_comp_test_adaptive_on_sample_assignment_call", (DL_FUNC) &run_js_comp_test_adaptive_on_sample_assignment_call, 28},
-    {"run_js_comp_test_label_permutation_test_call", (DL_FUNC) &run_js_comp_test_label_permutation_test_call, 23},
+    {"run_js_comp_test_label_permutation_test_call", (DL_FUNC) &run_js_comp_test_label_permutation_test_call, 24},
     {"run_js_comp_test_adaptive_label_permutation_test_call", (DL_FUNC) &run_js_comp_test_adaptive_label_permutation_test_call, 28},
     {"calc_js_comp_test_permutation_bounds_call", (DL_FUNC) &calc_js_comp_test_permutation_bounds_call, 5},
     {"calc_adaptive_js_comp_test_permutation_bounds_call", (DL_FUNC) &calc_adaptive_js_comp_test_permutation_bounds_call, 5},

@@ -907,7 +907,8 @@
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
       "    candidates_n_points_n_neighbors=${2:candidates_n_points_n_neighbors}, &",
       "    n_candidates=${3:n_candidates}, &",
-      "    ierr=${4:ierr})"
+      "    neighborhood_size_mode=${4|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
+      "    ierr=${5:ierr})"
     ]
   },
   "generate_js_comp_test_candidates (call, checked)": {
@@ -918,7 +919,8 @@
       "    max_n_genes_all_studies=${1:max_n_genes_all_studies}, &",
       "    candidates_n_points_n_neighbors=${2:candidates_n_points_n_neighbors}, &",
       "    n_candidates=${3:n_candidates}, &",
-      "    ierr=${4:ierr})",
+      "    neighborhood_size_mode=${4|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
+      "    ierr=${5:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -981,7 +983,8 @@
       "    two_sided_bootstrapping_significance_level=${52:two_sided_bootstrapping_significance_level}, &",
       "    random_seed=${53:random_seed}, &",
       "    bin_count_mode=${54|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${55:ierr})"
+      "    neighborhood_size_mode=${55|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
+      "    ierr=${56:ierr})"
     ]
   },
   "run_js_comp_test_parameter_search (call, checked)": {
@@ -1043,7 +1046,8 @@
       "    two_sided_bootstrapping_significance_level=${52:two_sided_bootstrapping_significance_level}, &",
       "    random_seed=${53:random_seed}, &",
       "    bin_count_mode=${54|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${55:ierr})",
+      "    neighborhood_size_mode=${55|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
+      "    ierr=${56:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1119,7 +1123,8 @@
       "    two_sided_bootstrapping_significance_level=${28:two_sided_bootstrapping_significance_level}, &",
       "    random_seed=${29:random_seed}, &",
       "    bin_count_mode=${30|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${31:ierr})"
+      "    neighborhood_size_mode=${31|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
+      "    ierr=${32:ierr})"
     ]
   },
   "run_js_comp_test_on_sample_assignment (call, checked)": {
@@ -1157,7 +1162,8 @@
       "    two_sided_bootstrapping_significance_level=${28:two_sided_bootstrapping_significance_level}, &",
       "    random_seed=${29:random_seed}, &",
       "    bin_count_mode=${30|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${31:ierr})",
+      "    neighborhood_size_mode=${31|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
+      "    ierr=${32:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1287,7 +1293,8 @@
       "    two_sided_bootstrapping_significance_level=${28:two_sided_bootstrapping_significance_level}, &",
       "    random_seed=${29:random_seed}, &",
       "    bin_count_mode=${30|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${31:ierr})"
+      "    neighborhood_size_mode=${31|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
+      "    ierr=${32:ierr})"
     ]
   },
   "run_js_comp_test_label_permutation_test (call, checked)": {
@@ -1325,7 +1332,8 @@
       "    two_sided_bootstrapping_significance_level=${28:two_sided_bootstrapping_significance_level}, &",
       "    random_seed=${29:random_seed}, &",
       "    bin_count_mode=${30|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${31:ierr})",
+      "    neighborhood_size_mode=${31|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
+      "    ierr=${32:ierr})",
       "if (is_err(ierr)) return"
     ]
   },

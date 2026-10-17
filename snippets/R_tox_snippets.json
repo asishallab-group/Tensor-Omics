@@ -269,7 +269,8 @@
     "description": "Starting from `n_points_high = clamp(ceiling(N_POINTS_HIGH_FACTOR*sqrt(G)), MIN_POINTS, MAX_POINTS)`",
     "body": [
       "${1:result} <- generate_js_comp_test_candidates(",
-      "  max_n_genes_all_studies = ${2:max_n_genes_all_studies}",
+      "  max_n_genes_all_studies = ${2:max_n_genes_all_studies},",
+      "  neighborhood_size_mode = ${3|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|}",
       ")"
     ]
   },
@@ -299,7 +300,8 @@
       "  upper_residual_range_quantile = ${20:0.95},",
       "  two_sided_bootstrapping_significance_level = ${21:2.5},",
       "  random_seed = ${22:42L},",
-      "  bin_count_mode = ${23|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|}",
+      "  bin_count_mode = ${23|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
+      "  neighborhood_size_mode = ${24|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|}",
       ")"
     ]
   },
@@ -339,7 +341,8 @@
       "  upper_residual_range_quantile = ${21:0.95},",
       "  two_sided_bootstrapping_significance_level = ${22:2.5},",
       "  random_seed = ${23:42L},",
-      "  bin_count_mode = ${24|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|}",
+      "  bin_count_mode = ${24|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
+      "  neighborhood_size_mode = ${25|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|}",
       ")"
     ]
   },
@@ -406,7 +409,8 @@
       "  upper_residual_range_quantile = ${21:0.95},",
       "  two_sided_bootstrapping_significance_level = ${22:2.5},",
       "  random_seed = ${23:42L},",
-      "  bin_count_mode = ${24|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|}",
+      "  bin_count_mode = ${24|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
+      "  neighborhood_size_mode = ${25|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|}",
       ")"
     ]
   },

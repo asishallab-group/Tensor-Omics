@@ -13,9 +13,12 @@ module mod_test_data_integration_js_comp_test_permutation
     use tox_data_integration_preprocessing, only: compute_gene_means, compute_residuals, pool_means, &
                                                   construct_adaptive_neighborhoods
     use tox_data_integration_js_comp_test_run, only: run_js_comp_test, run_js_comp_test_adaptive
-    use tox_data_integration_js_comp_test_fixed_k_search, only: run_js_comp_test_parameter_search
+    use tox_data_integration_js_comp_test_fixed_k_search, only: run_js_comp_test_parameter_search, &
+                                                                generate_js_comp_test_candidates
     use tox_data_integration_js_comp_test_adaptive_search, only: run_js_comp_test_adaptive_parameter_search
-    use tox_data_integration_js_comp_test_fixed_k_search_impl, only: calc_js_comp_test_candidate_bounds
+    use tox_data_integration_js_comp_test_fixed_k_search_impl, only: calc_js_comp_test_candidate_bounds, &
+                                                                     MODE_NEIGHBORHOOD_SIZE_LARGE, &
+                                                                     MODE_NEIGHBORHOOD_SIZE_SMALL
     use tox_data_integration_js_comp_test_adaptive_search_impl, only: calc_adaptive_js_comp_test_bounds
     use tox_data_integration_js_comp_test_impl, only: MAX_N_BINS, MAX_CANDIDATE_PAIRS, METHOD_JOIN_MIN
     use tox_data_integration_js_comp_test_permutation, only: run_js_comp_test_on_sample_assignment, &
@@ -40,7 +43,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test_permutation() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(17))
+        allocate (all_tests(18))
 
         all_tests(1) = test_case("test_knn_identity_matches_plain_pipeline", test_knn_identity_matches_plain_pipeline)
         all_tests(2) = test_case("test_adaptive_identity_matches_plain_pipeline", &
@@ -68,6 +71,8 @@ contains
         all_tests(16) = test_case("test_adaptive_label_test_failed_permutations_bookkeeping", &
                                   test_adaptive_label_test_failed_permutations_bookkeeping)
         all_tests(17) = test_case("test_label_test_rejects_invalid_input", test_label_test_rejects_invalid_input)
+        all_tests(18) = test_case("test_knn_rerun_forwards_neighborhood_size_mode", &
+                                  test_knn_rerun_forwards_neighborhood_size_mode)
     end function get_all_tests_data_integration_js_comp_test_permutation
 
     ! ========================================================================================
@@ -833,6 +838,64 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"label test with rerun ierr")
         call assert_true(same_values(observed, result), name//"label test with rerun: observed value")
     end subroutine test_knn_rerun_parameter_search
+
+    !> With the rerun option, the k-NN routines forward `neighborhood_size_mode` to the parameter
+    !| search: the selected `n_neighbors` comes from the large-neighborhood grid by default (and
+    !| with the mode given explicitly), and from the small-neighborhood grid with
+    !| `MODE_NEIGHBORHOOD_SIZE_SMALL`. The two grids share no `n_neighbors` here (G = 300: one
+    !| `n_points` = 300, large floor(300/75) = 4, small floor(300/150) = 2), so the selected value
+    !| tells which grid the search walked. The label test with rerun reports the same observed value.
+    subroutine test_knn_rerun_forwards_neighborhood_size_mode()
+        character(*), parameter :: name = "test_knn_rerun_forwards_neighborhood_size_mode: "
+        real(real64), allocatable :: expression(:, :, :)
+        real(real64) :: default_result(3), large_result(3), small_result(3), reference(3), observed(3), p(3), &
+                        null(1, 3)
+        integer(int32) :: ierr, used_np, used_nn, n_large, n_small, n_failed
+        integer(int32) :: large_grid(2, MAX_CANDIDATE_PAIRS), small_grid(2, MAX_CANDIDATE_PAIRS)
+
+        call make_expression(300_int32, [5_int32, 4_int32, 4_int32], [0.5_real64, 0.5_real64, 0.6_real64], 51_int32, &
+                             expression)
+        call generate_js_comp_test_candidates(300_int32, large_grid, n_large, &
+                                              neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_LARGE, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"large grid ierr")
+        call generate_js_comp_test_candidates(300_int32, small_grid, n_small, &
+                                              neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_SMALL, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"small grid ierr")
+        call assert_true(.not. any(spread(large_grid(2, 1:n_large), 1, n_small) == &
+                                   spread(small_grid(2, 1:n_small), 2, n_large)), &
+                         name//"the two grids share no n_neighbors")
+
+        call run_js_comp_test_on_sample_assignment(3_int32, 300_int32, 5_int32, expression, 13_int32, identity(13_int32), &
+                                                   N_POINTS_KNN, N_NEIGHBORS_KNN, default_result, used_np, used_nn, &
+                                                   rerun_parameter_search=.true._c_bool, n_bootstraps=20_int32, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"default ierr")
+        call assert_true(any(large_grid(2, 1:n_large) == used_nn), name//"default: n_neighbors from the large grid")
+        call assert_true(any(large_grid(1, 1:n_large) == used_np), name//"default: n_points from the large grid")
+
+        call run_js_comp_test_on_sample_assignment(3_int32, 300_int32, 5_int32, expression, 13_int32, identity(13_int32), &
+                                                   N_POINTS_KNN, N_NEIGHBORS_KNN, large_result, used_np, used_nn, &
+                                                   rerun_parameter_search=.true._c_bool, n_bootstraps=20_int32, &
+                                                   neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_LARGE, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"large ierr")
+        call assert_true(equal_and_not_nan(large_result, default_result), name//"explicit large equals the default")
+
+        call run_js_comp_test_on_sample_assignment(3_int32, 300_int32, 5_int32, expression, 13_int32, identity(13_int32), &
+                                                   N_POINTS_KNN, N_NEIGHBORS_KNN, small_result, used_np, used_nn, &
+                                                   rerun_parameter_search=.true._c_bool, n_bootstraps=20_int32, &
+                                                   neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_SMALL, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"small ierr")
+        call assert_true(any(small_grid(2, 1:n_small) == used_nn), name//"small: n_neighbors from the small grid")
+        call reference_knn(expression, used_np, used_nn, reference, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"small reference ierr")
+        call assert_true(equal_and_not_nan(small_result, reference), name//"small equals the run at the selected pair")
+
+        call run_js_comp_test_label_permutation_test(3_int32, 300_int32, 5_int32, expression, N_POINTS_KNN, &
+                                                     N_NEIGHBORS_KNN, 1_int32, observed, p, null, n_failed, &
+                                                     rerun_parameter_search=.true._c_bool, n_bootstraps=20_int32, &
+                                                     neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_SMALL, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"label test ierr")
+        call assert_true(equal_and_not_nan(observed, small_result), name//"label test forwards the mode")
+    end subroutine test_knn_rerun_forwards_neighborhood_size_mode
 
     !> Adaptive rerun option: on, the result equals the adaptive search on the identity data followed
     !| by the construction and run with the knobs it selected; off, the fixed-knob run.

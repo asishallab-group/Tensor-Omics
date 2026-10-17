@@ -310,6 +310,24 @@ def test_generate_js_comp_test_candidates():
     assert_error(lambda: generate_js_comp_test_candidates(0),
                  "Test 3 failed: expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
 
+    # ============================================================
+    # Test 4 -- neighborhood_size_mode as a mode string (call, type, shape; the grids themselves
+    # are test_fixed_k_grid_neighborhood_size_modes_*): every mode gives positive pairs, and the
+    # grid of both modes holds the pairs of the large and of the small one.
+    # ============================================================
+    n_columns = {}
+    for mode in ("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both"):
+        candidates_mode = generate_js_comp_test_candidates(2000, neighborhood_size_mode=mode)
+        assert candidates_mode.dtype == np.int32, f"Test 4 failed: {mode} dtype"
+        assert candidates_mode.ndim == 2 and candidates_mode.shape[0] == 2, f"Test 4 failed: {mode} shape"
+        assert candidates_mode.shape[1] >= 1 and np.all(candidates_mode > 0), f"Test 4 failed: {mode} values"
+        n_columns[mode] = candidates_mode.shape[1]
+    assert n_columns["neighborhood_size_both"] == n_columns["neighborhood_size_large"] + \
+        n_columns["neighborhood_size_small"], "Test 4 failed: both = large + small"
+    assert generate_js_comp_test_candidates(2000).shape[0] == 2, "Test 4 failed: default shape"
+    assert_error(lambda: generate_js_comp_test_candidates(2000, neighborhood_size_mode="nonsense"),
+                 "Test 4 failed: expected an unknown neighborhood_size_mode to be rejected", ERR_INVALID_INPUT)
+
 
 def test_check_neighborhood_overlaps():
     # ============================================================
@@ -1079,6 +1097,25 @@ def test_run_js_comp_test_parameter_search():
                                                            max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
                                                            bin_count_mode="nonsense"),
                  "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
+
+    # ============================================================
+    # Test 6 -- neighborhood_size_mode: every mode string is accepted (type/shape only; the
+    # Fortran suite's test_param_search_neighborhood_size_mode checks the grid it walks).
+    # ============================================================
+    for mode in ("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both"):
+        result_size = run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=10, join_method='join_min',
+                                                        max_n_points_candidate=bounds["max_n_points_candidate"],
+                                                        max_n_neighbors_candidate=bounds["max_n_neighbors_candidate"],
+                                                        min_residuals_per_bin=1000000, random_seed=1,
+                                                        neighborhood_size_mode=mode)
+        assert int(result_size["n_points"]) >= 1, f"{mode}: n_points"
+        assert int(result_size["n_neighbors"]) >= 1, f"{mode}: n_neighbors"
+        assert result_size["n_bins_per_point"].shape == (bounds["max_n_points_candidate"],), f"{mode}: shape"
+    assert_error(lambda: run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps=10, join_method='join_min',
+                                                           max_n_points_candidate=bounds["max_n_points_candidate"],
+                                                           max_n_neighbors_candidate=bounds["max_n_neighbors_candidate"],
+                                                           neighborhood_size_mode="nonsense"),
+                 "expected an unknown neighborhood_size_mode string to be rejected", ERR_INVALID_INPUT)
 
 
 def test_run_js_comp_test_parameter_search_rejects_undersized_bounds():

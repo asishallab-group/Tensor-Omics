@@ -81,13 +81,14 @@ _lib.run_js_comp_test_on_sample_assignment_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ON_SAMPLE_ASSIGNMENT_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_samples", "sample_assignment", "n_points", "n_neighbors", "global_js_divergence", "used_n_points", "used_n_neighbors", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "ierr",)
+_RUN_JS_COMP_TEST_ON_SAMPLE_ASSIGNMENT_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_samples", "sample_assignment", "n_points", "n_neighbors", "global_js_divergence", "used_n_points", "used_n_neighbors", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ON_SAMPLE_ASSIGNMENT_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, "sample_assignment", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ON_SAMPLE_ASSIGNMENT_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, "sample_assignment", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_adaptive_on_sample_assignment_c.restype = None
 _lib.run_js_comp_test_adaptive_on_sample_assignment_c.argtypes = (
@@ -168,13 +169,14 @@ _lib.run_js_comp_test_label_permutation_test_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_LABEL_PERMUTATION_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_points", "n_neighbors", "n_permutations", "global_js_divergence_observed", "p_values", "jsd_null", "n_failed_permutations", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "ierr",)
+_RUN_JS_COMP_TEST_LABEL_PERMUTATION_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_points", "n_neighbors", "n_permutations", "global_js_divergence_observed", "p_values", "jsd_null", "n_failed_permutations", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_LABEL_PERMUTATION_TEST_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, None, None, "jsd_null", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_LABEL_PERMUTATION_TEST_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, None, None, "jsd_null", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_adaptive_label_permutation_test_c.restype = None
 _lib.run_js_comp_test_adaptive_label_permutation_test_c.argtypes = (
@@ -245,6 +247,7 @@ def run_js_comp_test_on_sample_assignment(
         two_sided_bootstrapping_significance_level=2.5,
         random_seed=42,
         bin_count_mode='bin_count_occupancy',
+        neighborhood_size_mode='neighborhood_size_large',
 ):
     r"""Run the k-NN JS-Comp-Test on one assignment of samples to studies
 
@@ -401,6 +404,13 @@ def run_js_comp_test_on_sample_assignment(
         with `min_residuals_per_bin` as the floor
 
         The default value is `'bin_count_occupancy'`.
+    neighborhood_size_mode : str, one of 'neighborhood_size_large' | 'neighborhood_size_small' | 'neighborhood_size_both', optional, default 'neighborhood_size_large'
+        Rerun search: which neighborhood sizes the k-NN candidate grid pairs with each
+        `n_points` (used only with `rerun_parameter_search`). Small neighborhoods are left out
+        by default: a higher JSCompTest value from small neighborhoods only shows that they are
+        too small
+
+        The default value is `'neighborhood_size_large'`.
 
     Returns
     -------
@@ -441,6 +451,7 @@ def run_js_comp_test_on_sample_assignment(
     join_method = np.array([str(join_method).lower().encode().ljust(11)], dtype="S11")
     plateau_mode = np.array([str(plateau_mode).lower().encode().ljust(19)], dtype="S19")
     bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
+    neighborhood_size_mode = np.array([str(neighborhood_size_mode).lower().encode().ljust(23)], dtype="S23")
 
     # what the inputs already say, rather than asking for it again
     n_studies = expression.shape[2]
@@ -485,6 +496,7 @@ def run_js_comp_test_on_sample_assignment(
         ctypes.byref(ctypes.c_double(two_sided_bootstrapping_significance_level)),
         ctypes.byref(ctypes.c_int(random_seed)),
         bin_count_mode,
+        neighborhood_size_mode,
         ctypes.byref(ierr),
     )
 
@@ -829,6 +841,7 @@ def run_js_comp_test_label_permutation_test(
         two_sided_bootstrapping_significance_level=2.5,
         random_seed=42,
         bin_count_mode='bin_count_occupancy',
+        neighborhood_size_mode='neighborhood_size_large',
 ):
     r"""Study-label Permutation-Test of the k-NN JS-Comp-Test
 
@@ -976,6 +989,13 @@ def run_js_comp_test_label_permutation_test(
         with `min_residuals_per_bin` as the floor
 
         The default value is `'bin_count_occupancy'`.
+    neighborhood_size_mode : str, one of 'neighborhood_size_large' | 'neighborhood_size_small' | 'neighborhood_size_both', optional, default 'neighborhood_size_large'
+        Rerun search: which neighborhood sizes the k-NN candidate grid pairs with each
+        `n_points` (used only with `rerun_parameter_search`). Small neighborhoods are left out
+        by default: a higher JSCompTest value from small neighborhoods only shows that they are
+        too small
+
+        The default value is `'neighborhood_size_large'`.
 
     Returns
     -------
@@ -1015,6 +1035,7 @@ def run_js_comp_test_label_permutation_test(
     join_method = np.array([str(join_method).lower().encode().ljust(11)], dtype="S11")
     plateau_mode = np.array([str(plateau_mode).lower().encode().ljust(19)], dtype="S19")
     bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
+    neighborhood_size_mode = np.array([str(neighborhood_size_mode).lower().encode().ljust(23)], dtype="S23")
 
     # what the inputs already say, rather than asking for it again
     n_studies = expression.shape[2]
@@ -1059,6 +1080,7 @@ def run_js_comp_test_label_permutation_test(
         ctypes.byref(ctypes.c_double(two_sided_bootstrapping_significance_level)),
         ctypes.byref(ctypes.c_int(random_seed)),
         bin_count_mode,
+        neighborhood_size_mode,
         ctypes.byref(ierr),
     )
 

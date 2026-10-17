@@ -5,7 +5,8 @@
 #' For the candidate grid of
 #' \code{\link{generate_js_comp_test_candidates}}:
 #' `max_n_points_candidate` is exactly its largest `n_points` candidate, and
-#' `max_n_neighbors_candidate` a safe (not necessarily tight) bound on its largest `n_neighbors`.
+#' `max_n_neighbors_candidate` a safe (not necessarily tight) bound on its largest `n_neighbors`,
+#' in every `neighborhood_size_mode` (the bound uses the large-neighborhood factor `KX_FACTORS(1)`).
 #'
 #' Rejects a non-positive `max_n_genes_all_studies` with invalid input; both outputs are then
 #' left undefined.

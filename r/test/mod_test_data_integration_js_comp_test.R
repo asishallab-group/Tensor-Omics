@@ -245,6 +245,26 @@ test_generate_js_comp_test_candidates <- function() {
     generate_js_comp_test_candidates(0L),
     "Test 3 failed: expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT
   )
+
+  # ============================================================
+  # Test 4 -- neighborhood_size_mode as a mode string (call, type, shape; the grids themselves
+  # are test_fixed_k_grid_neighborhood_size_modes_*): every mode gives positive pairs, and the
+  # grid of both modes holds the pairs of the large and of the small one.
+  # ============================================================
+  n_columns <- c()
+  for (mode in c("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both")) {
+    candidates_mode <- generate_js_comp_test_candidates(2000L, neighborhood_size_mode = mode)
+    assert_true(is.matrix(candidates_mode) && nrow(candidates_mode) == 2L, paste("Test 4 failed:", mode, "shape"))
+    assert_true(is.integer(candidates_mode) && ncol(candidates_mode) >= 1L && all(candidates_mode > 0L),
+                paste("Test 4 failed:", mode, "values"))
+    n_columns[[mode]] <- ncol(candidates_mode)
+  }
+  assert_true(n_columns[["neighborhood_size_both"]] ==
+                n_columns[["neighborhood_size_large"]] + n_columns[["neighborhood_size_small"]],
+              "Test 4 failed: both = large + small")
+  assert_true(nrow(generate_js_comp_test_candidates(2000L)) == 2L, "Test 4 failed: default shape")
+  assert_error(generate_js_comp_test_candidates(2000L, neighborhood_size_mode = "nonsense"),
+               "Test 4 failed: expected an unknown neighborhood_size_mode to be rejected before Fortran")
 }
 
 test_check_neighborhood_overlaps <- function() {
@@ -1003,6 +1023,26 @@ test_run_js_comp_test_parameter_search <- function() {
                                                  max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
                                                  bin_count_mode = "nonsense"),
                "expected an unknown bin_count_mode string to be rejected before Fortran")
+
+  # ============================================================
+  # Test 6 -- neighborhood_size_mode: every mode string is accepted (type/shape only; the Fortran
+  # suite's test_param_search_neighborhood_size_mode checks the grid it walks).
+  # ============================================================
+  for (mode in c("neighborhood_size_large", "neighborhood_size_small", "neighborhood_size_both")) {
+    result_size <- run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps = 10L, join_method = "join_min",
+                                                     max_n_points_candidate = bounds$max_n_points_candidate,
+                                                     max_n_neighbors_candidate = bounds$max_n_neighbors_candidate,
+                                                     min_residuals_per_bin = 1000000L, random_seed = 1L,
+                                                     neighborhood_size_mode = mode)
+    assert_true(result_size$n_points >= 1L, paste(mode, "n_points"))
+    assert_true(result_size$n_neighbors >= 1L, paste(mode, "n_neighbors"))
+    assert_equal_int(length(result_size$n_bins_per_point), bounds$max_n_points_candidate, paste(mode, "length"))
+  }
+  assert_error(run_js_comp_test_parameter_search(gene_means, residuals, n_bootstraps = 10L, join_method = "join_min",
+                                                 max_n_points_candidate = bounds$max_n_points_candidate,
+                                                 max_n_neighbors_candidate = bounds$max_n_neighbors_candidate,
+                                                 neighborhood_size_mode = "nonsense"),
+               "expected an unknown neighborhood_size_mode string to be rejected before Fortran")
 }
 
 test_run_js_comp_test_parameter_search_rejects_undersized_bounds <- function() {

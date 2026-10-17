@@ -11,6 +11,12 @@ from finest to coarsest and stops at the first admissible candidate whose bootst
 have reached a plateau, by the criteria of
 :func:`tensor_omics.check_plateau_condition` and
 :func:`tensor_omics.check_effect_size_plateau_condition`.
+By default the grid holds only the large neighborhoods
+(``'neighborhood_size_large'``);
+`neighborhood_size_mode` selects the small ones
+(``'neighborhood_size_small'``)
+or both
+(``'neighborhood_size_both'``).
 `calc_js_comp_test_candidate_bounds` sizes the work arrays for a caller that allocates its own.
 
 Python binding, generated from tox_data_integration_js_comp_test_fixed_k_search_impl. Do not edit.
@@ -45,7 +51,8 @@ def calc_js_comp_test_candidate_bounds(
     For the candidate grid of
     :func:`tensor_omics.generate_js_comp_test_candidates`:
     `max_n_points_candidate` is exactly its largest `n_points` candidate, and
-    `max_n_neighbors_candidate` a safe (not necessarily tight) bound on its largest `n_neighbors`.
+    `max_n_neighbors_candidate` a safe (not necessarily tight) bound on its largest `n_neighbors`,
+    in every `neighborhood_size_mode` (the bound uses the large-neighborhood factor `KX_FACTORS(1)`).
 
     Rejects a non-positive `max_n_genes_all_studies` with invalid input; both outputs are then
     left undefined.

@@ -469,7 +469,8 @@ contains
                                                           gamma_occupancy, lower_residual_range_quantile, &
                                                           upper_residual_range_quantile, &
                                                           two_sided_bootstrapping_significance_level, random_seed, &
-                                                          bin_count_mode, ierr)
+                                                          bin_count_mode, &
+                                                          neighborhood_size_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -802,6 +803,18 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]] |
             !! DM_DEFAULT(M_MODE_BIN_COUNT_OCCUPANCY)
+        integer(int32), intent(in), optional :: neighborhood_size_mode
+            !! Rerun search: which neighborhood sizes the k-NN candidate grid pairs with each
+            !! `n_points` (used only with `rerun_parameter_search`). Small neighborhoods are left out
+            !! by default: a higher JSCompTest value from small neighborhoods only shows that they are
+            !! too small
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Large neighborhoods only, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
+            !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
+            !! | Both, large then small for each `n_points` | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]] |
+            !! DM_DEFAULT(M_MODE_NEIGHBORHOOD_SIZE_LARGE)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -910,7 +923,8 @@ contains
                 lower_residual_range_quantile=lower_residual_range_quantile, &
                 upper_residual_range_quantile=upper_residual_range_quantile, &
                 two_sided_bootstrapping_significance_level=two_sided_bootstrapping_significance_level, &
-                random_seed=random_seed, bin_count_mode=bin_count_mode, ierr=callee_ierr)
+                random_seed=random_seed, bin_count_mode=bin_count_mode, &
+                neighborhood_size_mode=neighborhood_size_mode, ierr=callee_ierr)
             if (is_err(callee_ierr)) then
                 call set_err_once(ierr, get_err_code(callee_ierr))
                 return
@@ -1789,7 +1803,8 @@ contains
                                                             m_max, gamma_occupancy, lower_residual_range_quantile, &
                                                             upper_residual_range_quantile, &
                                                             two_sided_bootstrapping_significance_level, random_seed, &
-                                                            bin_count_mode, ierr)
+                                                            bin_count_mode, &
+                                                            neighborhood_size_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -2125,6 +2140,18 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]] |
             !! DM_DEFAULT(M_MODE_BIN_COUNT_OCCUPANCY)
+        integer(int32), intent(in), optional :: neighborhood_size_mode
+            !! Rerun search: which neighborhood sizes the k-NN candidate grid pairs with each
+            !! `n_points` (used only with `rerun_parameter_search`). Small neighborhoods are left out
+            !! by default: a higher JSCompTest value from small neighborhoods only shows that they are
+            !! too small
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Large neighborhoods only, `KX_FACTORS(1)` = 0.25 (default) | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_LARGE(variable)]] |
+            !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
+            !! | Both, large then small for each `n_points` | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]] |
+            !! DM_DEFAULT(M_MODE_NEIGHBORHOOD_SIZE_LARGE)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -2234,7 +2261,8 @@ contains
             lower_residual_range_quantile=lower_residual_range_quantile, &
             upper_residual_range_quantile=upper_residual_range_quantile, &
             two_sided_bootstrapping_significance_level=two_sided_bootstrapping_significance_level, &
-            random_seed=actual_random_seed, bin_count_mode=bin_count_mode, ierr=callee_ierr)
+            random_seed=actual_random_seed, bin_count_mode=bin_count_mode, &
+                neighborhood_size_mode=neighborhood_size_mode, ierr=callee_ierr)
         if (is_err(callee_ierr)) then
             call set_err_once(ierr, get_err_code(callee_ierr))
             global_js_divergence_observed = M_NAN
@@ -2334,7 +2362,8 @@ contains
                 lower_residual_range_quantile=lower_residual_range_quantile, &
                 upper_residual_range_quantile=upper_residual_range_quantile, &
                 two_sided_bootstrapping_significance_level=two_sided_bootstrapping_significance_level, &
-                random_seed=actual_random_seed, bin_count_mode=bin_count_mode, ierr=callee_ierr)
+                random_seed=actual_random_seed, bin_count_mode=bin_count_mode, &
+                neighborhood_size_mode=neighborhood_size_mode, ierr=callee_ierr)
             if (is_err(callee_ierr)) then
                 ! Invalid input of a relabelled data set (e.g. a study without residuals at some
                 ! reference point) fails this permutation only; anything else ends the test.
