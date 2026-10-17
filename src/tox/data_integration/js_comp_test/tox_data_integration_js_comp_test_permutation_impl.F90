@@ -470,7 +470,8 @@ contains
                                                           upper_residual_range_quantile, &
                                                           two_sided_bootstrapping_significance_level, random_seed, &
                                                           bin_count_mode, &
-                                                          neighborhood_size_mode, ierr)
+                                                          neighborhood_size_mode, &
+                                                          delta_abs_tolerance, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -815,6 +816,10 @@ contains
             !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! | Both, large then small for each `n_points` | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]] |
             !! DM_DEFAULT(M_MODE_NEIGHBORHOOD_SIZE_LARGE)
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): M_DELTA_ABS_TOLERANCE_DOC
+            !! DM_MIN(0.0_real64)
+            !! DM_DEFAULT(M_DELTA_ABS_TOLERANCE_DEFAULT)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -924,7 +929,8 @@ contains
                 upper_residual_range_quantile=upper_residual_range_quantile, &
                 two_sided_bootstrapping_significance_level=two_sided_bootstrapping_significance_level, &
                 random_seed=random_seed, bin_count_mode=bin_count_mode, &
-                neighborhood_size_mode=neighborhood_size_mode, ierr=callee_ierr)
+                neighborhood_size_mode=neighborhood_size_mode, &
+                delta_abs_tolerance=delta_abs_tolerance, ierr=callee_ierr)
             if (is_err(callee_ierr)) then
                 call set_err_once(ierr, get_err_code(callee_ierr))
                 return
@@ -1080,7 +1086,8 @@ contains
                                                                    upper_residual_range_quantile, &
                                                                    two_sided_bootstrapping_significance_level, random_seed, &
                                                                    tau, mad_distance_factor, max_pooled_residuals, &
-                                                                   min_study_neighbors, bin_count_mode, ierr)
+                                                                   min_study_neighbors, bin_count_mode, &
+                                                                   delta_abs_tolerance, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -1448,6 +1455,10 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]] |
             !! DM_DEFAULT(M_MODE_BIN_COUNT_OCCUPANCY)
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): M_DELTA_ABS_TOLERANCE_DOC
+            !! DM_MIN(0.0_real64)
+            !! DM_DEFAULT(M_DELTA_ABS_TOLERANCE_DEFAULT)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -1568,7 +1579,8 @@ contains
                 two_sided_bootstrapping_significance_level=two_sided_bootstrapping_significance_level, &
                 random_seed=random_seed, tau=tau, mad_distance_factor=mad_distance_factor, &
                 max_pooled_residuals=max_pooled_residuals, min_study_neighbors=min_study_neighbors, &
-                bin_count_mode=bin_count_mode, ierr=callee_ierr)
+                bin_count_mode=bin_count_mode, &
+                delta_abs_tolerance=delta_abs_tolerance, ierr=callee_ierr)
             if (is_err(callee_ierr)) then
                 call set_err_once(ierr, get_err_code(callee_ierr))
                 return
@@ -1804,7 +1816,8 @@ contains
                                                             upper_residual_range_quantile, &
                                                             two_sided_bootstrapping_significance_level, random_seed, &
                                                             bin_count_mode, &
-                                                            neighborhood_size_mode, ierr)
+                                                            neighborhood_size_mode, &
+                                                            delta_abs_tolerance, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -2152,6 +2165,10 @@ contains
             !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! | Both, large then small for each `n_points` | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]] |
             !! DM_DEFAULT(M_MODE_NEIGHBORHOOD_SIZE_LARGE)
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): M_DELTA_ABS_TOLERANCE_DOC
+            !! DM_MIN(0.0_real64)
+            !! DM_DEFAULT(M_DELTA_ABS_TOLERANCE_DEFAULT)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -2262,7 +2279,8 @@ contains
             upper_residual_range_quantile=upper_residual_range_quantile, &
             two_sided_bootstrapping_significance_level=two_sided_bootstrapping_significance_level, &
             random_seed=actual_random_seed, bin_count_mode=bin_count_mode, &
-                neighborhood_size_mode=neighborhood_size_mode, ierr=callee_ierr)
+                neighborhood_size_mode=neighborhood_size_mode, &
+                delta_abs_tolerance=delta_abs_tolerance, ierr=callee_ierr)
         if (is_err(callee_ierr)) then
             call set_err_once(ierr, get_err_code(callee_ierr))
             global_js_divergence_observed = M_NAN
@@ -2363,7 +2381,8 @@ contains
                 upper_residual_range_quantile=upper_residual_range_quantile, &
                 two_sided_bootstrapping_significance_level=two_sided_bootstrapping_significance_level, &
                 random_seed=actual_random_seed, bin_count_mode=bin_count_mode, &
-                neighborhood_size_mode=neighborhood_size_mode, ierr=callee_ierr)
+                neighborhood_size_mode=neighborhood_size_mode, &
+                delta_abs_tolerance=delta_abs_tolerance, ierr=callee_ierr)
             if (is_err(callee_ierr)) then
                 ! Invalid input of a relabelled data set (e.g. a study without residuals at some
                 ! reference point) fails this permutation only; anything else ends the test.
@@ -2503,7 +2522,8 @@ contains
                                                                      two_sided_bootstrapping_significance_level, &
                                                                      random_seed, tau, mad_distance_factor, &
                                                                      max_pooled_residuals, min_study_neighbors, &
-                                                                     bin_count_mode, ierr)
+                                                                     bin_count_mode, &
+                                                                     delta_abs_tolerance, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -2870,6 +2890,10 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]] |
             !! DM_DEFAULT(M_MODE_BIN_COUNT_OCCUPANCY)
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): M_DELTA_ABS_TOLERANCE_DOC
+            !! DM_MIN(0.0_real64)
+            !! DM_DEFAULT(M_DELTA_ABS_TOLERANCE_DEFAULT)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -2988,7 +3012,8 @@ contains
             two_sided_bootstrapping_significance_level=two_sided_bootstrapping_significance_level, &
             random_seed=actual_random_seed, tau=tau, mad_distance_factor=mad_distance_factor, &
             max_pooled_residuals=max_pooled_residuals, min_study_neighbors=min_study_neighbors, &
-            bin_count_mode=bin_count_mode, ierr=callee_ierr)
+            bin_count_mode=bin_count_mode, &
+                delta_abs_tolerance=delta_abs_tolerance, ierr=callee_ierr)
         if (is_err(callee_ierr)) then
             call set_err_once(ierr, get_err_code(callee_ierr))
             global_js_divergence_observed = M_NAN
@@ -3092,7 +3117,8 @@ contains
                 two_sided_bootstrapping_significance_level=two_sided_bootstrapping_significance_level, &
                 random_seed=actual_random_seed, tau=tau, mad_distance_factor=mad_distance_factor, &
                 max_pooled_residuals=max_pooled_residuals, min_study_neighbors=min_study_neighbors, &
-                bin_count_mode=bin_count_mode, ierr=callee_ierr)
+                bin_count_mode=bin_count_mode, &
+                delta_abs_tolerance=delta_abs_tolerance, ierr=callee_ierr)
             if (is_err(callee_ierr)) then
                 ! Invalid input of a relabelled data set (e.g. a study without residuals at some
                 ! reference point) fails this permutation only; anything else ends the test.

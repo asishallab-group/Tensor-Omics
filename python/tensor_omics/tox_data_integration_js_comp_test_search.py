@@ -102,13 +102,14 @@ _lib.check_effect_size_plateau_condition_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_bool),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CHECK_EFFECT_SIZE_PLATEAU_CONDITION_ARGUMENTS = ("global_js_divergence", "prev_global_js_divergence", "n_studies", "has_previous", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "n_consecutive_ok", "delta", "delta_median", "delta_max", "plateau_found", "ierr",)
+_CHECK_EFFECT_SIZE_PLATEAU_CONDITION_ARGUMENTS = ("global_js_divergence", "prev_global_js_divergence", "n_studies", "has_previous", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "n_consecutive_ok", "delta", "delta_median", "delta_max", "plateau_found", "delta_abs_tolerance", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_CHECK_EFFECT_SIZE_PLATEAU_CONDITION_ARGUMENT_SOURCES = (None, None, "global_js_divergence", None, None, None, None, None, None, None, None, None, None, None,)
+_CHECK_EFFECT_SIZE_PLATEAU_CONDITION_ARGUMENT_SOURCES = (None, None, "global_js_divergence", None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def check_neighborhood_overlaps(
         neighborhood_range,
@@ -401,6 +402,7 @@ def check_effect_size_plateau_condition(
         delta_epsilon,
         delta_min_consecutive_transitions,
         n_consecutive_ok,
+        delta_abs_tolerance=0.0,
 ):
     r"""Test one candidate's per-study JSD against the previous admissible candidate for a relative-effect-size plateau
 
@@ -409,7 +411,10 @@ def check_effect_size_plateau_condition(
     for each study `i`, the relative change of the observed global JSD between successive
     admissible candidates,
     `delta(i) = |global_js_divergence(i) - prev_global_js_divergence(i)| / max(prev_global_js_divergence(i),
-    delta_epsilon)`, is summarized by its median (`delta_median`) and maximum (`delta_max`). A
+    delta_epsilon)`, or 0 when the absolute change `|global_js_divergence(i) -
+    prev_global_js_divergence(i)|` is at most `delta_abs_tolerance` (so that small random changes
+    of a tiny JSD do not look like large relative changes), is summarized by its median
+    (`delta_median`) and maximum (`delta_max`). A
     plateau is found once both stay below their thresholds for
     `delta_min_consecutive_transitions` consecutive transitions, counted across calls in
     `n_consecutive_ok`.
@@ -444,6 +449,10 @@ def check_effect_size_plateau_condition(
         Running count of consecutive qualifying transitions; reset to zero when this one does
         not qualify or `has_previous` is `False`
         The minimum valid value is `0`.
+    delta_abs_tolerance : float, optional, default 0.0
+        Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+        The minimum valid value is `0.0`.
+        The default value is `0.0`.
 
     Returns
     -------
@@ -455,8 +464,9 @@ def check_effect_size_plateau_condition(
             not qualify or `has_previous` is `False`
             The minimum valid value is `0`.
         delta : np.ndarray[np.float64] of shape (n_studies,), read-only
-            Per-study relative JSD change from the previous admissible candidate; `-1.0`
-            throughout iff `.not. has_previous`
+            Per-study relative JSD change from the previous admissible candidate, 0 for a study
+            whose absolute change is at most `delta_abs_tolerance`; `-1.0` throughout iff
+            `.not. has_previous`
             A result is a value; call `.copy()` to obtain a modifiable array.
         delta_median : float
             Median of `delta` across studies; `-1.0` iff `.not. has_previous`
@@ -520,6 +530,7 @@ def check_effect_size_plateau_condition(
         ctypes.byref(delta_median),
         ctypes.byref(delta_max),
         ctypes.byref(plateau_found),
+        ctypes.byref(ctypes.c_double(delta_abs_tolerance)),
         ctypes.byref(ierr),
     )
 

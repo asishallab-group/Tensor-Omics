@@ -82,13 +82,14 @@ _lib.run_js_comp_test_on_sample_assignment_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(ndim=1),
     np.ctypeslib.ndpointer(ndim=1),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ON_SAMPLE_ASSIGNMENT_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_samples", "sample_assignment", "n_points", "n_neighbors", "global_js_divergence", "used_n_points", "used_n_neighbors", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "ierr",)
+_RUN_JS_COMP_TEST_ON_SAMPLE_ASSIGNMENT_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_samples", "sample_assignment", "n_points", "n_neighbors", "global_js_divergence", "used_n_points", "used_n_neighbors", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ON_SAMPLE_ASSIGNMENT_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, "sample_assignment", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ON_SAMPLE_ASSIGNMENT_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, "sample_assignment", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_adaptive_on_sample_assignment_c.restype = None
 _lib.run_js_comp_test_adaptive_on_sample_assignment_c.argtypes = (
@@ -129,13 +130,14 @@ _lib.run_js_comp_test_adaptive_on_sample_assignment_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(ndim=1),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ADAPTIVE_ON_SAMPLE_ASSIGNMENT_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_samples", "sample_assignment", "k_start", "k_step", "k_max", "global_js_divergence", "used_k_start", "used_k_step", "used_k_max", "n_points", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "ierr",)
+_RUN_JS_COMP_TEST_ADAPTIVE_ON_SAMPLE_ASSIGNMENT_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_samples", "sample_assignment", "k_start", "k_step", "k_max", "global_js_divergence", "used_k_start", "used_k_step", "used_k_max", "n_points", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ADAPTIVE_ON_SAMPLE_ASSIGNMENT_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, "sample_assignment", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ADAPTIVE_ON_SAMPLE_ASSIGNMENT_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, "sample_assignment", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_label_permutation_test_c.restype = None
 _lib.run_js_comp_test_label_permutation_test_c.argtypes = (
@@ -170,13 +172,14 @@ _lib.run_js_comp_test_label_permutation_test_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(ndim=1),
     np.ctypeslib.ndpointer(ndim=1),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_LABEL_PERMUTATION_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_points", "n_neighbors", "n_permutations", "global_js_divergence_observed", "p_values", "jsd_null", "n_failed_permutations", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "ierr",)
+_RUN_JS_COMP_TEST_LABEL_PERMUTATION_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "n_points", "n_neighbors", "n_permutations", "global_js_divergence_observed", "p_values", "jsd_null", "n_failed_permutations", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "bin_count_mode", "neighborhood_size_mode", "delta_abs_tolerance", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_LABEL_PERMUTATION_TEST_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, None, None, "jsd_null", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_LABEL_PERMUTATION_TEST_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, None, None, "jsd_null", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_adaptive_label_permutation_test_c.restype = None
 _lib.run_js_comp_test_adaptive_label_permutation_test_c.argtypes = (
@@ -215,13 +218,14 @@ _lib.run_js_comp_test_adaptive_label_permutation_test_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(ndim=1),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ADAPTIVE_LABEL_PERMUTATION_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "k_start", "k_step", "k_max", "n_permutations", "global_js_divergence_observed", "p_values", "jsd_null", "n_failed_permutations", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "ierr",)
+_RUN_JS_COMP_TEST_ADAPTIVE_LABEL_PERMUTATION_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "expression", "k_start", "k_step", "k_max", "n_permutations", "global_js_divergence_observed", "p_values", "jsd_null", "n_failed_permutations", "rerun_parameter_search", "n_bootstraps", "join_method", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ADAPTIVE_LABEL_PERMUTATION_TEST_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, None, None, None, "jsd_null", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ADAPTIVE_LABEL_PERMUTATION_TEST_ARGUMENT_SOURCES = ("expression", "expression", "expression", None, None, None, None, "jsd_null", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def run_js_comp_test_on_sample_assignment(
         expression,
@@ -248,6 +252,7 @@ def run_js_comp_test_on_sample_assignment(
         random_seed=42,
         bin_count_mode='bin_count_occupancy',
         neighborhood_size_mode='neighborhood_size_large',
+        delta_abs_tolerance=0.0,
 ):
     r"""Run the k-NN JS-Comp-Test on one assignment of samples to studies
 
@@ -411,6 +416,10 @@ def run_js_comp_test_on_sample_assignment(
         too small
 
         The default value is `'neighborhood_size_large'`.
+    delta_abs_tolerance : float, optional, default 0.0
+        Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+        The minimum valid value is `0.0`.
+        The default value is `0.0`.
 
     Returns
     -------
@@ -497,6 +506,7 @@ def run_js_comp_test_on_sample_assignment(
         ctypes.byref(ctypes.c_int(random_seed)),
         bin_count_mode,
         neighborhood_size_mode,
+        ctypes.byref(ctypes.c_double(delta_abs_tolerance)),
         ctypes.byref(ierr),
     )
 
@@ -540,6 +550,7 @@ def run_js_comp_test_adaptive_on_sample_assignment(
         max_pooled_residuals=0,
         min_study_neighbors=1,
         bin_count_mode='bin_count_occupancy',
+        delta_abs_tolerance=0.0,
 ):
     r"""Run the adaptive JS-Comp-Test on one assignment of samples to studies
 
@@ -704,6 +715,10 @@ def run_js_comp_test_adaptive_on_sample_assignment(
         with `min_residuals_per_bin` as the floor
 
         The default value is `'bin_count_occupancy'`.
+    delta_abs_tolerance : float, optional, default 0.0
+        Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+        The minimum valid value is `0.0`.
+        The default value is `0.0`.
 
     Returns
     -------
@@ -801,6 +816,7 @@ def run_js_comp_test_adaptive_on_sample_assignment(
         ctypes.byref(ctypes.c_int(max_pooled_residuals)),
         ctypes.byref(ctypes.c_int(min_study_neighbors)),
         bin_count_mode,
+        ctypes.byref(ctypes.c_double(delta_abs_tolerance)),
         ctypes.byref(ierr),
     )
 
@@ -842,6 +858,7 @@ def run_js_comp_test_label_permutation_test(
         random_seed=42,
         bin_count_mode='bin_count_occupancy',
         neighborhood_size_mode='neighborhood_size_large',
+        delta_abs_tolerance=0.0,
 ):
     r"""Study-label Permutation-Test of the k-NN JS-Comp-Test
 
@@ -996,6 +1013,10 @@ def run_js_comp_test_label_permutation_test(
         too small
 
         The default value is `'neighborhood_size_large'`.
+    delta_abs_tolerance : float, optional, default 0.0
+        Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+        The minimum valid value is `0.0`.
+        The default value is `0.0`.
 
     Returns
     -------
@@ -1081,6 +1102,7 @@ def run_js_comp_test_label_permutation_test(
         ctypes.byref(ctypes.c_int(random_seed)),
         bin_count_mode,
         neighborhood_size_mode,
+        ctypes.byref(ctypes.c_double(delta_abs_tolerance)),
         ctypes.byref(ierr),
     )
 
@@ -1127,6 +1149,7 @@ def run_js_comp_test_adaptive_label_permutation_test(
         max_pooled_residuals=0,
         min_study_neighbors=1,
         bin_count_mode='bin_count_occupancy',
+        delta_abs_tolerance=0.0,
 ):
     r"""Study-label Permutation-Test of the adaptive JS-Comp-Test
 
@@ -1285,6 +1308,10 @@ def run_js_comp_test_adaptive_label_permutation_test(
         with `min_residuals_per_bin` as the floor
 
         The default value is `'bin_count_occupancy'`.
+    delta_abs_tolerance : float, optional, default 0.0
+        Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+        The minimum valid value is `0.0`.
+        The default value is `0.0`.
 
     Returns
     -------
@@ -1373,6 +1400,7 @@ def run_js_comp_test_adaptive_label_permutation_test(
         ctypes.byref(ctypes.c_int(max_pooled_residuals)),
         ctypes.byref(ctypes.c_int(min_study_neighbors)),
         bin_count_mode,
+        ctypes.byref(ctypes.c_double(delta_abs_tolerance)),
         ctypes.byref(ierr),
     )
 

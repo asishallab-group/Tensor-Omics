@@ -373,7 +373,7 @@ contains
                                                                 upper_residual_range_quantile, &
                                                                 two_sided_bootstrapping_significance_level, random_seed, &
                                                                 tau, mad_distance_factor, max_pooled_residuals, &
-                                                                min_study_neighbors, bin_count_mode, ierr)
+                                                                min_study_neighbors, bin_count_mode, delta_abs_tolerance, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -472,7 +472,8 @@ contains
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(n_studies, M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
-            !! candidate; `-1.0` for the first
+            !! candidate; `-1.0` for the first; 0 for a study whose absolute change is at most
+            !! `delta_abs_tolerance`
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_delta_median
             !! Per-admissible-candidate median of trace_delta across studies; `-1.0` for the first
@@ -752,6 +753,10 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]] |
             !! DM_DEFAULT(M_MODE_BIN_COUNT_OCCUPANCY)
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! M_DELTA_ABS_TOLERANCE_DOC
+            !! DM_MIN(0.0_real64)
+            !! DM_DEFAULT(M_DELTA_ABS_TOLERANCE_DEFAULT)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
 
@@ -764,6 +769,7 @@ contains
         integer(int32) :: actual_max_pooled_residuals, actual_min_study_neighbors, construction_status, max_n_neighbors
         real(real64) :: actual_min_neighbor_overlap, actual_succeeding_ci_overlap
         real(real64) :: actual_delta_median_threshold, actual_delta_max_threshold, actual_delta_epsilon
+        real(real64) :: actual_delta_abs_tolerance
         real(real64) :: best_uncertainty_value, actual_tau, actual_mad_distance_factor
         logical(c_bool) :: all_have_min_neighbor_overlap, all_bins_have_min_count, plateau_found, has_empty_study
 
@@ -777,6 +783,7 @@ contains
         M_DEFAULT_VAL(delta_epsilon, actual_delta_epsilon, M_DELTA_EPSILON_DEFAULT)
         M_DEFAULT_VAL(delta_min_consecutive_transitions, actual_delta_min_consecutive_transitions, M_DELTA_MIN_CONSECUTIVE_TRANSITIONS_DEFAULT)
         M_DEFAULT_VAL(m_min, actual_m_min, M_OCCUPANCY_M_MIN_DEFAULT)
+        M_DEFAULT_VAL(delta_abs_tolerance, actual_delta_abs_tolerance, M_DELTA_ABS_TOLERANCE_DEFAULT)
         M_DEFAULT_VAL(tau, actual_tau, M_ADAPTIVE_TAU_DEFAULT)
         M_DEFAULT_VAL(mad_distance_factor, actual_mad_distance_factor, M_ADAPTIVE_MAD_DISTANCE_FACTOR_DEFAULT)
         M_DEFAULT_VAL(max_pooled_residuals, actual_max_pooled_residuals, M_ADAPTIVE_MAX_POOLED_RESIDUALS_DEFAULT)
@@ -898,7 +905,7 @@ contains
                                                join_method, actual_plateau_mode, actual_succeeding_ci_overlap, &
                                                actual_delta_median_threshold, actual_delta_max_threshold, &
                                                actual_delta_epsilon, actual_delta_min_consecutive_transitions, &
-                                               tmp_n_bins_per_point, tmp_occupancy_failed, tmp_n_pooled_residuals, &
+                                               actual_delta_abs_tolerance, tmp_n_bins_per_point, tmp_occupancy_failed, tmp_n_pooled_residuals, &
                                                tmp_min_bin_occupancy, tmp_mean_bin_occupancy, tmp_max_bin_occupancy, &
                                                tmp_sturges_bins, tmp_fd_bins, tmp_shared_residual_range_low, &
                                                tmp_shared_residual_range_high, tmp_included_n_reps, tmp_mean_pmf_counts, &

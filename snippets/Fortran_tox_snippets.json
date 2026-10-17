@@ -374,7 +374,8 @@
       "    max_pooled_residuals=${63:max_pooled_residuals}, &",
       "    min_study_neighbors=${64:min_study_neighbors}, &",
       "    bin_count_mode=${65|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${66:ierr})"
+      "    delta_abs_tolerance=${66:delta_abs_tolerance}, &",
+      "    ierr=${67:ierr})"
     ]
   },
   "run_js_comp_test_adaptive_parameter_search (call, checked)": {
@@ -447,7 +448,8 @@
       "    max_pooled_residuals=${63:max_pooled_residuals}, &",
       "    min_study_neighbors=${64:min_study_neighbors}, &",
       "    bin_count_mode=${65|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${66:ierr})",
+      "    delta_abs_tolerance=${66:delta_abs_tolerance}, &",
+      "    ierr=${67:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -984,7 +986,8 @@
       "    random_seed=${53:random_seed}, &",
       "    bin_count_mode=${54|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    neighborhood_size_mode=${55|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
-      "    ierr=${56:ierr})"
+      "    delta_abs_tolerance=${56:delta_abs_tolerance}, &",
+      "    ierr=${57:ierr})"
     ]
   },
   "run_js_comp_test_parameter_search (call, checked)": {
@@ -1047,7 +1050,8 @@
       "    random_seed=${53:random_seed}, &",
       "    bin_count_mode=${54|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    neighborhood_size_mode=${55|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
-      "    ierr=${56:ierr})",
+      "    delta_abs_tolerance=${56:delta_abs_tolerance}, &",
+      "    ierr=${57:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1124,7 +1128,8 @@
       "    random_seed=${29:random_seed}, &",
       "    bin_count_mode=${30|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    neighborhood_size_mode=${31|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
-      "    ierr=${32:ierr})"
+      "    delta_abs_tolerance=${32:delta_abs_tolerance}, &",
+      "    ierr=${33:ierr})"
     ]
   },
   "run_js_comp_test_on_sample_assignment (call, checked)": {
@@ -1163,7 +1168,8 @@
       "    random_seed=${29:random_seed}, &",
       "    bin_count_mode=${30|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    neighborhood_size_mode=${31|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
-      "    ierr=${32:ierr})",
+      "    delta_abs_tolerance=${32:delta_abs_tolerance}, &",
+      "    ierr=${33:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1209,7 +1215,8 @@
       "    max_pooled_residuals=${35:max_pooled_residuals}, &",
       "    min_study_neighbors=${36:min_study_neighbors}, &",
       "    bin_count_mode=${37|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${38:ierr})"
+      "    delta_abs_tolerance=${38:delta_abs_tolerance}, &",
+      "    ierr=${39:ierr})"
     ]
   },
   "run_js_comp_test_adaptive_on_sample_assignment (call, checked)": {
@@ -1254,7 +1261,8 @@
       "    max_pooled_residuals=${35:max_pooled_residuals}, &",
       "    min_study_neighbors=${36:min_study_neighbors}, &",
       "    bin_count_mode=${37|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${38:ierr})",
+      "    delta_abs_tolerance=${38:delta_abs_tolerance}, &",
+      "    ierr=${39:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1294,7 +1302,8 @@
       "    random_seed=${29:random_seed}, &",
       "    bin_count_mode=${30|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    neighborhood_size_mode=${31|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
-      "    ierr=${32:ierr})"
+      "    delta_abs_tolerance=${32:delta_abs_tolerance}, &",
+      "    ierr=${33:ierr})"
     ]
   },
   "run_js_comp_test_label_permutation_test (call, checked)": {
@@ -1333,7 +1342,8 @@
       "    random_seed=${29:random_seed}, &",
       "    bin_count_mode=${30|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    neighborhood_size_mode=${31|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
-      "    ierr=${32:ierr})",
+      "    delta_abs_tolerance=${32:delta_abs_tolerance}, &",
+      "    ierr=${33:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1377,7 +1387,8 @@
       "    max_pooled_residuals=${33:max_pooled_residuals}, &",
       "    min_study_neighbors=${34:min_study_neighbors}, &",
       "    bin_count_mode=${35|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${36:ierr})"
+      "    delta_abs_tolerance=${36:delta_abs_tolerance}, &",
+      "    ierr=${37:ierr})"
     ]
   },
   "run_js_comp_test_adaptive_label_permutation_test (call, checked)": {
@@ -1420,7 +1431,8 @@
       "    max_pooled_residuals=${33:max_pooled_residuals}, &",
       "    min_study_neighbors=${34:min_study_neighbors}, &",
       "    bin_count_mode=${35|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${36:ierr})",
+      "    delta_abs_tolerance=${36:delta_abs_tolerance}, &",
+      "    ierr=${37:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1947,7 +1959,8 @@
       "    delta_median=${11:delta_median}, &",
       "    delta_max=${12:delta_max}, &",
       "    plateau_found=${13:plateau_found}, &",
-      "    ierr=${14:ierr})"
+      "    delta_abs_tolerance=${14:delta_abs_tolerance}, &",
+      "    ierr=${15:ierr})"
     ]
   },
   "check_effect_size_plateau_condition (call, checked)": {
@@ -1968,7 +1981,8 @@
       "    delta_median=${11:delta_median}, &",
       "    delta_max=${12:delta_max}, &",
       "    plateau_found=${13:plateau_found}, &",
-      "    ierr=${14:ierr})",
+      "    delta_abs_tolerance=${14:delta_abs_tolerance}, &",
+      "    ierr=${15:ierr})",
       "if (is_err(ierr)) return"
     ]
   },

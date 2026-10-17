@@ -142,7 +142,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(246))
+        allocate (all_tests(250))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -642,6 +642,11 @@ contains
         all_tests(245) = test_case("test_fixed_k_grid_neighborhood_size_modes_26097", &
                                    test_fixed_k_grid_neighborhood_size_modes_26097)
         all_tests(246) = test_case("test_param_search_neighborhood_size_mode", test_param_search_neighborhood_size_mode)
+        all_tests(247) = test_case("test_effect_size_abs_tolerance_tiny_jsd", test_effect_size_abs_tolerance_tiny_jsd)
+        all_tests(248) = test_case("test_effect_size_abs_tolerance_boundary_and_large_jsd", &
+                                   test_effect_size_abs_tolerance_boundary_and_large_jsd)
+        all_tests(249) = test_case("test_param_search_delta_abs_tolerance", test_param_search_delta_abs_tolerance)
+        all_tests(250) = test_case("test_adaptive_search_delta_abs_tolerance", test_adaptive_search_delta_abs_tolerance)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -1684,7 +1689,7 @@ contains
         call check_effect_size_plateau_condition(global_js_divergence, prev_global_js_divergence, n_studies, &
                                                  logical(.false., kind=c_bool), 0.05_real64, 0.10_real64, 1.0e-10_real64, &
                                                  2_int32, n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
-                                                 ierr)
+                                                 ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_effect_size_plateau_first_candidate_no_delta: ierr should be OK")
@@ -1723,7 +1728,7 @@ contains
         call check_effect_size_plateau_condition(global_js_divergence, prev_global_js_divergence, n_studies, &
                                                  logical(.true., kind=c_bool), 0.05_real64, 0.10_real64, 1.0e-10_real64, &
                                                  2_int32, n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
-                                                 ierr)
+                                                 ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_effect_size_plateau_single_transition_insufficient: ierr should be OK")
@@ -1751,7 +1756,7 @@ contains
         call check_effect_size_plateau_condition(global_js_divergence, prev_global_js_divergence, n_studies, &
                                                  logical(.true., kind=c_bool), 0.05_real64, 0.10_real64, 1.0e-10_real64, &
                                                  2_int32, n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
-                                                 ierr)
+                                                 ierr=ierr)
         call assert_false(plateau_found, &
                           "test_effect_size_plateau_two_consecutive_transitions: "// &
                           "first of two must not yet plateau")
@@ -1762,7 +1767,7 @@ contains
         call check_effect_size_plateau_condition(global_js_divergence, prev_global_js_divergence, n_studies, &
                                                  logical(.true., kind=c_bool), 0.05_real64, 0.10_real64, 1.0e-10_real64, &
                                                  2_int32, n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
-                                                 ierr)
+                                                 ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_effect_size_plateau_two_consecutive_transitions: "// &
@@ -1791,7 +1796,7 @@ contains
         call check_effect_size_plateau_condition(global_js_divergence, prev_global_js_divergence, n_studies, &
                                                  logical(.true., kind=c_bool), 0.05_real64, 0.10_real64, 1.0e-10_real64, &
                                                  2_int32, n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
-                                                 ierr)
+                                                 ierr=ierr)
         call assert_equal_int(n_consecutive_ok, 1_int32, &
                               "test_effect_size_plateau_resets_on_non_qualifying: "// &
                               "transition 1 qualifies")
@@ -1802,7 +1807,7 @@ contains
         call check_effect_size_plateau_condition(global_js_divergence, prev_global_js_divergence, n_studies, &
                                                  logical(.true., kind=c_bool), 0.05_real64, 0.10_real64, 1.0e-10_real64, &
                                                  2_int32, n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
-                                                 ierr)
+                                                 ierr=ierr)
         call assert_equal_int(n_consecutive_ok, 0_int32, &
                               "test_effect_size_plateau_resets_on_non_qualifying: "// &
                               "transition 2 does not qualify -> counter reset")
@@ -1816,7 +1821,7 @@ contains
         call check_effect_size_plateau_condition(global_js_divergence, prev_global_js_divergence, n_studies, &
                                                  logical(.true., kind=c_bool), 0.05_real64, 0.10_real64, 1.0e-10_real64, &
                                                  2_int32, n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
-                                                 ierr)
+                                                 ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_effect_size_plateau_resets_on_non_qualifying: "// &
                               "ierr should be OK")
@@ -1847,7 +1852,7 @@ contains
         call check_effect_size_plateau_condition(global_js_divergence, prev_global_js_divergence, n_studies, &
                                                  logical(.true., kind=c_bool), 0.05_real64, 0.10_real64, 1.0e-10_real64, &
                                                  2_int32, n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
-                                                 ierr)
+                                                 ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_effect_size_plateau_median_max_hand_computed: ierr should be OK")
@@ -8639,7 +8644,7 @@ contains
                                    delta_min_consecutive_transitions, min_study_neighbors, succeeding_ci_overlap, &
                                    random_seed, tau, mad_distance_factor, max_pooled_residuals, m_min, m_max, &
                                    gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, &
-                                   bin_count_mode, omit_plateau_mode)
+                                   bin_count_mode, omit_plateau_mode, delta_abs_tolerance)
         real(real64), intent(in) :: gene_means(:, :)
             !! Mean expression of every gene in every study, NaN for a missing gene
         real(real64), intent(in) :: residuals(:, :, :)
@@ -8688,6 +8693,8 @@ contains
             !! Forwarded to the search
         logical(c_bool), intent(in), optional :: omit_plateau_mode
             !! `.true.`: call the search without `plateau_mode` (`plateau_mode` must then be absent)
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Forwarded to the search
         integer(int32) :: n_studies, n_genes, n_reps, cap, bounds_ierr, seed
         ! Left unallocated to call the search without plateau_mode: an unallocated allocatable
         ! actual argument is an absent optional.
@@ -8765,7 +8772,8 @@ contains
                                                         random_seed=seed, tau=tau, mad_distance_factor=mad_distance_factor, &
                                                         max_pooled_residuals=max_pooled_residuals, &
                                                         min_study_neighbors=min_study_neighbors, &
-                                                        bin_count_mode=bin_count_mode, ierr=ierr)
+                                                        bin_count_mode=bin_count_mode, delta_abs_tolerance=delta_abs_tolerance, &
+                                                        ierr=ierr)
     end subroutine run_adaptive_search
 
     !> Test helper: the trace column whose `trace_k_start` equals the selected `k_start`, or 0.
@@ -11015,10 +11023,10 @@ contains
 
     !> Test helper: run_js_comp_test_parameter_search on `gene_means`/`residuals` with every
     !| output allocated from calc_js_comp_test_candidate_bounds, 5 bootstraps, `METHOD_JOIN_MIN`,
-    !| `min_neighbor_overlap = 0`, the effect-size plateau with thresholds 1e-300 (never reached),
-    !| seed 1; the remaining optionals are forwarded.
+    !| `min_neighbor_overlap = 0`, the effect-size plateau with thresholds 1e-300 (never reached by
+    !| a nonzero change), seed 1; the remaining optionals are forwarded.
     subroutine run_fixed_k_search(gene_means, residuals, out, ierr, min_residuals_per_bin, gamma_occupancy, &
-                                  bin_count_mode)
+                                  bin_count_mode, delta_abs_tolerance, delta_min_consecutive_transitions)
         real(real64), intent(in) :: gene_means(:, :)
             !! Mean expression of every gene in every study
         real(real64), intent(in) :: residuals(:, :, :)
@@ -11032,6 +11040,10 @@ contains
         real(real64), intent(in), optional :: gamma_occupancy
             !! Forwarded to the search
         integer(int32), intent(in), optional :: bin_count_mode
+            !! Forwarded to the search
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Forwarded to the search
+        integer(int32), intent(in), optional :: delta_min_consecutive_transitions
             !! Forwarded to the search
         integer(int32) :: n_studies, n_genes, n_reps, max_points, max_neighbors, bounds_ierr
 
@@ -11076,7 +11088,8 @@ contains
                                                delta_median_threshold=1.0e-300_real64, &
                                                delta_max_threshold=1.0e-300_real64, gamma_occupancy=gamma_occupancy, &
                                                neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
-                                               bin_count_mode=bin_count_mode)
+                                               bin_count_mode=bin_count_mode, delta_abs_tolerance=delta_abs_tolerance, &
+                                               delta_min_consecutive_transitions=delta_min_consecutive_transitions)
     end subroutine run_fixed_k_search
 
     !> Test helper: two fixed-k searches returned the same selection, the same final bin counts and
@@ -13053,6 +13066,7 @@ contains
     !| test_adaptive_candidates_small_n_does_not_collapse), and the default is large.
     subroutine test_fixed_k_grid_neighborhood_size_modes_2000()
         character(len=*), parameter :: name = "test_fixed_k_grid_neighborhood_size_modes_2000: "
+        integer(int32) :: candidates(2, MAX_CANDIDATE_PAIRS), n_candidates, ierr
 
         call assert_fixed_k_grid(name//"large: ", 2000_int32, reshape([300_int32, 26_int32], [2, 1]), &
                                  MODE_NEIGHBORHOOD_SIZE_LARGE)
@@ -13061,6 +13075,11 @@ contains
         call assert_fixed_k_grid(name//"both: ", 2000_int32, reshape([300_int32, 26_int32, 300_int32, 13_int32], [2, 2]), &
                                  MODE_NEIGHBORHOOD_SIZE_BOTH)
         call assert_fixed_k_grid(name//"default: ", 2000_int32, reshape([300_int32, 26_int32], [2, 1]))
+
+        ! The wrapper rejects a value outside the mode table, naming the argument.
+        call generate_js_comp_test_candidates(2000_int32, candidates, n_candidates, neighborhood_size_mode=99_int32, &
+                                              ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"unknown neighborhood_size_mode rejected", arg_pos=4_int32)
     end subroutine test_fixed_k_grid_neighborhood_size_modes_2000
 
     !> G = 26097 (Kidney-sized): `4*sqrt(26097) = 646.18`, so `n_points_high = 647`,
@@ -13129,5 +13148,166 @@ contains
         call assert_equal_array_int([both%n_points, both%n_neighbors], [320_int32, 125_int32], 2_int32, &
                                     name//"both: stops at candidate 3")
     end subroutine test_param_search_neighborhood_size_mode
+
+    ! ---------------------------------------------------------------------------------------------
+    ! `delta_abs_tolerance`: a study whose absolute JSD change |J_t - J_{t-1}| is at most the
+    ! tolerance gets delta 0; above it delta = change / max(J_{t-1}, delta_epsilon) as before.
+    ! Default thresholds 0.05 (median) and 0.10 (max), delta_epsilon 1e-10.
+    ! ---------------------------------------------------------------------------------------------
+
+    !> A tiny JSD: 0.0010 -> 0.0012 in both studies, change 0.0002 (in binary 1.9999999999999987e-4,
+    !| not above 0.0002). Tolerance 0.0002: delta [0, 0], median and max 0 below the thresholds,
+    !| the transition qualifies (`n_consecutive_ok` 0 -> 1). Tolerance 0 (explicit, and omitted =
+    !| the default): delta = 0.0002/0.0010 = 0.2 in both, median and max 0.2 above 0.05/0.10, the
+    !| transition does not qualify (`n_consecutive_ok` 1 -> 0).
+    subroutine test_effect_size_abs_tolerance_tiny_jsd()
+        character(len=*), parameter :: name = "test_effect_size_abs_tolerance_tiny_jsd: "
+        real(real64), parameter :: prev(2) = [0.0010_real64, 0.0010_real64], current(2) = [0.0012_real64, 0.0012_real64]
+        real(real64) :: delta(2), delta_median, delta_max, delta_omitted(2), median_omitted, max_omitted
+        integer(int32) :: n_consecutive_ok, n_ok_omitted, ierr
+        logical(c_bool) :: plateau_found, plateau_omitted
+
+        n_consecutive_ok = 0_int32
+        call check_effect_size_plateau_condition(current, prev, 2_int32, .true._c_bool, 0.05_real64, 0.10_real64, &
+                                                 1.0e-10_real64, 2_int32, n_consecutive_ok, delta, delta_median, delta_max, &
+                                                 plateau_found, delta_abs_tolerance=0.0002_real64, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"tolerance 0.0002: ierr")
+        call assert_equal_array_real(delta, [0.0_real64, 0.0_real64], 2_int32, 0.0_real64, name//"tolerance 0.0002: delta 0")
+        call assert_equal_array_real([delta_median, delta_max], [0.0_real64, 0.0_real64], 2_int32, 0.0_real64, &
+                                     name//"tolerance 0.0002: median and max 0")
+        call assert_equal_int(n_consecutive_ok, 1_int32, name//"tolerance 0.0002: the transition qualifies")
+        call assert_false(plateau_found, name//"tolerance 0.0002: one transition is not yet a plateau")
+
+        call check_effect_size_plateau_condition(current, prev, 2_int32, .true._c_bool, 0.05_real64, 0.10_real64, &
+                                                 1.0e-10_real64, 2_int32, n_consecutive_ok, delta, delta_median, delta_max, &
+                                                 plateau_found, delta_abs_tolerance=0.0_real64, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"tolerance 0: ierr")
+        call assert_equal_array_real(delta, [0.2_real64, 0.2_real64], 2_int32, TOL, name//"tolerance 0: delta 0.2")
+        call assert_equal_array_real([delta_median, delta_max], [0.2_real64, 0.2_real64], 2_int32, TOL, &
+                                     name//"tolerance 0: median and max 0.2")
+        call assert_equal_int(n_consecutive_ok, 0_int32, name//"tolerance 0: the transition does not qualify")
+
+        n_ok_omitted = 1_int32
+        call check_effect_size_plateau_condition(current, prev, 2_int32, .true._c_bool, 0.05_real64, 0.10_real64, &
+                                                 1.0e-10_real64, 2_int32, n_ok_omitted, delta_omitted, median_omitted, &
+                                                 max_omitted, plateau_omitted, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"omitted: ierr")
+        call assert_equal_array_real(delta_omitted, delta, 2_int32, 0.0_real64, name//"omitted = tolerance 0: delta")
+        call assert_equal_array_real([median_omitted, max_omitted], [delta_median, delta_max], 2_int32, 0.0_real64, &
+                                     name//"omitted = tolerance 0: median and max")
+        call assert_equal_int(n_ok_omitted, 0_int32, name//"omitted = tolerance 0: no qualifying transition")
+
+        ! The wrapper rejects a negative tolerance (DM_MIN(0.0_real64)), naming the argument.
+        call check_effect_size_plateau_condition(current, prev, 2_int32, .true._c_bool, 0.05_real64, 0.10_real64, &
+                                                 1.0e-10_real64, 2_int32, n_ok_omitted, delta_omitted, median_omitted, &
+                                                 max_omitted, plateau_omitted, delta_abs_tolerance=-1.0e-3_real64, ierr=ierr)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"negative tolerance rejected", arg_pos=14_int32)
+    end subroutine test_effect_size_abs_tolerance_tiny_jsd
+
+    !> The boundary counts as no change, a large JSD above the tolerance is unaffected, per study.
+    !| Exactly representable values: study 1 0.5 -> 0.625 (change 0.125 == tolerance 0.125: delta
+    !| 0, not 0.125/0.5 = 0.25), study 2 0.5 -> 0.75 (change 0.25 > 0.125: delta 0.25/0.5 = 0.5, as
+    !| without tolerance). Median of [0, 0.5] = 0.25, max 0.5: does not qualify.
+    subroutine test_effect_size_abs_tolerance_boundary_and_large_jsd()
+        character(len=*), parameter :: name = "test_effect_size_abs_tolerance_boundary_and_large_jsd: "
+        real(real64) :: delta(2), delta_median, delta_max
+        integer(int32) :: n_consecutive_ok, ierr
+        logical(c_bool) :: plateau_found
+
+        n_consecutive_ok = 1_int32
+        call check_effect_size_plateau_condition([0.625_real64, 0.75_real64], [0.5_real64, 0.5_real64], 2_int32, &
+                                                 .true._c_bool, 0.05_real64, 0.10_real64, 1.0e-10_real64, 2_int32, &
+                                                 n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
+                                                 delta_abs_tolerance=0.125_real64, ierr=ierr)
+        call assert_err(ierr, ERR_OK, name//"ierr")
+        call assert_equal_array_real(delta, [0.0_real64, 0.5_real64], 2_int32, 0.0_real64, &
+                                     name//"change == tolerance gives 0; a change above it keeps its relative value")
+        call assert_equal_real(delta_median, 0.25_real64, 0.0_real64, name//"median of [0, 0.5]")
+        call assert_equal_real(delta_max, 0.5_real64, 0.0_real64, name//"max")
+        call assert_equal_int(n_consecutive_ok, 0_int32, name//"does not qualify")
+        call assert_false(plateau_found, name//"no plateau")
+
+        ! The same transition without tolerance: study 1 is 0.25 again.
+        call check_effect_size_plateau_condition([0.625_real64, 0.75_real64], [0.5_real64, 0.5_real64], 2_int32, &
+                                                 .true._c_bool, 0.05_real64, 0.10_real64, 1.0e-10_real64, 2_int32, &
+                                                 n_consecutive_ok, delta, delta_median, delta_max, plateau_found, ierr=ierr)
+        call assert_equal_array_real(delta, [0.25_real64, 0.5_real64], 2_int32, 0.0_real64, name//"without tolerance")
+    end subroutine test_effect_size_abs_tolerance_boundary_and_large_jsd
+
+    !> The fixed-k search passes `delta_abs_tolerance` through (Stone fixture via run_fixed_k_search:
+    !| grid (300, 4), (300, 2), both admissible, effect-size thresholds 1e-300 so that only a zero
+    !| delta qualifies, one qualifying transition enough). Tolerance 0 (explicit) equals omitted in
+    !| every output: the two candidates' JSDs differ, so delta > 0, no plateau, two admissible
+    !| candidates. Tolerance 1 (above any JSD change, the JSD lies in [0, 1]): delta 0 at the first
+    !| transition, so the search stops at the earliest possible candidate, candidate 2 = (300, 2).
+    subroutine test_param_search_delta_abs_tolerance()
+        character(len=*), parameter :: name = "test_param_search_delta_abs_tolerance: "
+        real(real64) :: gene_means(300, 3), residuals(4, 300, 3)
+        type(fixed_k_search_outputs) :: omitted, zero, huge_tolerance
+        integer(int32) :: ierr_omitted, ierr_zero, ierr_huge
+
+        call build_adaptive_stone_fixture(gene_means, residuals)
+        call run_fixed_k_search(gene_means, residuals, omitted, ierr_omitted, min_residuals_per_bin=3_int32, &
+                                delta_min_consecutive_transitions=1_int32)
+        call run_fixed_k_search(gene_means, residuals, zero, ierr_zero, min_residuals_per_bin=3_int32, &
+                                delta_min_consecutive_transitions=1_int32, delta_abs_tolerance=0.0_real64)
+        call run_fixed_k_search(gene_means, residuals, huge_tolerance, ierr_huge, min_residuals_per_bin=3_int32, &
+                                delta_min_consecutive_transitions=1_int32, delta_abs_tolerance=1.0_real64)
+        call assert_err(ierr_omitted, ERR_OK, name//"omitted: ierr")
+        call assert_err(ierr_zero, ERR_OK, name//"tolerance 0: ierr")
+        call assert_err(ierr_huge, ERR_OK, name//"tolerance 1: ierr")
+
+        call assert_fixed_k_searches_identical(name//"omitted vs tolerance 0: ", omitted, zero)
+        call assert_equal_int(zero%n_admissible, 2_int32, name//"tolerance 0: both candidates traced")
+        call assert_true(all(zero%trace_delta(:, 2) > 0.0_real64), name//"tolerance 0: the JSDs change")
+        call assert_false(zero%plateau, name//"tolerance 0: no plateau")
+
+        call assert_equal_int(huge_tolerance%n_admissible, 2_int32, name//"tolerance 1: two candidates traced")
+        call assert_equal_array_real(huge_tolerance%trace_delta(:, 2), [0.0_real64, 0.0_real64, 0.0_real64], 3_int32, &
+                                     0.0_real64, name//"tolerance 1: every change counts as none")
+        call assert_true(huge_tolerance%plateau, name//"tolerance 1: plateau")
+        call assert_equal_array_int([huge_tolerance%n_points, huge_tolerance%n_neighbors], [300_int32, 2_int32], 2_int32, &
+                                    name//"tolerance 1: stops at candidate 2")
+        call assert_equal_array_real(huge_tolerance%trace_jsd(:, 1:2), zero%trace_jsd(:, 1:2), 6_int32, 0.0_real64, &
+                                     name//"the tolerance changes no observed JSD")
+    end subroutine test_param_search_delta_abs_tolerance
+
+    !> The adaptive search passes `delta_abs_tolerance` through (fixture B as in E4b: all four
+    !| candidates (20, 16, 12, 10) admissible, effect-size thresholds 1e-300, seed 39). Tolerance
+    !| 0 (explicit) equals omitted in every output: no plateau, four admissible candidates.
+    !| Tolerance 1: every delta 0, so the two consecutive transitions the default needs are
+    !| complete at the earliest possible candidate, the third, `k_start` 12.
+    subroutine test_adaptive_search_delta_abs_tolerance()
+        character(len=*), parameter :: name = "test_adaptive_search_delta_abs_tolerance: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: omitted, zero, huge_tolerance
+        integer(int32) :: ierr_omitted, ierr_zero, ierr_huge
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .true._c_bool, 500_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, omitted, ierr_omitted, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
+                                 delta_median_threshold=1.0e-300_real64, delta_max_threshold=1.0e-300_real64, &
+                                 random_seed=39_int32)
+        call run_adaptive_search(gene_means, residuals, zero, ierr_zero, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
+                                 delta_median_threshold=1.0e-300_real64, delta_max_threshold=1.0e-300_real64, &
+                                 random_seed=39_int32, delta_abs_tolerance=0.0_real64)
+        call run_adaptive_search(gene_means, residuals, huge_tolerance, ierr_huge, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
+                                 delta_median_threshold=1.0e-300_real64, delta_max_threshold=1.0e-300_real64, &
+                                 random_seed=39_int32, delta_abs_tolerance=1.0_real64)
+        call assert_err(ierr_omitted, ERR_OK, name//"omitted: ierr")
+        call assert_err(ierr_zero, ERR_OK, name//"tolerance 0: ierr")
+        call assert_err(ierr_huge, ERR_OK, name//"tolerance 1: ierr")
+
+        call assert_adaptive_searches_identical(name//"omitted vs tolerance 0: ", omitted, zero)
+        call assert_false(zero%plateau, name//"tolerance 0: no plateau")
+        call assert_equal_int(zero%n_admissible, 4_int32, name//"tolerance 0: four admissible candidates")
+
+        call assert_true(huge_tolerance%plateau, name//"tolerance 1: plateau")
+        call assert_equal_int(huge_tolerance%n_admissible, 3_int32, name//"tolerance 1: stops at the third")
+        call assert_equal_int(huge_tolerance%k_start, 12_int32, name//"tolerance 1: k_start of candidate 3")
+        call assert_equal_array_real(huge_tolerance%trace_delta(:, 2:3), [0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64], &
+                                     4_int32, 0.0_real64, name//"tolerance 1: every change counts as none")
+        call assert_equal_array_real(huge_tolerance%trace_jsd(:, 1:3), zero%trace_jsd(:, 1:3), 6_int32, 0.0_real64, &
+                                     name//"the tolerance changes no observed JSD")
+    end subroutine test_adaptive_search_delta_abs_tolerance
 
 end module mod_test_data_integration_js_comp_test

@@ -134,6 +134,7 @@ contains
             random_seed,&
             bin_count_mode,&
             neighborhood_size_mode,&
+            delta_abs_tolerance,&
             ierr&
         ) bind(C, name="run_js_comp_test_on_sample_assignment_c")
         use tox_data_integration_js_comp_test_permutation, only: run_js_comp_test_on_sample_assignment
@@ -292,6 +293,10 @@ contains
             !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
             !! The default value is `'neighborhood_size_large'`.
+        real(c_double), intent(in), target :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: join_method_mode_f
@@ -325,6 +330,7 @@ contains
         M_CHECK_NON_NULL(upper_residual_range_quantile)
         M_CHECK_NON_NULL(two_sided_bootstrapping_significance_level)
         M_CHECK_NON_NULL(random_seed)
+        M_CHECK_NON_NULL(delta_abs_tolerance)
         M_CHECK_ARRAY_NON_NULL(expression, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(sample_assignment, n_samples)
         M_CHECK_ARRAY_NON_NULL(global_js_divergence, n_studies)
@@ -432,6 +438,7 @@ contains
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode_mode_f,&
             neighborhood_size_mode = neighborhood_size_mode_mode_f,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_on_sample_assignment_c
@@ -599,6 +606,7 @@ contains
             random_seed,&
             bin_count_mode,&
             neighborhood_size_mode,&
+            delta_abs_tolerance,&
             ierr&
         ) bind(C, name="run_js_comp_test_on_sample_assignment_expert_c")
         use tox_data_integration_js_comp_test_permutation, only: run_js_comp_test_on_sample_assignment_expert
@@ -933,6 +941,10 @@ contains
             !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
             !! The default value is `'neighborhood_size_large'`.
+        real(c_double), intent(in), target :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: join_method_mode_f
@@ -969,6 +981,7 @@ contains
         M_CHECK_NON_NULL(upper_residual_range_quantile)
         M_CHECK_NON_NULL(two_sided_bootstrapping_significance_level)
         M_CHECK_NON_NULL(random_seed)
+        M_CHECK_NON_NULL(delta_abs_tolerance)
         M_CHECK_ARRAY_NON_NULL(expression, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(sample_assignment, n_samples)
         M_CHECK_ARRAY_NON_NULL(global_js_divergence, n_studies)
@@ -1243,6 +1256,7 @@ contains
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode_mode_f,&
             neighborhood_size_mode = neighborhood_size_mode_mode_f,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_on_sample_assignment_expert_c
@@ -1321,6 +1335,7 @@ contains
             max_pooled_residuals,&
             min_study_neighbors,&
             bin_count_mode,&
+            delta_abs_tolerance,&
             ierr&
         ) bind(C, name="run_js_comp_test_adaptive_on_sample_assignment_c")
         use tox_data_integration_js_comp_test_permutation, only: run_js_comp_test_adaptive_on_sample_assignment
@@ -1488,6 +1503,10 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `'bin_count_occupancy'`.
+        real(c_double), intent(in), target :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: join_method_mode_f
@@ -1527,6 +1546,7 @@ contains
         M_CHECK_NON_NULL(mad_distance_factor)
         M_CHECK_NON_NULL(max_pooled_residuals)
         M_CHECK_NON_NULL(min_study_neighbors)
+        M_CHECK_NON_NULL(delta_abs_tolerance)
         M_CHECK_ARRAY_NON_NULL(expression, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(sample_assignment, n_samples)
         M_CHECK_ARRAY_NON_NULL(global_js_divergence, n_studies)
@@ -1623,6 +1643,7 @@ contains
             max_pooled_residuals = max_pooled_residuals,&
             min_study_neighbors = min_study_neighbors,&
             bin_count_mode = bin_count_mode_mode_f,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_adaptive_on_sample_assignment_c
@@ -1793,6 +1814,7 @@ contains
             max_pooled_residuals,&
             min_study_neighbors,&
             bin_count_mode,&
+            delta_abs_tolerance,&
             ierr&
         ) bind(C, name="run_js_comp_test_adaptive_on_sample_assignment_expert_c")
         use tox_data_integration_js_comp_test_permutation, only: run_js_comp_test_adaptive_on_sample_assignment_expert
@@ -2151,6 +2173,10 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `'bin_count_occupancy'`.
+        real(c_double), intent(in), target :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: join_method_mode_f
@@ -2192,6 +2218,7 @@ contains
         M_CHECK_NON_NULL(mad_distance_factor)
         M_CHECK_NON_NULL(max_pooled_residuals)
         M_CHECK_NON_NULL(min_study_neighbors)
+        M_CHECK_NON_NULL(delta_abs_tolerance)
         M_CHECK_ARRAY_NON_NULL(expression, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(sample_assignment, n_samples)
         M_CHECK_ARRAY_NON_NULL(global_js_divergence, n_studies)
@@ -2470,6 +2497,7 @@ contains
             max_pooled_residuals = max_pooled_residuals,&
             min_study_neighbors = min_study_neighbors,&
             bin_count_mode = bin_count_mode_mode_f,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_adaptive_on_sample_assignment_expert_c
@@ -2544,6 +2572,7 @@ contains
             random_seed,&
             bin_count_mode,&
             neighborhood_size_mode,&
+            delta_abs_tolerance,&
             ierr&
         ) bind(C, name="run_js_comp_test_label_permutation_test_c")
         use tox_data_integration_js_comp_test_permutation, only: run_js_comp_test_label_permutation_test
@@ -2701,6 +2730,10 @@ contains
             !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
             !! The default value is `'neighborhood_size_large'`.
+        real(c_double), intent(in), target :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: join_method_mode_f
@@ -2733,6 +2766,7 @@ contains
         M_CHECK_NON_NULL(upper_residual_range_quantile)
         M_CHECK_NON_NULL(two_sided_bootstrapping_significance_level)
         M_CHECK_NON_NULL(random_seed)
+        M_CHECK_NON_NULL(delta_abs_tolerance)
         M_CHECK_ARRAY_NON_NULL(expression, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(global_js_divergence_observed, n_studies)
         M_CHECK_ARRAY_NON_NULL(p_values, n_studies)
@@ -2841,6 +2875,7 @@ contains
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode_mode_f,&
             neighborhood_size_mode = neighborhood_size_mode_mode_f,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_label_permutation_test_c
@@ -3002,6 +3037,7 @@ contains
             random_seed,&
             bin_count_mode,&
             neighborhood_size_mode,&
+            delta_abs_tolerance,&
             ierr&
         ) bind(C, name="run_js_comp_test_label_permutation_test_expert_c")
         use tox_data_integration_js_comp_test_permutation, only: run_js_comp_test_label_permutation_test_expert
@@ -3339,6 +3375,10 @@ contains
             !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
             !! The default value is `'neighborhood_size_large'`.
+        real(c_double), intent(in), target :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: join_method_mode_f
@@ -3374,6 +3414,7 @@ contains
         M_CHECK_NON_NULL(upper_residual_range_quantile)
         M_CHECK_NON_NULL(two_sided_bootstrapping_significance_level)
         M_CHECK_NON_NULL(random_seed)
+        M_CHECK_NON_NULL(delta_abs_tolerance)
         M_CHECK_ARRAY_NON_NULL(expression, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(global_js_divergence_observed, n_studies)
         M_CHECK_ARRAY_NON_NULL(p_values, n_studies)
@@ -3653,6 +3694,7 @@ contains
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode_mode_f,&
             neighborhood_size_mode = neighborhood_size_mode_mode_f,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_label_permutation_test_expert_c
@@ -3724,6 +3766,7 @@ contains
             max_pooled_residuals,&
             min_study_neighbors,&
             bin_count_mode,&
+            delta_abs_tolerance,&
             ierr&
         ) bind(C, name="run_js_comp_test_adaptive_label_permutation_test_c")
         use tox_data_integration_js_comp_test_permutation, only: run_js_comp_test_adaptive_label_permutation_test
@@ -3886,6 +3929,10 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `'bin_count_occupancy'`.
+        real(c_double), intent(in), target :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: join_method_mode_f
@@ -3922,6 +3969,7 @@ contains
         M_CHECK_NON_NULL(mad_distance_factor)
         M_CHECK_NON_NULL(max_pooled_residuals)
         M_CHECK_NON_NULL(min_study_neighbors)
+        M_CHECK_NON_NULL(delta_abs_tolerance)
         M_CHECK_ARRAY_NON_NULL(expression, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(global_js_divergence_observed, n_studies)
         M_CHECK_ARRAY_NON_NULL(p_values, n_studies)
@@ -4017,6 +4065,7 @@ contains
             max_pooled_residuals = max_pooled_residuals,&
             min_study_neighbors = min_study_neighbors,&
             bin_count_mode = bin_count_mode_mode_f,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_adaptive_label_permutation_test_c
@@ -4182,6 +4231,7 @@ contains
             max_pooled_residuals,&
             min_study_neighbors,&
             bin_count_mode,&
+            delta_abs_tolerance,&
             ierr&
         ) bind(C, name="run_js_comp_test_adaptive_label_permutation_test_expert_c")
         use tox_data_integration_js_comp_test_permutation, only: run_js_comp_test_adaptive_label_permutation_test_expert
@@ -4539,6 +4589,10 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `'bin_count_occupancy'`.
+        real(c_double), intent(in), target :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: join_method_mode_f
@@ -4577,6 +4631,7 @@ contains
         M_CHECK_NON_NULL(mad_distance_factor)
         M_CHECK_NON_NULL(max_pooled_residuals)
         M_CHECK_NON_NULL(min_study_neighbors)
+        M_CHECK_NON_NULL(delta_abs_tolerance)
         M_CHECK_ARRAY_NON_NULL(expression, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(global_js_divergence_observed, n_studies)
         M_CHECK_ARRAY_NON_NULL(p_values, n_studies)
@@ -4858,6 +4913,7 @@ contains
             max_pooled_residuals = max_pooled_residuals,&
             min_study_neighbors = min_study_neighbors,&
             bin_count_mode = bin_count_mode_mode_f,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_adaptive_label_permutation_test_expert_c

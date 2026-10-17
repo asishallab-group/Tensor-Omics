@@ -120,7 +120,8 @@
       "  mad_distance_factor = ${23:1.0},",
       "  max_pooled_residuals = ${24:0L},",
       "  min_study_neighbors = ${25:1L},",
-      "  bin_count_mode = ${26|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|}",
+      "  bin_count_mode = ${26|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
+      "  delta_abs_tolerance = ${27:0.0}",
       ")"
     ]
   },
@@ -301,7 +302,8 @@
       "  two_sided_bootstrapping_significance_level = ${21:2.5},",
       "  random_seed = ${22:42L},",
       "  bin_count_mode = ${23|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
-      "  neighborhood_size_mode = ${24|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|}",
+      "  neighborhood_size_mode = ${24|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|},",
+      "  delta_abs_tolerance = ${25:0.0}",
       ")"
     ]
   },
@@ -342,7 +344,8 @@
       "  two_sided_bootstrapping_significance_level = ${22:2.5},",
       "  random_seed = ${23:42L},",
       "  bin_count_mode = ${24|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
-      "  neighborhood_size_mode = ${25|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|}",
+      "  neighborhood_size_mode = ${25|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|},",
+      "  delta_abs_tolerance = ${26:0.0}",
       ")"
     ]
   },
@@ -378,7 +381,8 @@
       "  mad_distance_factor = ${26:1.0},",
       "  max_pooled_residuals = ${27:0L},",
       "  min_study_neighbors = ${28:1L},",
-      "  bin_count_mode = ${29|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|}",
+      "  bin_count_mode = ${29|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
+      "  delta_abs_tolerance = ${30:0.0}",
       ")"
     ]
   },
@@ -410,7 +414,8 @@
       "  two_sided_bootstrapping_significance_level = ${22:2.5},",
       "  random_seed = ${23:42L},",
       "  bin_count_mode = ${24|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
-      "  neighborhood_size_mode = ${25|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|}",
+      "  neighborhood_size_mode = ${25|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|},",
+      "  delta_abs_tolerance = ${26:0.0}",
       ")"
     ]
   },
@@ -446,7 +451,8 @@
       "  mad_distance_factor = ${26:1.0},",
       "  max_pooled_residuals = ${27:0L},",
       "  min_study_neighbors = ${28:1L},",
-      "  bin_count_mode = ${29|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|}",
+      "  bin_count_mode = ${29|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
+      "  delta_abs_tolerance = ${30:0.0}",
       ")"
     ]
   },
@@ -587,7 +593,8 @@
       "  delta_max_threshold = ${6:delta_max_threshold},",
       "  delta_epsilon = ${7:delta_epsilon},",
       "  delta_min_consecutive_transitions = ${8:delta_min_consecutive_transitions},",
-      "  n_consecutive_ok = ${9:n_consecutive_ok}",
+      "  n_consecutive_ok = ${9:n_consecutive_ok},",
+      "  delta_abs_tolerance = ${10:0.0}",
       ")"
     ]
   },

@@ -144,6 +144,7 @@ contains
             random_seed,&
             bin_count_mode,&
             neighborhood_size_mode,&
+            delta_abs_tolerance,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -297,6 +298,10 @@ contains
             !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
             !! The default value is `0_int32`.
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: max_n_points_candidate
@@ -407,6 +412,7 @@ contains
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=26_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=27_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=28_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(delta_abs_tolerance, ierr, arg_pos=32_int32, min=0.0_real64)
         call validate_all_in_range_real(expression, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(sample_assignment, n_samples, ierr, arg_pos=6_int32, min=1_int32, max=n_samples)
         if (present(join_method)) then; if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=14_int32); end if
@@ -628,6 +634,7 @@ contains
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode,&
             neighborhood_size_mode = neighborhood_size_mode,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -796,6 +803,7 @@ contains
             random_seed,&
             bin_count_mode,&
             neighborhood_size_mode,&
+            delta_abs_tolerance,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -1125,6 +1133,10 @@ contains
             !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
             !! The default value is `0_int32`.
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -1153,6 +1165,7 @@ contains
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=111_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=112_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=113_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(delta_abs_tolerance, ierr, arg_pos=117_int32, min=0.0_real64)
         call validate_all_in_range_real(expression, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(sample_assignment, n_samples, ierr, arg_pos=6_int32, min=1_int32, max=n_samples)
         if (present(join_method)) then; if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=99_int32); end if
@@ -1279,6 +1292,7 @@ contains
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode,&
             neighborhood_size_mode = neighborhood_size_mode,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -1358,6 +1372,7 @@ contains
             max_pooled_residuals,&
             min_study_neighbors,&
             bin_count_mode,&
+            delta_abs_tolerance,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -1521,6 +1536,10 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `0_int32`.
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: max_n_points_candidate
@@ -1643,6 +1662,7 @@ contains
         call validate_in_range_real(mad_distance_factor, ierr, arg_pos=34_int32, min=0.0_real64)
         call validate_in_range_int(max_pooled_residuals, ierr, arg_pos=35_int32, min=0_int32)
         call validate_in_range_int(min_study_neighbors, ierr, arg_pos=36_int32, min=1_int32)
+        call validate_in_range_real(delta_abs_tolerance, ierr, arg_pos=38_int32, min=0.0_real64)
         call validate_all_in_range_real(expression, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(sample_assignment, n_samples, ierr, arg_pos=6_int32, min=1_int32, max=n_samples)
         if (present(join_method)) then; if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=17_int32); end if
@@ -1883,6 +1903,7 @@ contains
             max_pooled_residuals = max_pooled_residuals,&
             min_study_neighbors = min_study_neighbors,&
             bin_count_mode = bin_count_mode,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -2054,6 +2075,7 @@ contains
             max_pooled_residuals,&
             min_study_neighbors,&
             bin_count_mode,&
+            delta_abs_tolerance,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -2408,6 +2430,10 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `0_int32`.
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -2440,6 +2466,7 @@ contains
         call validate_in_range_real(mad_distance_factor, ierr, arg_pos=126_int32, min=0.0_real64)
         call validate_in_range_int(max_pooled_residuals, ierr, arg_pos=127_int32, min=0_int32)
         call validate_in_range_int(min_study_neighbors, ierr, arg_pos=128_int32, min=1_int32)
+        call validate_in_range_real(delta_abs_tolerance, ierr, arg_pos=130_int32, min=0.0_real64)
         call validate_all_in_range_real(expression, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(sample_assignment, n_samples, ierr, arg_pos=6_int32, min=1_int32, max=n_samples)
         if (present(join_method)) then; if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=109_int32); end if
@@ -2578,6 +2605,7 @@ contains
             max_pooled_residuals = max_pooled_residuals,&
             min_study_neighbors = min_study_neighbors,&
             bin_count_mode = bin_count_mode,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -2653,6 +2681,7 @@ contains
             random_seed,&
             bin_count_mode,&
             neighborhood_size_mode,&
+            delta_abs_tolerance,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -2805,6 +2834,10 @@ contains
             !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
             !! The default value is `0_int32`.
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: max_n_points_candidate
@@ -2917,6 +2950,7 @@ contains
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=26_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=27_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=28_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(delta_abs_tolerance, ierr, arg_pos=32_int32, min=0.0_real64)
         call validate_all_in_range_real(expression, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         if (present(join_method)) then; if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=14_int32); end if
         if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=18_int32); end if
@@ -3141,6 +3175,7 @@ contains
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode,&
             neighborhood_size_mode = neighborhood_size_mode,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -3303,6 +3338,7 @@ contains
             random_seed,&
             bin_count_mode,&
             neighborhood_size_mode,&
+            delta_abs_tolerance,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -3635,6 +3671,10 @@ contains
             !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
             !! The default value is `0_int32`.
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -3663,6 +3703,7 @@ contains
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=113_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=114_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=115_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(delta_abs_tolerance, ierr, arg_pos=119_int32, min=0.0_real64)
         call validate_all_in_range_real(expression, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         if (present(join_method)) then; if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=101_int32); end if
         if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=105_int32); end if
@@ -3790,6 +3831,7 @@ contains
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode,&
             neighborhood_size_mode = neighborhood_size_mode,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -3862,6 +3904,7 @@ contains
             max_pooled_residuals,&
             min_study_neighbors,&
             bin_count_mode,&
+            delta_abs_tolerance,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -4020,6 +4063,10 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `0_int32`.
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: max_n_points_candidate
@@ -4144,6 +4191,7 @@ contains
         call validate_in_range_real(mad_distance_factor, ierr, arg_pos=32_int32, min=0.0_real64)
         call validate_in_range_int(max_pooled_residuals, ierr, arg_pos=33_int32, min=0_int32)
         call validate_in_range_int(min_study_neighbors, ierr, arg_pos=34_int32, min=1_int32)
+        call validate_in_range_real(delta_abs_tolerance, ierr, arg_pos=36_int32, min=0.0_real64)
         call validate_all_in_range_real(expression, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         if (present(join_method)) then; if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=15_int32); end if
         if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=19_int32); end if
@@ -4385,6 +4433,7 @@ contains
             max_pooled_residuals = max_pooled_residuals,&
             min_study_neighbors = min_study_neighbors,&
             bin_count_mode = bin_count_mode,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -4551,6 +4600,7 @@ contains
             max_pooled_residuals,&
             min_study_neighbors,&
             bin_count_mode,&
+            delta_abs_tolerance,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -4904,6 +4954,10 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `0_int32`.
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -4936,6 +4990,7 @@ contains
         call validate_in_range_real(mad_distance_factor, ierr, arg_pos=126_int32, min=0.0_real64)
         call validate_in_range_int(max_pooled_residuals, ierr, arg_pos=127_int32, min=0_int32)
         call validate_in_range_int(min_study_neighbors, ierr, arg_pos=128_int32, min=1_int32)
+        call validate_in_range_real(delta_abs_tolerance, ierr, arg_pos=130_int32, min=0.0_real64)
         call validate_all_in_range_real(expression, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         if (present(join_method)) then; if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=109_int32); end if
         if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=113_int32); end if
@@ -5073,6 +5128,7 @@ contains
             max_pooled_residuals = max_pooled_residuals,&
             min_study_neighbors = min_study_neighbors,&
             bin_count_mode = bin_count_mode,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)

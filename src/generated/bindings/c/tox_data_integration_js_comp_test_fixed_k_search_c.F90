@@ -204,6 +204,7 @@ contains
             random_seed,&
             bin_count_mode,&
             neighborhood_size_mode,&
+            delta_abs_tolerance,&
             ierr&
         ) bind(C, name="run_js_comp_test_parameter_search_c")
         use tox_data_integration_js_comp_test_fixed_k_search, only: run_js_comp_test_parameter_search
@@ -302,7 +303,8 @@ contains
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
-            !! candidate (`Delta_{i,t}`); `-1.0` for the first admissible candidate
+            !! candidate (`Delta_{i,t}`); `-1.0` for the first admissible candidate; 0 for a study
+            !! whose absolute change is at most `delta_abs_tolerance`
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(16), intent(out), target :: trace_delta_median
             !! Per-admissible-candidate median of trace_delta across studies; `-1.0` for the first
@@ -456,6 +458,10 @@ contains
             !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
             !! The default value is `'neighborhood_size_large'`.
+        real(c_double), intent(in), target :: delta_abs_tolerance
+            !! Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
         integer(int32) :: join_method_mode_f
@@ -489,6 +495,7 @@ contains
         M_CHECK_NON_NULL(upper_residual_range_quantile)
         M_CHECK_NON_NULL(two_sided_bootstrapping_significance_level)
         M_CHECK_NON_NULL(random_seed)
+        M_CHECK_NON_NULL(delta_abs_tolerance)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(join_method, 11)
@@ -644,6 +651,7 @@ contains
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode_mode_f,&
             neighborhood_size_mode = neighborhood_size_mode_mode_f,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_parameter_search_c
@@ -788,6 +796,7 @@ contains
             random_seed,&
             bin_count_mode,&
             neighborhood_size_mode,&
+            delta_abs_tolerance,&
             ierr&
         ) bind(C, name="run_js_comp_test_parameter_search_expert_c")
         use tox_data_integration_js_comp_test_fixed_k_search, only: run_js_comp_test_parameter_search_expert
@@ -890,7 +899,8 @@ contains
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
-            !! candidate (`Delta_{i,t}`); `-1.0` for the first admissible candidate
+            !! candidate (`Delta_{i,t}`); `-1.0` for the first admissible candidate; 0 for a study
+            !! whose absolute change is at most `delta_abs_tolerance`
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(16), intent(out), target :: trace_delta_median
             !! Per-admissible-candidate median of trace_delta across studies; `-1.0` for the first
@@ -1134,6 +1144,10 @@ contains
             !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
             !! The default value is `'neighborhood_size_large'`.
+        real(c_double), intent(in), target :: delta_abs_tolerance
+            !! Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
         integer(int32) :: join_method_mode_f
@@ -1168,6 +1182,7 @@ contains
         M_CHECK_NON_NULL(upper_residual_range_quantile)
         M_CHECK_NON_NULL(two_sided_bootstrapping_significance_level)
         M_CHECK_NON_NULL(random_seed)
+        M_CHECK_NON_NULL(delta_abs_tolerance)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(join_method, 11)
@@ -1412,6 +1427,7 @@ contains
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode_mode_f,&
             neighborhood_size_mode = neighborhood_size_mode_mode_f,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_parameter_search_expert_c

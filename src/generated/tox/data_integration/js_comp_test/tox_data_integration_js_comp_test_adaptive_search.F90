@@ -242,6 +242,7 @@ contains
             max_pooled_residuals,&
             min_study_neighbors,&
             bin_count_mode,&
+            delta_abs_tolerance,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -338,7 +339,8 @@ contains
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
-            !! candidate; `-1.0` for the first
+            !! candidate; `-1.0` for the first; 0 for a study whose absolute change is at most
+            !! `delta_abs_tolerance`
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(16), intent(out) :: trace_delta_median
             !! Per-admissible-candidate median of trace_delta across studies; `-1.0` for the first
@@ -517,6 +519,10 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `0_int32`.
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
         integer(int32) :: n_bootstrapping_top_k_jsds
@@ -592,6 +598,7 @@ contains
         call validate_in_range_real(mad_distance_factor, ierr, arg_pos=62_int32, min=0.0_real64)
         call validate_in_range_int(max_pooled_residuals, ierr, arg_pos=63_int32, min=0_int32)
         call validate_in_range_int(min_study_neighbors, ierr, arg_pos=64_int32, min=1_int32)
+        call validate_in_range_real(delta_abs_tolerance, ierr, arg_pos=66_int32, min=0.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
@@ -769,6 +776,7 @@ contains
             max_pooled_residuals = max_pooled_residuals,&
             min_study_neighbors = min_study_neighbors,&
             bin_count_mode = bin_count_mode,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -957,6 +965,7 @@ contains
             max_pooled_residuals,&
             min_study_neighbors,&
             bin_count_mode,&
+            delta_abs_tolerance,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -1057,7 +1066,8 @@ contains
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
-            !! candidate; `-1.0` for the first
+            !! candidate; `-1.0` for the first; 0 for a study whose absolute change is at most
+            !! `delta_abs_tolerance`
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(16), intent(out) :: trace_delta_median
             !! Per-admissible-candidate median of trace_delta across studies; `-1.0` for the first
@@ -1331,6 +1341,10 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `0_int32`.
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
 
@@ -1359,6 +1373,7 @@ contains
         call validate_in_range_real(mad_distance_factor, ierr, arg_pos=110_int32, min=0.0_real64)
         call validate_in_range_int(max_pooled_residuals, ierr, arg_pos=111_int32, min=0_int32)
         call validate_in_range_int(min_study_neighbors, ierr, arg_pos=112_int32, min=1_int32)
+        call validate_in_range_real(delta_abs_tolerance, ierr, arg_pos=114_int32, min=0.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
@@ -1481,6 +1496,7 @@ contains
             max_pooled_residuals = max_pooled_residuals,&
             min_study_neighbors = min_study_neighbors,&
             bin_count_mode = bin_count_mode,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)

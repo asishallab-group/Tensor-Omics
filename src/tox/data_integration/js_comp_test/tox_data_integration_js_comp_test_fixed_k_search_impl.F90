@@ -345,7 +345,7 @@ contains
                                                        delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, &
                                                        lower_residual_range_quantile, upper_residual_range_quantile, &
                                                        two_sided_bootstrapping_significance_level, random_seed, &
-                                                       bin_count_mode, neighborhood_size_mode, ierr)
+                                                       bin_count_mode, neighborhood_size_mode, delta_abs_tolerance, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -441,7 +441,8 @@ contains
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(n_studies, M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
-            !! candidate (`Delta_{i,t}`); `-1.0` for the first admissible candidate
+            !! candidate (`Delta_{i,t}`); `-1.0` for the first admissible candidate; 0 for a study
+            !! whose absolute change is at most `delta_abs_tolerance`
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(M_MAX_CANDIDATE_PAIRS), intent(out) :: trace_delta_median
             !! Per-admissible-candidate median of trace_delta across studies; `-1.0` for the first
@@ -693,6 +694,10 @@ contains
             !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! | Both, large then small for each `n_points` | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]] |
             !! DM_DEFAULT(M_MODE_NEIGHBORHOOD_SIZE_LARGE)
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! M_DELTA_ABS_TOLERANCE_DOC
+            !! DM_MIN(0.0_real64)
+            !! DM_DEFAULT(M_DELTA_ABS_TOLERANCE_DEFAULT)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
 
@@ -704,6 +709,7 @@ contains
         integer(int32) :: best_uncertainty_candidate_index, actual_m_min, actual_neighborhood_size_mode
         real(real64) :: actual_min_neighbor_overlap, actual_succeeding_ci_overlap
         real(real64) :: actual_delta_median_threshold, actual_delta_max_threshold, actual_delta_epsilon
+        real(real64) :: actual_delta_abs_tolerance
         real(real64) :: best_uncertainty_value
         logical(c_bool) :: all_have_min_neighbor_overlap, all_bins_have_min_count, plateau_found, has_empty_study
 
@@ -717,6 +723,7 @@ contains
         M_DEFAULT_VAL(delta_epsilon, actual_delta_epsilon, M_DELTA_EPSILON_DEFAULT)
         M_DEFAULT_VAL(delta_min_consecutive_transitions, actual_delta_min_consecutive_transitions, M_DELTA_MIN_CONSECUTIVE_TRANSITIONS_DEFAULT)
         M_DEFAULT_VAL(m_min, actual_m_min, M_OCCUPANCY_M_MIN_DEFAULT)
+        M_DEFAULT_VAL(delta_abs_tolerance, actual_delta_abs_tolerance, M_DELTA_ABS_TOLERANCE_DEFAULT)
         M_DEFAULT_VAL(neighborhood_size_mode, actual_neighborhood_size_mode, M_MODE_NEIGHBORHOOD_SIZE_LARGE)
 
         pool_size = max_n_genes_all_studies*n_studies
@@ -810,7 +817,7 @@ contains
                                                join_method, actual_plateau_mode, actual_succeeding_ci_overlap, &
                                                actual_delta_median_threshold, actual_delta_max_threshold, &
                                                actual_delta_epsilon, actual_delta_min_consecutive_transitions, &
-                                               tmp_n_bins_per_point, tmp_occupancy_failed, tmp_n_pooled_residuals, &
+                                               actual_delta_abs_tolerance, tmp_n_bins_per_point, tmp_occupancy_failed, tmp_n_pooled_residuals, &
                                                tmp_min_bin_occupancy, tmp_mean_bin_occupancy, tmp_max_bin_occupancy, &
                                                tmp_sturges_bins, tmp_fd_bins, tmp_shared_residual_range_low, &
                                                tmp_shared_residual_range_high, tmp_included_n_reps, tmp_mean_pmf_counts, &

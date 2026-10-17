@@ -140,7 +140,10 @@ check_plateau_condition <- function(confidence_interval, best_candidate_pair_con
 #' for each study `i`, the relative change of the observed global JSD between successive
 #' admissible candidates,
 #' `delta(i) = |global_js_divergence(i) - prev_global_js_divergence(i)| / max(prev_global_js_divergence(i),
-#' delta_epsilon)`, is summarized by its median (`delta_median`) and maximum (`delta_max`). A
+#' delta_epsilon)`, or 0 when the absolute change `|global_js_divergence(i) -
+#' prev_global_js_divergence(i)|` is at most `delta_abs_tolerance` (so that small random changes
+#' of a tiny JSD do not look like large relative changes), is summarized by its median
+#' (`delta_median`) and maximum (`delta_max`). A
 #' plateau is found once both stay below their thresholds for
 #' `delta_min_consecutive_transitions` consecutive transitions, counted across calls in
 #' `n_consecutive_ok`.
@@ -168,17 +171,21 @@ check_plateau_condition <- function(confidence_interval, best_candidate_pair_con
 #' @param n_consecutive_ok a integer scalar. Running count of consecutive qualifying transitions; reset to zero when this one does
 #'   not qualify or `has_previous` is `FALSE`
 #'   The minimum valid value is `0`.
+#' @param delta_abs_tolerance a numeric scalar. Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+#'   The minimum valid value is `0.0`.
+#'   The default value is `0.0`.
 #' @return a named list with elements:
 #'   \item{n_consecutive_ok}{a integer scalar. Running count of consecutive qualifying transitions; reset to zero when this one does
 #'     not qualify or `has_previous` is `FALSE`
 #'     The minimum valid value is `0`.}
-#'   \item{delta}{a numeric vector. Per-study relative JSD change from the previous admissible candidate; `-1.0`
-#'     throughout iff `.not. has_previous`}
+#'   \item{delta}{a numeric vector. Per-study relative JSD change from the previous admissible candidate, 0 for a study
+#'     whose absolute change is at most `delta_abs_tolerance`; `-1.0` throughout iff
+#'     `.not. has_previous`}
 #'   \item{delta_median}{a numeric scalar. Median of `delta` across studies; `-1.0` iff `.not. has_previous`}
 #'   \item{delta_max}{a numeric scalar. Maximum of `delta` across studies; `-1.0` iff `.not. has_previous`}
 #'   \item{plateau_found}{a logical scalar. `TRUE` once `n_consecutive_ok` reaches `delta_min_consecutive_transitions`}
 #' @export
-check_effect_size_plateau_condition <- function(global_js_divergence, prev_global_js_divergence, has_previous, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, n_consecutive_ok) {
+check_effect_size_plateau_condition <- function(global_js_divergence, prev_global_js_divergence, has_previous, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, n_consecutive_ok, delta_abs_tolerance = 0.0) {
     global_js_divergence <- .tox_as_double_vector(global_js_divergence, "global_js_divergence")
     prev_global_js_divergence <- .tox_as_double_vector(prev_global_js_divergence, "prev_global_js_divergence")
     has_previous <- .tox_as_logical_scalar(has_previous, "has_previous")
@@ -187,12 +194,13 @@ check_effect_size_plateau_condition <- function(global_js_divergence, prev_globa
     delta_epsilon <- .tox_as_double_scalar(delta_epsilon, "delta_epsilon")
     delta_min_consecutive_transitions <- .tox_as_integer_scalar(delta_min_consecutive_transitions, "delta_min_consecutive_transitions")
     n_consecutive_ok <- .tox_as_integer_scalar(n_consecutive_ok, "n_consecutive_ok")
+    delta_abs_tolerance <- .tox_as_double_scalar(delta_abs_tolerance, "delta_abs_tolerance")
     if (length(prev_global_js_divergence) != length(global_js_divergence))
         .tox_shape_error("prev_global_js_divergence", length(prev_global_js_divergence), "global_js_divergence", length(global_js_divergence))
 
-    .result <- .Call("check_effect_size_plateau_condition_call", global_js_divergence, prev_global_js_divergence, has_previous, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, n_consecutive_ok)
-    .arguments <- c("global_js_divergence", "prev_global_js_divergence", "n_studies", "has_previous", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "n_consecutive_ok", "delta", "delta_median", "delta_max", "plateau_found", "ierr")
-    .sources <- c(NA_character_, NA_character_, "global_js_divergence", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("check_effect_size_plateau_condition_call", global_js_divergence, prev_global_js_divergence, has_previous, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, n_consecutive_ok, delta_abs_tolerance)
+    .arguments <- c("global_js_divergence", "prev_global_js_divergence", "n_studies", "has_previous", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "n_consecutive_ok", "delta", "delta_median", "delta_max", "plateau_found", "delta_abs_tolerance", "ierr")
+    .sources <- c(NA_character_, NA_character_, "global_js_divergence", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(

@@ -463,6 +463,28 @@ test_check_effect_size_plateau_condition <- function() {
     assert_true(is.numeric(result$delta_median) && is.numeric(result$delta_max),
                 "Test 2 failed: delta_median and delta_max must be numeric")
   }
+
+  # ============================================================
+  # Test 3 -- delta_abs_tolerance (call, type, shape; the values themselves are
+  # test_effect_size_abs_tolerance_*), a negative one rejected.
+  # ============================================================
+  result_tol <- check_effect_size_plateau_condition(c(0.0012, 0.0012), c(0.0010, 0.0010), has_previous = TRUE,
+                                                    delta_median_threshold = 0.05, delta_max_threshold = 0.10,
+                                                    delta_epsilon = 1.0e-10, delta_min_consecutive_transitions = 2L,
+                                                    n_consecutive_ok = 0L, delta_abs_tolerance = 0.0002)
+  assert_equal_int(length(result_tol$delta), 2L, "Test 3 failed: delta of length n_studies")
+  assert_true(is.numeric(result_tol$delta) && all(is.finite(result_tol$delta)) && all(result_tol$delta >= 0),
+              "Test 3 failed: delta finite and >= 0")
+  result_no_tol <- check_effect_size_plateau_condition(c(0.0012, 0.0012), c(0.0010, 0.0010), has_previous = TRUE,
+                                                       delta_median_threshold = 0.05, delta_max_threshold = 0.10,
+                                                       delta_epsilon = 1.0e-10, delta_min_consecutive_transitions = 2L,
+                                                       n_consecutive_ok = 0L)
+  assert_equal_int(length(result_no_tol$delta), 2L, "Test 3 failed: delta of length n_studies without the tolerance")
+  assert_error(check_effect_size_plateau_condition(c(0.1), c(0.1), has_previous = TRUE,
+                                                   delta_median_threshold = 0.05, delta_max_threshold = 0.10,
+                                                   delta_epsilon = 1.0e-10, delta_min_consecutive_transitions = 2L,
+                                                   n_consecutive_ok = 0L, delta_abs_tolerance = -1.0),
+               "Test 3 failed: expected a negative delta_abs_tolerance to be rejected", ERR_INVALID_INPUT)
 }
 
 test_create_mean_pmf <- function() {
@@ -1043,6 +1065,23 @@ test_run_js_comp_test_parameter_search <- function() {
                                                  max_n_neighbors_candidate = bounds$max_n_neighbors_candidate,
                                                  neighborhood_size_mode = "nonsense"),
                "expected an unknown neighborhood_size_mode string to be rejected before Fortran")
+
+  # ============================================================
+  # Test 7 -- delta_abs_tolerance is accepted (call + shape; test_param_search_delta_abs_tolerance
+  # is the Fortran check), a negative one rejected. Reuses Test 2's single-candidate setup.
+  # ============================================================
+  result_tol <- run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps = 5L, join_method = "join_min",
+                                                  max_n_points_candidate = bounds_2$max_n_points_candidate,
+                                                  max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
+                                                  min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
+                                                  random_seed = 1L, delta_abs_tolerance = 0.001)
+  assert_true(result_tol$n_points >= 1L && result_tol$n_neighbors >= 1L, "tolerance: a candidate")
+  assert_equal_int(dim(result_tol$trace_delta), c(2L, 1L), "tolerance: trace_delta shape")
+  assert_error(run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps = 5L, join_method = "join_min",
+                                                 max_n_points_candidate = bounds_2$max_n_points_candidate,
+                                                 max_n_neighbors_candidate = bounds_2$max_n_neighbors_candidate,
+                                                 delta_abs_tolerance = -0.1),
+               "expected a negative delta_abs_tolerance to be rejected", ERR_INVALID_INPUT)
 }
 
 test_run_js_comp_test_parameter_search_rejects_undersized_bounds <- function() {
@@ -1303,7 +1342,8 @@ test_run_js_comp_test_adaptive_parameter_search <- function() {
                                                        min_residuals_per_bin = 0L, min_neighbor_overlap = 0.0,
                                                        plateau_mode = "plateau_both", tau = 0.1,
                                                        mad_distance_factor = 1.0, max_pooled_residuals = 0L,
-                                                       min_study_neighbors = 1L, random_seed = 1L)
+                                                       min_study_neighbors = 1L, random_seed = 1L,
+                                                       delta_abs_tolerance = 0.001)
   assert_true(is.list(result), "expected a list")
   for (key in c("k_start", "k_step", "k_max", "n_points")) {
     assert_true(is.numeric(result[[key]]) && length(result[[key]]) == 1, paste(key, "must be a single number"))

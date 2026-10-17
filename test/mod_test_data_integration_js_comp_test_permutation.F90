@@ -43,7 +43,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test_permutation() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(18))
+        allocate (all_tests(19))
 
         all_tests(1) = test_case("test_knn_identity_matches_plain_pipeline", test_knn_identity_matches_plain_pipeline)
         all_tests(2) = test_case("test_adaptive_identity_matches_plain_pipeline", &
@@ -73,6 +73,7 @@ contains
         all_tests(17) = test_case("test_label_test_rejects_invalid_input", test_label_test_rejects_invalid_input)
         all_tests(18) = test_case("test_knn_rerun_forwards_neighborhood_size_mode", &
                                   test_knn_rerun_forwards_neighborhood_size_mode)
+        all_tests(19) = test_case("test_rerun_forwards_delta_abs_tolerance", test_rerun_forwards_delta_abs_tolerance)
     end function get_all_tests_data_integration_js_comp_test_permutation
 
     ! ========================================================================================
@@ -238,7 +239,8 @@ contains
 
     !> Test helper: run_js_comp_test_parameter_search with `n_bootstraps` and otherwise default
     !| options; returns the `(n_points, n_neighbors)` it selects.
-    subroutine reference_fixed_k_search(gene_means, residuals, n_bootstraps, n_points, n_neighbors)
+    subroutine reference_fixed_k_search(gene_means, residuals, n_bootstraps, n_points, n_neighbors, &
+                                        delta_abs_tolerance, delta_median_threshold, delta_max_threshold)
         real(real64), intent(in) :: gene_means(:, :)
             !! Per-gene mean of every study
         real(real64), intent(in) :: residuals(:, :, :)
@@ -249,6 +251,12 @@ contains
             !! Selected number of reference points
         integer(int32), intent(out) :: n_neighbors
             !! Selected number of neighbors
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Forwarded to the search as given
+        real(real64), intent(in), optional :: delta_median_threshold
+            !! Forwarded to the search as given
+        real(real64), intent(in), optional :: delta_max_threshold
+            !! Forwarded to the search as given
         integer(int32) :: n_studies, n_genes, n_reps, max_p, max_k, ierr, n_admissible
         integer(int32) :: trace_np(MAX_CANDIDATE_PAIRS), trace_nn(MAX_CANDIDATE_PAIRS)
         real(real64) :: trace_dmed(MAX_CANDIDATE_PAIRS), trace_dmax(MAX_CANDIDATE_PAIRS)
@@ -276,13 +284,18 @@ contains
                                                METHOD_JOIN_MIN, max_p, max_k, n_points, n_neighbors, n_bins, r_low, &
                                                r_high, ci, plateau, n_admissible, trace_np, trace_nn, t_jsd, t_lo, t_up, &
                                                t_w, t_wr, t_ov, t_d, trace_dmed, trace_dmax, t_bins, t_failed, t_pooled, &
-                                               t_min, t_mean, t_max, t_st, t_fd, t_rl, t_rh, ierr=ierr)
+                                               t_min, t_mean, t_max, t_st, t_fd, t_rl, t_rh, &
+                                               delta_median_threshold=delta_median_threshold, &
+                                               delta_max_threshold=delta_max_threshold, &
+                                               delta_abs_tolerance=delta_abs_tolerance, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "reference_fixed_k_search: ierr")
     end subroutine reference_fixed_k_search
 
     !> Test helper: run_js_comp_test_adaptive_parameter_search with `n_bootstraps` and otherwise
     !| default options and its own capacity; returns the knobs it selects.
-    subroutine reference_adaptive_search(gene_means, residuals, n_bootstraps, k_start, k_step, k_max)
+    subroutine reference_adaptive_search(gene_means, residuals, n_bootstraps, k_start, k_step, k_max, &
+                                         delta_abs_tolerance, delta_median_threshold, delta_max_threshold, &
+                                         min_neighbor_overlap)
         real(real64), intent(in) :: gene_means(:, :)
             !! Per-gene mean of every study
         real(real64), intent(in) :: residuals(:, :, :)
@@ -295,6 +308,14 @@ contains
             !! Selected knob
         integer(int32), intent(out) :: k_max
             !! Selected knob
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Forwarded to the search as given
+        real(real64), intent(in), optional :: delta_median_threshold
+            !! Forwarded to the search as given
+        real(real64), intent(in), optional :: delta_max_threshold
+            !! Forwarded to the search as given
+        real(real64), intent(in), optional :: min_neighbor_overlap
+            !! Forwarded to the search as given
         integer(int32) :: n_studies, n_genes, n_reps, cap, ierr, n_points, n_admissible, n_tried
         integer(int32), dimension(MAX_CANDIDATE_PAIRS) :: t_ks, t_kst, t_km, t_np, c_ks, c_np, c_status
         real(real64) :: trace_dmed(MAX_CANDIDATE_PAIRS), trace_dmax(MAX_CANDIDATE_PAIRS)
@@ -323,7 +344,11 @@ contains
                                                         r_low, r_high, ci, plateau, n_admissible, t_ks, t_kst, t_km, t_np, &
                                                         t_jsd, t_lo, t_up, t_w, t_wr, t_ov, t_d, trace_dmed, trace_dmax, &
                                                         t_bins, t_failed, t_pooled, t_min, t_mean, t_max, t_st, t_fd, &
-                                                        t_rl, t_rh, n_tried, c_ks, c_np, c_status, ierr=ierr)
+                                                        t_rl, t_rh, n_tried, c_ks, c_np, c_status, &
+                                                        delta_median_threshold=delta_median_threshold, &
+                                                        delta_max_threshold=delta_max_threshold, &
+                                                        delta_abs_tolerance=delta_abs_tolerance, &
+                                                        min_neighbor_overlap=min_neighbor_overlap, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "reference_adaptive_search: ierr")
     end subroutine reference_adaptive_search
 
@@ -896,6 +921,95 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"label test ierr")
         call assert_true(equal_and_not_nan(observed, small_result), name//"label test forwards the mode")
     end subroutine test_knn_rerun_forwards_neighborhood_size_mode
+
+    !> With the rerun option, all four routines forward `delta_abs_tolerance` to the parameter
+    !| search. Effect-size thresholds of 1e-300 make every non-zero change disqualify (the adaptive
+    !| part also sets `min_neighbor_overlap = 0`, so that several candidates are admissible), so a huge
+    !| tolerance (1, every JSD lies in [0, 1]) is what lets the adaptive search find a plateau: on
+    !| the first data set (of 20 seeds) where the adaptive search directly selects different knobs
+    !| with tolerance 1 than with 0 (asserted that one exists),
+    !| level (a) with rerun reports exactly the knobs and values of search + construction + run at
+    !| the same tolerance, for both tolerances; level (b) reports the same observed values. k-NN:
+    !| level (a) and (b) with rerun equal the k-NN search + run at tolerance 1.
+    subroutine test_rerun_forwards_delta_abs_tolerance()
+        character(*), parameter :: name = "test_rerun_forwards_delta_abs_tolerance: "
+        real(real64), parameter :: tiny_threshold = 1.0e-300_real64, tolerances(2) = [0.0_real64, 1.0_real64]
+        real(real64), allocatable :: expression(:, :, :), gene_means(:, :), residuals(:, :, :)
+        real(real64) :: reference(3), result(3), observed(3), p(3), null(1, 3)
+        integer(int32) :: ierr, used_ks, used_kst, used_km, n_points, n_points_reference, n_failed, i_tol
+        integer(int32) :: ks(2), kst(2), km(2), search_np, search_nn, used_np, used_nn, data_seed
+        logical :: found
+
+        ! The first data seed (of 52..71) on which the two tolerances select different knobs.
+        found = .false.
+        do data_seed = 52_int32, 71_int32
+            call make_expression(300_int32, [5_int32, 4_int32, 4_int32], [0.5_real64, 0.5_real64, 0.6_real64], &
+                                 data_seed, expression)
+            call reference_means_residuals(expression, gene_means, residuals)
+            do i_tol = 1, 2
+                call reference_adaptive_search(gene_means, residuals, 20_int32, ks(i_tol), kst(i_tol), km(i_tol), &
+                                               delta_abs_tolerance=tolerances(i_tol), &
+                                               delta_median_threshold=tiny_threshold, delta_max_threshold=tiny_threshold, &
+                                               min_neighbor_overlap=0.0_real64)
+            end do
+            if (ks(1) /= ks(2) .or. kst(1) /= kst(2) .or. km(1) /= km(2)) then
+                found = .true.
+                exit
+            end if
+        end do
+        call assert_true(found, name//"the tolerance changes the adaptive search's selection on some data set")
+        do i_tol = 1, 2
+            call reference_adaptive(expression, ks(i_tol), kst(i_tol), km(i_tol), reference, n_points_reference, ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, name//"adaptive reference ierr")
+            call run_js_comp_test_adaptive_on_sample_assignment(3_int32, 300_int32, 5_int32, expression, 13_int32, &
+                                                                identity(13_int32), K_START, K_STEP, K_MAX, result, &
+                                                                used_ks, used_kst, used_km, n_points, &
+                                                                rerun_parameter_search=.true._c_bool, &
+                                                                n_bootstraps=20_int32, &
+                                                                delta_median_threshold=tiny_threshold, &
+                                                                delta_max_threshold=tiny_threshold, &
+                                                                delta_abs_tolerance=tolerances(i_tol), &
+                                                                min_neighbor_overlap=0.0_real64, ierr=ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, name//"adaptive level (a) ierr")
+            call assert_equal_int(used_ks, ks(i_tol), name//"adaptive: used_k_start is the search's")
+            call assert_equal_int(used_kst, kst(i_tol), name//"adaptive: used_k_step is the search's")
+            call assert_equal_int(used_km, km(i_tol), name//"adaptive: used_k_max is the search's")
+            call assert_true(equal_and_not_nan(result, reference), name//"adaptive: equals search + run")
+            call run_js_comp_test_adaptive_label_permutation_test(3_int32, 300_int32, 5_int32, expression, K_START, &
+                                                                  K_STEP, K_MAX, 1_int32, observed, p, null, n_failed, &
+                                                                  rerun_parameter_search=.true._c_bool, &
+                                                                  n_bootstraps=20_int32, &
+                                                                  delta_median_threshold=tiny_threshold, &
+                                                                  delta_max_threshold=tiny_threshold, &
+                                                                  delta_abs_tolerance=tolerances(i_tol), &
+                                                                min_neighbor_overlap=0.0_real64, ierr=ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, name//"adaptive level (b) ierr")
+            call assert_true(equal_and_not_nan(observed, result), name//"adaptive level (b) forwards the tolerance")
+        end do
+
+        call reference_fixed_k_search(gene_means, residuals, 20_int32, search_np, search_nn, delta_abs_tolerance=1.0_real64, &
+                                      delta_median_threshold=tiny_threshold, delta_max_threshold=tiny_threshold)
+        call reference_knn(expression, search_np, search_nn, reference, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"k-NN reference ierr")
+        call run_js_comp_test_on_sample_assignment(3_int32, 300_int32, 5_int32, expression, 13_int32, identity(13_int32), &
+                                                   N_POINTS_KNN, N_NEIGHBORS_KNN, result, used_np, used_nn, &
+                                                   rerun_parameter_search=.true._c_bool, n_bootstraps=20_int32, &
+                                                   delta_median_threshold=tiny_threshold, &
+                                                   delta_max_threshold=tiny_threshold, delta_abs_tolerance=1.0_real64, &
+                                                   ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"k-NN level (a) ierr")
+        call assert_equal_int(used_np, search_np, name//"k-NN: used_n_points is the search's")
+        call assert_equal_int(used_nn, search_nn, name//"k-NN: used_n_neighbors is the search's")
+        call assert_true(equal_and_not_nan(result, reference), name//"k-NN: equals search + run")
+        call run_js_comp_test_label_permutation_test(3_int32, 300_int32, 5_int32, expression, N_POINTS_KNN, &
+                                                     N_NEIGHBORS_KNN, 1_int32, observed, p, null, n_failed, &
+                                                     rerun_parameter_search=.true._c_bool, n_bootstraps=20_int32, &
+                                                     delta_median_threshold=tiny_threshold, &
+                                                     delta_max_threshold=tiny_threshold, delta_abs_tolerance=1.0_real64, &
+                                                     ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"k-NN level (b) ierr")
+        call assert_true(equal_and_not_nan(observed, result), name//"k-NN level (b) forwards the tolerance")
+    end subroutine test_rerun_forwards_delta_abs_tolerance
 
     !> Adaptive rerun option: on, the result equals the adaptive search on the identity data followed
     !| by the construction and run with the knobs it selected; off, the fixed-knob run.

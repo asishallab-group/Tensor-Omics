@@ -193,6 +193,7 @@ contains
             random_seed,&
             bin_count_mode,&
             neighborhood_size_mode,&
+            delta_abs_tolerance,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -286,7 +287,8 @@ contains
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
-            !! candidate (`Delta_{i,t}`); `-1.0` for the first admissible candidate
+            !! candidate (`Delta_{i,t}`); `-1.0` for the first admissible candidate; 0 for a study
+            !! whose absolute change is at most `delta_abs_tolerance`
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(16), intent(out) :: trace_delta_median
             !! Per-admissible-candidate median of trace_delta across studies; `-1.0` for the first
@@ -440,6 +442,10 @@ contains
             !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
             !! The default value is `0_int32`.
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
         integer(int32) :: n_bootstrapping_top_k_jsds
@@ -509,6 +515,7 @@ contains
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=50_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=51_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=52_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(delta_abs_tolerance, ierr, arg_pos=56_int32, min=0.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
@@ -671,6 +678,7 @@ contains
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode,&
             neighborhood_size_mode = neighborhood_size_mode,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -816,6 +824,7 @@ contains
             random_seed,&
             bin_count_mode,&
             neighborhood_size_mode,&
+            delta_abs_tolerance,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -913,7 +922,8 @@ contains
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
-            !! candidate (`Delta_{i,t}`); `-1.0` for the first admissible candidate
+            !! candidate (`Delta_{i,t}`); `-1.0` for the first admissible candidate; 0 for a study
+            !! whose absolute change is at most `delta_abs_tolerance`
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(16), intent(out) :: trace_delta_median
             !! Per-admissible-candidate median of trace_delta across studies; `-1.0` for the first
@@ -1157,6 +1167,10 @@ contains
             !! | Small neighborhoods only, `KX_FACTORS(2)` = 0.5            | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_SMALL(variable)]] |
             !! | Both, large then small for each `n_points`                 | [[tox_data_integration_js_comp_test_fixed_k_search_impl(module):MODE_NEIGHBORHOOD_SIZE_BOTH(variable)]]  |
             !! The default value is `0_int32`.
+        real(real64), intent(in), optional :: delta_abs_tolerance
+            !! Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+            !! The minimum valid value is `0.0_real64`.
+            !! The default value is `0.0_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
 
@@ -1182,6 +1196,7 @@ contains
         call validate_in_range_real(lower_residual_range_quantile, ierr, arg_pos=95_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_real(upper_residual_range_quantile, ierr, arg_pos=96_int32, min=lower_residual_range_quantile, max=1.0_real64)
         call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=97_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(delta_abs_tolerance, ierr, arg_pos=101_int32, min=0.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
@@ -1292,6 +1307,7 @@ contains
             random_seed = random_seed,&
             bin_count_mode = bin_count_mode,&
             neighborhood_size_mode = neighborhood_size_mode,&
+            delta_abs_tolerance = delta_abs_tolerance,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)

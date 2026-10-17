@@ -108,13 +108,14 @@ _lib.run_js_comp_test_adaptive_parameter_search_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(ndim=1),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "ierr",)
+_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def generate_adaptive_js_comp_test_candidates(
         max_n_genes_all_studies,
@@ -225,6 +226,7 @@ def run_js_comp_test_adaptive_parameter_search(
         max_pooled_residuals=0,
         min_study_neighbors=1,
         bin_count_mode='bin_count_occupancy',
+        delta_abs_tolerance=0.0,
 ):
     r"""Search the ascending adaptive (k_start, k_step, k_max) candidate sequence for a stable JSD parameter setting (Issue #217)
 
@@ -416,6 +418,10 @@ def run_js_comp_test_adaptive_parameter_search(
         with `min_residuals_per_bin` as the floor
 
         The default value is `'bin_count_occupancy'`.
+    delta_abs_tolerance : float, optional, default 0.0
+        Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
+        The minimum valid value is `0.0`.
+        The default value is `0.0`.
 
     Returns
     -------
@@ -495,7 +501,8 @@ def run_js_comp_test_adaptive_parameter_search(
             A result is a value; call `.copy()` to obtain a modifiable array.
         trace_delta : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
             Per-admissible-candidate, per-study relative JSD change from the previous admissible
-            candidate; `-1.0` for the first
+            candidate; `-1.0` for the first; 0 for a study whose absolute change is at most
+            `delta_abs_tolerance`
             The first `n_admissible_evaluated` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
         trace_delta_median : np.ndarray[np.float64] of shape (16,), read-only
@@ -726,6 +733,7 @@ def run_js_comp_test_adaptive_parameter_search(
         ctypes.byref(ctypes.c_int(max_pooled_residuals)),
         ctypes.byref(ctypes.c_int(min_study_neighbors)),
         bin_count_mode,
+        ctypes.byref(ctypes.c_double(delta_abs_tolerance)),
         ctypes.byref(ierr),
     )
 

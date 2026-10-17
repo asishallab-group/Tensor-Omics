@@ -535,6 +535,30 @@ def test_check_effect_size_plateau_condition():
         assert isinstance(result["delta_median"], float) and isinstance(result["delta_max"], float), \
             "Test 2 failed: delta_median and delta_max must be floats"
 
+    # ============================================================
+    # Test 3 -- delta_abs_tolerance (call, type, shape; the values themselves are
+    # test_effect_size_abs_tolerance_*), a negative one rejected.
+    # ============================================================
+    result_tol = check_effect_size_plateau_condition(np.array([0.0012, 0.0012]), np.array([0.0010, 0.0010]),
+                                                     has_previous=True, delta_median_threshold=0.05,
+                                                     delta_max_threshold=0.10, delta_epsilon=1.0e-10,
+                                                     delta_min_consecutive_transitions=2, n_consecutive_ok=0,
+                                                     delta_abs_tolerance=0.0002)
+    assert result_tol["delta"].shape == (2,) and result_tol["delta"].dtype == np.float64, "Test 3 failed: delta shape"
+    assert np.all(np.isfinite(result_tol["delta"])) and np.all(result_tol["delta"] >= 0.0), "Test 3 failed: delta >= 0"
+    result_no_tol = check_effect_size_plateau_condition(np.array([0.0012, 0.0012]), np.array([0.0010, 0.0010]),
+                                                        has_previous=True, delta_median_threshold=0.05,
+                                                        delta_max_threshold=0.10, delta_epsilon=1.0e-10,
+                                                        delta_min_consecutive_transitions=2, n_consecutive_ok=0)
+    assert result_no_tol["delta"].shape == (2,) and result_no_tol["delta"].dtype == np.float64, \
+        "Test 3 failed: delta shape without the tolerance"
+    assert_error(lambda: check_effect_size_plateau_condition(np.array([0.1]), np.array([0.1]), has_previous=True,
+                                                             delta_median_threshold=0.05, delta_max_threshold=0.10,
+                                                             delta_epsilon=1.0e-10,
+                                                             delta_min_consecutive_transitions=2, n_consecutive_ok=0,
+                                                             delta_abs_tolerance=-1.0),
+                 "Test 3 failed: expected a negative delta_abs_tolerance to be rejected", ERR_INVALID_INPUT)
+
 
 def test_create_mean_pmf():
     # ============================================================
@@ -1117,6 +1141,24 @@ def test_run_js_comp_test_parameter_search():
                                                            neighborhood_size_mode="nonsense"),
                  "expected an unknown neighborhood_size_mode string to be rejected", ERR_INVALID_INPUT)
 
+    # ============================================================
+    # Test 7 -- delta_abs_tolerance is accepted (call + shape; test_param_search_delta_abs_tolerance
+    # is the Fortran check), a negative one rejected. Reuses Test 2's single-candidate setup.
+    # ============================================================
+    result_tol = run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps=5, join_method='join_min',
+                                                   max_n_points_candidate=bounds_2["max_n_points_candidate"],
+                                                   max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
+                                                   min_residuals_per_bin=0, min_neighbor_overlap=0.0, random_seed=1,
+                                                   delta_abs_tolerance=0.001)
+    assert int(result_tol["n_points"]) >= 1 and int(result_tol["n_neighbors"]) >= 1, "tolerance: a candidate"
+    assert result_tol["trace_delta"].shape == (2, 1), f"tolerance: trace_delta shape {result_tol['trace_delta'].shape}"
+    assert_error(lambda: run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps=5,
+                                                           join_method='join_min',
+                                                           max_n_points_candidate=bounds_2["max_n_points_candidate"],
+                                                           max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
+                                                           delta_abs_tolerance=-0.1),
+                 "expected a negative delta_abs_tolerance to be rejected", ERR_INVALID_INPUT)
+
 
 def test_run_js_comp_test_parameter_search_rejects_undersized_bounds():
     # A max_n_points_candidate or max_n_neighbors_candidate one below what
@@ -1377,7 +1419,7 @@ def test_run_js_comp_test_adaptive_parameter_search():
                                                         max_n_points_candidate=capacity, min_residuals_per_bin=0,
                                                         min_neighbor_overlap=0.0, plateau_mode='plateau_both',
                                                         tau=0.1, mad_distance_factor=1.0, max_pooled_residuals=0,
-                                                        min_study_neighbors=1, random_seed=1)
+                                                        min_study_neighbors=1, random_seed=1, delta_abs_tolerance=0.001)
     assert isinstance(result, dict), f"expected a dict, got {type(result)}"
     for key in ("k_start", "k_step", "k_max", "n_points"):
         assert isinstance(result[key], (int, np.integer)), f"{key}: expected an int, got {type(result[key])}"
