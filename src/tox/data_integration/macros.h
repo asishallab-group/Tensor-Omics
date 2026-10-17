@@ -43,7 +43,8 @@
 #define M_MAX_CANDIDATE_PAIRS 16
 
 ! `plateau_mode`'s values (the MODE_PLATEAU_* of tox_data_integration_js_comp_test_search_impl).
-! CI overlap is the DM_DEFAULT and M_DEFAULT_VAL of both parameter searches.
+! The change of the JSCompTest values (effect size) is the DM_DEFAULT and M_DEFAULT_VAL of both
+! parameter searches; CI overlap stays available as an option.
 #define M_MODE_PLATEAU_CI_OVERLAP 0_int32
 #define M_MODE_PLATEAU_EFFECT_SIZE 1_int32
 #define M_MODE_PLATEAU_BOTH 2_int32

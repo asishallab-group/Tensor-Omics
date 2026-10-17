@@ -20,7 +20,7 @@
 !| `join_method`) and
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_effect_size_plateau_condition_impl(interface)]]
 !| (the relative change of each study's observed JSD between successive candidates); a search's
-!| `plateau_mode` selects which of them stops it. Both searches evaluate at most
+!| `plateau_mode` selects which of them stops it, by default the change of the observed JSD. Both searches evaluate at most
 !| [[tox_data_integration_js_comp_test_search_impl(module):MAX_CANDIDATE_PAIRS(variable)]] candidates.
 !|
 !| Generated from [[tox_data_integration_js_comp_test_search_impl(module)]]; do not edit -- regenerate instead.

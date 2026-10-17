@@ -85,9 +85,10 @@
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.9`.
-#' @param plateau_mode a string, one of "plateau_ci_overlap", "plateau_effect_size", "plateau_both". Rerun search: which plateau criterion stops the search
+#' @param plateau_mode a string, one of "plateau_ci_overlap", "plateau_effect_size", "plateau_both". Rerun search: which plateau criterion stops the search; by default, as in the
+#'   searches, the change of the observed JSD values from one admissible candidate to the next
 #'
-#'   The default value is `"plateau_ci_overlap"`.
+#'   The default value is `"plateau_effect_size"`.
 #' @param delta_median_threshold a numeric scalar. Rerun search: upper bound on the median relative JSD change for a transition to qualify
 #'   The minimum valid value is `above(0.0)`.
 #'   The default value is `0.05`.
@@ -137,7 +138,7 @@
 #'   \item{used_n_points}{a integer scalar. Number of reference points the run used (`n_points`, or the search's choice)}
 #'   \item{used_n_neighbors}{a integer scalar. Number of neighbors per neighborhood the run used (`n_neighbors`, or the search's choice)}
 #' @export
-run_js_comp_test_on_sample_assignment <- function(expression, sample_assignment, n_points, n_neighbors, rerun_parameter_search = FALSE, n_bootstraps = 1000L, join_method = "join_min", min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_ci_overlap", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, bin_count_mode = "bin_count_occupancy") {
+run_js_comp_test_on_sample_assignment <- function(expression, sample_assignment, n_points, n_neighbors, rerun_parameter_search = FALSE, n_bootstraps = 1000L, join_method = "join_min", min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, bin_count_mode = "bin_count_occupancy") {
     expression <- .tox_as_double_array(expression, "expression", 3L)
     sample_assignment <- .tox_as_integer_vector(sample_assignment, "sample_assignment")
     n_points <- .tox_as_integer_scalar(n_points, "n_points")
@@ -248,9 +249,10 @@ run_js_comp_test_on_sample_assignment <- function(expression, sample_assignment,
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.9`.
-#' @param plateau_mode a string, one of "plateau_ci_overlap", "plateau_effect_size", "plateau_both". Rerun search: which plateau criterion stops the search
+#' @param plateau_mode a string, one of "plateau_ci_overlap", "plateau_effect_size", "plateau_both". Rerun search: which plateau criterion stops the search; by default, as in the
+#'   searches, the change of the observed JSD values from one admissible candidate to the next
 #'
-#'   The default value is `"plateau_ci_overlap"`.
+#'   The default value is `"plateau_effect_size"`.
 #' @param delta_median_threshold a numeric scalar. Rerun search: upper bound on the median relative JSD change for a transition to qualify
 #'   The minimum valid value is `above(0.0)`.
 #'   The default value is `0.05`.
@@ -315,7 +317,7 @@ run_js_comp_test_on_sample_assignment <- function(expression, sample_assignment,
 #'   \item{used_k_max}{a integer scalar. `k_max` the construction used (`k_max`, or the search's choice)}
 #'   \item{n_points}{a integer scalar. Number of neighborhoods the construction built (0 when it built none)}
 #' @export
-run_js_comp_test_adaptive_on_sample_assignment <- function(expression, sample_assignment, k_start, k_step, k_max, rerun_parameter_search = FALSE, n_bootstraps = 1000L, join_method = "join_min", min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_ci_overlap", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L, bin_count_mode = "bin_count_occupancy") {
+run_js_comp_test_adaptive_on_sample_assignment <- function(expression, sample_assignment, k_start, k_step, k_max, rerun_parameter_search = FALSE, n_bootstraps = 1000L, join_method = "join_min", min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L, bin_count_mode = "bin_count_occupancy") {
     expression <- .tox_as_double_array(expression, "expression", 3L)
     sample_assignment <- .tox_as_integer_vector(sample_assignment, "sample_assignment")
     k_start <- .tox_as_integer_scalar(k_start, "k_start")
@@ -433,9 +435,10 @@ run_js_comp_test_adaptive_on_sample_assignment <- function(expression, sample_as
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.9`.
-#' @param plateau_mode a string, one of "plateau_ci_overlap", "plateau_effect_size", "plateau_both". Rerun search: which plateau criterion stops the search
+#' @param plateau_mode a string, one of "plateau_ci_overlap", "plateau_effect_size", "plateau_both". Rerun search: which plateau criterion stops the search; by default, as in the
+#'   searches, the change of the observed JSD values from one admissible candidate to the next
 #'
-#'   The default value is `"plateau_ci_overlap"`.
+#'   The default value is `"plateau_effect_size"`.
 #' @param delta_median_threshold a numeric scalar. Rerun search: upper bound on the median relative JSD change for a transition to qualify
 #'   The minimum valid value is `above(0.0)`.
 #'   The default value is `0.05`.
@@ -488,7 +491,7 @@ run_js_comp_test_adaptive_on_sample_assignment <- function(expression, sample_as
 #'   \item{jsd_null}{a numeric matrix. Row `i`: permutation `i`'s global JSD per study; NaN for a failed permutation}
 #'   \item{n_failed_permutations}{a integer scalar. Number of permutations whose JS-Comp-Test failed with invalid input}
 #' @export
-run_js_comp_test_label_permutation_test <- function(expression, n_points, n_neighbors, n_permutations, rerun_parameter_search = FALSE, n_bootstraps = 1000L, join_method = "join_min", min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_ci_overlap", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, bin_count_mode = "bin_count_occupancy") {
+run_js_comp_test_label_permutation_test <- function(expression, n_points, n_neighbors, n_permutations, rerun_parameter_search = FALSE, n_bootstraps = 1000L, join_method = "join_min", min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, bin_count_mode = "bin_count_occupancy") {
     expression <- .tox_as_double_array(expression, "expression", 3L)
     n_points <- .tox_as_integer_scalar(n_points, "n_points")
     n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
@@ -593,9 +596,10 @@ run_js_comp_test_label_permutation_test <- function(expression, n_points, n_neig
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.9`.
-#' @param plateau_mode a string, one of "plateau_ci_overlap", "plateau_effect_size", "plateau_both". Rerun search: which plateau criterion stops the search
+#' @param plateau_mode a string, one of "plateau_ci_overlap", "plateau_effect_size", "plateau_both". Rerun search: which plateau criterion stops the search; by default, as in the
+#'   searches, the change of the observed JSD values from one admissible candidate to the next
 #'
-#'   The default value is `"plateau_ci_overlap"`.
+#'   The default value is `"plateau_effect_size"`.
 #' @param delta_median_threshold a numeric scalar. Rerun search: upper bound on the median relative JSD change for a transition to qualify
 #'   The minimum valid value is `above(0.0)`.
 #'   The default value is `0.05`.
@@ -661,7 +665,7 @@ run_js_comp_test_label_permutation_test <- function(expression, n_points, n_neig
 #'   \item{jsd_null}{a numeric matrix. Row `i`: permutation `i`'s global JSD per study; NaN for a failed permutation}
 #'   \item{n_failed_permutations}{a integer scalar. Number of permutations whose JS-Comp-Test failed with invalid input}
 #' @export
-run_js_comp_test_adaptive_label_permutation_test <- function(expression, k_start, k_step, k_max, n_permutations, rerun_parameter_search = FALSE, n_bootstraps = 1000L, join_method = "join_min", min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_ci_overlap", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L, bin_count_mode = "bin_count_occupancy") {
+run_js_comp_test_adaptive_label_permutation_test <- function(expression, k_start, k_step, k_max, n_permutations, rerun_parameter_search = FALSE, n_bootstraps = 1000L, join_method = "join_min", min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, tau = 0.1, mad_distance_factor = 1.0, max_pooled_residuals = 0L, min_study_neighbors = 1L, bin_count_mode = "bin_count_occupancy") {
     expression <- .tox_as_double_array(expression, "expression", 3L)
     k_start <- .tox_as_integer_scalar(k_start, "k_start")
     k_step <- .tox_as_integer_scalar(k_step, "k_step")

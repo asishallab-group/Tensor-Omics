@@ -89,8 +89,9 @@ contains
     !| ([[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]])
     !| and relative effect-size stability
     !| ([[tox_data_integration_js_comp_test_search_impl(module):check_effect_size_plateau_condition_impl(interface)]]).
-    !| Both are always computed and traced; `plateau_mode` decides which one stops the search. A
-    !| stop by the effect-size criterion returns the candidate that triggered it.
+    !| Both are always computed and traced; `plateau_mode` decides which one stops the search
+    !| (by default the effect-size criterion, see `plateau_mode`). A stop by the effect-size
+    !| criterion returns the candidate that triggered it.
     !|
     !| The returned candidate:
     !|
@@ -325,14 +326,19 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.9_real64`.
         character(len=1, kind=c_char), dimension(19), intent(in), target :: plateau_mode
-            !! Which plateau criterion decides when the search stops
+            !! Which plateau criterion decides when the search stops. The default is the change of
+            !! the observed JSD values from one admissible candidate to the next: it measures
+            !! directly how stable the observed value is. The CI-overlap criterion stays available,
+            !! but its bootstrap interval is drawn from the pooled histogram of all studies, so it
+            !! describes the spread of the JSD expected if the studies did not differ at all (a
+            !! noise band), not how stable the observed value is from candidate to candidate
             !!
-            !! | Mode                                | Value                                                                                        |
-            !! |-------------------------------------|----------------------------------------------------------------------------------------------|
-            !! | CI overlap only                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
-            !! | Either criterion                    | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
-            !! The default value is `'plateau_ci_overlap'`.
+            !! | Mode                                                                                 | Value                                                                                        |
+            !! |--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+            !! | CI overlap only                                                                      | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Either criterion                                                                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
+            !! The default value is `'plateau_effect_size'`.
         real(c_double), intent(in), target :: delta_median_threshold
             !! Upper bound on the median relative JSD change for a transition to qualify
             !! The minimum valid value is `above(0.0_real64)`.
@@ -589,8 +595,9 @@ contains
     !| ([[tox_data_integration_js_comp_test_search_impl(module):check_plateau_condition_impl(interface)]])
     !| and relative effect-size stability
     !| ([[tox_data_integration_js_comp_test_search_impl(module):check_effect_size_plateau_condition_impl(interface)]]).
-    !| Both are always computed and traced; `plateau_mode` decides which one stops the search. A
-    !| stop by the effect-size criterion returns the candidate that triggered it.
+    !| Both are always computed and traced; `plateau_mode` decides which one stops the search
+    !| (by default the effect-size criterion, see `plateau_mode`). A stop by the effect-size
+    !| criterion returns the candidate that triggered it.
     !|
     !| The returned candidate:
     !|
@@ -964,14 +971,19 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.9_real64`.
         character(len=1, kind=c_char), dimension(19), intent(in), target :: plateau_mode
-            !! Which plateau criterion decides when the search stops
+            !! Which plateau criterion decides when the search stops. The default is the change of
+            !! the observed JSD values from one admissible candidate to the next: it measures
+            !! directly how stable the observed value is. The CI-overlap criterion stays available,
+            !! but its bootstrap interval is drawn from the pooled histogram of all studies, so it
+            !! describes the spread of the JSD expected if the studies did not differ at all (a
+            !! noise band), not how stable the observed value is from candidate to candidate
             !!
-            !! | Mode                                | Value                                                                                        |
-            !! |-------------------------------------|----------------------------------------------------------------------------------------------|
-            !! | CI overlap only                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
-            !! | Either criterion                    | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
-            !! The default value is `'plateau_ci_overlap'`.
+            !! | Mode                                                                                 | Value                                                                                        |
+            !! |--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+            !! | CI overlap only                                                                      | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Either criterion                                                                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
+            !! The default value is `'plateau_effect_size'`.
         real(c_double), intent(in), target :: delta_median_threshold
             !! Upper bound on the median relative JSD change for a transition to qualify
             !! The minimum valid value is `above(0.0_real64)`.

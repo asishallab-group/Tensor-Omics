@@ -139,7 +139,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(241))
+        allocate (all_tests(243))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -630,6 +630,10 @@ contains
         all_tests(240) = test_case("test_sort_pooled_gene_means_matches_heapsort", &
                                    test_sort_pooled_gene_means_matches_heapsort)
         all_tests(241) = test_case("test_calc_fixed_k_n_points_range", test_calc_fixed_k_n_points_range)
+        all_tests(242) = test_case("test_param_search_plateau_mode_default_is_effect_size", &
+                                   test_param_search_plateau_mode_default_is_effect_size)
+        all_tests(243) = test_case("test_adaptive_search_plateau_mode_default_is_effect_size", &
+                                   test_adaptive_search_plateau_mode_default_is_effect_size)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -3483,7 +3487,7 @@ contains
                                                trace_sturges_bins, trace_fd_bins, &
                                                trace_shared_residual_range_low, trace_shared_residual_range_high, &
                                                ierr=ierr, &
-                                               min_residuals_per_bin=1000000_int32, random_seed=1_int32)
+                                               min_residuals_per_bin=1000000_int32, plateau_mode=MODE_PLATEAU_CI_OVERLAP, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_falls_back_to_finest: ierr should be OK")
@@ -3588,7 +3592,7 @@ contains
                                                trace_shared_residual_range_low, trace_shared_residual_range_high, &
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
-                                               random_seed=1_int32)
+                                               plateau_mode=MODE_PLATEAU_CI_OVERLAP, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_single_candidate_bypasses_plateau: ierr should be OK")
@@ -3720,7 +3724,7 @@ contains
                                                trace_shared_residual_range_low, trace_shared_residual_range_high, &
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
-                                               random_seed=1_int32)
+                                               plateau_mode=MODE_PLATEAU_CI_OVERLAP, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_finds_plateau_mid_grid: ierr should be OK")
@@ -3805,7 +3809,7 @@ contains
     !> Same degenerate data as `test_param_search_finds_plateau_mid_grid` (constant gene means and
     !| residuals -> JSD exactly 0.0 and CI exactly [0.0, 0.0] for every candidate in the 4-candidate
     !| grid `[(400,100), (400,50), (320,125), (320,62)]`), but with `plateau_mode=MODE_PLATEAU_EFFECT_SIZE`.
-    !| Under the default `plateau_mode` (CI overlap), that test's search stops at the SECOND
+    !| Under `plateau_mode=MODE_PLATEAU_CI_OVERLAP` (passed there explicitly), that test's search stops at the SECOND
     !| candidate. Under effect size alone, `delta_min_consecutive_transitions=2` (the default) needs
     !| TWO consecutive qualifying transitions before it plateaus: the first (candidate 1 -> 2) is
     !| only the first, so the search must continue past candidate 2 -- proving CI overlap is
@@ -4192,7 +4196,7 @@ contains
                                                trace_shared_residual_range_low, trace_shared_residual_range_high, &
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
-                                               random_seed=1_int32)
+                                               plateau_mode=MODE_PLATEAU_CI_OVERLAP, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_uses_smallest_uncertainty: ierr should be OK")
@@ -4561,7 +4565,7 @@ contains
                                                trace_sturges_bins, trace_fd_bins, &
                                                trace_shared_residual_range_low, trace_shared_residual_range_high, &
                                                ierr=ierr, &
-                                               min_neighbor_overlap=0.0_real64, random_seed=1_int32)
+                                               min_neighbor_overlap=0.0_real64, plateau_mode=MODE_PLATEAU_CI_OVERLAP, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_occupancy_failure_rejects_candidate: ierr should be OK")
@@ -4717,7 +4721,7 @@ contains
                                                trace_shared_residual_range_low, trace_shared_residual_range_high, &
                                                ierr=ierr, &
                                                min_residuals_per_bin=1_int32, min_neighbor_overlap=0.0_real64, &
-                                               m_min=1_int32, random_seed=1_int32)
+                                               m_min=1_int32, plateau_mode=MODE_PLATEAU_CI_OVERLAP, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_different_neighborhoods_different_m_j: ierr should be OK")
@@ -4845,7 +4849,7 @@ contains
                                                trace_shared_residual_range_low, trace_shared_residual_range_high, &
                                                ierr=ierr, &
                                                min_residuals_per_bin=30_int32, min_neighbor_overlap=0.0_real64, &
-                                               random_seed=1_int32)
+                                               plateau_mode=MODE_PLATEAU_CI_OVERLAP, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_final_n_bins_matches_selected_trace_column: ierr should be OK")
@@ -8606,13 +8610,16 @@ contains
 
     !> Test helper: call the generated run_js_comp_test_adaptive_parameter_search wrapper with 10
     !| bootstraps and METHOD_JOIN_MIN (random seed 1 unless given), sizing every output from
-    !| calc_adaptive_js_comp_test_bounds unless `capacity` overrides it.
+    !| calc_adaptive_js_comp_test_bounds unless `capacity` overrides it. `plateau_mode` is
+    !| MODE_PLATEAU_CI_OVERLAP unless given (the search's default until the default became the
+    !| effect-size criterion; the tests below were written for it), or omitted from the call when
+    !| `omit_plateau_mode` is `.true.`, so that the search's own default applies.
     subroutine run_adaptive_search(gene_means, residuals, out, ierr, capacity, min_residuals_per_bin, &
                                    min_neighbor_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, &
                                    delta_min_consecutive_transitions, min_study_neighbors, succeeding_ci_overlap, &
                                    random_seed, tau, mad_distance_factor, max_pooled_residuals, m_min, m_max, &
                                    gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, &
-                                   bin_count_mode)
+                                   bin_count_mode, omit_plateau_mode)
         real(real64), intent(in) :: gene_means(:, :)
             !! Mean expression of every gene in every study, NaN for a missing gene
         real(real64), intent(in) :: residuals(:, :, :)
@@ -8628,7 +8635,7 @@ contains
         real(real64), intent(in), optional :: min_neighbor_overlap
             !! Forwarded to the search
         integer(int32), intent(in), optional :: plateau_mode
-            !! Forwarded to the search
+            !! Forwarded to the search; MODE_PLATEAU_CI_OVERLAP when absent (see above)
         real(real64), intent(in), optional :: delta_median_threshold
             !! Forwarded to the search
         real(real64), intent(in), optional :: delta_max_threshold
@@ -8659,7 +8666,20 @@ contains
             !! Forwarded to the search
         integer(int32), intent(in), optional :: bin_count_mode
             !! Forwarded to the search
+        logical(c_bool), intent(in), optional :: omit_plateau_mode
+            !! `.true.`: call the search without `plateau_mode` (`plateau_mode` must then be absent)
         integer(int32) :: n_studies, n_genes, n_reps, cap, bounds_ierr, seed
+        ! Left unallocated to call the search without plateau_mode: an unallocated allocatable
+        ! actual argument is an absent optional.
+        integer(int32), allocatable :: forwarded_plateau_mode
+
+        if (present(plateau_mode)) then
+            forwarded_plateau_mode = plateau_mode
+        else if (.not. present(omit_plateau_mode)) then
+            forwarded_plateau_mode = MODE_PLATEAU_CI_OVERLAP
+        else if (.not. omit_plateau_mode) then
+            forwarded_plateau_mode = MODE_PLATEAU_CI_OVERLAP
+        end if
 
         n_genes = size(gene_means, 1, kind=int32)
         n_studies = size(gene_means, 2, kind=int32)
@@ -8713,7 +8733,8 @@ contains
                                                         out%trace_range_low, out%trace_range_high, out%n_tried, &
                                                         out%cand_k_start, out%cand_n_points, out%cand_status, &
                                                         min_residuals_per_bin=min_residuals_per_bin, &
-                                                        min_neighbor_overlap=min_neighbor_overlap, plateau_mode=plateau_mode, &
+                                                        min_neighbor_overlap=min_neighbor_overlap, &
+                                                        plateau_mode=forwarded_plateau_mode, &
                                                         succeeding_ci_overlap=succeeding_ci_overlap, &
                                                         delta_median_threshold=delta_median_threshold, &
                                                         delta_max_threshold=delta_max_threshold, &
@@ -8765,7 +8786,7 @@ contains
         call assert_equal_array_int(out%cand_status(1:n_tried), cand_status, n_tried, name//"candidate_status")
     end subroutine assert_adaptive_selection
 
-    !> E1: fixture A, CI-overlap mode (default), gates relaxed (`min_residuals_per_bin = 0`). As in
+    !> E1: fixture A, CI-overlap mode (run_adaptive_search's default), gates relaxed (`min_residuals_per_bin = 0`). As in
     !| test_param_search_finds_plateau_mid_grid: candidate 1's [0,0] interval against the initial
     !| [-1,-1] best overlaps nothing and becomes the best; candidate 2's [0,0] then overlaps it by
     !| 1.0 >= 0.9 in both studies, so the search stops at candidate 2 = (16, 4, 64) with 91 points,
@@ -11260,7 +11281,7 @@ contains
                                                out%trace_n_pooled, out%trace_min_occ, out%trace_mean_occ, &
                                                out%trace_max_occ, out%trace_sturges, out%trace_fd, &
                                                out%trace_range_low, out%trace_range_high, ierr=ierr, &
-                                               min_neighbor_overlap=0.0_real64, random_seed=1_int32)
+                                               min_neighbor_overlap=0.0_real64, plateau_mode=MODE_PLATEAU_CI_OVERLAP, random_seed=1_int32)
     end subroutine run_fixed_k_search_with_bounds
 
     !> A `max_n_points_candidate` one below the bound (299 for the grid's first `n_points` of 300,
@@ -12699,5 +12720,264 @@ contains
                                         out%trace_fd, out%trace_range_low, out%trace_range_high, &
                                         name//"nothing admissible: ")
     end subroutine test_adaptive_search_pads_unused_per_point_slots_with_zero
+
+    ! ---------------------------------------------------------------------------------------------
+    ! The default `plateau_mode` of both parameter searches is MODE_PLATEAU_EFFECT_SIZE (the change
+    ! of the observed JSD values). Fixed-k fixture: test_param_search_finds_plateau_mid_grid's
+    ! constant data (10000 genes, 2 studies, 3 replicates, every mean 5.0 and every residual 0.0),
+    ! whose grid is (400, 100), (400, 50), (320, 125), (320, 62): every candidate is admissible
+    ! with JSD 0 and interval [0, 0], so CI overlap stops at candidate 2 (overlap 1.0 >= 0.9 with
+    ! candidate 1's [0, 0]) and the effect size at candidate 3 (deltas 0/max(0, 1e-10) = 0 below
+    ! 0.05/0.10 on the transitions 1 -> 2 and 2 -> 3, the two consecutive ones the default asks for).
+    ! Adaptive fixture: fixture A of the adaptive search tests (E1 stops at candidate 2 under CI
+    ! overlap, E2 at candidate 3 under the effect size).
+    ! ---------------------------------------------------------------------------------------------
+
+    !> Test helper: run_js_comp_test_parameter_search on the constant fixture above, every output
+    !| allocated from calc_js_comp_test_candidate_bounds, 10 bootstraps, METHOD_JOIN_MIN, both gates
+    !| relaxed (`min_residuals_per_bin = 0`, `min_neighbor_overlap = 0`), seed 1; `plateau_mode` is
+    !| forwarded as given, so an absent one leaves the search's default.
+    subroutine run_fixed_k_constant_fixture(out, ierr, plateau_mode)
+        type(fixed_k_search_outputs), intent(out) :: out
+            !! Every output of run_js_comp_test_parameter_search
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure
+        integer(int32), intent(in), optional :: plateau_mode
+            !! Forwarded to the search
+        integer(int32), parameter :: n_studies = 2, n_genes = 10000, n_reps = 3
+        real(real64), allocatable :: gene_means(:, :), residuals(:, :, :)
+        integer(int32) :: max_points, max_neighbors, bounds_ierr
+
+        allocate (gene_means(n_genes, n_studies), residuals(n_reps, n_genes, n_studies))
+        gene_means = 5.0_real64
+        residuals = 0.0_real64
+        call calc_js_comp_test_candidate_bounds(n_genes, max_points, max_neighbors, bounds_ierr)
+        call assert_equal_int(get_err_code(bounds_ierr), ERR_OK, "run_fixed_k_constant_fixture: bounds ierr")
+
+        allocate (out%n_bins(max_points), out%range_low(max_points), out%range_high(max_points), &
+                  out%ci(2, n_studies), out%trace_jsd(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_lower(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_upper(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_width(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_width_rel(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_ci_overlap(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_delta(n_studies, MAX_CANDIDATE_PAIRS), &
+                  out%trace_n_bins(max_points, MAX_CANDIDATE_PAIRS), &
+                  out%trace_occ_failed(max_points, MAX_CANDIDATE_PAIRS), &
+                  out%trace_n_pooled(max_points, MAX_CANDIDATE_PAIRS), &
+                  out%trace_min_occ(max_points, MAX_CANDIDATE_PAIRS), &
+                  out%trace_mean_occ(max_points, MAX_CANDIDATE_PAIRS), &
+                  out%trace_max_occ(max_points, MAX_CANDIDATE_PAIRS), &
+                  out%trace_sturges(max_points, MAX_CANDIDATE_PAIRS), out%trace_fd(max_points, MAX_CANDIDATE_PAIRS), &
+                  out%trace_range_low(max_points, MAX_CANDIDATE_PAIRS), &
+                  out%trace_range_high(max_points, MAX_CANDIDATE_PAIRS))
+
+        call run_js_comp_test_parameter_search(n_studies, n_genes, n_reps, gene_means, residuals, 10_int32, &
+                                               METHOD_JOIN_MIN, max_points, max_neighbors, out%n_points, &
+                                               out%n_neighbors, out%n_bins, out%range_low, out%range_high, out%ci, &
+                                               out%plateau, out%n_admissible, out%trace_n_points, &
+                                               out%trace_n_neighbors, out%trace_jsd, out%trace_ci_lower, &
+                                               out%trace_ci_upper, out%trace_ci_width, out%trace_ci_width_rel, &
+                                               out%trace_ci_overlap, out%trace_delta, out%trace_delta_median, &
+                                               out%trace_delta_max, &
+                                               out%trace_n_bins, out%trace_occ_failed, out%trace_n_pooled, &
+                                               out%trace_min_occ, out%trace_mean_occ, out%trace_max_occ, &
+                                               out%trace_sturges, out%trace_fd, out%trace_range_low, &
+                                               out%trace_range_high, ierr=ierr, min_residuals_per_bin=0_int32, &
+                                               min_neighbor_overlap=0.0_real64, plateau_mode=plateau_mode, &
+                                               random_seed=1_int32)
+    end subroutine run_fixed_k_constant_fixture
+
+    !> Test helper: two fixed-k searches agree on every output exactly -- the selection, the final
+    !| per-point arrays and interval, and every column `1:n_admissible_evaluated` of every trace,
+    !| all rows (the rows beyond a candidate's points are written as padding).
+    subroutine assert_fixed_k_searches_identical(name, a, b)
+        character(len=*), intent(in) :: name
+            !! Message prefix
+        type(fixed_k_search_outputs), intent(in) :: a
+            !! The first search's outputs
+        type(fixed_k_search_outputs), intent(in) :: b
+            !! The second search's outputs
+        integer(int32) :: n_studies, n_cap, n_adm
+
+        n_studies = size(a%ci, 2, kind=int32)
+        n_cap = size(a%n_bins, kind=int32)
+        n_adm = a%n_admissible
+        call assert_equal_array_int([b%n_points, b%n_neighbors, b%n_admissible], [a%n_points, a%n_neighbors, a%n_admissible], &
+                                    3_int32, name//"selection and counter")
+        call assert_true(logical(a%plateau .eqv. b%plateau, kind=c_bool), name//"plateau_established")
+        call assert_equal_array_int(b%n_bins, a%n_bins, n_cap, name//"n_bins_per_point")
+        call assert_equal_array_real(b%range_low, a%range_low, n_cap, 0.0_real64, name//"R_low")
+        call assert_equal_array_real(b%range_high, a%range_high, n_cap, 0.0_real64, name//"R_high")
+        call assert_equal_array_real(b%ci, a%ci, 2_int32*n_studies, 0.0_real64, name//"best confidence interval")
+        call assert_equal_array_int(b%trace_n_points(1:n_adm), a%trace_n_points(1:n_adm), n_adm, name//"trace_n_points")
+        call assert_equal_array_int(b%trace_n_neighbors(1:n_adm), a%trace_n_neighbors(1:n_adm), n_adm, &
+                                    name//"trace_n_neighbors")
+        call assert_equal_array_real(b%trace_jsd(:, 1:n_adm), a%trace_jsd(:, 1:n_adm), n_studies*n_adm, 0.0_real64, &
+                                     name//"trace_global_js_divergence")
+        call assert_equal_array_real(b%trace_ci_lower(:, 1:n_adm), a%trace_ci_lower(:, 1:n_adm), n_studies*n_adm, &
+                                     0.0_real64, name//"trace_ci_lower")
+        call assert_equal_array_real(b%trace_ci_upper(:, 1:n_adm), a%trace_ci_upper(:, 1:n_adm), n_studies*n_adm, &
+                                     0.0_real64, name//"trace_ci_upper")
+        call assert_equal_array_real(b%trace_ci_width(:, 1:n_adm), a%trace_ci_width(:, 1:n_adm), n_studies*n_adm, &
+                                     0.0_real64, name//"trace_ci_width")
+        call assert_equal_array_real(b%trace_ci_width_rel(:, 1:n_adm), a%trace_ci_width_rel(:, 1:n_adm), &
+                                     n_studies*n_adm, 0.0_real64, name//"trace_ci_width_relative")
+        call assert_equal_array_real(b%trace_ci_overlap(:, 1:n_adm), a%trace_ci_overlap(:, 1:n_adm), n_studies*n_adm, &
+                                     0.0_real64, name//"trace_ci_overlap")
+        call assert_equal_array_real(b%trace_delta(:, 1:n_adm), a%trace_delta(:, 1:n_adm), n_studies*n_adm, 0.0_real64, &
+                                     name//"trace_delta")
+        call assert_equal_array_real(b%trace_delta_median(1:n_adm), a%trace_delta_median(1:n_adm), n_adm, 0.0_real64, &
+                                     name//"trace_delta_median")
+        call assert_equal_array_real(b%trace_delta_max(1:n_adm), a%trace_delta_max(1:n_adm), n_adm, 0.0_real64, &
+                                     name//"trace_delta_max")
+        call assert_equal_array_int(b%trace_n_bins(:, 1:n_adm), a%trace_n_bins(:, 1:n_adm), n_cap*n_adm, &
+                                    name//"trace_selected_n_bins")
+        call assert_equal_array_logical(b%trace_occ_failed(:, 1:n_adm), a%trace_occ_failed(:, 1:n_adm), n_cap*n_adm, &
+                                        name//"trace_occupancy_failed")
+        call assert_equal_array_int(b%trace_n_pooled(:, 1:n_adm), a%trace_n_pooled(:, 1:n_adm), n_cap*n_adm, &
+                                    name//"trace_n_pooled_residuals")
+        call assert_equal_array_int(b%trace_min_occ(:, 1:n_adm), a%trace_min_occ(:, 1:n_adm), n_cap*n_adm, &
+                                    name//"trace_min_bin_occupancy")
+        call assert_equal_array_real(b%trace_mean_occ(:, 1:n_adm), a%trace_mean_occ(:, 1:n_adm), n_cap*n_adm, 0.0_real64, &
+                                     name//"trace_mean_bin_occupancy")
+        call assert_equal_array_int(b%trace_max_occ(:, 1:n_adm), a%trace_max_occ(:, 1:n_adm), n_cap*n_adm, &
+                                    name//"trace_max_bin_occupancy")
+        call assert_equal_array_int(b%trace_sturges(:, 1:n_adm), a%trace_sturges(:, 1:n_adm), n_cap*n_adm, &
+                                    name//"trace_sturges_bins")
+        call assert_equal_array_int(b%trace_fd(:, 1:n_adm), a%trace_fd(:, 1:n_adm), n_cap*n_adm, name//"trace_fd_bins")
+        call assert_equal_array_real(b%trace_range_low(:, 1:n_adm), a%trace_range_low(:, 1:n_adm), n_cap*n_adm, &
+                                     0.0_real64, name//"trace_shared_residual_range_low")
+        call assert_equal_array_real(b%trace_range_high(:, 1:n_adm), a%trace_range_high(:, 1:n_adm), n_cap*n_adm, &
+                                     0.0_real64, name//"trace_shared_residual_range_high")
+    end subroutine assert_fixed_k_searches_identical
+
+    !> Test helper: two adaptive searches agree on every output exactly -- the selected knobs and
+    !| points, the candidate log, the final per-point arrays and interval, and every column
+    !| `1:n_admissible_evaluated` of every trace, all rows.
+    subroutine assert_adaptive_searches_identical(name, a, b)
+        character(len=*), intent(in) :: name
+            !! Message prefix
+        type(adaptive_search_outputs), intent(in) :: a
+            !! The first search's outputs
+        type(adaptive_search_outputs), intent(in) :: b
+            !! The second search's outputs
+        integer(int32) :: n_studies, n_cap, n_adm, n_tried
+
+        n_studies = size(a%ci, 2, kind=int32)
+        n_cap = a%capacity
+        n_adm = a%n_admissible
+        n_tried = a%n_tried
+        call assert_equal_array_int([b%k_start, b%k_step, b%k_max, b%n_points, b%n_admissible, b%n_tried, b%capacity], &
+                                    [a%k_start, a%k_step, a%k_max, a%n_points, a%n_admissible, a%n_tried, a%capacity], &
+                                    7_int32, name//"selection and counters")
+        call assert_true(logical(a%plateau .eqv. b%plateau, kind=c_bool), name//"plateau_established")
+        call assert_equal_array_int(b%cand_k_start(1:n_tried), a%cand_k_start(1:n_tried), n_tried, name//"candidate_k_start")
+        call assert_equal_array_int(b%cand_n_points(1:n_tried), a%cand_n_points(1:n_tried), n_tried, &
+                                    name//"candidate_n_points")
+        call assert_equal_array_int(b%cand_status(1:n_tried), a%cand_status(1:n_tried), n_tried, name//"candidate_status")
+        call assert_equal_array_int(b%n_bins, a%n_bins, n_cap, name//"n_bins_per_point")
+        call assert_equal_array_real(b%range_low, a%range_low, n_cap, 0.0_real64, name//"R_low")
+        call assert_equal_array_real(b%range_high, a%range_high, n_cap, 0.0_real64, name//"R_high")
+        call assert_equal_array_real(b%ci, a%ci, 2_int32*n_studies, 0.0_real64, name//"best confidence interval")
+        call assert_equal_array_int(b%trace_k_start(1:n_adm), a%trace_k_start(1:n_adm), n_adm, name//"trace_k_start")
+        call assert_equal_array_int(b%trace_k_step(1:n_adm), a%trace_k_step(1:n_adm), n_adm, name//"trace_k_step")
+        call assert_equal_array_int(b%trace_k_max(1:n_adm), a%trace_k_max(1:n_adm), n_adm, name//"trace_k_max")
+        call assert_equal_array_int(b%trace_n_points(1:n_adm), a%trace_n_points(1:n_adm), n_adm, name//"trace_n_points")
+        call assert_equal_array_real(b%trace_jsd(:, 1:n_adm), a%trace_jsd(:, 1:n_adm), n_studies*n_adm, 0.0_real64, &
+                                     name//"trace_global_js_divergence")
+        call assert_equal_array_real(b%trace_ci_lower(:, 1:n_adm), a%trace_ci_lower(:, 1:n_adm), n_studies*n_adm, &
+                                     0.0_real64, name//"trace_ci_lower")
+        call assert_equal_array_real(b%trace_ci_upper(:, 1:n_adm), a%trace_ci_upper(:, 1:n_adm), n_studies*n_adm, &
+                                     0.0_real64, name//"trace_ci_upper")
+        call assert_equal_array_real(b%trace_ci_width(:, 1:n_adm), a%trace_ci_width(:, 1:n_adm), n_studies*n_adm, &
+                                     0.0_real64, name//"trace_ci_width")
+        call assert_equal_array_real(b%trace_ci_width_rel(:, 1:n_adm), a%trace_ci_width_rel(:, 1:n_adm), &
+                                     n_studies*n_adm, 0.0_real64, name//"trace_ci_width_relative")
+        call assert_equal_array_real(b%trace_ci_overlap(:, 1:n_adm), a%trace_ci_overlap(:, 1:n_adm), n_studies*n_adm, &
+                                     0.0_real64, name//"trace_ci_overlap")
+        call assert_equal_array_real(b%trace_delta(:, 1:n_adm), a%trace_delta(:, 1:n_adm), n_studies*n_adm, 0.0_real64, &
+                                     name//"trace_delta")
+        call assert_equal_array_real(b%trace_delta_median(1:n_adm), a%trace_delta_median(1:n_adm), n_adm, 0.0_real64, &
+                                     name//"trace_delta_median")
+        call assert_equal_array_real(b%trace_delta_max(1:n_adm), a%trace_delta_max(1:n_adm), n_adm, 0.0_real64, &
+                                     name//"trace_delta_max")
+        call assert_equal_array_int(b%trace_n_bins(:, 1:n_adm), a%trace_n_bins(:, 1:n_adm), n_cap*n_adm, &
+                                    name//"trace_selected_n_bins")
+        call assert_equal_array_logical(b%trace_occ_failed(:, 1:n_adm), a%trace_occ_failed(:, 1:n_adm), n_cap*n_adm, &
+                                        name//"trace_occupancy_failed")
+        call assert_equal_array_int(b%trace_n_pooled(:, 1:n_adm), a%trace_n_pooled(:, 1:n_adm), n_cap*n_adm, &
+                                    name//"trace_n_pooled_residuals")
+        call assert_equal_array_int(b%trace_min_occ(:, 1:n_adm), a%trace_min_occ(:, 1:n_adm), n_cap*n_adm, &
+                                    name//"trace_min_bin_occupancy")
+        call assert_equal_array_real(b%trace_mean_occ(:, 1:n_adm), a%trace_mean_occ(:, 1:n_adm), n_cap*n_adm, 0.0_real64, &
+                                     name//"trace_mean_bin_occupancy")
+        call assert_equal_array_int(b%trace_max_occ(:, 1:n_adm), a%trace_max_occ(:, 1:n_adm), n_cap*n_adm, &
+                                    name//"trace_max_bin_occupancy")
+        call assert_equal_array_int(b%trace_sturges(:, 1:n_adm), a%trace_sturges(:, 1:n_adm), n_cap*n_adm, &
+                                    name//"trace_sturges_bins")
+        call assert_equal_array_int(b%trace_fd(:, 1:n_adm), a%trace_fd(:, 1:n_adm), n_cap*n_adm, name//"trace_fd_bins")
+        call assert_equal_array_real(b%trace_range_low(:, 1:n_adm), a%trace_range_low(:, 1:n_adm), n_cap*n_adm, &
+                                     0.0_real64, name//"trace_shared_residual_range_low")
+        call assert_equal_array_real(b%trace_range_high(:, 1:n_adm), a%trace_range_high(:, 1:n_adm), n_cap*n_adm, &
+                                     0.0_real64, name//"trace_shared_residual_range_high")
+    end subroutine assert_adaptive_searches_identical
+
+    !> run_js_comp_test_parameter_search without `plateau_mode` returns exactly what it returns with
+    !| MODE_PLATEAU_EFFECT_SIZE passed explicitly, every output compared exactly, and stops later
+    !| than with MODE_PLATEAU_CI_OVERLAP: at candidate 3 = (320, 125) after three admissible
+    !| candidates instead of candidate 2 = (400, 50) after two (see the section comment above).
+    subroutine test_param_search_plateau_mode_default_is_effect_size()
+        character(len=*), parameter :: name = "test_param_search_plateau_mode_default_is_effect_size: "
+        type(fixed_k_search_outputs) :: omitted, effect_size, ci_overlap
+        integer(int32) :: ierr_omitted, ierr_effect_size, ierr_ci_overlap
+
+        call run_fixed_k_constant_fixture(omitted, ierr_omitted)
+        call run_fixed_k_constant_fixture(effect_size, ierr_effect_size, plateau_mode=MODE_PLATEAU_EFFECT_SIZE)
+        call run_fixed_k_constant_fixture(ci_overlap, ierr_ci_overlap, plateau_mode=MODE_PLATEAU_CI_OVERLAP)
+        call assert_equal_int(get_err_code(ierr_omitted), ERR_OK, name//"omitted: ierr")
+        call assert_equal_int(get_err_code(ierr_effect_size), ERR_OK, name//"effect size: ierr")
+        call assert_equal_int(get_err_code(ierr_ci_overlap), ERR_OK, name//"CI overlap: ierr")
+
+        call assert_fixed_k_searches_identical(name//"omitted vs effect size: ", effect_size, omitted)
+
+        call assert_true(omitted%plateau, name//"omitted: plateau established")
+        call assert_equal_array_int([omitted%n_points, omitted%n_neighbors, omitted%n_admissible], &
+                                    [320_int32, 125_int32, 3_int32], 3_int32, name//"omitted: stops at candidate 3")
+        call assert_true(ci_overlap%plateau, name//"CI overlap: plateau established")
+        call assert_equal_array_int([ci_overlap%n_points, ci_overlap%n_neighbors, ci_overlap%n_admissible], &
+                                    [400_int32, 50_int32, 2_int32], 3_int32, name//"CI overlap: stops at candidate 2")
+    end subroutine test_param_search_plateau_mode_default_is_effect_size
+
+    !> run_js_comp_test_adaptive_parameter_search without `plateau_mode` returns exactly what it
+    !| returns with MODE_PLATEAU_EFFECT_SIZE passed explicitly, every output compared exactly, and
+    !| differs from MODE_PLATEAU_CI_OVERLAP on fixture A (gates relaxed): candidate 3 = (12, 3, 48)
+    !| with 125 points, as E2, instead of candidate 2 = (16, 4, 64) with 91 points, as E1.
+    subroutine test_adaptive_search_plateau_mode_default_is_effect_size()
+        character(len=*), parameter :: name = "test_adaptive_search_plateau_mode_default_is_effect_size: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: omitted, effect_size, ci_overlap
+        integer(int32) :: ierr_omitted, ierr_effect_size, ierr_ci_overlap
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .false._c_bool, 500_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, omitted, ierr_omitted, min_residuals_per_bin=0_int32, &
+                                 omit_plateau_mode=.true._c_bool)
+        call run_adaptive_search(gene_means, residuals, effect_size, ierr_effect_size, min_residuals_per_bin=0_int32, &
+                                 plateau_mode=MODE_PLATEAU_EFFECT_SIZE)
+        call run_adaptive_search(gene_means, residuals, ci_overlap, ierr_ci_overlap, min_residuals_per_bin=0_int32, &
+                                 plateau_mode=MODE_PLATEAU_CI_OVERLAP)
+        call assert_equal_int(get_err_code(ierr_omitted), ERR_OK, name//"omitted: ierr")
+        call assert_equal_int(get_err_code(ierr_effect_size), ERR_OK, name//"effect size: ierr")
+        call assert_equal_int(get_err_code(ierr_ci_overlap), ERR_OK, name//"CI overlap: ierr")
+
+        call assert_adaptive_searches_identical(name//"omitted vs effect size: ", effect_size, omitted)
+
+        call assert_true(omitted%plateau, name//"omitted: plateau established")
+        call assert_equal_array_int([omitted%k_start, omitted%k_step, omitted%k_max, omitted%n_points], &
+                                    [12_int32, 3_int32, 48_int32, 125_int32], 4_int32, name//"omitted: candidate 3")
+        call assert_true(ci_overlap%plateau, name//"CI overlap: plateau established")
+        call assert_equal_array_int([ci_overlap%k_start, ci_overlap%k_step, ci_overlap%k_max, ci_overlap%n_points], &
+                                    [16_int32, 4_int32, 64_int32, 91_int32], 4_int32, name//"CI overlap: candidate 2")
+    end subroutine test_adaptive_search_plateau_mode_default_is_effect_size
 
 end module mod_test_data_integration_js_comp_test

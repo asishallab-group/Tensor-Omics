@@ -20,7 +20,7 @@ The admissibility gates are
 `join_method`) and
 :func:`tensor_omics.check_effect_size_plateau_condition`
 (the relative change of each study's observed JSD between successive candidates); a search's
-`plateau_mode` selects which of them stops it. Both searches evaluate at most
+`plateau_mode` selects which of them stops it, by default the change of the observed JSD. Both searches evaluate at most
 ``MAX_CANDIDATE_PAIRS`` candidates.
 
 Python binding, generated from tox_data_integration_js_comp_test_search. Do not edit.

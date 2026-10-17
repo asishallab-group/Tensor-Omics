@@ -212,14 +212,15 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.9_real64`.
         integer(int32), intent(in), optional :: plateau_mode
-            !! Rerun search: which plateau criterion stops the search
+            !! Rerun search: which plateau criterion stops the search; by default, as in the
+            !! searches, the change of the observed JSD values from one admissible candidate to the next
             !!
-            !! | Mode                                | Value                                                                                        |
-            !! |-------------------------------------|----------------------------------------------------------------------------------------------|
-            !! | CI overlap only                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
-            !! | Either criterion                    | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
-            !! The default value is `0_int32`.
+            !! | Mode                                                                                 | Value                                                                                        |
+            !! |--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+            !! | CI overlap only                                                                      | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Either criterion                                                                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
+            !! The default value is `1_int32`.
         real(real64), intent(in), optional :: delta_median_threshold
             !! Rerun search: upper bound on the median relative JSD change for a transition to qualify
             !! The minimum valid value is `above(0.0_real64)`.
@@ -1024,14 +1025,15 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.9_real64`.
         integer(int32), intent(in), optional :: plateau_mode
-            !! Rerun search: which plateau criterion stops the search
+            !! Rerun search: which plateau criterion stops the search; by default, as in the
+            !! searches, the change of the observed JSD values from one admissible candidate to the next
             !!
-            !! | Mode                                | Value                                                                                        |
-            !! |-------------------------------------|----------------------------------------------------------------------------------------------|
-            !! | CI overlap only                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
-            !! | Either criterion                    | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
-            !! The default value is `0_int32`.
+            !! | Mode                                                                                 | Value                                                                                        |
+            !! |--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+            !! | CI overlap only                                                                      | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Either criterion                                                                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
+            !! The default value is `1_int32`.
         real(real64), intent(in), optional :: delta_median_threshold
             !! Rerun search: upper bound on the median relative JSD change for a transition to qualify
             !! The minimum valid value is `above(0.0_real64)`.
@@ -1400,14 +1402,15 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.9_real64`.
         integer(int32), intent(in), optional :: plateau_mode
-            !! Rerun search: which plateau criterion stops the search
+            !! Rerun search: which plateau criterion stops the search; by default, as in the
+            !! searches, the change of the observed JSD values from one admissible candidate to the next
             !!
-            !! | Mode                                | Value                                                                                        |
-            !! |-------------------------------------|----------------------------------------------------------------------------------------------|
-            !! | CI overlap only                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
-            !! | Either criterion                    | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
-            !! The default value is `0_int32`.
+            !! | Mode                                                                                 | Value                                                                                        |
+            !! |--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+            !! | CI overlap only                                                                      | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Either criterion                                                                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
+            !! The default value is `1_int32`.
         real(real64), intent(in), optional :: delta_median_threshold
             !! Rerun search: upper bound on the median relative JSD change for a transition to qualify
             !! The minimum valid value is `above(0.0_real64)`.
@@ -2286,14 +2289,15 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.9_real64`.
         integer(int32), intent(in), optional :: plateau_mode
-            !! Rerun search: which plateau criterion stops the search
+            !! Rerun search: which plateau criterion stops the search; by default, as in the
+            !! searches, the change of the observed JSD values from one admissible candidate to the next
             !!
-            !! | Mode                                | Value                                                                                        |
-            !! |-------------------------------------|----------------------------------------------------------------------------------------------|
-            !! | CI overlap only                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
-            !! | Either criterion                    | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
-            !! The default value is `0_int32`.
+            !! | Mode                                                                                 | Value                                                                                        |
+            !! |--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+            !! | CI overlap only                                                                      | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Either criterion                                                                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
+            !! The default value is `1_int32`.
         real(real64), intent(in), optional :: delta_median_threshold
             !! Rerun search: upper bound on the median relative JSD change for a transition to qualify
             !! The minimum valid value is `above(0.0_real64)`.
@@ -2685,14 +2689,15 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.9_real64`.
         integer(int32), intent(in), optional :: plateau_mode
-            !! Rerun search: which plateau criterion stops the search
+            !! Rerun search: which plateau criterion stops the search; by default, as in the
+            !! searches, the change of the observed JSD values from one admissible candidate to the next
             !!
-            !! | Mode                                | Value                                                                                        |
-            !! |-------------------------------------|----------------------------------------------------------------------------------------------|
-            !! | CI overlap only                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
-            !! | Either criterion                    | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
-            !! The default value is `0_int32`.
+            !! | Mode                                                                                 | Value                                                                                        |
+            !! |--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+            !! | CI overlap only                                                                      | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Either criterion                                                                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
+            !! The default value is `1_int32`.
         real(real64), intent(in), optional :: delta_median_threshold
             !! Rerun search: upper bound on the median relative JSD change for a transition to qualify
             !! The minimum valid value is `above(0.0_real64)`.
@@ -3499,14 +3504,15 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.9_real64`.
         integer(int32), intent(in), optional :: plateau_mode
-            !! Rerun search: which plateau criterion stops the search
+            !! Rerun search: which plateau criterion stops the search; by default, as in the
+            !! searches, the change of the observed JSD values from one admissible candidate to the next
             !!
-            !! | Mode                                | Value                                                                                        |
-            !! |-------------------------------------|----------------------------------------------------------------------------------------------|
-            !! | CI overlap only                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
-            !! | Either criterion                    | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
-            !! The default value is `0_int32`.
+            !! | Mode                                                                                 | Value                                                                                        |
+            !! |--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+            !! | CI overlap only                                                                      | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Either criterion                                                                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
+            !! The default value is `1_int32`.
         real(real64), intent(in), optional :: delta_median_threshold
             !! Rerun search: upper bound on the median relative JSD change for a transition to qualify
             !! The minimum valid value is `above(0.0_real64)`.
@@ -3864,14 +3870,15 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.9_real64`.
         integer(int32), intent(in), optional :: plateau_mode
-            !! Rerun search: which plateau criterion stops the search
+            !! Rerun search: which plateau criterion stops the search; by default, as in the
+            !! searches, the change of the observed JSD values from one admissible candidate to the next
             !!
-            !! | Mode                                | Value                                                                                        |
-            !! |-------------------------------------|----------------------------------------------------------------------------------------------|
-            !! | CI overlap only                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
-            !! | Either criterion                    | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
-            !! The default value is `0_int32`.
+            !! | Mode                                                                                 | Value                                                                                        |
+            !! |--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+            !! | CI overlap only                                                                      | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Either criterion                                                                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
+            !! The default value is `1_int32`.
         real(real64), intent(in), optional :: delta_median_threshold
             !! Rerun search: upper bound on the median relative JSD change for a transition to qualify
             !! The minimum valid value is `above(0.0_real64)`.
@@ -4747,14 +4754,15 @@ contains
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.9_real64`.
         integer(int32), intent(in), optional :: plateau_mode
-            !! Rerun search: which plateau criterion stops the search
+            !! Rerun search: which plateau criterion stops the search; by default, as in the
+            !! searches, the change of the observed JSD values from one admissible candidate to the next
             !!
-            !! | Mode                                | Value                                                                                        |
-            !! |-------------------------------------|----------------------------------------------------------------------------------------------|
-            !! | CI overlap only                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
-            !! | Either criterion                    | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
-            !! The default value is `0_int32`.
+            !! | Mode                                                                                 | Value                                                                                        |
+            !! |--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+            !! | CI overlap only                                                                      | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]]  |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Either criterion                                                                     | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]]        |
+            !! The default value is `1_int32`.
         real(real64), intent(in), optional :: delta_median_threshold
             !! Rerun search: upper bound on the median relative JSD change for a transition to qualify
             !! The minimum valid value is `above(0.0_real64)`.

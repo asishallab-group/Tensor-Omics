@@ -232,7 +232,7 @@ def run_js_comp_test_on_sample_assignment(
         min_residuals_per_bin=10,
         min_neighbor_overlap=0.1,
         succeeding_ci_overlap=0.9,
-        plateau_mode='plateau_ci_overlap',
+        plateau_mode='plateau_effect_size',
         delta_median_threshold=0.05,
         delta_max_threshold=0.1,
         delta_epsilon=1e-10,
@@ -340,10 +340,11 @@ def run_js_comp_test_on_sample_assignment(
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.9`.
-    plateau_mode : str, one of 'plateau_ci_overlap' | 'plateau_effect_size' | 'plateau_both', optional, default 'plateau_ci_overlap'
-        Rerun search: which plateau criterion stops the search
+    plateau_mode : str, one of 'plateau_ci_overlap' | 'plateau_effect_size' | 'plateau_both', optional, default 'plateau_effect_size'
+        Rerun search: which plateau criterion stops the search; by default, as in the
+        searches, the change of the observed JSD values from one admissible candidate to the next
 
-        The default value is `'plateau_ci_overlap'`.
+        The default value is `'plateau_effect_size'`.
     delta_median_threshold : float, optional, default 0.05
         Rerun search: upper bound on the median relative JSD change for a transition to qualify
         The minimum valid value is `above(0.0)`.
@@ -510,7 +511,7 @@ def run_js_comp_test_adaptive_on_sample_assignment(
         min_residuals_per_bin=10,
         min_neighbor_overlap=0.1,
         succeeding_ci_overlap=0.9,
-        plateau_mode='plateau_ci_overlap',
+        plateau_mode='plateau_effect_size',
         delta_median_threshold=0.05,
         delta_max_threshold=0.1,
         delta_epsilon=1e-10,
@@ -613,10 +614,11 @@ def run_js_comp_test_adaptive_on_sample_assignment(
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.9`.
-    plateau_mode : str, one of 'plateau_ci_overlap' | 'plateau_effect_size' | 'plateau_both', optional, default 'plateau_ci_overlap'
-        Rerun search: which plateau criterion stops the search
+    plateau_mode : str, one of 'plateau_ci_overlap' | 'plateau_effect_size' | 'plateau_both', optional, default 'plateau_effect_size'
+        Rerun search: which plateau criterion stops the search; by default, as in the
+        searches, the change of the observed JSD values from one admissible candidate to the next
 
-        The default value is `'plateau_ci_overlap'`.
+        The default value is `'plateau_effect_size'`.
     delta_median_threshold : float, optional, default 0.05
         Rerun search: upper bound on the median relative JSD change for a transition to qualify
         The minimum valid value is `above(0.0)`.
@@ -814,7 +816,7 @@ def run_js_comp_test_label_permutation_test(
         min_residuals_per_bin=10,
         min_neighbor_overlap=0.1,
         succeeding_ci_overlap=0.9,
-        plateau_mode='plateau_ci_overlap',
+        plateau_mode='plateau_effect_size',
         delta_median_threshold=0.05,
         delta_max_threshold=0.1,
         delta_epsilon=1e-10,
@@ -912,10 +914,11 @@ def run_js_comp_test_label_permutation_test(
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.9`.
-    plateau_mode : str, one of 'plateau_ci_overlap' | 'plateau_effect_size' | 'plateau_both', optional, default 'plateau_ci_overlap'
-        Rerun search: which plateau criterion stops the search
+    plateau_mode : str, one of 'plateau_ci_overlap' | 'plateau_effect_size' | 'plateau_both', optional, default 'plateau_effect_size'
+        Rerun search: which plateau criterion stops the search; by default, as in the
+        searches, the change of the observed JSD values from one admissible candidate to the next
 
-        The default value is `'plateau_ci_overlap'`.
+        The default value is `'plateau_effect_size'`.
     delta_median_threshold : float, optional, default 0.05
         Rerun search: upper bound on the median relative JSD change for a transition to qualify
         The minimum valid value is `above(0.0)`.
@@ -1085,7 +1088,7 @@ def run_js_comp_test_adaptive_label_permutation_test(
         min_residuals_per_bin=10,
         min_neighbor_overlap=0.1,
         succeeding_ci_overlap=0.9,
-        plateau_mode='plateau_ci_overlap',
+        plateau_mode='plateau_effect_size',
         delta_median_threshold=0.05,
         delta_max_threshold=0.1,
         delta_epsilon=1e-10,
@@ -1181,10 +1184,11 @@ def run_js_comp_test_adaptive_label_permutation_test(
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.9`.
-    plateau_mode : str, one of 'plateau_ci_overlap' | 'plateau_effect_size' | 'plateau_both', optional, default 'plateau_ci_overlap'
-        Rerun search: which plateau criterion stops the search
+    plateau_mode : str, one of 'plateau_ci_overlap' | 'plateau_effect_size' | 'plateau_both', optional, default 'plateau_effect_size'
+        Rerun search: which plateau criterion stops the search; by default, as in the
+        searches, the change of the observed JSD values from one admissible candidate to the next
 
-        The default value is `'plateau_ci_overlap'`.
+        The default value is `'plateau_effect_size'`.
     delta_median_threshold : float, optional, default 0.05
         Rerun search: upper bound on the median relative JSD change for a transition to qualify
         The minimum valid value is `above(0.0)`.

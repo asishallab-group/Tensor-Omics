@@ -48,8 +48,9 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies) {
 #' (\code{\link{check_plateau_condition}})
 #' and relative effect-size stability
 #' (\code{\link{check_effect_size_plateau_condition}}).
-#' Both are always computed and traced; `plateau_mode` decides which one stops the search. A
-#' stop by the effect-size criterion returns the candidate that triggered it.
+#' Both are always computed and traced; `plateau_mode` decides which one stops the search
+#' (by default the effect-size criterion, see `plateau_mode`). A stop by the effect-size
+#' criterion returns the candidate that triggered it.
 #'
 #' The returned candidate:
 #'
@@ -97,9 +98,14 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies) {
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.9`.
-#' @param plateau_mode a string, one of "plateau_ci_overlap", "plateau_effect_size", "plateau_both". Which plateau criterion decides when the search stops
+#' @param plateau_mode a string, one of "plateau_ci_overlap", "plateau_effect_size", "plateau_both". Which plateau criterion decides when the search stops. The default is the change of
+#'   the observed JSD values from one admissible candidate to the next: it measures
+#'   directly how stable the observed value is. The CI-overlap criterion stays available,
+#'   but its bootstrap interval is drawn from the pooled histogram of all studies, so it
+#'   describes the spread of the JSD expected if the studies did not differ at all (a
+#'   noise band), not how stable the observed value is from candidate to candidate
 #'
-#'   The default value is `"plateau_ci_overlap"`.
+#'   The default value is `"plateau_effect_size"`.
 #' @param delta_median_threshold a numeric scalar. Upper bound on the median relative JSD change for a transition to qualify
 #'   The minimum valid value is `above(0.0)`.
 #'   The default value is `0.05`.
@@ -220,7 +226,7 @@ generate_js_comp_test_candidates <- function(max_n_genes_all_studies) {
 #'     Jagged like trace_selected_n_bins
 #'     The first `n_admissible_evaluated` elements will hold the results.}
 #' @export
-run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, max_n_neighbors_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_ci_overlap", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, bin_count_mode = "bin_count_occupancy") {
+run_js_comp_test_parameter_search <- function(gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, max_n_neighbors_candidate, min_residuals_per_bin = 10L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, m_min = 3L, m_max = 120L, gamma_occupancy = 1.25, lower_residual_range_quantile = 0.05, upper_residual_range_quantile = 0.95, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, bin_count_mode = "bin_count_occupancy") {
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
     n_bootstraps <- .tox_as_integer_scalar(n_bootstraps, "n_bootstraps")

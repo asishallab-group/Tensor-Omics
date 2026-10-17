@@ -21,7 +21,7 @@
 !| `join_method`) and
 !| [[tox_data_integration_js_comp_test_search_impl(module):check_effect_size_plateau_condition_impl(interface)]]
 !| (the relative change of each study's observed JSD between successive candidates); a search's
-!| `plateau_mode` selects which of them stops it. Both searches evaluate at most
+!| `plateau_mode` selects which of them stops it, by default the change of the observed JSD. Both searches evaluate at most
 !| [[tox_data_integration_js_comp_test_search_impl(module):MAX_CANDIDATE_PAIRS(variable)]] candidates.
 module tox_data_integration_js_comp_test_search_impl
     use f42_safeguard
@@ -61,12 +61,13 @@ module tox_data_integration_js_comp_test_search_impl
         !! the adaptive search caps its candidate count at the same value
 
     ! `plateau_mode`'s mode table, from the M_MODE_PLATEAU_* of src/tox/data_integration/macros.h:
-    ! M_MODE_PLATEAU_CI_OVERLAP is also both searches' DM_DEFAULT, which cannot name a Fortran
+    ! M_MODE_PLATEAU_EFFECT_SIZE is also both searches' DM_DEFAULT, which cannot name a Fortran
     ! parameter, and the family is kept together.
     integer(int32), parameter :: MODE_PLATEAU_CI_OVERLAP = M_MODE_PLATEAU_CI_OVERLAP
         !! Plateau mode: CI overlap only
     integer(int32), parameter :: MODE_PLATEAU_EFFECT_SIZE = M_MODE_PLATEAU_EFFECT_SIZE
-        !! Plateau mode: relative-effect-size stability only
+        !! Plateau mode: relative-effect-size stability only (the change of the observed JSD
+        !! values from candidate to candidate); the default of both parameter searches
     integer(int32), parameter :: MODE_PLATEAU_BOTH = M_MODE_PLATEAU_BOTH
         !! Plateau mode: either CI overlap or relative-effect-size stability
 

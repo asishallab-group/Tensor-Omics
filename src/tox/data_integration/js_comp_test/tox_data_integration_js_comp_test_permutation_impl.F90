@@ -728,14 +728,15 @@ contains
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(M_SUCCEEDING_CI_OVERLAP_DEFAULT)
         integer(int32), intent(in), optional :: plateau_mode
-            !! Rerun search: which plateau criterion stops the search
+            !! Rerun search: which plateau criterion stops the search; by default, as in the
+            !! searches, the change of the observed JSD values from one admissible candidate to the next
             !!
             !! | Mode | Value |
             !! |------|-------|
             !! | CI overlap only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]] |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
             !! | Either criterion | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]] |
-            !! DM_DEFAULT(M_MODE_PLATEAU_CI_OVERLAP)
+            !! DM_DEFAULT(M_MODE_PLATEAU_EFFECT_SIZE)
         real(real64), intent(in), optional :: delta_median_threshold
             !! Rerun search: upper bound on the median relative JSD change for a transition to qualify
             !! DM_MIN(above(0.0_real64))
@@ -1342,14 +1343,15 @@ contains
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(M_SUCCEEDING_CI_OVERLAP_DEFAULT)
         integer(int32), intent(in), optional :: plateau_mode
-            !! Rerun search: which plateau criterion stops the search
+            !! Rerun search: which plateau criterion stops the search; by default, as in the
+            !! searches, the change of the observed JSD values from one admissible candidate to the next
             !!
             !! | Mode | Value |
             !! |------|-------|
             !! | CI overlap only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]] |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
             !! | Either criterion | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]] |
-            !! DM_DEFAULT(M_MODE_PLATEAU_CI_OVERLAP)
+            !! DM_DEFAULT(M_MODE_PLATEAU_EFFECT_SIZE)
         real(real64), intent(in), optional :: delta_median_threshold
             !! Rerun search: upper bound on the median relative JSD change for a transition to qualify
             !! DM_MIN(above(0.0_real64))
@@ -2048,14 +2050,15 @@ contains
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(M_SUCCEEDING_CI_OVERLAP_DEFAULT)
         integer(int32), intent(in), optional :: plateau_mode
-            !! Rerun search: which plateau criterion stops the search
+            !! Rerun search: which plateau criterion stops the search; by default, as in the
+            !! searches, the change of the observed JSD values from one admissible candidate to the next
             !!
             !! | Mode | Value |
             !! |------|-------|
             !! | CI overlap only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]] |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
             !! | Either criterion | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]] |
-            !! DM_DEFAULT(M_MODE_PLATEAU_CI_OVERLAP)
+            !! DM_DEFAULT(M_MODE_PLATEAU_EFFECT_SIZE)
         real(real64), intent(in), optional :: delta_median_threshold
             !! Rerun search: upper bound on the median relative JSD change for a transition to qualify
             !! DM_MIN(above(0.0_real64))
@@ -2746,14 +2749,15 @@ contains
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(M_SUCCEEDING_CI_OVERLAP_DEFAULT)
         integer(int32), intent(in), optional :: plateau_mode
-            !! Rerun search: which plateau criterion stops the search
+            !! Rerun search: which plateau criterion stops the search; by default, as in the
+            !! searches, the change of the observed JSD values from one admissible candidate to the next
             !!
             !! | Mode | Value |
             !! |------|-------|
             !! | CI overlap only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]] |
-            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Relative-effect-size stability only: the change of the observed JSD values (default) | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
             !! | Either criterion | [[tox_data_integration_js_comp_test_search_impl(module):MODE_PLATEAU_BOTH(variable)]] |
-            !! DM_DEFAULT(M_MODE_PLATEAU_CI_OVERLAP)
+            !! DM_DEFAULT(M_MODE_PLATEAU_EFFECT_SIZE)
         real(real64), intent(in), optional :: delta_median_threshold
             !! Rerun search: upper bound on the median relative JSD change for a transition to qualify
             !! DM_MIN(above(0.0_real64))

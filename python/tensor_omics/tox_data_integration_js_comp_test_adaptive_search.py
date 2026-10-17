@@ -208,7 +208,7 @@ def run_js_comp_test_adaptive_parameter_search(
         min_residuals_per_bin=10,
         min_neighbor_overlap=0.1,
         succeeding_ci_overlap=0.9,
-        plateau_mode='plateau_ci_overlap',
+        plateau_mode='plateau_effect_size',
         delta_median_threshold=0.05,
         delta_max_threshold=0.1,
         delta_epsilon=1e-10,
@@ -334,10 +334,15 @@ def run_js_comp_test_adaptive_parameter_search(
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.9`.
-    plateau_mode : str, one of 'plateau_ci_overlap' | 'plateau_effect_size' | 'plateau_both', optional, default 'plateau_ci_overlap'
-        Which plateau criterion decides when the search stops
+    plateau_mode : str, one of 'plateau_ci_overlap' | 'plateau_effect_size' | 'plateau_both', optional, default 'plateau_effect_size'
+        Which plateau criterion decides when the search stops. The default is the change of
+        the observed JSD values from one admissible candidate to the next: it measures
+        directly how stable the observed value is. The CI-overlap criterion stays available,
+        but its bootstrap interval is drawn from the pooled histogram of all studies, so it
+        describes the spread of the JSD expected if the studies did not differ at all (a
+        noise band), not how stable the observed value is from candidate to candidate
 
-        The default value is `'plateau_ci_overlap'`.
+        The default value is `'plateau_effect_size'`.
     delta_median_threshold : float, optional, default 0.05
         Upper bound on the median relative JSD change for a transition to qualify
         The minimum valid value is `above(0.0)`.
