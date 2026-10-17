@@ -73,7 +73,7 @@ SEXP save_tox_data_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SE
 SEXP get_tox_data_dims_call(SEXP);
 SEXP read_tox_data_into_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP generate_adaptive_js_comp_test_candidates_call(SEXP, SEXP);
-SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_adaptive_js_comp_test_bounds_call(SEXP, SEXP);
 SEXP estimate_bin_count_call(SEXP, SEXP, SEXP, SEXP);
 SEXP estimate_bin_count_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -84,12 +84,12 @@ SEXP determine_bin_count_occupancy_exhaustive_expert_call(SEXP, SEXP, SEXP, SEXP
 SEXP determine_bin_count_stone_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP determine_bin_count_stone_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP generate_js_comp_test_candidates_call(SEXP, SEXP);
-SEXP run_js_comp_test_parameter_search_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_parameter_search_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_js_comp_test_candidate_bounds_call(SEXP);
-SEXP run_js_comp_test_on_sample_assignment_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP run_js_comp_test_adaptive_on_sample_assignment_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP run_js_comp_test_label_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP run_js_comp_test_adaptive_label_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_on_sample_assignment_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_adaptive_on_sample_assignment_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_label_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_adaptive_label_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_js_comp_test_permutation_bounds_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_adaptive_js_comp_test_permutation_bounds_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP run_js_comp_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -124,7 +124,7 @@ SEXP construct_adaptive_neighborhoods_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, S
 SEXP calc_neighborhood_size_call(SEXP, SEXP, SEXP, SEXP);
 SEXP gather_pooled_neighborhood_residuals_call(SEXP, SEXP);
 SEXP gjct_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP bootstrap_histogram_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP bootstrap_histogram_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_js_comp_test_n_top_k_jsds_call(SEXP, SEXP);
 SEXP read_expression_vectors_tsv_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP read_gene_ids_from_tsv_file_call(SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -220,7 +220,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"get_tox_data_dims_call", (DL_FUNC) &get_tox_data_dims_call, 1},
     {"read_tox_data_into_call", (DL_FUNC) &read_tox_data_into_call, 12},
     {"generate_adaptive_js_comp_test_candidates_call", (DL_FUNC) &generate_adaptive_js_comp_test_candidates_call, 2},
-    {"run_js_comp_test_adaptive_parameter_search_call", (DL_FUNC) &run_js_comp_test_adaptive_parameter_search_call, 26},
+    {"run_js_comp_test_adaptive_parameter_search_call", (DL_FUNC) &run_js_comp_test_adaptive_parameter_search_call, 27},
     {"calc_adaptive_js_comp_test_bounds_call", (DL_FUNC) &calc_adaptive_js_comp_test_bounds_call, 2},
     {"estimate_bin_count_call", (DL_FUNC) &estimate_bin_count_call, 4},
     {"estimate_bin_count_expert_call", (DL_FUNC) &estimate_bin_count_expert_call, 5},
@@ -231,12 +231,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"determine_bin_count_stone_call", (DL_FUNC) &determine_bin_count_stone_call, 11},
     {"determine_bin_count_stone_expert_call", (DL_FUNC) &determine_bin_count_stone_expert_call, 12},
     {"generate_js_comp_test_candidates_call", (DL_FUNC) &generate_js_comp_test_candidates_call, 2},
-    {"run_js_comp_test_parameter_search_call", (DL_FUNC) &run_js_comp_test_parameter_search_call, 24},
+    {"run_js_comp_test_parameter_search_call", (DL_FUNC) &run_js_comp_test_parameter_search_call, 25},
     {"calc_js_comp_test_candidate_bounds_call", (DL_FUNC) &calc_js_comp_test_candidate_bounds_call, 1},
-    {"run_js_comp_test_on_sample_assignment_call", (DL_FUNC) &run_js_comp_test_on_sample_assignment_call, 25},
-    {"run_js_comp_test_adaptive_on_sample_assignment_call", (DL_FUNC) &run_js_comp_test_adaptive_on_sample_assignment_call, 29},
-    {"run_js_comp_test_label_permutation_test_call", (DL_FUNC) &run_js_comp_test_label_permutation_test_call, 25},
-    {"run_js_comp_test_adaptive_label_permutation_test_call", (DL_FUNC) &run_js_comp_test_adaptive_label_permutation_test_call, 29},
+    {"run_js_comp_test_on_sample_assignment_call", (DL_FUNC) &run_js_comp_test_on_sample_assignment_call, 26},
+    {"run_js_comp_test_adaptive_on_sample_assignment_call", (DL_FUNC) &run_js_comp_test_adaptive_on_sample_assignment_call, 30},
+    {"run_js_comp_test_label_permutation_test_call", (DL_FUNC) &run_js_comp_test_label_permutation_test_call, 26},
+    {"run_js_comp_test_adaptive_label_permutation_test_call", (DL_FUNC) &run_js_comp_test_adaptive_label_permutation_test_call, 30},
     {"calc_js_comp_test_permutation_bounds_call", (DL_FUNC) &calc_js_comp_test_permutation_bounds_call, 5},
     {"calc_adaptive_js_comp_test_permutation_bounds_call", (DL_FUNC) &calc_adaptive_js_comp_test_permutation_bounds_call, 5},
     {"run_js_comp_test_call", (DL_FUNC) &run_js_comp_test_call, 13},
@@ -271,7 +271,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"calc_neighborhood_size_call", (DL_FUNC) &calc_neighborhood_size_call, 4},
     {"gather_pooled_neighborhood_residuals_call", (DL_FUNC) &gather_pooled_neighborhood_residuals_call, 2},
     {"gjct_permutation_test_call", (DL_FUNC) &gjct_permutation_test_call, 7},
-    {"bootstrap_histogram_call", (DL_FUNC) &bootstrap_histogram_call, 7},
+    {"bootstrap_histogram_call", (DL_FUNC) &bootstrap_histogram_call, 9},
     {"calc_js_comp_test_n_top_k_jsds_call", (DL_FUNC) &calc_js_comp_test_n_top_k_jsds_call, 2},
     {"read_expression_vectors_tsv_call", (DL_FUNC) &read_expression_vectors_tsv_call, 8},
     {"read_gene_ids_from_tsv_file_call", (DL_FUNC) &read_gene_ids_from_tsv_file_call, 5},

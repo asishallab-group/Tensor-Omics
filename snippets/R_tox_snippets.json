@@ -121,7 +121,8 @@
       "  max_pooled_residuals = ${24:0L},",
       "  min_study_neighbors = ${25:1L},",
       "  bin_count_mode = ${26|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
-      "  delta_abs_tolerance = ${27:0.0}",
+      "  delta_abs_tolerance = ${27:0.0},",
+      "  bootstrap_mode = ${28|bootstrap_per_study,bootstrap_pooled|}",
       ")"
     ]
   },
@@ -303,7 +304,8 @@
       "  random_seed = ${22:42L},",
       "  bin_count_mode = ${23|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
       "  neighborhood_size_mode = ${24|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|},",
-      "  delta_abs_tolerance = ${25:0.0}",
+      "  delta_abs_tolerance = ${25:0.0},",
+      "  bootstrap_mode = ${26|bootstrap_per_study,bootstrap_pooled|}",
       ")"
     ]
   },
@@ -345,7 +347,8 @@
       "  random_seed = ${23:42L},",
       "  bin_count_mode = ${24|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
       "  neighborhood_size_mode = ${25|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|},",
-      "  delta_abs_tolerance = ${26:0.0}",
+      "  delta_abs_tolerance = ${26:0.0},",
+      "  bootstrap_mode = ${27|bootstrap_per_study,bootstrap_pooled|}",
       ")"
     ]
   },
@@ -382,7 +385,8 @@
       "  max_pooled_residuals = ${27:0L},",
       "  min_study_neighbors = ${28:1L},",
       "  bin_count_mode = ${29|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
-      "  delta_abs_tolerance = ${30:0.0}",
+      "  delta_abs_tolerance = ${30:0.0},",
+      "  bootstrap_mode = ${31|bootstrap_per_study,bootstrap_pooled|}",
       ")"
     ]
   },
@@ -415,7 +419,8 @@
       "  random_seed = ${23:42L},",
       "  bin_count_mode = ${24|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
       "  neighborhood_size_mode = ${25|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|},",
-      "  delta_abs_tolerance = ${26:0.0}",
+      "  delta_abs_tolerance = ${26:0.0},",
+      "  bootstrap_mode = ${27|bootstrap_per_study,bootstrap_pooled|}",
       ")"
     ]
   },
@@ -452,7 +457,8 @@
       "  max_pooled_residuals = ${27:0L},",
       "  min_study_neighbors = ${28:1L},",
       "  bin_count_mode = ${29|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
-      "  delta_abs_tolerance = ${30:0.0}",
+      "  delta_abs_tolerance = ${30:0.0},",
+      "  bootstrap_mode = ${31|bootstrap_per_study,bootstrap_pooled|}",
       ")"
     ]
   },
@@ -892,16 +898,18 @@
   },
   "bootstrap_histogram (call)": {
     "prefix": "tox:bootstrap_histogram",
-    "description": "In every bootstrap, each study's histogram at each reference point is drawn with replacement",
+    "description": "In every bootstrap, each study's histogram at each reference point is drawn again with",
     "body": [
       "bootstrap_histogram(",
       "  n_bootstraps = ${1:n_bootstraps},",
       "  mean_pmf_counts = ${2:mean_pmf_counts},",
-      "  mean_pmf_included_n_reps = ${3:mean_pmf_included_n_reps},",
-      "  included_n_reps = ${4:included_n_reps},",
-      "  confidence_interval = ${5:confidence_interval},",
-      "  two_sided_bootstrapping_significance_level = ${6:2.5},",
-      "  random_seed = ${7:42L}",
+      "  counts = ${3:counts},",
+      "  mean_pmf_included_n_reps = ${4:mean_pmf_included_n_reps},",
+      "  included_n_reps = ${5:included_n_reps},",
+      "  confidence_interval = ${6:confidence_interval},",
+      "  two_sided_bootstrapping_significance_level = ${7:2.5},",
+      "  random_seed = ${8:42L},",
+      "  bootstrap_mode = ${9|bootstrap_per_study,bootstrap_pooled|}",
       ")"
     ]
   },

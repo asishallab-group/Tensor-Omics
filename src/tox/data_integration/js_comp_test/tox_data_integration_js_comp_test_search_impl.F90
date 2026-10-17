@@ -507,7 +507,8 @@ contains
                                              n_admissible_evaluated, n_bootstraps, n_bootstrapping_top_k_jsds, &
                                              join_method, plateau_mode, succeeding_ci_overlap, delta_median_threshold, &
                                              delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, &
-                                             delta_abs_tolerance, n_bins_per_point, occupancy_failed, n_pooled_residuals, min_bin_occupancy, &
+                                             delta_abs_tolerance, bootstrap_mode, n_bins_per_point, occupancy_failed, &
+                                             n_pooled_residuals, min_bin_occupancy, &
                                              mean_bin_occupancy, max_bin_occupancy, sturges_bins, fd_bins, &
                                              shared_residual_range_low, shared_residual_range_high, included_n_reps, &
                                              mean_pmf_counts, mean_pmf_included_n_reps, counts, pmfs, mean_pmf, &
@@ -560,6 +561,8 @@ contains
             !! Forwarded to check_effect_size_plateau_condition_impl
         real(real64), intent(in) :: delta_abs_tolerance
             !! Forwarded to check_effect_size_plateau_condition_impl
+        integer(int32), intent(in) :: bootstrap_mode
+            !! Forwarded to the bootstrap, one of the `MODE_BOOTSTRAP_*` values
         integer(int32), intent(in) :: n_bins_per_point(n_points)
             !! The candidate's bin count per reference point
         logical(c_bool), intent(in) :: occupancy_failed(n_points)
@@ -583,11 +586,11 @@ contains
         integer(int32), intent(in) :: included_n_reps(n_points, n_studies)
             !! Every study's included-replicate counts
         integer(int32), intent(in) :: mean_pmf_counts(n_points, max_n_bins)
-            !! The consensus histogram counts, the bootstrap's pool
+            !! The consensus histogram counts, the pooled bootstrap's pool
         integer(int32), intent(in) :: mean_pmf_included_n_reps(n_points)
             !! The consensus included-replicate counts
-        integer(int32), intent(out) :: counts(n_points, max_n_bins, n_studies)
-            !! Every study's histogram counts; bootstrap scratch here
+        integer(int32), intent(in) :: counts(n_points, max_n_bins, n_studies)
+            !! Every study's histogram counts, the per-study bootstrap's pools
         real(real64), intent(out) :: pmfs(n_points, max_n_bins, n_studies)
             !! Every study's pmfs; bootstrap scratch here
         real(real64), intent(out) :: mean_pmf(n_points, max_n_bins)
@@ -727,14 +730,15 @@ contains
         prev_global_js_divergence = global_js_divergence
 
         ! Same n_bootstraps/random_seed for every candidate, for comparability. The observed-value
-        ! arrays above double as the bootstrap's work arrays, passed whole and viewed packed.
-        call bootstrap_histogram_impl(n_bootstraps, max_n_bins, n_points, n_studies, mean_pmf_counts, &
+        ! arrays above double as the bootstrap's work arrays, passed whole and viewed packed; the
+        ! counts are passed whole the same way, as the per-study bootstrap's input.
+        call bootstrap_histogram_impl(n_bootstraps, max_n_bins, n_points, n_studies, mean_pmf_counts, counts, &
                                       mean_pmf_included_n_reps, included_n_reps, &
                                       n_bootstrapping_top_k_jsds, confidence_interval, &
-                                      tmp_bootstrapping_top_k_jsds, counts, pmfs, mean_pmf, &
+                                      tmp_bootstrapping_top_k_jsds, pmfs, mean_pmf, &
                                       js_divergences, weights, global_js_divergence, tmp_point_pool, &
                                       tmp_point_draw, two_sided_bootstrapping_significance_level, random_seed, &
-                                      bootstrap_ierr)
+                                      bootstrap_mode, bootstrap_ierr)
         ! Defensive: the counts add up by construction, so only a failed rng allocation can
         ! land here (untested). Without the return the interval would stay at its zero-width
         ! [J, J] seed and could win the smallest-uncertainty ranking.

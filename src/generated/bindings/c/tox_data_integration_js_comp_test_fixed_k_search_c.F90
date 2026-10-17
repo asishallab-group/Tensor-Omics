@@ -205,12 +205,14 @@ contains
             bin_count_mode,&
             neighborhood_size_mode,&
             delta_abs_tolerance,&
+            bootstrap_mode,&
             ierr&
         ) bind(C, name="run_js_comp_test_parameter_search_c")
         use tox_data_integration_js_comp_test_fixed_k_search, only: run_js_comp_test_parameter_search
         use tox_data_integration_js_comp_test_binning_impl, only: MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_POOLED, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
         use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_BOTH, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
         use tox_data_integration_js_comp_test_search_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, MODE_PLATEAU_BOTH, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE
+        use tox_data_integration_stats_impl, only: MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED
 
         integer(c_int), intent(in), target :: n_studies
             !! Number of studies
@@ -262,8 +264,9 @@ contains
         real(c_double), dimension(max_n_points_candidate), intent(out), target :: shared_residual_range_high
             !! The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`
         real(c_double), dimension(2, n_studies), intent(out), target :: best_candidate_pair_confidence_interval
-            !! The chosen candidate's bootstrapped JSD confidence interval; `-1.0` when no candidate
-            !! was admissible
+            !! The chosen candidate's bootstrapped JSD confidence interval (by default a robustness
+            !! interval of its observed JSD, see `bootstrap_mode`); `-1.0` when no candidate was
+            !! admissible
         logical(c_bool), intent(out), target :: plateau_established
             !! `.true.` when a plateau was found (by the criterion `plateau_mode` selects) or the
             !! only candidate was admissible; `.false.` otherwise, also when the smallest-uncertainty
@@ -282,11 +285,11 @@ contains
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_lower
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
-            !! (`L_{i,t}`)
+            !! (`L_{i,t}`), from the bootstrap `bootstrap_mode` selects
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_upper
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
-            !! (`U_{i,t}`)
+            !! (`U_{i,t}`), from the bootstrap `bootstrap_mode` selects
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_width
             !! Per-admissible-candidate, per-study confidence-interval width (`W_{i,t} = U_{i,t} -
@@ -374,10 +377,12 @@ contains
         character(len=1, kind=c_char), dimension(19), intent(in), target :: plateau_mode
             !! Which plateau criterion decides when the search stops. The default is the change of
             !! the observed JSD values from one admissible candidate to the next: it measures
-            !! directly how stable the observed value is. The CI-overlap criterion stays available,
-            !! but its bootstrap interval is drawn from the pooled histogram of all studies, so it
-            !! describes the spread of the JSD expected if the studies did not differ at all (a
-            !! noise band), not how stable the observed value is from candidate to candidate
+            !! directly how stable the observed value is. The CI-overlap criterion stays available.
+            !! With the pooled bootstrap (`bootstrap_mode`; the only bootstrap when CI overlap was
+            !! the default) its interval describes the spread of the JSD expected if the studies did
+            !! not differ at all (a noise band), not how stable the observed value is from candidate
+            !! to candidate; with the per-study bootstrap (the default) it is a robustness interval
+            !! of each candidate's observed value
             !!
             !! | Mode                                                                                 | Value                                                                                        |
             !! |--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
@@ -462,12 +467,26 @@ contains
             !! Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
             !! The minimum valid value is `0.0_real64`.
             !! The default value is `0.0_real64`.
+        character(len=1, kind=c_char), dimension(19), intent(in), target :: bootstrap_mode
+            !! What the bootstrap draws each study's histograms from, for every admissible
+            !! candidate's interval (the `trace_ci_*` values, the CI-overlap criterion and the
+            !! returned interval). By default each study's own counts: the interval shows how much
+            !! the observed JSD would move if each study's own residuals were drawn again (a
+            !! robustness interval). The pooled counts of all studies give the spread expected if the
+            !! studies did not differ (a noise band) instead, kept for comparison
+            !!
+            !! | Mode                                                                                             | Value                                                                          |
+            !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+            !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
+            !! The default value is `'bootstrap_per_study'`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
         integer(int32) :: join_method_mode_f
         integer(int32) :: plateau_mode_mode_f
         integer(int32) :: bin_count_mode_mode_f
         integer(int32) :: neighborhood_size_mode_mode_f
+        integer(int32) :: bootstrap_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -527,6 +546,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(plateau_mode, 19)
         M_CHECK_ARRAY_NON_NULL(bin_count_mode, 29)
         M_CHECK_ARRAY_NON_NULL(neighborhood_size_mode, 23)
+        M_CHECK_ARRAY_NON_NULL(bootstrap_mode, 19)
 
         block
             character(len=:), pointer :: join_method_f
@@ -594,6 +614,20 @@ contains
                     return
             end select
         end block
+        block
+            character(len=:), pointer :: bootstrap_mode_f
+            bootstrap_mode_f => c_char_as_view(bootstrap_mode)
+
+            select case (bootstrap_mode_f)
+                case ("bootstrap_per_study")
+                    bootstrap_mode_mode_f = MODE_BOOTSTRAP_PER_STUDY
+                case ("bootstrap_pooled")
+                    bootstrap_mode_mode_f = MODE_BOOTSTRAP_POOLED
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
 
         call run_js_comp_test_parameter_search(&
             n_studies = n_studies,&
@@ -652,6 +686,7 @@ contains
             bin_count_mode = bin_count_mode_mode_f,&
             neighborhood_size_mode = neighborhood_size_mode_mode_f,&
             delta_abs_tolerance = delta_abs_tolerance,&
+            bootstrap_mode = bootstrap_mode_mode_f,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_parameter_search_c
@@ -797,12 +832,14 @@ contains
             bin_count_mode,&
             neighborhood_size_mode,&
             delta_abs_tolerance,&
+            bootstrap_mode,&
             ierr&
         ) bind(C, name="run_js_comp_test_parameter_search_expert_c")
         use tox_data_integration_js_comp_test_fixed_k_search, only: run_js_comp_test_parameter_search_expert
         use tox_data_integration_js_comp_test_binning_impl, only: MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_POOLED, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
         use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_BOTH, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
         use tox_data_integration_js_comp_test_search_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, MODE_PLATEAU_BOTH, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE
+        use tox_data_integration_stats_impl, only: MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED
 
         integer(c_int), intent(in), target :: n_studies
             !! Number of studies
@@ -858,8 +895,9 @@ contains
         real(c_double), dimension(max_n_points_candidate), intent(out), target :: shared_residual_range_high
             !! The chosen candidate's upper residual-range bound (R_high), like `shared_residual_range_low`
         real(c_double), dimension(2, n_studies), intent(out), target :: best_candidate_pair_confidence_interval
-            !! The chosen candidate's bootstrapped JSD confidence interval; `-1.0` when no candidate
-            !! was admissible
+            !! The chosen candidate's bootstrapped JSD confidence interval (by default a robustness
+            !! interval of its observed JSD, see `bootstrap_mode`); `-1.0` when no candidate was
+            !! admissible
         logical(c_bool), intent(out), target :: plateau_established
             !! `.true.` when a plateau was found (by the criterion `plateau_mode` selects) or the
             !! only candidate was admissible; `.false.` otherwise, also when the smallest-uncertainty
@@ -878,11 +916,11 @@ contains
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_lower
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
-            !! (`L_{i,t}`)
+            !! (`L_{i,t}`), from the bootstrap `bootstrap_mode` selects
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_upper
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
-            !! (`U_{i,t}`)
+            !! (`U_{i,t}`), from the bootstrap `bootstrap_mode` selects
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_width
             !! Per-admissible-candidate, per-study confidence-interval width (`W_{i,t} = U_{i,t} -
@@ -1060,10 +1098,12 @@ contains
         character(len=1, kind=c_char), dimension(19), intent(in), target :: plateau_mode
             !! Which plateau criterion decides when the search stops. The default is the change of
             !! the observed JSD values from one admissible candidate to the next: it measures
-            !! directly how stable the observed value is. The CI-overlap criterion stays available,
-            !! but its bootstrap interval is drawn from the pooled histogram of all studies, so it
-            !! describes the spread of the JSD expected if the studies did not differ at all (a
-            !! noise band), not how stable the observed value is from candidate to candidate
+            !! directly how stable the observed value is. The CI-overlap criterion stays available.
+            !! With the pooled bootstrap (`bootstrap_mode`; the only bootstrap when CI overlap was
+            !! the default) its interval describes the spread of the JSD expected if the studies did
+            !! not differ at all (a noise band), not how stable the observed value is from candidate
+            !! to candidate; with the per-study bootstrap (the default) it is a robustness interval
+            !! of each candidate's observed value
             !!
             !! | Mode                                                                                 | Value                                                                                        |
             !! |--------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
@@ -1148,12 +1188,26 @@ contains
             !! Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
             !! The minimum valid value is `0.0_real64`.
             !! The default value is `0.0_real64`.
+        character(len=1, kind=c_char), dimension(19), intent(in), target :: bootstrap_mode
+            !! What the bootstrap draws each study's histograms from, for every admissible
+            !! candidate's interval (the `trace_ci_*` values, the CI-overlap criterion and the
+            !! returned interval). By default each study's own counts: the interval shows how much
+            !! the observed JSD would move if each study's own residuals were drawn again (a
+            !! robustness interval). The pooled counts of all studies give the spread expected if the
+            !! studies did not differ (a noise band) instead, kept for comparison
+            !!
+            !! | Mode                                                                                             | Value                                                                          |
+            !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+            !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
+            !! The default value is `'bootstrap_per_study'`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
         integer(int32) :: join_method_mode_f
         integer(int32) :: plateau_mode_mode_f
         integer(int32) :: bin_count_mode_mode_f
         integer(int32) :: neighborhood_size_mode_mode_f
+        integer(int32) :: bootstrap_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -1258,6 +1312,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(plateau_mode, 19)
         M_CHECK_ARRAY_NON_NULL(bin_count_mode, 29)
         M_CHECK_ARRAY_NON_NULL(neighborhood_size_mode, 23)
+        M_CHECK_ARRAY_NON_NULL(bootstrap_mode, 19)
 
         block
             character(len=:), pointer :: join_method_f
@@ -1320,6 +1375,20 @@ contains
                     neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_SMALL
                 case ("neighborhood_size_both")
                     neighborhood_size_mode_mode_f = MODE_NEIGHBORHOOD_SIZE_BOTH
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
+        block
+            character(len=:), pointer :: bootstrap_mode_f
+            bootstrap_mode_f => c_char_as_view(bootstrap_mode)
+
+            select case (bootstrap_mode_f)
+                case ("bootstrap_per_study")
+                    bootstrap_mode_mode_f = MODE_BOOTSTRAP_PER_STUDY
+                case ("bootstrap_pooled")
+                    bootstrap_mode_mode_f = MODE_BOOTSTRAP_POOLED
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
@@ -1428,6 +1497,7 @@ contains
             bin_count_mode = bin_count_mode_mode_f,&
             neighborhood_size_mode = neighborhood_size_mode_mode_f,&
             delta_abs_tolerance = delta_abs_tolerance,&
+            bootstrap_mode = bootstrap_mode_mode_f,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_parameter_search_expert_c

@@ -3,10 +3,10 @@
 ! parameter -- the generated C and R bindings need the number itself -- so each such value is a
 ! macro, written once, here, and every module that needs the literal includes this file.
 ! M_MAX_N_BINS, M_MAX_CANDIDATE_PAIRS and the M_MODE_BIN_COUNT_*, M_MODE_PLATEAU_*,
-! M_MODE_NEIGHBORHOOD_SIZE_* and M_METHOD_JOIN_* values also back a parameter of the module that
-! owns them; the *_DEFAULT values have no parameter and are used directly. A value only one module
-! uses stays in that module as a CM_ macro, except that a mode's values are kept together: once one
-! of them is needed here, the whole mode family is here.
+! M_MODE_NEIGHBORHOOD_SIZE_*, M_MODE_BOOTSTRAP_* and M_METHOD_JOIN_* values also back a parameter
+! of the module that owns them; the *_DEFAULT values have no parameter and are used directly. A
+! value only one module uses stays in that module as a CM_ macro, except that a mode's values are
+! kept together: once one of them is needed here, the whole mode family is here.
 
 ! Fixed ceiling on any histogram bin count: MAX_N_BINS of tox_data_integration_js_comp_test_binning_impl,
 ! and the extent of the bin-sized work arrays of the bin-count, search and final-run modules.
@@ -58,6 +58,15 @@
 #define M_MODE_PLATEAU_CI_OVERLAP 0_int32
 #define M_MODE_PLATEAU_EFFECT_SIZE 1_int32
 #define M_MODE_PLATEAU_BOTH 2_int32
+
+! `bootstrap_mode`'s values (the MODE_BOOTSTRAP_* of tox_data_integration_stats_impl): what each
+! study's bootstrap histograms are drawn from -- 0 the study's own histograms (the default: how
+! much the observed JSD would move if each study's residuals were drawn again), 1 the pooled
+! histograms of all studies (the bootstrap before the mode existed: the spread expected if the
+! studies did not differ). Here because the bootstrap, both parameter searches and the study-label
+! Permutation-Test all name the default.
+#define M_MODE_BOOTSTRAP_PER_STUDY 0_int32
+#define M_MODE_BOOTSTRAP_POOLED 1_int32
 
 ! `join_method`'s values (the METHOD_JOIN_* of tox_data_integration_js_comp_test_search_impl): how
 ! the studies' confidence-interval overlaps are joined. Both parameter searches take it mandatory; the

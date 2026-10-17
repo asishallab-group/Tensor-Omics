@@ -11,9 +11,12 @@ null (a fixed observed consensus) and is kept for comparison.
 
 The bootstrap
 :func:`tensor_omics.bootstrap_histogram` gives each
-study's weighted global JSD a confidence interval, by drawing each study's histograms with
-replacement from the pooled consensus counts; `calc_js_comp_test_n_top_k_jsds` sizes its top-/bottom-k
-heaps for a caller that allocates its own.
+study's weighted global JSD an interval, by drawing each study's histograms again with
+replacement: by default from the study's own counts (a robustness interval: how much the
+observed value would move if each study's residuals were drawn again), or, with
+`bootstrap_mode`, from the pooled consensus counts (a noise band: the spread expected if the
+studies did not differ). `calc_js_comp_test_n_top_k_jsds` sizes its top-/bottom-k heaps for a
+caller that allocates its own.
 
 Python binding, generated from tox_data_integration_stats. Do not edit.
 """
@@ -57,18 +60,20 @@ _lib.bootstrap_histogram_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=3, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_BOOTSTRAP_HISTOGRAM_ARGUMENTS = ("n_bootstraps", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "mean_pmf_included_n_reps", "included_n_reps", "confidence_interval", "two_sided_bootstrapping_significance_level", "random_seed", "ierr",)
+_BOOTSTRAP_HISTOGRAM_ARGUMENTS = ("n_bootstraps", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "counts", "mean_pmf_included_n_reps", "included_n_reps", "confidence_interval", "two_sided_bootstrapping_significance_level", "random_seed", "bootstrap_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_BOOTSTRAP_HISTOGRAM_ARGUMENT_SOURCES = (None, "mean_pmf_counts", "mean_pmf_counts", "included_n_reps", None, None, None, None, None, None, None,)
+_BOOTSTRAP_HISTOGRAM_ARGUMENT_SOURCES = (None, "mean_pmf_counts", "mean_pmf_counts", "counts", None, None, None, None, None, None, None, None, None,)
 
 def gjct_permutation_test(
         n_permutations,
@@ -247,18 +252,30 @@ def gjct_permutation_test(
 def bootstrap_histogram(
         n_bootstraps,
         mean_pmf_counts,
+        counts,
         mean_pmf_included_n_reps,
         included_n_reps,
         confidence_interval,
         two_sided_bootstrapping_significance_level=2.5,
         random_seed=42,
+        bootstrap_mode='bootstrap_per_study',
 ):
-    r"""Bootstrap a confidence interval for each study's global JSD by resampling the pooled consensus histogram
+    r"""Bootstrap an interval for each study's global JSD by resampling the studies' histograms
 
-    In every bootstrap, each study's histogram at each reference point is drawn with replacement
-    (multinomial) from the pooled consensus counts `mean_pmf_counts`, with as many residuals as
-    the study observed; the consensus pmf, each study's JSD against it and its weighted global
-    JSD are recomputed from the draw.
+    In every bootstrap, each study's histogram at each reference point is drawn again with
+    replacement (multinomial), with as many residuals as the study observed
+    (`included_n_reps`); the consensus pmf, each study's JSD against it and its weighted global
+    JSD are recomputed from the draw. What a study is drawn from is `bootstrap_mode`:
+
+    - by default its own counts (`counts`): the interval shows how much the observed JSD would
+    move if each study's own residuals were drawn again -- a robustness interval of the
+    observed value. Drawing again adds sampling noise, so the bootstrapped JSDs are larger
+    than the observed one on average: when the studies hardly differ, the interval can lie
+    entirely above the observed JSD;
+    - or the pooled consensus counts of all studies (`mean_pmf_counts`): the interval shows the
+    spread of the JSD expected if the studies did not differ at all -- a noise band, not the
+    robustness of the observed value. This was the only bootstrap before the mode existed and
+    is kept for comparison.
 
     `confidence_interval` is input and output: its incoming `[lower, upper]` values seed every
     slot of the bottom-k/top-k heaps, so they are only displaced by more extreme bootstrap
@@ -269,8 +286,10 @@ def bootstrap_histogram(
     draw, when at some reference point the studies' counts do not add up to
     `mean_pmf_included_n_reps` or that total is not the sum of `mean_pmf_counts` (as
     :func:`tensor_omics.create_mean_pmf` produces
-    them); `ERR_ALLOC_FAIL` when the random number generator cannot be created. A failed draw
-    later on is recorded (first failure only) without stopping the bootstrap.
+    them), or, in the per-study mode, when a study's `counts` at some reference point do not add
+    up to its `included_n_reps`; `ERR_ALLOC_FAIL` when the random number generator cannot be
+    created. A failed draw later on is recorded (first failure only) without stopping the
+    bootstrap.
 
     Parameters
     ----------
@@ -278,7 +297,13 @@ def bootstrap_histogram(
         Number of bootstrap resamples to perform
         The minimum valid value is `1`.
     mean_pmf_counts : np.ndarray[np.int32] of shape (n_points, n_bins,), column-major (order='F')
-        Pooled residual counts per bin of the consensus pmf, the pool every bootstrap draws from
+        Pooled residual counts per bin of the consensus pmf: what every study is drawn from in
+        the pooled mode
+        The minimum valid value is `0`.
+    counts : np.ndarray[np.int32] of shape (n_points, n_bins, n_studies,), column-major (order='F')
+        Every study's own residual counts per bin: what each study is drawn from in the
+        per-study mode (the default); at each reference point they must add up to the
+        study's `included_n_reps` there. Not drawn from in the pooled mode, but still required
         The minimum valid value is `0`.
     mean_pmf_included_n_reps : np.ndarray[np.int32] of shape (n_points,)
         Count of non-NaN replicates per reference point of the pool
@@ -300,6 +325,12 @@ def bootstrap_histogram(
     random_seed : int, optional, default 42
         Seed for the GSL random number generator
         The default value is `42`.
+    bootstrap_mode : str, one of 'bootstrap_per_study' | 'bootstrap_pooled', optional, default 'bootstrap_per_study'
+        What each study's histograms are drawn from (see above). By default each study's own
+        counts: a robustness interval of the observed JSD. The pooled counts give a noise
+        band of "no difference between the studies" instead, kept for comparison
+
+        The default value is `'bootstrap_per_study'`.
 
     Returns
     -------
@@ -323,6 +354,12 @@ def bootstrap_histogram(
     if mean_pmf_counts.ndim != 2:
         raise ValueError(f"'mean_pmf_counts' must have 2 dimensions, but has {mean_pmf_counts.ndim}")
     try:
+        counts = np.asfortranarray(counts, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'counts' must be an array of np.int32: {error}") from None
+    if counts.ndim != 3:
+        raise ValueError(f"'counts' must have 3 dimensions, but has {counts.ndim}")
+    try:
         mean_pmf_included_n_reps = np.ascontiguousarray(mean_pmf_included_n_reps, dtype=np.int32)
     except (TypeError, ValueError) as error:
         raise TypeError(f"'mean_pmf_included_n_reps' must be an array of np.int32: {error}") from None
@@ -340,13 +377,22 @@ def bootstrap_histogram(
         raise ValueError(f"'confidence_interval' must have 2 dimensions, but has {confidence_interval.ndim}")
     if not confidence_interval.flags.f_contiguous:
         raise ValueError("'confidence_interval' is modified in place, so it must already be column-major (order='F')")
+    bootstrap_mode = np.array([str(bootstrap_mode).lower().encode().ljust(19)], dtype="S19")
 
     # what the inputs already say, rather than asking for it again
     n_bins = mean_pmf_counts.shape[1]
     n_points = mean_pmf_counts.shape[0]
-    n_studies = included_n_reps.shape[1]
+    n_studies = counts.shape[2]
 
     # Fortran cannot check that shared extents agree; this can
+    if counts.shape[1] != n_bins:
+        raise ValueError(f"'counts' has {counts.shape[1]} along axis 1, but "
+            f"'mean_pmf_counts' implies n_bins == {n_bins}"
+        )
+    if counts.shape[0] != n_points:
+        raise ValueError(f"'counts' has {counts.shape[0]} along axis 0, but "
+            f"'mean_pmf_counts' implies n_points == {n_points}"
+        )
     if mean_pmf_included_n_reps.shape[0] != n_points:
         raise ValueError(f"'mean_pmf_included_n_reps' has {mean_pmf_included_n_reps.shape[0]} along axis 0, but "
             f"'mean_pmf_counts' implies n_points == {n_points}"
@@ -355,9 +401,13 @@ def bootstrap_histogram(
         raise ValueError(f"'included_n_reps' has {included_n_reps.shape[0]} along axis 0, but "
             f"'mean_pmf_counts' implies n_points == {n_points}"
         )
+    if included_n_reps.shape[1] != n_studies:
+        raise ValueError(f"'included_n_reps' has {included_n_reps.shape[1]} along axis 1, but "
+            f"'counts' implies n_studies == {n_studies}"
+        )
     if confidence_interval.shape[1] != n_studies:
         raise ValueError(f"'confidence_interval' has {confidence_interval.shape[1]} along axis 1, but "
-            f"'included_n_reps' implies n_studies == {n_studies}"
+            f"'counts' implies n_studies == {n_studies}"
         )
 
     # outputs and work arrays, which the caller never sees
@@ -369,11 +419,13 @@ def bootstrap_histogram(
         ctypes.byref(ctypes.c_int(n_points)),
         ctypes.byref(ctypes.c_int(n_studies)),
         mean_pmf_counts,
+        counts,
         mean_pmf_included_n_reps,
         included_n_reps,
         confidence_interval,
         ctypes.byref(ctypes.c_double(two_sided_bootstrapping_significance_level)),
         ctypes.byref(ctypes.c_int(random_seed)),
+        bootstrap_mode,
         ctypes.byref(ierr),
     )
 

@@ -471,7 +471,7 @@ contains
                                                           two_sided_bootstrapping_significance_level, random_seed, &
                                                           bin_count_mode, &
                                                           neighborhood_size_mode, &
-                                                          delta_abs_tolerance, ierr)
+                                                          delta_abs_tolerance, bootstrap_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -820,6 +820,17 @@ contains
             !! Rerun search (used only with `rerun_parameter_search`): M_DELTA_ABS_TOLERANCE_DOC
             !! DM_MIN(0.0_real64)
             !! DM_DEFAULT(M_DELTA_ABS_TOLERANCE_DEFAULT)
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! Rerun search (used only with `rerun_parameter_search`): what its bootstrap draws each
+            !! study's histograms from. By default each study's own counts: a robustness interval of
+            !! the observed JSD. The pooled counts of all studies give a noise band of "no difference
+            !! between the studies" instead, kept for comparison
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Each study's own counts, a robustness interval (default) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]] |
+            !! DM_DEFAULT(M_MODE_BOOTSTRAP_PER_STUDY)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -930,7 +941,7 @@ contains
                 two_sided_bootstrapping_significance_level=two_sided_bootstrapping_significance_level, &
                 random_seed=random_seed, bin_count_mode=bin_count_mode, &
                 neighborhood_size_mode=neighborhood_size_mode, &
-                delta_abs_tolerance=delta_abs_tolerance, ierr=callee_ierr)
+                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, ierr=callee_ierr)
             if (is_err(callee_ierr)) then
                 call set_err_once(ierr, get_err_code(callee_ierr))
                 return
@@ -1087,7 +1098,7 @@ contains
                                                                    two_sided_bootstrapping_significance_level, random_seed, &
                                                                    tau, mad_distance_factor, max_pooled_residuals, &
                                                                    min_study_neighbors, bin_count_mode, &
-                                                                   delta_abs_tolerance, ierr)
+                                                                   delta_abs_tolerance, bootstrap_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -1459,6 +1470,17 @@ contains
             !! Rerun search (used only with `rerun_parameter_search`): M_DELTA_ABS_TOLERANCE_DOC
             !! DM_MIN(0.0_real64)
             !! DM_DEFAULT(M_DELTA_ABS_TOLERANCE_DEFAULT)
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! Rerun search (used only with `rerun_parameter_search`): what its bootstrap draws each
+            !! study's histograms from. By default each study's own counts: a robustness interval of
+            !! the observed JSD. The pooled counts of all studies give a noise band of "no difference
+            !! between the studies" instead, kept for comparison
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Each study's own counts, a robustness interval (default) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]] |
+            !! DM_DEFAULT(M_MODE_BOOTSTRAP_PER_STUDY)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -1580,7 +1602,7 @@ contains
                 random_seed=random_seed, tau=tau, mad_distance_factor=mad_distance_factor, &
                 max_pooled_residuals=max_pooled_residuals, min_study_neighbors=min_study_neighbors, &
                 bin_count_mode=bin_count_mode, &
-                delta_abs_tolerance=delta_abs_tolerance, ierr=callee_ierr)
+                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, ierr=callee_ierr)
             if (is_err(callee_ierr)) then
                 call set_err_once(ierr, get_err_code(callee_ierr))
                 return
@@ -1817,7 +1839,7 @@ contains
                                                             two_sided_bootstrapping_significance_level, random_seed, &
                                                             bin_count_mode, &
                                                             neighborhood_size_mode, &
-                                                            delta_abs_tolerance, ierr)
+                                                            delta_abs_tolerance, bootstrap_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -2169,6 +2191,17 @@ contains
             !! Rerun search (used only with `rerun_parameter_search`): M_DELTA_ABS_TOLERANCE_DOC
             !! DM_MIN(0.0_real64)
             !! DM_DEFAULT(M_DELTA_ABS_TOLERANCE_DEFAULT)
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! Rerun search (used only with `rerun_parameter_search`): what its bootstrap draws each
+            !! study's histograms from. By default each study's own counts: a robustness interval of
+            !! the observed JSD. The pooled counts of all studies give a noise band of "no difference
+            !! between the studies" instead, kept for comparison
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Each study's own counts, a robustness interval (default) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]] |
+            !! DM_DEFAULT(M_MODE_BOOTSTRAP_PER_STUDY)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -2280,7 +2313,7 @@ contains
             two_sided_bootstrapping_significance_level=two_sided_bootstrapping_significance_level, &
             random_seed=actual_random_seed, bin_count_mode=bin_count_mode, &
                 neighborhood_size_mode=neighborhood_size_mode, &
-                delta_abs_tolerance=delta_abs_tolerance, ierr=callee_ierr)
+                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, ierr=callee_ierr)
         if (is_err(callee_ierr)) then
             call set_err_once(ierr, get_err_code(callee_ierr))
             global_js_divergence_observed = M_NAN
@@ -2382,7 +2415,7 @@ contains
                 two_sided_bootstrapping_significance_level=two_sided_bootstrapping_significance_level, &
                 random_seed=actual_random_seed, bin_count_mode=bin_count_mode, &
                 neighborhood_size_mode=neighborhood_size_mode, &
-                delta_abs_tolerance=delta_abs_tolerance, ierr=callee_ierr)
+                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, ierr=callee_ierr)
             if (is_err(callee_ierr)) then
                 ! Invalid input of a relabelled data set (e.g. a study without residuals at some
                 ! reference point) fails this permutation only; anything else ends the test.
@@ -2523,7 +2556,7 @@ contains
                                                                      random_seed, tau, mad_distance_factor, &
                                                                      max_pooled_residuals, min_study_neighbors, &
                                                                      bin_count_mode, &
-                                                                     delta_abs_tolerance, ierr)
+                                                                     delta_abs_tolerance, bootstrap_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -2894,6 +2927,17 @@ contains
             !! Rerun search (used only with `rerun_parameter_search`): M_DELTA_ABS_TOLERANCE_DOC
             !! DM_MIN(0.0_real64)
             !! DM_DEFAULT(M_DELTA_ABS_TOLERANCE_DEFAULT)
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! Rerun search (used only with `rerun_parameter_search`): what its bootstrap draws each
+            !! study's histograms from. By default each study's own counts: a robustness interval of
+            !! the observed JSD. The pooled counts of all studies give a noise band of "no difference
+            !! between the studies" instead, kept for comparison
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Each study's own counts, a robustness interval (default) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]] |
+            !! DM_DEFAULT(M_MODE_BOOTSTRAP_PER_STUDY)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -3013,7 +3057,7 @@ contains
             random_seed=actual_random_seed, tau=tau, mad_distance_factor=mad_distance_factor, &
             max_pooled_residuals=max_pooled_residuals, min_study_neighbors=min_study_neighbors, &
             bin_count_mode=bin_count_mode, &
-                delta_abs_tolerance=delta_abs_tolerance, ierr=callee_ierr)
+                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, ierr=callee_ierr)
         if (is_err(callee_ierr)) then
             call set_err_once(ierr, get_err_code(callee_ierr))
             global_js_divergence_observed = M_NAN
@@ -3118,7 +3162,7 @@ contains
                 random_seed=actual_random_seed, tau=tau, mad_distance_factor=mad_distance_factor, &
                 max_pooled_residuals=max_pooled_residuals, min_study_neighbors=min_study_neighbors, &
                 bin_count_mode=bin_count_mode, &
-                delta_abs_tolerance=delta_abs_tolerance, ierr=callee_ierr)
+                delta_abs_tolerance=delta_abs_tolerance, bootstrap_mode=bootstrap_mode, ierr=callee_ierr)
             if (is_err(callee_ierr)) then
                 ! Invalid input of a relabelled data set (e.g. a study without residuals at some
                 ! reference point) fails this permutation only; anything else ends the test.

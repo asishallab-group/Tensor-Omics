@@ -645,14 +645,22 @@ def test_bootstrap_histogram():
     # (test_bootstrap_histogram_seeded_reproducibility).
     # ============================================================
     mean_pmf_counts = np.array([[5, 3, 2], [2, 2, 6]], dtype=np.int32, order='F')
+    # Every study's own counts (points x bins x studies), adding up to the pool.
+    counts = np.zeros((2, 3, 2), dtype=np.int32, order='F')
+    counts[0, :, 0] = [2, 1, 1]
+    counts[0, :, 1] = [3, 2, 1]
+    counts[1, :, 0] = [1, 1, 2]
+    counts[1, :, 1] = [1, 1, 4]
     mean_pmf_included_n_reps = np.array([10, 10], dtype=np.int32)
     included_n_reps = np.array([[4, 6], [4, 6]], dtype=np.int32, order='F')
 
     ci_first = np.array([[0.2, 0.3], [0.2, 0.3]], dtype=np.float64, order='F')
-    bootstrap_histogram(15, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps, ci_first, random_seed=123)
+    bootstrap_histogram(15, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, ci_first,
+                        random_seed=123, bootstrap_mode="bootstrap_pooled")
 
     ci_second = np.array([[0.2, 0.3], [0.2, 0.3]], dtype=np.float64, order='F')
-    bootstrap_histogram(15, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps, ci_second, random_seed=123)
+    bootstrap_histogram(15, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, ci_second,
+                        random_seed=123, bootstrap_mode="bootstrap_pooled")
 
     np.testing.assert_array_almost_equal(ci_first, ci_second, decimal=12)
 
@@ -666,8 +674,9 @@ def test_bootstrap_histogram():
     included_n_reps_deg = np.array([[5, 5]], dtype=np.int32, order='F')
     confidence_interval_deg = np.zeros((2, 2), dtype=np.float64, order='F')
 
-    bootstrap_histogram(5, mean_pmf_counts_deg, mean_pmf_included_n_reps_deg, included_n_reps_deg,
-                         confidence_interval_deg, random_seed=7)
+    counts_deg = np.array([[[5, 5]]], dtype=np.int32, order='F')
+    bootstrap_histogram(5, mean_pmf_counts_deg, counts_deg, mean_pmf_included_n_reps_deg, included_n_reps_deg,
+                        confidence_interval_deg, random_seed=7, bootstrap_mode="bootstrap_pooled")
 
     np.testing.assert_array_almost_equal(confidence_interval_deg, np.zeros((2, 2)), decimal=12)
 
@@ -677,13 +686,14 @@ def test_bootstrap_histogram_rejects_draws_from_empty_pool():
     # with invalid input, not tied to any one argument
     # (test_bootstrap_histogram_rejects_draws_from_empty_pool in the Fortran suite).
     mean_pmf_counts = np.array([[0, 0]], dtype=np.int32, order='F')
+    counts = np.zeros((1, 2, 2), dtype=np.int32, order='F')
     mean_pmf_included_n_reps = np.array([0], dtype=np.int32)
     included_n_reps = np.array([[3, 3]], dtype=np.int32, order='F')
 
     def call():
         confidence_interval = np.zeros((2, 2), dtype=np.float64, order='F')
-        bootstrap_histogram(3, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps,
-                            confidence_interval, random_seed=7)
+        bootstrap_histogram(3, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps,
+                            confidence_interval, random_seed=7, bootstrap_mode="bootstrap_pooled")
 
     assert_error(call, "expected ERR_INVALID_INPUT for draws from an empty pool", ERR_INVALID_INPUT)
     try:
@@ -721,19 +731,61 @@ def test_bootstrap_histogram_rejects_zero_included_n_reps():
     # included_n_reps is rejected on that argument, even where the counts otherwise add up
     # (test_bootstrap_histogram_rejects_zero_included_n_reps in the Fortran suite).
     mean_pmf_counts = np.array([[2, 2]], dtype=np.int32, order='F')
+    counts = np.zeros((1, 2, 2), dtype=np.int32, order='F')
+    counts[0, :, 1] = [2, 2]
     mean_pmf_included_n_reps = np.array([4], dtype=np.int32)
     included_n_reps = np.array([[0, 4]], dtype=np.int32, order='F')
 
     def call():
         confidence_interval = np.full((2, 2), 0.5, dtype=np.float64, order='F')
-        bootstrap_histogram(3, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps,
-                            confidence_interval, random_seed=7)
+        bootstrap_histogram(3, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps,
+                            confidence_interval, random_seed=7, bootstrap_mode="bootstrap_pooled")
 
     assert_error(call, "expected ERR_INVALID_INPUT for a study without a residual at a point", ERR_INVALID_INPUT)
     try:
         call()
     except ToxError as error:
         assert error.argument == "included_n_reps", f"expected the error on included_n_reps, got {error.argument!r}"
+
+
+def test_bootstrap_histogram_bootstrap_mode():
+    # Call + shape for both bootstrap modes (the numbers are checked in the Fortran suite): the
+    # default per-study mode and "bootstrap_pooled" both return a float64 (2, n_studies) interval
+    # with lower <= upper; an unknown mode is rejected, and so are per-study counts that do not
+    # add up to included_n_reps.
+    mean_pmf_counts = np.array([[5, 3, 2], [2, 2, 6]], dtype=np.int32, order='F')
+    counts = np.zeros((2, 3, 2), dtype=np.int32, order='F')
+    counts[0, :, 0] = [2, 1, 1]
+    counts[0, :, 1] = [3, 2, 1]
+    counts[1, :, 0] = [1, 1, 2]
+    counts[1, :, 1] = [1, 1, 4]
+    mean_pmf_included_n_reps = np.array([10, 10], dtype=np.int32)
+    included_n_reps = np.array([[4, 6], [4, 6]], dtype=np.int32, order='F')
+
+    for mode in (None, "bootstrap_per_study", "bootstrap_pooled"):
+        ci = np.array([[1.0, 1.0], [0.0, 0.0]], dtype=np.float64, order='F')
+        kwargs = {} if mode is None else {"bootstrap_mode": mode}
+        bootstrap_histogram(20, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, ci,
+                            random_seed=3, **kwargs)
+        assert ci.dtype == np.float64 and ci.shape == (2, 2), f"{mode}: dtype/shape"
+        assert np.all(np.isfinite(ci)) and np.all(ci[0, :] <= ci[1, :]), f"{mode}: lower <= upper"
+
+    def unknown_mode():
+        ci = np.full((2, 2), 0.5, dtype=np.float64, order='F')
+        bootstrap_histogram(3, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, ci,
+                            bootstrap_mode="no_such_mode")
+
+    assert_error(unknown_mode, "expected an unknown bootstrap_mode to be rejected", ERR_INVALID_INPUT)
+
+    bad_counts = counts.copy(order='F')
+    bad_counts[0, 0, 0] = 0
+
+    def counts_not_adding_up():
+        ci = np.full((2, 2), 0.5, dtype=np.float64, order='F')
+        bootstrap_histogram(3, mean_pmf_counts, bad_counts, mean_pmf_included_n_reps, included_n_reps, ci)
+
+    assert_error(counts_not_adding_up, "expected ERR_INVALID_INPUT for per-study counts not adding up",
+                 ERR_INVALID_INPUT)
 
 
 def test_calc_js_comp_test_candidate_bounds():
@@ -1159,6 +1211,25 @@ def test_run_js_comp_test_parameter_search():
                                                            delta_abs_tolerance=-0.1),
                  "expected a negative delta_abs_tolerance to be rejected", ERR_INVALID_INPUT)
 
+    # ============================================================
+    # Test 8 -- bootstrap_mode: the pooled bootstrap is accepted (call + shape;
+    # test_param_search_bootstrap_mode is the Fortran check), an unknown mode rejected.
+    # ============================================================
+    result_pooled = run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps=5, join_method='join_min',
+                                                      max_n_points_candidate=bounds_2["max_n_points_candidate"],
+                                                      max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
+                                                      min_residuals_per_bin=0, min_neighbor_overlap=0.0, random_seed=1,
+                                                      bootstrap_mode='bootstrap_pooled')
+    ci_pooled = result_pooled["best_candidate_pair_confidence_interval"]
+    assert ci_pooled.dtype == np.float64 and ci_pooled.shape == (2, 2), f"pooled: CI shape {ci_pooled.shape}"
+    assert result_pooled["trace_ci_lower"].shape == (2, 1), "pooled: trace_ci_lower shape"
+    assert_error(lambda: run_js_comp_test_parameter_search(gene_means_2, residuals_2, n_bootstraps=5,
+                                                           join_method='join_min',
+                                                           max_n_points_candidate=bounds_2["max_n_points_candidate"],
+                                                           max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
+                                                           bootstrap_mode='no_such_mode'),
+                 "expected an unknown bootstrap_mode to be rejected", ERR_INVALID_INPUT)
+
 
 def test_run_js_comp_test_parameter_search_rejects_undersized_bounds():
     # A max_n_points_candidate or max_n_neighbors_candidate one below what
@@ -1419,7 +1490,8 @@ def test_run_js_comp_test_adaptive_parameter_search():
                                                         max_n_points_candidate=capacity, min_residuals_per_bin=0,
                                                         min_neighbor_overlap=0.0, plateau_mode='plateau_both',
                                                         tau=0.1, mad_distance_factor=1.0, max_pooled_residuals=0,
-                                                        min_study_neighbors=1, random_seed=1, delta_abs_tolerance=0.001)
+                                                        min_study_neighbors=1, random_seed=1, delta_abs_tolerance=0.001,
+                                                        bootstrap_mode='bootstrap_pooled')
     assert isinstance(result, dict), f"expected a dict, got {type(result)}"
     for key in ("k_start", "k_step", "k_max", "n_points"):
         assert isinstance(result[key], (int, np.integer)), f"{key}: expected an int, got {type(result[key])}"

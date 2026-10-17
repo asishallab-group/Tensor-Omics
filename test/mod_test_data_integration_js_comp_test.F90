@@ -52,7 +52,8 @@ module mod_test_data_integration_js_comp_test
                                                                       ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED, &
                                                                       ADAPTIVE_CANDIDATE_OVERLAP_FAILED, &
                                                                       ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED
-    use tox_data_integration_stats_impl, only: calc_js_comp_test_n_top_k_jsds
+    use tox_data_integration_stats_impl, only: calc_js_comp_test_n_top_k_jsds, MODE_BOOTSTRAP_PER_STUDY, &
+                                               MODE_BOOTSTRAP_POOLED
     use tox_data_integration_preprocessing_impl, only: gather_pooled_neighborhood_residuals, &
                                                        ADAPTIVE_MIN_VALID_RESIDUALS, ADAPTIVE_STOP_TAU, ADAPTIVE_STOP_K_MAX, &
                                                        ADAPTIVE_STOP_RESIDUAL_CAP, ADAPTIVE_STOP_EXHAUSTED, &
@@ -64,7 +65,7 @@ module mod_test_data_integration_js_comp_test
     use f42_sort_impl, only: init_perm, sort_array_heapsort
     use f42_stats_impl, only: sorted_bin_counts, histogram_bin_counts
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
-                                             compute_weighted_global_divergence_impl
+                                             compute_weighted_global_divergence_impl, compute_consensus_divergences
     use tox_data_integration_preprocessing_impl, only: construct_neighborhoods_ranged_impl
     use tox_errors
     use test_suite, only: test_case
@@ -142,7 +143,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(250))
+        allocate (all_tests(255))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -647,6 +648,14 @@ contains
                                    test_effect_size_abs_tolerance_boundary_and_large_jsd)
         all_tests(249) = test_case("test_param_search_delta_abs_tolerance", test_param_search_delta_abs_tolerance)
         all_tests(250) = test_case("test_adaptive_search_delta_abs_tolerance", test_adaptive_search_delta_abs_tolerance)
+        all_tests(251) = test_case("test_bootstrap_histogram_per_study_one_bin_studies_collapse", &
+                                   test_bootstrap_histogram_per_study_one_bin_studies_collapse)
+        all_tests(252) = test_case("test_bootstrap_histogram_per_study_contains_observed_jsd", &
+                                   test_bootstrap_histogram_per_study_contains_observed_jsd)
+        all_tests(253) = test_case("test_bootstrap_histogram_per_study_counts_must_add_up", &
+                                   test_bootstrap_histogram_per_study_counts_must_add_up)
+        all_tests(254) = test_case("test_param_search_bootstrap_mode", test_param_search_bootstrap_mode)
+        all_tests(255) = test_case("test_adaptive_search_bootstrap_mode", test_adaptive_search_bootstrap_mode)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -2132,38 +2141,49 @@ contains
     !> Calling `bootstrap_histogram` twice with the same `random_seed` and otherwise identical
     !| inputs must produce bit-for-bit identical `confidence_interval` output: the GSL stream is
     !| deterministic once seeded, so nothing here should be able to introduce drift between calls.
+    !| Checked in both bootstrap modes (the pooled one explicitly, as before the mode existed).
     subroutine test_bootstrap_histogram_seeded_reproducibility()
         integer(int32), parameter :: n_bins = 3, n_points = 2, n_studies = 2, n_bootstraps = 15
         integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
+        integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
         real(real64) :: ci_first(2, n_studies), ci_second(2, n_studies)
-        integer(int32) :: ierr
+        integer(int32) :: ierr, i_mode
 
         mean_pmf_counts(1, :) = [5, 3, 2]
         mean_pmf_counts(2, :) = [2, 2, 6]
+        ! The studies' own counts, adding up to the pool per bin and to included_n_reps per point.
+        counts(1, :, 1) = [2, 1, 1]
+        counts(1, :, 2) = [3, 2, 1]
+        counts(2, :, 1) = [1, 1, 2]
+        counts(2, :, 2) = [1, 1, 4]
         mean_pmf_included_n_reps = [10, 10]
         included_n_reps(:, 1) = [4, 4]
         included_n_reps(:, 2) = [6, 6]
 
-        ci_first(:, 1) = [0.2_real64, 0.2_real64]
-        ci_first(:, 2) = [0.3_real64, 0.3_real64]
+        do i_mode = MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED
 
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf_included_n_reps, &
-                                 included_n_reps, ci_first, ierr=ierr, random_seed=123_int32)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_bootstrap_histogram_seeded_reproducibility: first call ierr should be OK")
+            ci_first(:, 1) = [0.2_real64, 0.2_real64]
+            ci_first(:, 2) = [0.3_real64, 0.3_real64]
 
-        ci_second(:, 1) = [0.2_real64, 0.2_real64]
-        ci_second(:, 2) = [0.3_real64, 0.3_real64]
+            call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+                                     mean_pmf_included_n_reps, included_n_reps, ci_first, ierr=ierr, random_seed=123_int32, &
+                                     bootstrap_mode=i_mode)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                                  "test_bootstrap_histogram_seeded_reproducibility: first call ierr should be OK")
 
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf_included_n_reps, &
-                                 included_n_reps, ci_second, ierr=ierr, random_seed=123_int32)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_bootstrap_histogram_seeded_reproducibility: second call ierr should be OK")
+            ci_second(:, 1) = [0.2_real64, 0.2_real64]
+            ci_second(:, 2) = [0.3_real64, 0.3_real64]
 
-        call assert_equal_array_real(ci_first, ci_second, size(ci_first, kind=int32), TOL, &
-                                     "test_bootstrap_histogram_seeded_reproducibility: "// &
-                                     "same random_seed twice must give identical confidence_interval")
+            call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+                                     mean_pmf_included_n_reps, included_n_reps, ci_second, ierr=ierr, random_seed=123_int32, &
+                                     bootstrap_mode=i_mode)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                                  "test_bootstrap_histogram_seeded_reproducibility: second call ierr should be OK")
+
+            call assert_equal_array_real(ci_first, ci_second, size(ci_first, kind=int32), 0.0_real64, &
+                                         "test_bootstrap_histogram_seeded_reproducibility: "// &
+                                         "same random_seed twice must give identical confidence_interval")
+        end do
     end subroutine test_bootstrap_histogram_seeded_reproducibility
 
     !> Degenerate, exactly hand-computable case: a single histogram bin means every resample's pmf
@@ -2176,25 +2196,29 @@ contains
     subroutine test_bootstrap_histogram_degenerate_single_bin_zero_ci()
         integer(int32), parameter :: n_bins = 1, n_points = 1, n_studies = 2, n_bootstraps = 5
         integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
+        integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
         real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
-        integer(int32) :: ierr
+        integer(int32) :: ierr, i_mode
 
         mean_pmf_counts(1, 1) = 10_int32
+        counts(1, 1, :) = [5_int32, 5_int32]
         mean_pmf_included_n_reps = [10_int32]
         included_n_reps(1, :) = [5_int32, 5_int32]
-
-        confidence_interval = 0.0_real64
         expected = 0.0_real64
 
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf_included_n_reps, &
-                                 included_n_reps, confidence_interval, ierr=ierr, random_seed=7_int32)
+        ! The pooled mode explicitly (as before the mode existed), then the per-study default.
+        do i_mode = MODE_BOOTSTRAP_POOLED, MODE_BOOTSTRAP_PER_STUDY, -1
+            confidence_interval = 0.0_real64
+            call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+                                     mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
+                                     random_seed=7_int32, bootstrap_mode=i_mode)
 
-        call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_bootstrap_histogram_degenerate_single_bin_zero_ci: ierr should be OK")
-        call assert_equal_array_real(confidence_interval, expected, size(confidence_interval, kind=int32), TOL, &
-                                     "test_bootstrap_histogram_degenerate_single_bin_zero_ci: "// &
-                                     "a single-bin histogram always has JSD=0, so the CI must collapse to [0,0]")
+            call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                                  "test_bootstrap_histogram_degenerate_single_bin_zero_ci: ierr should be OK")
+            call assert_equal_array_real(confidence_interval, expected, size(confidence_interval, kind=int32), TOL, &
+                                         "test_bootstrap_histogram_degenerate_single_bin_zero_ci: "// &
+                                         "a single-bin histogram always has JSD=0, so the CI must collapse to [0,0]")
+        end do
     end subroutine test_bootstrap_histogram_degenerate_single_bin_zero_ci
 
     !> The public `bootstrap_histogram` with a study drawing from an empty pool: one point whose
@@ -2206,18 +2230,20 @@ contains
     subroutine test_bootstrap_histogram_rejects_draws_from_empty_pool()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 3
         integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
+        integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
         real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
         integer(int32) :: ierr
 
         mean_pmf_counts(1, :) = [0_int32, 0_int32]
+        counts = 0_int32
         mean_pmf_included_n_reps = [0_int32]
         included_n_reps(1, :) = [3_int32, 3_int32]
         confidence_interval = reshape([0.25_real64, 0.75_real64, 0.25_real64, 0.75_real64], [2, n_studies])
         expected = confidence_interval
 
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf_included_n_reps, &
-                                 included_n_reps, confidence_interval, ierr=ierr, random_seed=7_int32)
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
+                                 random_seed=7_int32, bootstrap_mode=MODE_BOOTSTRAP_POOLED)
 
         call assert_err(ierr, ERR_INVALID_INPUT, &
                         "test_bootstrap_histogram_rejects_draws_from_empty_pool: "// &
@@ -2230,27 +2256,30 @@ contains
 
     !> Every study needs at least one included residual at every reference point, so the public
     !| `bootstrap_histogram` rejects a single 0 in `included_n_reps` as invalid input on that
-    !| argument, position 7 of the plain wrapper. The rest of the input is consistent (the studies'
+    !| argument, position 8 of the plain wrapper (after `counts`). The rest of the input is consistent (the studies'
     !| counts `[0, 4]` add up to the pool's total 4, which is also the sum of its bin counts), so
     !| the 0 is the only fault; it used to be accepted with `ierr` OK.
     subroutine test_bootstrap_histogram_rejects_zero_included_n_reps()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 3
         integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
+        integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
         real(real64) :: confidence_interval(2, n_studies)
         integer(int32) :: ierr
 
         mean_pmf_counts(1, :) = [2_int32, 2_int32]
+        counts(1, :, 1) = [0_int32, 0_int32]
+        counts(1, :, 2) = [2_int32, 2_int32]
         mean_pmf_included_n_reps = [4_int32]
         included_n_reps(1, :) = [0_int32, 4_int32]
         confidence_interval = 0.5_real64
 
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf_included_n_reps, &
-                                 included_n_reps, confidence_interval, ierr=ierr, random_seed=7_int32)
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
+                                 random_seed=7_int32, bootstrap_mode=MODE_BOOTSTRAP_POOLED)
         call assert_err(ierr, ERR_INVALID_INPUT, &
                         "test_bootstrap_histogram_rejects_zero_included_n_reps: "// &
                         "a study without a residual at a point is rejected on included_n_reps", &
-                        arg_pos=7_int32)
+                        arg_pos=8_int32)
     end subroutine test_bootstrap_histogram_rejects_zero_included_n_reps
 
     !> The pool's total (`mean_pmf_included_n_reps = 3`) is not the sum of its bin counts
@@ -2263,18 +2292,21 @@ contains
     subroutine test_bootstrap_histogram_rejects_pool_total_not_bin_sum()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 20
         integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
+        integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
         real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
         integer(int32) :: ierr
 
         mean_pmf_counts(1, :) = [1_int32, 1_int32]
+        counts(1, :, 1) = [1_int32, 0_int32]
+        counts(1, :, 2) = [1_int32, 1_int32]
         mean_pmf_included_n_reps = [3_int32]
         included_n_reps(1, :) = [1_int32, 2_int32]
         confidence_interval = 0.5_real64
         expected = confidence_interval
 
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf_included_n_reps, &
-                                 included_n_reps, confidence_interval, ierr=ierr, random_seed=7_int32)
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
+                                 random_seed=7_int32, bootstrap_mode=MODE_BOOTSTRAP_POOLED)
         call assert_err(ierr, ERR_INVALID_INPUT, &
                         "test_bootstrap_histogram_rejects_pool_total_not_bin_sum: "// &
                         "a pool total that is not its bin-count sum is invalid input, with no argument position", &
@@ -2291,18 +2323,21 @@ contains
     subroutine test_bootstrap_histogram_rejects_study_sum_not_pool_total()
         integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 20
         integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
-        integer(int32) :: included_n_reps(n_points, n_studies)
+        integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
         real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
         integer(int32) :: ierr
 
         mean_pmf_counts(1, :) = [2_int32, 2_int32]
+        counts(1, :, 1) = [1_int32, 0_int32]
+        counts(1, :, 2) = [0_int32, 1_int32]
         mean_pmf_included_n_reps = [4_int32]
         included_n_reps(1, :) = [1_int32, 1_int32]
         confidence_interval = 0.5_real64
         expected = confidence_interval
 
-        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf_included_n_reps, &
-                                 included_n_reps, confidence_interval, ierr=ierr, random_seed=7_int32)
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
+                                 random_seed=7_int32, bootstrap_mode=MODE_BOOTSTRAP_POOLED)
         call assert_err(ierr, ERR_INVALID_INPUT, &
                         "test_bootstrap_histogram_rejects_study_sum_not_pool_total: "// &
                         "study counts that do not add up to the pool total are invalid input, with no argument position", &
@@ -4141,7 +4176,9 @@ contains
     !| histogram range is now its own percentile-derived `[R_low, R_high]` instead of the old
     !| dataset-wide symmetric range, which shifts the actual bin boundaries -- and therefore the
     !| bootstrapped CI values below -- even though candidate selection (still candidate 5) and every
-    !| other structural assertion in this test are unaffected.
+    !| other structural assertion in this test are unaffected. The CI values are those of the pooled
+    !| bootstrap, so it is passed explicitly (`MODE_BOOTSTRAP_POOLED`, the only bootstrap when they
+    !| were recorded); the two sibling tests below do the same.
     subroutine test_param_search_no_plateau_uses_smallest_uncertainty()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 20000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
@@ -4215,7 +4252,8 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
+                                               bootstrap_mode=MODE_BOOTSTRAP_POOLED)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_uses_smallest_uncertainty: ierr should be OK")
@@ -4340,7 +4378,8 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
+                                               bootstrap_mode=MODE_BOOTSTRAP_POOLED)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_effect_size_smallest_uncertainty: ierr should be OK")
@@ -4456,7 +4495,8 @@ contains
                                                ierr=ierr, &
                                                min_residuals_per_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_BOTH, &
-                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32)
+                                               neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
+                                               bootstrap_mode=MODE_BOOTSTRAP_POOLED)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_both_uses_smallest_uncertainty: ierr should be OK")
@@ -8644,7 +8684,7 @@ contains
                                    delta_min_consecutive_transitions, min_study_neighbors, succeeding_ci_overlap, &
                                    random_seed, tau, mad_distance_factor, max_pooled_residuals, m_min, m_max, &
                                    gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, &
-                                   bin_count_mode, omit_plateau_mode, delta_abs_tolerance)
+                                   bin_count_mode, omit_plateau_mode, delta_abs_tolerance, bootstrap_mode)
         real(real64), intent(in) :: gene_means(:, :)
             !! Mean expression of every gene in every study, NaN for a missing gene
         real(real64), intent(in) :: residuals(:, :, :)
@@ -8695,6 +8735,8 @@ contains
             !! `.true.`: call the search without `plateau_mode` (`plateau_mode` must then be absent)
         real(real64), intent(in), optional :: delta_abs_tolerance
             !! Forwarded to the search
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! Forwarded to the search (absent: the search's default)
         integer(int32) :: n_studies, n_genes, n_reps, cap, bounds_ierr, seed
         ! Left unallocated to call the search without plateau_mode: an unallocated allocatable
         ! actual argument is an absent optional.
@@ -8773,7 +8815,7 @@ contains
                                                         max_pooled_residuals=max_pooled_residuals, &
                                                         min_study_neighbors=min_study_neighbors, &
                                                         bin_count_mode=bin_count_mode, delta_abs_tolerance=delta_abs_tolerance, &
-                                                        ierr=ierr)
+                                                        bootstrap_mode=bootstrap_mode, ierr=ierr)
     end subroutine run_adaptive_search
 
     !> Test helper: the trace column whose `trace_k_start` equals the selected `k_start`, or 0.
@@ -9454,7 +9496,8 @@ contains
     !| overlap >= 0.9 against the running best is smaller than the best's own stops the search and
     !| keeps the best; otherwise it becomes the best, and all studies passing stops the search.
     !| The selected knobs and point count must be the replayed best's, taken from the candidate
-    !| log, not the stopping candidate's.
+    !| log, not the stopping candidate's. The fixture was found with the pooled bootstrap, so it is
+    !| passed explicitly (`MODE_BOOTSTRAP_POOLED`).
     subroutine test_adaptive_search_ci_plateau_keeps_earlier_best()
         character(len=*), parameter :: name = "test_adaptive_search_ci_plateau_keeps_earlier_best: "
         real(real64) :: gene_means(500, 2), residuals(3, 500, 2), best_ci(2, 2)
@@ -9462,7 +9505,7 @@ contains
         integer(int32) :: ierr, t, i_study, n_exceeded, best_count, best_t, stop_t
 
         call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .true._c_bool, 500_int32, gene_means, residuals)
-        call run_adaptive_search(gene_means, residuals, out, ierr)
+        call run_adaptive_search(gene_means, residuals, out, ierr, bootstrap_mode=MODE_BOOTSTRAP_POOLED)
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"ierr")
         call assert_true(out%plateau, name//"plateau established")
         call assert_equal_array_int(out%cand_status(1:out%n_tried), [(ADAPTIVE_CANDIDATE_EVALUATED, t=1, out%n_tried)], &
@@ -11026,7 +11069,8 @@ contains
     !| `min_neighbor_overlap = 0`, the effect-size plateau with thresholds 1e-300 (never reached by
     !| a nonzero change), seed 1; the remaining optionals are forwarded.
     subroutine run_fixed_k_search(gene_means, residuals, out, ierr, min_residuals_per_bin, gamma_occupancy, &
-                                  bin_count_mode, delta_abs_tolerance, delta_min_consecutive_transitions)
+                                  bin_count_mode, delta_abs_tolerance, delta_min_consecutive_transitions, bootstrap_mode, &
+                                  plateau_mode)
         real(real64), intent(in) :: gene_means(:, :)
             !! Mean expression of every gene in every study
         real(real64), intent(in) :: residuals(:, :, :)
@@ -11045,13 +11089,19 @@ contains
             !! Forwarded to the search
         integer(int32), intent(in), optional :: delta_min_consecutive_transitions
             !! Forwarded to the search
-        integer(int32) :: n_studies, n_genes, n_reps, max_points, max_neighbors, bounds_ierr
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! Forwarded to the search (absent: the search's default)
+        integer(int32), intent(in), optional :: plateau_mode
+            !! Forwarded to the search; MODE_PLATEAU_EFFECT_SIZE when absent
+        integer(int32) :: n_studies, n_genes, n_reps, max_points, max_neighbors, bounds_ierr, actual_plateau_mode
 
         n_genes = size(gene_means, 1, kind=int32)
         n_studies = size(gene_means, 2, kind=int32)
         n_reps = size(residuals, 1, kind=int32)
         call calc_js_comp_test_candidate_bounds(n_genes, max_points, max_neighbors, bounds_ierr)
         call assert_equal_int(get_err_code(bounds_ierr), ERR_OK, "run_fixed_k_search: bounds ierr")
+        actual_plateau_mode = MODE_PLATEAU_EFFECT_SIZE
+        if (present(plateau_mode)) actual_plateau_mode = plateau_mode
 
         allocate (out%n_bins(max_points), out%range_low(max_points), out%range_high(max_points), &
                   out%ci(2, n_studies), out%trace_jsd(n_studies, MAX_CANDIDATE_PAIRS), &
@@ -11084,12 +11134,13 @@ contains
                                                out%trace_sturges, out%trace_fd, out%trace_range_low, &
                                                out%trace_range_high, ierr=ierr, &
                                                min_residuals_per_bin=min_residuals_per_bin, &
-                                               min_neighbor_overlap=0.0_real64, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
+                                               min_neighbor_overlap=0.0_real64, plateau_mode=actual_plateau_mode, &
                                                delta_median_threshold=1.0e-300_real64, &
                                                delta_max_threshold=1.0e-300_real64, gamma_occupancy=gamma_occupancy, &
                                                neighborhood_size_mode=MODE_NEIGHBORHOOD_SIZE_BOTH, random_seed=1_int32, &
                                                bin_count_mode=bin_count_mode, delta_abs_tolerance=delta_abs_tolerance, &
-                                               delta_min_consecutive_transitions=delta_min_consecutive_transitions)
+                                               delta_min_consecutive_transitions=delta_min_consecutive_transitions, &
+                                               bootstrap_mode=bootstrap_mode)
     end subroutine run_fixed_k_search
 
     !> Test helper: two fixed-k searches returned the same selection, the same final bin counts and
@@ -13309,5 +13360,224 @@ contains
         call assert_equal_array_real(huge_tolerance%trace_jsd(:, 1:3), zero%trace_jsd(:, 1:3), 6_int32, 0.0_real64, &
                                      name//"the tolerance changes no observed JSD")
     end subroutine test_adaptive_search_delta_abs_tolerance
+
+    !> Per-study bootstrap, hand-computed: at both reference points study 1 has all its residuals
+    !| in bin 1 (`[4, 0]`, `[3, 0]`) and study 2 all in bin 2 (`[0, 6]`, `[0, 5]`). Drawing from a
+    !| study's own one-bin histogram always gives that histogram again, so every bootstrap
+    !| reproduces the observed data: pmfs `[1, 0]` and `[0, 1]`, consensus `[0.5, 0.5]`, and per
+    !| point and study the JSD of `[1, 0]` against `[0.5, 0.5]`. With the mixture `[0.75, 0.25]`:
+    !| `(ln(4/3) + 0.5 ln(2/3) + 0.5 ln 2) / 2 / ln 2 = 0.3112781...`; the point weights add up to
+    !| 1, so this is also each study's global JSD. Seeding the interval with `[1, 0]` (every bootstrap
+    !| value displaces both seeds), the interval collapses to exactly that value. The default mode
+    !| is the per-study one (omitted = explicit). The pooled bootstrap draws from `[4, 6]` and
+    !| `[3, 5]` instead, mixes the bins, and its lower end lies clearly below the observed value.
+    subroutine test_bootstrap_histogram_per_study_one_bin_studies_collapse()
+        character(len=*), parameter :: name = "test_bootstrap_histogram_per_study_one_bin_studies_collapse: "
+        integer(int32), parameter :: n_bins = 2, n_points = 2, n_studies = 2, n_bootstraps = 40
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
+        real(real64) :: ci_default(2, n_studies), ci_per_study(2, n_studies), ci_pooled(2, n_studies), expected_jsd
+        integer(int32) :: ierr, i_study
+
+        counts(1, :, 1) = [4_int32, 0_int32]
+        counts(2, :, 1) = [3_int32, 0_int32]
+        counts(1, :, 2) = [0_int32, 6_int32]
+        counts(2, :, 2) = [0_int32, 5_int32]
+        mean_pmf_counts = sum(counts, dim=3)
+        included_n_reps = sum(counts, dim=2)
+        mean_pmf_included_n_reps = sum(included_n_reps, dim=2)
+        expected_jsd = 0.5_real64*(log(4.0_real64/3.0_real64) + 0.5_real64*log(2.0_real64/3.0_real64) + &
+                                   0.5_real64*log(2.0_real64))/log(2.0_real64)
+
+        ci_default(1, :) = 1.0_real64
+        ci_default(2, :) = 0.0_real64
+        ci_per_study = ci_default
+        ci_pooled = ci_default
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, ci_default, ierr=ierr, random_seed=5_int32)
+        call assert_err(ierr, ERR_OK, name//"default: ierr")
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, ci_per_study, ierr=ierr, random_seed=5_int32, &
+                                 bootstrap_mode=MODE_BOOTSTRAP_PER_STUDY)
+        call assert_err(ierr, ERR_OK, name//"per-study: ierr")
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, ci_pooled, ierr=ierr, random_seed=5_int32, &
+                                 bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+        call assert_err(ierr, ERR_OK, name//"pooled: ierr")
+
+        call assert_equal_array_real(ci_per_study, [(expected_jsd, i_study=1, 2*n_studies)], 2_int32*n_studies, 1.0e-12_real64, &
+                                     name//"every draw is the observed data, so the interval collapses to the observed JSD")
+        call assert_equal_array_real(ci_default, ci_per_study, 2_int32*n_studies, 0.0_real64, &
+                                     name//"the default is the per-study bootstrap")
+        call assert_true(all(ci_pooled(1, :) < expected_jsd - 0.01_real64), &
+                         name//"the pooled draws mix the bins: its lower end lies below the observed JSD")
+    end subroutine test_bootstrap_histogram_per_study_one_bin_studies_collapse
+
+    !> Per-study bootstrap on a stable synthetic case: three studies with clearly different,
+    !| fixed histograms (2000 residuals per study and point, the same at all three points), so the
+    !| observed JSD of each study is far above the sampling noise. The observed values are computed
+    !| here with the same consensus and weighting as the bootstrap. Seeded with `[1, 0]` (no
+    !| influence), 200 bootstraps, 5 values kept per end (2.5 %): the per-study interval contains
+    !| each study's observed JSD. The pooled bootstrap draws all studies from the same pool, so its
+    !| interval is a noise band near 0 and lies entirely below every observed value -- it describes
+    !| "no difference between the studies", not the robustness of the observed value.
+    subroutine test_bootstrap_histogram_per_study_contains_observed_jsd()
+        character(len=*), parameter :: name = "test_bootstrap_histogram_per_study_contains_observed_jsd: "
+        integer(int32), parameter :: n_bins = 5, n_points = 3, n_studies = 3, n_bootstraps = 200
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
+        real(real64) :: pmfs(n_points, n_bins, n_studies), mean_pmf(n_points, n_bins)
+        real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies), observed(n_studies)
+        real(real64) :: ci_per_study(2, n_studies), ci_pooled(2, n_studies)
+        integer(int32) :: ierr, i_point, i_study
+
+        do i_point = 1, n_points
+            counts(i_point, :, 1) = [600_int32, 500_int32, 400_int32, 300_int32, 200_int32]
+            counts(i_point, :, 2) = [200_int32, 300_int32, 400_int32, 500_int32, 600_int32]
+            counts(i_point, :, 3) = [200_int32, 600_int32, 400_int32, 600_int32, 200_int32]
+        end do
+        mean_pmf_counts = sum(counts, dim=3)
+        included_n_reps = sum(counts, dim=2)
+        mean_pmf_included_n_reps = sum(included_n_reps, dim=2)
+        do i_study = 1, n_studies
+            do i_point = 1, n_points
+                pmfs(i_point, :, i_study) = real(counts(i_point, :, i_study), real64)/real(included_n_reps(i_point, i_study), real64)
+            end do
+        end do
+        mean_pmf = sum(pmfs, dim=3)/real(n_studies, real64)
+        call compute_consensus_divergences(pmfs, mean_pmf, n_points, n_bins, n_bins, n_studies, included_n_reps, &
+                                           mean_pmf_included_n_reps, js_divergences, observed, weights)
+        call assert_true(all(observed > 0.01_real64), name//"the studies clearly differ")
+
+        ci_per_study(1, :) = 1.0_real64
+        ci_per_study(2, :) = 0.0_real64
+        ci_pooled = ci_per_study
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, ci_per_study, ierr=ierr, random_seed=11_int32)
+        call assert_err(ierr, ERR_OK, name//"per-study: ierr")
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, ci_pooled, ierr=ierr, random_seed=11_int32, &
+                                 bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+        call assert_err(ierr, ERR_OK, name//"pooled: ierr")
+
+        call assert_true(all(ci_per_study(1, :) <= observed .and. observed <= ci_per_study(2, :)), &
+                         name//"the per-study interval contains every observed JSD")
+        call assert_true(all(ci_per_study(1, :) < ci_per_study(2, :)), name//"the per-study interval has a width")
+        call assert_true(all(ci_pooled(2, :) < observed), &
+                         name//"the pooled interval (a noise band) lies below every observed JSD")
+    end subroutine test_bootstrap_histogram_per_study_contains_observed_jsd
+
+    !> In the per-study mode each study's own counts are its pool, so at every point they must add
+    !| up to its `included_n_reps`. Here study 1's counts `[1, 0]` add up to 1, not 2: invalid input
+    !| before any draw, with no argument position (not one argument's fault), and the interval
+    !| comes back unchanged. The pooled mode does not read `counts` and accepts the same input. The
+    !| plain wrapper also rejects a negative count (`DM_MIN(0)`, `counts` is argument 6) and an
+    !| unknown `bootstrap_mode` (argument 12).
+    subroutine test_bootstrap_histogram_per_study_counts_must_add_up()
+        character(len=*), parameter :: name = "test_bootstrap_histogram_per_study_counts_must_add_up: "
+        integer(int32), parameter :: n_bins = 2, n_points = 1, n_studies = 2, n_bootstraps = 10
+        integer(int32) :: mean_pmf_counts(n_points, n_bins), mean_pmf_included_n_reps(n_points)
+        integer(int32) :: included_n_reps(n_points, n_studies), counts(n_points, n_bins, n_studies)
+        real(real64) :: confidence_interval(2, n_studies), expected(2, n_studies)
+        integer(int32) :: ierr
+
+        mean_pmf_counts(1, :) = [2_int32, 2_int32]
+        mean_pmf_included_n_reps = [4_int32]
+        included_n_reps(1, :) = [2_int32, 2_int32]
+        counts(1, :, 1) = [1_int32, 0_int32]
+        counts(1, :, 2) = [1_int32, 1_int32]
+        confidence_interval = 0.5_real64
+        expected = confidence_interval
+
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
+                                 random_seed=7_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"a study's counts not adding up are invalid input", arg_pos=0_int32)
+        call assert_equal_array_real(confidence_interval, expected, 2_int32*n_studies, 0.0_real64, &
+                                     name//"confidence_interval comes back unchanged, so no bootstrap ran")
+
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
+                                 random_seed=7_int32, bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+        call assert_err(ierr, ERR_OK, name//"the pooled mode does not read counts")
+
+        counts(1, :, 1) = [3_int32, -1_int32]
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
+                                 random_seed=7_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"a negative count is rejected on counts", arg_pos=6_int32)
+
+        counts(1, :, 1) = [1_int32, 1_int32]
+        call bootstrap_histogram(n_bootstraps, n_bins, n_points, n_studies, mean_pmf_counts, counts, &
+                                 mean_pmf_included_n_reps, included_n_reps, confidence_interval, ierr=ierr, &
+                                 random_seed=7_int32, bootstrap_mode=99_int32)
+        call assert_err(ierr, ERR_INVALID_INPUT, name//"an unknown bootstrap_mode is rejected", arg_pos=12_int32)
+    end subroutine test_bootstrap_histogram_per_study_counts_must_add_up
+
+    !> The fixed-k search passes `bootstrap_mode` through (Stone fixture via run_fixed_k_search:
+    !| effect-size thresholds 1e-300, so no plateau). Omitted equals the explicit per-study mode in
+    !| every output. The pooled mode evaluates the same candidates and traces the same observed
+    !| JSDs, but other intervals: the bootstrap draws from other histograms. (Its selection may
+    !| differ: without a plateau the search falls back to the smallest median interval width.)
+    subroutine test_param_search_bootstrap_mode()
+        character(len=*), parameter :: name = "test_param_search_bootstrap_mode: "
+        real(real64) :: gene_means(300, 3), residuals(4, 300, 3)
+        type(fixed_k_search_outputs) :: omitted, per_study, pooled
+        integer(int32) :: ierr_omitted, ierr_per_study, ierr_pooled, n_adm
+
+        call build_adaptive_stone_fixture(gene_means, residuals)
+        call run_fixed_k_search(gene_means, residuals, omitted, ierr_omitted, min_residuals_per_bin=3_int32)
+        call run_fixed_k_search(gene_means, residuals, per_study, ierr_per_study, min_residuals_per_bin=3_int32, &
+                                bootstrap_mode=MODE_BOOTSTRAP_PER_STUDY)
+        call run_fixed_k_search(gene_means, residuals, pooled, ierr_pooled, min_residuals_per_bin=3_int32, &
+                                bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+        call assert_err(ierr_omitted, ERR_OK, name//"omitted: ierr")
+        call assert_err(ierr_per_study, ERR_OK, name//"per-study: ierr")
+        call assert_err(ierr_pooled, ERR_OK, name//"pooled: ierr")
+
+        call assert_fixed_k_searches_identical(name//"omitted vs per-study: ", omitted, per_study)
+        n_adm = per_study%n_admissible
+        call assert_true(n_adm >= 1_int32, name//"some candidate is admissible")
+        call assert_equal_int(pooled%n_admissible, n_adm, name//"the same candidates evaluated")
+        call assert_false(per_study%plateau .or. pooled%plateau, name//"no plateau in either mode")
+        call assert_equal_array_real(pooled%trace_jsd(:, 1:n_adm), per_study%trace_jsd(:, 1:n_adm), 3_int32*n_adm, &
+                                     0.0_real64, name//"the same observed JSDs")
+        call assert_true(any(pooled%trace_ci_lower(:, 1:n_adm) /= per_study%trace_ci_lower(:, 1:n_adm)) .or. &
+                         any(pooled%trace_ci_upper(:, 1:n_adm) /= per_study%trace_ci_upper(:, 1:n_adm)), &
+                         name//"other intervals")
+    end subroutine test_param_search_bootstrap_mode
+
+    !> The adaptive search passes `bootstrap_mode` through (fixture B as in E4b, effect-size
+    !| plateau, seed 39; no plateau is found). Omitted equals the explicit per-study mode in every
+    !| output; the pooled mode evaluates the same candidates and traces the same observed JSDs, but
+    !| other intervals (and so, through the smallest-width fallback, possibly another selection).
+    subroutine test_adaptive_search_bootstrap_mode()
+        character(len=*), parameter :: name = "test_adaptive_search_bootstrap_mode: "
+        real(real64) :: gene_means(500, 2), residuals(3, 500, 2)
+        type(adaptive_search_outputs) :: omitted, per_study, pooled
+        integer(int32) :: ierr_omitted, ierr_per_study, ierr_pooled, n_adm
+
+        call build_adaptive_search_fixture(500_int32, 2_int32, 3_int32, .true._c_bool, 500_int32, gene_means, residuals)
+        call run_adaptive_search(gene_means, residuals, omitted, ierr_omitted, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
+                                 random_seed=39_int32)
+        call run_adaptive_search(gene_means, residuals, per_study, ierr_per_study, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
+                                 random_seed=39_int32, bootstrap_mode=MODE_BOOTSTRAP_PER_STUDY)
+        call run_adaptive_search(gene_means, residuals, pooled, ierr_pooled, plateau_mode=MODE_PLATEAU_EFFECT_SIZE, &
+                                 random_seed=39_int32, bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+        call assert_err(ierr_omitted, ERR_OK, name//"omitted: ierr")
+        call assert_err(ierr_per_study, ERR_OK, name//"per-study: ierr")
+        call assert_err(ierr_pooled, ERR_OK, name//"pooled: ierr")
+
+        call assert_adaptive_searches_identical(name//"omitted vs per-study: ", omitted, per_study)
+        n_adm = per_study%n_admissible
+        call assert_true(n_adm >= 1_int32, name//"some candidate is admissible")
+        call assert_equal_int(pooled%n_admissible, n_adm, name//"the same candidates evaluated")
+        call assert_false(per_study%plateau .or. pooled%plateau, name//"no plateau in either mode")
+        call assert_equal_array_real(pooled%trace_jsd(:, 1:n_adm), per_study%trace_jsd(:, 1:n_adm), 2_int32*n_adm, &
+                                     0.0_real64, name//"the same observed JSDs")
+        call assert_true(any(pooled%trace_ci_lower(:, 1:n_adm) /= per_study%trace_ci_lower(:, 1:n_adm)) .or. &
+                         any(pooled%trace_ci_upper(:, 1:n_adm) /= per_study%trace_ci_upper(:, 1:n_adm)), &
+                         name//"other intervals")
+    end subroutine test_adaptive_search_bootstrap_mode
 
 end module mod_test_data_integration_js_comp_test

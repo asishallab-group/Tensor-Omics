@@ -49,6 +49,7 @@ module tox_data_integration_js_comp_test_permutation
     use tox_data_integration_js_comp_test_fixed_k_search_impl, only: MODE_NEIGHBORHOOD_SIZE_BOTH, MODE_NEIGHBORHOOD_SIZE_LARGE, MODE_NEIGHBORHOOD_SIZE_SMALL
     use tox_data_integration_js_comp_test_search_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, MODE_PLATEAU_BOTH
     use tox_data_integration_js_comp_test_search_impl, only: MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE
+    use tox_data_integration_stats_impl, only: MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
     use tox_errors, only: clear_err_arg_pos, set_err, set_err_once, validate_all_in_range_int
     use tox_errors, only: validate_all_in_range_real, validate_in_range_int, validate_in_range_real
@@ -145,6 +146,7 @@ contains
             bin_count_mode,&
             neighborhood_size_mode,&
             delta_abs_tolerance,&
+            bootstrap_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -302,6 +304,17 @@ contains
             !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
             !! The minimum valid value is `0.0_real64`.
             !! The default value is `0.0_real64`.
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! Rerun search (used only with `rerun_parameter_search`): what its bootstrap draws each
+            !! study's histograms from. By default each study's own counts: a robustness interval of
+            !! the observed JSD. The pooled counts of all studies give a noise band of "no difference
+            !! between the studies" instead, kept for comparison
+            !!
+            !! | Mode                                                                                             | Value                                                                          |
+            !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+            !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: max_n_points_candidate
@@ -419,6 +432,7 @@ contains
         if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=18_int32); end if
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=30_int32); end if
         if (present(neighborhood_size_mode)) then; if (neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_LARGE .and. neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_SMALL .and. neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=31_int32); end if
+        if (present(bootstrap_mode)) then; if (bootstrap_mode /= MODE_BOOTSTRAP_PER_STUDY .and. bootstrap_mode /= MODE_BOOTSTRAP_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=33_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -635,6 +649,7 @@ contains
             bin_count_mode = bin_count_mode,&
             neighborhood_size_mode = neighborhood_size_mode,&
             delta_abs_tolerance = delta_abs_tolerance,&
+            bootstrap_mode = bootstrap_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -804,6 +819,7 @@ contains
             bin_count_mode,&
             neighborhood_size_mode,&
             delta_abs_tolerance,&
+            bootstrap_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -1137,6 +1153,17 @@ contains
             !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
             !! The minimum valid value is `0.0_real64`.
             !! The default value is `0.0_real64`.
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! Rerun search (used only with `rerun_parameter_search`): what its bootstrap draws each
+            !! study's histograms from. By default each study's own counts: a robustness interval of
+            !! the observed JSD. The pooled counts of all studies give a noise band of "no difference
+            !! between the studies" instead, kept for comparison
+            !!
+            !! | Mode                                                                                             | Value                                                                          |
+            !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+            !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -1172,6 +1199,7 @@ contains
         if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=103_int32); end if
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=115_int32); end if
         if (present(neighborhood_size_mode)) then; if (neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_LARGE .and. neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_SMALL .and. neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=116_int32); end if
+        if (present(bootstrap_mode)) then; if (bootstrap_mode /= MODE_BOOTSTRAP_PER_STUDY .and. bootstrap_mode /= MODE_BOOTSTRAP_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=118_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -1293,6 +1321,7 @@ contains
             bin_count_mode = bin_count_mode,&
             neighborhood_size_mode = neighborhood_size_mode,&
             delta_abs_tolerance = delta_abs_tolerance,&
+            bootstrap_mode = bootstrap_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -1373,6 +1402,7 @@ contains
             min_study_neighbors,&
             bin_count_mode,&
             delta_abs_tolerance,&
+            bootstrap_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -1540,6 +1570,17 @@ contains
             !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
             !! The minimum valid value is `0.0_real64`.
             !! The default value is `0.0_real64`.
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! Rerun search (used only with `rerun_parameter_search`): what its bootstrap draws each
+            !! study's histograms from. By default each study's own counts: a robustness interval of
+            !! the observed JSD. The pooled counts of all studies give a noise band of "no difference
+            !! between the studies" instead, kept for comparison
+            !!
+            !! | Mode                                                                                             | Value                                                                          |
+            !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+            !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: max_n_points_candidate
@@ -1668,6 +1709,7 @@ contains
         if (present(join_method)) then; if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=17_int32); end if
         if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=21_int32); end if
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=37_int32); end if
+        if (present(bootstrap_mode)) then; if (bootstrap_mode /= MODE_BOOTSTRAP_PER_STUDY .and. bootstrap_mode /= MODE_BOOTSTRAP_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=39_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -1904,6 +1946,7 @@ contains
             min_study_neighbors = min_study_neighbors,&
             bin_count_mode = bin_count_mode,&
             delta_abs_tolerance = delta_abs_tolerance,&
+            bootstrap_mode = bootstrap_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -2076,6 +2119,7 @@ contains
             min_study_neighbors,&
             bin_count_mode,&
             delta_abs_tolerance,&
+            bootstrap_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -2434,6 +2478,17 @@ contains
             !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
             !! The minimum valid value is `0.0_real64`.
             !! The default value is `0.0_real64`.
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! Rerun search (used only with `rerun_parameter_search`): what its bootstrap draws each
+            !! study's histograms from. By default each study's own counts: a robustness interval of
+            !! the observed JSD. The pooled counts of all studies give a noise band of "no difference
+            !! between the studies" instead, kept for comparison
+            !!
+            !! | Mode                                                                                             | Value                                                                          |
+            !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+            !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -2472,6 +2527,7 @@ contains
         if (present(join_method)) then; if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=109_int32); end if
         if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=113_int32); end if
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=129_int32); end if
+        if (present(bootstrap_mode)) then; if (bootstrap_mode /= MODE_BOOTSTRAP_PER_STUDY .and. bootstrap_mode /= MODE_BOOTSTRAP_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=131_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -2606,6 +2662,7 @@ contains
             min_study_neighbors = min_study_neighbors,&
             bin_count_mode = bin_count_mode,&
             delta_abs_tolerance = delta_abs_tolerance,&
+            bootstrap_mode = bootstrap_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -2682,6 +2739,7 @@ contains
             bin_count_mode,&
             neighborhood_size_mode,&
             delta_abs_tolerance,&
+            bootstrap_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -2838,6 +2896,17 @@ contains
             !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
             !! The minimum valid value is `0.0_real64`.
             !! The default value is `0.0_real64`.
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! Rerun search (used only with `rerun_parameter_search`): what its bootstrap draws each
+            !! study's histograms from. By default each study's own counts: a robustness interval of
+            !! the observed JSD. The pooled counts of all studies give a noise band of "no difference
+            !! between the studies" instead, kept for comparison
+            !!
+            !! | Mode                                                                                             | Value                                                                          |
+            !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+            !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: max_n_points_candidate
@@ -2956,6 +3025,7 @@ contains
         if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=18_int32); end if
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=30_int32); end if
         if (present(neighborhood_size_mode)) then; if (neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_LARGE .and. neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_SMALL .and. neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=31_int32); end if
+        if (present(bootstrap_mode)) then; if (bootstrap_mode /= MODE_BOOTSTRAP_PER_STUDY .and. bootstrap_mode /= MODE_BOOTSTRAP_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=33_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -3176,6 +3246,7 @@ contains
             bin_count_mode = bin_count_mode,&
             neighborhood_size_mode = neighborhood_size_mode,&
             delta_abs_tolerance = delta_abs_tolerance,&
+            bootstrap_mode = bootstrap_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -3339,6 +3410,7 @@ contains
             bin_count_mode,&
             neighborhood_size_mode,&
             delta_abs_tolerance,&
+            bootstrap_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -3675,6 +3747,17 @@ contains
             !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
             !! The minimum valid value is `0.0_real64`.
             !! The default value is `0.0_real64`.
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! Rerun search (used only with `rerun_parameter_search`): what its bootstrap draws each
+            !! study's histograms from. By default each study's own counts: a robustness interval of
+            !! the observed JSD. The pooled counts of all studies give a noise band of "no difference
+            !! between the studies" instead, kept for comparison
+            !!
+            !! | Mode                                                                                             | Value                                                                          |
+            !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+            !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -3709,6 +3792,7 @@ contains
         if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=105_int32); end if
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=117_int32); end if
         if (present(neighborhood_size_mode)) then; if (neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_LARGE .and. neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_SMALL .and. neighborhood_size_mode /= MODE_NEIGHBORHOOD_SIZE_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=118_int32); end if
+        if (present(bootstrap_mode)) then; if (bootstrap_mode /= MODE_BOOTSTRAP_PER_STUDY .and. bootstrap_mode /= MODE_BOOTSTRAP_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=120_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -3832,6 +3916,7 @@ contains
             bin_count_mode = bin_count_mode,&
             neighborhood_size_mode = neighborhood_size_mode,&
             delta_abs_tolerance = delta_abs_tolerance,&
+            bootstrap_mode = bootstrap_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -3905,6 +3990,7 @@ contains
             min_study_neighbors,&
             bin_count_mode,&
             delta_abs_tolerance,&
+            bootstrap_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -4067,6 +4153,17 @@ contains
             !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
             !! The minimum valid value is `0.0_real64`.
             !! The default value is `0.0_real64`.
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! Rerun search (used only with `rerun_parameter_search`): what its bootstrap draws each
+            !! study's histograms from. By default each study's own counts: a robustness interval of
+            !! the observed JSD. The pooled counts of all studies give a noise band of "no difference
+            !! between the studies" instead, kept for comparison
+            !!
+            !! | Mode                                                                                             | Value                                                                          |
+            !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+            !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
         integer(int32) :: max_n_points_candidate
@@ -4196,6 +4293,7 @@ contains
         if (present(join_method)) then; if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=15_int32); end if
         if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=19_int32); end if
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=35_int32); end if
+        if (present(bootstrap_mode)) then; if (bootstrap_mode /= MODE_BOOTSTRAP_PER_STUDY .and. bootstrap_mode /= MODE_BOOTSTRAP_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=37_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -4434,6 +4532,7 @@ contains
             min_study_neighbors = min_study_neighbors,&
             bin_count_mode = bin_count_mode,&
             delta_abs_tolerance = delta_abs_tolerance,&
+            bootstrap_mode = bootstrap_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -4601,6 +4700,7 @@ contains
             min_study_neighbors,&
             bin_count_mode,&
             delta_abs_tolerance,&
+            bootstrap_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -4958,6 +5058,17 @@ contains
             !! Rerun search (used only with `rerun_parameter_search`): Changes of the JSD of a study up to this absolute amount always count as no change; above it the relative thresholds apply (0: purely relative change).
             !! The minimum valid value is `0.0_real64`.
             !! The default value is `0.0_real64`.
+        integer(int32), intent(in), optional :: bootstrap_mode
+            !! Rerun search (used only with `rerun_parameter_search`): what its bootstrap draws each
+            !! study's histograms from. By default each study's own counts: a robustness interval of
+            !! the observed JSD. The pooled counts of all studies give a noise band of "no difference
+            !! between the studies" instead, kept for comparison
+            !!
+            !! | Mode                                                                                             | Value                                                                          |
+            !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+            !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
+            !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT, or the code of the search or the run (see above)
 
@@ -4995,6 +5106,7 @@ contains
         if (present(join_method)) then; if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=109_int32); end if
         if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=113_int32); end if
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=129_int32); end if
+        if (present(bootstrap_mode)) then; if (bootstrap_mode /= MODE_BOOTSTRAP_PER_STUDY .and. bootstrap_mode /= MODE_BOOTSTRAP_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=131_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -5129,6 +5241,7 @@ contains
             min_study_neighbors = min_study_neighbors,&
             bin_count_mode = bin_count_mode,&
             delta_abs_tolerance = delta_abs_tolerance,&
+            bootstrap_mode = bootstrap_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)

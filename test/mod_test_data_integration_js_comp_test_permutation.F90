@@ -20,7 +20,9 @@ module mod_test_data_integration_js_comp_test_permutation
                                                                      MODE_NEIGHBORHOOD_SIZE_LARGE, &
                                                                      MODE_NEIGHBORHOOD_SIZE_SMALL
     use tox_data_integration_js_comp_test_adaptive_search_impl, only: calc_adaptive_js_comp_test_bounds
-    use tox_data_integration_js_comp_test_impl, only: MAX_N_BINS, MAX_CANDIDATE_PAIRS, METHOD_JOIN_MIN
+    use tox_data_integration_js_comp_test_impl, only: MAX_N_BINS, MAX_CANDIDATE_PAIRS, METHOD_JOIN_MIN, &
+                                                       MODE_PLATEAU_CI_OVERLAP
+    use tox_data_integration_stats_impl, only: MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED
     use tox_data_integration_js_comp_test_permutation, only: run_js_comp_test_on_sample_assignment, &
                                                              run_js_comp_test_adaptive_on_sample_assignment, &
                                                              run_js_comp_test_label_permutation_test, &
@@ -43,7 +45,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test_permutation() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(19))
+        allocate (all_tests(20))
 
         all_tests(1) = test_case("test_knn_identity_matches_plain_pipeline", test_knn_identity_matches_plain_pipeline)
         all_tests(2) = test_case("test_adaptive_identity_matches_plain_pipeline", &
@@ -74,6 +76,7 @@ contains
         all_tests(18) = test_case("test_knn_rerun_forwards_neighborhood_size_mode", &
                                   test_knn_rerun_forwards_neighborhood_size_mode)
         all_tests(19) = test_case("test_rerun_forwards_delta_abs_tolerance", test_rerun_forwards_delta_abs_tolerance)
+        all_tests(20) = test_case("test_rerun_forwards_bootstrap_mode", test_rerun_forwards_bootstrap_mode)
     end function get_all_tests_data_integration_js_comp_test_permutation
 
     ! ========================================================================================
@@ -240,7 +243,8 @@ contains
     !> Test helper: run_js_comp_test_parameter_search with `n_bootstraps` and otherwise default
     !| options; returns the `(n_points, n_neighbors)` it selects.
     subroutine reference_fixed_k_search(gene_means, residuals, n_bootstraps, n_points, n_neighbors, &
-                                        delta_abs_tolerance, delta_median_threshold, delta_max_threshold)
+                                        delta_abs_tolerance, delta_median_threshold, delta_max_threshold, &
+                                        plateau_mode, bootstrap_mode)
         real(real64), intent(in) :: gene_means(:, :)
             !! Per-gene mean of every study
         real(real64), intent(in) :: residuals(:, :, :)
@@ -256,6 +260,10 @@ contains
         real(real64), intent(in), optional :: delta_median_threshold
             !! Forwarded to the search as given
         real(real64), intent(in), optional :: delta_max_threshold
+            !! Forwarded to the search as given
+        integer(int32), intent(in), optional :: plateau_mode
+            !! Forwarded to the search as given
+        integer(int32), intent(in), optional :: bootstrap_mode
             !! Forwarded to the search as given
         integer(int32) :: n_studies, n_genes, n_reps, max_p, max_k, ierr, n_admissible
         integer(int32) :: trace_np(MAX_CANDIDATE_PAIRS), trace_nn(MAX_CANDIDATE_PAIRS)
@@ -287,7 +295,8 @@ contains
                                                t_min, t_mean, t_max, t_st, t_fd, t_rl, t_rh, &
                                                delta_median_threshold=delta_median_threshold, &
                                                delta_max_threshold=delta_max_threshold, &
-                                               delta_abs_tolerance=delta_abs_tolerance, ierr=ierr)
+                                               delta_abs_tolerance=delta_abs_tolerance, plateau_mode=plateau_mode, &
+                                               bootstrap_mode=bootstrap_mode, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "reference_fixed_k_search: ierr")
     end subroutine reference_fixed_k_search
 
@@ -295,7 +304,7 @@ contains
     !| default options and its own capacity; returns the knobs it selects.
     subroutine reference_adaptive_search(gene_means, residuals, n_bootstraps, k_start, k_step, k_max, &
                                          delta_abs_tolerance, delta_median_threshold, delta_max_threshold, &
-                                         min_neighbor_overlap)
+                                         min_neighbor_overlap, plateau_mode, bootstrap_mode)
         real(real64), intent(in) :: gene_means(:, :)
             !! Per-gene mean of every study
         real(real64), intent(in) :: residuals(:, :, :)
@@ -315,6 +324,10 @@ contains
         real(real64), intent(in), optional :: delta_max_threshold
             !! Forwarded to the search as given
         real(real64), intent(in), optional :: min_neighbor_overlap
+            !! Forwarded to the search as given
+        integer(int32), intent(in), optional :: plateau_mode
+            !! Forwarded to the search as given
+        integer(int32), intent(in), optional :: bootstrap_mode
             !! Forwarded to the search as given
         integer(int32) :: n_studies, n_genes, n_reps, cap, ierr, n_points, n_admissible, n_tried
         integer(int32), dimension(MAX_CANDIDATE_PAIRS) :: t_ks, t_kst, t_km, t_np, c_ks, c_np, c_status
@@ -348,7 +361,8 @@ contains
                                                         delta_median_threshold=delta_median_threshold, &
                                                         delta_max_threshold=delta_max_threshold, &
                                                         delta_abs_tolerance=delta_abs_tolerance, &
-                                                        min_neighbor_overlap=min_neighbor_overlap, ierr=ierr)
+                                                        min_neighbor_overlap=min_neighbor_overlap, plateau_mode=plateau_mode, &
+                                                        bootstrap_mode=bootstrap_mode, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "reference_adaptive_search: ierr")
     end subroutine reference_adaptive_search
 
@@ -1010,6 +1024,88 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, name//"k-NN level (b) ierr")
         call assert_true(equal_and_not_nan(observed, result), name//"k-NN level (b) forwards the tolerance")
     end subroutine test_rerun_forwards_delta_abs_tolerance
+
+    !> The four routines pass `bootstrap_mode` on to the rerun searches. With the CI-overlap plateau
+    !| (the only criterion that reads the bootstrap interval) and `min_neighbor_overlap = 0`, it
+    !| takes the first data seed of 52..71 on which the adaptive search called directly selects
+    !| different knobs with the pooled than with the per-study bootstrap (asserted). For both modes,
+    !| level (a) with rerun reports exactly the search's knobs and the values of search +
+    !| construction + run, and level (b) the same observed values. k-NN: level (a)/(b) with rerun
+    !| and the pooled mode equal the k-NN search (pooled) + run; at G = 300 the default k-NN grid
+    !| has one candidate, so this part only shows the call path.
+    subroutine test_rerun_forwards_bootstrap_mode()
+        character(*), parameter :: name = "test_rerun_forwards_bootstrap_mode: "
+        integer(int32), parameter :: modes(2) = [MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED]
+        real(real64), allocatable :: expression(:, :, :), gene_means(:, :), residuals(:, :, :)
+        real(real64) :: reference(3), result(3), observed(3), p(3), null(1, 3)
+        integer(int32) :: ierr, used_ks, used_kst, used_km, n_points, n_points_reference, n_failed, i_mode
+        integer(int32) :: ks(2), kst(2), km(2), search_np, search_nn, used_np, used_nn, data_seed
+        logical :: found
+
+        found = .false.
+        do data_seed = 52_int32, 71_int32
+            call make_expression(300_int32, [5_int32, 4_int32, 4_int32], [0.5_real64, 0.5_real64, 0.6_real64], &
+                                 data_seed, expression)
+            call reference_means_residuals(expression, gene_means, residuals)
+            do i_mode = 1, 2
+                call reference_adaptive_search(gene_means, residuals, 20_int32, ks(i_mode), kst(i_mode), km(i_mode), &
+                                               min_neighbor_overlap=0.0_real64, plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
+                                               bootstrap_mode=modes(i_mode))
+            end do
+            if (ks(1) /= ks(2) .or. kst(1) /= kst(2) .or. km(1) /= km(2)) then
+                found = .true.
+                exit
+            end if
+        end do
+        call assert_true(found, name//"the bootstrap mode changes the adaptive search's selection on some data set")
+        do i_mode = 1, 2
+            call reference_adaptive(expression, ks(i_mode), kst(i_mode), km(i_mode), reference, n_points_reference, ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, name//"adaptive reference ierr")
+            call run_js_comp_test_adaptive_on_sample_assignment(3_int32, 300_int32, 5_int32, expression, 13_int32, &
+                                                                identity(13_int32), K_START, K_STEP, K_MAX, result, &
+                                                                used_ks, used_kst, used_km, n_points, &
+                                                                rerun_parameter_search=.true._c_bool, &
+                                                                n_bootstraps=20_int32, &
+                                                                plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
+                                                                bootstrap_mode=modes(i_mode), &
+                                                                min_neighbor_overlap=0.0_real64, ierr=ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, name//"adaptive level (a) ierr")
+            call assert_equal_int(used_ks, ks(i_mode), name//"adaptive: used_k_start is the search's")
+            call assert_equal_int(used_kst, kst(i_mode), name//"adaptive: used_k_step is the search's")
+            call assert_equal_int(used_km, km(i_mode), name//"adaptive: used_k_max is the search's")
+            call assert_true(equal_and_not_nan(result, reference), name//"adaptive: equals search + run")
+            call run_js_comp_test_adaptive_label_permutation_test(3_int32, 300_int32, 5_int32, expression, K_START, &
+                                                                  K_STEP, K_MAX, 1_int32, observed, p, null, n_failed, &
+                                                                  rerun_parameter_search=.true._c_bool, &
+                                                                  n_bootstraps=20_int32, &
+                                                                  plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
+                                                                  bootstrap_mode=modes(i_mode), &
+                                                                  min_neighbor_overlap=0.0_real64, ierr=ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, name//"adaptive level (b) ierr")
+            call assert_true(equal_and_not_nan(observed, result), name//"adaptive level (b) forwards the mode")
+        end do
+
+        call reference_fixed_k_search(gene_means, residuals, 20_int32, search_np, search_nn, &
+                                      plateau_mode=MODE_PLATEAU_CI_OVERLAP, bootstrap_mode=MODE_BOOTSTRAP_POOLED)
+        call reference_knn(expression, search_np, search_nn, reference, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"k-NN reference ierr")
+        call run_js_comp_test_on_sample_assignment(3_int32, 300_int32, 5_int32, expression, 13_int32, identity(13_int32), &
+                                                   N_POINTS_KNN, N_NEIGHBORS_KNN, result, used_np, used_nn, &
+                                                   rerun_parameter_search=.true._c_bool, n_bootstraps=20_int32, &
+                                                   plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
+                                                   bootstrap_mode=MODE_BOOTSTRAP_POOLED, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"k-NN level (a) ierr")
+        call assert_equal_int(used_np, search_np, name//"k-NN: used_n_points is the search's")
+        call assert_equal_int(used_nn, search_nn, name//"k-NN: used_n_neighbors is the search's")
+        call assert_true(equal_and_not_nan(result, reference), name//"k-NN: equals search + run")
+        call run_js_comp_test_label_permutation_test(3_int32, 300_int32, 5_int32, expression, N_POINTS_KNN, &
+                                                     N_NEIGHBORS_KNN, 1_int32, observed, p, null, n_failed, &
+                                                     rerun_parameter_search=.true._c_bool, n_bootstraps=20_int32, &
+                                                     plateau_mode=MODE_PLATEAU_CI_OVERLAP, &
+                                                     bootstrap_mode=MODE_BOOTSTRAP_POOLED, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, name//"k-NN level (b) ierr")
+        call assert_true(equal_and_not_nan(observed, result), name//"k-NN level (b) forwards the mode")
+    end subroutine test_rerun_forwards_bootstrap_mode
 
     !> Adaptive rerun option: on, the result equals the adaptive search on the identity data followed
     !| by the construction and run with the knobs it selected; off, the fixed-knob run.

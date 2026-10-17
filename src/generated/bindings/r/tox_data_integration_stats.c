@@ -7,7 +7,7 @@
 
 // the Fortran C-ABI symbols this module calls
 void gjct_permutation_test_c(const int*, const int*, const int*, const int*, const int*, const double*, const int*, const int*, const double*, double*, double*, const int*, int*);
-void bootstrap_histogram_c(const int*, const int*, const int*, const int*, const int*, const int*, const int*, double*, const double*, const int*, int*);
+void bootstrap_histogram_c(const int*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, double*, const double*, const int*, const char*, int*);
 
 SEXP gjct_permutation_test_call(SEXP n_permutations, SEXP mean_pmf_counts, SEXP mean_pmf, SEXP mean_pmf_included_n_reps, SEXP included_n_reps, SEXP global_jsd_observed, SEXP random_seed) {
     int nprot = 0;
@@ -54,12 +54,12 @@ SEXP gjct_permutation_test_call(SEXP n_permutations, SEXP mean_pmf_counts, SEXP 
     return _out;
 }
 
-SEXP bootstrap_histogram_call(SEXP n_bootstraps, SEXP mean_pmf_counts, SEXP mean_pmf_included_n_reps, SEXP included_n_reps, SEXP confidence_interval, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed) {
+SEXP bootstrap_histogram_call(SEXP n_bootstraps, SEXP mean_pmf_counts, SEXP counts, SEXP mean_pmf_included_n_reps, SEXP included_n_reps, SEXP confidence_interval, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP bootstrap_mode) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_bins = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[1];
     int n_points = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[0];
-    int n_studies = INTEGER(Rf_getAttrib(included_n_reps, R_DimSymbol))[1];
+    int n_studies = INTEGER(Rf_getAttrib(counts, R_DimSymbol))[2];
 
     // scalar inputs, pulled from their length-1 vectors
     int n_bootstraps_v = Rf_asInteger(n_bootstraps);
@@ -68,6 +68,9 @@ SEXP bootstrap_histogram_call(SEXP n_bootstraps, SEXP mean_pmf_counts, SEXP mean
 
     // copy what is modified in place, so the caller's stays intact
     SEXP confidence_interval_out = PROTECT(Rf_duplicate(confidence_interval)); nprot++;
+
+    // convert what Fortran cannot take from R directly
+    char* bootstrap_mode_c = tox_char_in(bootstrap_mode, 19);
 
     // outputs and work space
     int ierr = 0;
@@ -78,11 +81,13 @@ SEXP bootstrap_histogram_call(SEXP n_bootstraps, SEXP mean_pmf_counts, SEXP mean
         &n_points,
         &n_studies,
         INTEGER(mean_pmf_counts),
+        INTEGER(counts),
         INTEGER(mean_pmf_included_n_reps),
         INTEGER(included_n_reps),
         REAL(confidence_interval_out),
         &two_sided_bootstrapping_significance_level_v,
         &random_seed_v,
+        bootstrap_mode_c,
         &ierr
     );
 
