@@ -19,6 +19,8 @@
 !| `bootstrap_mode`, from the pooled consensus counts (a noise band: the spread expected if the
 !| studies did not differ). `calc_js_comp_test_n_top_k_jsds` sizes its top-/bottom-k heaps for a
 !| caller that allocates its own.
+!|
+!| Both take `divergence_mode`, an experiment option for the per-point divergence they recompute.
 module tox_data_integration_stats_impl_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc

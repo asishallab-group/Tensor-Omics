@@ -6,11 +6,11 @@
 // tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
-void run_js_comp_test_c(const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, const char*, int*);
-void run_js_comp_test_expert_c(const int*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, double*, double*, double*, int*, int*, double*, int*, int*, int*, int*, int*, int*, int*, int*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, const char*, int*);
-void run_js_comp_test_adaptive_c(const int*, const int*, const int*, const int*, const double*, const double*, const int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, const char*, int*);
+void run_js_comp_test_c(const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, const char*, const char*, const char*, int*);
+void run_js_comp_test_expert_c(const int*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, double*, double*, double*, int*, int*, double*, int*, int*, int*, int*, int*, int*, int*, int*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, const char*, const char*, const char*, int*);
+void run_js_comp_test_adaptive_c(const int*, const int*, const int*, const int*, const double*, const double*, const int*, int*, int*, double*, double*, int*, unsigned char*, int*, int*, double*, int*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const double*, const char*, const char*, const char*, int*);
 
-SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP residuals, SEXP x_star, SEXP n_permutations, SEXP random_seed, SEXP min_residuals_per_bin, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP bin_count_mode) {
+SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP residuals, SEXP x_star, SEXP n_permutations, SEXP random_seed, SEXP min_residuals_per_bin, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP bin_count_mode, SEXP divergence_mode, SEXP divergence_weight_mode) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(gene_means, R_DimSymbol))[1];
@@ -31,6 +31,8 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP residuals, SE
 
     // convert what Fortran cannot take from R directly
     char* bin_count_mode_c = tox_char_in(bin_count_mode, 29);
+    char* divergence_mode_c = tox_char_in(divergence_mode, 22);
+    char* divergence_weight_mode_c = tox_char_in(divergence_weight_mode, 33);
 
     // outputs and work space
     SEXP neighborhood_indices = PROTECT(Rf_allocVector(INTSXP, n_neighbors_v * n_points * n_studies)); nprot++;
@@ -110,6 +112,8 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP residuals, SE
         &lower_residual_range_quantile_v,
         &upper_residual_range_quantile_v,
         bin_count_mode_c,
+        divergence_mode_c,
+        divergence_weight_mode_c,
         &ierr
     );
 
@@ -173,7 +177,7 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP gene_means, SEXP residuals, SE
     return _out;
 }
 
-SEXP run_js_comp_test_expert_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_means_perms, SEXP residuals, SEXP x_star, SEXP n_permutations, SEXP random_seed, SEXP min_residuals_per_bin, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP bin_count_mode) {
+SEXP run_js_comp_test_expert_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_means_perms, SEXP residuals, SEXP x_star, SEXP n_permutations, SEXP random_seed, SEXP min_residuals_per_bin, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP bin_count_mode, SEXP divergence_mode, SEXP divergence_weight_mode) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(gene_means, R_DimSymbol))[1];
@@ -194,6 +198,8 @@ SEXP run_js_comp_test_expert_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_m
 
     // convert what Fortran cannot take from R directly
     char* bin_count_mode_c = tox_char_in(bin_count_mode, 29);
+    char* divergence_mode_c = tox_char_in(divergence_mode, 22);
+    char* divergence_weight_mode_c = tox_char_in(divergence_weight_mode, 33);
 
     // outputs and work space
     SEXP neighborhood_indices = PROTECT(Rf_allocVector(INTSXP, n_neighbors_v * n_points * n_studies)); nprot++;
@@ -308,6 +314,8 @@ SEXP run_js_comp_test_expert_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_m
         &lower_residual_range_quantile_v,
         &upper_residual_range_quantile_v,
         bin_count_mode_c,
+        divergence_mode_c,
+        divergence_weight_mode_c,
         &ierr
     );
 
@@ -371,7 +379,7 @@ SEXP run_js_comp_test_expert_call(SEXP n_neighbors, SEXP gene_means, SEXP gene_m
     return _out;
 }
 
-SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled_neighborhood_range, SEXP n_permutations, SEXP random_seed, SEXP min_residuals_per_bin, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP bin_count_mode) {
+SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled_neighborhood_range, SEXP n_permutations, SEXP random_seed, SEXP min_residuals_per_bin, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP bin_count_mode, SEXP divergence_mode, SEXP divergence_weight_mode) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(gene_means, R_DimSymbol))[1];
@@ -391,6 +399,8 @@ SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled
 
     // convert what Fortran cannot take from R directly
     char* bin_count_mode_c = tox_char_in(bin_count_mode, 29);
+    char* divergence_mode_c = tox_char_in(divergence_mode, 22);
+    char* divergence_weight_mode_c = tox_char_in(divergence_weight_mode, 33);
 
     // outputs and work space
     SEXP n_neighbors_per_point = PROTECT(Rf_allocVector(INTSXP, n_studies * n_points)); nprot++;
@@ -466,6 +476,8 @@ SEXP run_js_comp_test_adaptive_call(SEXP gene_means, SEXP residuals, SEXP pooled
         &lower_residual_range_quantile_v,
         &upper_residual_range_quantile_v,
         bin_count_mode_c,
+        divergence_mode_c,
+        divergence_weight_mode_c,
         &ierr
     );
 

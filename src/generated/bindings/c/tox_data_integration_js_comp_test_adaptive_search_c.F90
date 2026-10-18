@@ -238,11 +238,14 @@ contains
             bin_count_mode,&
             delta_abs_tolerance,&
             bootstrap_mode,&
+            divergence_mode,&
+            divergence_weight_mode,&
             ierr&
         ) bind(C, name="run_js_comp_test_adaptive_parameter_search_c")
         use tox_data_integration_js_comp_test_adaptive_search, only: run_js_comp_test_adaptive_parameter_search
         use tox_data_integration_js_comp_test_binning_impl, only: MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_POOLED, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
         use tox_data_integration_js_comp_test_search_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, MODE_PLATEAU_BOTH, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE
+        use tox_data_integration_jsd_impl, only: MODE_DIVERGENCE_ONE_SIDED, MODE_DIVERGENCE_PAIRWISE_K2, MODE_DIVERGENCE_SYMMETRIC, MODE_DIVERGENCE_WEIGHT_POOL, MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL
         use tox_data_integration_stats_impl, only: MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED
 
         integer(c_int), intent(in), target :: n_studies
@@ -541,12 +544,35 @@ contains
             !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
             !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
             !! The default value is `'bootstrap_per_study'`.
+        character(len=1, kind=c_char), dimension(22), intent(in), target :: divergence_mode
+            !! Experiment option: how each study's per-point divergence is computed. By default the
+            !! JSD of the study against the consensus pmf, the formula before the option existed
+            !!
+            !! | Mode                                                                                                                | Value                                                                           |
+            !! |---------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+            !! | JSD of each study against the consensus pmf (default)                                                               | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]]   |
+            !! | For exactly two studies the pairwise JSD of the two, the same value for both (otherwise as the default)             | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! | One-sided Kullback-Leibler divergence of each study against the consensus pmf, at most log2(number of studies) bits | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_ONE_SIDED(variable)]]   |
+            !! The default value is `'divergence_symmetric'`.
+        character(len=1, kind=c_char), dimension(33), intent(in), target :: divergence_weight_mode
+            !! Experiment option: how each reference point's weight in a study's global divergence is
+            !! computed. By default the study's residual count there plus the count of all studies
+            !! pooled, the weights before the option existed. For two studies in the pairwise
+            !! `divergence_mode` the weights are always the two studies' counts
+            !!
+            !! | Mode                                                                   | Value                                                                                      |
+            !! |------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+            !! | The study's count plus the pooled count of all studies (default)       | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL(variable)]] |
+            !! | The pooled count of all studies only, the same weights for every study | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_POOL(variable)]]            |
+            !! The default value is `'divergence_weight_study_plus_pool'`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
         integer(int32) :: join_method_mode_f
         integer(int32) :: plateau_mode_mode_f
         integer(int32) :: bin_count_mode_mode_f
         integer(int32) :: bootstrap_mode_mode_f
+        integer(int32) :: divergence_mode_mode_f
+        integer(int32) :: divergence_weight_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -617,6 +643,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(plateau_mode, 19)
         M_CHECK_ARRAY_NON_NULL(bin_count_mode, 29)
         M_CHECK_ARRAY_NON_NULL(bootstrap_mode, 19)
+        M_CHECK_ARRAY_NON_NULL(divergence_mode, 22)
+        M_CHECK_ARRAY_NON_NULL(divergence_weight_mode, 33)
 
         block
             character(len=:), pointer :: join_method_f
@@ -677,6 +705,36 @@ contains
                     bootstrap_mode_mode_f = MODE_BOOTSTRAP_PER_STUDY
                 case ("bootstrap_pooled")
                     bootstrap_mode_mode_f = MODE_BOOTSTRAP_POOLED
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
+        block
+            character(len=:), pointer :: divergence_mode_f
+            divergence_mode_f => c_char_as_view(divergence_mode)
+
+            select case (divergence_mode_f)
+                case ("divergence_symmetric")
+                    divergence_mode_mode_f = MODE_DIVERGENCE_SYMMETRIC
+                case ("divergence_pairwise_k2")
+                    divergence_mode_mode_f = MODE_DIVERGENCE_PAIRWISE_K2
+                case ("divergence_one_sided")
+                    divergence_mode_mode_f = MODE_DIVERGENCE_ONE_SIDED
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
+        block
+            character(len=:), pointer :: divergence_weight_mode_f
+            divergence_weight_mode_f => c_char_as_view(divergence_weight_mode)
+
+            select case (divergence_weight_mode_f)
+                case ("divergence_weight_study_plus_pool")
+                    divergence_weight_mode_mode_f = MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL
+                case ("divergence_weight_pool")
+                    divergence_weight_mode_mode_f = MODE_DIVERGENCE_WEIGHT_POOL
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
@@ -751,6 +809,8 @@ contains
             bin_count_mode = bin_count_mode_mode_f,&
             delta_abs_tolerance = delta_abs_tolerance,&
             bootstrap_mode = bootstrap_mode_mode_f,&
+            divergence_mode = divergence_mode_mode_f,&
+            divergence_weight_mode = divergence_weight_mode_mode_f,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_adaptive_parameter_search_c
@@ -940,11 +1000,14 @@ contains
             bin_count_mode,&
             delta_abs_tolerance,&
             bootstrap_mode,&
+            divergence_mode,&
+            divergence_weight_mode,&
             ierr&
         ) bind(C, name="run_js_comp_test_adaptive_parameter_search_expert_c")
         use tox_data_integration_js_comp_test_adaptive_search, only: run_js_comp_test_adaptive_parameter_search_expert
         use tox_data_integration_js_comp_test_binning_impl, only: MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_POOLED, MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
         use tox_data_integration_js_comp_test_search_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, MODE_PLATEAU_BOTH, MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE
+        use tox_data_integration_jsd_impl, only: MODE_DIVERGENCE_ONE_SIDED, MODE_DIVERGENCE_PAIRWISE_K2, MODE_DIVERGENCE_SYMMETRIC, MODE_DIVERGENCE_WEIGHT_POOL, MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL
         use tox_data_integration_stats_impl, only: MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED
 
         integer(c_int), intent(in), target :: n_studies
@@ -1342,12 +1405,35 @@ contains
             !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
             !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
             !! The default value is `'bootstrap_per_study'`.
+        character(len=1, kind=c_char), dimension(22), intent(in), target :: divergence_mode
+            !! Experiment option: how each study's per-point divergence is computed. By default the
+            !! JSD of the study against the consensus pmf, the formula before the option existed
+            !!
+            !! | Mode                                                                                                                | Value                                                                           |
+            !! |---------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+            !! | JSD of each study against the consensus pmf (default)                                                               | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]]   |
+            !! | For exactly two studies the pairwise JSD of the two, the same value for both (otherwise as the default)             | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! | One-sided Kullback-Leibler divergence of each study against the consensus pmf, at most log2(number of studies) bits | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_ONE_SIDED(variable)]]   |
+            !! The default value is `'divergence_symmetric'`.
+        character(len=1, kind=c_char), dimension(33), intent(in), target :: divergence_weight_mode
+            !! Experiment option: how each reference point's weight in a study's global divergence is
+            !! computed. By default the study's residual count there plus the count of all studies
+            !! pooled, the weights before the option existed. For two studies in the pairwise
+            !! `divergence_mode` the weights are always the two studies' counts
+            !!
+            !! | Mode                                                                   | Value                                                                                      |
+            !! |------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+            !! | The study's count plus the pooled count of all studies (default)       | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL(variable)]] |
+            !! | The pooled count of all studies only, the same weights for every study | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_POOL(variable)]]            |
+            !! The default value is `'divergence_weight_study_plus_pool'`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
         integer(int32) :: join_method_mode_f
         integer(int32) :: plateau_mode_mode_f
         integer(int32) :: bin_count_mode_mode_f
         integer(int32) :: bootstrap_mode_mode_f
+        integer(int32) :: divergence_mode_mode_f
+        integer(int32) :: divergence_weight_mode_mode_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -1466,6 +1552,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(plateau_mode, 19)
         M_CHECK_ARRAY_NON_NULL(bin_count_mode, 29)
         M_CHECK_ARRAY_NON_NULL(bootstrap_mode, 19)
+        M_CHECK_ARRAY_NON_NULL(divergence_mode, 22)
+        M_CHECK_ARRAY_NON_NULL(divergence_weight_mode, 33)
 
         block
             character(len=:), pointer :: join_method_f
@@ -1526,6 +1614,36 @@ contains
                     bootstrap_mode_mode_f = MODE_BOOTSTRAP_PER_STUDY
                 case ("bootstrap_pooled")
                     bootstrap_mode_mode_f = MODE_BOOTSTRAP_POOLED
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
+        block
+            character(len=:), pointer :: divergence_mode_f
+            divergence_mode_f => c_char_as_view(divergence_mode)
+
+            select case (divergence_mode_f)
+                case ("divergence_symmetric")
+                    divergence_mode_mode_f = MODE_DIVERGENCE_SYMMETRIC
+                case ("divergence_pairwise_k2")
+                    divergence_mode_mode_f = MODE_DIVERGENCE_PAIRWISE_K2
+                case ("divergence_one_sided")
+                    divergence_mode_mode_f = MODE_DIVERGENCE_ONE_SIDED
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
+        block
+            character(len=:), pointer :: divergence_weight_mode_f
+            divergence_weight_mode_f => c_char_as_view(divergence_weight_mode)
+
+            select case (divergence_weight_mode_f)
+                case ("divergence_weight_study_plus_pool")
+                    divergence_weight_mode_mode_f = MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL
+                case ("divergence_weight_pool")
+                    divergence_weight_mode_mode_f = MODE_DIVERGENCE_WEIGHT_POOL
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
@@ -1648,6 +1766,8 @@ contains
             bin_count_mode = bin_count_mode_mode_f,&
             delta_abs_tolerance = delta_abs_tolerance,&
             bootstrap_mode = bootstrap_mode_mode_f,&
+            divergence_mode = divergence_mode_mode_f,&
+            divergence_weight_mode = divergence_weight_mode_mode_f,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_adaptive_parameter_search_expert_c

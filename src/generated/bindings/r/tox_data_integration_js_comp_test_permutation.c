@@ -6,12 +6,12 @@
 // tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
-void run_js_comp_test_on_sample_assignment_c(const int*, const int*, const int*, const double*, const int*, const int*, const int*, const int*, double*, int*, int*, const unsigned char*, const int*, const char*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const char*, const char*, const double*, const char*, int*);
-void run_js_comp_test_adaptive_on_sample_assignment_c(const int*, const int*, const int*, const double*, const int*, const int*, const int*, const int*, const int*, double*, int*, int*, int*, int*, const unsigned char*, const int*, const char*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const double*, const double*, const int*, const int*, const char*, const double*, const char*, int*);
-void run_js_comp_test_label_permutation_test_c(const int*, const int*, const int*, const double*, const int*, const int*, const int*, double*, double*, double*, int*, const unsigned char*, const int*, const char*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const char*, const char*, const double*, const char*, int*);
-void run_js_comp_test_adaptive_label_permutation_test_c(const int*, const int*, const int*, const double*, const int*, const int*, const int*, const int*, double*, double*, double*, int*, const unsigned char*, const int*, const char*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const double*, const double*, const int*, const int*, const char*, const double*, const char*, int*);
+void run_js_comp_test_on_sample_assignment_c(const int*, const int*, const int*, const double*, const int*, const int*, const int*, const int*, double*, int*, int*, const unsigned char*, const int*, const char*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const char*, const char*, const double*, const char*, const char*, const char*, int*);
+void run_js_comp_test_adaptive_on_sample_assignment_c(const int*, const int*, const int*, const double*, const int*, const int*, const int*, const int*, const int*, double*, int*, int*, int*, int*, const unsigned char*, const int*, const char*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const double*, const double*, const int*, const int*, const char*, const double*, const char*, const char*, const char*, int*);
+void run_js_comp_test_label_permutation_test_c(const int*, const int*, const int*, const double*, const int*, const int*, const int*, double*, double*, double*, int*, const unsigned char*, const int*, const char*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const char*, const char*, const double*, const char*, const char*, const char*, int*);
+void run_js_comp_test_adaptive_label_permutation_test_c(const int*, const int*, const int*, const double*, const int*, const int*, const int*, const int*, double*, double*, double*, int*, const unsigned char*, const int*, const char*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const int*, const int*, const double*, const double*, const double*, const double*, const int*, const double*, const double*, const int*, const int*, const char*, const double*, const char*, const char*, const char*, int*);
 
-SEXP run_js_comp_test_on_sample_assignment_call(SEXP expression, SEXP sample_assignment, SEXP n_points, SEXP n_neighbors, SEXP rerun_parameter_search, SEXP n_bootstraps, SEXP join_method, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP bin_count_mode, SEXP neighborhood_size_mode, SEXP delta_abs_tolerance, SEXP bootstrap_mode) {
+SEXP run_js_comp_test_on_sample_assignment_call(SEXP expression, SEXP sample_assignment, SEXP n_points, SEXP n_neighbors, SEXP rerun_parameter_search, SEXP n_bootstraps, SEXP join_method, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP bin_count_mode, SEXP neighborhood_size_mode, SEXP delta_abs_tolerance, SEXP bootstrap_mode, SEXP divergence_mode, SEXP divergence_weight_mode) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(expression, R_DimSymbol))[2];
@@ -46,6 +46,8 @@ SEXP run_js_comp_test_on_sample_assignment_call(SEXP expression, SEXP sample_ass
     char* bin_count_mode_c = tox_char_in(bin_count_mode, 29);
     char* neighborhood_size_mode_c = tox_char_in(neighborhood_size_mode, 23);
     char* bootstrap_mode_c = tox_char_in(bootstrap_mode, 19);
+    char* divergence_mode_c = tox_char_in(divergence_mode, 22);
+    char* divergence_weight_mode_c = tox_char_in(divergence_weight_mode, 33);
 
     // outputs and work space
     SEXP global_js_divergence = PROTECT(Rf_allocVector(REALSXP, n_studies)); nprot++;
@@ -87,6 +89,8 @@ SEXP run_js_comp_test_on_sample_assignment_call(SEXP expression, SEXP sample_ass
         neighborhood_size_mode_c,
         &delta_abs_tolerance_v,
         bootstrap_mode_c,
+        divergence_mode_c,
+        divergence_weight_mode_c,
         &ierr
     );
 
@@ -105,7 +109,7 @@ SEXP run_js_comp_test_on_sample_assignment_call(SEXP expression, SEXP sample_ass
     return _out;
 }
 
-SEXP run_js_comp_test_adaptive_on_sample_assignment_call(SEXP expression, SEXP sample_assignment, SEXP k_start, SEXP k_step, SEXP k_max, SEXP rerun_parameter_search, SEXP n_bootstraps, SEXP join_method, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP tau, SEXP mad_distance_factor, SEXP max_pooled_residuals, SEXP min_study_neighbors, SEXP bin_count_mode, SEXP delta_abs_tolerance, SEXP bootstrap_mode) {
+SEXP run_js_comp_test_adaptive_on_sample_assignment_call(SEXP expression, SEXP sample_assignment, SEXP k_start, SEXP k_step, SEXP k_max, SEXP rerun_parameter_search, SEXP n_bootstraps, SEXP join_method, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP tau, SEXP mad_distance_factor, SEXP max_pooled_residuals, SEXP min_study_neighbors, SEXP bin_count_mode, SEXP delta_abs_tolerance, SEXP bootstrap_mode, SEXP divergence_mode, SEXP divergence_weight_mode) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(expression, R_DimSymbol))[2];
@@ -144,6 +148,8 @@ SEXP run_js_comp_test_adaptive_on_sample_assignment_call(SEXP expression, SEXP s
     char* plateau_mode_c = tox_char_in(plateau_mode, 19);
     char* bin_count_mode_c = tox_char_in(bin_count_mode, 29);
     char* bootstrap_mode_c = tox_char_in(bootstrap_mode, 19);
+    char* divergence_mode_c = tox_char_in(divergence_mode, 22);
+    char* divergence_weight_mode_c = tox_char_in(divergence_weight_mode, 33);
 
     // outputs and work space
     SEXP global_js_divergence = PROTECT(Rf_allocVector(REALSXP, n_studies)); nprot++;
@@ -193,6 +199,8 @@ SEXP run_js_comp_test_adaptive_on_sample_assignment_call(SEXP expression, SEXP s
         bin_count_mode_c,
         &delta_abs_tolerance_v,
         bootstrap_mode_c,
+        divergence_mode_c,
+        divergence_weight_mode_c,
         &ierr
     );
 
@@ -215,7 +223,7 @@ SEXP run_js_comp_test_adaptive_on_sample_assignment_call(SEXP expression, SEXP s
     return _out;
 }
 
-SEXP run_js_comp_test_label_permutation_test_call(SEXP expression, SEXP n_points, SEXP n_neighbors, SEXP n_permutations, SEXP rerun_parameter_search, SEXP n_bootstraps, SEXP join_method, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP bin_count_mode, SEXP neighborhood_size_mode, SEXP delta_abs_tolerance, SEXP bootstrap_mode) {
+SEXP run_js_comp_test_label_permutation_test_call(SEXP expression, SEXP n_points, SEXP n_neighbors, SEXP n_permutations, SEXP rerun_parameter_search, SEXP n_bootstraps, SEXP join_method, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP bin_count_mode, SEXP neighborhood_size_mode, SEXP delta_abs_tolerance, SEXP bootstrap_mode, SEXP divergence_mode, SEXP divergence_weight_mode) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(expression, R_DimSymbol))[2];
@@ -250,6 +258,8 @@ SEXP run_js_comp_test_label_permutation_test_call(SEXP expression, SEXP n_points
     char* bin_count_mode_c = tox_char_in(bin_count_mode, 29);
     char* neighborhood_size_mode_c = tox_char_in(neighborhood_size_mode, 23);
     char* bootstrap_mode_c = tox_char_in(bootstrap_mode, 19);
+    char* divergence_mode_c = tox_char_in(divergence_mode, 22);
+    char* divergence_weight_mode_c = tox_char_in(divergence_weight_mode, 33);
 
     // outputs and work space
     SEXP global_js_divergence_observed = PROTECT(Rf_allocVector(REALSXP, n_studies)); nprot++;
@@ -293,6 +303,8 @@ SEXP run_js_comp_test_label_permutation_test_call(SEXP expression, SEXP n_points
         neighborhood_size_mode_c,
         &delta_abs_tolerance_v,
         bootstrap_mode_c,
+        divergence_mode_c,
+        divergence_weight_mode_c,
         &ierr
     );
 
@@ -313,7 +325,7 @@ SEXP run_js_comp_test_label_permutation_test_call(SEXP expression, SEXP n_points
     return _out;
 }
 
-SEXP run_js_comp_test_adaptive_label_permutation_test_call(SEXP expression, SEXP k_start, SEXP k_step, SEXP k_max, SEXP n_permutations, SEXP rerun_parameter_search, SEXP n_bootstraps, SEXP join_method, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP tau, SEXP mad_distance_factor, SEXP max_pooled_residuals, SEXP min_study_neighbors, SEXP bin_count_mode, SEXP delta_abs_tolerance, SEXP bootstrap_mode) {
+SEXP run_js_comp_test_adaptive_label_permutation_test_call(SEXP expression, SEXP k_start, SEXP k_step, SEXP k_max, SEXP n_permutations, SEXP rerun_parameter_search, SEXP n_bootstraps, SEXP join_method, SEXP min_residuals_per_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP m_min, SEXP m_max, SEXP gamma_occupancy, SEXP lower_residual_range_quantile, SEXP upper_residual_range_quantile, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP tau, SEXP mad_distance_factor, SEXP max_pooled_residuals, SEXP min_study_neighbors, SEXP bin_count_mode, SEXP delta_abs_tolerance, SEXP bootstrap_mode, SEXP divergence_mode, SEXP divergence_weight_mode) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(expression, R_DimSymbol))[2];
@@ -352,6 +364,8 @@ SEXP run_js_comp_test_adaptive_label_permutation_test_call(SEXP expression, SEXP
     char* plateau_mode_c = tox_char_in(plateau_mode, 19);
     char* bin_count_mode_c = tox_char_in(bin_count_mode, 29);
     char* bootstrap_mode_c = tox_char_in(bootstrap_mode, 19);
+    char* divergence_mode_c = tox_char_in(divergence_mode, 22);
+    char* divergence_weight_mode_c = tox_char_in(divergence_weight_mode, 33);
 
     // outputs and work space
     SEXP global_js_divergence_observed = PROTECT(Rf_allocVector(REALSXP, n_studies)); nprot++;
@@ -399,6 +413,8 @@ SEXP run_js_comp_test_adaptive_label_permutation_test_call(SEXP expression, SEXP
         bin_count_mode_c,
         &delta_abs_tolerance_v,
         bootstrap_mode_c,
+        divergence_mode_c,
+        divergence_weight_mode_c,
         &ierr
     );
 

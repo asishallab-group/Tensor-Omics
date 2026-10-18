@@ -346,7 +346,7 @@ contains
                                                        lower_residual_range_quantile, upper_residual_range_quantile, &
                                                        two_sided_bootstrapping_significance_level, random_seed, &
                                                        bin_count_mode, neighborhood_size_mode, delta_abs_tolerance, &
-                                                       bootstrap_mode, ierr)
+                                                       bootstrap_mode, divergence_mode, divergence_weight_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -715,6 +715,27 @@ contains
             !! | Each study's own counts, a robustness interval (default) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
             !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]] |
             !! DM_DEFAULT(M_MODE_BOOTSTRAP_PER_STUDY)
+        integer(int32), intent(in), optional :: divergence_mode
+            !! Experiment option: how each study's per-point divergence is computed. By default the
+            !! JSD of the study against the consensus pmf, the formula before the option existed
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | JSD of each study against the consensus pmf (default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]] |
+            !! | For exactly two studies the pairwise JSD of the two, the same value for both (otherwise as the default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! | One-sided Kullback-Leibler divergence of each study against the consensus pmf, at most log2(number of studies) bits | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_ONE_SIDED(variable)]] |
+            !! DM_DEFAULT(M_MODE_DIVERGENCE_SYMMETRIC)
+        integer(int32), intent(in), optional :: divergence_weight_mode
+            !! Experiment option: how each reference point's weight in a study's global divergence is
+            !! computed. By default the study's residual count there plus the count of all studies
+            !! pooled, the weights before the option existed. For two studies in the pairwise
+            !! `divergence_mode` the weights are always the two studies' counts
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | The study's count plus the pooled count of all studies (default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL(variable)]] |
+            !! | The pooled count of all studies only, the same weights for every study | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_POOL(variable)]] |
+            !! DM_DEFAULT(M_MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_ALLOC_FAIL if the bootstrap's random number generator could not be created
 
@@ -727,7 +748,7 @@ contains
         real(real64) :: actual_min_neighbor_overlap, actual_succeeding_ci_overlap
         real(real64) :: actual_delta_median_threshold, actual_delta_max_threshold, actual_delta_epsilon
         real(real64) :: actual_delta_abs_tolerance
-        integer(int32) :: actual_bootstrap_mode
+        integer(int32) :: actual_bootstrap_mode, actual_divergence_mode, actual_divergence_weight_mode
         real(real64) :: best_uncertainty_value
         logical(c_bool) :: all_have_min_neighbor_overlap, all_bins_have_min_count, plateau_found, has_empty_study
 
@@ -743,6 +764,8 @@ contains
         M_DEFAULT_VAL(m_min, actual_m_min, M_OCCUPANCY_M_MIN_DEFAULT)
         M_DEFAULT_VAL(delta_abs_tolerance, actual_delta_abs_tolerance, M_DELTA_ABS_TOLERANCE_DEFAULT)
         M_DEFAULT_VAL(bootstrap_mode, actual_bootstrap_mode, M_MODE_BOOTSTRAP_PER_STUDY)
+        M_DEFAULT_VAL(divergence_mode, actual_divergence_mode, M_MODE_DIVERGENCE_SYMMETRIC)
+        M_DEFAULT_VAL(divergence_weight_mode, actual_divergence_weight_mode, M_MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL)
         M_DEFAULT_VAL(neighborhood_size_mode, actual_neighborhood_size_mode, M_MODE_NEIGHBORHOOD_SIZE_LARGE)
 
         pool_size = max_n_genes_all_studies*n_studies
@@ -822,7 +845,8 @@ contains
             ! Second admissibility gate; an empty study (an error in run_js_comp_test_impl) only
             ! makes the candidate inadmissible here.
             call score_candidate_histograms(n_points, max_n_bins, n_studies, tmp_n_bins_per_point, &
-                                            actual_min_residuals_per_bin, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
+                                            actual_min_residuals_per_bin, actual_divergence_mode, actual_divergence_weight_mode, tmp_pmfs, tmp_counts, &
+                                            tmp_included_n_reps, &
                                             tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, &
                                             tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
                                             tmp_confidence_interval, has_empty_study, all_bins_have_min_count)
@@ -836,7 +860,8 @@ contains
                                                join_method, actual_plateau_mode, actual_succeeding_ci_overlap, &
                                                actual_delta_median_threshold, actual_delta_max_threshold, &
                                                actual_delta_epsilon, actual_delta_min_consecutive_transitions, &
-                                               actual_delta_abs_tolerance, actual_bootstrap_mode, tmp_n_bins_per_point, &
+                                               actual_delta_abs_tolerance, actual_bootstrap_mode, actual_divergence_mode, actual_divergence_weight_mode, &
+                                               tmp_n_bins_per_point, &
                                                tmp_occupancy_failed, tmp_n_pooled_residuals, &
                                                tmp_min_bin_occupancy, tmp_mean_bin_occupancy, tmp_max_bin_occupancy, &
                                                tmp_sturges_bins, tmp_fd_bins, tmp_shared_residual_range_low, &

@@ -110,13 +110,15 @@ _lib.run_js_comp_test_adaptive_parameter_search_c.argtypes = (
     np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_double),
     np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "bootstrap_mode", "ierr",)
+_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "delta_abs_tolerance", "bootstrap_mode", "divergence_mode", "divergence_weight_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ADAPTIVE_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, "n_bins_per_point", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def generate_adaptive_js_comp_test_candidates(
         max_n_genes_all_studies,
@@ -229,6 +231,8 @@ def run_js_comp_test_adaptive_parameter_search(
         bin_count_mode='bin_count_occupancy',
         delta_abs_tolerance=0.0,
         bootstrap_mode='bootstrap_per_study',
+        divergence_mode='divergence_symmetric',
+        divergence_weight_mode='divergence_weight_study_plus_pool',
 ):
     r"""Search the ascending adaptive (k_start, k_step, k_max) candidate sequence for a stable JSD parameter setting (Issue #217)
 
@@ -435,6 +439,18 @@ def run_js_comp_test_adaptive_parameter_search(
         studies did not differ (a noise band) instead, kept for comparison
 
         The default value is `'bootstrap_per_study'`.
+    divergence_mode : str, one of 'divergence_symmetric' | 'divergence_pairwise_k2' | 'divergence_one_sided', optional, default 'divergence_symmetric'
+        Experiment option: how each study's per-point divergence is computed. By default the
+        JSD of the study against the consensus pmf, the formula before the option existed
+
+        The default value is `'divergence_symmetric'`.
+    divergence_weight_mode : str, one of 'divergence_weight_study_plus_pool' | 'divergence_weight_pool', optional, default 'divergence_weight_study_plus_pool'
+        Experiment option: how each reference point's weight in a study's global divergence is
+        computed. By default the study's residual count there plus the count of all studies
+        pooled, the weights before the option existed. For two studies in the pairwise
+        `divergence_mode` the weights are always the two studies' counts
+
+        The default value is `'divergence_weight_study_plus_pool'`.
 
     Returns
     -------
@@ -628,6 +644,8 @@ def run_js_comp_test_adaptive_parameter_search(
     plateau_mode = np.array([str(plateau_mode).lower().encode().ljust(19)], dtype="S19")
     bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
     bootstrap_mode = np.array([str(bootstrap_mode).lower().encode().ljust(19)], dtype="S19")
+    divergence_mode = np.array([str(divergence_mode).lower().encode().ljust(22)], dtype="S22")
+    divergence_weight_mode = np.array([str(divergence_weight_mode).lower().encode().ljust(33)], dtype="S33")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
@@ -752,6 +770,8 @@ def run_js_comp_test_adaptive_parameter_search(
         bin_count_mode,
         ctypes.byref(ctypes.c_double(delta_abs_tolerance)),
         bootstrap_mode,
+        divergence_mode,
+        divergence_weight_mode,
         ctypes.byref(ierr),
     )
 

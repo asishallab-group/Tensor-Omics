@@ -20,6 +20,8 @@ module tox_data_integration_js_comp_test_run
     use f42_math_impl, only: above
     use tox_data_integration_js_comp_test_binning_impl, only: MAX_N_BINS, MODE_BIN_COUNT_OCCUPANCY, MODE_BIN_COUNT_STONE_EQUAL, MODE_BIN_COUNT_STONE_POOLED
     use tox_data_integration_js_comp_test_binning_impl, only: MODE_BIN_COUNT_STONE_SIZE_WEIGHTED
+    use tox_data_integration_jsd_impl, only: MODE_DIVERGENCE_ONE_SIDED, MODE_DIVERGENCE_PAIRWISE_K2, MODE_DIVERGENCE_SYMMETRIC, MODE_DIVERGENCE_WEIGHT_POOL
+    use tox_data_integration_jsd_impl, only: MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
     use tox_errors, only: clear_err_arg_pos, set_err, set_err_once, validate_all_in_range_int
     use tox_errors, only: validate_all_in_range_real, validate_in_range_int, validate_in_range_real
@@ -122,6 +124,8 @@ contains
             lower_residual_range_quantile,&
             upper_residual_range_quantile,&
             bin_count_mode,&
+            divergence_mode,&
+            divergence_weight_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -251,6 +255,27 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `0_int32`.
+        integer(int32), intent(in), optional :: divergence_mode
+            !! Experiment option: how each study's per-point divergence is computed. By default the
+            !! JSD of the study against the consensus pmf, the formula before the option existed
+            !!
+            !! | Mode                                                                                                                | Value                                                                           |
+            !! |---------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+            !! | JSD of each study against the consensus pmf (default)                                                               | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]]   |
+            !! | For exactly two studies the pairwise JSD of the two, the same value for both (otherwise as the default)             | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! | One-sided Kullback-Leibler divergence of each study against the consensus pmf, at most log2(number of studies) bits | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_ONE_SIDED(variable)]]   |
+            !! The default value is `0_int32`.
+        integer(int32), intent(in), optional :: divergence_weight_mode
+            !! Experiment option: how each reference point's weight in a study's global divergence is
+            !! computed. By default the study's residual count there plus the count of all studies
+            !! pooled, the weights before the option existed. For two studies in the pairwise
+            !! `divergence_mode` the weights are always the two studies' counts
+            !!
+            !! | Mode                                                                   | Value                                                                                      |
+            !! |------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+            !! | The study's count plus the pooled count of all studies (default)       | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL(variable)]] |
+            !! | The pooled count of all studies only, the same weights for every study | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_POOL(variable)]]            |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT or ERR_ALLOC_FAIL (see above)
         integer(int32), dimension(:, :), allocatable :: gene_means_perms
@@ -291,6 +316,8 @@ contains
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=7_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=8_int32)
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=41_int32); end if
+        if (present(divergence_mode)) then; if (divergence_mode /= MODE_DIVERGENCE_SYMMETRIC .and. divergence_mode /= MODE_DIVERGENCE_PAIRWISE_K2 .and. divergence_mode /= MODE_DIVERGENCE_ONE_SIDED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=42_int32); end if
+        if (present(divergence_weight_mode)) then; if (divergence_weight_mode /= MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL .and. divergence_weight_mode /= MODE_DIVERGENCE_WEIGHT_POOL) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=43_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -385,6 +412,8 @@ contains
             lower_residual_range_quantile = lower_residual_range_quantile,&
             upper_residual_range_quantile = upper_residual_range_quantile,&
             bin_count_mode = bin_count_mode,&
+            divergence_mode = divergence_mode,&
+            divergence_weight_mode = divergence_weight_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -497,6 +526,8 @@ contains
             lower_residual_range_quantile,&
             upper_residual_range_quantile,&
             bin_count_mode,&
+            divergence_mode,&
+            divergence_weight_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -668,6 +699,27 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `0_int32`.
+        integer(int32), intent(in), optional :: divergence_mode
+            !! Experiment option: how each study's per-point divergence is computed. By default the
+            !! JSD of the study against the consensus pmf, the formula before the option existed
+            !!
+            !! | Mode                                                                                                                | Value                                                                           |
+            !! |---------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+            !! | JSD of each study against the consensus pmf (default)                                                               | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]]   |
+            !! | For exactly two studies the pairwise JSD of the two, the same value for both (otherwise as the default)             | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! | One-sided Kullback-Leibler divergence of each study against the consensus pmf, at most log2(number of studies) bits | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_ONE_SIDED(variable)]]   |
+            !! The default value is `0_int32`.
+        integer(int32), intent(in), optional :: divergence_weight_mode
+            !! Experiment option: how each reference point's weight in a study's global divergence is
+            !! computed. By default the study's residual count there plus the count of all studies
+            !! pooled, the weights before the option existed. For two studies in the pairwise
+            !! `divergence_mode` the weights are always the two studies' counts
+            !!
+            !! | Mode                                                                   | Value                                                                                      |
+            !! |------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+            !! | The study's count plus the pooled count of all studies (default)       | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL(variable)]] |
+            !! | The pooled count of all studies only, the same weights for every study | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_POOL(variable)]]            |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT or ERR_ALLOC_FAIL (see above)
 
@@ -690,6 +742,8 @@ contains
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=9_int32)
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=59_int32); end if
+        if (present(divergence_mode)) then; if (divergence_mode /= MODE_DIVERGENCE_SYMMETRIC .and. divergence_mode /= MODE_DIVERGENCE_PAIRWISE_K2 .and. divergence_mode /= MODE_DIVERGENCE_ONE_SIDED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=60_int32); end if
+        if (present(divergence_weight_mode)) then; if (divergence_weight_mode /= MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL .and. divergence_weight_mode /= MODE_DIVERGENCE_WEIGHT_POOL) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=61_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -753,6 +807,8 @@ contains
             lower_residual_range_quantile = lower_residual_range_quantile,&
             upper_residual_range_quantile = upper_residual_range_quantile,&
             bin_count_mode = bin_count_mode,&
+            divergence_mode = divergence_mode,&
+            divergence_weight_mode = divergence_weight_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -820,6 +876,8 @@ contains
             lower_residual_range_quantile,&
             upper_residual_range_quantile,&
             bin_count_mode,&
+            divergence_mode,&
+            divergence_weight_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -947,6 +1005,27 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `0_int32`.
+        integer(int32), intent(in), optional :: divergence_mode
+            !! Experiment option: how each study's per-point divergence is computed. By default the
+            !! JSD of the study against the consensus pmf, the formula before the option existed
+            !!
+            !! | Mode                                                                                                                | Value                                                                           |
+            !! |---------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+            !! | JSD of each study against the consensus pmf (default)                                                               | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]]   |
+            !! | For exactly two studies the pairwise JSD of the two, the same value for both (otherwise as the default)             | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! | One-sided Kullback-Leibler divergence of each study against the consensus pmf, at most log2(number of studies) bits | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_ONE_SIDED(variable)]]   |
+            !! The default value is `0_int32`.
+        integer(int32), intent(in), optional :: divergence_weight_mode
+            !! Experiment option: how each reference point's weight in a study's global divergence is
+            !! computed. By default the study's residual count there plus the count of all studies
+            !! pooled, the weights before the option existed. For two studies in the pairwise
+            !! `divergence_mode` the weights are always the two studies' counts
+            !!
+            !! | Mode                                                                   | Value                                                                                      |
+            !! |------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+            !! | The study's count plus the pooled count of all studies (default)       | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL(variable)]] |
+            !! | The pooled count of all studies only, the same weights for every study | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_POOL(variable)]]            |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT or ERR_ALLOC_FAIL (see above)
         integer(int32), dimension(:), allocatable :: tmp_gene_means_perm_all
@@ -985,6 +1064,8 @@ contains
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(pooled_neighborhood_range, 2 * n_points, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies*n_studies)
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=39_int32); end if
+        if (present(divergence_mode)) then; if (divergence_mode /= MODE_DIVERGENCE_SYMMETRIC .and. divergence_mode /= MODE_DIVERGENCE_PAIRWISE_K2 .and. divergence_mode /= MODE_DIVERGENCE_ONE_SIDED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=40_int32); end if
+        if (present(divergence_weight_mode)) then; if (divergence_weight_mode /= MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL .and. divergence_weight_mode /= MODE_DIVERGENCE_WEIGHT_POOL) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=41_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -1065,6 +1146,8 @@ contains
             lower_residual_range_quantile = lower_residual_range_quantile,&
             upper_residual_range_quantile = upper_residual_range_quantile,&
             bin_count_mode = bin_count_mode,&
+            divergence_mode = divergence_mode,&
+            divergence_weight_mode = divergence_weight_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -1150,6 +1233,8 @@ contains
             lower_residual_range_quantile,&
             upper_residual_range_quantile,&
             bin_count_mode,&
+            divergence_mode,&
+            divergence_weight_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_studies
@@ -1314,6 +1399,27 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range        | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled                                              | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]]        |
             !! The default value is `0_int32`.
+        integer(int32), intent(in), optional :: divergence_mode
+            !! Experiment option: how each study's per-point divergence is computed. By default the
+            !! JSD of the study against the consensus pmf, the formula before the option existed
+            !!
+            !! | Mode                                                                                                                | Value                                                                           |
+            !! |---------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+            !! | JSD of each study against the consensus pmf (default)                                                               | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]]   |
+            !! | For exactly two studies the pairwise JSD of the two, the same value for both (otherwise as the default)             | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! | One-sided Kullback-Leibler divergence of each study against the consensus pmf, at most log2(number of studies) bits | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_ONE_SIDED(variable)]]   |
+            !! The default value is `0_int32`.
+        integer(int32), intent(in), optional :: divergence_weight_mode
+            !! Experiment option: how each reference point's weight in a study's global divergence is
+            !! computed. By default the study's residual count there plus the count of all studies
+            !! pooled, the weights before the option existed. For two studies in the pairwise
+            !! `divergence_mode` the weights are always the two studies' counts
+            !!
+            !! | Mode                                                                   | Value                                                                                      |
+            !! |------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+            !! | The study's count plus the pooled count of all studies (default)       | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL(variable)]] |
+            !! | The pooled count of all studies only, the same weights for every study | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_POOL(variable)]]            |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT or ERR_ALLOC_FAIL (see above)
 
@@ -1334,6 +1440,8 @@ contains
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(pooled_neighborhood_range, 2 * n_points, ierr, arg_pos=7_int32, min=1_int32, max=max_n_genes_all_studies*n_studies)
         if (present(bin_count_mode)) then; if (bin_count_mode /= MODE_BIN_COUNT_OCCUPANCY .and. bin_count_mode /= MODE_BIN_COUNT_STONE_EQUAL .and. bin_count_mode /= MODE_BIN_COUNT_STONE_SIZE_WEIGHTED .and. bin_count_mode /= MODE_BIN_COUNT_STONE_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=57_int32); end if
+        if (present(divergence_mode)) then; if (divergence_mode /= MODE_DIVERGENCE_SYMMETRIC .and. divergence_mode /= MODE_DIVERGENCE_PAIRWISE_K2 .and. divergence_mode /= MODE_DIVERGENCE_ONE_SIDED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=58_int32); end if
+        if (present(divergence_weight_mode)) then; if (divergence_weight_mode /= MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL .and. divergence_weight_mode /= MODE_DIVERGENCE_WEIGHT_POOL) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=59_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -1395,6 +1503,8 @@ contains
             lower_residual_range_quantile = lower_residual_range_quantile,&
             upper_residual_range_quantile = upper_residual_range_quantile,&
             bin_count_mode = bin_count_mode,&
+            divergence_mode = divergence_mode,&
+            divergence_weight_mode = divergence_weight_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)

@@ -11,6 +11,12 @@
 !| of all of them, built by
 !| [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]] (with its pooled
 !| counts) or [[tox_data_integration_jsd_impl(module):create_mean_pmf_only_impl(interface)]].
+!|
+!| `divergence_mode` (an experiment option of the JS-Comp-Test's entry points) chooses how each
+!| study's per-point divergence is computed: the JSD of the study against the consensus (the
+!| default), for exactly two studies the pairwise JSD of the two studies, or the one-sided
+!| Kullback-Leibler divergence of the study against the consensus. `divergence_weight_mode` (also an
+!| experiment option) chooses the reference points' weights in each study's global divergence.
 module tox_data_integration_jsd_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc

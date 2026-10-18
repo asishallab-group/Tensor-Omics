@@ -50,7 +50,9 @@ contains
                                    tmp_permutation_mean_pmf, tmp_permutation_point_pool, tmp_permutation_point_draw, &
                                    tmp_permutation_mean_pmf_counts, tmp_permutation_counts, tmp_permutation_pmfs, &
                                    tmp_permutation_js_divergences, tmp_permutation_weights, &
-                                   tmp_permutation_global_js_divergence, n_permutations, random_seed, ierr)
+                                   tmp_permutation_global_js_divergence, n_permutations, divergence_mode, divergence_weight_mode, &
+                                   random_seed, &
+                                   ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
         integer(int32), intent(in) :: n_points
@@ -102,6 +104,11 @@ contains
             !! Working array forwarded to gjct_permutation_test_impl
         integer(int32), intent(in) :: n_permutations
             !! Number of permutations, already resolved from its default by the caller
+        integer(int32), intent(in) :: divergence_mode
+            !! One of the `MODE_DIVERGENCE_*` values, already resolved from its default by the caller:
+            !! the observed divergences and the permutation test's
+        integer(int32), intent(in) :: divergence_weight_mode
+            !! One of the `MODE_DIVERGENCE_WEIGHT_*` values, already resolved from its default by the caller
         integer(int32), intent(in), optional :: random_seed
             !! Seed for the GSL random number generator, forwarded as-is
         integer(int32), intent(out) :: ierr
@@ -118,7 +125,8 @@ contains
                                   mean_pmf_included_n_reps, mean_pmf_counts)
 
         call compute_consensus_divergences(pmfs, mean_pmf, n_points, max_n_bins_per_point, MAX_N_BINS, n_studies, &
-                                           included_n_reps, mean_pmf_included_n_reps, js_divergences, &
+                                           included_n_reps, mean_pmf_included_n_reps, divergence_mode, divergence_weight_mode, &
+                                           js_divergences, &
                                            global_js_divergence, weights)
 
         call gjct_permutation_test_impl(n_permutations, max_n_bins_per_point, n_points, n_studies, &
@@ -128,7 +136,8 @@ contains
                                         tmp_permutation_counts, tmp_permutation_pmfs, &
                                         tmp_permutation_js_divergences, tmp_permutation_weights, &
                                         tmp_permutation_global_js_divergence, tmp_permutation_mean_pmf, &
-                                        tmp_permutation_point_pool, tmp_permutation_point_draw, random_seed, permutation_ierr)
+                                        tmp_permutation_point_pool, tmp_permutation_point_draw, random_seed, &
+                                        divergence_mode, divergence_weight_mode, permutation_ierr)
         if (is_err(permutation_ierr)) then
             call set_err_once(ierr, get_err_code(permutation_ierr))
             return
@@ -141,7 +150,8 @@ contains
                                max_n_bins_per_point, pmfs(:, 1:max_n_bins_per_point, i_study))
         end do
         call compute_consensus_divergences(pmfs, mean_pmf, n_points, max_n_bins_per_point, MAX_N_BINS, n_studies, &
-                                           included_n_reps, mean_pmf_included_n_reps, js_divergences, &
+                                           included_n_reps, mean_pmf_included_n_reps, divergence_mode, divergence_weight_mode, &
+                                           js_divergences, &
                                            global_js_divergence, weights)
     end subroutine finish_js_comp_test
 
@@ -237,7 +247,8 @@ contains
                                      tmp_permutation_js_divergences, tmp_permutation_weights, &
                                      tmp_permutation_global_js_divergence, n_permutations, &
                                      random_seed, min_residuals_per_bin, m_min, m_max, gamma_occupancy, &
-                                     lower_residual_range_quantile, upper_residual_range_quantile, bin_count_mode, ierr)
+                                     lower_residual_range_quantile, upper_residual_range_quantile, bin_count_mode, &
+                                     divergence_mode, divergence_weight_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -411,13 +422,36 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]] |
             !! DM_DEFAULT(M_MODE_BIN_COUNT_OCCUPANCY)
+        integer(int32), intent(in), optional :: divergence_mode
+            !! Experiment option: how each study's per-point divergence is computed. By default the
+            !! JSD of the study against the consensus pmf, the formula before the option existed
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | JSD of each study against the consensus pmf (default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]] |
+            !! | For exactly two studies the pairwise JSD of the two, the same value for both (otherwise as the default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! | One-sided Kullback-Leibler divergence of each study against the consensus pmf, at most log2(number of studies) bits | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_ONE_SIDED(variable)]] |
+            !! DM_DEFAULT(M_MODE_DIVERGENCE_SYMMETRIC)
+        integer(int32), intent(in), optional :: divergence_weight_mode
+            !! Experiment option: how each reference point's weight in a study's global divergence is
+            !! computed. By default the study's residual count there plus the count of all studies
+            !! pooled, the weights before the option existed. For two studies in the pairwise
+            !! `divergence_mode` the weights are always the two studies' counts
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | The study's count plus the pooled count of all studies (default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL(variable)]] |
+            !! | The pooled count of all studies only, the same weights for every study | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_POOL(variable)]] |
+            !! DM_DEFAULT(M_MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT or ERR_ALLOC_FAIL (see above)
 
-        integer(int32) :: i_study, actual_n_permutations, finish_ierr
+        integer(int32) :: i_study, actual_n_permutations, actual_divergence_mode, actual_divergence_weight_mode, finish_ierr
 
         call set_ok(ierr)
         M_DEFAULT_VAL(n_permutations, actual_n_permutations, CM_N_PERMUTATIONS_DEFAULT)
+        M_DEFAULT_VAL(divergence_mode, actual_divergence_mode, M_MODE_DIVERGENCE_SYMMETRIC)
+        M_DEFAULT_VAL(divergence_weight_mode, actual_divergence_weight_mode, M_MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL)
 
         ! ===== PASS A (per study): neighborhood construction.
         do i_study = 1, n_studies
@@ -472,8 +506,8 @@ contains
                                  tmp_permutation_mean_pmf, tmp_permutation_point_pool, tmp_permutation_point_draw, &
                                  tmp_permutation_mean_pmf_counts, tmp_permutation_counts, tmp_permutation_pmfs, &
                                  tmp_permutation_js_divergences, tmp_permutation_weights, &
-                                 tmp_permutation_global_js_divergence, actual_n_permutations, random_seed, &
-                                 finish_ierr)
+                                 tmp_permutation_global_js_divergence, actual_n_permutations, actual_divergence_mode, actual_divergence_weight_mode, &
+                                 random_seed, finish_ierr)
         if (is_err(finish_ierr)) then
             call set_err_once(ierr, get_err_code(finish_ierr))
             return
@@ -520,7 +554,7 @@ contains
                                               tmp_permutation_weights, tmp_permutation_global_js_divergence, &
                                               n_permutations, random_seed, min_residuals_per_bin, m_min, m_max, &
                                               gamma_occupancy, lower_residual_range_quantile, &
-                                              upper_residual_range_quantile, bin_count_mode, ierr)
+                                              upper_residual_range_quantile, bin_count_mode, divergence_mode, divergence_weight_mode, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -689,13 +723,36 @@ contains
             !! | Stone's cross-validation: minimise the sum of every study's score multiplied by its residual count inside the range | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_SIZE_WEIGHTED(variable)]] |
             !! | Stone's cross-validation: minimise the score of all studies' residuals pooled | [[tox_data_integration_js_comp_test_binning_impl(module):MODE_BIN_COUNT_STONE_POOLED(variable)]] |
             !! DM_DEFAULT(M_MODE_BIN_COUNT_OCCUPANCY)
+        integer(int32), intent(in), optional :: divergence_mode
+            !! Experiment option: how each study's per-point divergence is computed. By default the
+            !! JSD of the study against the consensus pmf, the formula before the option existed
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | JSD of each study against the consensus pmf (default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]] |
+            !! | For exactly two studies the pairwise JSD of the two, the same value for both (otherwise as the default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! | One-sided Kullback-Leibler divergence of each study against the consensus pmf, at most log2(number of studies) bits | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_ONE_SIDED(variable)]] |
+            !! DM_DEFAULT(M_MODE_DIVERGENCE_SYMMETRIC)
+        integer(int32), intent(in), optional :: divergence_weight_mode
+            !! Experiment option: how each reference point's weight in a study's global divergence is
+            !! computed. By default the study's residual count there plus the count of all studies
+            !! pooled, the weights before the option existed. For two studies in the pairwise
+            !! `divergence_mode` the weights are always the two studies' counts
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | The study's count plus the pooled count of all studies (default) | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL(variable)]] |
+            !! | The pooled count of all studies only, the same weights for every study | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_POOL(variable)]] |
+            !! DM_DEFAULT(M_MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL)
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT or ERR_ALLOC_FAIL (see above)
 
-        integer(int32) :: i_point, n_valid_means, actual_n_permutations, finish_ierr
+        integer(int32) :: i_point, n_valid_means, actual_n_permutations, actual_divergence_mode, actual_divergence_weight_mode, finish_ierr
 
         call set_ok(ierr)
         M_DEFAULT_VAL(n_permutations, actual_n_permutations, CM_N_PERMUTATIONS_DEFAULT)
+        M_DEFAULT_VAL(divergence_mode, actual_divergence_mode, M_MODE_DIVERGENCE_SYMMETRIC)
+        M_DEFAULT_VAL(divergence_weight_mode, actual_divergence_weight_mode, M_MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL)
 
         ! The construction's own sort, so every pooled position names the same entry as there.
         call sort_pooled_gene_means(gene_means, max_n_genes_all_studies, n_studies, tmp_gene_means_perm_all)
@@ -760,8 +817,8 @@ contains
                                  tmp_permutation_mean_pmf, tmp_permutation_point_pool, tmp_permutation_point_draw, &
                                  tmp_permutation_mean_pmf_counts, tmp_permutation_counts, tmp_permutation_pmfs, &
                                  tmp_permutation_js_divergences, tmp_permutation_weights, &
-                                 tmp_permutation_global_js_divergence, actual_n_permutations, random_seed, &
-                                 finish_ierr)
+                                 tmp_permutation_global_js_divergence, actual_n_permutations, actual_divergence_mode, actual_divergence_weight_mode, &
+                                 random_seed, finish_ierr)
         if (is_err(finish_ierr)) then
             call set_err_once(ierr, get_err_code(finish_ierr))
             return

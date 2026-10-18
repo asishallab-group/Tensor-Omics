@@ -67,13 +67,15 @@ _lib.run_js_comp_test_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "ierr",)
+_RUN_JS_COMP_TEST_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "divergence_mode", "divergence_weight_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_expert_c.restype = None
 _lib.run_js_comp_test_expert_c.argtypes = (
@@ -136,13 +138,15 @@ _lib.run_js_comp_test_expert_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_EXPERT_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "tmp_neighborhood_residuals_gathered", "tmp_permutation_mean_pmf", "tmp_permutation_point_pool", "tmp_permutation_point_draw", "tmp_pooled_residuals", "tmp_pooled_residuals_perm", "tmp_bin_counts_search", "tmp_residual_to_study_perm", "tmp_study_block_ends", "tmp_study_block_sizes", "tmp_point_n_neighbors", "tmp_permutation_mean_pmf_counts", "tmp_permutation_counts", "tmp_permutation_pmfs", "tmp_permutation_js_divergences", "tmp_permutation_weights", "tmp_permutation_global_js_divergence", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "ierr",)
+_RUN_JS_COMP_TEST_EXPERT_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "tmp_neighborhood_residuals_gathered", "tmp_permutation_mean_pmf", "tmp_permutation_point_pool", "tmp_permutation_point_draw", "tmp_pooled_residuals", "tmp_pooled_residuals_perm", "tmp_bin_counts_search", "tmp_residual_to_study_perm", "tmp_study_block_ends", "tmp_study_block_sizes", "tmp_point_n_neighbors", "tmp_permutation_mean_pmf_counts", "tmp_permutation_counts", "tmp_permutation_pmfs", "tmp_permutation_js_divergences", "tmp_permutation_weights", "tmp_permutation_global_js_divergence", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "divergence_mode", "divergence_weight_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_EXPERT_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_EXPERT_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.run_js_comp_test_adaptive_c.restype = None
 _lib.run_js_comp_test_adaptive_c.argtypes = (
@@ -185,13 +189,15 @@ _lib.run_js_comp_test_adaptive_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "gene_means", "residuals", "pooled_neighborhood_range", "n_neighbors_per_point", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "ierr",)
+_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "gene_means", "residuals", "pooled_neighborhood_range", "n_neighbors_per_point", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "divergence_mode", "divergence_weight_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "pooled_neighborhood_range", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_ADAPTIVE_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", "pooled_neighborhood_range", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def run_js_comp_test(
         n_neighbors,
@@ -207,6 +213,8 @@ def run_js_comp_test(
         lower_residual_range_quantile=0.05,
         upper_residual_range_quantile=0.95,
         bin_count_mode='bin_count_occupancy',
+        divergence_mode='divergence_symmetric',
+        divergence_weight_mode='divergence_weight_study_plus_pool',
 ):
     r"""Run the JSD-Comp-Test pipeline for one fixed (n_points, n_neighbors) parameter setting
 
@@ -315,6 +323,18 @@ def run_js_comp_test(
         with `min_residuals_per_bin` as the floor
 
         The default value is `'bin_count_occupancy'`.
+    divergence_mode : str, one of 'divergence_symmetric' | 'divergence_pairwise_k2' | 'divergence_one_sided', optional, default 'divergence_symmetric'
+        Experiment option: how each study's per-point divergence is computed. By default the
+        JSD of the study against the consensus pmf, the formula before the option existed
+
+        The default value is `'divergence_symmetric'`.
+    divergence_weight_mode : str, one of 'divergence_weight_study_plus_pool' | 'divergence_weight_pool', optional, default 'divergence_weight_study_plus_pool'
+        Experiment option: how each reference point's weight in a study's global divergence is
+        computed. By default the study's residual count there plus the count of all studies
+        pooled, the weights before the option existed. For two studies in the pairwise
+        `divergence_mode` the weights are always the two studies' counts
+
+        The default value is `'divergence_weight_study_plus_pool'`.
 
     Returns
     -------
@@ -431,6 +451,8 @@ def run_js_comp_test(
     if x_star.ndim != 1:
         raise ValueError(f"'x_star' must have 1 dimension, but has {x_star.ndim}")
     bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
+    divergence_mode = np.array([str(divergence_mode).lower().encode().ljust(22)], dtype="S22")
+    divergence_weight_mode = np.array([str(divergence_weight_mode).lower().encode().ljust(33)], dtype="S33")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
@@ -517,6 +539,8 @@ def run_js_comp_test(
         ctypes.byref(ctypes.c_double(lower_residual_range_quantile)),
         ctypes.byref(ctypes.c_double(upper_residual_range_quantile)),
         bin_count_mode,
+        divergence_mode,
+        divergence_weight_mode,
         ctypes.byref(ierr),
     )
 
@@ -589,6 +613,8 @@ def run_js_comp_test_expert(
         lower_residual_range_quantile=0.05,
         upper_residual_range_quantile=0.95,
         bin_count_mode='bin_count_occupancy',
+        divergence_mode='divergence_symmetric',
+        divergence_weight_mode='divergence_weight_study_plus_pool',
 ):
     r"""Run the JSD-Comp-Test pipeline for one fixed (n_points, n_neighbors) parameter setting
 
@@ -704,6 +730,18 @@ def run_js_comp_test_expert(
         with `min_residuals_per_bin` as the floor
 
         The default value is `'bin_count_occupancy'`.
+    divergence_mode : str, one of 'divergence_symmetric' | 'divergence_pairwise_k2' | 'divergence_one_sided', optional, default 'divergence_symmetric'
+        Experiment option: how each study's per-point divergence is computed. By default the
+        JSD of the study against the consensus pmf, the formula before the option existed
+
+        The default value is `'divergence_symmetric'`.
+    divergence_weight_mode : str, one of 'divergence_weight_study_plus_pool' | 'divergence_weight_pool', optional, default 'divergence_weight_study_plus_pool'
+        Experiment option: how each reference point's weight in a study's global divergence is
+        computed. By default the study's residual count there plus the count of all studies
+        pooled, the weights before the option existed. For two studies in the pairwise
+        `divergence_mode` the weights are always the two studies' counts
+
+        The default value is `'divergence_weight_study_plus_pool'`.
 
     Returns
     -------
@@ -826,6 +864,8 @@ def run_js_comp_test_expert(
     if x_star.ndim != 1:
         raise ValueError(f"'x_star' must have 1 dimension, but has {x_star.ndim}")
     bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
+    divergence_mode = np.array([str(divergence_mode).lower().encode().ljust(22)], dtype="S22")
+    divergence_weight_mode = np.array([str(divergence_weight_mode).lower().encode().ljust(33)], dtype="S33")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
@@ -955,6 +995,8 @@ def run_js_comp_test_expert(
         ctypes.byref(ctypes.c_double(lower_residual_range_quantile)),
         ctypes.byref(ctypes.c_double(upper_residual_range_quantile)),
         bin_count_mode,
+        divergence_mode,
+        divergence_weight_mode,
         ctypes.byref(ierr),
     )
 
@@ -1025,6 +1067,8 @@ def run_js_comp_test_adaptive(
         lower_residual_range_quantile=0.05,
         upper_residual_range_quantile=0.95,
         bin_count_mode='bin_count_occupancy',
+        divergence_mode='divergence_symmetric',
+        divergence_weight_mode='divergence_weight_study_plus_pool',
 ):
     r"""Run the JSD-Comp-Test pipeline on adaptive (Issue #217) neighborhoods
 
@@ -1108,6 +1152,18 @@ def run_js_comp_test_adaptive(
         with `min_residuals_per_bin` as the floor
 
         The default value is `'bin_count_occupancy'`.
+    divergence_mode : str, one of 'divergence_symmetric' | 'divergence_pairwise_k2' | 'divergence_one_sided', optional, default 'divergence_symmetric'
+        Experiment option: how each study's per-point divergence is computed. By default the
+        JSD of the study against the consensus pmf, the formula before the option existed
+
+        The default value is `'divergence_symmetric'`.
+    divergence_weight_mode : str, one of 'divergence_weight_study_plus_pool' | 'divergence_weight_pool', optional, default 'divergence_weight_study_plus_pool'
+        Experiment option: how each reference point's weight in a study's global divergence is
+        computed. By default the study's residual count there plus the count of all studies
+        pooled, the weights before the option existed. For two studies in the pairwise
+        `divergence_mode` the weights are always the two studies' counts
+
+        The default value is `'divergence_weight_study_plus_pool'`.
 
     Returns
     -------
@@ -1218,6 +1274,8 @@ def run_js_comp_test_adaptive(
     if pooled_neighborhood_range.ndim != 2:
         raise ValueError(f"'pooled_neighborhood_range' must have 2 dimensions, but has {pooled_neighborhood_range.ndim}")
     bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
+    divergence_mode = np.array([str(divergence_mode).lower().encode().ljust(22)], dtype="S22")
+    divergence_weight_mode = np.array([str(divergence_weight_mode).lower().encode().ljust(33)], dtype="S33")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
@@ -1301,6 +1359,8 @@ def run_js_comp_test_adaptive(
         ctypes.byref(ctypes.c_double(lower_residual_range_quantile)),
         ctypes.byref(ctypes.c_double(upper_residual_range_quantile)),
         bin_count_mode,
+        divergence_mode,
+        divergence_weight_mode,
         ctypes.byref(ierr),
     )
 

@@ -423,8 +423,8 @@ contains
     !| and the confidence interval seeded with the observed value. Internal helper, not published;
     !| public because both parameter searches call it. Every array dummy is a search buffer viewed
     !| packed at the candidate's sizes.
-    pure subroutine score_candidate_histograms(n_points, max_n_bins, n_studies, n_bins_per_point, min_count, pmfs, counts, &
-                                               included_n_reps, mean_pmf, mean_pmf_counts, mean_pmf_included_n_reps, &
+    pure subroutine score_candidate_histograms(n_points, max_n_bins, n_studies, n_bins_per_point, min_count, &
+                                               divergence_mode, divergence_weight_mode, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, mean_pmf_included_n_reps, &
                                                js_divergences, weights, global_js_divergence, confidence_interval, &
                                                has_empty_study, all_bins_have_min_count)
         integer(int32), intent(in) :: n_points
@@ -437,6 +437,10 @@ contains
             !! Bin count per reference point
         integer(int32), intent(in) :: min_count
             !! Minimum count every consensus bin must reach
+        integer(int32), intent(in) :: divergence_mode
+            !! Forwarded to compute_consensus_divergences, one of the `MODE_DIVERGENCE_*` values
+        integer(int32), intent(in) :: divergence_weight_mode
+            !! Forwarded to compute_consensus_divergences, one of the `MODE_DIVERGENCE_WEIGHT_*` values
         real(real64), intent(in) :: pmfs(n_points, max_n_bins, n_studies)
             !! Every study's pmfs
         integer(int32), intent(in) :: counts(n_points, max_n_bins, n_studies)
@@ -475,7 +479,9 @@ contains
         if (.not. all_bins_have_min_count) return
 
         call compute_consensus_divergences(pmfs, mean_pmf, n_points, max_n_bins, max_n_bins, n_studies, included_n_reps, &
-                                           mean_pmf_included_n_reps, js_divergences, global_js_divergence, weights)
+                                           mean_pmf_included_n_reps, divergence_mode, divergence_weight_mode, js_divergences, &
+                                           global_js_divergence, &
+                                           weights)
         do i_study = 1, n_studies
             confidence_interval(1, i_study) = global_js_divergence(i_study)
             confidence_interval(2, i_study) = global_js_divergence(i_study)
@@ -507,7 +513,8 @@ contains
                                              n_admissible_evaluated, n_bootstraps, n_bootstrapping_top_k_jsds, &
                                              join_method, plateau_mode, succeeding_ci_overlap, delta_median_threshold, &
                                              delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, &
-                                             delta_abs_tolerance, bootstrap_mode, n_bins_per_point, occupancy_failed, &
+                                             delta_abs_tolerance, bootstrap_mode, divergence_mode, divergence_weight_mode, n_bins_per_point, &
+                                             occupancy_failed, &
                                              n_pooled_residuals, min_bin_occupancy, &
                                              mean_bin_occupancy, max_bin_occupancy, sturges_bins, fd_bins, &
                                              shared_residual_range_low, shared_residual_range_high, included_n_reps, &
@@ -563,6 +570,10 @@ contains
             !! Forwarded to check_effect_size_plateau_condition_impl
         integer(int32), intent(in) :: bootstrap_mode
             !! Forwarded to the bootstrap, one of the `MODE_BOOTSTRAP_*` values
+        integer(int32), intent(in) :: divergence_mode
+            !! Forwarded to the bootstrap, one of the `MODE_DIVERGENCE_*` values
+        integer(int32), intent(in) :: divergence_weight_mode
+            !! Forwarded to the bootstrap, one of the `MODE_DIVERGENCE_WEIGHT_*` values
         integer(int32), intent(in) :: n_bins_per_point(n_points)
             !! The candidate's bin count per reference point
         logical(c_bool), intent(in) :: occupancy_failed(n_points)
@@ -738,7 +749,7 @@ contains
                                       tmp_bootstrapping_top_k_jsds, pmfs, mean_pmf, &
                                       js_divergences, weights, global_js_divergence, tmp_point_pool, &
                                       tmp_point_draw, two_sided_bootstrapping_significance_level, random_seed, &
-                                      bootstrap_mode, bootstrap_ierr)
+                                      bootstrap_mode, divergence_mode, divergence_weight_mode, bootstrap_ierr)
         ! Defensive: the counts add up by construction, so only a failed rng allocation can
         ! land here (untested). Without the return the interval would stay at its zero-width
         ! [J, J] seed and could win the smallest-uncertainty ranking.

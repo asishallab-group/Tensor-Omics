@@ -150,6 +150,8 @@
       "    bin_count_mode=${26|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
       "    delta_abs_tolerance=${27:0.0},",
       "    bootstrap_mode=${28|bootstrap_per_study,bootstrap_pooled|},",
+      "    divergence_mode=${29|divergence_symmetric,divergence_pairwise_k2,divergence_one_sided|},",
+      "    divergence_weight_mode=${30|divergence_weight_study_plus_pool,divergence_weight_pool|},",
       ")"
     ]
   },
@@ -360,6 +362,8 @@
       "    neighborhood_size_mode=${24|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|},",
       "    delta_abs_tolerance=${25:0.0},",
       "    bootstrap_mode=${26|bootstrap_per_study,bootstrap_pooled|},",
+      "    divergence_mode=${27|divergence_symmetric,divergence_pairwise_k2,divergence_one_sided|},",
+      "    divergence_weight_mode=${28|divergence_weight_study_plus_pool,divergence_weight_pool|},",
       ")"
     ]
   },
@@ -421,6 +425,8 @@
       "    neighborhood_size_mode=${25|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|},",
       "    delta_abs_tolerance=${26:0.0},",
       "    bootstrap_mode=${27|bootstrap_per_study,bootstrap_pooled|},",
+      "    divergence_mode=${28|divergence_symmetric,divergence_pairwise_k2,divergence_one_sided|},",
+      "    divergence_weight_mode=${29|divergence_weight_study_plus_pool,divergence_weight_pool|},",
       ")"
     ]
   },
@@ -459,6 +465,8 @@
       "    bin_count_mode=${29|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
       "    delta_abs_tolerance=${30:0.0},",
       "    bootstrap_mode=${31|bootstrap_per_study,bootstrap_pooled|},",
+      "    divergence_mode=${32|divergence_symmetric,divergence_pairwise_k2,divergence_one_sided|},",
+      "    divergence_weight_mode=${33|divergence_weight_study_plus_pool,divergence_weight_pool|},",
       ")"
     ]
   },
@@ -493,6 +501,8 @@
       "    neighborhood_size_mode=${25|neighborhood_size_large,neighborhood_size_small,neighborhood_size_both|},",
       "    delta_abs_tolerance=${26:0.0},",
       "    bootstrap_mode=${27|bootstrap_per_study,bootstrap_pooled|},",
+      "    divergence_mode=${28|divergence_symmetric,divergence_pairwise_k2,divergence_one_sided|},",
+      "    divergence_weight_mode=${29|divergence_weight_study_plus_pool,divergence_weight_pool|},",
       ")"
     ]
   },
@@ -531,6 +541,8 @@
       "    bin_count_mode=${29|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
       "    delta_abs_tolerance=${30:0.0},",
       "    bootstrap_mode=${31|bootstrap_per_study,bootstrap_pooled|},",
+      "    divergence_mode=${32|divergence_symmetric,divergence_pairwise_k2,divergence_one_sided|},",
+      "    divergence_weight_mode=${33|divergence_weight_study_plus_pool,divergence_weight_pool|},",
       ")"
     ]
   },
@@ -596,6 +608,8 @@
       "    lower_residual_range_quantile=${12:0.05},",
       "    upper_residual_range_quantile=${13:0.95},",
       "    bin_count_mode=${14|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
+      "    divergence_mode=${15|divergence_symmetric,divergence_pairwise_k2,divergence_one_sided|},",
+      "    divergence_weight_mode=${16|divergence_weight_study_plus_pool,divergence_weight_pool|},",
       ")"
     ]
   },
@@ -618,6 +632,8 @@
       "    lower_residual_range_quantile=${13:0.05},",
       "    upper_residual_range_quantile=${14:0.95},",
       "    bin_count_mode=${15|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
+      "    divergence_mode=${16|divergence_symmetric,divergence_pairwise_k2,divergence_one_sided|},",
+      "    divergence_weight_mode=${17|divergence_weight_study_plus_pool,divergence_weight_pool|},",
       ")"
     ]
   },
@@ -638,6 +654,8 @@
       "    lower_residual_range_quantile=${11:0.05},",
       "    upper_residual_range_quantile=${12:0.95},",
       "    bin_count_mode=${13|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
+      "    divergence_mode=${14|divergence_symmetric,divergence_pairwise_k2,divergence_one_sided|},",
+      "    divergence_weight_mode=${15|divergence_weight_study_plus_pool,divergence_weight_pool|},",
       ")"
     ]
   },
@@ -1037,6 +1055,8 @@
       "    included_n_reps=${6:included_n_reps},",
       "    global_jsd_observed=${7:global_jsd_observed},",
       "    random_seed=${8:42},",
+      "    divergence_mode=${9|divergence_symmetric,divergence_pairwise_k2,divergence_one_sided|},",
+      "    divergence_weight_mode=${10|divergence_weight_study_plus_pool,divergence_weight_pool|},",
       ")"
     ]
   },
@@ -1054,6 +1074,8 @@
       "    two_sided_bootstrapping_significance_level=${7:2.5},",
       "    random_seed=${8:42},",
       "    bootstrap_mode=${9|bootstrap_per_study,bootstrap_pooled|},",
+      "    divergence_mode=${10|divergence_symmetric,divergence_pairwise_k2,divergence_one_sided|},",
+      "    divergence_weight_mode=${11|divergence_weight_study_plus_pool,divergence_weight_pool|},",
       ")"
     ]
   },

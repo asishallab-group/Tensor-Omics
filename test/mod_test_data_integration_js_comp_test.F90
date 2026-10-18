@@ -65,7 +65,8 @@ module mod_test_data_integration_js_comp_test
     use f42_sort_impl, only: init_perm, sort_array_heapsort
     use f42_stats_impl, only: sorted_bin_counts, histogram_bin_counts
     use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
-                                             compute_weighted_global_divergence_impl, compute_consensus_divergences
+                                             compute_weighted_global_divergence_impl, compute_consensus_divergences, &
+                                             MODE_DIVERGENCE_SYMMETRIC, MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL
     use tox_data_integration_preprocessing_impl, only: construct_neighborhoods_ranged_impl
     use tox_errors
     use test_suite, only: test_case
@@ -13446,7 +13447,8 @@ contains
         end do
         mean_pmf = sum(pmfs, dim=3)/real(n_studies, real64)
         call compute_consensus_divergences(pmfs, mean_pmf, n_points, n_bins, n_bins, n_studies, included_n_reps, &
-                                           mean_pmf_included_n_reps, js_divergences, observed, weights)
+                                           mean_pmf_included_n_reps, MODE_DIVERGENCE_SYMMETRIC, &
+                                           MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL, js_divergences, observed, weights)
         call assert_true(all(observed > 0.01_real64), name//"the studies clearly differ")
 
         ci_per_study(1, :) = 1.0_real64

@@ -376,7 +376,9 @@
       "    bin_count_mode=${65|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    delta_abs_tolerance=${66:delta_abs_tolerance}, &",
       "    bootstrap_mode=${67|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${68:ierr})"
+      "    divergence_mode=${68|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${69|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${70:ierr})"
     ]
   },
   "run_js_comp_test_adaptive_parameter_search (call, checked)": {
@@ -451,7 +453,9 @@
       "    bin_count_mode=${65|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    delta_abs_tolerance=${66:delta_abs_tolerance}, &",
       "    bootstrap_mode=${67|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${68:ierr})",
+      "    divergence_mode=${68|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${69|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${70:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -990,7 +994,9 @@
       "    neighborhood_size_mode=${55|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
       "    delta_abs_tolerance=${56:delta_abs_tolerance}, &",
       "    bootstrap_mode=${57|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${58:ierr})"
+      "    divergence_mode=${58|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${59|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${60:ierr})"
     ]
   },
   "run_js_comp_test_parameter_search (call, checked)": {
@@ -1055,7 +1061,9 @@
       "    neighborhood_size_mode=${55|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
       "    delta_abs_tolerance=${56:delta_abs_tolerance}, &",
       "    bootstrap_mode=${57|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${58:ierr})",
+      "    divergence_mode=${58|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${59|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${60:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1134,7 +1142,9 @@
       "    neighborhood_size_mode=${31|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
       "    delta_abs_tolerance=${32:delta_abs_tolerance}, &",
       "    bootstrap_mode=${33|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${34:ierr})"
+      "    divergence_mode=${34|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${35|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${36:ierr})"
     ]
   },
   "run_js_comp_test_on_sample_assignment (call, checked)": {
@@ -1175,7 +1185,9 @@
       "    neighborhood_size_mode=${31|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
       "    delta_abs_tolerance=${32:delta_abs_tolerance}, &",
       "    bootstrap_mode=${33|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${34:ierr})",
+      "    divergence_mode=${34|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${35|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${36:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1223,7 +1235,9 @@
       "    bin_count_mode=${37|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    delta_abs_tolerance=${38:delta_abs_tolerance}, &",
       "    bootstrap_mode=${39|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${40:ierr})"
+      "    divergence_mode=${40|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${41|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${42:ierr})"
     ]
   },
   "run_js_comp_test_adaptive_on_sample_assignment (call, checked)": {
@@ -1270,7 +1284,9 @@
       "    bin_count_mode=${37|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    delta_abs_tolerance=${38:delta_abs_tolerance}, &",
       "    bootstrap_mode=${39|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${40:ierr})",
+      "    divergence_mode=${40|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${41|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${42:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1312,7 +1328,9 @@
       "    neighborhood_size_mode=${31|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
       "    delta_abs_tolerance=${32:delta_abs_tolerance}, &",
       "    bootstrap_mode=${33|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${34:ierr})"
+      "    divergence_mode=${34|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${35|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${36:ierr})"
     ]
   },
   "run_js_comp_test_label_permutation_test (call, checked)": {
@@ -1353,7 +1371,9 @@
       "    neighborhood_size_mode=${31|MODE_NEIGHBORHOOD_SIZE_LARGE,MODE_NEIGHBORHOOD_SIZE_SMALL,MODE_NEIGHBORHOOD_SIZE_BOTH|}, &",
       "    delta_abs_tolerance=${32:delta_abs_tolerance}, &",
       "    bootstrap_mode=${33|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${34:ierr})",
+      "    divergence_mode=${34|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${35|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${36:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1399,7 +1419,9 @@
       "    bin_count_mode=${35|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    delta_abs_tolerance=${36:delta_abs_tolerance}, &",
       "    bootstrap_mode=${37|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${38:ierr})"
+      "    divergence_mode=${38|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${39|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${40:ierr})"
     ]
   },
   "run_js_comp_test_adaptive_label_permutation_test (call, checked)": {
@@ -1444,7 +1466,9 @@
       "    bin_count_mode=${35|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
       "    delta_abs_tolerance=${36:delta_abs_tolerance}, &",
       "    bootstrap_mode=${37|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${38:ierr})",
+      "    divergence_mode=${38|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${39|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${40:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1572,7 +1596,9 @@
       "    lower_residual_range_quantile=${39:lower_residual_range_quantile}, &",
       "    upper_residual_range_quantile=${40:upper_residual_range_quantile}, &",
       "    bin_count_mode=${41|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${42:ierr})"
+      "    divergence_mode=${42|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${43|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${44:ierr})"
     ]
   },
   "run_js_comp_test (call, checked)": {
@@ -1621,7 +1647,9 @@
       "    lower_residual_range_quantile=${39:lower_residual_range_quantile}, &",
       "    upper_residual_range_quantile=${40:upper_residual_range_quantile}, &",
       "    bin_count_mode=${41|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${42:ierr})",
+      "    divergence_mode=${42|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${43|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${44:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1689,7 +1717,9 @@
       "    lower_residual_range_quantile=${57:lower_residual_range_quantile}, &",
       "    upper_residual_range_quantile=${58:upper_residual_range_quantile}, &",
       "    bin_count_mode=${59|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${60:ierr})"
+      "    divergence_mode=${60|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${61|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${62:ierr})"
     ]
   },
   "run_js_comp_test_expert (call, checked)": {
@@ -1756,7 +1786,9 @@
       "    lower_residual_range_quantile=${57:lower_residual_range_quantile}, &",
       "    upper_residual_range_quantile=${58:upper_residual_range_quantile}, &",
       "    bin_count_mode=${59|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${60:ierr})",
+      "    divergence_mode=${60|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${61|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${62:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1804,7 +1836,9 @@
       "    lower_residual_range_quantile=${37:lower_residual_range_quantile}, &",
       "    upper_residual_range_quantile=${38:upper_residual_range_quantile}, &",
       "    bin_count_mode=${39|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${40:ierr})"
+      "    divergence_mode=${40|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${41|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${42:ierr})"
     ]
   },
   "run_js_comp_test_adaptive (call, checked)": {
@@ -1851,7 +1885,9 @@
       "    lower_residual_range_quantile=${37:lower_residual_range_quantile}, &",
       "    upper_residual_range_quantile=${38:upper_residual_range_quantile}, &",
       "    bin_count_mode=${39|MODE_BIN_COUNT_OCCUPANCY,MODE_BIN_COUNT_STONE_EQUAL,MODE_BIN_COUNT_STONE_SIZE_WEIGHTED,MODE_BIN_COUNT_STONE_POOLED|}, &",
-      "    ierr=${40:ierr})",
+      "    divergence_mode=${40|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${41|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${42:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -2851,7 +2887,9 @@
       "    p_values=${10:p_values}, &",
       "    p_values_observed_consensus=${11:p_values_observed_consensus}, &",
       "    random_seed=${12:random_seed}, &",
-      "    ierr=${13:ierr})"
+      "    divergence_mode=${13|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${14|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${15:ierr})"
     ]
   },
   "gjct_permutation_test (call, checked)": {
@@ -2871,7 +2909,9 @@
       "    p_values=${10:p_values}, &",
       "    p_values_observed_consensus=${11:p_values_observed_consensus}, &",
       "    random_seed=${12:random_seed}, &",
-      "    ierr=${13:ierr})",
+      "    divergence_mode=${13|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${14|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${15:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -2892,7 +2932,9 @@
       "    two_sided_bootstrapping_significance_level=${10:two_sided_bootstrapping_significance_level}, &",
       "    random_seed=${11:random_seed}, &",
       "    bootstrap_mode=${12|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${13:ierr})"
+      "    divergence_mode=${13|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${14|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${15:ierr})"
     ]
   },
   "bootstrap_histogram (call, checked)": {
@@ -2912,7 +2954,9 @@
       "    two_sided_bootstrapping_significance_level=${10:two_sided_bootstrapping_significance_level}, &",
       "    random_seed=${11:random_seed}, &",
       "    bootstrap_mode=${12|MODE_BOOTSTRAP_PER_STUDY,MODE_BOOTSTRAP_POOLED|}, &",
-      "    ierr=${13:ierr})",
+      "    divergence_mode=${13|MODE_DIVERGENCE_SYMMETRIC,MODE_DIVERGENCE_PAIRWISE_K2,MODE_DIVERGENCE_ONE_SIDED|}, &",
+      "    divergence_weight_mode=${14|MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL,MODE_DIVERGENCE_WEIGHT_POOL|}, &",
+      "    ierr=${15:ierr})",
       "if (is_err(ierr)) return"
     ]
   },

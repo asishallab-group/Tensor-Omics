@@ -40,16 +40,27 @@
 #' @param included_n_reps a integer matrix. Count of non-NaN replicates per reference point, per study: the size of each study's
 #'   draw. Every study needs at least one at every reference point
 #'   The minimum valid value is `1`.
-#' @param global_jsd_observed a numeric vector. Observed weighted global JSD of each study against the consensus pmf
+#' @param global_jsd_observed a numeric vector. Observed weighted global JSD of each study against the consensus pmf (the divergence
+#'   `divergence_mode` selects)
 #' @param random_seed a integer scalar. Seed for the GSL random number generator
 #'   The default value is `42`.
+#' @param divergence_mode a string, one of "divergence_symmetric", "divergence_pairwise_k2", "divergence_one_sided". Experiment option: how each study's per-point divergence is computed. By default the
+#'   JSD of the study against the consensus pmf, the formula before the option existed
+#'
+#'   The default value is `"divergence_symmetric"`.
+#' @param divergence_weight_mode a string, one of "divergence_weight_study_plus_pool", "divergence_weight_pool". Experiment option: how each reference point's weight in a study's global divergence is
+#'   computed. By default the study's residual count there plus the count of all studies
+#'   pooled, the weights before the option existed. For two studies in the pairwise
+#'   `divergence_mode` the weights are always the two studies' counts
+#'
+#'   The default value is `"divergence_weight_study_plus_pool"`.
 #' @return a named list with elements:
 #'   \item{p_values}{a numeric vector. Empirical p-value per study, `(count + 1)/(n_permutations + 1)` over the permutations
 #'     whose global JSD reached the observed one; NaN when `n_permutations` is 0}
 #'   \item{p_values_observed_consensus}{a numeric vector. Like `p_values`, from the same permutations, but against the fixed observed consensus
 #'     `mean_pmf`; kept for comparison only. NaN when `n_permutations` is 0}
 #' @export
-gjct_permutation_test <- function(n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, random_seed = 42L) {
+gjct_permutation_test <- function(n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, random_seed = 42L, divergence_mode = "divergence_symmetric", divergence_weight_mode = "divergence_weight_study_plus_pool") {
     n_permutations <- .tox_as_integer_scalar(n_permutations, "n_permutations")
     mean_pmf_counts <- .tox_as_integer_matrix(mean_pmf_counts, "mean_pmf_counts")
     mean_pmf <- .tox_as_double_matrix(mean_pmf, "mean_pmf")
@@ -57,6 +68,8 @@ gjct_permutation_test <- function(n_permutations, mean_pmf_counts, mean_pmf, mea
     included_n_reps <- .tox_as_integer_matrix(included_n_reps, "included_n_reps")
     global_jsd_observed <- .tox_as_double_vector(global_jsd_observed, "global_jsd_observed")
     random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
+    divergence_mode <- .tox_as_mode(divergence_mode, "divergence_mode", c("divergence_symmetric", "divergence_pairwise_k2", "divergence_one_sided"))
+    divergence_weight_mode <- .tox_as_mode(divergence_weight_mode, "divergence_weight_mode", c("divergence_weight_study_plus_pool", "divergence_weight_pool"))
     if (dim(mean_pmf)[2] != dim(mean_pmf_counts)[2])
         .tox_shape_error("mean_pmf", dim(mean_pmf)[2], "mean_pmf_counts", dim(mean_pmf_counts)[2])
     if (dim(mean_pmf)[1] != dim(mean_pmf_counts)[1])
@@ -68,9 +81,9 @@ gjct_permutation_test <- function(n_permutations, mean_pmf_counts, mean_pmf, mea
     if (length(global_jsd_observed) != dim(included_n_reps)[2])
         .tox_shape_error("global_jsd_observed", length(global_jsd_observed), "included_n_reps", dim(included_n_reps)[2])
 
-    .result <- .Call("gjct_permutation_test_call", n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, random_seed)
-    .arguments <- c("n_permutations", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "mean_pmf", "mean_pmf_included_n_reps", "included_n_reps", "global_jsd_observed", "p_values", "p_values_observed_consensus", "random_seed", "ierr")
-    .sources <- c(NA_character_, "mean_pmf_counts", "mean_pmf_counts", "included_n_reps", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("gjct_permutation_test_call", n_permutations, mean_pmf_counts, mean_pmf, mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, random_seed, divergence_mode, divergence_weight_mode)
+    .arguments <- c("n_permutations", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "mean_pmf", "mean_pmf_included_n_reps", "included_n_reps", "global_jsd_observed", "p_values", "p_values_observed_consensus", "random_seed", "divergence_mode", "divergence_weight_mode", "ierr")
+    .sources <- c(NA_character_, "mean_pmf_counts", "mean_pmf_counts", "included_n_reps", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -128,9 +141,10 @@ gjct_permutation_test <- function(n_permutations, mean_pmf_counts, mean_pmf, mea
 #'   draw. Every study needs at least one at every reference point
 #'   The minimum valid value is `1`.
 #' @param confidence_interval a numeric matrix. On entry the seed values of the heaps (see above); on return the bootstrapped
-#'   `[lower, upper]` interval per study
+#'   `[lower, upper]` interval per study. Bounded by 1 bit, or by log2(n_studies) bits when
+#'   that is larger (the one-sided `divergence_mode` can exceed 1 bit)
 #'   The minimum valid value is `0.0`.
-#'   The maximum valid value is `1.0`.
+#'   The maximum valid value is `max(1.0, log(real(n_studies, real64))/log(2.0))`.
 #' @param two_sided_bootstrapping_significance_level a numeric scalar. Only sizes n_bootstrapping_top_k_jsds (via calc_js_comp_test_n_top_k_jsds)
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `100.0`.
@@ -142,12 +156,23 @@ gjct_permutation_test <- function(n_permutations, mean_pmf_counts, mean_pmf, mea
 #'   band of "no difference between the studies" instead, kept for comparison
 #'
 #'   The default value is `"bootstrap_per_study"`.
+#' @param divergence_mode a string, one of "divergence_symmetric", "divergence_pairwise_k2", "divergence_one_sided". Experiment option: how each study's per-point divergence is computed. By default the
+#'   JSD of the study against the consensus pmf, the formula before the option existed
+#'
+#'   The default value is `"divergence_symmetric"`.
+#' @param divergence_weight_mode a string, one of "divergence_weight_study_plus_pool", "divergence_weight_pool". Experiment option: how each reference point's weight in a study's global divergence is
+#'   computed. By default the study's residual count there plus the count of all studies
+#'   pooled, the weights before the option existed. For two studies in the pairwise
+#'   `divergence_mode` the weights are always the two studies' counts
+#'
+#'   The default value is `"divergence_weight_study_plus_pool"`.
 #' @return a numeric matrix. On entry the seed values of the heaps (see above); on return the bootstrapped
-#'   `[lower, upper]` interval per study
+#'   `[lower, upper]` interval per study. Bounded by 1 bit, or by log2(n_studies) bits when
+#'   that is larger (the one-sided `divergence_mode` can exceed 1 bit)
 #'   The minimum valid value is `0.0`.
-#'   The maximum valid value is `1.0`.
+#'   The maximum valid value is `max(1.0, log(real(n_studies, real64))/log(2.0))`.
 #' @export
-bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, confidence_interval, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, bootstrap_mode = "bootstrap_per_study") {
+bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, confidence_interval, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L, bootstrap_mode = "bootstrap_per_study", divergence_mode = "divergence_symmetric", divergence_weight_mode = "divergence_weight_study_plus_pool") {
     n_bootstraps <- .tox_as_integer_scalar(n_bootstraps, "n_bootstraps")
     mean_pmf_counts <- .tox_as_integer_matrix(mean_pmf_counts, "mean_pmf_counts")
     counts <- .tox_as_integer_array(counts, "counts", 3L)
@@ -157,6 +182,8 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, counts, mean_pmf_
     two_sided_bootstrapping_significance_level <- .tox_as_double_scalar(two_sided_bootstrapping_significance_level, "two_sided_bootstrapping_significance_level")
     random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
     bootstrap_mode <- .tox_as_mode(bootstrap_mode, "bootstrap_mode", c("bootstrap_per_study", "bootstrap_pooled"))
+    divergence_mode <- .tox_as_mode(divergence_mode, "divergence_mode", c("divergence_symmetric", "divergence_pairwise_k2", "divergence_one_sided"))
+    divergence_weight_mode <- .tox_as_mode(divergence_weight_mode, "divergence_weight_mode", c("divergence_weight_study_plus_pool", "divergence_weight_pool"))
     if (dim(counts)[2] != dim(mean_pmf_counts)[2])
         .tox_shape_error("counts", dim(counts)[2], "mean_pmf_counts", dim(mean_pmf_counts)[2])
     if (dim(counts)[1] != dim(mean_pmf_counts)[1])
@@ -170,9 +197,9 @@ bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, counts, mean_pmf_
     if (dim(confidence_interval)[2] != dim(counts)[3])
         .tox_shape_error("confidence_interval", dim(confidence_interval)[2], "counts", dim(counts)[3])
 
-    .result <- .Call("bootstrap_histogram_call", n_bootstraps, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, confidence_interval, two_sided_bootstrapping_significance_level, random_seed, bootstrap_mode)
-    .arguments <- c("n_bootstraps", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "counts", "mean_pmf_included_n_reps", "included_n_reps", "confidence_interval", "two_sided_bootstrapping_significance_level", "random_seed", "bootstrap_mode", "ierr")
-    .sources <- c(NA_character_, "mean_pmf_counts", "mean_pmf_counts", "counts", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("bootstrap_histogram_call", n_bootstraps, mean_pmf_counts, counts, mean_pmf_included_n_reps, included_n_reps, confidence_interval, two_sided_bootstrapping_significance_level, random_seed, bootstrap_mode, divergence_mode, divergence_weight_mode)
+    .arguments <- c("n_bootstraps", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "counts", "mean_pmf_included_n_reps", "included_n_reps", "confidence_interval", "two_sided_bootstrapping_significance_level", "random_seed", "bootstrap_mode", "divergence_mode", "divergence_weight_mode", "ierr")
+    .sources <- c(NA_character_, "mean_pmf_counts", "mean_pmf_counts", "counts", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$confidence_interval

@@ -18,11 +18,15 @@
 !| studies did not differ). `calc_js_comp_test_n_top_k_jsds` sizes its top-/bottom-k heaps for a
 !| caller that allocates its own.
 !|
+!| Both take `divergence_mode`, an experiment option for the per-point divergence they recompute.
+!|
 !| Generated from [[tox_data_integration_stats_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_stats
     use tox_data_integration_stats_impl, only: MODE_BOOTSTRAP_PER_STUDY, MODE_BOOTSTRAP_POOLED, bootstrap_histogram_impl, calc_js_comp_test_n_top_k_jsds
     use tox_data_integration_stats_impl, only: gjct_permutation_test_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use tox_data_integration_jsd_impl, only: MODE_DIVERGENCE_ONE_SIDED, MODE_DIVERGENCE_PAIRWISE_K2, MODE_DIVERGENCE_SYMMETRIC, MODE_DIVERGENCE_WEIGHT_POOL
+    use tox_data_integration_jsd_impl, only: MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
     use tox_errors, only: clear_err_arg_pos, set_err, set_err_once, validate_all_in_range_int
     use tox_errors, only: validate_all_in_range_real, validate_in_range_int, validate_in_range_real
@@ -72,6 +76,8 @@ contains
             p_values,&
             p_values_observed_consensus,&
             random_seed,&
+            divergence_mode,&
+            divergence_weight_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_bins
@@ -101,7 +107,8 @@ contains
             !! draw. Every study needs at least one at every reference point
             !! The minimum valid value is `1_int32`.
         real(real64), dimension(n_studies), intent(in) :: global_jsd_observed
-            !! Observed weighted global JSD of each study against the consensus pmf
+            !! Observed weighted global JSD of each study against the consensus pmf (the divergence
+            !! `divergence_mode` selects)
         real(real64), dimension(n_studies), intent(out) :: p_values
             !! Empirical p-value per study, `(count + 1)/(n_permutations + 1)` over the permutations
             !! whose global JSD reached the observed one; NaN when `n_permutations` is 0
@@ -111,6 +118,27 @@ contains
         integer(int32), intent(in), optional :: random_seed
             !! Seed for the GSL random number generator
             !! The default value is `42_int32`.
+        integer(int32), intent(in), optional :: divergence_mode
+            !! Experiment option: how each study's per-point divergence is computed. By default the
+            !! JSD of the study against the consensus pmf, the formula before the option existed
+            !!
+            !! | Mode                                                                                                                | Value                                                                           |
+            !! |---------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+            !! | JSD of each study against the consensus pmf (default)                                                               | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]]   |
+            !! | For exactly two studies the pairwise JSD of the two, the same value for both (otherwise as the default)             | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! | One-sided Kullback-Leibler divergence of each study against the consensus pmf, at most log2(number of studies) bits | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_ONE_SIDED(variable)]]   |
+            !! The default value is `0_int32`.
+        integer(int32), intent(in), optional :: divergence_weight_mode
+            !! Experiment option: how each reference point's weight in a study's global divergence is
+            !! computed. By default the study's residual count there plus the count of all studies
+            !! pooled, the weights before the option existed. For two studies in the pairwise
+            !! `divergence_mode` the weights are always the two studies' counts
+            !!
+            !! | Mode                                                                   | Value                                                                                      |
+            !! |------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+            !! | The study's count plus the pooled count of all studies (default)       | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL(variable)]] |
+            !! | The pooled count of all studies only, the same weights for every study | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_POOL(variable)]]            |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT for inconsistent counts, ERR_ALLOC_FAIL if the random
             !! number generator could not be created (see above)
@@ -135,6 +163,8 @@ contains
         call validate_all_in_range_int(mean_pmf_included_n_reps, n_points, ierr, arg_pos=7_int32, min=0_int32)
         call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=8_int32, min=1_int32)
         call validate_all_in_range_real(global_jsd_observed, n_studies, ierr, arg_pos=9_int32)
+        if (present(divergence_mode)) then; if (divergence_mode /= MODE_DIVERGENCE_SYMMETRIC .and. divergence_mode /= MODE_DIVERGENCE_PAIRWISE_K2 .and. divergence_mode /= MODE_DIVERGENCE_ONE_SIDED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=13_int32); end if
+        if (present(divergence_weight_mode)) then; if (divergence_weight_mode /= MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL .and. divergence_weight_mode /= MODE_DIVERGENCE_WEIGHT_POOL) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=14_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -170,6 +200,8 @@ contains
             tmp_point_pool = tmp_point_pool,&
             tmp_point_draw = tmp_point_draw,&
             random_seed = random_seed,&
+            divergence_mode = divergence_mode,&
+            divergence_weight_mode = divergence_weight_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -220,6 +252,8 @@ contains
             tmp_point_pool,&
             tmp_point_draw,&
             random_seed,&
+            divergence_mode,&
+            divergence_weight_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_bins
@@ -249,7 +283,8 @@ contains
             !! draw. Every study needs at least one at every reference point
             !! The minimum valid value is `1_int32`.
         real(real64), dimension(n_studies), intent(in) :: global_jsd_observed
-            !! Observed weighted global JSD of each study against the consensus pmf
+            !! Observed weighted global JSD of each study against the consensus pmf (the divergence
+            !! `divergence_mode` selects)
         real(real64), dimension(n_studies), intent(out) :: p_values
             !! Empirical p-value per study, `(count + 1)/(n_permutations + 1)` over the permutations
             !! whose global JSD reached the observed one; NaN when `n_permutations` is 0
@@ -277,6 +312,27 @@ contains
         integer(int32), intent(in), optional :: random_seed
             !! Seed for the GSL random number generator
             !! The default value is `42_int32`.
+        integer(int32), intent(in), optional :: divergence_mode
+            !! Experiment option: how each study's per-point divergence is computed. By default the
+            !! JSD of the study against the consensus pmf, the formula before the option existed
+            !!
+            !! | Mode                                                                                                                | Value                                                                           |
+            !! |---------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+            !! | JSD of each study against the consensus pmf (default)                                                               | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]]   |
+            !! | For exactly two studies the pairwise JSD of the two, the same value for both (otherwise as the default)             | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! | One-sided Kullback-Leibler divergence of each study against the consensus pmf, at most log2(number of studies) bits | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_ONE_SIDED(variable)]]   |
+            !! The default value is `0_int32`.
+        integer(int32), intent(in), optional :: divergence_weight_mode
+            !! Experiment option: how each reference point's weight in a study's global divergence is
+            !! computed. By default the study's residual count there plus the count of all studies
+            !! pooled, the weights before the option existed. For two studies in the pairwise
+            !! `divergence_mode` the weights are always the two studies' counts
+            !!
+            !! | Mode                                                                   | Value                                                                                      |
+            !! |------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+            !! | The study's count plus the pooled count of all studies (default)       | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL(variable)]] |
+            !! | The pooled count of all studies only, the same weights for every study | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_POOL(variable)]]            |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT for inconsistent counts, ERR_ALLOC_FAIL if the random
             !! number generator could not be created (see above)
@@ -292,6 +348,8 @@ contains
         call validate_all_in_range_int(mean_pmf_included_n_reps, n_points, ierr, arg_pos=7_int32, min=0_int32)
         call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=8_int32, min=1_int32)
         call validate_all_in_range_real(global_jsd_observed, n_studies, ierr, arg_pos=9_int32)
+        if (present(divergence_mode)) then; if (divergence_mode /= MODE_DIVERGENCE_SYMMETRIC .and. divergence_mode /= MODE_DIVERGENCE_PAIRWISE_K2 .and. divergence_mode /= MODE_DIVERGENCE_ONE_SIDED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=22_int32); end if
+        if (present(divergence_weight_mode)) then; if (divergence_weight_mode /= MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL .and. divergence_weight_mode /= MODE_DIVERGENCE_WEIGHT_POOL) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=23_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -317,6 +375,8 @@ contains
             tmp_point_pool = tmp_point_pool,&
             tmp_point_draw = tmp_point_draw,&
             random_seed = random_seed,&
+            divergence_mode = divergence_mode,&
+            divergence_weight_mode = divergence_weight_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -364,6 +424,8 @@ contains
             two_sided_bootstrapping_significance_level,&
             random_seed,&
             bootstrap_mode,&
+            divergence_mode,&
+            divergence_weight_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_bins
@@ -396,9 +458,10 @@ contains
             !! The minimum valid value is `1_int32`.
         real(real64), dimension(2, n_studies), intent(inout) :: confidence_interval
             !! On entry the seed values of the heaps (see above); on return the bootstrapped
-            !! `[lower, upper]` interval per study
+            !! `[lower, upper]` interval per study. Bounded by 1 bit, or by log2(n_studies) bits when
+            !! that is larger (the one-sided `divergence_mode` can exceed 1 bit)
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `1.0_real64`.
+            !! The maximum valid value is `max(1.0_real64, log(real(n_studies, real64))/log(2.0_real64))`.
         real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
             !! Only sizes n_bootstrapping_top_k_jsds (via calc_js_comp_test_n_top_k_jsds)
             !! The minimum valid value is `0.0_real64`.
@@ -416,6 +479,27 @@ contains
             !! |--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
             !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
             !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
+            !! The default value is `0_int32`.
+        integer(int32), intent(in), optional :: divergence_mode
+            !! Experiment option: how each study's per-point divergence is computed. By default the
+            !! JSD of the study against the consensus pmf, the formula before the option existed
+            !!
+            !! | Mode                                                                                                                | Value                                                                           |
+            !! |---------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+            !! | JSD of each study against the consensus pmf (default)                                                               | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]]   |
+            !! | For exactly two studies the pairwise JSD of the two, the same value for both (otherwise as the default)             | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! | One-sided Kullback-Leibler divergence of each study against the consensus pmf, at most log2(number of studies) bits | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_ONE_SIDED(variable)]]   |
+            !! The default value is `0_int32`.
+        integer(int32), intent(in), optional :: divergence_weight_mode
+            !! Experiment option: how each reference point's weight in a study's global divergence is
+            !! computed. By default the study's residual count there plus the count of all studies
+            !! pooled, the weights before the option existed. For two studies in the pairwise
+            !! `divergence_mode` the weights are always the two studies' counts
+            !!
+            !! | Mode                                                                   | Value                                                                                      |
+            !! |------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+            !! | The study's count plus the pooled count of all studies (default)       | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL(variable)]] |
+            !! | The pooled count of all studies only, the same weights for every study | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_POOL(variable)]]            |
             !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT for inconsistent counts, ERR_ALLOC_FAIL if the random
@@ -441,8 +525,10 @@ contains
         call validate_all_in_range_int(counts, n_points * n_bins * n_studies, ierr, arg_pos=6_int32, min=0_int32)
         call validate_all_in_range_int(mean_pmf_included_n_reps, n_points, ierr, arg_pos=7_int32, min=0_int32)
         call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=8_int32, min=1_int32)
-        call validate_all_in_range_real(confidence_interval, 2 * n_studies, ierr, arg_pos=9_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_real(confidence_interval, 2 * n_studies, ierr, arg_pos=9_int32, min=0.0_real64, max=max(1.0_real64, log(real(n_studies, real64))/log(2.0_real64)))
         if (present(bootstrap_mode)) then; if (bootstrap_mode /= MODE_BOOTSTRAP_PER_STUDY .and. bootstrap_mode /= MODE_BOOTSTRAP_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=12_int32); end if
+        if (present(divergence_mode)) then; if (divergence_mode /= MODE_DIVERGENCE_SYMMETRIC .and. divergence_mode /= MODE_DIVERGENCE_PAIRWISE_K2 .and. divergence_mode /= MODE_DIVERGENCE_ONE_SIDED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=13_int32); end if
+        if (present(divergence_weight_mode)) then; if (divergence_weight_mode /= MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL .and. divergence_weight_mode /= MODE_DIVERGENCE_WEIGHT_POOL) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=14_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -484,6 +570,8 @@ contains
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
             random_seed = random_seed,&
             bootstrap_mode = bootstrap_mode,&
+            divergence_mode = divergence_mode,&
+            divergence_weight_mode = divergence_weight_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -540,6 +628,8 @@ contains
             two_sided_bootstrapping_significance_level,&
             random_seed,&
             bootstrap_mode,&
+            divergence_mode,&
+            divergence_weight_mode,&
             ierr&
         )
         integer(int32), intent(in) :: n_bins
@@ -576,9 +666,10 @@ contains
             !! The minimum valid value is `1_int32`.
         real(real64), dimension(2, n_studies), intent(inout) :: confidence_interval
             !! On entry the seed values of the heaps (see above); on return the bootstrapped
-            !! `[lower, upper]` interval per study
+            !! `[lower, upper]` interval per study. Bounded by 1 bit, or by log2(n_studies) bits when
+            !! that is larger (the one-sided `divergence_mode` can exceed 1 bit)
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `1.0_real64`.
+            !! The maximum valid value is `max(1.0_real64, log(real(n_studies, real64))/log(2.0_real64))`.
         real(real64), dimension(n_bootstrapping_top_k_jsds, 2, n_studies), intent(out) :: tmp_bootstrapping_top_k_jsds
             !! Working array: per study the bottom-k heap `(:, 1, :)` and the top-k heap `(:, 2, :)`
         real(real64), dimension(n_points, n_bins, n_studies), intent(out) :: tmp_pmfs
@@ -613,6 +704,27 @@ contains
             !! | Each study's own counts, a robustness interval (default)                                         | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_PER_STUDY(variable)]] |
             !! | The pooled consensus counts of all studies, a noise band (the bootstrap before the mode existed) | [[tox_data_integration_stats_impl(module):MODE_BOOTSTRAP_POOLED(variable)]]    |
             !! The default value is `0_int32`.
+        integer(int32), intent(in), optional :: divergence_mode
+            !! Experiment option: how each study's per-point divergence is computed. By default the
+            !! JSD of the study against the consensus pmf, the formula before the option existed
+            !!
+            !! | Mode                                                                                                                | Value                                                                           |
+            !! |---------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+            !! | JSD of each study against the consensus pmf (default)                                                               | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_SYMMETRIC(variable)]]   |
+            !! | For exactly two studies the pairwise JSD of the two, the same value for both (otherwise as the default)             | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_PAIRWISE_K2(variable)]] |
+            !! | One-sided Kullback-Leibler divergence of each study against the consensus pmf, at most log2(number of studies) bits | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_ONE_SIDED(variable)]]   |
+            !! The default value is `0_int32`.
+        integer(int32), intent(in), optional :: divergence_weight_mode
+            !! Experiment option: how each reference point's weight in a study's global divergence is
+            !! computed. By default the study's residual count there plus the count of all studies
+            !! pooled, the weights before the option existed. For two studies in the pairwise
+            !! `divergence_mode` the weights are always the two studies' counts
+            !!
+            !! | Mode                                                                   | Value                                                                                      |
+            !! |------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+            !! | The study's count plus the pooled count of all studies (default)       | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL(variable)]] |
+            !! | The pooled count of all studies only, the same weights for every study | [[tox_data_integration_jsd_impl(module):MODE_DIVERGENCE_WEIGHT_POOL(variable)]]            |
+            !! The default value is `0_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; ERR_INVALID_INPUT for inconsistent counts, ERR_ALLOC_FAIL if the random
             !! number generator could not be created (see above)
@@ -629,8 +741,10 @@ contains
         call validate_all_in_range_int(counts, n_points * n_bins * n_studies, ierr, arg_pos=6_int32, min=0_int32)
         call validate_all_in_range_int(mean_pmf_included_n_reps, n_points, ierr, arg_pos=7_int32, min=0_int32)
         call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=8_int32, min=1_int32)
-        call validate_all_in_range_real(confidence_interval, 2 * n_studies, ierr, arg_pos=10_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_real(confidence_interval, 2 * n_studies, ierr, arg_pos=10_int32, min=0.0_real64, max=max(1.0_real64, log(real(n_studies, real64))/log(2.0_real64)))
         if (present(bootstrap_mode)) then; if (bootstrap_mode /= MODE_BOOTSTRAP_PER_STUDY .and. bootstrap_mode /= MODE_BOOTSTRAP_POOLED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=21_int32); end if
+        if (present(divergence_mode)) then; if (divergence_mode /= MODE_DIVERGENCE_SYMMETRIC .and. divergence_mode /= MODE_DIVERGENCE_PAIRWISE_K2 .and. divergence_mode /= MODE_DIVERGENCE_ONE_SIDED) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=22_int32); end if
+        if (present(divergence_weight_mode)) then; if (divergence_weight_mode /= MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL .and. divergence_weight_mode /= MODE_DIVERGENCE_WEIGHT_POOL) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=23_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -656,6 +770,8 @@ contains
             two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
             random_seed = random_seed,&
             bootstrap_mode = bootstrap_mode,&
+            divergence_mode = divergence_mode,&
+            divergence_weight_mode = divergence_weight_mode,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)

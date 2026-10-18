@@ -3,8 +3,9 @@
 ! parameter -- the generated C and R bindings need the number itself -- so each such value is a
 ! macro, written once, here, and every module that needs the literal includes this file.
 ! M_MAX_N_BINS, M_MAX_CANDIDATE_PAIRS and the M_MODE_BIN_COUNT_*, M_MODE_PLATEAU_*,
-! M_MODE_NEIGHBORHOOD_SIZE_*, M_MODE_BOOTSTRAP_* and M_METHOD_JOIN_* values also back a parameter
-! of the module that owns them; the *_DEFAULT values have no parameter and are used directly. A
+! M_MODE_NEIGHBORHOOD_SIZE_*, M_MODE_BOOTSTRAP_*, M_MODE_DIVERGENCE_*, M_MODE_DIVERGENCE_WEIGHT_* and
+! M_METHOD_JOIN_* values
+! also back a parameter of the module that owns them; the *_DEFAULT values have no parameter and are used directly. A
 ! value only one module uses stays in that module as a CM_ macro, except that a mode's values are
 ! kept together: once one of them is needed here, the whole mode family is here.
 
@@ -67,6 +68,26 @@
 ! Permutation-Test all name the default.
 #define M_MODE_BOOTSTRAP_PER_STUDY 0_int32
 #define M_MODE_BOOTSTRAP_POOLED 1_int32
+
+! `divergence_mode`'s values (the MODE_DIVERGENCE_* of tox_data_integration_jsd_impl), an experiment
+! option: how each study's per-point divergence is computed -- 0 the JSD of the study against the
+! consensus (the default, the formula before the option existed), 1 for exactly two studies the
+! pairwise JSD of the two studies, shared by both (any other number of studies: as 0), 2 the one-sided
+! Kullback-Leibler divergence of the study against the consensus. Here because the final runs, both
+! parameter searches, the bootstrap, the permutation test and the study-label Permutation-Test all
+! name the default.
+#define M_MODE_DIVERGENCE_SYMMETRIC 0_int32
+#define M_MODE_DIVERGENCE_PAIRWISE_K2 1_int32
+#define M_MODE_DIVERGENCE_ONE_SIDED 2_int32
+
+! `divergence_weight_mode`'s values (the MODE_DIVERGENCE_WEIGHT_* of tox_data_integration_jsd_impl),
+! an experiment option: a reference point's weight in a study's global divergence -- 0 the study's
+! residual count there plus the pooled count of all studies (the default, the weights before the
+! option existed), 1 the pooled count only (the same weights for every study). The pairwise
+! divergence_mode for two studies always weights by the two studies' counts. Same routines as
+! divergence_mode.
+#define M_MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL 0_int32
+#define M_MODE_DIVERGENCE_WEIGHT_POOL 1_int32
 
 ! `join_method`'s values (the METHOD_JOIN_* of tox_data_integration_js_comp_test_search_impl): how
 ! the studies' confidence-interval overlaps are joined. Both parameter searches take it mandatory; the

@@ -6,10 +6,10 @@
 // tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
-void gjct_permutation_test_c(const int*, const int*, const int*, const int*, const int*, const double*, const int*, const int*, const double*, double*, double*, const int*, int*);
-void bootstrap_histogram_c(const int*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, double*, const double*, const int*, const char*, int*);
+void gjct_permutation_test_c(const int*, const int*, const int*, const int*, const int*, const double*, const int*, const int*, const double*, double*, double*, const int*, const char*, const char*, int*);
+void bootstrap_histogram_c(const int*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, double*, const double*, const int*, const char*, const char*, const char*, int*);
 
-SEXP gjct_permutation_test_call(SEXP n_permutations, SEXP mean_pmf_counts, SEXP mean_pmf, SEXP mean_pmf_included_n_reps, SEXP included_n_reps, SEXP global_jsd_observed, SEXP random_seed) {
+SEXP gjct_permutation_test_call(SEXP n_permutations, SEXP mean_pmf_counts, SEXP mean_pmf, SEXP mean_pmf_included_n_reps, SEXP included_n_reps, SEXP global_jsd_observed, SEXP random_seed, SEXP divergence_mode, SEXP divergence_weight_mode) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_bins = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[1];
@@ -19,6 +19,10 @@ SEXP gjct_permutation_test_call(SEXP n_permutations, SEXP mean_pmf_counts, SEXP 
     // scalar inputs, pulled from their length-1 vectors
     int n_permutations_v = Rf_asInteger(n_permutations);
     int random_seed_v = Rf_asInteger(random_seed);
+
+    // convert what Fortran cannot take from R directly
+    char* divergence_mode_c = tox_char_in(divergence_mode, 22);
+    char* divergence_weight_mode_c = tox_char_in(divergence_weight_mode, 33);
 
     // outputs and work space
     SEXP p_values = PROTECT(Rf_allocVector(REALSXP, n_studies)); nprot++;
@@ -38,6 +42,8 @@ SEXP gjct_permutation_test_call(SEXP n_permutations, SEXP mean_pmf_counts, SEXP 
         REAL(p_values),
         REAL(p_values_observed_consensus),
         &random_seed_v,
+        divergence_mode_c,
+        divergence_weight_mode_c,
         &ierr
     );
 
@@ -54,7 +60,7 @@ SEXP gjct_permutation_test_call(SEXP n_permutations, SEXP mean_pmf_counts, SEXP 
     return _out;
 }
 
-SEXP bootstrap_histogram_call(SEXP n_bootstraps, SEXP mean_pmf_counts, SEXP counts, SEXP mean_pmf_included_n_reps, SEXP included_n_reps, SEXP confidence_interval, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP bootstrap_mode) {
+SEXP bootstrap_histogram_call(SEXP n_bootstraps, SEXP mean_pmf_counts, SEXP counts, SEXP mean_pmf_included_n_reps, SEXP included_n_reps, SEXP confidence_interval, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed, SEXP bootstrap_mode, SEXP divergence_mode, SEXP divergence_weight_mode) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_bins = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[1];
@@ -71,6 +77,8 @@ SEXP bootstrap_histogram_call(SEXP n_bootstraps, SEXP mean_pmf_counts, SEXP coun
 
     // convert what Fortran cannot take from R directly
     char* bootstrap_mode_c = tox_char_in(bootstrap_mode, 19);
+    char* divergence_mode_c = tox_char_in(divergence_mode, 22);
+    char* divergence_weight_mode_c = tox_char_in(divergence_weight_mode, 33);
 
     // outputs and work space
     int ierr = 0;
@@ -88,6 +96,8 @@ SEXP bootstrap_histogram_call(SEXP n_bootstraps, SEXP mean_pmf_counts, SEXP coun
         &two_sided_bootstrapping_significance_level_v,
         &random_seed_v,
         bootstrap_mode_c,
+        divergence_mode_c,
+        divergence_weight_mode_c,
         &ierr
     );
 

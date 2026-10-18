@@ -18,6 +18,8 @@ observed value would move if each study's residuals were drawn again), or, with
 studies did not differ). `calc_js_comp_test_n_top_k_jsds` sizes its top-/bottom-k heaps for a
 caller that allocates its own.
 
+Both take `divergence_mode`, an experiment option for the per-point divergence they recompute.
+
 Python binding, generated from tox_data_integration_stats_impl. Do not edit.
 """
 

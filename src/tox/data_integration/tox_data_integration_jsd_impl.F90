@@ -1,4 +1,5 @@
 #include <src/macros.h>
+#include <src/tox/data_integration/macros.h>
 
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation
 !|
@@ -9,6 +10,12 @@
 !| of all of them, built by
 !| [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]] (with its pooled
 !| counts) or [[tox_data_integration_jsd_impl(module):create_mean_pmf_only_impl(interface)]].
+!|
+!| `divergence_mode` (an experiment option of the JS-Comp-Test's entry points) chooses how each
+!| study's per-point divergence is computed: the JSD of the study against the consensus (the
+!| default), for exactly two studies the pairwise JSD of the two studies, or the one-sided
+!| Kullback-Leibler divergence of the study against the consensus. `divergence_weight_mode` (also an
+!| experiment option) chooses the reference points' weights in each study's global divergence.
 module tox_data_integration_jsd_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, int64, real64
@@ -23,11 +30,34 @@ module tox_data_integration_jsd_impl
              build_residual_histograms_impl, calc_pmf_impl, &
              compute_divergence_per_reference_point_impl, compute_weighted_global_divergence_impl, &
              jct_compute_jsd_pipeline_impl, create_mean_pmf_impl, create_mean_pmf_only_impl, &
-             compute_consensus_divergences
+             compute_consensus_divergences, MODE_DIVERGENCE_SYMMETRIC, MODE_DIVERGENCE_PAIRWISE_K2, &
+             MODE_DIVERGENCE_ONE_SIDED, MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL, MODE_DIVERGENCE_WEIGHT_POOL
 
     ! `residual_range_quantile_level`'s default, shared by DM_DEFAULT and M_DEFAULT_VAL of both
     ! residual-range routines.
 #define CM_RESIDUAL_RANGE_QUANTILE_LEVEL_DEFAULT 0.95_real64
+
+    ! `divergence_mode`'s mode table (an experiment option), from the M_MODE_DIVERGENCE_* of
+    ! src/tox/data_integration/macros.h: M_MODE_DIVERGENCE_SYMMETRIC is also the DM_DEFAULT of every
+    ! routine that takes the option, which cannot name a Fortran parameter.
+    integer(int32), parameter :: MODE_DIVERGENCE_SYMMETRIC = M_MODE_DIVERGENCE_SYMMETRIC
+        !! Divergence mode: each study's JSD against the consensus pmf (the default, the formula
+        !! before the option existed)
+    integer(int32), parameter :: MODE_DIVERGENCE_PAIRWISE_K2 = M_MODE_DIVERGENCE_PAIRWISE_K2
+        !! Divergence mode: for exactly two studies the pairwise JSD of the two studies, the same
+        !! value for both; for any other number of studies the same as MODE_DIVERGENCE_SYMMETRIC
+    integer(int32), parameter :: MODE_DIVERGENCE_ONE_SIDED = M_MODE_DIVERGENCE_ONE_SIDED
+        !! Divergence mode: each study's one-sided Kullback-Leibler divergence against the consensus
+        !! pmf, in bits, at most log2 of the number of studies
+
+    ! `divergence_weight_mode`'s mode table (an experiment option), from the M_MODE_DIVERGENCE_WEIGHT_*
+    ! of src/tox/data_integration/macros.h.
+    integer(int32), parameter :: MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL = M_MODE_DIVERGENCE_WEIGHT_STUDY_PLUS_POOL
+        !! Divergence weight mode: a point's weight is the study's residual count there plus the
+        !! pooled count of all studies (the default, the weights before the option existed)
+    integer(int32), parameter :: MODE_DIVERGENCE_WEIGHT_POOL = M_MODE_DIVERGENCE_WEIGHT_POOL
+        !! Divergence weight mode: a point's weight is the pooled count of all studies only, the
+        !! same weights for every study
 contains
 
     !> summary: Compute the shared residual range [-R, R] from a pooled set of absolute residuals
@@ -340,6 +370,53 @@ contains
         end do
     end subroutine compute_divergence_per_reference_point_impl
 
+    !> The one-sided Kullback-Leibler divergence `KL(P || M) = sum_bins p*log2(p/m)` of one study's
+    !| pmf `pmf` against the consensus pmf `mean_pmf`, per reference point, in bits like
+    !| compute_divergence_per_reference_point_impl (natural logarithms, divided by `LOG_2` at the
+    !| end). Bins with `p = 0` contribute 0. Since the consensus is the equal-weight mean of K
+    !| studies including this one, `m >= p/K > 0` wherever `p > 0`, so the result lies in
+    !| `[0, log2(K)]`. Private helper of compute_consensus_divergences (`divergence_mode`'s one-sided
+    !| mode).
+    pure subroutine compute_one_sided_divergence_per_reference_point(pmf, mean_pmf, n_points, n_bins, kl_divergences)
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), intent(in) :: n_bins
+            !! Number of bins of `pmf`/`mean_pmf`; both must have been built from the same per-point
+            !! bin count, as for compute_divergence_per_reference_point_impl
+        real(real64), dimension(n_points, n_bins), intent(in) :: pmf
+            !! One study's pmf
+        real(real64), dimension(n_points, n_bins), intent(in) :: mean_pmf
+            !! The consensus pmf of all studies
+        real(real64), dimension(n_points), intent(out) :: kl_divergences
+            !! One-sided Kullback-Leibler divergence of `pmf` against `mean_pmf` per reference point, in bits
+
+        real(real64) :: p_val, m_val
+        integer(int32) :: i_bin, i_point
+
+        kl_divergences = 0.0_real64
+
+        ! Same loop order and the same guards as compute_divergence_per_reference_point_impl.
+        do i_bin = 1, n_bins
+            do concurrent(i_point=1:n_points) local(p_val, m_val) shared(i_bin, pmf, mean_pmf, kl_divergences)
+                p_val = pmf(i_point, i_bin)
+                m_val = mean_pmf(i_point, i_bin)
+
+                ! Exactly `.not. is_close(m_val, 0.0_real64)`, NaN and infinity included; written out
+                ! as in compute_divergence_per_reference_point_impl (an ifx 2026.1 miscompile).
+                if (.not. (abs(m_val) <= IS_CLOSE_ABS_TOL)) then
+                    if (p_val > 0.0_real64) then
+                        kl_divergences(i_point) = kl_divergences(i_point) + p_val*log(p_val/m_val)
+                    end if
+                end if
+            end do
+        end do
+
+        ! In bits, like the JSD.
+        do concurrent(i_point=1:n_points) shared(kl_divergences)
+            kl_divergences(i_point) = kl_divergences(i_point)/LOG_2
+        end do
+    end subroutine compute_one_sided_divergence_per_reference_point
+
     !> summary: Compute the global weighted Jensen-Shannon divergence from the per-neighbor divergences
     !| AUTHOR_FRANZ_ERIC_SILL
     !| Takes the divergences produced by `compute_divergence_per_reference_point`.
@@ -390,6 +467,47 @@ contains
         end if
     end subroutine compute_weighted_global_divergence_impl
 
+    !> The global divergence of one study with each reference point weighted by the pooled count of
+    !| all studies only, `weights = pool_included_n_reps / sum(pool_included_n_reps)`: the same
+    !| weights for every study. Counted in int64 and guarded against a zero total exactly as
+    !| compute_weighted_global_divergence_impl. Private helper of compute_consensus_divergences
+    !| (`divergence_weight_mode`'s pooled mode).
+    pure subroutine compute_pool_weighted_global_divergence(js_divergences, n_points, pool_included_n_reps, &
+                                                            global_js_divergence, weights)
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        real(real64), dimension(n_points), intent(in) :: js_divergences
+            !! The study's divergence per reference point
+        integer(int32), dimension(n_points), intent(in) :: pool_included_n_reps
+            !! Count of non-NaN residuals per reference point, summed over all studies
+        real(real64), intent(out) :: global_js_divergence
+            !! Weighted global divergence of the study
+        real(real64), dimension(n_points), intent(out) :: weights
+            !! Weights used for `global_js_divergence`
+
+        integer(int32) :: i_point
+        integer(int64) :: n_included_total
+        real(real64) :: total_sample_count
+
+        global_js_divergence = 0.0_real64
+
+        n_included_total = 0_int64
+        do concurrent(i_point=1:n_points) shared(pool_included_n_reps) reduce(+:n_included_total)
+            n_included_total = n_included_total + int(pool_included_n_reps(i_point), int64)
+        end do
+        total_sample_count = real(n_included_total, real64)
+
+        if (is_close(total_sample_count, 0.0_real64)) then
+            weights = 0.0_real64
+        else
+            do concurrent(i_point=1:n_points) shared(weights, js_divergences, pool_included_n_reps, total_sample_count) &
+                    reduce(+:global_js_divergence)
+                weights(i_point) = real(pool_included_n_reps(i_point), real64)/total_sample_count
+                global_js_divergence = global_js_divergence + weights(i_point)*js_divergences(i_point)
+            end do
+        end if
+    end subroutine compute_pool_weighted_global_divergence
+
     !> summary: Each of K studies' per-point JSD against the consensus pmf, and its weighted global JSD
     !| AUTHOR_LASZLO_LANG
     !| For every study `i_study`:
@@ -397,13 +515,29 @@ contains
     !| of `pmfs(:, 1:n_bins, i_study)` against `mean_pmf(:, 1:n_bins)`, then
     !| [[tox_data_integration_jsd_impl(module):compute_weighted_global_divergence_impl(interface)]]
     !| with the study's and the consensus's included counts. The studies are independent, so the
-    !| loop over them is concurrent. Internal helper, not published; public because the final runs,
+    !| loop over them is concurrent.
+    !|
+    !| `divergence_mode` (an experiment option; this routine is the one place where it takes effect)
+    !| changes the per-point value. The one-sided mode takes each study's one-sided Kullback-Leibler
+    !| divergence against the consensus instead (same weights; at most log2(K) bits). The pairwise
+    !| mode, for exactly two studies, takes the pairwise JSD of the two studies with the weights of
+    !| both studies' counts and gives both studies that same per-point vector, weights and global
+    !| value (`mean_pmf` and `mean_pmf_included_n_reps` are then unused); for any other number of
+    !| studies it is the default.
+    !|
+    !| `divergence_weight_mode` (also an experiment option) changes the weights of the consensus
+    !| modes (symmetric, one-sided, and the pairwise mode with K /= 2): by default a point weighs the
+    !| study's count plus the consensus's count; in the pooled mode the consensus's count only
+    !| (`mean_pmf_included_n_reps`), the same weights for every study. The pairwise branch for two
+    !| studies always keeps its pairwise weights `n_1 + n_2`, which equal the pooled count there.
+    !|
+    !| Internal helper, not published; public because the final runs,
     !| the parameter searches, the bootstrap and the permutation test call it. `n_bins_extent` is the
     !| second extent of `pmfs`/`mean_pmf`, so a caller can pass bin-sized arrays declared wider than
     !| the bins in use (the final runs' fixed maximum bin extent) without slicing them itself.
     pure subroutine compute_consensus_divergences(pmfs, mean_pmf, n_points, n_bins, n_bins_extent, n_studies, &
-                                                  included_n_reps, mean_pmf_included_n_reps, js_divergences, &
-                                                  global_js_divergence, weights)
+                                                  included_n_reps, mean_pmf_included_n_reps, divergence_mode, &
+                                                  divergence_weight_mode, js_divergences, global_js_divergence, weights)
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_bins
@@ -420,8 +554,13 @@ contains
             !! Count of non-NaN residuals per reference point, per study
         integer(int32), dimension(n_points), intent(in) :: mean_pmf_included_n_reps
             !! Count of non-NaN residuals per reference point of the consensus
+        integer(int32), intent(in) :: divergence_mode
+            !! One of the `MODE_DIVERGENCE_*` values, already resolved from its default by the caller
+        integer(int32), intent(in) :: divergence_weight_mode
+            !! One of the `MODE_DIVERGENCE_WEIGHT_*` values, already resolved from its default by the caller
         real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
-            !! Per-reference-point JSD of each study against the consensus pmf
+            !! Per-reference-point divergence of each study, the one `divergence_mode` selects (by
+            !! default the JSD against the consensus pmf)
         real(real64), dimension(n_studies), intent(out) :: global_js_divergence
             !! Weighted global JSD of each study against the consensus pmf
         real(real64), dimension(n_points, n_studies), intent(out) :: weights
@@ -429,13 +568,37 @@ contains
 
         integer(int32) :: i_study
 
+        ! Pairwise, two studies only: one JSD of study 1 against study 2, shared by both.
+        if (divergence_mode == MODE_DIVERGENCE_PAIRWISE_K2 .and. n_studies == 2_int32) then
+            call compute_divergence_per_reference_point_impl(pmfs(:, 1:n_bins, 1), pmfs(:, 1:n_bins, 2), n_points, &
+                                                             n_bins, js_divergences(:, 1))
+            call compute_weighted_global_divergence_impl(js_divergences(:, 1), n_points, included_n_reps(:, 1), &
+                                                          included_n_reps(:, 2), global_js_divergence(1), weights(:, 1))
+            js_divergences(:, 2) = js_divergences(:, 1)
+            weights(:, 2) = weights(:, 1)
+            global_js_divergence(2) = global_js_divergence(1)
+            return
+        end if
+
         do concurrent(i_study=1:n_studies) shared(pmfs, mean_pmf, n_points, n_bins, js_divergences, included_n_reps, &
-                                                  mean_pmf_included_n_reps, global_js_divergence, weights)
-            call compute_divergence_per_reference_point_impl(pmfs(:, 1:n_bins, i_study), mean_pmf(:, 1:n_bins), &
-                                                             n_points, n_bins, js_divergences(:, i_study))
-            call compute_weighted_global_divergence_impl(js_divergences(:, i_study), n_points, included_n_reps(:, i_study), &
-                                                          mean_pmf_included_n_reps, global_js_divergence(i_study), &
-                                                          weights(:, i_study))
+                                                  mean_pmf_included_n_reps, global_js_divergence, weights, divergence_mode, &
+                                                  divergence_weight_mode)
+            if (divergence_mode == MODE_DIVERGENCE_ONE_SIDED) then
+                call compute_one_sided_divergence_per_reference_point(pmfs(:, 1:n_bins, i_study), mean_pmf(:, 1:n_bins), &
+                                                                      n_points, n_bins, js_divergences(:, i_study))
+            else
+                call compute_divergence_per_reference_point_impl(pmfs(:, 1:n_bins, i_study), mean_pmf(:, 1:n_bins), &
+                                                                 n_points, n_bins, js_divergences(:, i_study))
+            end if
+            if (divergence_weight_mode == MODE_DIVERGENCE_WEIGHT_POOL) then
+                call compute_pool_weighted_global_divergence(js_divergences(:, i_study), n_points, &
+                                                             mean_pmf_included_n_reps, global_js_divergence(i_study), &
+                                                             weights(:, i_study))
+            else
+                call compute_weighted_global_divergence_impl(js_divergences(:, i_study), n_points, &
+                                                              included_n_reps(:, i_study), mean_pmf_included_n_reps, &
+                                                              global_js_divergence(i_study), weights(:, i_study))
+            end if
         end do
     end subroutine compute_consensus_divergences
 

@@ -18,6 +18,8 @@ observed value would move if each study's residuals were drawn again), or, with
 studies did not differ). `calc_js_comp_test_n_top_k_jsds` sizes its top-/bottom-k heaps for a
 caller that allocates its own.
 
+Both take `divergence_mode`, an experiment option for the per-point divergence they recompute.
+
 Python binding, generated from tox_data_integration_stats. Do not edit.
 """
 
@@ -45,13 +47,15 @@ _lib.gjct_permutation_test_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_GJCT_PERMUTATION_TEST_ARGUMENTS = ("n_permutations", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "mean_pmf", "mean_pmf_included_n_reps", "included_n_reps", "global_jsd_observed", "p_values", "p_values_observed_consensus", "random_seed", "ierr",)
+_GJCT_PERMUTATION_TEST_ARGUMENTS = ("n_permutations", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "mean_pmf", "mean_pmf_included_n_reps", "included_n_reps", "global_jsd_observed", "p_values", "p_values_observed_consensus", "random_seed", "divergence_mode", "divergence_weight_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_GJCT_PERMUTATION_TEST_ARGUMENT_SOURCES = (None, "mean_pmf_counts", "mean_pmf_counts", "included_n_reps", None, None, None, None, None, None, None, None, None,)
+_GJCT_PERMUTATION_TEST_ARGUMENT_SOURCES = (None, "mean_pmf_counts", "mean_pmf_counts", "included_n_reps", None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.bootstrap_histogram_c.restype = None
 _lib.bootstrap_histogram_c.argtypes = (
@@ -67,13 +71,15 @@ _lib.bootstrap_histogram_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
+    np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_BOOTSTRAP_HISTOGRAM_ARGUMENTS = ("n_bootstraps", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "counts", "mean_pmf_included_n_reps", "included_n_reps", "confidence_interval", "two_sided_bootstrapping_significance_level", "random_seed", "bootstrap_mode", "ierr",)
+_BOOTSTRAP_HISTOGRAM_ARGUMENTS = ("n_bootstraps", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "counts", "mean_pmf_included_n_reps", "included_n_reps", "confidence_interval", "two_sided_bootstrapping_significance_level", "random_seed", "bootstrap_mode", "divergence_mode", "divergence_weight_mode", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_BOOTSTRAP_HISTOGRAM_ARGUMENT_SOURCES = (None, "mean_pmf_counts", "mean_pmf_counts", "counts", None, None, None, None, None, None, None, None, None,)
+_BOOTSTRAP_HISTOGRAM_ARGUMENT_SOURCES = (None, "mean_pmf_counts", "mean_pmf_counts", "counts", None, None, None, None, None, None, None, None, None, None, None,)
 
 def gjct_permutation_test(
         n_permutations,
@@ -83,6 +89,8 @@ def gjct_permutation_test(
         included_n_reps,
         global_jsd_observed,
         random_seed=42,
+        divergence_mode='divergence_symmetric',
+        divergence_weight_mode='divergence_weight_study_plus_pool',
 ):
     r"""Estimate how likely each study's observed weighted global JSD is to occur by chance
 
@@ -129,10 +137,23 @@ def gjct_permutation_test(
         draw. Every study needs at least one at every reference point
         The minimum valid value is `1`.
     global_jsd_observed : np.ndarray[np.float64] of shape (n_studies,)
-        Observed weighted global JSD of each study against the consensus pmf
+        Observed weighted global JSD of each study against the consensus pmf (the divergence
+        `divergence_mode` selects)
     random_seed : int, optional, default 42
         Seed for the GSL random number generator
         The default value is `42`.
+    divergence_mode : str, one of 'divergence_symmetric' | 'divergence_pairwise_k2' | 'divergence_one_sided', optional, default 'divergence_symmetric'
+        Experiment option: how each study's per-point divergence is computed. By default the
+        JSD of the study against the consensus pmf, the formula before the option existed
+
+        The default value is `'divergence_symmetric'`.
+    divergence_weight_mode : str, one of 'divergence_weight_study_plus_pool' | 'divergence_weight_pool', optional, default 'divergence_weight_study_plus_pool'
+        Experiment option: how each reference point's weight in a study's global divergence is
+        computed. By default the study's residual count there plus the count of all studies
+        pooled, the weights before the option existed. For two studies in the pairwise
+        `divergence_mode` the weights are always the two studies' counts
+
+        The default value is `'divergence_weight_study_plus_pool'`.
 
     Returns
     -------
@@ -189,6 +210,8 @@ def gjct_permutation_test(
         raise TypeError(f"'global_jsd_observed' must be an array of np.float64: {error}") from None
     if global_jsd_observed.ndim != 1:
         raise ValueError(f"'global_jsd_observed' must have 1 dimension, but has {global_jsd_observed.ndim}")
+    divergence_mode = np.array([str(divergence_mode).lower().encode().ljust(22)], dtype="S22")
+    divergence_weight_mode = np.array([str(divergence_weight_mode).lower().encode().ljust(33)], dtype="S33")
 
     # what the inputs already say, rather than asking for it again
     n_bins = mean_pmf_counts.shape[1]
@@ -235,6 +258,8 @@ def gjct_permutation_test(
         p_values,
         p_values_observed_consensus,
         ctypes.byref(ctypes.c_int(random_seed)),
+        divergence_mode,
+        divergence_weight_mode,
         ctypes.byref(ierr),
     )
 
@@ -259,6 +284,8 @@ def bootstrap_histogram(
         two_sided_bootstrapping_significance_level=2.5,
         random_seed=42,
         bootstrap_mode='bootstrap_per_study',
+        divergence_mode='divergence_symmetric',
+        divergence_weight_mode='divergence_weight_study_plus_pool',
 ):
     r"""Bootstrap an interval for each study's global JSD by resampling the studies' histograms
 
@@ -314,9 +341,10 @@ def bootstrap_histogram(
         The minimum valid value is `1`.
     confidence_interval : np.ndarray[np.float64] of shape (2, n_studies,), column-major (order='F'), modified in place
         On entry the seed values of the heaps (see above); on return the bootstrapped
-        `[lower, upper]` interval per study
+        `[lower, upper]` interval per study. Bounded by 1 bit, or by log2(n_studies) bits when
+        that is larger (the one-sided `divergence_mode` can exceed 1 bit)
         The minimum valid value is `0.0`.
-        The maximum valid value is `1.0`.
+        The maximum valid value is `max(1.0, log(real(n_studies, real64))/log(2.0))`.
     two_sided_bootstrapping_significance_level : float, optional, default 2.5
         Only sizes n_bootstrapping_top_k_jsds (via calc_js_comp_test_n_top_k_jsds)
         The minimum valid value is `0.0`.
@@ -331,6 +359,18 @@ def bootstrap_histogram(
         band of "no difference between the studies" instead, kept for comparison
 
         The default value is `'bootstrap_per_study'`.
+    divergence_mode : str, one of 'divergence_symmetric' | 'divergence_pairwise_k2' | 'divergence_one_sided', optional, default 'divergence_symmetric'
+        Experiment option: how each study's per-point divergence is computed. By default the
+        JSD of the study against the consensus pmf, the formula before the option existed
+
+        The default value is `'divergence_symmetric'`.
+    divergence_weight_mode : str, one of 'divergence_weight_study_plus_pool' | 'divergence_weight_pool', optional, default 'divergence_weight_study_plus_pool'
+        Experiment option: how each reference point's weight in a study's global divergence is
+        computed. By default the study's residual count there plus the count of all studies
+        pooled, the weights before the option existed. For two studies in the pairwise
+        `divergence_mode` the weights are always the two studies' counts
+
+        The default value is `'divergence_weight_study_plus_pool'`.
 
     Returns
     -------
@@ -378,6 +418,8 @@ def bootstrap_histogram(
     if not confidence_interval.flags.f_contiguous:
         raise ValueError("'confidence_interval' is modified in place, so it must already be column-major (order='F')")
     bootstrap_mode = np.array([str(bootstrap_mode).lower().encode().ljust(19)], dtype="S19")
+    divergence_mode = np.array([str(divergence_mode).lower().encode().ljust(22)], dtype="S22")
+    divergence_weight_mode = np.array([str(divergence_weight_mode).lower().encode().ljust(33)], dtype="S33")
 
     # what the inputs already say, rather than asking for it again
     n_bins = mean_pmf_counts.shape[1]
@@ -426,6 +468,8 @@ def bootstrap_histogram(
         ctypes.byref(ctypes.c_double(two_sided_bootstrapping_significance_level)),
         ctypes.byref(ctypes.c_int(random_seed)),
         bootstrap_mode,
+        divergence_mode,
+        divergence_weight_mode,
         ctypes.byref(ierr),
     )
 
