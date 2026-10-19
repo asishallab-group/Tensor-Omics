@@ -36,6 +36,7 @@ program main
     use mod_test_empirical_pvalue, only: get_all_tests_empirical_pvalue
     use mod_test_noise_model, only: get_all_tests_noise_model
     use mod_test_noise_model_md, only: get_all_tests_noise_model_md
+    use mod_test_noise_model_variance, only: get_all_tests_noise_model_variance
     implicit none
 
     integer :: nargs
@@ -77,6 +78,7 @@ program main
     call add_suite("root_mean_sq_normalization", get_all_tests_root_mean_sq_normalization)
     call add_suite("noise_model", get_all_tests_noise_model)
     call add_suite("noise_model_md", get_all_tests_noise_model_md)
+    call add_suite("noise_model_variance", get_all_tests_noise_model_variance)
 
     nargs = command_argument_count()
 

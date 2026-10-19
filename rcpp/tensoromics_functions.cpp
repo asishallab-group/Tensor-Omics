@@ -1228,6 +1228,45 @@ void compute_noise_pvalues_pipeline_exact_c(
   int* ierr
 );
 
+// Variance-matched noise model (implementation notes A/B): the exact model with a
+// variance-band neighbourhood. Separate entry point; see tox_noise_model_variance.F90.
+void compute_noise_pvalues_pipeline_variance_c(
+  const double* replicates_case,
+  const int* n_genes_case,
+  const int* n_replicates_case,
+  const double* replicates_control,
+  const int* n_genes_control,
+  const int* n_replicates_control,
+  const int* compute_pvalue_own,
+  const int* beta_centre,
+  const int* n_genes,
+  const int* norm_method,
+  const int* variance_mode,
+  const int* k,
+  const double* c_tau,
+  const double* loess_span,
+  const int* loess_degree,
+  const int* loess_robust,
+  const int* robust_var,
+  const int* max_pool_size,
+  double* pvalues_own,
+  double* observed_statistic_own,
+  double* log2fc,
+  double* delta_hat,
+  int* n_genes_with_pvalue,
+  int* neighborhood_size_own_case,
+  int* neighborhood_size_own_control,
+  int* n_scanned_own_case,
+  int* n_scanned_own_control,
+  double* match_u,
+  double* tau_var,
+  double* d0,
+  double* w,
+  double* scatter,
+  int* n_floored,
+  int* ierr
+);
+
 // Multidimensional (multi-axis) noise model -- Issue #185.
 // Deliberately NOT ABI-compatible with the two scalar entry points above: nearly
 // every array carries an extra axis dimension, so this is a separate binding
@@ -4946,6 +4985,93 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
         norm_method, k_start, k_step, k_max, tau, null_method, max_pool_size);
 }
 
+
+
+//' Compute variance-matched noise-model p-values (implementation notes A/B)
+//'
+//' The exact model with a variance-band neighbourhood: each gene's null is built
+//' from the k nearest-in-mean genes whose matching variable u lies within
+//' +/- tau_var of the gene's own. The null itself (per-side 1/sqrt(n) scaled
+//' residual pools, exact pairwise tail count) is unchanged. u and tau_var are
+//' computed in Fortran from the replicates.
+//'
+//' @param case_replicates NumericMatrix (case samples x genes), pre-log
+//' @param control_replicates NumericMatrix (control samples x genes), pre-log
+//' @param valid_genes_own IntegerVector (length n_genes), 1 = test this gene
+//' @param beta_centre Integer 0/1, median centring of the observed statistic
+//' @param norm_method Integer 0 = linear, non-zero = log2 (statistic and null)
+//' @param variance_mode Integer 1 = band on the raw detrended log-variance (note A),
+//'   2 = band on the shrunk log-variance (note B)
+//' @param k Integer fixed neighbour-gene count
+//' @param c_tau Double band constant
+//' @param loess_span Double trend LOESS span
+//' @param loess_degree Integer trend LOESS degree
+//' @param loess_robust Integer 1 = robust (symmetric) trend LOESS
+//' @param robust_var Integer (mode 2) 1 = MAD scatter, 0 = sample variance
+//' @param max_pool_size Integer maximum residual pool size
+//'
+//' @return List with pvalues_own, obs_own, log2fc, delta_hat, n_success,
+//'   neighborhood_size_own_case / _control, n_scanned_own_case / _control,
+//'   match_u, tau_var, d0, w, scatter, n_floored and ierr.
+// [[Rcpp::export]]
+Rcpp::List tox_compute_noise_pvalues_pipeline_variance_rcpp(
+    Rcpp::NumericMatrix case_replicates,
+    Rcpp::NumericMatrix control_replicates,
+    Rcpp::IntegerVector valid_genes_own,
+    int beta_centre,
+    int norm_method,
+    int variance_mode,
+    int k,
+    double c_tau,
+    double loess_span,
+    int loess_degree,
+    int loess_robust,
+    int robust_var,
+    int max_pool_size) {
+
+    int case_n_samples = case_replicates.nrow();
+    int case_n_genes   = case_replicates.ncol();
+    int control_n_samples = control_replicates.nrow();
+    int control_n_genes   = control_replicates.ncol();
+
+    int n_genes = case_n_genes;
+    if (valid_genes_own.size() != n_genes)
+        Rcpp::stop("valid_genes_own has length %d, expected %d (one entry per gene column).",
+                   (int)valid_genes_own.size(), n_genes);
+
+    Rcpp::NumericVector pvalues_own(n_genes), obs_own(n_genes), log2fc(n_genes), match_u(n_genes);
+    Rcpp::IntegerVector nb_case(n_genes), nb_control(n_genes), scan_case(n_genes), scan_control(n_genes);
+    double delta_hat = 0.0, tau_var = 0.0, d0 = 0.0, w = 0.0, scatter = 0.0;
+    int n_success = 0, n_floored = 0, ierr = 0;
+
+    compute_noise_pvalues_pipeline_variance_c(
+        case_replicates.begin(), &case_n_genes, &case_n_samples,
+        control_replicates.begin(), &control_n_genes, &control_n_samples,
+        valid_genes_own.begin(), &beta_centre,
+        &n_genes, &norm_method, &variance_mode, &k, &c_tau,
+        &loess_span, &loess_degree, &loess_robust, &robust_var, &max_pool_size,
+        pvalues_own.begin(), obs_own.begin(), log2fc.begin(), &delta_hat, &n_success,
+        nb_case.begin(), nb_control.begin(), scan_case.begin(), scan_control.begin(),
+        match_u.begin(), &tau_var, &d0, &w, &scatter, &n_floored, &ierr);
+
+    return Rcpp::List::create(
+        Rcpp::Named("pvalues_own") = pvalues_own,
+        Rcpp::Named("obs_own") = obs_own,
+        Rcpp::Named("log2fc") = log2fc,
+        Rcpp::Named("delta_hat") = delta_hat,
+        Rcpp::Named("n_success") = n_success,
+        Rcpp::Named("neighborhood_size_own_case") = nb_case,
+        Rcpp::Named("neighborhood_size_own_control") = nb_control,
+        Rcpp::Named("n_scanned_own_case") = scan_case,
+        Rcpp::Named("n_scanned_own_control") = scan_control,
+        Rcpp::Named("match_u") = match_u,
+        Rcpp::Named("tau_var") = tau_var,
+        Rcpp::Named("d0") = d0,
+        Rcpp::Named("w") = w,
+        Rcpp::Named("scatter") = scatter,
+        Rcpp::Named("n_floored") = n_floored,
+        Rcpp::Named("ierr") = ierr);
+}
 
 
 // ---------------------------------------------------------------------------
