@@ -8,7 +8,9 @@
 #' @param v a numeric vector. Original time series
 #' @return a named list with elements:
 #'   \item{v_norm}{a numeric vector. Normalized time series}
-#'   \item{status}{a integer scalar. Status code for specific warnings}
+#'   \item{status}{a integer scalar. `ERR_DIVISION_BY_ZERO` when the series is constant, a single time point included: it
+#'     is then written as zeros. A warning for this series, not an error -- `ierr` stays OK,
+#'     as a pipeline can reach a constant series from valid input.}
 #' @export
 normalize_variable_timeseries <- function(v) {
     v <- .tox_as_double_vector(v, "v")
@@ -31,7 +33,9 @@ normalize_variable_timeseries <- function(v) {
 #' @param trajectory a numeric matrix. Original trajectory for one sample
 #' @return a named list with elements:
 #'   \item{trajectory_norm}{a numeric matrix. Normalized trajectory for one sample}
-#'   \item{status}{a integer vector. Status code for specific warnings, one per factor}
+#'   \item{status}{a integer vector. One status per factor, as
+#'     \code{\link{normalize_variable_timeseries}}
+#'     sets it}
 #' @export
 normalize_single_trajectory <- function(trajectory) {
     trajectory <- .tox_as_double_matrix(trajectory, "trajectory")
@@ -56,7 +60,9 @@ normalize_single_trajectory <- function(trajectory) {
 #' @param trajectories a numeric array of rank 3. Original trajectories
 #' @return a named list with elements:
 #'   \item{trajectories_norm}{a numeric array of rank 3. Normalized trajectories}
-#'   \item{status}{a integer matrix. Status code for specific warnings, one per factor per sample}
+#'   \item{status}{a integer matrix. One status per factor and sample, as
+#'     \code{\link{normalize_variable_timeseries}}
+#'     sets it}
 #' @export
 normalize_all_trajectories <- function(trajectories) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
