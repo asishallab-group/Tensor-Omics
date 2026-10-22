@@ -38,15 +38,16 @@
 
     \subsection{Local k-Nearest-Neighbor Noise Sampling}
 
-        For a given gene $g$ and axis $a$, we estimate noise at its mean expression level using adaptive k-nearest-neighbor (kNN) binning in mean-expression space. Note that Tensor Omics uses a k-d-tree of the mean expression levels to speed up lookup here.
+        For a given gene $g$ and axis $a$, we estimate noise at its mean expression level using adaptive k-nearest-neighbor (kNN) binning in mean-expression space. The search is one-dimensional: Tensor Omics sorts the gene means of the axis once and finds the closest mean by binary search, then grows the neighbourhood outward in sorted order.
 
-        Let $k$ be a user-defined parameter (default $k=100$). This value is large enough to provide a stable empirical noise distribution while remaining local in expression space.
+        The neighbourhood size $k$ is counted in genes, not residuals, and is chosen adaptively from three user-defined parameters: a minimum $k_{\mathrm{start}}$, a step $k_{\mathrm{step}}$ and a maximum $k_{\mathrm{max}}$, together with a tolerance $\tau$. This keeps the empirical noise distribution stable while remaining local in expression space.
 
         For gene $g$ on axis $a$:
 
         \begin{enumerate}
-            \item Find the $k$ nearest mean expression values $\bar{x}_{g',a}$ to $\bar{x}_{g,a}$ based on absolute difference in mean expression.
-            \item Collect all biological replicate values $x_{g',a,i}$ belonging to those $k$ gene mean expression values.
+            \item Starting from the gene whose mean is closest to $\bar{x}_{g,a}$, add the genes with the next-closest means $\bar{x}_{g',a}$ (absolute difference) until the neighbourhood holds $k_{\mathrm{start}}$ genes.
+            \item Then add $k_{\mathrm{step}}$ genes at a time while the mean absolute residual of the pool grows by no more than the relative tolerance $\tau$, up to $k_{\mathrm{max}}$ genes.
+            \item Collect all biological replicate values $x_{g',a,i}$ belonging to the selected genes.
             \item Convert these into \emph{signed} noise residuals:
                   \[
                       \epsilon = x_{g',a,i} - \bar{x}_{g',a}

@@ -59,8 +59,9 @@
 !|   - ENUMERATED (`method_used = 0`). Walk the joint space `prod_a S_a`, where
 !|     `S_a = n_pool_case(a) * n_pool_ctrl(a)` is every pairing of one case-side
 !|     residual with one control-side residual, and count the weighted tail exactly.
-!|     No floor. Taken while `prod_a S_a <= enum_max_product`. In practice this is
-!|     the `d = 1` regression path and little else: `S_a` grows QUADRATICALLY in the
+!|     Floor `1/(prod_a S_a + 1)`, far below the sampled one. Taken while
+!|     `prod_a S_a <= enum_max_product`. In practice this is the `d = 1`
+!|     regression path and little else: `S_a` grows QUADRATICALLY in the
 !|     neighbourhood size, so larger `k` makes enumeration worse, and at the usual
 !|     `k = 20+` settings the joint space is already ~1e7 at `d = 2`. Keep the
 !|     branch for what it is — at `d = 1` it reproduces `noise_model_exact`'s
@@ -394,7 +395,7 @@ contains
         sum_plain = 0.0_real64
 
         if (enum_max_product > 0_int64 .and. n_total <= enum_max_product) then
-            ! ---------------- ENUMERATED: exact weighted tail, no floor ----------
+            ! ------- ENUMERATED: exact tail, floor 1/(prod_a S_a + 1) -------
             ! Mixed-radix odometer over the d per-axis atom indices. Only the axes
             ! that actually rolled over are recomputed, so the walk costs O(1)
             ! amortised per atom plus the O(d) accumulation.

@@ -3904,8 +3904,8 @@ tox_md_assert_disjoint_samples <- function(replicate_lists) {
 #' in closed form with no sampling, and is returned as \code{var_null}.
 #'
 #' @section Three paths:
-#' Reported per gene in \code{method_used}: \code{0} enumerated (exact, no floor,
-#' taken while the joint outcome space fits \code{enum_max_product} — in practice
+#' Reported per gene in \code{method_used}: \code{0} enumerated (exact; floor
+#' \code{1/(prod_a S_a + 1)}, far below the sampled one, taken while the joint outcome space fits \code{enum_max_product} — in practice
 #' the \code{d = 1} regression path, since the space grows quadratically in the
 #' neighbourhood size), \code{1} systematic stride sampling (the default:
 #' deterministic, seed-free, lower variance than random draws at the same
@@ -3930,7 +3930,8 @@ tox_md_assert_disjoint_samples <- function(replicate_lists) {
 #'   analogue of what TMM does for counts. \strong{Must be 0 whenever the R side has
 #'   already normalised}, or the data are centred twice. \code{delta_hat} is
 #'   reported either way, so the shift can be sized before deciding.
-#' @param norm_method 0 = linear, non-zero = log2. Applied per axis.
+#' @param norm_method 1 = log2 (default), so \code{d_obs} is in log2FC units;
+#'   0 = linear. Applied per axis.
 #' @param k_start,k_step,k_max,tau Adaptive kNN neighbourhood settings, per axis.
 #'   These count GENES, not residuals.
 #' @param null_method ABI parity only; must be 0. Gene-blocking is not a distinct
@@ -3971,7 +3972,7 @@ tox_compute_noise_pvalues_pipeline_md <- function(
     control_replicates,
     valid_genes_own = NULL,
     beta_centre = 0L,
-    norm_method = 0L,
+    norm_method = 1L,
     k_start = 20L,
     k_step = 1L,
     k_max = 50L,
