@@ -33,8 +33,7 @@ bit_mask_n_words <- function(n_bits) {
 #' @param i_bit a integer scalar. index of the flag, counting from 1
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_bits`.
-#' @return a logical scalar. `TRUE` if the flag is set; `FALSE` for `i_bit > n_bits`, which the bits past
-#'   `n_bits` would say too, as long as the mask keeps them zero
+#' @return a logical scalar. `TRUE` if the flag is set
 #' @export
 bit_mask_test <- function(n_bits, bit_mask, i_bit) {
     n_bits <- .tox_as_integer_scalar(n_bits, "n_bits")

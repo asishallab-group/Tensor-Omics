@@ -82,8 +82,7 @@ contains
             !! DM_MIN(1_int32)
             !! DM_MAX(n_bits)
         logical(c_bool), intent(out) :: is_set
-            !! `.true.` if the flag is set; `.false.` for `i_bit > n_bits`, which the bits past
-            !! `n_bits` would say too, as long as the mask keeps them zero
+            !! `.true.` if the flag is set
 
         is_set = .false._c_bool
         if (i_bit <= n_bits) is_set = M_BIT_MASK_TEST(bit_mask, i_bit)
@@ -472,7 +471,9 @@ contains
 
         do i_word = n_words, 1_int32, -1_int32
             if (bit_mask(i_word) /= 0_int32) then
-                i_bit = i_word*M_BIT_MASK_WORD_BITS - int(leadz(bit_mask(i_word)), int32)
+                ! not i_word*32 - leadz: i_word*32 overflows for the last word of a mask of 2**31 - 1 flags
+                i_bit = (i_word - 1_int32)*M_BIT_MASK_WORD_BITS &
+                        + (M_BIT_MASK_WORD_BITS - int(leadz(bit_mask(i_word)), int32))
                 return
             end if
         end do

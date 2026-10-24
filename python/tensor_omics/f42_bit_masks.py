@@ -191,8 +191,7 @@ def bit_mask_test(
     Returns
     -------
     is_set : bool
-        `True` if the flag is set; `False` for `i_bit > n_bits`, which the bits past
-        `n_bits` would say too, as long as the mask keeps them zero
+        `True` if the flag is set
 
     Raises
     ------

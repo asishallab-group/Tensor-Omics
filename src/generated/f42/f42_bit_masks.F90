@@ -100,8 +100,7 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_bits`.
         logical(c_bool), intent(out) :: is_set
-            !! `.true.` if the flag is set; `.false.` for `i_bit > n_bits`, which the bits past
-            !! `n_bits` would say too, as long as the mask keeps them zero
+            !! `.true.` if the flag is set
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
