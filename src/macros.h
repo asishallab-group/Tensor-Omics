@@ -57,6 +57,8 @@
 ! modules in their DM_ markers, and because a hot loop can test or set a single flag with them
 ! inline -- nothing is inlined across modules, so a procedure call per flag costs more than the
 ! flag. M_BIT_MASK_N_WORDS avoids `(n + 31)/32`, which overflows for n near huge(0_int32).
+! M_BIT_MASK_TEST indexes its first argument, so that must be an array name, not a section such as
+! `masks(:, j)`; pass a column to a procedure, or test it with bit_mask_test_impl.
 #define M_BIT_MASK_WORD_BITS 32_int32
 #define M_BIT_MASK_N_WORDS(N_BITS) ((N_BITS)/32_int32 + min(1_int32, mod((N_BITS), 32_int32)))
 #define M_BIT_MASK_WORD(I_BIT) (((I_BIT) - 1_int32)/32_int32 + 1_int32)
