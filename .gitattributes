@@ -6,3 +6,7 @@ src/generated/** linguist-generated=true
 python/tensor_omics/** linguist-generated=true
 r/tensor_omics/** linguist-generated=true
 snippets/** linguist-generated=true
+
+# doc/ is written by Ford in the main-branch workflow (.github/workflows/main_branch.yml),
+# never by hand and never on a feature branch. Marking it collapses it in diffs as well.
+doc/** linguist-generated=true

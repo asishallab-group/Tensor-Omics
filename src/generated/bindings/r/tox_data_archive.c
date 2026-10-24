@@ -7,7 +7,7 @@
 
 // the Fortran C-ABI symbols this module calls
 void create_zip_archive_c(const char*, const int*, const char*, const int*, const int*, const char*, const int*, const int*, int*);
-void save_tox_data_c(const char*, const int*, int*, const char*, const int*, const int*, const char*, const int*, const double*, const int*, const int*, const char*, const int*, const int*, const int*, const char*, const int*, const char*, const int*, const int*, const char*, const int*, const double*, const int*, const int*, const char*, const int*, const double*, const int*, const int*, const char*, const int*);
+void save_tox_data_c(const char*, const int*, const char*, const int*, const int*, const char*, const int*, const double*, const int*, const int*, const char*, const int*, const int*, const int*, const char*, const int*, const char*, const int*, const int*, const char*, const int*, const double*, const int*, const int*, const char*, const int*, const double*, const int*, const int*, const char*, const int*, int*);
 void get_tox_data_dims_c(const char*, const int*, int*, int*, int*, int*, int*, int*, int*, int*, int*, int*, int*, int*);
 void read_tox_data_into_c(const char*, const int*, const int*, const int*, char*, const int*, const int*, double*, const int*, int*, const int*, const int*, char*, const int*, const int*, double*, const int*, const int*, double*, int*);
 
@@ -161,7 +161,6 @@ SEXP save_tox_data_call(SEXP zip_filename, SEXP gene_ids, SEXP gene_ids_file, SE
     save_tox_data_c(
         zip_filename_c,
         &zip_filename_strlen,
-        &ierr,
         gene_ids != R_NilValue ? gene_ids_c : NULL,
         &gene_ids_strlen,
         &n_gene_ids_elements,
@@ -190,7 +189,8 @@ SEXP save_tox_data_call(SEXP zip_filename, SEXP gene_ids, SEXP gene_ids_file, SE
         &n_shift_vectors_elements_dim_1,
         &n_shift_vectors_elements_dim_2,
         shift_vectors_file != R_NilValue ? shift_vectors_file_c : NULL,
-        &shift_vectors_file_strlen
+        &shift_vectors_file_strlen,
+        &ierr
     );
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 1)); nprot++;

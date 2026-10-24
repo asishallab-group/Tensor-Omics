@@ -549,8 +549,8 @@ contains
             loess_y,&
             loess_n,&
             tail_probability,&
-            ierr,&
-            quantile_level&
+            quantile_level,&
+            ierr&
         )
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
@@ -575,13 +575,13 @@ contains
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
             !! upper-tail probability is used.
-        integer(int32), intent(out) :: ierr
-            !! Error code
         real(real64), intent(in), optional :: quantile_level
             !! Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
             !! The default value is `0.95_real64`.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
+        integer(int32), intent(out) :: ierr
+            !! Error code
         integer(int32), dimension(:), allocatable :: tmp_perm
         integer(int32), dimension(:), allocatable :: tmp_stack_left
         integer(int32), dimension(:), allocatable :: tmp_stack_right
@@ -609,7 +609,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
-        call validate_in_range_real(quantile_level, ierr, arg_pos=11_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(quantile_level, ierr, arg_pos=10_int32, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 #endif
 
@@ -671,8 +671,8 @@ contains
             loess_y = loess_y,&
             loess_n = loess_n,&
             tail_probability = tail_probability,&
-            ierr = ierr,&
-            quantile_level = quantile_level&
+            quantile_level = quantile_level,&
+            ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
     end subroutine detect_outliers
@@ -714,8 +714,8 @@ contains
             loess_y,&
             loess_n,&
             tail_probability,&
-            ierr,&
-            quantile_level&
+            quantile_level,&
+            ierr&
         )
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
@@ -798,13 +798,13 @@ contains
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
             !! upper-tail probability is used.
-        integer(int32), intent(out) :: ierr
-            !! Error code
         real(real64), intent(in), optional :: quantile_level
             !! Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
             !! The default value is `0.95_real64`.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -812,7 +812,7 @@ contains
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=9_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=11_int32)
-        call validate_in_range_real(quantile_level, ierr, arg_pos=33_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(quantile_level, ierr, arg_pos=32_int32, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 #endif
 
@@ -848,8 +848,8 @@ contains
             loess_y = loess_y,&
             loess_n = loess_n,&
             tail_probability = tail_probability,&
-            ierr = ierr,&
-            quantile_level = quantile_level&
+            quantile_level = quantile_level,&
+            ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
     end subroutine detect_outliers_expert

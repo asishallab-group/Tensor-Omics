@@ -533,7 +533,7 @@ contains
                                tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, &
                                tmp_diagl, tmp_weights, tmp_eval_points, tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, tmp_fitted_values, tmp_means_aux, &
                                tmp_dscale, tmp_excluded_low_sd, tmp_low_sd_cutoff, tmp_rdi, tmp_sorted_rdi, tmp_threshold, &
-                               is_outlier, loess_x, loess_y, loess_n, tail_probability, ierr, quantile_level)
+                               is_outlier, loess_x, loess_y, loess_n, tail_probability, quantile_level, ierr)
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
         integer(int32), intent(in) :: n_families
@@ -620,13 +620,13 @@ contains
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
             !! upper-tail probability is used.
-        integer(int32), intent(out) :: ierr
-            !! Error code
         real(real64), intent(in), optional :: quantile_level
             !! Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
             !! DM_DEFAULT(CM_OUTLIER_QUANTILE_LEVEL_DEFAULT)
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
         call set_ok(ierr)
 
