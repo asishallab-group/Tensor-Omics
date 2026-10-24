@@ -573,6 +573,7 @@ contains
 
         integer(int32) :: i_gene, family_idx
 
+        call set_ok(ierr)
         masks = 0_int32
 
         select case (pattern_mode)
