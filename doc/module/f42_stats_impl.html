@@ -140,7 +140,7 @@
       </a>
       <div id="funcs-0" class="collapse">
         <div class="list-group list-group-flush">
-            <a class="list-group-item" href="../module/f42_stats_impl.html#proc-calc_percentile_rank">calc_percentile_rank</a>
+            <a class="list-group-item" href="../module/f42_stats_impl.html#proc-calc_quantile_rank">calc_quantile_rank</a>
         </div>
       </div>
     </div>
@@ -154,8 +154,8 @@
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../module/f42_stats_impl.html#proc-loess_smooth_2d_impl">loess_smooth_2d_impl</a>
             <a class="list-group-item" href="../module/f42_stats_impl.html#proc-compute_edf_impl">compute_edf_impl</a>
-            <a class="list-group-item" href="../module/f42_stats_impl.html#proc-calc_percentile_impl">calc_percentile_impl</a>
-            <a class="list-group-item" href="../module/f42_stats_impl.html#proc-compute_scaled_distance_quantile_impl">compute_scaled_distance_quantile_impl</a>
+            <a class="list-group-item" href="../module/f42_stats_impl.html#proc-calc_quantile_impl">calc_quantile_impl</a>
+            <a class="list-group-item" href="../module/f42_stats_impl.html#proc-compute_scaled_distance_tail_probability_impl">compute_scaled_distance_tail_probability_impl</a>
         </div>
       </div>
     </div>
@@ -174,7 +174,7 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      <p>Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.</p>
+      <p>Descriptive statistics: quantiles, empirical distribution functions, and 2-D LOESS smoothing.</p>
 <p>One of the modules the <code>f42_utils</code> family gathers.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -182,10 +182,10 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
                   <li class="list-inline-item"><a href='f42_sort_impl.html'>f42_sort_impl</a></li>
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
               </ul>
             </li>
         </ul>
@@ -204,7 +204,7 @@
         <section>
           <h2>Functions</h2>
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-calc_percentile_rank"></span> <h3>public pure function <a href='../proc/calc_percentile_rank.html'>calc_percentile_rank</a>(percentile, n) result(rank)  
+    <div class="card-header codesum"><span class="anchor" id="proc-calc_quantile_rank"></span> <h3>public pure function <a href='../proc/calc_quantile_rank.html'>calc_quantile_rank</a>(level, n) result(rank)  
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
@@ -227,7 +227,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile~5"></span>
+              <span class="anchor" id="variable-level~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -235,14 +235,14 @@
               
             </td>
             <td>::</td>
-            <td><strong>percentile</strong></td>
+            <td><strong>level</strong></td>
             <td>
-<p>desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)</p>
+<p>quantile level as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~21"></span>
+              <span class="anchor" id="variable-n~26"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -356,7 +356,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-indices_used~3"></span>
+              <span class="anchor" id="variable-indices_used~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -479,7 +479,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-values~9"></span>
+              <span class="anchor" id="variable-values~12"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -494,7 +494,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_values~8"></span>
+              <span class="anchor" id="variable-n_values~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -509,7 +509,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-values_perm~4"></span>
+              <span class="anchor" id="variable-values_perm~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -580,7 +580,7 @@ The first <code>n_unique</code> elements will hold the results.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-calc_percentile_impl"></span> <h3>public pure subroutine <a href='../proc/calc_percentile_impl.html'>calc_percentile_impl</a>(array, n_array, array_perm, percentile, value, n_considered)  
+    <div class="card-header codesum"><span class="anchor" id="proc-calc_quantile_impl"></span> <h3>public pure subroutine <a href='../proc/calc_quantile_impl.html'>calc_quantile_impl</a>(array, n_array, array_perm, level, value, n_considered)  
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
@@ -588,7 +588,7 @@ The first <code>n_unique</code> elements will hold the results.</p>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Calculate the percentile of an array given a sorted permutation</p><a href="../proc/calc_percentile_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>Calculate the quantile of an array at a given level, given a sorted permutation</p><a href="../proc/calc_quantile_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -603,7 +603,7 @@ The first <code>n_unique</code> elements will hold the results.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~19"></span>
+              <span class="anchor" id="variable-array~22"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -633,7 +633,7 @@ The first <code>n_unique</code> elements will hold the results.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-array_perm~2"></span>
+              <span class="anchor" id="variable-array_perm~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -651,7 +651,7 @@ The maximum valid value is <code>n_array</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile~6"></span>
+              <span class="anchor" id="variable-level~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -659,16 +659,16 @@ The maximum valid value is <code>n_array</code>.</p>
               
             </td>
             <td>::</td>
-            <td><strong>percentile</strong></td>
+            <td><strong>level</strong></td>
             <td>
-<p>desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
+<p>quantile level as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
 The minimum valid value is <code>0.0_real64</code>.
 The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-value~5"></span>
+              <span class="anchor" id="variable-value~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -678,7 +678,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <td>::</td>
             <td><strong>value</strong></td>
             <td>
-<p>output percentile value</p>
+<p>the quantile: the value a fraction <code>level</code> of the considered entries lies at or below</p>
             </td>
         </tr>
         <tr>
@@ -693,8 +693,8 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <td>::</td>
             <td><strong>n_considered</strong></td>
             <td>
-<p>How many leading entries of <code>array_perm</code> the percentile is taken over, for a
-percentile of a subset -- the trailing entries are ignored rather than sliced
+<p>How many leading entries of <code>array_perm</code> the quantile is taken over, for a
+quantile of a subset -- the trailing entries are ignored rather than sliced
 off, so the permutation stays the shape the sort produced. Zero, the default,
 considers all <code>n_array</code> of them.
 The default value is <code>0_int32</code>.
@@ -710,7 +710,7 @@ The maximum valid value is <code>n_array</code>.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-compute_scaled_distance_quantile_impl"></span> <h3>public pure subroutine <a href='../proc/compute_scaled_distance_quantile_impl.html'>compute_scaled_distance_quantile_impl</a>(n_genes, rdi, sorted_rdi, sorted_rdi_perm, quantile, c_const)  
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_scaled_distance_tail_probability_impl"></span> <h3>public pure subroutine <a href='../proc/compute_scaled_distance_tail_probability_impl.html'>compute_scaled_distance_tail_probability_impl</a>(n_genes, rdi, sorted_rdi, sorted_rdi_perm, tail_probability, c_const)  
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
@@ -718,7 +718,7 @@ The maximum valid value is <code>n_array</code>.</p>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)</p><a href="../proc/compute_scaled_distance_quantile_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>Calculate the empirical upper-tail probability (effect-size measure) of scaled expression distances (RDI)</p><a href="../proc/compute_scaled_distance_tail_probability_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -733,7 +733,7 @@ The maximum valid value is <code>n_array</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~57"></span>
+              <span class="anchor" id="variable-n_genes~79"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -748,7 +748,7 @@ The maximum valid value is <code>n_array</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi~5"></span>
+              <span class="anchor" id="variable-rdi~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -765,7 +765,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi~5"></span>
+              <span class="anchor" id="variable-sorted_rdi~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -782,7 +782,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi_perm~2"></span>
+              <span class="anchor" id="variable-sorted_rdi_perm~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -800,7 +800,7 @@ The maximum valid value is <code>n_genes</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-quantile~5"></span>
+              <span class="anchor" id="variable-tail_probability~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -808,9 +808,9 @@ The maximum valid value is <code>n_genes</code>.</p>
               
             </td>
             <td>::</td>
-            <td><strong>quantile</strong>(n_genes)</td>
+            <td><strong>tail_probability</strong>(n_genes)</td>
             <td>
-<p>Output array to store the computed quantile for each gene.</p>
+<p>Output array to store the computed upper-tail probability for each gene.</p>
             </td>
         </tr>
         <tr>
@@ -858,7 +858,7 @@ The maximum valid value is <code>n_genes</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-09-14 09:28 +0000             </p>
+ on 2026-10-08 18:38 +0000             </p>
           </div>
         </div>
         <br>

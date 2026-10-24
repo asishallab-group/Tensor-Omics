@@ -189,45 +189,45 @@
       ")"
     ]
   },
-  "calc_percentile (call)": {
-    "prefix": "f42:calc_percentile",
+  "calc_quantile (call)": {
+    "prefix": "f42:calc_quantile",
     "description": "Uses linear interpolation between adjacent values.",
     "body": [
-      "${1:result} <- calc_percentile(",
+      "${1:result} <- calc_quantile(",
       "  array = ${2:array},",
-      "  percentile = ${3:percentile},",
+      "  level = ${3:level},",
       "  n_considered = ${4:0L}",
       ")"
     ]
   },
-  "calc_percentile_expert (call)": {
-    "prefix": "f42:calc_percentile_expert",
+  "calc_quantile_expert (call)": {
+    "prefix": "f42:calc_quantile_expert",
     "description": "Uses linear interpolation between adjacent values.",
     "body": [
-      "${1:result} <- calc_percentile_expert(",
+      "${1:result} <- calc_quantile_expert(",
       "  array = ${2:array},",
       "  array_perm = ${3:array_perm},",
-      "  percentile = ${4:percentile},",
+      "  level = ${4:level},",
       "  n_considered = ${5:0L}",
       ")"
     ]
   },
-  "compute_scaled_distance_quantile (call)": {
-    "prefix": "f42:compute_scaled_distance_quantile",
+  "compute_scaled_distance_tail_probability (call)": {
+    "prefix": "f42:compute_scaled_distance_tail_probability",
     "description": "This is NOT a null-hypothesis-testing p-value: each distance is compared against the",
     "body": [
-      "${1:result} <- compute_scaled_distance_quantile(",
+      "${1:result} <- compute_scaled_distance_tail_probability(",
       "  rdi = ${2:rdi},",
       "  sorted_rdi = ${3:sorted_rdi},",
       "  c_const = ${4:c_const}",
       ")"
     ]
   },
-  "compute_scaled_distance_quantile_expert (call)": {
-    "prefix": "f42:compute_scaled_distance_quantile_expert",
+  "compute_scaled_distance_tail_probability_expert (call)": {
+    "prefix": "f42:compute_scaled_distance_tail_probability_expert",
     "description": "This is NOT a null-hypothesis-testing p-value: each distance is compared against the",
     "body": [
-      "${1:result} <- compute_scaled_distance_quantile_expert(",
+      "${1:result} <- compute_scaled_distance_tail_probability_expert(",
       "  rdi = ${2:rdi},",
       "  sorted_rdi = ${3:sorted_rdi},",
       "  sorted_rdi_perm = ${4:sorted_rdi_perm},",

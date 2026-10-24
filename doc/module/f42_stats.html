@@ -144,10 +144,10 @@
             <a class="list-group-item" href="../module/f42_stats.html#proc-loess_smooth_2d">loess_smooth_2d</a>
             <a class="list-group-item" href="../module/f42_stats.html#proc-compute_edf">compute_edf</a>
             <a class="list-group-item" href="../module/f42_stats.html#proc-compute_edf_expert">compute_edf_expert</a>
-            <a class="list-group-item" href="../module/f42_stats.html#proc-calc_percentile">calc_percentile</a>
-            <a class="list-group-item" href="../module/f42_stats.html#proc-calc_percentile_expert">calc_percentile_expert</a>
-            <a class="list-group-item" href="../module/f42_stats.html#proc-compute_scaled_distance_quantile">compute_scaled_distance_quantile</a>
-            <a class="list-group-item" href="../module/f42_stats.html#proc-compute_scaled_distance_quantile_expert">compute_scaled_distance_quantile_expert</a>
+            <a class="list-group-item" href="../module/f42_stats.html#proc-calc_quantile">calc_quantile</a>
+            <a class="list-group-item" href="../module/f42_stats.html#proc-calc_quantile_expert">calc_quantile_expert</a>
+            <a class="list-group-item" href="../module/f42_stats.html#proc-compute_scaled_distance_tail_probability">compute_scaled_distance_tail_probability</a>
+            <a class="list-group-item" href="../module/f42_stats.html#proc-compute_scaled_distance_tail_probability_expert">compute_scaled_distance_tail_probability_expert</a>
         </div>
       </div>
     </div>
@@ -166,7 +166,7 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      <p>Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.</p>
+      <p>Descriptive statistics: quantiles, empirical distribution functions, and 2-D LOESS smoothing.</p>
 <p>One of the modules the <code>f42_utils</code> family gathers.</p>
 <p>Generated from <a href="../module/f42_stats_impl.html">f42_stats_impl</a>; do not edit -- regenerate instead.</p>
 <br>          <div class="card mb-4">
@@ -175,10 +175,10 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='f42_stats_impl.html'>f42_stats_impl</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='f42_sort_impl.html'>f42_sort_impl</a></li>
+                  <li class="list-inline-item"><a href='f42_stats_impl.html'>f42_stats_impl</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
               </ul>
             </li>
         </ul>
@@ -217,7 +217,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_total~3"></span>
+              <span class="anchor" id="variable-n_total"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -232,7 +232,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_target~3"></span>
+              <span class="anchor" id="variable-n_target"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -247,7 +247,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x_ref~3"></span>
+              <span class="anchor" id="variable-x_ref"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -262,7 +262,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-y_ref~3"></span>
+              <span class="anchor" id="variable-y_ref"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -277,7 +277,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-indices_used~4"></span>
+              <span class="anchor" id="variable-indices_used~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -294,7 +294,7 @@ The maximum valid value is <code>n_total</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_used~3"></span>
+              <span class="anchor" id="variable-n_used"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -309,7 +309,7 @@ The maximum valid value is <code>n_total</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x_query~3"></span>
+              <span class="anchor" id="variable-x_query"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -324,7 +324,7 @@ The maximum valid value is <code>n_total</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kernel_sigma~3"></span>
+              <span class="anchor" id="variable-kernel_sigma"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -340,7 +340,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kernel_cutoff~3"></span>
+              <span class="anchor" id="variable-kernel_cutoff"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -356,7 +356,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-y_out~3"></span>
+              <span class="anchor" id="variable-y_out"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -371,7 +371,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~272"></span>
+              <span class="anchor" id="variable-ierr~75"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -411,7 +411,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-values~11"></span>
+              <span class="anchor" id="variable-values~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -426,7 +426,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_values~9"></span>
+              <span class="anchor" id="variable-n_values~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -441,7 +441,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-unique_values~4"></span>
+              <span class="anchor" id="variable-unique_values"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -457,7 +457,7 @@ The first <code>n_unique</code> elements will hold the results.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-cdf_values~4"></span>
+              <span class="anchor" id="variable-cdf_values"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -473,7 +473,7 @@ The first <code>n_unique</code> elements will hold the results.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_unique~4"></span>
+              <span class="anchor" id="variable-n_unique"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -488,7 +488,7 @@ The first <code>n_unique</code> elements will hold the results.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~273"></span>
+              <span class="anchor" id="variable-ierr~76"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -528,7 +528,7 @@ The first <code>n_unique</code> elements will hold the results.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-values~12"></span>
+              <span class="anchor" id="variable-values~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -543,7 +543,7 @@ The first <code>n_unique</code> elements will hold the results.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_values~10"></span>
+              <span class="anchor" id="variable-n_values~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -558,7 +558,7 @@ The first <code>n_unique</code> elements will hold the results.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-values_perm~6"></span>
+              <span class="anchor" id="variable-values_perm~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -576,7 +576,7 @@ The maximum valid value is <code>n_values</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-unique_values~5"></span>
+              <span class="anchor" id="variable-unique_values~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -592,7 +592,7 @@ The first <code>n_unique</code> elements will hold the results.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-cdf_values~5"></span>
+              <span class="anchor" id="variable-cdf_values~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -608,7 +608,7 @@ The first <code>n_unique</code> elements will hold the results.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_unique~5"></span>
+              <span class="anchor" id="variable-n_unique~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -623,7 +623,7 @@ The first <code>n_unique</code> elements will hold the results.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~274"></span>
+              <span class="anchor" id="variable-ierr~77"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -644,11 +644,11 @@ The first <code>n_unique</code> elements will hold the results.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-calc_percentile"></span> <h3>public pure subroutine <a href='../proc/calc_percentile.html'>calc_percentile</a>(array, n_array, percentile, value, n_considered, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-calc_quantile"></span> <h3>public pure subroutine <a href='../proc/calc_quantile.html'>calc_quantile</a>(array, n_array, level, value, n_considered, ierr)  
 </h3></div>
     <div class="card-body">
           
-  <p>Validates its inputs, prepares what <a href="../proc/calc_percentile_impl.html">calc_percentile_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/calc_percentile_expert.html">calc_percentile_expert</a> to prepare it yourself.</p><a href="../proc/calc_percentile.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>Validates its inputs, prepares what <a href="../proc/calc_quantile_impl.html">calc_quantile_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/calc_quantile_expert.html">calc_quantile_expert</a> to prepare it yourself.</p><a href="../proc/calc_quantile.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -663,7 +663,7 @@ The first <code>n_unique</code> elements will hold the results.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~21"></span>
+              <span class="anchor" id="variable-array"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -678,7 +678,7 @@ The first <code>n_unique</code> elements will hold the results.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_array~4"></span>
+              <span class="anchor" id="variable-n_array"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -693,7 +693,7 @@ The first <code>n_unique</code> elements will hold the results.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile~7"></span>
+              <span class="anchor" id="variable-level"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -701,16 +701,16 @@ The first <code>n_unique</code> elements will hold the results.</p>
               
             </td>
             <td>::</td>
-            <td><strong>percentile</strong></td>
+            <td><strong>level</strong></td>
             <td>
-<p>desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
+<p>quantile level as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
 The minimum valid value is <code>0.0_real64</code>.
 The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-value~9"></span>
+              <span class="anchor" id="variable-value~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -720,12 +720,12 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <td>::</td>
             <td><strong>value</strong></td>
             <td>
-<p>output percentile value</p>
+<p>the quantile: the value a fraction <code>level</code> of the considered entries lies at or below</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_considered~4"></span>
+              <span class="anchor" id="variable-n_considered"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -735,8 +735,8 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <td>::</td>
             <td><strong>n_considered</strong></td>
             <td>
-<p>How many leading entries of <code>array_perm</code> the percentile is taken over, for a
-percentile of a subset -- the trailing entries are ignored rather than sliced
+<p>How many leading entries of <code>array_perm</code> the quantile is taken over, for a
+quantile of a subset -- the trailing entries are ignored rather than sliced
 off, so the permutation stays the shape the sort produced. Zero, the default,
 considers all <code>n_array</code> of them.
 The default value is <code>0_int32</code>.
@@ -746,7 +746,7 @@ The maximum valid value is <code>n_array</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~275"></span>
+              <span class="anchor" id="variable-ierr~78"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -767,11 +767,11 @@ The maximum valid value is <code>n_array</code>.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-calc_percentile_expert"></span> <h3>public pure subroutine <a href='../proc/calc_percentile_expert.html'>calc_percentile_expert</a>(array, n_array, array_perm, percentile, value, n_considered, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-calc_quantile_expert"></span> <h3>public pure subroutine <a href='../proc/calc_quantile_expert.html'>calc_quantile_expert</a>(array, n_array, array_perm, level, value, n_considered, ierr)  
 </h3></div>
     <div class="card-body">
           
-  <p>Validates its inputs, then calls <a href="../proc/calc_percentile_impl.html">calc_percentile_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/calc_percentile.html">calc_percentile</a> does both.</p><a href="../proc/calc_percentile_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>Validates its inputs, then calls <a href="../proc/calc_quantile_impl.html">calc_quantile_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/calc_quantile.html">calc_quantile</a> does both.</p><a href="../proc/calc_quantile_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -786,7 +786,7 @@ The maximum valid value is <code>n_array</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~22"></span>
+              <span class="anchor" id="variable-array~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -801,7 +801,7 @@ The maximum valid value is <code>n_array</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_array~5"></span>
+              <span class="anchor" id="variable-n_array~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -816,7 +816,7 @@ The maximum valid value is <code>n_array</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-array_perm~4"></span>
+              <span class="anchor" id="variable-array_perm~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -834,7 +834,7 @@ The maximum valid value is <code>n_array</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile~8"></span>
+              <span class="anchor" id="variable-level~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -842,16 +842,16 @@ The maximum valid value is <code>n_array</code>.</p>
               
             </td>
             <td>::</td>
-            <td><strong>percentile</strong></td>
+            <td><strong>level</strong></td>
             <td>
-<p>desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
+<p>quantile level as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
 The minimum valid value is <code>0.0_real64</code>.
 The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-value~10"></span>
+              <span class="anchor" id="variable-value~5"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -861,12 +861,12 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <td>::</td>
             <td><strong>value</strong></td>
             <td>
-<p>output percentile value</p>
+<p>the quantile: the value a fraction <code>level</code> of the considered entries lies at or below</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_considered~5"></span>
+              <span class="anchor" id="variable-n_considered~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -876,8 +876,8 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <td>::</td>
             <td><strong>n_considered</strong></td>
             <td>
-<p>How many leading entries of <code>array_perm</code> the percentile is taken over, for a
-percentile of a subset -- the trailing entries are ignored rather than sliced
+<p>How many leading entries of <code>array_perm</code> the quantile is taken over, for a
+quantile of a subset -- the trailing entries are ignored rather than sliced
 off, so the permutation stays the shape the sort produced. Zero, the default,
 considers all <code>n_array</code> of them.
 The default value is <code>0_int32</code>.
@@ -887,7 +887,7 @@ The maximum valid value is <code>n_array</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~276"></span>
+              <span class="anchor" id="variable-ierr~79"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -908,11 +908,11 @@ The maximum valid value is <code>n_array</code>.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-compute_scaled_distance_quantile"></span> <h3>public pure subroutine <a href='../proc/compute_scaled_distance_quantile.html'>compute_scaled_distance_quantile</a>(n_genes, rdi, sorted_rdi, quantile, c_const, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_scaled_distance_tail_probability"></span> <h3>public pure subroutine <a href='../proc/compute_scaled_distance_tail_probability.html'>compute_scaled_distance_tail_probability</a>(n_genes, rdi, sorted_rdi, tail_probability, c_const, ierr)  
 </h3></div>
     <div class="card-body">
           
-  <p>Validates its inputs, prepares what <a href="../proc/compute_scaled_distance_quantile_impl.html">compute_scaled_distance_quantile_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/compute_scaled_distance_quantile_expert.html">compute_scaled_distance_quantile_expert</a> to prepare it yourself.</p><a href="../proc/compute_scaled_distance_quantile.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>Validates its inputs, prepares what <a href="../proc/compute_scaled_distance_tail_probability_impl.html">compute_scaled_distance_tail_probability_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/compute_scaled_distance_tail_probability_expert.html">compute_scaled_distance_tail_probability_expert</a> to prepare it yourself.</p><a href="../proc/compute_scaled_distance_tail_probability.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -927,7 +927,7 @@ The maximum valid value is <code>n_array</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~63"></span>
+              <span class="anchor" id="variable-n_genes~30"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -942,7 +942,7 @@ The maximum valid value is <code>n_array</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi~6"></span>
+              <span class="anchor" id="variable-rdi~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -959,7 +959,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi~6"></span>
+              <span class="anchor" id="variable-sorted_rdi~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -976,7 +976,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-quantile~6"></span>
+              <span class="anchor" id="variable-tail_probability~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -984,14 +984,14 @@ Infinite values are permitted for this value.</p>
               dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>quantile</strong></td>
+            <td><strong>tail_probability</strong></td>
             <td>
-<p>Output array to store the computed quantile for each gene.</p>
+<p>Output array to store the computed upper-tail probability for each gene.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-c_const~4"></span>
+              <span class="anchor" id="variable-c_const"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1006,7 +1006,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~277"></span>
+              <span class="anchor" id="variable-ierr~80"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1027,11 +1027,11 @@ Infinite values are permitted for this value.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-compute_scaled_distance_quantile_expert"></span> <h3>public pure subroutine <a href='../proc/compute_scaled_distance_quantile_expert.html'>compute_scaled_distance_quantile_expert</a>(n_genes, rdi, sorted_rdi, sorted_rdi_perm, quantile, c_const, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_scaled_distance_tail_probability_expert"></span> <h3>public pure subroutine <a href='../proc/compute_scaled_distance_tail_probability_expert.html'>compute_scaled_distance_tail_probability_expert</a>(n_genes, rdi, sorted_rdi, sorted_rdi_perm, tail_probability, c_const, ierr)  
 </h3></div>
     <div class="card-body">
           
-  <p>Validates its inputs, then calls <a href="../proc/compute_scaled_distance_quantile_impl.html">compute_scaled_distance_quantile_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/compute_scaled_distance_quantile.html">compute_scaled_distance_quantile</a> does both.</p><a href="../proc/compute_scaled_distance_quantile_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+  <p>Validates its inputs, then calls <a href="../proc/compute_scaled_distance_tail_probability_impl.html">compute_scaled_distance_tail_probability_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/compute_scaled_distance_tail_probability.html">compute_scaled_distance_tail_probability</a> does both.</p><a href="../proc/compute_scaled_distance_tail_probability_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1046,7 +1046,7 @@ Infinite values are permitted for this value.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~64"></span>
+              <span class="anchor" id="variable-n_genes~31"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1061,7 +1061,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi~7"></span>
+              <span class="anchor" id="variable-rdi~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1078,7 +1078,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi~7"></span>
+              <span class="anchor" id="variable-sorted_rdi~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1095,7 +1095,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi_perm~4"></span>
+              <span class="anchor" id="variable-sorted_rdi_perm~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1113,7 +1113,7 @@ The maximum valid value is <code>n_genes</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-quantile~7"></span>
+              <span class="anchor" id="variable-tail_probability~5"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1121,14 +1121,14 @@ The maximum valid value is <code>n_genes</code>.</p>
               dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>quantile</strong></td>
+            <td><strong>tail_probability</strong></td>
             <td>
-<p>Output array to store the computed quantile for each gene.</p>
+<p>Output array to store the computed upper-tail probability for each gene.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-c_const~5"></span>
+              <span class="anchor" id="variable-c_const~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1143,7 +1143,7 @@ The maximum valid value is <code>n_genes</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~278"></span>
+              <span class="anchor" id="variable-ierr~81"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1186,7 +1186,7 @@ The maximum valid value is <code>n_genes</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-09-14 09:28 +0000             </p>
+ on 2026-10-08 18:38 +0000             </p>
           </div>
         </div>
         <br>

@@ -510,7 +510,7 @@
     "prefix": "f42:stats.use",
     "description": "use f42_stats, only: ...",
     "body": [
-      "use f42_stats, only: ${1|loess_smooth_2d,compute_edf,compute_edf_expert,calc_percentile,calc_percentile_expert,compute_scaled_distance_quantile,compute_scaled_distance_quantile_expert|}"
+      "use f42_stats, only: ${1|loess_smooth_2d,compute_edf,compute_edf_expert,calc_quantile,calc_quantile_expert,compute_scaled_distance_tail_probability,compute_scaled_distance_tail_probability_expert|}"
     ]
   },
   "loess_smooth_2d (call)": {
@@ -606,113 +606,113 @@
       "if (is_err(ierr)) return"
     ]
   },
-  "calc_percentile (call)": {
-    "prefix": "f42:calc_percentile",
+  "calc_quantile (call)": {
+    "prefix": "f42:calc_quantile",
     "description": "Uses linear interpolation between adjacent values.",
     "body": [
-      "call calc_percentile( &",
+      "call calc_quantile( &",
       "    array=${1:array}, &",
       "    n_array=${2:n_array}, &",
-      "    percentile=${3:percentile}, &",
+      "    level=${3:level}, &",
       "    value=${4:value}, &",
       "    n_considered=${5:n_considered}, &",
       "    ierr=${6:ierr})"
     ]
   },
-  "calc_percentile (call, checked)": {
-    "prefix": "f42:calc_percentile.checked",
+  "calc_quantile (call, checked)": {
+    "prefix": "f42:calc_quantile.checked",
     "description": "Uses linear interpolation between adjacent values. (with error check)",
     "body": [
-      "call calc_percentile( &",
+      "call calc_quantile( &",
       "    array=${1:array}, &",
       "    n_array=${2:n_array}, &",
-      "    percentile=${3:percentile}, &",
+      "    level=${3:level}, &",
       "    value=${4:value}, &",
       "    n_considered=${5:n_considered}, &",
       "    ierr=${6:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
-  "calc_percentile_expert (call)": {
-    "prefix": "f42:calc_percentile_expert",
+  "calc_quantile_expert (call)": {
+    "prefix": "f42:calc_quantile_expert",
     "description": "Uses linear interpolation between adjacent values.",
     "body": [
-      "call calc_percentile_expert( &",
+      "call calc_quantile_expert( &",
       "    array=${1:array}, &",
       "    n_array=${2:n_array}, &",
       "    array_perm=${3:array_perm}, &",
-      "    percentile=${4:percentile}, &",
+      "    level=${4:level}, &",
       "    value=${5:value}, &",
       "    n_considered=${6:n_considered}, &",
       "    ierr=${7:ierr})"
     ]
   },
-  "calc_percentile_expert (call, checked)": {
-    "prefix": "f42:calc_percentile_expert.checked",
+  "calc_quantile_expert (call, checked)": {
+    "prefix": "f42:calc_quantile_expert.checked",
     "description": "Uses linear interpolation between adjacent values. (with error check)",
     "body": [
-      "call calc_percentile_expert( &",
+      "call calc_quantile_expert( &",
       "    array=${1:array}, &",
       "    n_array=${2:n_array}, &",
       "    array_perm=${3:array_perm}, &",
-      "    percentile=${4:percentile}, &",
+      "    level=${4:level}, &",
       "    value=${5:value}, &",
       "    n_considered=${6:n_considered}, &",
       "    ierr=${7:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
-  "compute_scaled_distance_quantile (call)": {
-    "prefix": "f42:compute_scaled_distance_quantile",
+  "compute_scaled_distance_tail_probability (call)": {
+    "prefix": "f42:compute_scaled_distance_tail_probability",
     "description": "This is NOT a null-hypothesis-testing p-value: each distance is compared against the",
     "body": [
-      "call compute_scaled_distance_quantile( &",
+      "call compute_scaled_distance_tail_probability( &",
       "    n_genes=${1:n_genes}, &",
       "    rdi=${2:rdi}, &",
       "    sorted_rdi=${3:sorted_rdi}, &",
-      "    quantile=${4:quantile}, &",
+      "    tail_probability=${4:tail_probability}, &",
       "    c_const=${5:c_const}, &",
       "    ierr=${6:ierr})"
     ]
   },
-  "compute_scaled_distance_quantile (call, checked)": {
-    "prefix": "f42:compute_scaled_distance_quantile.checked",
+  "compute_scaled_distance_tail_probability (call, checked)": {
+    "prefix": "f42:compute_scaled_distance_tail_probability.checked",
     "description": "This is NOT a null-hypothesis-testing p-value: each distance is compared against the (with error check)",
     "body": [
-      "call compute_scaled_distance_quantile( &",
+      "call compute_scaled_distance_tail_probability( &",
       "    n_genes=${1:n_genes}, &",
       "    rdi=${2:rdi}, &",
       "    sorted_rdi=${3:sorted_rdi}, &",
-      "    quantile=${4:quantile}, &",
+      "    tail_probability=${4:tail_probability}, &",
       "    c_const=${5:c_const}, &",
       "    ierr=${6:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
-  "compute_scaled_distance_quantile_expert (call)": {
-    "prefix": "f42:compute_scaled_distance_quantile_expert",
+  "compute_scaled_distance_tail_probability_expert (call)": {
+    "prefix": "f42:compute_scaled_distance_tail_probability_expert",
     "description": "This is NOT a null-hypothesis-testing p-value: each distance is compared against the",
     "body": [
-      "call compute_scaled_distance_quantile_expert( &",
+      "call compute_scaled_distance_tail_probability_expert( &",
       "    n_genes=${1:n_genes}, &",
       "    rdi=${2:rdi}, &",
       "    sorted_rdi=${3:sorted_rdi}, &",
       "    sorted_rdi_perm=${4:sorted_rdi_perm}, &",
-      "    quantile=${5:quantile}, &",
+      "    tail_probability=${5:tail_probability}, &",
       "    c_const=${6:c_const}, &",
       "    ierr=${7:ierr})"
     ]
   },
-  "compute_scaled_distance_quantile_expert (call, checked)": {
-    "prefix": "f42:compute_scaled_distance_quantile_expert.checked",
+  "compute_scaled_distance_tail_probability_expert (call, checked)": {
+    "prefix": "f42:compute_scaled_distance_tail_probability_expert.checked",
     "description": "This is NOT a null-hypothesis-testing p-value: each distance is compared against the (with error check)",
     "body": [
-      "call compute_scaled_distance_quantile_expert( &",
+      "call compute_scaled_distance_tail_probability_expert( &",
       "    n_genes=${1:n_genes}, &",
       "    rdi=${2:rdi}, &",
       "    sorted_rdi=${3:sorted_rdi}, &",
       "    sorted_rdi_perm=${4:sorted_rdi_perm}, &",
-      "    quantile=${5:quantile}, &",
+      "    tail_probability=${5:tail_probability}, &",
       "    c_const=${6:c_const}, &",
       "    ierr=${7:ierr})",
       "if (is_err(ierr)) return"

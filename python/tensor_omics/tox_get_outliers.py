@@ -78,7 +78,7 @@ _lib.identify_outliers_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_IDENTIFY_OUTLIERS_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "perm", "is_outlier", "threshold", "quantile", "percentile", "ierr",)
+_IDENTIFY_OUTLIERS_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "perm", "is_outlier", "threshold", "tail_probability", "quantile_level", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _IDENTIFY_OUTLIERS_ARGUMENT_SOURCES = ("rdi", None, None, None, None, None, None, None, None,)
 
@@ -98,7 +98,7 @@ _lib.detect_outliers_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_DETECT_OUTLIERS_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "is_outlier", "loess_x", "loess_y", "loess_n", "quantile", "ierr", "percentile",)
+_DETECT_OUTLIERS_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "is_outlier", "loess_x", "loess_y", "loess_n", "tail_probability", "ierr", "quantile_level",)
 #: For a derived argument, the one the caller passed it in
 _DETECT_OUTLIERS_ARGUMENT_SOURCES = ("distances", "loess_x", None, None, None, None, None, None, None, None, None,)
 
@@ -357,9 +357,9 @@ def identify_outliers(
         rdi,
         sorted_rdi,
         perm,
-        percentile=0.95,
+        quantile_level=0.95,
 ):
-    r"""Identify gene outliers based on the top percentile of RDI values
+    r"""Identify gene outliers based on an upper quantile of the RDI values
 
     Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
     If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
@@ -376,8 +376,8 @@ def identify_outliers(
         Infinite values are permitted for this value.
     perm : np.ndarray[np.int32] of shape (n_genes,)
         Permutation array with sorted indices
-    percentile : float, optional, default 0.95
-        Percentile threshold as a fraction in [0,1] (top 5% for the default).
+    quantile_level : float, optional, default 0.95
+        Quantile level of the threshold, as a fraction in [0,1] (the top 5% for the default).
         The default value is `0.95`.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
@@ -392,11 +392,11 @@ def identify_outliers(
             A result is a value; call `.copy()` to obtain a modifiable array.
         threshold : float
             Output threshold value used for detection
-        quantile : np.ndarray[np.float64] of shape (n_genes,), read-only
-            Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+        tail_probability : np.ndarray[np.float64] of shape (n_genes,), read-only
+            Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
             observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-            upper-tail quantile is used.
+            upper-tail probability is used.
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -445,7 +445,7 @@ def identify_outliers(
     # outputs and work arrays, which the caller never sees
     is_outlier = np.empty((n_genes,), dtype=np.bool_, order='C')
     threshold = ctypes.c_double(0)
-    quantile = np.empty((n_genes,), dtype=np.float64, order='C')
+    tail_probability = np.empty((n_genes,), dtype=np.float64, order='C')
     ierr = ctypes.c_int(0)
 
     _lib.identify_outliers_c(
@@ -455,8 +455,8 @@ def identify_outliers(
         perm,
         is_outlier,
         ctypes.byref(threshold),
-        quantile,
-        ctypes.byref(ctypes.c_double(percentile)),
+        tail_probability,
+        ctypes.byref(ctypes.c_double(quantile_level)),
         ctypes.byref(ierr),
     )
 
@@ -464,19 +464,19 @@ def identify_outliers(
 
     # a result is a value: modify a copy, not this
     is_outlier.flags.writeable = False
-    quantile.flags.writeable = False
+    tail_probability.flags.writeable = False
 
     return {
         "is_outlier": is_outlier,
         "threshold": threshold.value,
-        "quantile": quantile,
+        "tail_probability": tail_probability,
     }
 
 def detect_outliers(
         n_families,
         distances,
         gene_to_fam,
-        percentile=0.95,
+        quantile_level=0.95,
 ):
     r"""Main routine to detect outliers using RDI and LOESS-based scaling
 
@@ -495,8 +495,8 @@ def detect_outliers(
         Infinite values are permitted for this value.
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
         Gene-to-family mapping (1-based indexing)
-    percentile : float, optional, default 0.95
-        Percentile threshold as a fraction in [0,1] for outlier detection.
+    quantile_level : float, optional, default 0.95
+        Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
         The default value is `0.95`.
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
@@ -518,11 +518,11 @@ def detect_outliers(
         loess_n : np.ndarray[np.int32] of shape (n_families,), read-only
             Indices of reference points used for smoothing.
             A result is a value; call `.copy()` to obtain a modifiable array.
-        quantile : np.ndarray[np.float64] of shape (n_genes,), read-only
-            Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+        tail_probability : np.ndarray[np.float64] of shape (n_genes,), read-only
+            Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
             observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-            upper-tail quantile is used.
+            upper-tail probability is used.
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -563,7 +563,7 @@ def detect_outliers(
     loess_x = np.empty((n_families,), dtype=np.float64, order='C')
     loess_y = np.empty((n_families,), dtype=np.float64, order='C')
     loess_n = np.empty((n_families,), dtype=np.int32, order='C')
-    quantile = np.empty((n_genes,), dtype=np.float64, order='C')
+    tail_probability = np.empty((n_genes,), dtype=np.float64, order='C')
     ierr = ctypes.c_int(0)
 
     _lib.detect_outliers_c(
@@ -575,9 +575,9 @@ def detect_outliers(
         loess_x,
         loess_y,
         loess_n,
-        quantile,
+        tail_probability,
         ctypes.byref(ierr),
-        ctypes.byref(ctypes.c_double(percentile)),
+        ctypes.byref(ctypes.c_double(quantile_level)),
     )
 
     check_err_code(ierr.value, _DETECT_OUTLIERS_ARGUMENTS, _DETECT_OUTLIERS_ARGUMENT_SOURCES)
@@ -587,12 +587,12 @@ def detect_outliers(
     loess_x.flags.writeable = False
     loess_y.flags.writeable = False
     loess_n.flags.writeable = False
-    quantile.flags.writeable = False
+    tail_probability.flags.writeable = False
 
     return {
         "is_outlier": is_outlier,
         "loess_x": loess_x,
         "loess_y": loess_y,
         "loess_n": loess_n,
-        "quantile": quantile,
+        "tail_probability": tail_probability,
     }
