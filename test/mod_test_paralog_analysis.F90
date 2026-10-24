@@ -9,7 +9,7 @@ module mod_test_paralog_analysis
     use tox_paralog_analysis_impl, only: calc_work_arr_paralog_subsets_size, fill_array_with_minvals_for_each_idx, &
                                           add_new_active_mask_helper, add_to_results_helper, take_active_mask_helper, &
                                           filter_paralogs_by_pattern_impl, MODE_DOSAGE_PATTERN
-    use f42_bit_masks_impl, only: bit_mask_set, bit_mask_count
+    use f42_bit_masks_impl, only: bit_mask_set, bit_mask_count, bit_mask_indices
     use test_suite, only: test_case
     use tox_errors
     use f42_math_impl, only: PI
@@ -23,7 +23,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_paralog_analysis() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(16))
+        allocate (all_tests(17))
 
         all_tests(1) = test_case("test_paralog_analysis_calc_work_arr_paralog_subsets_size", test_calc_work_arr_paralog_subsets_size)
         all_tests(2) = test_case("test_paralog_analysis_filter_paralogs_by_pattern", test_filter_paralogs_by_pattern)
@@ -41,6 +41,7 @@ contains
         all_tests(14) = test_case("test_paralog_analysis_detect_neofunctionalization", test_detect_neofunctionalization)
         all_tests(15) = test_case("test_paralog_analysis_detect_patterns_input_validation", test_detect_patterns_input_validation)
         all_tests(16) = test_case("test_paralog_analysis_detect_neofunctionalization_input_validation", test_detect_neofunctionalization_input_validation)
+        all_tests(17) = test_case("test_paralog_analysis_detect_patterns_last_gene_on_word_boundary", test_detect_patterns_last_gene_on_word_boundary)
     end function get_all_tests_paralog_analysis
 
     !> Test the detect_neofunctionalization function with simple synthetic examples.
@@ -889,6 +890,49 @@ contains
     end subroutine test_add_new_active_mask_helper
 
     !> Test the filter_paralogs_by_pattern function with various input configurations.
+    !> The last filtered gene, 64, is the top bit of the second mask word. Before #207 the successor of
+    !> the subset {5, 64} was taken as 41 instead of 65 (a word whose last set bit is bit 31 was taken for
+    !> an empty word), so {5, 64} was extended by gene 40 and by gene 64 again, and doubled vectors passed
+    !> the gain threshold. Every gene is 0.4 along the ancestor: no pair reaches the gain threshold of
+    !> 1 + gain_gamma, the triple does, so {5, 40, 64} must be the only result.
+    subroutine test_detect_patterns_last_gene_on_word_boundary
+        integer(int32), parameter :: n_genes = 100, n_dims = 3
+        integer(int32), parameter :: n_mask_chunks = 4  ! 100 flags in 32-bit words
+        integer(int32), parameter :: filtered_genes(3) = [5, 40, 64]
+
+        integer(int32), dimension(n_mask_chunks) :: filtered_paralogs_mask, tmp_active_mask
+        real(real64), dimension(n_dims) :: ancestor, tmp_paralog_vector
+        real(real64), dimension(n_dims, n_genes) :: genes
+        integer(int32), dimension(:, :), allocatable :: work_arr_paralog_subsets
+        integer(int32) :: result_genes(3)
+        integer(int32) :: n_results, work_array_size, ierr, i_gene, max_subset_size
+
+        max_subset_size = 3
+        ancestor = [1.0_real64, 0.0_real64, 0.0_real64]
+        do i_gene = 1, n_genes
+            genes(:, i_gene) = 0.4_real64*ancestor
+        end do
+        filtered_paralogs_mask = 0_int32
+        do i_gene = 1, size(filtered_genes)
+            call bit_mask_set(n_mask_chunks, filtered_paralogs_mask, filtered_genes(i_gene))
+        end do
+
+        call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_mask, &
+                                                n_mask_chunks, ierr)
+        call assert_err(ierr, ERR_OK, "test_detect_patterns_last_gene_on_word_boundary: work array size")
+        allocate (work_arr_paralog_subsets(n_mask_chunks, work_array_size))
+
+        call detect_dosage_effect_expert(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, &
+                                         max_subset_size, work_arr_paralog_subsets, work_array_size, tmp_active_mask, &
+                                         tmp_paralog_vector, max_angle=0.0_real64, gain_gamma=0.1_real64, ierr=ierr)
+        call assert_err(ierr, ERR_OK, "test_detect_patterns_last_gene_on_word_boundary: detection")
+        call assert_equal_int(n_results, 1_int32, "test_detect_patterns_last_gene_on_word_boundary: only {5, 40, 64} is a result")
+        call assert_equal_int(bit_mask_count(n_mask_chunks, work_arr_paralog_subsets(:, 1)), 3_int32, &
+                              "test_detect_patterns_last_gene_on_word_boundary: the result holds three genes")
+        call bit_mask_indices(n_mask_chunks, 3_int32, work_arr_paralog_subsets(:, 1), result_genes)
+        call assert_true(all(result_genes == filtered_genes), "test_detect_patterns_last_gene_on_word_boundary: the result is {5, 40, 64}")
+    end subroutine test_detect_patterns_last_gene_on_word_boundary
+
     subroutine test_filter_paralogs_by_pattern
         integer(int32), parameter :: n_genes = 16 + 1, n_families = 2, n_mask_chunks = 1
         integer(int32), dimension(n_mask_chunks, n_families) :: masks
