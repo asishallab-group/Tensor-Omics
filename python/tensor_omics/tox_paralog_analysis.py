@@ -283,7 +283,7 @@ def detect_dosage_effect(
             number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
         work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F'), read-only
             working array to hold bitmask encoded subsets for detection.
-            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks
+            Each column is a bit mask of the `n_genes` genes, laid out as ``f42_bit_masks_impl`` describes.
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -413,7 +413,7 @@ def detect_subfunctionalization(
             number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
         work_arr_paralog_subsets : np.ndarray[np.int32] of shape (n_mask_chunks, n_paralog_subsets,), column-major (order='F'), read-only
             working array to hold bitmask encoded subsets for detection.
-            Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks
+            Each column is a bit mask of the `n_genes` genes, laid out as ``f42_bit_masks_impl`` describes.
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -544,7 +544,7 @@ def filter_paralogs_by_pattern_dosage_effect(
         The maximum valid value is `n_families`.
     n_mask_chunks : int
         number of 32 bit chunks a mask needs to encode `n_genes` genes
-        The minimum valid value is `(n_genes + 31) / 32`.
+        The minimum valid value is `((n_genes)/32 + min(1, mod((n_genes), 32)))`.
 
     Returns
     -------
@@ -636,7 +636,7 @@ def filter_paralogs_by_pattern_subfunctionalization(
         The maximum valid value is `n_families`.
     n_mask_chunks : int
         number of 32 bit chunks a mask needs to encode `n_genes` genes
-        The minimum valid value is `(n_genes + 31) / 32`.
+        The minimum valid value is `((n_genes)/32 + min(1, mod((n_genes), 32)))`.
 
     Returns
     -------

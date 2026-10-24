@@ -6,13 +6,13 @@ import os
 # Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import (
-    mask_check_state,
+    bit_mask_test,
     filter_paralogs_by_pattern_dosage_effect,
     filter_paralogs_by_pattern_subfunctionalization,
     calc_work_arr_paralog_subsets_size,
     detect_dosage_effect,
     detect_subfunctionalization,
-    mask_chunk_count,
+    bit_mask_n_words,
     detect_neofunctionalization,
     normalize_unit_length
 )
@@ -34,12 +34,12 @@ def test_paralog_functions():
 
     n_paralogs = 5
     i_paralog = 2
-    chunk_count = mask_chunk_count(n_paralogs)
+    chunk_count = bit_mask_n_words(n_paralogs)
     assert chunk_count == 1, f"Chunk count for {n_paralogs} paralogs should be 1, got " + str(chunk_count)
 
     bit_mask = np.zeros(chunk_count, dtype=np.int32)
     bit_mask[i_paralog // 32] = 1 << (i_paralog % 32)
-    state = mask_check_state(bit_mask, i_paralog + 1)
+    state = bit_mask_test(n_paralogs, bit_mask, i_paralog + 1)
     assert state, f"Paralog {i_paralog + 1} should be active"
 
     # Testing Pattern Filtering
@@ -125,11 +125,12 @@ def test_paralog_functions():
     # Testing Edge Cases
 
     try:
-        empty_mask = mask_chunk_count(0)
+        empty_mask = bit_mask_n_words(0)
     except Exception as e:
-        raise AssertionError("mask_chunk_count throws error for empty mask")
+        raise AssertionError("bit_mask_n_words throws error for empty mask")
+    assert empty_mask == 0, "An empty mask should take no words, got " + str(empty_mask)
 
-    single_mask = mask_chunk_count(1)
+    single_mask = bit_mask_n_words(1)
     assert single_mask == 1, "Single paralog mask chunk count should be 1, got " + str(single_mask)
 
 
