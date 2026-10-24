@@ -68,7 +68,7 @@ save_tox_data <- function(zip_filename, gene_ids = NULL, gene_ids_file = NULL, e
     if (!is.null(shift_vectors_file))
         shift_vectors_file <- .tox_as_character(shift_vectors_file, "shift_vectors_file")
     .result <- .Call("save_tox_data_call", zip_filename, gene_ids, gene_ids_file, expression, expression_file, gene_to_family, gene_to_family_file, family_ids, family_ids_file, family_centroids, family_centroids_file, shift_vectors, shift_vectors_file)
-    .arguments <- c("zip_filename", "ierr", "gene_ids", "gene_ids_file", "expression", "expression_file", "gene_to_family", "gene_to_family_file", "family_ids", "family_ids_file", "family_centroids", "family_centroids_file", "shift_vectors", "shift_vectors_file")
+    .arguments <- c("zip_filename", "gene_ids", "gene_ids_file", "expression", "expression_file", "gene_to_family", "gene_to_family_file", "family_ids", "family_ids_file", "family_centroids", "family_centroids_file", "shift_vectors", "shift_vectors_file", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
     invisible(NULL)

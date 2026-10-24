@@ -363,9 +363,9 @@ contains
             shift_vectors,&
             n_shift_vectors_elements_dim_1,&
             n_shift_vectors_elements_dim_2,&
-            ierr,&
             check_uniqueness,&
-            check_shift_consistency&
+            check_shift_consistency,&
+            ierr&
         ) bind(C, name="validate_all_data_c")
         use tox_data_validation, only: validate_all_data
 
@@ -409,14 +409,14 @@ contains
             !! family centroids
         real(c_double), dimension(n_shift_vectors_elements_dim_1, n_shift_vectors_elements_dim_2), intent(in), target :: shift_vectors
             !! shift vectors
-        integer(c_int), intent(out), target :: ierr
-            !! error code
         logical(c_bool), intent(in), target :: check_uniqueness
             !! Check ID arrays for uniqueness.
             !! The default value is `.true.`.
         logical(c_bool), intent(in), target :: check_shift_consistency
             !! Check consitency of shift array.
             !! The default value is `.true.`.
+        integer(c_int), intent(out), target :: ierr
+            !! error code
         character(len=gene_ids_strlen), pointer, dimension(:) :: gene_ids_f
         character(len=gene_family_ids_strlen), pointer, dimension(:) :: gene_family_ids_f
 
@@ -460,9 +460,9 @@ contains
             expression_vectors = expression_vectors,&
             family_centroids = family_centroids,&
             shift_vectors = shift_vectors,&
-            ierr = ierr,&
             check_uniqueness = check_uniqueness,&
-            check_shift_consistency = check_shift_consistency&
+            check_shift_consistency = check_shift_consistency,&
+            ierr = ierr&
         )
     end subroutine validate_all_data_c
 

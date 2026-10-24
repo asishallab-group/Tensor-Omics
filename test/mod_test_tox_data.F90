@@ -100,7 +100,7 @@ contains
         ! Read expression data
         kallisto_expr = 0.0_real64
         call read_expression_vectors_tsv(expr_file, gene_ids, kallisto_expr, &
-                                         1, 1, value_cols, 1, ierr, char(9))
+                                         1, 1, value_cols, 1, char(9), ierr=ierr)
 
         ! Read family mapping
         call read_orthofinder_file('material/Orthogroups.tsv', gene_ids, gene_family_ids, gene_to_fam, ierr)
@@ -206,31 +206,31 @@ contains
         csv_file = [ &
                    'test/test_files/kallisto_csv_values.csv']
 
-        call read_expression_vectors_tsv(inf_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr)
+        call read_expression_vectors_tsv(inf_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Error while reading expression vectors, should get invalid input for Inf in expression data")
         call set_ok(ierr)
 
-        call read_expression_vectors_tsv(nan_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr)
+        call read_expression_vectors_tsv(nan_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Error while reading expression vectors, should get invalid input for NaN in expression data")
         call set_ok(ierr)
 
-        call read_expression_vectors_tsv(invalid_struct_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr)
+        call read_expression_vectors_tsv(invalid_struct_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_READ_DATA, "Should throw error for invalid structure")
         call set_ok(ierr)
 
-        call read_expression_vectors_tsv(no_genes_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [1, 2, 3, 4, 5, 6], 1, ierr)
+        call read_expression_vectors_tsv(no_genes_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [1, 2, 3, 4, 5, 6], 1, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Should print warnings for missing genes")
         call set_ok(ierr)
 
-        call read_expression_vectors_tsv(empty_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [1, 2, 3, 4, 5, 6], 1, ierr)
+        call read_expression_vectors_tsv(empty_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [1, 2, 3, 4, 5, 6], 1, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_READ_DATA, "should throw error for empty file")
         call set_ok(ierr)
 
-        call read_expression_vectors_tsv(mixed_seperators, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr)
+        call read_expression_vectors_tsv(mixed_seperators, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Should throw error for file with mixed seperators")
         call set_ok(ierr)
 
-        call read_expression_vectors_tsv(csv_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ierr, ',')
+        call read_expression_vectors_tsv(csv_file, gene_ids_false_inputs, expr_vecs_false_inputs, 1, 1, [2, 3, 4, 5, 6, 7], 1, ',', ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Should read csv file without error")
 
     end subroutine test_read_expression_data
@@ -261,7 +261,7 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Expression data could not be validated")
 
         call validate_all_data(n_genes, n_families, total_samples, gene_ids, gene_family_ids, &
-                               gene_to_fam, kallisto_expr, family_centroids, shift_vectors, ierr, .true._c_bool, .true._c_bool)
+                               gene_to_fam, kallisto_expr, family_centroids, shift_vectors, .true._c_bool, .true._c_bool, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Data could not be validated")
     end subroutine test_validate_data
 
@@ -504,23 +504,23 @@ contains
 
         ! Test 1: Save and read all data
         ! print *, "Test 1: Saving and reading all data"
-        call save_tox_data("archive_1_f.test.zip", ierr, &
+        call save_tox_data("archive_1_f.test.zip", &
                            gene_ids=gene_ids, gene_ids_file="gene_ids_v1.test.bin", &
                            expression=kallisto_expr, expression_file="kallisto_v1.test.bin", &
                            gene_to_family=gene_to_fam, gene_to_family_file="gene_to_fam.test.bin", &
                            family_ids=gene_family_ids, family_ids_file="family_ids.test.bin", &
                            family_centroids=family_centroids, family_centroids_file="family_centroids.test.bin", &
-                           shift_vectors=shift_vectors, shift_vectors_file="shift_vectors.test.bin")
+                           shift_vectors=shift_vectors, shift_vectors_file="shift_vectors.test.bin", ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Error saving archive")
 
-        call read_tox_data("archive_1_f.test.zip", ierr, &
+        call read_tox_data("archive_1_f.test.zip", &
                            gene_ids=gene_ids_verify, &
                            expression=kallisto_verify, &
                            gene_to_family=gene_to_fam_verify, &
                            family_ids=gene_family_ids_verify, &
                            family_centroids=family_centroids_verify, &
-                           shift_vectors=shift_vectors_verify)
+                           shift_vectors=shift_vectors_verify, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Error reading archive")
 
@@ -552,15 +552,15 @@ contains
 
         ! Test 2: Save only gene_ids and expression
         ! print *, "Test 2: Saving only gene_ids and expression"
-        call save_tox_data("archive_2_f.test.zip", ierr, &
+        call save_tox_data("archive_2_f.test.zip", &
                            gene_ids=gene_ids, gene_ids_file="gene_ids_v2.test.bin", &
-                           expression=kallisto_expr, expression_file="kallisto_v2.test.bin")
+                           expression=kallisto_expr, expression_file="kallisto_v2.test.bin", ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Error saving archive")
 
-        call read_tox_data("archive_2_f.test.zip", ierr, &
+        call read_tox_data("archive_2_f.test.zip", &
                            gene_ids=gene_ids_verify, &
-                           expression=kallisto_verify)
+                           expression=kallisto_verify, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Error reading archive")
 
@@ -572,11 +572,11 @@ contains
         call assert_equal_array_real(kallisto_expr, kallisto_verify, size(kallisto_expr), 1e-12_real64, "Expression data should match")
 
         ! Try to read arrays that weren't saved (should not be allocated)
-        call read_tox_data("archive_2_f.test.zip", ierr, &
+        call read_tox_data("archive_2_f.test.zip", &
                            gene_to_family=gene_to_fam_verify, &
                            family_ids=gene_family_ids_verify, &
                            family_centroids=family_centroids_verify, &
-                           shift_vectors=shift_vectors_verify)
+                           shift_vectors=shift_vectors_verify, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Error reading archive for missing arrays")
 
@@ -597,15 +597,15 @@ contains
 
         ! Test 3: Save only family data
         ! print *, "Test 3: Saving only family data"
-        call save_tox_data("archive_3_f.test.zip", ierr, &
+        call save_tox_data("archive_3_f.test.zip", &
                            family_ids=gene_family_ids, family_ids_file="family_ids_v3.test.bin", &
-                           family_centroids=family_centroids, family_centroids_file="family_centroids_v3.test.bin")
+                           family_centroids=family_centroids, family_centroids_file="family_centroids_v3.test.bin", ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Error saving archive")
 
-        call read_tox_data("archive_3_f.test.zip", ierr, &
+        call read_tox_data("archive_3_f.test.zip", &
                            family_ids=gene_family_ids_verify, &
-                           family_centroids=family_centroids_verify)
+                           family_centroids=family_centroids_verify, ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Error reading archive")
 
@@ -621,11 +621,11 @@ contains
 
         ! Test 4: Save empty archive (should work without error)
         ! print *, "Test 4: Saving empty archive"
-        call save_tox_data("archive_4_f.test.zip", ierr)
+        call save_tox_data("archive_4_f.test.zip", ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Error saving empty archive")
 
-        call read_tox_data("archive_4_f.test.zip", ierr)
+        call read_tox_data("archive_4_f.test.zip", ierr=ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_READ_DATA, "Reading empty archive should throw error")
 
@@ -633,18 +633,18 @@ contains
 
         ! Test 5: Try to read non-existent archive
         ! print *, "Test 5: Trying to read non-existent archive"
-        call read_tox_data("non_existent.test.zip", ierr)
+        call read_tox_data("non_existent.test.zip", ierr=ierr)
 
         call assert_not_equal_int(ierr, ERR_OK, "Reading non-existent archive should fail")
 
         ! print *, "Reading R archive"
-        call read_tox_data("archive_1_R.test.zip", ierr, &
+        call read_tox_data("archive_1_R.test.zip", &
                            gene_ids=gene_ids_verify, &
                            expression=kallisto_verify, &
                            gene_to_family=gene_to_fam_verify, &
                            family_ids=gene_family_ids_verify, &
                            family_centroids=family_centroids_verify, &
-                           shift_vectors=shift_vectors_verify)
+                           shift_vectors=shift_vectors_verify, ierr=ierr)
         if (is_ok(ierr)) then
             call assert_true(allocated(gene_ids_verify), "Gene IDs should be allocated from R archive")
             call assert_equal_array_char(gene_ids, gene_ids_verify, 128, size(gene_ids), "R Gene IDs should match")
@@ -675,9 +675,9 @@ contains
             call set_ok(ierr)
         end if
 
-        call read_tox_data("archive_1_R.test.zip", ierr, &
+        call read_tox_data("archive_1_R.test.zip", &
                            gene_ids=gene_ids_verify, &
-                           expression=kallisto_verify)
+                           expression=kallisto_verify, ierr=ierr)
         if (is_ok(ierr)) then
             call assert_true(allocated(gene_ids_verify), "Gene IDs should be allocated from R archive")
             call assert_equal_array_char(gene_ids, gene_ids_verify, 128, size(gene_ids), "R Gene IDs should match")
@@ -701,13 +701,13 @@ contains
         end if
 
         ! print *, "Reading python archive"
-        call read_tox_data("archive_1_py.test.zip", ierr, &
+        call read_tox_data("archive_1_py.test.zip", &
                            gene_ids=gene_ids_verify, &
                            expression=kallisto_verify, &
                            gene_to_family=gene_to_fam_verify, &
                            family_ids=gene_family_ids_verify, &
                            family_centroids=family_centroids_verify, &
-                           shift_vectors=shift_vectors_verify)
+                           shift_vectors=shift_vectors_verify, ierr=ierr)
         if (is_ok(ierr)) then
             call assert_true(allocated(gene_ids_verify), "Gene IDs should be allocated from python archive")
             call assert_equal_array_char(gene_ids, gene_ids_verify, 128, size(gene_ids), "python Gene IDs should match")

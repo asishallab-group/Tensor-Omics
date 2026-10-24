@@ -137,13 +137,13 @@ _lib.validate_all_data_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_bool),
+    ctypes.POINTER(ctypes.c_bool),
     ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_bool),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_VALIDATE_ALL_DATA_ARGUMENTS = ("n_genes", "n_families", "n_samples", "gene_ids", "gene_family_ids", "gene_to_fam", "expression_vectors", "family_centroids", "shift_vectors", "ierr", "check_uniqueness", "check_shift_consistency",)
+_VALIDATE_ALL_DATA_ARGUMENTS = ("n_genes", "n_families", "n_samples", "gene_ids", "gene_family_ids", "gene_to_fam", "expression_vectors", "family_centroids", "shift_vectors", "check_uniqueness", "check_shift_consistency", "ierr",)
 
 def validate_data_structure(
         n_genes,
@@ -716,9 +716,9 @@ def validate_all_data(
         shift_vectors,
         ctypes.byref(ctypes.c_int(n_shift_vectors_elements_dim_1)),
         ctypes.byref(ctypes.c_int(n_shift_vectors_elements_dim_2)),
-        ctypes.byref(ierr),
         ctypes.byref(ctypes.c_bool(check_uniqueness)),
         ctypes.byref(ctypes.c_bool(check_shift_consistency)),
+        ctypes.byref(ierr),
     )
 
     check_err_code(ierr.value, _VALIDATE_ALL_DATA_ARGUMENTS)

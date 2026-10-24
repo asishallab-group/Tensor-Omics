@@ -39,8 +39,8 @@ contains
             value_cols,&
             n_value_cols_elements,&
             start_row,&
-            ierr,&
-            delimiter&
+            delimiter,&
+            ierr&
         ) bind(C, name="read_expression_vectors_tsv_c")
         use tox_data_tools, only: read_expression_vectors_tsv
 
@@ -72,11 +72,11 @@ contains
             !! Indicies of columns containing values
         integer(c_int), intent(in), target :: start_row
             !! Row in the expression vectors to start in
-        integer(c_int), intent(out), target :: ierr
-            !! Error code
         character(len=1, kind=c_char), dimension(1), intent(in), target :: delimiter
             !! optional delimiter
             !! The default value is `char(9)`.
+        integer(c_int), intent(out), target :: ierr
+            !! Error code
         character(len=file_list_strlen), pointer, dimension(:) :: file_list_f
         character(len=gene_ids_strlen), pointer, dimension(:) :: gene_ids_f
         character(len=1), pointer :: delimiter_f
@@ -114,8 +114,8 @@ contains
             gene_col = gene_col,&
             value_cols = value_cols,&
             start_row = start_row,&
-            ierr = ierr,&
-            delimiter = delimiter_f&
+            delimiter = delimiter_f,&
+            ierr = ierr&
         )
     end subroutine read_expression_vectors_tsv_c
 

@@ -6,7 +6,7 @@
 // tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
-void read_expression_vectors_tsv_c(const char*, const int*, const int*, const char*, const int*, const int*, double*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, int*, const char*);
+void read_expression_vectors_tsv_c(const char*, const int*, const int*, const char*, const int*, const int*, double*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, const char*, int*);
 void read_gene_ids_from_tsv_file_c(const char*, const int*, char*, const int*, const int*, const int*, const int*, int*);
 void read_orthofinder_file_c(const char*, const int*, const char*, const int*, const int*, char*, const int*, const int*, int*, const int*, int*);
 void get_unassigned_mask_c(const int*, const int*, unsigned char*, int*, int*);
@@ -53,8 +53,8 @@ SEXP read_expression_vectors_tsv_call(SEXP file_list, SEXP gene_ids, SEXP expres
         INTEGER(value_cols),
         &n_value_cols_elements,
         &start_row_v,
-        &ierr,
-        delimiter_c
+        delimiter_c,
+        &ierr
     );
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;

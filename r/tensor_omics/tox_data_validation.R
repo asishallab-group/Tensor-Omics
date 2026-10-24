@@ -163,7 +163,7 @@ validate_all_data <- function(n_genes, n_families, n_samples, gene_ids, gene_fam
     check_uniqueness <- .tox_as_logical_scalar(check_uniqueness, "check_uniqueness")
     check_shift_consistency <- .tox_as_logical_scalar(check_shift_consistency, "check_shift_consistency")
     .result <- .Call("validate_all_data_call", n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors, check_uniqueness, check_shift_consistency)
-    .arguments <- c("n_genes", "n_families", "n_samples", "gene_ids", "gene_family_ids", "gene_to_fam", "expression_vectors", "family_centroids", "shift_vectors", "ierr", "check_uniqueness", "check_shift_consistency")
+    .arguments <- c("n_genes", "n_families", "n_samples", "gene_ids", "gene_family_ids", "gene_to_fam", "expression_vectors", "family_centroids", "shift_vectors", "check_uniqueness", "check_shift_consistency", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
     invisible(NULL)
