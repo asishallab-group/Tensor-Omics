@@ -889,9 +889,8 @@ contains
         end do
     end subroutine test_add_new_active_mask_helper
 
-    !> Test the filter_paralogs_by_pattern function with various input configurations.
     !> The last filtered gene, 64, is the top bit of the second mask word. Before #207 the successor of
-    !> the subset {5, 64} was taken as 41 instead of 65 (a word whose last set bit is bit 31 was taken for
+    !> the subset {5, 64} was taken as 38 instead of 65 (a word whose last set bit is bit 31 was taken for
     !> an empty word), so {5, 64} was extended by gene 40 and by gene 64 again, and doubled vectors passed
     !> the gain threshold. Every gene is 0.4 along the ancestor: no pair reaches the gain threshold of
     !> 1 + gain_gamma, the triple does, so {5, 40, 64} must be the only result.
@@ -933,6 +932,7 @@ contains
         call assert_true(all(result_genes == filtered_genes), "test_detect_patterns_last_gene_on_word_boundary: the result is {5, 40, 64}")
     end subroutine test_detect_patterns_last_gene_on_word_boundary
 
+    !> Test the filter_paralogs_by_pattern function with various input configurations.
     subroutine test_filter_paralogs_by_pattern
         integer(int32), parameter :: n_genes = 16 + 1, n_families = 2, n_mask_chunks = 1
         integer(int32), dimension(n_mask_chunks, n_families) :: masks
