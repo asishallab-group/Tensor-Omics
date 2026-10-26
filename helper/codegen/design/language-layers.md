@@ -279,6 +279,14 @@ division and `mod` truncate exactly, and `nint` compares the exact distance to t
 half rather than computing `floor(x + 0.5)` -- whose addition rounds `0.49999999999999994` to 1.
 The evaluated default must also fit the argument's own kind: `ctypes.c_int` wraps an
 out-of-range value silently, so a default of 3000000000 on an `integer(int32)` is refused.
+A sign binds as Fortran's grammar says, to a whole add-operand below `*` and `**`: `-2**2` is
+-4, where the first grammar computed `(-2)**2` and handed the bindings +4.
+
+Real kinds are **not** tracked: every real literal is read as real64. An unkinded `0.95` is a
+real32 0.949999988 to the compiler and 0.95 here. Reading it the compiler's way would change
+main's `DM_DEFAULT(0.95)` (`tox_data_integration_jsd_impl`) away from the `0.95_real64` the
+implementation itself falls back to, and refusing unkinded reals would break the build; so the
+rule is documented instead -- write `_real64`, and the two readings agree.
 
 ---
 

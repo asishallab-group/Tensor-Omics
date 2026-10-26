@@ -303,7 +303,10 @@ The parts a source author does not need, and a generator maintainer does:
   and not as `floor(x + 0.5)`, whose addition rounds `0.49999999999999994` up; a negative real
   to a real power, a complex result and an infinite real are errors. Module parameters keep the
   kind they are declared with (`Project.constant_values`), and a kinded logical
-  (`.true._c_bool`, as the guide asks for) evaluates like a plain one.
+  (`.true._c_bool`, as the guide asks for) evaluates like a plain one. A sign binds below `**`
+  and `*`, as in Fortran: `-2.0_real64**2` is -4. The one rule not followed is a real's kind:
+  every real literal is read as real64, so an unkinded `0.95`, which the compiler stores as the
+  real32 0.949999988, is passed as 0.95 -- write `_real64` and the two agree.
 - **A mode crosses as a string.** The binding languages pass the parameter name without its
   prefix, lower-cased (`METHOD_WARD` → `"ward"`), and the C wrapper maps it back to the integer,
   rejecting an unknown one before Fortran is entered. The Fortran wrapper separately checks

@@ -481,3 +481,42 @@ class TestFortranArithmetic:
     def test_the_result_is_a_plain_int(self, evaluate):
         # the kind is the evaluator's business; what it hands out is an ordinary int
         assert type(evaluate("2 + 3")) is int
+
+
+class TestSignPrecedence:
+    """A sign binds below `**` and `*`, as in Fortran (review M1 of #221's WP1).
+
+    Every expected value is what gfortran 16.1 and ifx 2026.1 give for the same expression
+    as a `parameter`. `(-a)**b` used to be computed, so `DM_DEFAULT(-2.0_real64**2)` reached
+    Python and R as +4.
+    """
+
+    @pytest.mark.parametrize(
+        "expression, expected",
+        [
+            ("-2**2", -4),
+            ("- 3**2 + 1", -8),
+            ("-1**2", -1),
+            ("-2**3**2", -512),
+            ("-2*3", -6),
+            ("+2**2", 4),
+            ("-2.0_real64**2", -4.0),
+            # the gfortran/ifx extension: a sign straight after an operator signs the
+            # operand that follows, its `**` included
+            ("2*-3**2", -18),
+            ("1 - -2**2", 5),
+            ("2.0_real64**-2**2", 0.0625),
+            ("2**-1", 0),
+        ],
+    )
+    def test_a_sign_applies_to_the_whole_power(self, evaluate, expression, expected):
+        result = evaluate(expression)
+
+        assert result == pytest.approx(expected)
+        assert type(result) is type(expected)
+
+    def test_a_negated_real_power_is_not_a_negative_base(self, evaluate):
+        # -(2.0**0.5), which Fortran computes; only (-2.0)**0.5 has no real value
+        assert evaluate("-2.0_real64**0.5") == pytest.approx(-math.sqrt(2.0))
+        with pytest.raises(ConstantError, match="negative real raised to a real power"):
+            evaluate("(-2.0_real64)**0.5")

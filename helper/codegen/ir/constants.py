@@ -21,7 +21,9 @@ The arithmetic is Fortran's, not Python's, because the value the bindings pass h
 the one a Fortran caller gets: integers keep their kind (`Integer`) and overflowing it is
 an error, integer division and `**` with a negative exponent truncate toward zero without
 going through a float, `nint`/`anint` round half away from zero, and a negative real
-raised to a real power is an error rather than a complex number.
+raised to a real power is an error rather than a complex number, and a sign binds below `**`
+(`-2**2` is -4). Real kinds are the one thing not tracked: every real is read as real64, so
+an unkinded `0.95` -- a real32 0.949999988 to the compiler -- is 0.95 here.
 """
 
 from __future__ import annotations
@@ -223,7 +225,9 @@ def _sign(a, b):
 #: any elemental numeric/character intrinsic that has a well-defined constant value is fair
 #: game, so a default like PI = 4*atan(1) evaluates rather than being rejected. Type-model
 #: inquiries (huge/tiny/epsilon) are intentionally left out: their value depends on the kind
-#: of the argument, which this evaluator does not track, so they would resolve unsoundly.
+#: of the argument, and only an integer's kind is tracked (`Integer`). Every real is read
+#: as real64, so `epsilon(1.0)` would resolve to real64's epsilon, not the real32 one
+#: Fortran gives; `huge` of an integer could be evaluated, but no default needs it.
 INTRINSICS: Mapping[str, Callable] = {
     "achar": lambda i, *rest: chr(int(i)),
     "char": lambda i, *rest: chr(int(i)),
@@ -361,11 +365,17 @@ class ConstantEvaluator:
 class _Parser:
     """Recursive descent over the constant-expression grammar.
 
-        expression := term (('+' | '-') term)*
-        term       := factor (('*' | '/') factor)*
-        factor     := unary ('**' factor)?          -- right associative
-        unary      := ('+' | '-') unary | primary
-        primary    := literal | name | name '(' args ')' | '(' expression ')'
+        expression  := add_operand (('+' | '-') add_operand)*
+        add_operand := ('+' | '-') add_operand | term
+        term        := factor (('*' | '/') signed)*
+        factor      := primary ('**' signed)?        -- right associative
+        signed      := ('+' | '-') signed | factor
+        primary     := literal | name | name '(' args ')' | '(' expression ')'
+
+    A sign binds as in Fortran (F2018 10.1.2.4): it applies to a whole add-operand, below
+    `*` and `**`, so `-2**2` is -4 and `-a*b` is `-(a*b)`. A sign straight after `*`, `/` or
+    `**` (`2*-3`, `2**-1`) is a gfortran and ifx extension, accepted the way both read it: on
+    the operand that follows, `**` included, so `2*-3**2` is -18 and `2.0**-2**2` is 1/16.
     """
 
     def __init__(self, tokens, source, constants, intrinsics):
@@ -397,32 +407,39 @@ class _Parser:
             )
 
     def parse_expression(self):
-        value = self.parse_term()
+        value = self.parse_add_operand()
         while (token := self.accept("op", "+")) or (token := self.accept("op", "-")):
-            right = self.parse_term()
+            right = self.parse_add_operand()
             value = self._arith(token.text, value, right)
         return value
+
+    def parse_add_operand(self):
+        if self.accept("op", "-"):
+            return self._negate(self.parse_add_operand())
+        if self.accept("op", "+"):
+            return self.parse_add_operand()
+        return self.parse_term()
 
     def parse_term(self):
         value = self.parse_factor()
         while (token := self.accept("op", "*")) or (token := self.accept("op", "/")):
-            right = self.parse_factor()
+            right = self.parse_signed()
             value = self._arith(token.text, value, right)
         return value
 
     def parse_factor(self):
-        value = self.parse_unary()
+        value = self.parse_primary()
         if self.accept("power"):
             # right associative: 2**3**2 is 2**(3**2)
-            return self._arith("**", value, self.parse_factor())
+            return self._arith("**", value, self.parse_signed())
         return value
 
-    def parse_unary(self):
+    def parse_signed(self):
         if self.accept("op", "-"):
-            return self._negate(self.parse_unary())
+            return self._negate(self.parse_signed())
         if self.accept("op", "+"):
-            return self.parse_unary()
-        return self.parse_primary()
+            return self.parse_signed()
+        return self.parse_factor()
 
     def parse_primary(self):
         token = self.current

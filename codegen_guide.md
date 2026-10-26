@@ -487,8 +487,10 @@ the docs*, evaluated: `CM_FAMILY_SPAN_DEFAULT` reaches a Python caller as `0.7`.
 It is evaluated the way the compiler would, so a caller in any language gets the value a Fortran
 caller does: integers keep their kind and may not overflow it, `7 / 2` is 3 and `2**-1` is 0,
 `nint(2.5)` is 3, and a kinded literal such as `.true._c_bool` or `300_int64` is read with its
-kind. The value must fit the argument's kind — `DM_DEFAULT(3000000000_int64)` on an
-`integer(int32)` is refused rather than wrapped.
+kind. A sign binds below `**`, so `-2.0_real64**2` is -4. The value must fit the argument's
+kind — `DM_DEFAULT(3000000000_int64)` on an `integer(int32)` is refused rather than wrapped.
+The one exception is a real's kind: every real literal is read as real64, so write `_real64`.
+An unkinded `0.95` is the real32 0.949999988 to the compiler and 0.95 to Python and R.
 
 > **Never pass an optional dummy straight into a mandatory dummy of something you call.** That
 > is a null dereference when it is absent, and it is exactly how `loess_fit_robust_impl`
