@@ -7,6 +7,7 @@
 
 // the Fortran C-ABI symbols this module calls
 void calc_neighborhood_size_c(const int*, const int*, const int*, const double*, const int*, int*, int*);
+void gather_pooled_neighborhood_residuals_c(const double*, const int*, const int*, const int*, const int*, const int*, double*, int*);
 
 SEXP calc_neighborhood_size_call(SEXP n_pool, SEXP n_points, SEXP mean_S, SEXP desired_size) {
     int nprot = 0;
@@ -37,6 +38,40 @@ SEXP calc_neighborhood_size_call(SEXP n_pool, SEXP n_points, SEXP mean_S, SEXP d
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
     SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("n_neighbors"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP gather_pooled_neighborhood_residuals_call(SEXP residuals, SEXP neighborhood_indices_point) {
+    int nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int max_n_reps_all_studies = INTEGER(Rf_getAttrib(residuals, R_DimSymbol))[0];
+    int max_n_genes_all_studies = INTEGER(Rf_getAttrib(residuals, R_DimSymbol))[1];
+    int n_neighbors = INTEGER(Rf_getAttrib(neighborhood_indices_point, R_DimSymbol))[0];
+    int n_studies = INTEGER(Rf_getAttrib(residuals, R_DimSymbol))[2];
+
+    // outputs and work space
+    SEXP pooled_residuals = PROTECT(Rf_allocVector(REALSXP, (max_n_reps_all_studies*n_neighbors*n_studies))); nprot++;
+    int ierr = 0;
+
+    gather_pooled_neighborhood_residuals_c(
+        REAL(residuals),
+        &max_n_reps_all_studies,
+        &max_n_genes_all_studies,
+        &n_neighbors,
+        &n_studies,
+        INTEGER(neighborhood_indices_point),
+        REAL(pooled_residuals),
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SET_VECTOR_ELT(_out, 0, pooled_residuals);
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("pooled_residuals"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);

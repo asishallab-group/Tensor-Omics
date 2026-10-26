@@ -72,12 +72,37 @@ SEXP create_zip_archive_call(SEXP, SEXP, SEXP);
 SEXP save_tox_data_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP get_tox_data_dims_call(SEXP);
 SEXP read_tox_data_into_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP generate_adaptive_js_comp_test_candidates_call(SEXP, SEXP);
+SEXP run_js_comp_test_adaptive_parameter_search_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP calc_adaptive_js_comp_test_bounds_call(SEXP, SEXP);
+SEXP estimate_bin_count_call(SEXP, SEXP, SEXP, SEXP);
+SEXP estimate_bin_count_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP determine_bin_count_occupancy_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP determine_bin_count_occupancy_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP determine_bin_count_occupancy_exhaustive_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP determine_bin_count_occupancy_exhaustive_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP determine_bin_count_stone_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP determine_bin_count_stone_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP generate_js_comp_test_candidates_call(SEXP);
+SEXP run_js_comp_test_parameter_search_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP calc_js_comp_test_candidate_bounds_call(SEXP);
+SEXP run_js_comp_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_adaptive_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP check_neighborhood_overlaps_call(SEXP, SEXP);
+SEXP check_mean_pmf_min_counts_call(SEXP, SEXP, SEXP);
+SEXP check_plateau_condition_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP check_effect_size_plateau_condition_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP determine_shared_residual_range_call(SEXP, SEXP);
 SEXP determine_shared_residual_range_expert_call(SEXP, SEXP, SEXP);
 SEXP determine_study_shared_residual_range_call(SEXP, SEXP, SEXP);
-SEXP build_residual_histograms_call(SEXP, SEXP, SEXP, SEXP);
+SEXP build_residual_histograms_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP calc_pmf_call(SEXP, SEXP);
 SEXP compute_divergence_per_reference_point_call(SEXP, SEXP);
 SEXP compute_weighted_global_divergence_call(SEXP, SEXP, SEXP);
+SEXP jct_compute_jsd_pipeline_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP create_mean_pmf_call(SEXP, SEXP, SEXP);
+SEXP create_mean_pmf_only_call(SEXP);
 SEXP fjct_compute_jsd_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP fjct_compute_masked_jsd_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP fjct_compute_contribution_scores_call(SEXP, SEXP);
@@ -87,8 +112,14 @@ SEXP pool_means_call(SEXP, SEXP);
 SEXP pool_means_expert_call(SEXP, SEXP, SEXP);
 SEXP pool_study_means_call(SEXP, SEXP, SEXP);
 SEXP construct_neighborhoods_call(SEXP, SEXP, SEXP, SEXP);
+SEXP construct_neighborhoods_ranged_call(SEXP, SEXP, SEXP);
+SEXP construct_neighborhoods_ranged_expert_call(SEXP, SEXP, SEXP, SEXP);
+SEXP construct_adaptive_neighborhoods_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_neighborhood_size_call(SEXP, SEXP, SEXP, SEXP);
-SEXP gjct_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP gather_pooled_neighborhood_residuals_call(SEXP, SEXP);
+SEXP gjct_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP bootstrap_histogram_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP calc_js_comp_test_n_top_k_jsds_call(SEXP, SEXP);
 SEXP read_expression_vectors_tsv_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP read_gene_ids_from_tsv_file_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP read_orthofinder_file_call(SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -182,12 +213,37 @@ static const R_CallMethodDef CallEntries[] = {
     {"save_tox_data_call", (DL_FUNC) &save_tox_data_call, 13},
     {"get_tox_data_dims_call", (DL_FUNC) &get_tox_data_dims_call, 1},
     {"read_tox_data_into_call", (DL_FUNC) &read_tox_data_into_call, 12},
+    {"generate_adaptive_js_comp_test_candidates_call", (DL_FUNC) &generate_adaptive_js_comp_test_candidates_call, 2},
+    {"run_js_comp_test_adaptive_parameter_search_call", (DL_FUNC) &run_js_comp_test_adaptive_parameter_search_call, 25},
+    {"calc_adaptive_js_comp_test_bounds_call", (DL_FUNC) &calc_adaptive_js_comp_test_bounds_call, 2},
+    {"estimate_bin_count_call", (DL_FUNC) &estimate_bin_count_call, 4},
+    {"estimate_bin_count_expert_call", (DL_FUNC) &estimate_bin_count_expert_call, 5},
+    {"determine_bin_count_occupancy_call", (DL_FUNC) &determine_bin_count_occupancy_call, 9},
+    {"determine_bin_count_occupancy_expert_call", (DL_FUNC) &determine_bin_count_occupancy_expert_call, 10},
+    {"determine_bin_count_occupancy_exhaustive_call", (DL_FUNC) &determine_bin_count_occupancy_exhaustive_call, 7},
+    {"determine_bin_count_occupancy_exhaustive_expert_call", (DL_FUNC) &determine_bin_count_occupancy_exhaustive_expert_call, 8},
+    {"determine_bin_count_stone_call", (DL_FUNC) &determine_bin_count_stone_call, 11},
+    {"determine_bin_count_stone_expert_call", (DL_FUNC) &determine_bin_count_stone_expert_call, 12},
+    {"generate_js_comp_test_candidates_call", (DL_FUNC) &generate_js_comp_test_candidates_call, 1},
+    {"run_js_comp_test_parameter_search_call", (DL_FUNC) &run_js_comp_test_parameter_search_call, 22},
+    {"calc_js_comp_test_candidate_bounds_call", (DL_FUNC) &calc_js_comp_test_candidate_bounds_call, 1},
+    {"run_js_comp_test_call", (DL_FUNC) &run_js_comp_test_call, 13},
+    {"run_js_comp_test_expert_call", (DL_FUNC) &run_js_comp_test_expert_call, 14},
+    {"run_js_comp_test_adaptive_call", (DL_FUNC) &run_js_comp_test_adaptive_call, 12},
+    {"check_neighborhood_overlaps_call", (DL_FUNC) &check_neighborhood_overlaps_call, 2},
+    {"check_mean_pmf_min_counts_call", (DL_FUNC) &check_mean_pmf_min_counts_call, 3},
+    {"check_plateau_condition_call", (DL_FUNC) &check_plateau_condition_call, 7},
+    {"check_effect_size_plateau_condition_call", (DL_FUNC) &check_effect_size_plateau_condition_call, 8},
     {"determine_shared_residual_range_call", (DL_FUNC) &determine_shared_residual_range_call, 2},
     {"determine_shared_residual_range_expert_call", (DL_FUNC) &determine_shared_residual_range_expert_call, 3},
     {"determine_study_shared_residual_range_call", (DL_FUNC) &determine_study_shared_residual_range_call, 3},
-    {"build_residual_histograms_call", (DL_FUNC) &build_residual_histograms_call, 4},
+    {"build_residual_histograms_call", (DL_FUNC) &build_residual_histograms_call, 6},
+    {"calc_pmf_call", (DL_FUNC) &calc_pmf_call, 2},
     {"compute_divergence_per_reference_point_call", (DL_FUNC) &compute_divergence_per_reference_point_call, 2},
     {"compute_weighted_global_divergence_call", (DL_FUNC) &compute_weighted_global_divergence_call, 3},
+    {"jct_compute_jsd_pipeline_call", (DL_FUNC) &jct_compute_jsd_pipeline_call, 6},
+    {"create_mean_pmf_call", (DL_FUNC) &create_mean_pmf_call, 3},
+    {"create_mean_pmf_only_call", (DL_FUNC) &create_mean_pmf_only_call, 1},
     {"fjct_compute_jsd_call", (DL_FUNC) &fjct_compute_jsd_call, 9},
     {"fjct_compute_masked_jsd_call", (DL_FUNC) &fjct_compute_masked_jsd_call, 6},
     {"fjct_compute_contribution_scores_call", (DL_FUNC) &fjct_compute_contribution_scores_call, 2},
@@ -197,8 +253,14 @@ static const R_CallMethodDef CallEntries[] = {
     {"pool_means_expert_call", (DL_FUNC) &pool_means_expert_call, 3},
     {"pool_study_means_call", (DL_FUNC) &pool_study_means_call, 3},
     {"construct_neighborhoods_call", (DL_FUNC) &construct_neighborhoods_call, 4},
+    {"construct_neighborhoods_ranged_call", (DL_FUNC) &construct_neighborhoods_ranged_call, 3},
+    {"construct_neighborhoods_ranged_expert_call", (DL_FUNC) &construct_neighborhoods_ranged_expert_call, 4},
+    {"construct_adaptive_neighborhoods_call", (DL_FUNC) &construct_adaptive_neighborhoods_call, 9},
     {"calc_neighborhood_size_call", (DL_FUNC) &calc_neighborhood_size_call, 4},
-    {"gjct_permutation_test_call", (DL_FUNC) &gjct_permutation_test_call, 9},
+    {"gather_pooled_neighborhood_residuals_call", (DL_FUNC) &gather_pooled_neighborhood_residuals_call, 2},
+    {"gjct_permutation_test_call", (DL_FUNC) &gjct_permutation_test_call, 7},
+    {"bootstrap_histogram_call", (DL_FUNC) &bootstrap_histogram_call, 7},
+    {"calc_js_comp_test_n_top_k_jsds_call", (DL_FUNC) &calc_js_comp_test_n_top_k_jsds_call, 2},
     {"read_expression_vectors_tsv_call", (DL_FUNC) &read_expression_vectors_tsv_call, 8},
     {"read_gene_ids_from_tsv_file_call", (DL_FUNC) &read_gene_ids_from_tsv_file_call, 5},
     {"read_orthofinder_file_call", (DL_FUNC) &read_orthofinder_file_call, 5},

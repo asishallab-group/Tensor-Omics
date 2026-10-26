@@ -81,6 +81,352 @@
       ")"
     ]
   },
+  "generate_adaptive_js_comp_test_candidates (call)": {
+    "prefix": "tox:generate_adaptive_js_comp_test_candidates",
+    "description": "The adaptive counterpart of",
+    "body": [
+      "${1:result} <- generate_adaptive_js_comp_test_candidates(",
+      "  max_n_genes_all_studies = ${2:max_n_genes_all_studies},",
+      "  n_studies = ${3:n_studies}",
+      ")"
+    ]
+  },
+  "run_js_comp_test_adaptive_parameter_search (call)": {
+    "prefix": "tox:run_js_comp_test_adaptive_parameter_search",
+    "description": "The adaptive-neighborhood counterpart of",
+    "body": [
+      "${1:result} <- run_js_comp_test_adaptive_parameter_search(",
+      "  gene_means = ${2:gene_means},",
+      "  residuals = ${3:residuals},",
+      "  n_bootstraps = ${4:n_bootstraps},",
+      "  join_method = ${5|join_min,join_max,join_median|},",
+      "  max_n_points_candidate = ${6:max_n_points_candidate},",
+      "  min_residuals_per_bin = ${7:10L},",
+      "  min_neighbor_overlap = ${8:0.1},",
+      "  succeeding_ci_overlap = ${9:0.9},",
+      "  plateau_mode = ${10|plateau_ci_overlap,plateau_effect_size,plateau_both|},",
+      "  delta_median_threshold = ${11:0.05},",
+      "  delta_max_threshold = ${12:0.1},",
+      "  delta_epsilon = ${13:1e-10},",
+      "  delta_min_consecutive_transitions = ${14:2L},",
+      "  m_min = ${15:3L},",
+      "  m_max = ${16:120L},",
+      "  gamma_occupancy = ${17:1.25},",
+      "  lower_residual_range_quantile = ${18:0.05},",
+      "  upper_residual_range_quantile = ${19:0.95},",
+      "  two_sided_bootstrapping_significance_level = ${20:2.5},",
+      "  random_seed = ${21:42L},",
+      "  tau = ${22:0.1},",
+      "  mad_distance_factor = ${23:1.0},",
+      "  max_pooled_residuals = ${24:0L},",
+      "  min_study_neighbors = ${25:1L},",
+      "  bin_count_mode = ${26|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|}",
+      ")"
+    ]
+  },
+  "calc_adaptive_js_comp_test_bounds (call)": {
+    "prefix": "tox:calc_adaptive_js_comp_test_bounds",
+    "description": "Sizes the per-point work arrays of the adaptive parameter search over the candidates of",
+    "body": [
+      "${1:result} <- calc_adaptive_js_comp_test_bounds(",
+      "  max_n_genes_all_studies = ${2:max_n_genes_all_studies},",
+      "  n_studies = ${3:n_studies}",
+      ")"
+    ]
+  },
+  "estimate_bin_count (call)": {
+    "prefix": "tox:estimate_bin_count",
+    "description": "Sturges' rule and the Freedman-Diaconis rule for a histogram over `[-R, R]`",
+    "body": [
+      "${1:result} <- estimate_bin_count(",
+      "  residuals = ${2:residuals},",
+      "  max_n_reps_all_studies = ${3:max_n_reps_all_studies},",
+      "  n_neighbors = ${4:n_neighbors},",
+      "  shared_residual_range = ${5:shared_residual_range}",
+      ")"
+    ]
+  },
+  "estimate_bin_count_expert (call)": {
+    "prefix": "tox:estimate_bin_count_expert",
+    "description": "Sturges' rule and the Freedman-Diaconis rule for a histogram over `[-R, R]`",
+    "body": [
+      "${1:result} <- estimate_bin_count_expert(",
+      "  residuals = ${2:residuals},",
+      "  residuals_perm = ${3:residuals_perm},",
+      "  max_n_reps_all_studies = ${4:max_n_reps_all_studies},",
+      "  n_neighbors = ${5:n_neighbors},",
+      "  shared_residual_range = ${6:shared_residual_range}",
+      ")"
+    ]
+  },
+  "determine_bin_count_occupancy (call)": {
+    "prefix": "tox:determine_bin_count_occupancy",
+    "description": "For one neighborhood's pooled residuals (all its neighbors, all studies), finds the largest",
+    "body": [
+      "${1:result} <- determine_bin_count_occupancy(",
+      "  pooled_residuals = ${2:pooled_residuals},",
+      "  max_n_reps_all_studies = ${3:max_n_reps_all_studies},",
+      "  n_neighbors = ${4:n_neighbors},",
+      "  m_min = ${5:3L},",
+      "  m_max = ${6:120L},",
+      "  min_residuals_per_bin = ${7:10L},",
+      "  gamma_occupancy = ${8:1.25},",
+      "  lower_residual_range_quantile = ${9:0.05},",
+      "  upper_residual_range_quantile = ${10:0.95}",
+      ")"
+    ]
+  },
+  "determine_bin_count_occupancy_expert (call)": {
+    "prefix": "tox:determine_bin_count_occupancy_expert",
+    "description": "For one neighborhood's pooled residuals (all its neighbors, all studies), finds the largest",
+    "body": [
+      "${1:result} <- determine_bin_count_occupancy_expert(",
+      "  pooled_residuals = ${2:pooled_residuals},",
+      "  pooled_residuals_perm = ${3:pooled_residuals_perm},",
+      "  max_n_reps_all_studies = ${4:max_n_reps_all_studies},",
+      "  n_neighbors = ${5:n_neighbors},",
+      "  m_min = ${6:3L},",
+      "  m_max = ${7:120L},",
+      "  min_residuals_per_bin = ${8:10L},",
+      "  gamma_occupancy = ${9:1.25},",
+      "  lower_residual_range_quantile = ${10:0.05},",
+      "  upper_residual_range_quantile = ${11:0.95}",
+      ")"
+    ]
+  },
+  "determine_bin_count_occupancy_exhaustive (call)": {
+    "prefix": "tox:determine_bin_count_occupancy_exhaustive",
+    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` and keeps the largest one whose",
+    "body": [
+      "${1:result} <- determine_bin_count_occupancy_exhaustive(",
+      "  pooled_residuals = ${2:pooled_residuals},",
+      "  n_pooled_residuals = ${3:n_pooled_residuals},",
+      "  shared_residual_range_low = ${4:shared_residual_range_low},",
+      "  shared_residual_range_high = ${5:shared_residual_range_high},",
+      "  m_min = ${6:3L},",
+      "  m_max = ${7:120L},",
+      "  min_residuals_per_bin = ${8:10L}",
+      ")"
+    ]
+  },
+  "determine_bin_count_occupancy_exhaustive_expert (call)": {
+    "prefix": "tox:determine_bin_count_occupancy_exhaustive_expert",
+    "description": "Tests every candidate bin count `M` in `[m_min, m_max]` and keeps the largest one whose",
+    "body": [
+      "${1:result} <- determine_bin_count_occupancy_exhaustive_expert(",
+      "  pooled_residuals = ${2:pooled_residuals},",
+      "  pooled_residuals_perm = ${3:pooled_residuals_perm},",
+      "  n_pooled_residuals = ${4:n_pooled_residuals},",
+      "  shared_residual_range_low = ${5:shared_residual_range_low},",
+      "  shared_residual_range_high = ${6:shared_residual_range_high},",
+      "  m_min = ${7:3L},",
+      "  m_max = ${8:120L},",
+      "  min_residuals_per_bin = ${9:10L}",
+      ")"
+    ]
+  },
+  "determine_bin_count_stone (call)": {
+    "prefix": "tox:determine_bin_count_stone",
+    "description": "Chooses the number of equal-width histogram bins for one neighborhood's pooled residuals by",
+    "body": [
+      "${1:result} <- determine_bin_count_stone(",
+      "  pooled_residuals = ${2:pooled_residuals},",
+      "  residual_to_study = ${3:residual_to_study},",
+      "  n_studies = ${4:n_studies},",
+      "  max_n_reps_all_studies = ${5:max_n_reps_all_studies},",
+      "  n_neighbors = ${6:n_neighbors},",
+      "  bin_count_mode = ${7|bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
+      "  m_min = ${8:3L},",
+      "  m_max = ${9:120L},",
+      "  min_residuals_per_bin = ${10:10L},",
+      "  lower_residual_range_quantile = ${11:0.05},",
+      "  upper_residual_range_quantile = ${12:0.95}",
+      ")"
+    ]
+  },
+  "determine_bin_count_stone_expert (call)": {
+    "prefix": "tox:determine_bin_count_stone_expert",
+    "description": "Chooses the number of equal-width histogram bins for one neighborhood's pooled residuals by",
+    "body": [
+      "${1:result} <- determine_bin_count_stone_expert(",
+      "  pooled_residuals = ${2:pooled_residuals},",
+      "  pooled_residuals_perm = ${3:pooled_residuals_perm},",
+      "  residual_to_study = ${4:residual_to_study},",
+      "  n_studies = ${5:n_studies},",
+      "  max_n_reps_all_studies = ${6:max_n_reps_all_studies},",
+      "  n_neighbors = ${7:n_neighbors},",
+      "  bin_count_mode = ${8|bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|},",
+      "  m_min = ${9:3L},",
+      "  m_max = ${10:120L},",
+      "  min_residuals_per_bin = ${11:10L},",
+      "  lower_residual_range_quantile = ${12:0.05},",
+      "  upper_residual_range_quantile = ${13:0.95}",
+      ")"
+    ]
+  },
+  "generate_js_comp_test_candidates (call)": {
+    "prefix": "tox:generate_js_comp_test_candidates",
+    "description": "Starting from `n_points_high = clamp(ceiling(N_POINTS_HIGH_FACTOR*sqrt(G)), MIN_POINTS, MAX_POINTS)`",
+    "body": [
+      "${1:result} <- generate_js_comp_test_candidates(",
+      "  max_n_genes_all_studies = ${2:max_n_genes_all_studies}",
+      ")"
+    ]
+  },
+  "run_js_comp_test_parameter_search (call)": {
+    "prefix": "tox:run_js_comp_test_parameter_search",
+    "description": "Walks the candidates of",
+    "body": [
+      "${1:result} <- run_js_comp_test_parameter_search(",
+      "  gene_means = ${2:gene_means},",
+      "  residuals = ${3:residuals},",
+      "  n_bootstraps = ${4:n_bootstraps},",
+      "  join_method = ${5|join_min,join_max,join_median|},",
+      "  max_n_points_candidate = ${6:max_n_points_candidate},",
+      "  max_n_neighbors_candidate = ${7:max_n_neighbors_candidate},",
+      "  min_residuals_per_bin = ${8:10L},",
+      "  min_neighbor_overlap = ${9:0.1},",
+      "  succeeding_ci_overlap = ${10:0.9},",
+      "  plateau_mode = ${11|plateau_ci_overlap,plateau_effect_size,plateau_both|},",
+      "  delta_median_threshold = ${12:0.05},",
+      "  delta_max_threshold = ${13:0.1},",
+      "  delta_epsilon = ${14:1e-10},",
+      "  delta_min_consecutive_transitions = ${15:2L},",
+      "  m_min = ${16:3L},",
+      "  m_max = ${17:120L},",
+      "  gamma_occupancy = ${18:1.25},",
+      "  lower_residual_range_quantile = ${19:0.05},",
+      "  upper_residual_range_quantile = ${20:0.95},",
+      "  two_sided_bootstrapping_significance_level = ${21:2.5},",
+      "  random_seed = ${22:42L},",
+      "  bin_count_mode = ${23|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|}",
+      ")"
+    ]
+  },
+  "calc_js_comp_test_candidate_bounds (call)": {
+    "prefix": "tox:calc_js_comp_test_candidate_bounds",
+    "description": "For the candidate grid of",
+    "body": [
+      "${1:result} <- calc_js_comp_test_candidate_bounds(",
+      "  max_n_genes_all_studies = ${2:max_n_genes_all_studies}",
+      ")"
+    ]
+  },
+  "run_js_comp_test (call)": {
+    "prefix": "tox:run_js_comp_test",
+    "description": "The final JS-Comp-Test of K studies for one fixed `(n_points, n_neighbors)` setting:",
+    "body": [
+      "${1:result} <- run_js_comp_test(",
+      "  n_neighbors = ${2:n_neighbors},",
+      "  gene_means = ${3:gene_means},",
+      "  residuals = ${4:residuals},",
+      "  x_star = ${5:x_star},",
+      "  n_permutations = ${6:1000L},",
+      "  random_seed = ${7:42L},",
+      "  min_residuals_per_bin = ${8:10L},",
+      "  m_min = ${9:3L},",
+      "  m_max = ${10:120L},",
+      "  gamma_occupancy = ${11:1.25},",
+      "  lower_residual_range_quantile = ${12:0.05},",
+      "  upper_residual_range_quantile = ${13:0.95},",
+      "  bin_count_mode = ${14|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|}",
+      ")"
+    ]
+  },
+  "run_js_comp_test_expert (call)": {
+    "prefix": "tox:run_js_comp_test_expert",
+    "description": "The final JS-Comp-Test of K studies for one fixed `(n_points, n_neighbors)` setting:",
+    "body": [
+      "${1:result} <- run_js_comp_test_expert(",
+      "  n_neighbors = ${2:n_neighbors},",
+      "  gene_means = ${3:gene_means},",
+      "  gene_means_perms = ${4:gene_means_perms},",
+      "  residuals = ${5:residuals},",
+      "  x_star = ${6:x_star},",
+      "  n_permutations = ${7:1000L},",
+      "  random_seed = ${8:42L},",
+      "  min_residuals_per_bin = ${9:10L},",
+      "  m_min = ${10:3L},",
+      "  m_max = ${11:120L},",
+      "  gamma_occupancy = ${12:1.25},",
+      "  lower_residual_range_quantile = ${13:0.05},",
+      "  upper_residual_range_quantile = ${14:0.95},",
+      "  bin_count_mode = ${15|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|}",
+      ")"
+    ]
+  },
+  "run_js_comp_test_adaptive (call)": {
+    "prefix": "tox:run_js_comp_test_adaptive",
+    "description": "The adaptive counterpart of",
+    "body": [
+      "${1:result} <- run_js_comp_test_adaptive(",
+      "  gene_means = ${2:gene_means},",
+      "  residuals = ${3:residuals},",
+      "  pooled_neighborhood_range = ${4:pooled_neighborhood_range},",
+      "  n_permutations = ${5:1000L},",
+      "  random_seed = ${6:42L},",
+      "  min_residuals_per_bin = ${7:10L},",
+      "  m_min = ${8:3L},",
+      "  m_max = ${9:120L},",
+      "  gamma_occupancy = ${10:1.25},",
+      "  lower_residual_range_quantile = ${11:0.05},",
+      "  upper_residual_range_quantile = ${12:0.95},",
+      "  bin_count_mode = ${13|bin_count_occupancy,bin_count_stone_equal,bin_count_stone_size_weighted,bin_count_stone_pooled|}",
+      ")"
+    ]
+  },
+  "check_neighborhood_overlaps (call)": {
+    "prefix": "tox:check_neighborhood_overlaps",
+    "description": "The first admissibility gate of a parameter-search candidate, on the `[min_idx, max_idx]`",
+    "body": [
+      "${1:result} <- check_neighborhood_overlaps(",
+      "  neighborhood_range = ${2:neighborhood_range},",
+      "  min_neighbor_overlap = ${3:min_neighbor_overlap}",
+      ")"
+    ]
+  },
+  "check_mean_pmf_min_counts (call)": {
+    "prefix": "tox:check_mean_pmf_min_counts",
+    "description": "The second admissibility gate of a parameter-search candidate, checked after",
+    "body": [
+      "${1:result} <- check_mean_pmf_min_counts(",
+      "  mean_pmf_counts = ${2:mean_pmf_counts},",
+      "  n_bins_per_point = ${3:n_bins_per_point},",
+      "  min_count = ${4:min_count}",
+      ")"
+    ]
+  },
+  "check_plateau_condition (call)": {
+    "prefix": "tox:check_plateau_condition",
+    "description": "For each study, the overlap of the new candidate's interval with the best one so far is",
+    "body": [
+      "${1:result} <- check_plateau_condition(",
+      "  confidence_interval = ${2:confidence_interval},",
+      "  best_candidate_pair_confidence_interval = ${3:best_candidate_pair_confidence_interval},",
+      "  best_candidate_index = ${4:best_candidate_index},",
+      "  best_exceeded_ci_overlap_count = ${5:best_exceeded_ci_overlap_count},",
+      "  candidate_index = ${6:candidate_index},",
+      "  join_method = ${7|join_min,join_max,join_median|},",
+      "  succeeding_ci_overlap = ${8:succeeding_ci_overlap}",
+      ")"
+    ]
+  },
+  "check_effect_size_plateau_condition (call)": {
+    "prefix": "tox:check_effect_size_plateau_condition",
+    "description": "The relative-effect-size alternative to",
+    "body": [
+      "${1:result} <- check_effect_size_plateau_condition(",
+      "  global_js_divergence = ${2:global_js_divergence},",
+      "  prev_global_js_divergence = ${3:prev_global_js_divergence},",
+      "  has_previous = ${4:has_previous},",
+      "  delta_median_threshold = ${5:delta_median_threshold},",
+      "  delta_max_threshold = ${6:delta_max_threshold},",
+      "  delta_epsilon = ${7:delta_epsilon},",
+      "  delta_min_consecutive_transitions = ${8:delta_min_consecutive_transitions},",
+      "  n_consecutive_ok = ${9:n_consecutive_ok}",
+      ")"
+    ]
+  },
   "determine_shared_residual_range (call)": {
     "prefix": "tox:determine_shared_residual_range",
     "description": "This takes the pool already built; `determine_study_shared_residual_range` builds it from",
@@ -119,15 +465,27 @@
     "body": [
       "${1:result} <- build_residual_histograms(",
       "  neighborhood_residuals = ${2:neighborhood_residuals},",
-      "  shared_residual_range = ${3:shared_residual_range},",
-      "  n_bins = ${4:n_bins},",
-      "  neighbor_mask = ${5:NULL}",
+      "  shared_residual_range_low = ${3:shared_residual_range_low},",
+      "  shared_residual_range_high = ${4:shared_residual_range_high},",
+      "  max_n_bins = ${5:max_n_bins},",
+      "  n_bins_per_point = ${6:n_bins_per_point},",
+      "  neighbor_mask = ${7:NULL}",
+      ")"
+    ]
+  },
+  "calc_pmf (call)": {
+    "prefix": "tox:calc_pmf",
+    "description": "The counts-to-pmf half of `build_residual_histograms_impl`, factored out so a caller that",
+    "body": [
+      "${1:result} <- calc_pmf(",
+      "  counts = ${2:counts},",
+      "  included_n_reps = ${3:included_n_reps}",
       ")"
     ]
   },
   "compute_divergence_per_reference_point (call)": {
     "prefix": "tox:compute_divergence_per_reference_point",
-    "description": "Takes the probabilities `pmf` produced by `build_residual_histograms`.",
+    "description": "Takes the probabilities `pmf` produced by `build_residual_histograms`. The natural JSD",
     "body": [
       "${1:result} <- compute_divergence_per_reference_point(",
       "  pmf_S1 = ${2:pmf_S1},",
@@ -143,6 +501,40 @@
       "  js_divergences = ${2:js_divergences},",
       "  included_n_reps_S1 = ${3:included_n_reps_S1},",
       "  included_n_reps_S2 = ${4:included_n_reps_S2}",
+      ")"
+    ]
+  },
+  "jct_compute_jsd_pipeline (call)": {
+    "prefix": "tox:jct_compute_jsd_pipeline",
+    "description": "Runs [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]] for",
+    "body": [
+      "${1:result} <- jct_compute_jsd_pipeline(",
+      "  neighborhood_residuals_S1 = ${2:neighborhood_residuals_S1},",
+      "  neighborhood_residuals_S2 = ${3:neighborhood_residuals_S2},",
+      "  n_bins = ${4:n_bins},",
+      "  shared_residual_range = ${5:shared_residual_range},",
+      "  neighbor_mask_S1 = ${6:NULL},",
+      "  neighbor_mask_S2 = ${7:NULL}",
+      ")"
+    ]
+  },
+  "create_mean_pmf (call)": {
+    "prefix": "tox:create_mean_pmf",
+    "description": "`mean_pmf` is the equal-weight mean of all studies' pmfs, `mean_pmf_counts` and",
+    "body": [
+      "${1:result} <- create_mean_pmf(",
+      "  pmfs = ${2:pmfs},",
+      "  counts = ${3:counts},",
+      "  included_n_reps = ${4:included_n_reps}",
+      ")"
+    ]
+  },
+  "create_mean_pmf_only (call)": {
+    "prefix": "tox:create_mean_pmf_only",
+    "description": "As [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]], for",
+    "body": [
+      "${1:result} <- create_mean_pmf_only(",
+      "  pmfs = ${2:pmfs}",
       ")"
     ]
   },
@@ -250,6 +642,46 @@
       ")"
     ]
   },
+  "construct_neighborhoods_ranged (call)": {
+    "prefix": "tox:construct_neighborhoods_ranged",
+    "description": "Ported from 125-stabilize-jscomp's `construct_neighborhoods_helper`: a binary-search +",
+    "body": [
+      "${1:result} <- construct_neighborhoods_ranged(",
+      "  x_star = ${2:x_star},",
+      "  mean_S = ${3:mean_S},",
+      "  n_neighbors = ${4:n_neighbors}",
+      ")"
+    ]
+  },
+  "construct_neighborhoods_ranged_expert (call)": {
+    "prefix": "tox:construct_neighborhoods_ranged_expert",
+    "description": "Ported from 125-stabilize-jscomp's `construct_neighborhoods_helper`: a binary-search +",
+    "body": [
+      "${1:result} <- construct_neighborhoods_ranged_expert(",
+      "  x_star = ${2:x_star},",
+      "  mean_S = ${3:mean_S},",
+      "  mean_S_perm = ${4:mean_S_perm},",
+      "  n_neighbors = ${5:n_neighbors}",
+      ")"
+    ]
+  },
+  "construct_adaptive_neighborhoods (call)": {
+    "prefix": "tox:construct_adaptive_neighborhoods",
+    "description": "Instead of one fixed neighbor count, each neighborhood grows while the mean absolute residual",
+    "body": [
+      "${1:result} <- construct_adaptive_neighborhoods(",
+      "  gene_means = ${2:gene_means},",
+      "  residuals = ${3:residuals},",
+      "  k_start = ${4:k_start},",
+      "  k_step = ${5:k_step},",
+      "  k_max = ${6:k_max},",
+      "  tau = ${7:0.1},",
+      "  mad_distance_factor = ${8:1.0},",
+      "  max_pooled_residuals = ${9:0L},",
+      "  min_study_neighbors = ${10:1L}",
+      ")"
+    ]
+  },
   "calc_neighborhood_size (call)": {
     "prefix": "tox:calc_neighborhood_size",
     "description": "The `desired_size` works as upper limit, as the actual neighborhood size might be lower",
@@ -262,20 +694,53 @@
       ")"
     ]
   },
+  "gather_pooled_neighborhood_residuals (call)": {
+    "prefix": "tox:gather_pooled_neighborhood_residuals",
+    "description": "Gathers one reference point's residuals from every neighbor gene of every study into one flat",
+    "body": [
+      "${1:result} <- gather_pooled_neighborhood_residuals(",
+      "  residuals = ${2:residuals},",
+      "  neighborhood_indices_point = ${3:neighborhood_indices_point}",
+      ")"
+    ]
+  },
   "gjct_permutation_test (call)": {
     "prefix": "tox:gjct_permutation_test",
-    "description": "Tests the null hypothesis that both studies are exchangeable. The residuals are shuffled in",
+    "description": "In every permutation, each reference point's pooled consensus counts (`mean_pmf_counts`) are",
     "body": [
       "${1:result} <- gjct_permutation_test(",
-      "  neighborhood_residuals_S1 = ${2:neighborhood_residuals_S1},",
-      "  neighborhood_residuals_S2 = ${3:neighborhood_residuals_S2},",
-      "  global_jsd_observed = ${4:global_jsd_observed},",
-      "  n_bins = ${5:n_bins},",
-      "  shared_residual_range = ${6:shared_residual_range},",
-      "  n_permutations = ${7:n_permutations},",
-      "  random_seed = ${8:NULL},",
-      "  neighbor_mask_S1 = ${9:NULL},",
-      "  neighbor_mask_S2 = ${10:NULL}",
+      "  n_permutations = ${2:n_permutations},",
+      "  mean_pmf_counts = ${3:mean_pmf_counts},",
+      "  mean_pmf = ${4:mean_pmf},",
+      "  mean_pmf_included_n_reps = ${5:mean_pmf_included_n_reps},",
+      "  included_n_reps = ${6:included_n_reps},",
+      "  global_jsd_observed = ${7:global_jsd_observed},",
+      "  random_seed = ${8:42L}",
+      ")"
+    ]
+  },
+  "bootstrap_histogram (call)": {
+    "prefix": "tox:bootstrap_histogram",
+    "description": "In every bootstrap, each study's histogram at each reference point is drawn with replacement",
+    "body": [
+      "bootstrap_histogram(",
+      "  n_bootstraps = ${1:n_bootstraps},",
+      "  mean_pmf_counts = ${2:mean_pmf_counts},",
+      "  mean_pmf_included_n_reps = ${3:mean_pmf_included_n_reps},",
+      "  included_n_reps = ${4:included_n_reps},",
+      "  confidence_interval = ${5:confidence_interval},",
+      "  two_sided_bootstrapping_significance_level = ${6:2.5},",
+      "  random_seed = ${7:42L}",
+      ")"
+    ]
+  },
+  "calc_js_comp_test_n_top_k_jsds (call)": {
+    "prefix": "tox:calc_js_comp_test_n_top_k_jsds",
+    "description": "Sizes the top-k/bottom-k heaps",
+    "body": [
+      "${1:result} <- calc_js_comp_test_n_top_k_jsds(",
+      "  n_bootstraps = ${2:n_bootstraps},",
+      "  two_sided_bootstrapping_significance_level = ${3:2.5}",
       ")"
     ]
   },

@@ -7,8 +7,21 @@ module f42_stats_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
-    use f42_sort_impl, only: binary_search_insertion
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
+    use f42_sort_impl, only: binary_search_insertion, init_perm, sort_array_heapsort
+    use f42_math_impl, only: clamp
     M_IMPLICIT_NONE
+
+    ! The values of sorted_partition_point's `predicate_kind`: which monotone predicate it
+    ! searches for. The `PREDICATE_` prefix only names this family of values; sorted_partition_point
+    ! is not published, so no mode-table convention applies to it.
+    integer(int32), parameter :: PREDICATE_BELOW = 1_int32
+        !! [[f42_stats_impl(module):sorted_partition_point(function)]]: `probed_value < threshold`
+    integer(int32), parameter :: PREDICATE_AT_MOST = 2_int32
+        !! [[f42_stats_impl(module):sorted_partition_point(function)]]: `probed_value <= threshold`
+    integer(int32), parameter :: PREDICATE_BIN_AT_MOST = 3_int32
+        !! [[f42_stats_impl(module):sorted_partition_point(function)]]: the equal-width bin index
+        !! of `probed_value` is at most `max_bin`
 
 contains
 
@@ -226,6 +239,131 @@ contains
         end if
     end subroutine calc_quantile_impl
 
+    !> summary: Count the non-NaN values of a NaN-last sorted permutation
+    !| AUTHOR_LASZLO_LANG
+    !| For a `perm` that orders `values` ascending with NaN last: the last position `i` with
+    !| `values(perm(i))` not NaN, found by scanning back from position `n_values` and stopping at the
+    !| first non-NaN value; 0 when every value is NaN. Every NaN then sits in `perm(i+1:n_values)`,
+    !| so the result is the `n_considered` of
+    !| [[f42_stats_impl(module):calc_quantile_impl(interface)]] for a quantile of the non-NaN
+    !| values. Precondition, not checked: NaN sorts last under `perm`.
+    pure integer(int32) function last_non_nan_position(values, n_values, perm) result(n_non_nan)
+        integer(int32), intent(in) :: n_values
+            !! Number of elements in `values` and `perm`
+        real(real64), intent(in) :: values(n_values)
+            !! Values, NaN allowed
+        integer(int32), intent(in) :: perm(n_values)
+            !! Permutation ordering `values` ascending, NaN last
+
+        integer(int32) :: i_pos
+
+        ! Sequential: the scan stops at the first non-NaN value from the end.
+        n_non_nan = n_values
+        do i_pos = n_values, 1, -1
+            if (ieee_is_nan(values(perm(i_pos)))) then
+                n_non_nan = n_non_nan - 1_int32
+            else
+                exit
+            end if
+        end do
+    end function last_non_nan_position
+
+    !> summary: Median of a small array by heapsort and calc_quantile_impl
+    !| AUTHOR_LASZLO_LANG
+    !| Seeds `tmp_perm` with the identity, heapsorts it against `values` and takes
+    !| [[f42_stats_impl(module):calc_quantile_impl(interface)]] at level 0.5 over all `n_values`
+    !| values, so the median interpolates the two middle values of an even count. `tmp_perm` holds
+    !| the ascending order on return. Meant for a handful of values (one per study); NaN would sort
+    !| last and take part.
+    pure subroutine calc_median(values, n_values, tmp_perm, median)
+        integer(int32), intent(in) :: n_values
+            !! Number of values, at least 1
+        real(real64), intent(in) :: values(n_values)
+            !! Values whose median is taken
+        integer(int32), intent(out) :: tmp_perm(n_values)
+            !! Working array: the sorting permutation of `values`
+        real(real64), intent(out) :: median
+            !! The median of `values`
+
+        call init_perm(tmp_perm)
+        call sort_array_heapsort(values, tmp_perm)
+        call calc_quantile_impl(values, n_values, tmp_perm, 0.5_real64, median)
+    end subroutine calc_median
+
+    !> AUTHOR_LASZLO_LANG
+    !| Median and raw (unscaled) median absolute deviation (MAD) of the values
+    !| `values(perm(first_pos:last_pos))`, which `perm` already orders ascending, in O(k) with no
+    !| work buffer and no sort. Both medians follow
+    !| [[f42_stats_impl(module):calc_quantile_impl(interface)]]'s convention (rank
+    !| [[f42_stats_impl(module):calc_quantile_rank(function)]] at level 0.5, `0.5*(k-1) + 1`,
+    !| linearly interpolated). The absolute deviations grow outward from the median on both sides,
+    !| so a two-pointer merge outward visits them in ascending order and stops at the needed rank.
+    !| A single value has itself as median and a MAD of 0.
+    !|
+    !| Precondition, not checked: `1 <= first_pos <= last_pos <= n_values`, and the slice contains
+    !| no NaN.
+    pure subroutine calc_sorted_slice_mad(values, n_values, perm, first_pos, last_pos, median, mad)
+        integer(int32), intent(in) :: n_values
+            !! Number of elements in `values`
+        real(real64), intent(in) :: values(n_values)
+            !! Values the slice is taken from
+        integer(int32), intent(in) :: perm(n_values)
+            !! Permutation ordering `values` ascending at least over `first_pos:last_pos`
+        integer(int32), intent(in) :: first_pos
+            !! First position of the slice in `perm`
+        integer(int32), intent(in) :: last_pos
+            !! Last position of the slice in `perm`
+        real(real64), intent(out) :: median
+            !! Median of the slice
+        real(real64), intent(out) :: mad
+            !! Raw median absolute deviation of the slice from `median`
+
+        integer(int32) :: n_slice, lower_rank, left_pos, right_pos, i_rank
+        real(real64) :: rank, fraction, left_dev, right_dev, dev, lower_dev
+
+        n_slice = last_pos - first_pos + 1
+        if (n_slice == 1_int32) then
+            median = values(perm(first_pos))
+            mad = 0.0_real64
+            return
+        end if
+
+        ! calc_quantile_impl's rank at level 0.5. For n_slice >= 2 it is below n_slice,
+        ! so both interpolation neighbors lie inside the slice.
+        rank = calc_quantile_rank(0.5_real64, n_slice)
+        lower_rank = floor(rank, kind=int32)
+        fraction = rank - real(lower_rank, real64)
+        left_pos = first_pos + lower_rank - 1_int32
+        right_pos = left_pos + 1_int32
+        median = values(perm(left_pos)) + fraction*(values(perm(right_pos)) - values(perm(left_pos)))
+
+        ! Sequential two-pointer merge: each step depends on which side the previous one took.
+        ! The deviations at ranks lower_rank and lower_rank + 1 are interpolated like the median.
+        lower_dev = 0.0_real64
+        dev = 0.0_real64
+        do i_rank = 1_int32, lower_rank + 1_int32
+            if (left_pos >= first_pos .and. right_pos <= last_pos) then
+                left_dev = abs(values(perm(left_pos)) - median)
+                right_dev = abs(values(perm(right_pos)) - median)
+                if (left_dev <= right_dev) then
+                    dev = left_dev
+                    left_pos = left_pos - 1_int32
+                else
+                    dev = right_dev
+                    right_pos = right_pos + 1_int32
+                end if
+            else if (left_pos >= first_pos) then
+                dev = abs(values(perm(left_pos)) - median)
+                left_pos = left_pos - 1_int32
+            else
+                dev = abs(values(perm(right_pos)) - median)
+                right_pos = right_pos + 1_int32
+            end if
+            if (i_rank == lower_rank) lower_dev = dev
+        end do
+        mad = lower_dev + fraction*(dev - lower_dev)
+    end subroutine calc_sorted_slice_mad
+
 
     !> summary: Calculate the empirical upper-tail probability (effect-size measure) of scaled expression distances (RDI)
     !| AUTHOR_VIVIAN_BASS
@@ -293,4 +431,180 @@ contains
         end do
 
     end subroutine compute_scaled_distance_tail_probability_impl
+
+    !> AUTHOR_LASZLO_LANG
+    !| Bins the non-NaN values `values(perm(1:n_pool))` into `trial_m` equal-width bins over
+    !| `[range_low, range_high]`, clamping a value outside the range into the nearer edge bin
+    !| (clamp, then bin index `min(trial_m, int((v - range_low)/bin_width) + 1)`). A range of zero
+    !| or negative width falls back to a bin width of 1, so every value lands in one bin instead of
+    !| a division by zero. [[f42_stats_impl(module):sorted_bin_counts(subroutine)]] gives the same
+    !| counts for the inside values by binary search, without the clamping.
+    !|
+    !| Known limitation, not guarded: if the range width is not finite (values near +-1e308) or so
+    !| small that the bin width underflows to 0, the bin index can leave `[1, trial_m]` and the
+    !| count is written out of bounds.
+    pure subroutine histogram_bin_counts(values, perm, n_values, n_pool, range_low, range_high, trial_m, &
+                                         bin_counts, min_occupancy)
+        integer(int32), intent(in) :: n_values
+            !! Number of elements in `values`
+        integer(int32), intent(in) :: n_pool
+            !! Number of non-NaN values; only perm(1:n_pool) is used
+        real(real64), intent(in) :: values(n_values)
+            !! Values to bin
+        integer(int32), intent(in) :: perm(n_values)
+            !! Sorting permutation for `values`, ascending, NaN last
+        real(real64), intent(in) :: range_low
+            !! Lower end of the binned range
+        real(real64), intent(in) :: range_high
+            !! Upper end of the binned range
+        integer(int32), intent(in) :: trial_m
+            !! Number of equal-width bins
+        integer(int32), intent(out) :: bin_counts(trial_m)
+            !! Absolute count of values per bin
+        integer(int32), intent(out) :: min_occupancy
+            !! minval(bin_counts)
+
+        real(real64) :: bin_width, clamped_value
+        integer(int32) :: i_pool, bin_idx
+
+        ! A degenerate range falls back to a fixed bin width instead of dividing by zero.
+        if (range_high - range_low <= 0.0_real64) then
+            bin_width = 1.0_real64
+        else
+            bin_width = (range_high - range_low)/real(trial_m, real64)
+        end if
+
+        bin_counts = 0_int32
+        ! Sequential: two values can increment the same bin.
+        do i_pool = 1, n_pool
+            clamped_value = clamp(values(perm(i_pool)), min_val=range_low, max_val=range_high)
+            bin_idx = min(trial_m, int((clamped_value - range_low)/bin_width) + 1_int32)
+            bin_counts(bin_idx) = bin_counts(bin_idx) + 1_int32
+        end do
+
+        min_occupancy = minval(bin_counts)
+    end subroutine histogram_bin_counts
+
+    !> AUTHOR_LASZLO_LANG
+    !| Counts `values(perm(1:n_perm))` (ascending, NaN last) into `trial_m` equal-width bins over
+    !| `[range_low, range_high]` in O(trial_m log n_perm): the bin index of
+    !| [[f42_stats_impl(module):histogram_bin_counts(subroutine)]] never decreases with the value,
+    !| so each bin end is a binary search. Only values inside the range are binned (`n_inside` of
+    !| them); values below it are counted in `n_below`, values above it and NaN nowhere. For a range
+    !| of positive width the counts equal `histogram_bin_counts`' counts without its clamping of the
+    !| outside values into the edge bins.
+    !|
+    !| Precondition, not checked: `perm(1:n_perm)` orders `values` ascending, NaN last.
+    pure subroutine sorted_bin_counts(values, n_values, perm, n_perm, range_low, range_high, trial_m, bin_counts, &
+                                      n_below, n_inside)
+        integer(int32), intent(in) :: n_values
+            !! Number of elements in `values`
+        real(real64), intent(in) :: values(n_values)
+            !! Values to count, NaN allowed
+        integer(int32), intent(in) :: n_perm
+            !! Number of positions in `perm`
+        integer(int32), intent(in) :: perm(n_perm)
+            !! Indices into `values`, ordering the counted values ascending, NaN last
+        real(real64), intent(in) :: range_low
+            !! Lower end of the binned range
+        real(real64), intent(in) :: range_high
+            !! Upper end of the binned range
+        integer(int32), intent(in) :: trial_m
+            !! Number of equal-width bins
+        integer(int32), intent(out) :: bin_counts(trial_m)
+            !! Number of inside values per bin
+        integer(int32), intent(out) :: n_below
+            !! Number of values below `range_low`
+        integer(int32), intent(out) :: n_inside
+            !! Number of values inside `[range_low, range_high]`, the sum of `bin_counts`
+
+        real(real64) :: bin_width
+        integer(int32) :: n_up_to_high, n_up_to_bin, n_before_bin, i_bin
+
+        ! Same zero-range guard as histogram_bin_counts.
+        if (range_high - range_low <= 0.0_real64) then
+            bin_width = 1.0_real64
+        else
+            bin_width = (range_high - range_low)/real(trial_m, real64)
+        end if
+
+        ! A comparison with NaN is false, so both predicates stay monotone over a NaN tail.
+        n_below = sorted_partition_point(values, n_values, perm, n_perm, 0_int32, n_perm, PREDICATE_BELOW, &
+                                         range_low, bin_width, 0_int32)
+        n_up_to_high = sorted_partition_point(values, n_values, perm, n_perm, n_below, n_perm, PREDICATE_AT_MOST, &
+                                              range_high, bin_width, 0_int32)
+        n_inside = n_up_to_high - n_below
+
+        ! Sequential: each bin's search starts where the previous bin ended. The bin predicate is
+        ! only evaluated inside the range, which holds no NaN.
+        n_before_bin = n_below
+        do i_bin = 1, trial_m - 1_int32
+            n_up_to_bin = sorted_partition_point(values, n_values, perm, n_perm, n_before_bin, n_up_to_high, &
+                                                 PREDICATE_BIN_AT_MOST, range_low, bin_width, i_bin)
+            bin_counts(i_bin) = n_up_to_bin - n_before_bin
+            n_before_bin = n_up_to_bin
+        end do
+        bin_counts(trial_m) = n_up_to_high - n_before_bin
+    end subroutine sorted_bin_counts
+
+    !> AUTHOR_LASZLO_LANG
+    !| Binary search over positions `first_pos+1 .. last_pos` of a sorted permutation: returns the
+    !| last position up to which a monotone predicate holds (`first_pos` when it holds nowhere).
+    !|
+    !| On `probed_value = values(perm(pos))`, `PREDICATE_BELOW` is `probed_value < threshold`,
+    !| `PREDICATE_AT_MOST` is `probed_value <= threshold`, and `PREDICATE_BIN_AT_MOST` is
+    !| `int((probed_value - threshold)/bin_width) + 1 <= max_bin` (`threshold` = range's lower end).
+    !| Unlike [[f42_sort_impl(module):binary_search_insertion(function)]] it takes a permutation
+    !| slice shorter than `values` and the bin predicate. Precondition, not checked: the predicate
+    !| holds on a leading run of the positions and fails on the rest.
+    pure integer(int32) function sorted_partition_point(values, n_values, perm, n_perm, first_pos, last_pos, &
+                                                        predicate_kind, threshold, bin_width, max_bin) result(split_pos)
+        integer(int32), intent(in) :: n_values
+            !! Number of elements in `values`
+        real(real64), intent(in) :: values(n_values)
+            !! Values the permutation orders
+        integer(int32), intent(in) :: n_perm
+            !! Number of positions in `perm`
+        integer(int32), intent(in) :: perm(n_perm)
+            !! Indices into `values`, ascending order
+        integer(int32), intent(in) :: first_pos
+            !! The predicate is known to hold up to this position (0 for none)
+        integer(int32), intent(in) :: last_pos
+            !! Last position searched
+        integer(int32), intent(in) :: predicate_kind
+            !! PREDICATE_BELOW, PREDICATE_AT_MOST or PREDICATE_BIN_AT_MOST
+        real(real64), intent(in) :: threshold
+            !! Compared value, or the range's lower end for PREDICATE_BIN_AT_MOST
+        real(real64), intent(in) :: bin_width
+            !! Bin width, used by PREDICATE_BIN_AT_MOST only
+        integer(int32), intent(in) :: max_bin
+            !! Largest accepted bin index, used by PREDICATE_BIN_AT_MOST only
+
+        integer(int32) :: holds_pos, fails_pos, mid_pos
+        real(real64) :: probed_value
+        logical(c_bool) :: holds
+
+        ! Invariant: the predicate holds up to holds_pos and fails at fails_pos (last_pos + 1 is a
+        ! virtual failing position).
+        holds_pos = first_pos
+        fails_pos = last_pos + 1_int32
+        do while (fails_pos - holds_pos > 1_int32)
+            mid_pos = holds_pos + (fails_pos - holds_pos)/2_int32
+            probed_value = values(perm(mid_pos))
+            select case (predicate_kind)
+            case (PREDICATE_BELOW)
+                holds = probed_value < threshold
+            case (PREDICATE_AT_MOST)
+                holds = probed_value <= threshold
+            case default ! PREDICATE_BIN_AT_MOST
+                holds = int((probed_value - threshold)/bin_width) + 1_int32 <= max_bin
+            end select
+            if (holds) then
+                holds_pos = mid_pos
+            else
+                fails_pos = mid_pos
+            end if
+        end do
+        split_pos = holds_pos
+    end function sorted_partition_point
 end module f42_stats_impl

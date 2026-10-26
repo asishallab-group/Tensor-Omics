@@ -3,7 +3,22 @@ source("r/test_helpers.R")
 
 TOL <- 1e-12
 
+# Test determine_shared_residual_range (the plain, auto-sorting tier) directly, by cross-checking
+# it against the already-tested _expert tier given the same pool pre-sorted.
 test_determine_shared_residual_range <- function() {
+  pool <- c(1.0, 5.0, 3.0, 8.0, 2.0, 7.0, 4.0)
+  perm <- order(pool)
+
+  R_plain <- determine_shared_residual_range(pool, 0.95)
+  R_expert <- determine_shared_residual_range_expert(pool, perm, 0.95)
+  assert_true(abs(R_plain - R_expert) < TOL)
+
+  # Default residual_range_quantile (0.95)
+  R_plain_default <- determine_shared_residual_range(pool)
+  assert_true(abs(R_plain_default - R_expert) < TOL)
+}
+
+test_determine_study_shared_residual_range <- function() {
 
   # Helper
   approx_equal <- function(a, b) abs(a - b) < TOL
@@ -156,7 +171,10 @@ test_tox_build_residual_histograms <- function() {
     n_neighbors <- 2
     n_points    <- 3
     n_bins      <- 4
+    n_bins_per_point <- rep(as.integer(n_bins), n_points)
     Rval        <- 2.0
+    R_low       <- rep(-Rval, n_points)
+    R_high      <- rep(Rval, n_points)
 
     # ============================================================
     # Test 1 — Simple symmetric case, no NaNs
@@ -172,7 +190,7 @@ test_tox_build_residual_histograms <- function() {
     neighbor_mask <- array(FALSE, dim = c(n_neighbors, n_points))
 
     out <- build_residual_histograms(
-        E, Rval, n_bins, neighbor_mask = neighbor_mask
+        E, R_low, R_high, n_bins, n_bins_per_point, neighbor_mask = neighbor_mask
     )
 
     counts   <- out$counts
@@ -183,9 +201,9 @@ test_tox_build_residual_histograms <- function() {
     assert_true(all(abs(pmf - 0.0) < 1e-12), "All pmfs should be zero")
     assert_true(all(included == 0), "All included should be zero")
 
-    filtered <- function(E, Rval, n_bins) {
+    filtered <- function(E, R_low, R_high, n_bins, n_bins_per_point) {
         build_residual_histograms(
-            E, Rval, n_bins,
+            E, R_low, R_high, n_bins, n_bins_per_point,
             neighbor_mask = matrix(TRUE, nrow = dim(E)[3], ncol=dim(E)[2], byrow=TRUE)
         )
     }
@@ -199,7 +217,7 @@ test_tox_build_residual_histograms <- function() {
         E[,1,3] <- c( 2.5, -3.0, 1.2)
         E[,2,3] <- c( 0.4, -0.1, 0.0)
 
-        out <- func(E, Rval, n_bins)
+        out <- func(E, R_low, R_high, n_bins, n_bins_per_point)
         counts   <- out$counts
         pmf      <- out$pmf
         included <- out$included_n_residuals
@@ -226,7 +244,7 @@ test_tox_build_residual_histograms <- function() {
         E[2,1,2] <- NaN
         E[3,2,3] <- NaN
 
-        out <- func(E, Rval, n_bins)
+        out <- func(E, R_low, R_high, n_bins, n_bins_per_point)
         counts   <- out$counts
         pmf      <- out$pmf
         included <- out$included_n_residuals
@@ -255,7 +273,7 @@ test_tox_build_residual_histograms <- function() {
         # ============================================================
         E[,,] <- NaN
 
-        out <- func(E, Rval, n_bins)
+        out <- func(E, R_low, R_high, n_bins, n_bins_per_point)
         assert_true(all(out$counts == 0), "test 3: All counts should be zero")
         assert_true(all(abs(out$pmf - 0.0) < 1e-12), "test 3: All pmfs should be zero")
         assert_true(all(out$included == 0), "test 3: All included should be zero")
@@ -269,7 +287,7 @@ test_tox_build_residual_histograms <- function() {
           -2,-1,0,1,2,0
         ), dim = c(3,2,3))
 
-        out <- func(E, Rval, n_bins)
+        out <- func(E, R_low, R_high, n_bins, n_bins_per_point)
         counts   <- out$counts
         pmf      <- out$pmf
         included <- out$included_n_residuals
@@ -314,7 +332,7 @@ test_compute_divergence_per_reference_point <- function() {
   q[1,2] <- 1
 
   jsd <- compute_divergence_per_reference_point(p, q)
-  assert_true(approx_equal(jsd[1], log(2)), "Test 2 failed")
+  assert_true(approx_equal(jsd[1], log(2) / log(2)), "Test 2 failed")  # rescaled onto 0..1: log(2)/log(2) = 1.0
   assert_true(jsd[2] == 0, "Test 2 row 2 failed")
   assert_true(jsd[3] == 0, "Test 2 row 3 failed")
 
@@ -326,11 +344,11 @@ test_compute_divergence_per_reference_point <- function() {
 
   jsd <- compute_divergence_per_reference_point(p, q)
 
-  expected <- 0.5 * (
+  expected <- (0.5 * (
     0.5 * log(2) +
     0.5 * log(2/3) +
     log(1/0.75)
-  )
+  )) / log(2)  # rescaled onto 0..1 by dividing through LOG_2 = log(2)
 
   assert_true(approx_equal(jsd[1], expected), "Test 3 failed")
 
@@ -341,7 +359,7 @@ test_compute_divergence_per_reference_point <- function() {
   q[1,3] <- 1
 
   jsd <- compute_divergence_per_reference_point(p, q)
-  assert_true(approx_equal(jsd[1], log(2)), "Test 4 failed")
+  assert_true(approx_equal(jsd[1], log(2) / log(2)), "Test 4 failed")  # rescaled onto 0..1: log(2)/log(2) = 1.0
 
   # Test 5 — mixed patterns
   p <- matrix(
@@ -368,8 +386,8 @@ test_compute_divergence_per_reference_point <- function() {
 
   jsd <- compute_divergence_per_reference_point(p, q)
 
-  assert_true(approx_equal(jsd[2], 0.5 * log(2)), "Test 5 row 2 failed")
-  assert_true(approx_equal(jsd[3], 0.5 * log(2)), "Test 5 row 3 failed")
+  assert_true(approx_equal(jsd[2], (0.5 * log(2)) / log(2)), "Test 5 row 2 failed")  # rescaled: 0.5*log(2)/log(2) = 0.5
+  assert_true(approx_equal(jsd[3], (0.5 * log(2)) / log(2)), "Test 5 row 3 failed")
 }
 
 test_compute_weighted_global_divergence <- function() {
@@ -435,106 +453,84 @@ test_compute_weighted_global_divergence <- function() {
              "Test 5 failed: global JSD mismatch")
 }
 
-test_gjct_permutation_test <- function() {
-  n_reps_S1 <- 4L
-  n_reps_S2 <- 3L
-  n_neighbors <- 1L
-  n_points <- 2L
-  n_permutations <- 2L
-  n_bins <- 4L
-  random_seed <- 666L
-  huge <- .Machine$double.xmax
+test_calc_pmf <- function() {
+  TOL <- 1e-12
 
-  # Base vector (same as Fortran)
-  S_12 <- c(
-    1, 2, 3, 4,
-    5, 6, -7, 8,
-    2, -4, 6, 8,
-    1, 3
+  # ============================================================
+  # Test 1 — matches build_residual_histograms's own basic fixture (see
+  # test_tox_build_residual_histograms Test 1 above): feeding it the exact counts/
+  # included_n_reps that routine produces must reproduce that fixture's expected pmf exactly.
+  # ============================================================
+  counts <- matrix(
+      as.integer(
+      c(2,1,2,1,
+        0,0,6,0,
+        1,1,2,2)
+      ),
+      nrow = 3, byrow = TRUE
   )
+  included_n_reps <- as.integer(c(6, 6, 6))
 
-  # Split into S1 and S2 arrays
-  S1_vec <- S_12[seq_len(n_reps_S1 * n_neighbors * n_points)]
-  S2_vec <- S_12[(n_reps_S1 * n_neighbors * n_points + 1L):length(S_12)]
+  expected_pmf <- counts / matrix(included_n_reps, nrow = 3, ncol = 4)
 
-  S1_arr <- array(S1_vec, dim = c(n_reps_S1, n_neighbors, n_points))
-  S2_arr <- array(S2_vec, dim = c(n_reps_S2, n_neighbors, n_points))
+  pmf <- calc_pmf(counts, included_n_reps)
+  assert_equal_numeric(pmf, expected_pmf, tol = TOL, msg = "Test 1: pmf mismatch")
 
-  # Case A: all null >= observed → p = 1
-  res_p1 <- gjct_permutation_test(
-    S1_arr, S2_arr,
-    global_jsd_observed = huge,
-    n_bins = n_bins,
-    shared_residual_range = 10,
-    n_permutations = n_permutations,
-    random_seed = random_seed,
-    neighbor_mask_S1 = matrix(FALSE, nrow = n_neighbors, ncol=n_points),
-    neighbor_mask_S2 = matrix(FALSE, nrow = n_neighbors, ncol=n_points)
+  # ============================================================
+  # Test 2 — a reference point with zero included replicates (every residual there was NaN)
+  # must report an all-zero pmf row rather than dividing by zero.
+  # ============================================================
+  counts <- matrix(as.integer(c(3, 5, 0, 0)), nrow = 2, byrow = TRUE)
+  included_n_reps <- as.integer(c(8, 0))
+
+  expected_pmf <- matrix(c(0.375, 0.625, 0.0, 0.0), nrow = 2, byrow = TRUE)
+
+  pmf <- calc_pmf(counts, included_n_reps)
+  assert_equal_numeric(pmf, expected_pmf, tol = TOL, msg = "Test 2: pmf mismatch")
+
+  # ============================================================
+  # Test 3 — counts is documented as non-negative; a negative entry must be rejected.
+  # ============================================================
+  counts <- matrix(as.integer(-1), nrow = 1, ncol = 1)
+  included_n_reps <- as.integer(1)
+
+  assert_error(
+    calc_pmf(counts, included_n_reps),
+    "Test 3 failed: expected ERR_INVALID_INPUT", ERR_INVALID_INPUT
   )
-
-  assert_true(abs(res_p1$p_value - 1/3) < 1e-12, "Test 3A: p-value should be 1 when for huge observed JSD and without included residuals")
-  filtered <- function(S1_arr, S2_arr, global_jsd_observed, n_bins, shared_residual_range, n_permutations, random_seed) {
-      gjct_permutation_test(
-          S1_arr,
-          S2_arr,
-          global_jsd_observed=global_jsd_observed,
-          n_bins=n_bins,
-          shared_residual_range=shared_residual_range,
-          n_permutations=n_permutations,
-          random_seed=random_seed,
-          neighbor_mask_S1 = matrix(TRUE, nrow = dim(S1_arr)[3], ncol=dim(S1_arr)[2], byrow=TRUE),
-          neighbor_mask_S2 = matrix(TRUE, nrow = dim(S2_arr)[3], ncol=dim(S2_arr)[2], byrow=TRUE)
-      )
-  }
-
-  for (func in list(gjct_permutation_test, filtered)) {
-
-    # Base vector (same as Fortran)
-    S_12 <- c(
-      1, 2, 3, 4,
-      5, 6, -7, 8,
-      2, -4, 6, 8,
-      1, 3
-    )
-
-    # Split into S1 and S2 arrays
-    S1_vec <- S_12[seq_len(n_reps_S1 * n_neighbors * n_points)]
-    S2_vec <- S_12[(n_reps_S1 * n_neighbors * n_points + 1L):length(S_12)]
-
-    S1_arr <- array(S1_vec, dim = c(n_reps_S1, n_neighbors, n_points))
-    S2_arr <- array(S2_vec, dim = c(n_reps_S2, n_neighbors, n_points))
-
-    # Case A: all null >= observed → p = 1
-    res_p1 <- func(
-      S1_arr, S2_arr,
-      global_jsd_observed = 0,
-      n_bins = n_bins,
-      shared_residual_range = 10,
-      n_permutations = n_permutations,
-      random_seed = random_seed
-    )
-
-    assert_true(abs(res_p1$p_value - 1.0) < 1e-12,
-               "Test 3A: p-value should be 1 when observed JSD = 0")
-
-  #   # Case B: none null >= observed → p = 1/(n_permutations+1)
-  #   res_p2 <- func(
-  #     S1_arr, S2_arr,
-  #     global_jsd_observed = huge,
-  #     n_bins = n_bins,
-  #     shared_residual_range = 10,
-  #     n_permutations = n_permutations,
-  #     random_seed = random_seed
-  #   )
-  #   check_err_code(res_p2$ierr)
-
-  #   expected <- 1.0 / (n_permutations + 1.0)
-  #   assert_true(abs(res_p2$p_value - expected) < 1e-12,
-  #              "Test 3B: p-value should be 1/(n_permutations+1) for huge observed JSD")
-
-  }
-
-  invisible(TRUE)
 }
+
+test_jct_compute_jsd_pipeline <- function() {
+  # Call-ability, return types/shapes and non-error only; the exact equality with its three steps
+  # is the Fortran suite's job (test_jct_compute_jsd_pipeline_matches_its_steps).
+  set.seed(224)
+  n_neighbors <- 4L; n_points <- 3L; n_bins <- 5L
+  residuals_S1 <- array(rnorm(3 * n_neighbors * n_points), dim = c(3, n_neighbors, n_points))
+  residuals_S2 <- array(rnorm(4 * n_neighbors * n_points), dim = c(4, n_neighbors, n_points))
+  residuals_S2[2, 3, 2] <- NaN # NaN marks a missing value and is accepted
+
+  result <- jct_compute_jsd_pipeline(residuals_S1, residuals_S2, n_bins, 2.0)
+  assert_equal_int(length(result$js_divergences), n_points, "js_divergences length")
+  assert_equal_int(length(result$weights), n_points, "weights length")
+  assert_equal_int(length(result$included_n_reps_S1), n_points, "included_n_reps_S1 length")
+  assert_equal_int(length(result$included_n_reps_S2), n_points, "included_n_reps_S2 length")
+  assert_equal_int(dim(result$pmf_S1), c(n_points, n_bins), "pmf_S1 shape")
+  assert_equal_int(dim(result$pmf_S2), c(n_points, n_bins), "pmf_S2 shape")
+  assert_true(is.finite(result$global_js_divergence), "global_js_divergence must be finite")
+  assert_equal_int(as.integer(result$included_n_reps_S2[2]), 4L * n_neighbors - 1L, "the NaN residual is not counted")
+
+  mask_S1 <- matrix(TRUE, n_neighbors, n_points)
+  mask_S1[2, 1] <- FALSE
+  masked <- jct_compute_jsd_pipeline(residuals_S1, residuals_S2, n_bins, 2.0, neighbor_mask_S1 = mask_S1)
+  assert_equal_int(as.integer(masked$included_n_reps_S1[1]), 3L * (n_neighbors - 1L), "the masked neighbor is not counted")
+
+  assert_error(jct_compute_jsd_pipeline(residuals_S1, residuals_S2, n_bins, -1.0),
+               "expected ERR_INVALID_INPUT for a negative shared_residual_range", ERR_INVALID_INPUT)
+}
+
+# test_gjct_permutation_test was removed here: gjct_permutation_test was replaced by a K-study,
+# consensus-based version (see tox_data_integration_js_comp_test) -- the old 2-study test that
+# lived in this file was removed rather than adapted, since the signature is unrelated. Its own
+# direct test coverage now lives in mod_test_data_integration_stats.R.
 
 run_all_tests()

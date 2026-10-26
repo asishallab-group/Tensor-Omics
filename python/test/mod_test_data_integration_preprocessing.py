@@ -9,19 +9,24 @@ from pathlib import Path
 
 # Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from test_helpers import run_all_tests
+from test_helpers import run_all_tests, assert_error
 from tensor_omics import euclidean_distance, distance_to_centroid
 
 # Import your functions
 from tensor_omics import (
     compute_gene_means,
     compute_residuals,
+    pool_means,
     pool_study_means,
     construct_neighborhoods,
     pool_means_expert,
     calc_neighborhood_size,
-    construct_neighborhoods
+    construct_neighborhoods,
+    construct_neighborhoods_ranged,
+    construct_neighborhoods_ranged_expert,
+    ToxError,
 )
+from tensor_omics.error_handling import ERR_INVALID_INPUT, ERR_NAN_INF
 
 
 def test_compute_gene_means():
@@ -89,7 +94,26 @@ def test_compute_residuals():
 
 
 
-def test_pool_means():
+def test_pool_means_uses_bare_fraction_level():
+    """Test pool_means (the plain, auto-sorting tier) directly.
+
+    Call-ability and shape, plus the case the Fortran test test_pool_means_uses_bare_fraction_level
+    (test/mod_test_data_integration.F90) pins exactly: n_points=647 on the sequential pool
+    [1.0, ..., 1000.0], where reference point 216 (1-based) lies at rank 334, since the level is
+    the bare fraction 216/648.
+    """
+    pooled_means = np.arange(1, 1001, dtype=np.float64)
+    n_points = 647
+
+    result = pool_means(pooled_means, n_points)
+
+    assert result['n_pool'] == 1000
+    assert len(result['x_star']) == n_points
+    # index 216 (1-based, Fortran) == index 215 (0-based, Python)
+    assert abs(result['x_star'][215] - 334.0) < 1e-12
+
+
+def test_pool_study_means():
     """Test pool_study_means function"""
 
     # Test 1: Basic pooling
@@ -159,6 +183,135 @@ def test_construct_neighborhoods():
     result_auto = construct_neighborhoods(x_star, mean_S, resid_S, expected_n_neighbors)
     assert result_auto['neighborhood_residuals'].shape[1] == expected_n_neighbors
 
+
+
+def test_construct_neighborhoods_ranged_basic():
+    """Test construct_neighborhoods_ranged / _expert: basic two-point case, hand-computed
+    from a sorted mean_S with no ties."""
+
+    x_star = np.array([2.0, 10.0], dtype=np.float64, order='F')
+    mean_S = np.array([1.0, 2.5, 9.0, 10.5, 20.0], dtype=np.float64, order='F')
+    mean_S_perm = np.array([1, 2, 3, 4, 5], dtype=np.int32, order='F')  # already ascending, no ties
+    n_neighbors = 2
+
+    def plain(x_star, mean_S, mean_S_perm, n_neighbors):
+        """The plain entry point sorts mean_S itself; mean_S_perm is unused here."""
+        return construct_neighborhoods_ranged(x_star, mean_S, n_neighbors)
+
+    for func in (construct_neighborhoods_ranged_expert, plain):
+        result = func(x_star, mean_S, mean_S_perm, n_neighbors)
+
+        # x_star[0]=2.0: distances to [1,2.5,9,10.5,20] are [1,0.5,7,8.5,18] -> nearest are gene 2, then gene 1
+        np.testing.assert_array_almost_equal(result['neighborhood_indices'][:, 0], [2, 1], decimal=10)
+        np.testing.assert_array_almost_equal(result['neighborhood_range'][:, 0], [1, 2], decimal=10)
+
+        # x_star[1]=10.0: distances to [1,2.5,9,10.5,20] are [9,7.5,1,0.5,10] -> nearest are gene 4, then gene 3
+        np.testing.assert_array_almost_equal(result['neighborhood_indices'][:, 1], [4, 3], decimal=10)
+        np.testing.assert_array_almost_equal(result['neighborhood_range'][:, 1], [3, 4], decimal=10)
+
+
+
+def test_construct_neighborhoods_ranged_tie_extends_range():
+    """Three genes tie on the same mean at the boundary of a single-neighbor neighborhood: only
+    one of them is picked as the neighbor, but neighborhood_range must still be extended to span
+    all three, because a later admissibility gate reasons about the range, not just the picked
+    neighbor."""
+
+    x_star = np.array([3.0], dtype=np.float64, order='F')
+    mean_S = np.array([1.0, 3.0, 3.0, 3.0, 5.0], dtype=np.float64, order='F')
+    mean_S_perm = np.array([1, 2, 3, 4, 5], dtype=np.int32, order='F')  # already ascending
+    n_neighbors = 1
+
+    result = construct_neighborhoods_ranged_expert(x_star, mean_S, mean_S_perm, n_neighbors)
+
+    # Binary search lands on the first "3.0" (gene 2); it is closer than gene 1 (distance 0 vs 2),
+    # so gene 2 is the sole neighbor -- but genes 3 and 4 share its mean and must extend the range.
+    np.testing.assert_array_almost_equal(result['neighborhood_indices'][:, 0], [2], decimal=10)
+    np.testing.assert_array_almost_equal(result['neighborhood_range'][:, 0], [2, 4], decimal=10)
+
+
+
+def test_construct_neighborhoods_ranged_all_nan_means():
+    """When every gene's mean is NaN, the reference point's own value is irrelevant: the routine
+    falls back to the first min(n_genes_S, n_neighbors) positions."""
+
+    x_star = np.array([5.0], dtype=np.float64, order='F')
+    mean_S = np.array([np.nan, np.nan, np.nan], dtype=np.float64, order='F')
+    mean_S_perm = np.array([1, 2, 3], dtype=np.int32, order='F')
+    n_neighbors = 2
+
+    result = construct_neighborhoods_ranged_expert(x_star, mean_S, mean_S_perm, n_neighbors)
+
+    np.testing.assert_array_almost_equal(result['neighborhood_indices'][:, 0], [1, 2], decimal=10)
+    np.testing.assert_array_almost_equal(result['neighborhood_range'][:, 0], [1, 2], decimal=10)
+
+
+
+def test_construct_neighborhoods_ranged_fewer_genes_than_neighbors():
+    """n_neighbors exceeding the number of genes is a documented, deliberately-preserved
+    limitation: the leftover slots are filled with out-of-range sentinel indices
+    (n_genes_S+1, n_genes_S+2, ...) rather than left undefined."""
+
+    x_star = np.array([2.0], dtype=np.float64, order='F')
+    mean_S = np.array([1.0, 2.0], dtype=np.float64, order='F')
+    mean_S_perm = np.array([1, 2], dtype=np.int32, order='F')
+    n_neighbors = 3
+
+    result = construct_neighborhoods_ranged_expert(x_star, mean_S, mean_S_perm, n_neighbors)
+
+    # gene 2 (distance 0), then gene 1 (distance 1), then both pointers are exhausted -> sentinel 3
+    np.testing.assert_array_almost_equal(result['neighborhood_indices'][:, 0], [2, 1, 3], decimal=10)
+    np.testing.assert_array_almost_equal(result['neighborhood_range'][:, 0], [1, 2], decimal=10)
+
+
+def test_pool_means_expert_rejects_out_of_range_perm():
+    """pool_means_expert rejects a pooled_means_perm entry outside 1..pool_size with
+    ERR_INVALID_INPUT on pooled_means_perm, instead of reading outside pooled_means
+    (test_pool_means_expert_rejects_out_of_range_perm in the Fortran suite)."""
+    pool = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float64)
+
+    for bad_entry in (0, 5):
+        perm = np.array([1, 2, 3, bad_entry], dtype=np.int32)
+        assert_error(lambda: pool_means_expert(pool, perm, 1),
+                     f"expected ERR_INVALID_INPUT for pooled_means_perm entry {bad_entry}", ERR_INVALID_INPUT)
+        try:
+            pool_means_expert(pool, perm, 1)
+        except ToxError as error:
+            assert error.argument == "pooled_means_perm", \
+                f"expected the error on pooled_means_perm, got {error.argument!r}"
+
+
+def test_construct_neighborhoods_ranged_expert_rejects_bad_perm():
+    """construct_neighborhoods_ranged_expert rejects a mean_S_perm entry outside 1..n_genes_S
+    with ERR_INVALID_INPUT on mean_S_perm, instead of reading outside mean_S
+    (test_construct_neighborhoods_ranged_expert_rejects_bad_perm in the Fortran suite)."""
+    x_star = np.array([2.5], dtype=np.float64)
+    mean_S = np.array([1.0, 2.0, 3.0], dtype=np.float64)
+    mean_S_perm = np.array([1, 2, 7], dtype=np.int32)
+
+    assert_error(lambda: construct_neighborhoods_ranged_expert(x_star, mean_S, mean_S_perm, 2),
+                 "expected ERR_INVALID_INPUT for mean_S_perm entry 7 > n_genes_S", ERR_INVALID_INPUT)
+    try:
+        construct_neighborhoods_ranged_expert(x_star, mean_S, mean_S_perm, 2)
+    except ToxError as error:
+        assert error.argument == "mean_S_perm", f"expected the error on mean_S_perm, got {error.argument!r}"
+
+
+def test_construct_neighborhoods_ranged_rejects_nan_x_star():
+    """construct_neighborhoods_ranged and its expert tier reject a NaN reference point with
+    ERR_NAN_INF on x_star, instead of silently taking the lowest-mean genes as its neighborhood
+    (test_construct_neighborhoods_ranged_rejects_nan_x_star in the Fortran suite)."""
+    x_star = np.array([2.5, np.nan], dtype=np.float64)
+    mean_S = np.array([1.0, 2.0, 3.0], dtype=np.float64)
+    mean_S_perm = np.array([1, 2, 3], dtype=np.int32)
+
+    for call in (lambda: construct_neighborhoods_ranged(x_star, mean_S, 2),
+                 lambda: construct_neighborhoods_ranged_expert(x_star, mean_S, mean_S_perm, 2)):
+        assert_error(call, "expected ERR_NAN_INF for a NaN reference point", ERR_NAN_INF)
+        try:
+            call()
+        except ToxError as error:
+            assert error.argument == "x_star", f"expected the error on x_star, got {error.argument!r}"
 
 
 def test_integration():

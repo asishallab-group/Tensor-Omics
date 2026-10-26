@@ -5,16 +5,29 @@
 !| The step that turns neighborhood residuals -- as produced by the preprocessing module -- into
 !| a JSD value: residuals are binned into histograms per study, the two distributions are
 !| compared per reference point, and the per-point divergences are weighted into one global
-!| figure for the pair of studies.
+!| figure for the pair of studies. For K studies, each study is compared against the consensus pmf
+!| of all of them, built by
+!| [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]] (with its pooled
+!| counts) or [[tox_data_integration_jsd_impl(module):create_mean_pmf_only_impl(interface)]].
 module tox_data_integration_jsd_impl
     use f42_safeguard
-    use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_fortran_env, only: int32, int64, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
-    use f42_math_impl, only: clamp, is_close
+    use f42_math_impl, only: clamp, is_close, LOG_2, IS_CLOSE_ABS_TOL
     use f42_sort_impl, only: sort_array_heapsort
-    use f42_stats_impl, only: calc_quantile_impl
+    use f42_stats_impl, only: calc_quantile_impl, last_non_nan_position
     M_IMPLICIT_NONE
+    private
+    public :: determine_shared_residual_range_impl, determine_study_shared_residual_range_impl, &
+             build_residual_histograms_impl, calc_pmf_impl, &
+             compute_divergence_per_reference_point_impl, compute_weighted_global_divergence_impl, &
+             jct_compute_jsd_pipeline_impl, create_mean_pmf_impl, create_mean_pmf_only_impl, &
+             compute_consensus_divergences
+
+    ! `residual_range_quantile_level`'s default, shared by DM_DEFAULT and M_DEFAULT_VAL of both
+    ! residual-range routines.
+#define CM_RESIDUAL_RANGE_QUANTILE_LEVEL_DEFAULT 0.95_real64
 contains
 
     !> summary: Compute the shared residual range [-R, R] from a pooled set of absolute residuals
@@ -28,7 +41,7 @@ contains
             !! Quantile level in [0,1] for determining the residual range
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(0.95)
+            !! DM_DEFAULT(CM_RESIDUAL_RANGE_QUANTILE_LEVEL_DEFAULT)
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
         real(real64), dimension(pool_size), intent(in) :: abs_residual_pool
@@ -39,20 +52,13 @@ contains
             !! DM_MIN(1_int32)
             !! DM_MAX(pool_size)
 
-        integer(int32) :: i_pool, last_non_nan
+        integer(int32) :: last_non_nan
         real(real64) :: actual_quantile_level
 
-        M_DEFAULT_VAL(residual_range_quantile_level, actual_quantile_level, 0.95_real64)
+        M_DEFAULT_VAL(residual_range_quantile_level, actual_quantile_level, CM_RESIDUAL_RANGE_QUANTILE_LEVEL_DEFAULT)
 
-        last_non_nan = pool_size
         ! NaN is always last -> find last non-NaN index for the quantile calculation
-        do i_pool = last_non_nan, 1, -1
-            if (ieee_is_nan(abs_residual_pool(abs_residual_pool_perm(i_pool)))) then
-                last_non_nan = last_non_nan - 1
-            else
-                exit
-            end if
-        end do
+        last_non_nan = last_non_nan_position(abs_residual_pool, pool_size, abs_residual_pool_perm)
 
         if (last_non_nan == 0) then
             shared_residual_range = 0.0_real64
@@ -91,7 +97,7 @@ contains
             !! Quantile level in [0,1] for determining the residual range
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(0.95)
+            !! DM_DEFAULT(CM_RESIDUAL_RANGE_QUANTILE_LEVEL_DEFAULT)
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
 
@@ -128,7 +134,9 @@ contains
     !> summary: Summarize the neighborhood residuals in absolute histogram counts and probability mass functions
     !| AUTHOR_FRANZ_ERIC_SILL
     !| The probability mass function `pmf(residual, bin)` is actually a matrix.
-    pure subroutine build_residual_histograms_impl(neighborhood_residuals, n_reps, n_neighbors, n_points, shared_residual_range, n_bins, counts, pmf, included_n_reps, neighbor_mask)
+    pure subroutine build_residual_histograms_impl(neighborhood_residuals, n_reps, n_neighbors, n_points, &
+                                                   shared_residual_range_low, shared_residual_range_high, max_n_bins, &
+                                                   n_bins_per_point, counts, pmf, included_n_reps, neighbor_mask)
         integer(int32), intent(in) :: n_reps
             !! Number of replicates of the study
         integer(int32), intent(in) :: n_neighbors
@@ -138,15 +146,29 @@ contains
         real(real64), dimension(n_reps, n_neighbors, n_points), intent(in) :: neighborhood_residuals
             !! Computed neighborhood residuals for a study, NaN is explicitly allowed for missing values
             !! DM_ALLOW_NAN
-        real(real64), intent(in) :: shared_residual_range
-            !! Computed residual range (R)
-            !! DM_MIN(0.0_real64)
-        integer(int32), intent(in) :: n_bins
-            !! Number of equally sized histogram bins in range [-R,R]
-        integer(int32), dimension(n_points, n_bins), intent(out) :: counts
-            !! Absolute counts of a residual per bin
-        real(real64), dimension(n_points, n_bins), intent(out) :: pmf
-            !! `counts` normalized to `0 <= counts(:, i) <= 1` and `sum(counts(:, i)) == 1`
+        real(real64), dimension(n_points), intent(in) :: shared_residual_range_low
+            !! Lower bound of the histogram range (R_low) for reference point i_point -- e.g. from
+            !! [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+            !! own `shared_residual_range_low` output
+        real(real64), dimension(n_points), intent(in) :: shared_residual_range_high
+            !! Upper bound of the histogram range (R_high) for reference point i_point -- e.g. from
+            !! [[tox_data_integration_js_comp_test_binning_impl(module):determine_bin_count_occupancy_impl(interface)]]'s
+            !! own `shared_residual_range_high` output
+        integer(int32), intent(in) :: max_n_bins
+            !! Widest histogram bin count used by any reference point in this call -- the array
+            !! extent `counts`/`pmf` are declared with. A reference point whose own
+            !! `n_bins_per_point` is smaller has its remaining columns zero-padded.
+        integer(int32), dimension(n_points), intent(in) :: n_bins_per_point
+            !! Number of equally sized histogram bins in range [shared_residual_range_low(i_point),
+            !! shared_residual_range_high(i_point)] to use for this reference point
+            !! DM_MIN(1_int32)
+            !! DM_MAX(max_n_bins)
+        integer(int32), dimension(n_points, max_n_bins), intent(out) :: counts
+            !! Absolute counts of a residual per bin, per reference point. Zero-padded beyond
+            !! `n_bins_per_point(i_point)` for each reference point `i_point`
+        real(real64), dimension(n_points, max_n_bins), intent(out) :: pmf
+            !! `counts` normalized to `0 <= counts(:, i) <= 1` and `sum(counts(:, i)) == 1`.
+            !! Zero-padded beyond `n_bins_per_point(i_point)` for each reference point `i_point`
         integer(int32), dimension(n_points), intent(out) :: included_n_reps
             !! Stores the count of non-NaN replicates (included ones)
         logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask
@@ -156,25 +178,32 @@ contains
         integer(int32) :: bin_idx, i_neighbor, i_rep, i_bin, included_reps, i_point
         logical(c_bool) :: filter_neighbors
 
-        ! Guard against a zero range (e.g. `determine_shared_residual_range_impl` returns 0.0 when all
-        ! pooled residuals are NaN): fall back to a fixed bin width so every (clamped-to-zero) residual
-        ! deterministically lands in a single bin instead of dividing by zero below.
-        if (shared_residual_range <= 0.0_real64) then
-            bin_width = 1.0_real64
-        else
-            bin_width = 2.0_real64*shared_residual_range/real(n_bins, real64)
-        end if
         counts = 0_int32
         pmf = 0.0_real64
 
         filter_neighbors = present(neighbor_mask)
 
         ! 1. assign the bins to the residuals (increase the respective count)
-        ! outer loop cannot be concurrent, as counts of same residuals and bins but different neighbors might be changed at the same time
+        ! The outer (i_point) loop is concurrent: each iteration only changes its own counts(i_point, :).
         ! inner (i_neighbor) loop must be a plain sequential `do`: different neighbors can hit the same
         ! (i_point, bin_idx) count simultaneously, so `counts(i_point, bin_idx) = counts(i_point, bin_idx) + 1`
         ! would be a data race under `do concurrent`.
-        do concurrent(i_point=1:n_points) local(included_reps) shared(included_n_reps)
+        do concurrent(i_point=1:n_points) local(included_reps, bin_width, bin_idx, clamped_residual, i_neighbor, i_rep) &
+                shared(included_n_reps, n_bins_per_point, shared_residual_range_low, shared_residual_range_high, &
+                       neighborhood_residuals, neighbor_mask, filter_neighbors, counts, n_neighbors, n_reps)
+            ! Guard against a zero-or-negative range (e.g. the 0.0/0.0 degenerate fallback
+            ! `determine_bin_count_occupancy_impl` returns when all pooled residuals are NaN): fall
+            ! back to a fixed bin width so every (clamped) residual deterministically lands in a
+            ! single bin instead of dividing by zero (or a negative width) below. `bin_width` is
+            ! per-point, since both `n_bins_per_point` and the range itself may differ across
+            ! reference points.
+            if (shared_residual_range_high(i_point) - shared_residual_range_low(i_point) <= 0.0_real64) then
+                bin_width = 1.0_real64
+            else
+                bin_width = (shared_residual_range_high(i_point) - shared_residual_range_low(i_point))/ &
+                           real(n_bins_per_point(i_point), real64)
+            end if
+
             included_reps = 0_int32
             do i_neighbor = 1, n_neighbors
                 ! Exclude neighbor if desired
@@ -185,11 +214,19 @@ contains
                 ! Count non-NaNs and assign the to a bin
                 do i_rep = 1, n_reps
                     if (.not. ieee_is_nan(neighborhood_residuals(i_rep, i_neighbor, i_point))) then
-                        ! clamp residual to histogram range
-                        clamped_residual = clamp(neighborhood_residuals(i_rep, i_neighbor, i_point), min_val=-shared_residual_range, max_val=shared_residual_range)
+                        ! clamp residual to this point's own histogram range
+                        clamped_residual = clamp(neighborhood_residuals(i_rep, i_neighbor, i_point), &
+                                                 min_val=shared_residual_range_low(i_point), &
+                                                 max_val=shared_residual_range_high(i_point))
 
-                        ! assign bin to residual
-                        bin_idx = min(n_bins, int((clamped_residual + shared_residual_range)/bin_width) + 1)
+                        ! assign bin to residual, clamped to this point's own bin count.
+                        ! Known limitation, not guarded: if the range width is not finite
+                        ! (residuals near +-1e308) or so small that bin_width underflows to 0, the
+                        ! quotient is not finite and bin_idx can leave [1, n_bins_per_point], so
+                        ! the write below goes out of bounds. Real residuals are far from this;
+                        ! histogram_bin_counts has the same limitation.
+                        bin_idx = min(n_bins_per_point(i_point), &
+                                     int((clamped_residual - shared_residual_range_low(i_point))/bin_width) + 1)
                         counts(i_point, bin_idx) = counts(i_point, bin_idx) + 1
 
                         included_reps = included_reps + 1
@@ -200,6 +237,34 @@ contains
         end do
 
         ! 2. calculate pmf
+        call calc_pmf_impl(counts, included_n_reps, n_points, max_n_bins, pmf)
+    end subroutine build_residual_histograms_impl
+
+    !> summary: Normalize histogram counts into a probability mass function
+    !| AUTHOR_LASZLO_LANG
+    !| The counts-to-pmf half of `build_residual_histograms_impl`, factored out so a caller that
+    !| already holds a study's `counts` -- untouched by anything that perturbed scratch copies
+    !| downstream of it -- can re-derive `pmf` without re-binning residuals.
+    pure subroutine calc_pmf_impl(counts, included_n_reps, n_points, n_bins, pmf)
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points in the study
+        integer(int32), intent(in) :: n_bins
+            !! The array's second extent for `counts`/`pmf` -- the widest histogram bin count of
+            !! any reference point (`max_n_bins`, for a `counts` built by
+            !! `build_residual_histograms_impl` from its own per-point `n_bins_per_point`).
+            !! Columns beyond a given point's own bin count are zero-padded by that caller and are
+            !! read/written here as ordinary zero entries
+        integer(int32), dimension(n_points, n_bins), intent(in) :: counts
+            !! Absolute counts of a residual per bin
+            !! DM_MIN(0_int32)
+        integer(int32), dimension(n_points), intent(in) :: included_n_reps
+            !! Count of non-NaN replicates (included ones) per reference point
+            !! DM_MIN(0_int32)
+        real(real64), dimension(n_points, n_bins), intent(out) :: pmf
+            !! `counts` normalized to `0 <= pmf(:, i) <= 1` and `sum(pmf(:, i)) == 1`
+
+        integer(int32) :: i_bin, i_point
+
         do concurrent(i_bin=1:n_bins)
             do concurrent(i_point=1:n_points) shared(pmf, i_bin, included_n_reps, counts)
                 if (included_n_reps(i_point) == 0) then
@@ -209,16 +274,23 @@ contains
                 end if
             end do
         end do
-    end subroutine build_residual_histograms_impl
+    end subroutine calc_pmf_impl
 
     !> summary: Compute the Jensen-Shannon divergence per reference point from two histograms
     !| AUTHOR_FRANZ_ERIC_SILL
-    !| Takes the probabilities `pmf` produced by `build_residual_histograms`.
+    !| Takes the probabilities `pmf` produced by `build_residual_histograms`. The natural JSD
+    !| computed from the KL divergences lies in `[0, ln 2]`; the final step below rescales it by
+    !| `LOG_2` onto `[0, 1]`.
     pure subroutine compute_divergence_per_reference_point_impl(pmf_S1, pmf_S2, n_points, n_bins, js_divergences)
         integer(int32), intent(in) :: n_points
             !! Number of reference points (k)
         integer(int32), intent(in) :: n_bins
-            !! Number of equally sized histogram bins in range [-R,R]
+            !! The array's second extent for `pmf_S1`/`pmf_S2` -- the widest histogram bin count of
+            !! any reference point (`max_n_bins`, for pmfs built by
+            !! `build_residual_histograms_impl` from its own per-point `n_bins_per_point`). Both
+            !! operands must have been built from the same per-point bin count for this to be
+            !! safe: their zero-padded columns beyond that count then coincide, `S_mean` is zero
+            !! there, and neither term contributes
         real(real64), dimension(n_points, n_bins), intent(in) :: pmf_S1
             !! Computed normalized histogram counts for study 1
             !! DM_MIN(0.0_real64)
@@ -228,14 +300,15 @@ contains
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
         real(real64), dimension(n_points), intent(out) :: js_divergences
-            !! Jensen-Shannon divergence per reference point
+            !! Jensen-Shannon divergence per reference point, rescaled by `LOG_2` onto `[0, 1]`
+            !! (rather than its natural `[0, ln 2]` range)
 
         real(real64) :: S_mean, s1_val, s2_val
         integer(int32) :: i_bin, i_point
 
         js_divergences = 0.0_real64
 
-        ! 1. compute the Knullback-Leibler (KL) divergences
+        ! 1. compute the Kullback-Leibler (KL) divergences
         ! Note that the J-S divergence is defined as `0.5 * KL_S1 + 0.5 * KL_S2`, equivalent to `0.5 * (KL_S1 + KL_S2)`.
         ! Thus, instead of computing KL_S* independently, it accumulates directly in the `js_divergences` output.
         ! Another thing, switching the loops would enable both to run concurrently and the 0.5*js_divergences step could be done in one go,
@@ -246,7 +319,9 @@ contains
                 s2_val = pmf_S2(i_point, i_bin)
                 S_mean = 0.5_real64*(s1_val + s2_val)
 
-                if (.not. is_close(S_mean, 0.0_real64)) then
+                ! Exactly `.not. is_close(S_mean, 0.0_real64)`, NaN and infinity included; written out
+                ! because ifx 2026.1 at -O3 -xHost miscompiled this loop while it called `is_close`.
+                if (.not. (abs(S_mean) <= IS_CLOSE_ABS_TOL)) then
                     if (s1_val > 0.0_real64) then
                         js_divergences(i_point) = js_divergences(i_point) + s1_val*log(s1_val/S_mean)
                     end if
@@ -258,9 +333,10 @@ contains
             end do
         end do
 
-        ! 2. Compute the js_divergences
+        ! 2. Compute the js_divergences, rescaled by LOG_2 so the result lies in [0,1] instead of
+        ! its natural [0, ln 2] range
         do concurrent(i_point=1:n_points) shared(js_divergences)
-            js_divergences(i_point) = 0.5_real64*js_divergences(i_point)
+            js_divergences(i_point) = (0.5_real64*js_divergences(i_point))/LOG_2
         end do
     end subroutine compute_divergence_per_reference_point_impl
 
@@ -284,12 +360,19 @@ contains
         real(real64), dimension(n_points), intent(out) :: weights
             !! Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`
 
-        integer(int32) :: i_point, included_reps
+        integer(int32) :: i_point
+        integer(int64) :: n_included_total, n_included_reps
         real(real64) :: total_sample_count
 
         global_js_divergence = 0.0_real64
 
-        total_sample_count = real(sum(included_n_reps_S1) + sum(included_n_reps_S2), real64)
+        ! Count in int64, here and per point below: in gJCT study 2 is the consensus, whose counts sum
+        ! over all studies, so a sum can exceed huge(1_int32) for large but valid inputs.
+        n_included_total = 0_int64
+        do concurrent(i_point=1:n_points) shared(included_n_reps_S1, included_n_reps_S2) reduce(+:n_included_total)
+            n_included_total = n_included_total + int(included_n_reps_S1(i_point), int64) + int(included_n_reps_S2(i_point), int64)
+        end do
+        total_sample_count = real(n_included_total, real64)
 
         ! Guard against a zero total sample count (no replicate had a non-NaN residual at any reference
         ! point in either study): fall back to all-zero weights instead of dividing by zero below.
@@ -297,20 +380,73 @@ contains
             weights = 0.0_real64
         else
             ! Calculate the global Jensen-Shannon divergence
-            do concurrent(i_point=1:n_points) local(included_reps) shared(weights, included_n_reps_S1, included_n_reps_S2, total_sample_count) reduce(+:global_js_divergence)
-                included_reps = included_n_reps_S1(i_point) + included_n_reps_S2(i_point)
+            do concurrent(i_point=1:n_points) local(n_included_reps) shared(weights, js_divergences, included_n_reps_S1, included_n_reps_S2, total_sample_count) reduce(+:global_js_divergence)
+                n_included_reps = int(included_n_reps_S1(i_point), int64) + int(included_n_reps_S2(i_point), int64)
 
-                weights(i_point) = real(included_reps, real64)/total_sample_count
+                weights(i_point) = real(n_included_reps, real64)/total_sample_count
 
                 global_js_divergence = global_js_divergence + weights(i_point)*js_divergences(i_point)
             end do
         end if
     end subroutine compute_weighted_global_divergence_impl
 
-    !> summary: Run the pipeline build_residual_histograms => compute_weighted_global_divergence
+    !> summary: Each of K studies' per-point JSD against the consensus pmf, and its weighted global JSD
+    !| AUTHOR_LASZLO_LANG
+    !| For every study `i_study`:
+    !| [[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl(interface)]]
+    !| of `pmfs(:, 1:n_bins, i_study)` against `mean_pmf(:, 1:n_bins)`, then
+    !| [[tox_data_integration_jsd_impl(module):compute_weighted_global_divergence_impl(interface)]]
+    !| with the study's and the consensus's included counts. The studies are independent, so the
+    !| loop over them is concurrent. Internal helper, not published; public because the final runs,
+    !| the parameter searches, the bootstrap and the permutation test call it. `n_bins_extent` is the
+    !| second extent of `pmfs`/`mean_pmf`, so a caller can pass bin-sized arrays declared wider than
+    !| the bins in use (the final runs' fixed maximum bin extent) without slicing them itself.
+    pure subroutine compute_consensus_divergences(pmfs, mean_pmf, n_points, n_bins, n_bins_extent, n_studies, &
+                                                  included_n_reps, mean_pmf_included_n_reps, js_divergences, &
+                                                  global_js_divergence, weights)
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), intent(in) :: n_bins
+            !! Number of meaningful leading bins: the widest bin count of any reference point
+        integer(int32), intent(in) :: n_bins_extent
+            !! Second extent of `pmfs` and `mean_pmf`, at least `n_bins`
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        real(real64), dimension(n_points, n_bins_extent, n_studies), intent(in) :: pmfs
+            !! Every study's pmfs; only bins `1:n_bins` are read
+        real(real64), dimension(n_points, n_bins_extent), intent(in) :: mean_pmf
+            !! The consensus pmf of the studies; only bins `1:n_bins` are read
+        integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
+            !! Count of non-NaN residuals per reference point, per study
+        integer(int32), dimension(n_points), intent(in) :: mean_pmf_included_n_reps
+            !! Count of non-NaN residuals per reference point of the consensus
+        real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
+            !! Per-reference-point JSD of each study against the consensus pmf
+        real(real64), dimension(n_studies), intent(out) :: global_js_divergence
+            !! Weighted global JSD of each study against the consensus pmf
+        real(real64), dimension(n_points, n_studies), intent(out) :: weights
+            !! Per-reference-point weights of each study's `global_js_divergence`
+
+        integer(int32) :: i_study
+
+        do concurrent(i_study=1:n_studies) shared(pmfs, mean_pmf, n_points, n_bins, js_divergences, included_n_reps, &
+                                                  mean_pmf_included_n_reps, global_js_divergence, weights)
+            call compute_divergence_per_reference_point_impl(pmfs(:, 1:n_bins, i_study), mean_pmf(:, 1:n_bins), &
+                                                             n_points, n_bins, js_divergences(:, i_study))
+            call compute_weighted_global_divergence_impl(js_divergences(:, i_study), n_points, included_n_reps(:, i_study), &
+                                                          mean_pmf_included_n_reps, global_js_divergence(i_study), &
+                                                          weights(:, i_study))
+        end do
+    end subroutine compute_consensus_divergences
+
+    !> summary: Compute the JSD of two studies from their neighborhood residuals in one call
     !| AUTHOR_FRANZ_ERIC_SILL
-    !| Internal helper: the permutation test and the per-family analysis both drive this.
-    pure subroutine jct_compute_jsd_pipeline_helper(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, neighbor_mask_S1, neighbor_mask_S2)
+    !| Runs [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]] for
+    !| each study, [[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl(interface)]]
+    !| and [[tox_data_integration_jsd_impl(module):compute_weighted_global_divergence_impl(interface)]],
+    !| with one bin count `n_bins` and one symmetric range `[-shared_residual_range, shared_residual_range]`
+    !| for every reference point.
+    pure subroutine jct_compute_jsd_pipeline_impl(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, tmp_n_bins_per_point, tmp_shared_residual_range_low, tmp_shared_residual_range_high, neighbor_mask_S1, neighbor_mask_S2)
         integer(int32), intent(in) :: n_reps_S1
             !! Number of replicates in study 1
         integer(int32), intent(in) :: n_reps_S2
@@ -321,12 +457,15 @@ contains
             !! Number of reference points in the studies
         real(real64), dimension(n_reps_S1, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S1
             !! Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+            !! DM_ALLOW_NAN
         real(real64), dimension(n_reps_S2, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S2
             !! Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+            !! DM_ALLOW_NAN
         integer(int32), intent(in) :: n_bins
             !! Number of equally sized histogram bins used for the studies
         real(real64), intent(in) :: shared_residual_range
             !! Computed residual range for both studies
+            !! DM_MIN(0.0_real64)
         real(real64), dimension(n_points), intent(out) :: js_divergences
             !! Jensen-Shannon divergence per reference point, computed for studies S1 and S2
         integer(int32), dimension(n_points), intent(out) :: included_n_reps_S1
@@ -343,14 +482,126 @@ contains
             !! Normalized histogram counts for study 2
         integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts
             !! Working array for the histogram counts
+        integer(int32), dimension(n_points), intent(out) :: tmp_n_bins_per_point
+            !! Working array: `n_bins` broadcast to every reference point, since this routine uses
+            !! one uniform bin count -- passed on to
+            !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]'s
+            !! own `n_bins_per_point`
+        real(real64), dimension(n_points), intent(out) :: tmp_shared_residual_range_low
+            !! Working array: `-shared_residual_range` broadcast to every reference point, since
+            !! this routine uses one uniform symmetric range
+            !! `[-shared_residual_range, shared_residual_range]` -- passed on to
+            !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]'s
+            !! own `shared_residual_range_low`
+        real(real64), dimension(n_points), intent(out) :: tmp_shared_residual_range_high
+            !! Working array: `shared_residual_range` broadcast to every reference point, mirroring
+            !! `tmp_shared_residual_range_low` above -- passed on to
+            !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]'s
+            !! own `shared_residual_range_high`
         logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S1
             !! Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
         logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S2
             !! Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
 
-        call build_residual_histograms_impl(neighborhood_residuals_S1, n_reps_S1, n_neighbors, n_points, shared_residual_range, n_bins, tmp_counts, pmf_S1, included_n_reps_S1, neighbor_mask_S1)
-        call build_residual_histograms_impl(neighborhood_residuals_S2, n_reps_S2, n_neighbors, n_points, shared_residual_range, n_bins, tmp_counts, pmf_S2, included_n_reps_S2, neighbor_mask_S2)
+        tmp_n_bins_per_point = n_bins
+        tmp_shared_residual_range_low = -shared_residual_range
+        tmp_shared_residual_range_high = shared_residual_range
+
+        call build_residual_histograms_impl(neighborhood_residuals_S1, n_reps_S1, n_neighbors, n_points, tmp_shared_residual_range_low, tmp_shared_residual_range_high, n_bins, tmp_n_bins_per_point, tmp_counts, pmf_S1, included_n_reps_S1, neighbor_mask_S1)
+        call build_residual_histograms_impl(neighborhood_residuals_S2, n_reps_S2, n_neighbors, n_points, tmp_shared_residual_range_low, tmp_shared_residual_range_high, n_bins, tmp_n_bins_per_point, tmp_counts, pmf_S2, included_n_reps_S2, neighbor_mask_S2)
         call compute_divergence_per_reference_point_impl(pmf_S1, pmf_S2, n_points, n_bins, js_divergences)
         call compute_weighted_global_divergence_impl(js_divergences, n_points, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights)
-    end subroutine jct_compute_jsd_pipeline_helper
+    end subroutine jct_compute_jsd_pipeline_impl
+
+    !> summary: Build the consensus pmf and its histogram counts from all studies' pmfs
+    !| AUTHOR_LASZLO_LANG
+    !| `mean_pmf` is the equal-weight mean of all studies' pmfs, `mean_pmf_counts` and
+    !| `mean_pmf_included_n_reps` the sums of their counts. Known limitation: every study is
+    !| compared against a consensus that includes itself, not a leave-one-out background.
+    pure subroutine create_mean_pmf_impl(pmfs, counts, n_bins, n_points, n_studies, included_n_reps, mean_pmf, &
+                                         mean_pmf_included_n_reps, mean_pmf_counts)
+        integer(int32), intent(in) :: n_bins
+            !! Second extent of the bin-sized arrays: the widest bin count of any reference point.
+            !! All studies must share each point's bin count, so their zero padding coincides
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        real(real64), dimension(n_points, n_bins, n_studies), intent(in) :: pmfs
+            !! Per-study probabilities of each bin per reference point, from
+            !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(1.0_real64)
+        integer(int32), dimension(n_points, n_bins, n_studies), intent(in) :: counts
+            !! Absolute counts of a residual per bin for `pmfs`
+            !! DM_MIN(0_int32)
+        integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
+            !! Count of non-NaN replicates per reference point, per study; every study needs at
+            !! least one at every reference point
+            !! DM_MIN(1_int32)
+        real(real64), dimension(n_points, n_bins), intent(out) :: mean_pmf
+            !! The consensus pmf, `sum(pmfs, dim=3) / n_studies`
+        integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
+            !! Count of non-NaN replicates per reference point, summed over the studies
+        integer(int32), dimension(n_points, n_bins), intent(out) :: mean_pmf_counts
+            !! Residual counts per bin of the consensus, `sum(counts, dim=3)`
+
+        integer(int32) :: i_study, i_point, i_bin
+
+        mean_pmf = 0.0_real64
+        mean_pmf_included_n_reps = 0_int32
+        mean_pmf_counts = 0_int32
+
+        ! Sequential over i_study, outermost, so every element accumulates its studies in order.
+        ! For some study counts (e.g. 9, 11, 18, 20) the sum exceeds 1.0 by a few ulps when every
+        ! study has all its mass in one bin, which gjct_permutation_test's DM_MAX(1.0) on mean_pmf
+        ! would reject. Deliberately not clamped, so outputs stay bit-identical.
+        do i_study = 1, n_studies
+            do i_bin = 1, n_bins
+                do concurrent(i_point=1:n_points) shared(mean_pmf, pmfs, i_bin, i_study, n_studies, mean_pmf_counts, counts)
+                    mean_pmf(i_point, i_bin) = mean_pmf(i_point, i_bin) + pmfs(i_point, i_bin, i_study)/real(n_studies, real64)
+                    mean_pmf_counts(i_point, i_bin) = mean_pmf_counts(i_point, i_bin) + counts(i_point, i_bin, i_study)
+                end do
+            end do
+            do concurrent(i_point=1:n_points) shared(mean_pmf_included_n_reps, included_n_reps, i_study)
+                mean_pmf_included_n_reps(i_point) = mean_pmf_included_n_reps(i_point) + included_n_reps(i_point, i_study)
+            end do
+        end do
+    end subroutine create_mean_pmf_impl
+
+    !> summary: Build only the consensus pmf from all studies' pmfs, without its histogram counts
+    !| AUTHOR_LASZLO_LANG
+    !| As [[tox_data_integration_jsd_impl(module):create_mean_pmf_impl(interface)]], for
+    !| callers that need no counts (the bootstrap and the permutation test). Same known limitation: the consensus includes
+    !| the study compared against it.
+    pure subroutine create_mean_pmf_only_impl(pmfs, n_bins, n_points, n_studies, mean_pmf)
+        integer(int32), intent(in) :: n_bins
+            !! Second extent of the bin-sized arrays: the widest bin count of any reference point.
+            !! All studies must share each point's bin count, so their zero padding coincides
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        real(real64), dimension(n_points, n_bins, n_studies), intent(in) :: pmfs
+            !! Per-study probabilities of each bin per reference point, from
+            !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(1.0_real64)
+        real(real64), dimension(n_points, n_bins), intent(out) :: mean_pmf
+            !! The consensus pmf, `sum(pmfs, dim=3) / n_studies`
+
+        integer(int32) :: i_study, i_point, i_bin
+
+        mean_pmf = 0.0_real64
+
+        ! Same order and the same few-ulp excess over 1.0 as create_mean_pmf_impl (not clamped).
+        do i_study = 1, n_studies
+            do i_bin = 1, n_bins
+                do concurrent(i_point=1:n_points) shared(mean_pmf, pmfs, i_bin, i_study, n_studies)
+                    mean_pmf(i_point, i_bin) = mean_pmf(i_point, i_bin) + pmfs(i_point, i_bin, i_study)/real(n_studies, real64)
+                end do
+            end do
+        end do
+    end subroutine create_mean_pmf_only_impl
+
 end module tox_data_integration_jsd_impl

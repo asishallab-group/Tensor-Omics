@@ -69,13 +69,52 @@ from .tox_data_archive import (
     get_tox_data_dims,
     read_tox_data_into,
 )
+from .tox_data_integration_js_comp_test_adaptive_search import (
+    generate_adaptive_js_comp_test_candidates,
+    run_js_comp_test_adaptive_parameter_search,
+)
+from .tox_data_integration_js_comp_test_adaptive_search_impl import (
+    calc_adaptive_js_comp_test_bounds,
+)
+from .tox_data_integration_js_comp_test_binning import (
+    estimate_bin_count,
+    estimate_bin_count_expert,
+    determine_bin_count_occupancy,
+    determine_bin_count_occupancy_expert,
+    determine_bin_count_occupancy_exhaustive,
+    determine_bin_count_occupancy_exhaustive_expert,
+    determine_bin_count_stone,
+    determine_bin_count_stone_expert,
+)
+from .tox_data_integration_js_comp_test_fixed_k_search import (
+    generate_js_comp_test_candidates,
+    run_js_comp_test_parameter_search,
+)
+from .tox_data_integration_js_comp_test_fixed_k_search_impl import (
+    calc_js_comp_test_candidate_bounds,
+)
+from .tox_data_integration_js_comp_test_run import (
+    run_js_comp_test,
+    run_js_comp_test_expert,
+    run_js_comp_test_adaptive,
+)
+from .tox_data_integration_js_comp_test_search import (
+    check_neighborhood_overlaps,
+    check_mean_pmf_min_counts,
+    check_plateau_condition,
+    check_effect_size_plateau_condition,
+)
 from .tox_data_integration_jsd import (
     determine_shared_residual_range,
     determine_shared_residual_range_expert,
     determine_study_shared_residual_range,
     build_residual_histograms,
+    calc_pmf,
     compute_divergence_per_reference_point,
     compute_weighted_global_divergence,
+    jct_compute_jsd_pipeline,
+    create_mean_pmf,
+    create_mean_pmf_only,
 )
 from .tox_data_integration_per_family import (
     fjct_compute_jsd,
@@ -89,12 +128,20 @@ from .tox_data_integration_preprocessing import (
     pool_means_expert,
     pool_study_means,
     construct_neighborhoods,
+    construct_neighborhoods_ranged,
+    construct_neighborhoods_ranged_expert,
+    construct_adaptive_neighborhoods,
 )
 from .tox_data_integration_preprocessing_impl import (
     calc_neighborhood_size,
+    gather_pooled_neighborhood_residuals,
 )
 from .tox_data_integration_stats import (
     gjct_permutation_test,
+    bootstrap_histogram,
+)
+from .tox_data_integration_stats_impl import (
+    calc_js_comp_test_n_top_k_jsds,
 )
 from .tox_data_tools import (
     read_expression_vectors_tsv,
@@ -191,18 +238,27 @@ from .tox_trajectory_normalization import (
 __all__ = [
     "ToxError",
     "check_err_code",
+    "bootstrap_histogram",
     "bst_range_query",
     "bst_range_query_expert",
     "build_bst_index",
     "build_kd_index",
     "build_residual_histograms",
     "build_spherical_kd",
+    "calc_adaptive_js_comp_test_bounds",
     "calc_fchange",
+    "calc_js_comp_test_candidate_bounds",
+    "calc_js_comp_test_n_top_k_jsds",
     "calc_neighborhood_size",
+    "calc_pmf",
     "calc_quantile",
     "calc_quantile_expert",
     "calc_tiss_avg",
     "calc_work_arr_paralog_subsets_size",
+    "check_effect_size_plateau_condition",
+    "check_mean_pmf_min_counts",
+    "check_neighborhood_overlaps",
+    "check_plateau_condition",
     "clock_hand_angle_between_vectors",
     "clock_hand_angles_for_shift_vectors",
     "cluster_factor_trajectories_k_means",
@@ -228,7 +284,12 @@ __all__ = [
     "compute_velocity_trajectories",
     "compute_velocity_trajectory",
     "compute_weighted_global_divergence",
+    "construct_adaptive_neighborhoods",
     "construct_neighborhoods",
+    "construct_neighborhoods_ranged",
+    "construct_neighborhoods_ranged_expert",
+    "create_mean_pmf",
+    "create_mean_pmf_only",
     "create_zip_archive",
     "deserialize_char_helper",
     "deserialize_complex_helper",
@@ -239,16 +300,27 @@ __all__ = [
     "detect_neofunctionalization",
     "detect_outliers",
     "detect_subfunctionalization",
+    "determine_bin_count_occupancy",
+    "determine_bin_count_occupancy_exhaustive",
+    "determine_bin_count_occupancy_exhaustive_expert",
+    "determine_bin_count_occupancy_expert",
+    "determine_bin_count_stone",
+    "determine_bin_count_stone_expert",
     "determine_shared_residual_range",
     "determine_shared_residual_range_expert",
     "determine_study_shared_residual_range",
     "distance_to_centroid",
+    "estimate_bin_count",
+    "estimate_bin_count_expert",
     "euclidean_distance",
     "filter_paralogs_by_pattern_dosage_effect",
     "filter_paralogs_by_pattern_subfunctionalization",
     "fjct_compute_contribution_scores",
     "fjct_compute_jsd",
     "fjct_compute_masked_jsd",
+    "gather_pooled_neighborhood_residuals",
+    "generate_adaptive_js_comp_test_candidates",
+    "generate_js_comp_test_candidates",
     "get_array_metadata",
     "get_tox_data_dims",
     "get_unassigned_mask",
@@ -256,6 +328,7 @@ __all__ = [
     "group_centroid_all",
     "group_centroid_orthologs",
     "identify_outliers",
+    "jct_compute_jsd_pipeline",
     "k_means_clustering",
     "linkage_clustering",
     "loess_fit_plain",
@@ -285,6 +358,11 @@ __all__ = [
     "relative_axes_changes_from_shift_vector",
     "relative_axes_expression_from_expression_vector",
     "root_mean_sq_normalization",
+    "run_js_comp_test",
+    "run_js_comp_test_adaptive",
+    "run_js_comp_test_adaptive_parameter_search",
+    "run_js_comp_test_expert",
+    "run_js_comp_test_parameter_search",
     "save_tox_data",
     "serialize_char_helper",
     "serialize_complex_helper",

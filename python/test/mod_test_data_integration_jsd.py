@@ -11,25 +11,44 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from test_helpers import run_all_tests, assert_error
 from tensor_omics import (
+    determine_shared_residual_range,
     determine_study_shared_residual_range,
     determine_shared_residual_range_expert,
     build_residual_histograms,
     compute_divergence_per_reference_point,
     compute_weighted_global_divergence,
-    gjct_permutation_test,
+    calc_pmf,
+    jct_compute_jsd_pipeline,
 )
 from tensor_omics.error_handling import ERR_INVALID_INPUT
 
-# The filtered variants are gone: filtering is now the optional `neighbor_mask` /
-# `neighbor_mask_S1`/`_S2` argument of the base routine.
+# The filtered variant is gone: filtering is now the optional `neighbor_mask` argument of the
+# base routine. gjct_permutation_test itself was replaced by a K-study, consensus-based version
+# (see tox_data_integration_js_comp_test) -- the old 2-study test that lived in this file was
+# removed rather than adapted, since the signature is unrelated. Its own direct test coverage now
+# lives in mod_test_data_integration_stats.py.
 build_residual_histograms_filtered = build_residual_histograms
-gjct_permutation_test_filtered = gjct_permutation_test
 
 
 TOL = 1e-12
 
 
 def test_tox_determine_shared_residual_range():
+    """Test determine_shared_residual_range (the plain, auto-sorting tier) directly, by cross-
+    checking it against the already-tested _expert tier given the same pool pre-sorted."""
+    pool = np.array([1.0, 5.0, 3.0, 8.0, 2.0, 7.0, 4.0], dtype=np.float64)
+    perm = (np.argsort(pool, kind="mergesort").astype(np.int32) + 1)
+
+    R_plain = determine_shared_residual_range(pool, 0.95)
+    R_expert = determine_shared_residual_range_expert(pool, perm, 0.95)
+    assert abs(R_plain - R_expert) < TOL, f"plain vs expert mismatch: {R_plain} vs {R_expert}"
+
+    # Default residual_range_quantile (0.95)
+    R_plain_default = determine_shared_residual_range(pool)
+    assert abs(R_plain_default - R_expert) < TOL, "plain tier's default quantile should also be 0.95"
+
+
+def test_tox_determine_study_shared_residual_range():
 
     # ============================================================
     # Test 1 — Basic correctness with simple values
@@ -192,7 +211,10 @@ def test_tox_build_residual_histograms():
     n_neighbors = 2
     n_points = 3
     n_bins = 4
+    n_bins_per_point = np.full(n_points, n_bins, dtype=np.int32)
     R = 2.0
+    R_low = np.full(n_points, -R, dtype=np.float64)
+    R_high = np.full(n_points, R, dtype=np.float64)
 
     # ============================================================
     # Test 1 — Simple symmetric case, no NaNs
@@ -204,14 +226,14 @@ def test_tox_build_residual_histograms():
     E[:, 0, 2] = [2.5, -3.0, 1.2]
     E[:, 1, 2] = [0.4, -0.1, 0.0]
 
-    counts, pmf, included = build_residual_histograms_filtered(E, R, n_bins, neighbor_mask=np.full((n_neighbors, n_points), False, order="F")).values()
+    counts, pmf, included = build_residual_histograms_filtered(E, R_low, R_high, n_bins, n_bins_per_point, neighbor_mask=np.full((n_neighbors, n_points), False, order="F")).values()
 
     assert np.all(counts == 0), "All counts should be zero"
     assert np.allclose(pmf, 0.0, atol=TOL), "All pmfs should be zero"
     assert np.all(included == 0), "All included should be zero"
 
     # the mask is per (neighbor, point), not per residual
-    def filtered(E, R, n_bins): return build_residual_histograms_filtered(E, R, n_bins, neighbor_mask=np.full(E.shape[1:], True, order="F"))
+    def filtered(E, R_low, R_high, n_bins, n_bins_per_point): return build_residual_histograms_filtered(E, R_low, R_high, n_bins, n_bins_per_point, neighbor_mask=np.full(E.shape[1:], True, order="F"))
 
     for func in (build_residual_histograms, filtered):
         print(f"... test {func.__name__.replace("filtered", "build_residual_histograms_filtered")}")
@@ -223,7 +245,7 @@ def test_tox_build_residual_histograms():
         E[:, 0, 2] = [2.5, -3.0, 1.2]
         E[:, 1, 2] = [0.4, -0.1, 0.0]
 
-        out = func(E, R, n_bins)
+        out = func(E, R_low, R_high, n_bins, n_bins_per_point)
         counts = out["counts"]
         pmf = out["pmf"]
         included = out["included_n_reps"]
@@ -253,7 +275,7 @@ def test_tox_build_residual_histograms():
         E[1, 0, 1] = np.nan
         E[2, 1, 2] = np.nan
 
-        out = func(E, R, n_bins)
+        out = func(E, R_low, R_high, n_bins, n_bins_per_point)
         counts = out["counts"]
         pmf = out["pmf"]
         included = out["included_n_reps"]
@@ -281,7 +303,7 @@ def test_tox_build_residual_histograms():
         # ============================================================
         E[:, :, :] = np.nan
 
-        out = func(E, R, n_bins)
+        out = func(E, R_low, R_high, n_bins, n_bins_per_point)
         counts = out["counts"]
         pmf = out["pmf"]
         included = out["included_n_reps"]
@@ -306,7 +328,7 @@ def test_tox_build_residual_histograms():
             ]
         ], dtype=np.float64, order="F")
 
-        out = func(E, R, n_bins)
+        out = func(E, R_low, R_high, n_bins, n_bins_per_point)
         counts = out["counts"]
         pmf = out["pmf"]
         included = out["included_n_reps"]
@@ -360,9 +382,9 @@ def test_tox_compute_divergence_per_reference_point():
     jsd = compute_divergence_per_reference_point(p, q)
 
     expected = np.zeros(n_points, dtype=np.float64)
-    expected[0] = np.log(2.0)
+    expected[0] = np.log(2.0) / np.log(2.0)  # rescaled onto 0..1 by dividing through LOG_2 = log(2): log(2)/log(2) = 1.0
 
-    assert np.allclose(jsd, expected, atol=TOL), "Test 2 failed: disjoint PMFs → JSD=log(2)"
+    assert np.allclose(jsd, expected, atol=TOL), "Test 2 failed: disjoint PMFs → JSD=log(2)/log(2)"
     assert jsd[1] == 0.0, "Test 2 failed: row 2 must be zero"
     assert jsd[2] == 0.0, "Test 2 failed: row 3 must be zero"
 
@@ -378,11 +400,11 @@ def test_tox_compute_divergence_per_reference_point():
     jsd = compute_divergence_per_reference_point(p, q)
 
     expected = np.zeros(n_points, dtype=np.float64)
-    expected[0] = 0.5 * (
+    expected[0] = (0.5 * (
         0.5 * np.log(2.0) +
         0.5 * np.log(2.0 / 3.0) +
         np.log(1.0 / 0.75)
-    )
+    )) / np.log(2.0)  # rescaled onto 0..1 by dividing through LOG_2 = log(2)
 
     assert np.allclose(jsd, expected, atol=TOL), "Test 3 failed: analytic partial-overlap JSD mismatch"
 
@@ -398,7 +420,7 @@ def test_tox_compute_divergence_per_reference_point():
     jsd = compute_divergence_per_reference_point(p, q)
 
     expected = np.zeros(n_points, dtype=np.float64)
-    expected[0] = np.log(2.0)
+    expected[0] = np.log(2.0) / np.log(2.0)  # rescaled onto 0..1 by dividing through LOG_2 = log(2): log(2)/log(2) = 1.0
 
     assert np.allclose(jsd, expected, atol=TOL), "Test 4 failed: zero-probability bins not handled correctly"
 
@@ -420,8 +442,8 @@ def test_tox_compute_divergence_per_reference_point():
     jsd = compute_divergence_per_reference_point(p, q)
 
     expected = np.zeros(n_points, dtype=np.float64)
-    expected[1] = 0.5 * (1.0 * np.log(1.0 / 0.5))
-    expected[2] = 0.5 * (1.0 * np.log(1.0 / 0.5))
+    expected[1] = (0.5 * (1.0 * np.log(1.0 / 0.5))) / np.log(2.0)  # rescaled onto 0..1: 0.5*log(2)/log(2) = 0.5
+    expected[2] = (0.5 * (1.0 * np.log(1.0 / 0.5))) / np.log(2.0)
 
     assert np.allclose(jsd, expected, atol=TOL), "Test 5 failed: mixed patterns JSD mismatch"
 
@@ -514,88 +536,83 @@ def test_tox_compute_weighted_global_divergence():
     assert abs(global_jsd - expected) < TOL, "Test 5 failed: weighted global JSD mismatch"
 
 
-def test_gjct_permutation_test_python():
-    n_reps_S1 = 4
-    n_reps_S2 = 3
-    n_neighbors = 1
-    n_points = 2
-    n_permutations = 2
-    n_bins = 4
-    random_seed = 666
-    huge = np.finfo(np.float64).max
+def test_calc_pmf():
+    """Test calc_pmf: the counts-to-pmf half of build_residual_histograms, factored out."""
 
-    S_12 = np.array(
-        [1, 2, 3, 4,
-         5, 6, -7, 8,
-         2, -4, 6, 8,
-         1, 3],
-        dtype=np.float64,
-    )
+    # ============================================================
+    # Test 1 — matches build_residual_histograms's own basic fixture (see
+    # test_tox_build_residual_histograms Test 1 above): feeding it the exact counts/
+    # included_n_reps that routine produces must reproduce that fixture's expected pmf exactly.
+    # ============================================================
+    counts = np.array([
+        [2, 1, 2, 1],
+        [0, 0, 6, 0],
+        [1, 1, 2, 2],
+    ], dtype=np.int32, order="F")
+    included_n_reps = np.array([6, 6, 6], dtype=np.int32, order="F")
 
-    # reshape into (n_reps, n_neighbors, n_points) in Fortran order
-    S1 = np.reshape(S_12[:n_reps_S1 * n_neighbors * n_points],
-                    (n_reps_S1, n_neighbors, n_points), order="F")
-    S2 = np.reshape(S_12[n_reps_S1 * n_neighbors * n_points:],
-                    (n_reps_S2, n_neighbors, n_points), order="F")
+    expected_pmf = np.array([
+        [2/6, 1/6, 2/6, 1/6],
+        [0/6, 0/6, 6/6, 0/6],
+        [1/6, 1/6, 2/6, 2/6],
+    ], dtype=np.float64, order="F")
 
-    # all null >= observed → p = 1
-    res_p1 = gjct_permutation_test_filtered(
-        S1, S2,
-        global_jsd_observed=huge,
-        n_bins=n_bins,
-        shared_residual_range=10.0,
-        n_permutations=n_permutations,
-        random_seed=random_seed,
-        neighbor_mask_S1=np.full(S1.shape[1:], False, order="F"), neighbor_mask_S2=np.full(S2.shape[1:], False, order="F")
-    )
-    assert np.isclose(res_p1["p_value"], 1/3), "For no included neighbors, p-value should be 1/3 ((0+1)/(n_permutations+1))"
+    pmf = calc_pmf(counts, included_n_reps)
+    assert np.allclose(pmf, expected_pmf, atol=TOL), "Test 1 failed: pmf mismatch"
 
-    def filtered(S1, S2, global_jsd_observed, n_bins, shared_residual_range, n_permutations, random_seed):
-        return gjct_permutation_test_filtered(
-            S1, S2, global_jsd_observed, n_bins, shared_residual_range, n_permutations,
-            random_seed=random_seed,
-            neighbor_mask_S1=np.full(S1.shape[1:], True, order="F"),
-            neighbor_mask_S2=np.full(S2.shape[1:], True, order="F"),
-        )
+    # ============================================================
+    # Test 2 — a reference point with zero included replicates (every residual there was NaN)
+    # must report an all-zero pmf row rather than dividing by zero.
+    # ============================================================
+    counts = np.array([
+        [3, 5],
+        [0, 0],
+    ], dtype=np.int32, order="F")
+    included_n_reps = np.array([8, 0], dtype=np.int32, order="F")
 
-    for func in (gjct_permutation_test, filtered):
-        print(f"... test {func.__name__.replace("filtered", "gjct_permutation_test_filtered")}")
-        S_12 = np.array(
-            [1, 2, 3, 4,
-             5, 6, -7, 8,
-             2, -4, 6, 8,
-             1, 3],
-            dtype=np.float64,
-        )
+    expected_pmf = np.array([
+        [0.375, 0.625],
+        [0.0, 0.0],
+    ], dtype=np.float64, order="F")
 
-        # reshape into (n_reps, n_neighbors, n_points) in Fortran order
-        S1 = np.reshape(S_12[:n_reps_S1 * n_neighbors * n_points],
-                        (n_reps_S1, n_neighbors, n_points), order="F")
-        S2 = np.reshape(S_12[n_reps_S1 * n_neighbors * n_points:],
-                        (n_reps_S2, n_neighbors, n_points), order="F")
+    pmf = calc_pmf(counts, included_n_reps)
+    assert np.allclose(pmf, expected_pmf, atol=TOL), "Test 2 failed: pmf mismatch"
 
-        # all null >= observed → p = 1
-        res_p1 = filtered(
-            S1, S2,
-            global_jsd_observed=0.0,
-            n_bins=n_bins,
-            shared_residual_range=10.0,
-            n_permutations=n_permutations,
-            random_seed=random_seed,
-        )
-        assert np.isclose(res_p1["p_value"], 1.0), "For zero observed JSD, p-value should be 1"
+    # ============================================================
+    # Test 3 — counts is documented as non-negative; a negative entry must be rejected.
+    # ============================================================
+    counts = np.array([[-1]], dtype=np.int32, order="F")
+    included_n_reps = np.array([1], dtype=np.int32, order="F")
 
-        # none null >= observed → p = 1/(n_permutations+1)
-        res_p2 = filtered(
-            S1, S2,
-            global_jsd_observed=huge,
-            n_bins=n_bins,
-            shared_residual_range=10.0,
-            n_permutations=n_permutations,
-            random_seed=random_seed,
-        )
-        expected = 1.0 / (n_permutations + 1.0)
-        assert np.isclose(res_p2["p_value"], expected), "For huge observed JSD, p-value should be 1/(n_permutations+1)"
+    assert_error(lambda: calc_pmf(counts, included_n_reps), "Test 3 failed: expected ERR_INVALID_INPUT", ERR_INVALID_INPUT)
+
+
+def test_jct_compute_jsd_pipeline():
+    """Call-ability, return types/shapes and non-error only; the exact equality with its three
+    steps is the Fortran suite's job (test_jct_compute_jsd_pipeline_matches_its_steps)."""
+    rng = np.random.default_rng(224)
+    n_neighbors, n_points, n_bins = 4, 3, 5
+    residuals_S1 = np.asfortranarray(rng.normal(size=(3, n_neighbors, n_points)))
+    residuals_S2 = np.asfortranarray(rng.normal(size=(4, n_neighbors, n_points)))
+    residuals_S2[1, 2, 1] = np.nan  # NaN marks a missing value and is accepted
+
+    result = jct_compute_jsd_pipeline(residuals_S1, residuals_S2, n_bins, 2.0)
+    assert result["js_divergences"].shape == (n_points,), "js_divergences shape"
+    assert result["weights"].shape == (n_points,), "weights shape"
+    assert result["included_n_reps_S1"].shape == (n_points,), "included_n_reps_S1 shape"
+    assert result["included_n_reps_S2"].shape == (n_points,), "included_n_reps_S2 shape"
+    assert result["pmf_S1"].shape == (n_points, n_bins), "pmf_S1 shape"
+    assert result["pmf_S2"].shape == (n_points, n_bins), "pmf_S2 shape"
+    assert np.isfinite(result["global_js_divergence"]), "global_js_divergence must be finite"
+    assert result["included_n_reps_S2"][1] == 4 * n_neighbors - 1, "the NaN residual is not counted"
+
+    mask_S1 = np.ones((n_neighbors, n_points), dtype=bool, order="F")
+    mask_S1[1, 0] = False
+    masked = jct_compute_jsd_pipeline(residuals_S1, residuals_S2, n_bins, 2.0, neighbor_mask_S1=mask_S1)
+    assert masked["included_n_reps_S1"][0] == 3 * (n_neighbors - 1), "the masked neighbor is not counted"
+
+    assert_error(lambda: jct_compute_jsd_pipeline(residuals_S1, residuals_S2, n_bins, -1.0),
+                 "expected ERR_INVALID_INPUT for a negative shared_residual_range", ERR_INVALID_INPUT)
 
 
 def main():

@@ -36,7 +36,7 @@ runs:
     - name: Install needed libraries and dependencies used in TensorOmics
       shell: bash
       run: |
-        pacman -Sy --needed --noconfirm libzip xxhash
+        pacman -Sy --needed --noconfirm libzip xxhash gsl
         pacman -Scc --noconfirm
 
     - name: Install fpm
