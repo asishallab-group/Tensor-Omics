@@ -280,6 +280,8 @@ class PythonEmitter:
     # -- module -----------------------------------------------------------------
 
     def module(self, module: CWrapperModule) -> str:
+        # a module constant in an extent is its value here: this language cannot name it
+        module = module.with_constant_sizes_evaluated()
         writer = Writer()
         # The module's whole documentation, not only its first line. A generated module is
         # the published API, so what the author wrote about the family is what a Python

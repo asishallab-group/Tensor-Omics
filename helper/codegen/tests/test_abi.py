@@ -1,7 +1,7 @@
 import pytest
 
 from codegen.abi.c_abi import build_module, build_project, build_wrapper, stripped_name
-from codegen.abi.model import Conversion, Origin
+from codegen.abi.model import Conversion, Origin, SizeConstant
 from codegen.diagnostics import DiagnosticBag
 from codegen.ir.entities import Meta
 from codegen.ir.roles import analyse
@@ -571,14 +571,40 @@ class TestSizeConstants:
             bag, b.integer("n"), b.real("points", Intent.IN, "(N_AXES, n)")
         )
 
-        assert wrapper.size_constants == (("m", "N_AXES"),)
+        assert wrapper.size_constants == (SizeConstant("m", "N_AXES", 2),)
 
     def test_a_constant_character_length_is_listed(self, bag):
         wrapper = self._wrapper(bag, b.character("name", Intent.IN, length="MAX_LEN"))
 
-        assert wrapper.size_constants == (("m", "MAX_LEN"),)
+        assert wrapper.size_constants == (SizeConstant("m", "MAX_LEN", 8),)
 
     def test_an_argument_extent_is_not_a_constant(self, bag):
         wrapper = self._wrapper(bag, b.integer("n"), b.real("x", Intent.IN, "(n)"))
 
         assert wrapper.size_constants == ()
+
+    def test_the_bindings_see_the_value_and_the_c_wrapper_the_name(self, bag):
+        # Python and the R shim cannot name a Fortran constant (review M2)
+        wrapper = self._wrapper(
+            bag, b.integer("n"), b.real("points", Intent.IN, "(N_AXES, n)"),
+            b.character("name", Intent.IN, length="max_len"),
+        )
+        evaluated = wrapper.with_constant_sizes_evaluated()
+
+        assert wrapper.argument("points").dimension.extents == ("N_AXES", "n")
+        assert evaluated.argument("points").dimension.extents == ("2", "n")
+        assert evaluated.argument("points").size_extents == ("2", "n")
+        assert evaluated.argument("name").dimension.extents == ("8",)
+
+    def test_a_constant_that_is_not_an_integer_is_reported(self, bag):
+        module = b.module(
+            "m", b.procedure("p", b.real("x", Intent.IN, "(N_AXES)"), b.ierr()),
+            parameters=(b.parameter("N_AXES", "some_function(1)"),),
+        )
+        b.project(module)
+
+        wrap_in_module(module, "p", bag)
+
+        assert "sized by the module constant 'N_AXES', which does not evaluate" in (
+            bag.errors[0].message
+        )

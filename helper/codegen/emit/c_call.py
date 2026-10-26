@@ -190,6 +190,8 @@ class CCallEmitter:
     # -- module -----------------------------------------------------------------
 
     def module(self, module: CWrapperModule) -> str:
+        # a module constant in an extent is its value here: the shim's C cannot name it
+        module = module.with_constant_sizes_evaluated()
         writer = Writer()
         writer.line("// Generated. Do not edit.")
         writer.line(_GUARD_OPEN)

@@ -39,6 +39,8 @@ class RWrapperEmitter:
         return _VALIDATORS
 
     def module(self, module: CWrapperModule) -> str:
+        # a module constant in an extent is its value here: this language cannot name it
+        module = module.with_constant_sizes_evaluated()
         writer = Writer()
         writer.line("# Generated. Do not edit.")
         writer.blank()

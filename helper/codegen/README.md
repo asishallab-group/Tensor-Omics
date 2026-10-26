@@ -368,6 +368,8 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
 - a **`DM_DEFAULT` that does not fit its argument's kind** (`3000000000_int64` on an
   `integer(int32)`), or that is not a constant Fortran would accept (an overflowing integer, a
   negative real raised to a real power) — the bindings would pass a value no Fortran caller can
+- a **module constant sizing an argument that does not evaluate to an integer** — Python and R
+  allocate and pad with its value, so the generator has to know it
 
 An implementation module is checked separately, because its procedures are read rather than
 exported and so are reached by none of the above. These rules follow the `_impl` suffix
@@ -519,7 +521,12 @@ the compiler or a run rejected the first attempt.
 - **A module constant in an extent** (`points(N_AXES, n)`, `len=MAX_LEN`) is imported by both
   the Fortran wrapper and the C wrapper, which redeclare every argument. Before, such a wrapper
   compiled only where a range directive happened to name the same constant (#178's
-  `MAX_N_BINS`). The C wrapper's import list comes from `CWrapper.size_constants`.
+  `MAX_N_BINS`). The C wrapper's import list comes from `CWrapper.size_constants`. Python and
+  the R shim cannot name a Fortran constant at all, so they get its evaluated value
+  (`CWrapper.with_constant_sizes_evaluated`, applied by each binding emitter's `module`): an
+  output `sums(N_AXES)` is allocated with 2, a `len=MAX_LEN` string padded to 8, exactly as if
+  the literal had been written. Before, the shim's `Rf_allocVector(REALSXP, N_AXES)` stopped the
+  whole library build and Python raised `NameError`.
 - **`impure elemental`** is impure. `elemental` implies `pure` unless `impure` says otherwise,
   and Ford lists both; taking `elemental` alone gave the wrapper a `pure` prefix it cannot
   compile with.

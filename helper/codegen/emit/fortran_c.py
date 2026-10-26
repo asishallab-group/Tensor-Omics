@@ -171,8 +171,8 @@ class FortranCEmitter:
                 continue
             for value in argument.mode.values:
                 by_module.setdefault(value.module, set()).add(value.parameter)
-        for module_name, name in wrapper.size_constants:
-            by_module.setdefault(module_name, set()).add(name)
+        for constant in wrapper.size_constants:
+            by_module.setdefault(constant.module, set()).add(constant.name)
         for module_name in sorted(by_module):
             names = ", ".join(sorted(by_module[module_name]))
             writer.line(f"use {module_name}, only: {names}")

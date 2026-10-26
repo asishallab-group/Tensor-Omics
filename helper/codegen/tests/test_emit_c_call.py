@@ -204,3 +204,40 @@ class TestHeaderStamp:
         assert includers, "no shim includes the header -- the premise is gone"
         stale = [c.name for c in includers if digest not in c.read_text()]
         assert not stale, f"stamp does not match tox_marshal.h: {stale}"
+
+
+class TestConstantSizes:
+    """A module constant sizing an argument is its value in the shim (#221 WP1, review M2).
+
+    The shim allocated `Rf_allocVector(REALSXP, N_AXES)` and passed `tox_char_in(name,
+    MAX_LEN)`: C has no such names, and with the shims bundled into the library a single
+    one stopped the whole build.
+    """
+
+    def module_text(self, bag):
+        from codegen.abi.c_abi import build_module
+
+        module = b.module(
+            "m",
+            b.procedure(
+                "p",
+                b.integer("n", Intent.IN, doc="points"),
+                b.real("points", Intent.IN, "(N_AXES, n)", doc="the points"),
+                b.character("name", Intent.IN, length="MAX_LEN", doc="a name"),
+                b.real("sums", Intent.OUT, "(N_AXES)", doc="per axis"),
+                b.ierr(),
+            ),
+            parameters=(b.parameter("N_AXES", "2"), b.parameter("MAX_LEN", "8")),
+        )
+        b.project(module)
+        analyse(module.procedure("p"), bag)
+        return CCallEmitter().module(build_module(module, bag))
+
+    def test_an_output_is_allocated_with_the_value(self, bag):
+        text = self.module_text(bag)
+
+        assert "Rf_allocVector(REALSXP, 2)" in text
+        assert "N_AXES" not in text
+
+    def test_a_length_is_the_value(self, bag):
+        assert "MAX_LEN" not in self.module_text(bag)

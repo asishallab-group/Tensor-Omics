@@ -21,7 +21,15 @@ from ..ir.constants import ConstantError, ConstantEvaluator, fits_integer_kind, 
 from ..ir.doc import Doc
 from ..ir.entities import Argument, Module, Procedure, Project
 from ..ir.types import BaseType, CharacterLength, Dimension, FortranType, Intent
-from .model import CArgument, CBinding, Conversion, CWrapper, CWrapperModule, Origin
+from .model import (
+    CArgument,
+    CBinding,
+    Conversion,
+    CWrapper,
+    CWrapperModule,
+    Origin,
+    SizeConstant,
+)
 
 #: Fortran kind -> the iso_c_binding kind C interoperates through.
 #:
@@ -163,13 +171,14 @@ class _Builder:
             size_constants=self._size_constants(arguments),
         )
 
-    def _size_constants(self, arguments: list[CArgument]) -> tuple[tuple[str, str], ...]:
-        """The module constants named in the extents C sees, and where each is defined.
+    def _size_constants(self, arguments: list[CArgument]) -> tuple[SizeConstant, ...]:
+        """The module constants named in the extents C sees, where each is defined, and its value.
 
         An extent that is not an argument of this wrapper may be a module constant
         (`x(N_FIXED, n)`, a character's `len=MAX_LEN`). The C wrapper redeclares every
         argument and imports only the procedure it calls, so without these imports such a
-        declaration names something undefined.
+        declaration names something undefined. Python and R cannot name it at all, so they
+        are given its value, which therefore has to evaluate to an integer.
         """
         module = self.procedure.module
         project = module.project if module is not None else None
@@ -177,7 +186,7 @@ class _Builder:
             return ()
         dummies = {argument.name.lower() for argument in arguments}
         parameters = {parameter.name.lower(): parameter for parameter in project.parameters}
-        found: set[tuple[str, str]] = set()
+        found: dict[tuple[str, str], SizeConstant] = {}
         for argument in arguments:
             for extent in argument.dimension.extents:
                 for identifier in _IDENTIFIER_RE.findall(extent):
@@ -185,8 +194,35 @@ class _Builder:
                     if (identifier.lower() in dummies or parameter is None
                             or parameter.parent is None):
                         continue
-                    found.add((parameter.parent.name, parameter.name))
-        return tuple(sorted(found))
+                    key = (parameter.parent.name, parameter.name)
+                    if key in found:
+                        continue
+                    value = self._constant_value(parameter)
+                    if value is None:
+                        self.diagnostics.error(
+                            f"'{argument.name}' is sized by the module constant "
+                            f"'{parameter.name}', which does not evaluate to an integer",
+                            entity=argument.source or self.procedure,
+                            note=(
+                                "Python and R allocate and check the argument with the "
+                                "constant's value, so it must be an integer constant "
+                                "expression the generator can evaluate"
+                            ),
+                        )
+                        continue
+                    found[key] = SizeConstant(*key, value)
+        return tuple(found[key] for key in sorted(found))
+
+    def _constant_value(self, parameter) -> int | None:
+        """A module parameter's integer value: from the project's table, else its own expression."""
+        for expression in (parameter.name, parameter.expression):
+            try:
+                value = self.evaluator.evaluate(expression)
+            except ConstantError:
+                continue
+            if isinstance(value, int) and not isinstance(value, bool):
+                return value
+        return None
 
     # -- arguments --------------------------------------------------------------
 

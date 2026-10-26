@@ -12,7 +12,8 @@ it, and nothing downstream may modify it.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import re
+from dataclasses import dataclass, field, replace
 from enum import Enum
 
 from ..ir.doc import Doc
@@ -128,6 +129,21 @@ class CArgument:
 
 
 @dataclass(frozen=True)
+class SizeConstant:
+    """A module constant an extent or a character length names (`x(N_AXES, n)`)."""
+
+    #: The module that defines it, which the Fortran C wrapper imports it from
+    module: str
+    name: str
+    #: Its evaluated value, which the binding languages write in its place
+    value: int
+
+
+#: An identifier in an extent, not one following a word character (a kind suffix `0_int32`)
+_EXTENT_NAME_RE = re.compile(r"(?<!\w)[A-Za-z]\w*")
+
+
+@dataclass(frozen=True)
 class CWrapper:
     """A procedure as C sees it."""
 
@@ -138,9 +154,40 @@ class CWrapper:
     #: The procedure being wrapped
     procedure: Procedure
     arguments: tuple[CArgument, ...]
-    #: The module constants the declarations are sized by (`x(N_FIXED, n)`), as
-    #: `(module, name)`: the wrapper redeclares every argument, so it imports them
-    size_constants: tuple[tuple[str, str], ...] = ()
+    #: The module constants the declarations are sized by (`x(N_FIXED, n)`). The Fortran C
+    #: wrapper redeclares every argument, so it imports them; Python and R have no such
+    #: names and use their values (`with_constant_sizes_evaluated`)
+    size_constants: tuple[SizeConstant, ...] = ()
+
+    def with_constant_sizes_evaluated(self) -> CWrapper:
+        """This wrapper with every module constant in an extent replaced by its value.
+
+        What the binding languages read: Python and the R shim allocate outputs, size
+        strings and compare shapes from these extents, and neither can name a Fortran
+        module constant. `points(N_AXES, n)` reaches them as `points(2, n)`, exactly as if
+        the author had written the literal, and a character's `len=MAX_LEN` as `len=8`.
+        The Fortran C wrapper keeps the names and imports them.
+        """
+        if not self.size_constants:
+            return self
+        values = {constant.name.lower(): str(constant.value) for constant in self.size_constants}
+
+        def evaluated(extent: str) -> str:
+            return _EXTENT_NAME_RE.sub(
+                lambda match: values.get(match.group(0).lower(), match.group(0)), extent
+            )
+
+        arguments = tuple(
+            replace(
+                argument,
+                dimension=argument.dimension.with_extents(
+                    evaluated(extent) for extent in argument.dimension.extents
+                ),
+                size_extents=tuple(evaluated(extent) for extent in argument.size_extents),
+            )
+            for argument in self.arguments
+        )
+        return replace(self, arguments=arguments)
 
     @property
     def module_name(self) -> str:
@@ -227,6 +274,12 @@ class CWrapperModule:
     @property
     def doc(self) -> Doc:
         return self.module.doc
+
+    def with_constant_sizes_evaluated(self) -> CWrapperModule:
+        """Every wrapper as the binding languages read it (`CWrapper.with_constant_sizes_evaluated`)."""
+        return replace(
+            self, wrappers=tuple(w.with_constant_sizes_evaluated() for w in self.wrappers)
+        )
 
     def __iter__(self):
         return iter(self.wrappers)

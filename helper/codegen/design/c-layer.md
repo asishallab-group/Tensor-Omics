@@ -517,6 +517,9 @@ order.
 An extent that names no argument is a module constant (`points(N_AXES, n)`), and the wrapper,
 which redeclares every argument but imports only the procedure it calls, imports it from the
 module that defines it, beside the mode parameters (`CWrapper.size_constants`, #221 B13).
+The binding languages read the same model with every such constant replaced by its evaluated
+value (`CWrapper.with_constant_sizes_evaluated`): C and Python have no name for it, and the
+value is what the Fortran wrapper's own declaration means anyway.
 
 ---
 

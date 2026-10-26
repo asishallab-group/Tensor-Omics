@@ -2,17 +2,21 @@
 
 !> summary: Implementation fixture for the extent forms and purities a wrapper must reproduce
 !| author: A Developer
-!| An assumed-shape input the wrapper validates, extents named by a module constant, and an
-!| `impure elemental` implementation. Compiled and run by `test_end_to_end_fortran.py`.
+!| An assumed-shape input the wrapper validates, extents and character lengths named by a module
+!| constant, and an `impure elemental` implementation. Compiled and run by
+!| `test_end_to_end_fortran.py`, and through Python and R by `test_end_to_end_impl.py`.
 module fx_shapes_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     M_IMPLICIT_NONE
     private
 
-    public :: FX_N_AXES, n_noted, sum_values_impl, axis_sums_impl, note_value_impl
+    public :: FX_N_AXES, FX_LABEL_LEN, n_noted
+    public :: sum_values_impl, axis_sums_impl, label_length_impl, note_value_impl
 
     integer(int32), parameter :: FX_N_AXES = 2
         !! coordinates per point
+    integer(int32), parameter :: FX_LABEL_LEN = 8
+        !! characters in a label
     integer(int32), save :: n_noted = 0_int32
         !! how often `note_value_impl` ran
 
@@ -42,6 +46,20 @@ contains
             !! the sum of every axis
         sums = sum(points, dim=2)
     end subroutine axis_sums_impl
+
+    !> summary: The length of a label without its trailing blanks, and a fixed tag
+    !| author: A Developer
+    !| An edge case: a character length named by a module constant, on an input and an output.
+    pure subroutine label_length_impl(label, n_chars, tag)
+        character(len=FX_LABEL_LEN), intent(in) :: label
+            !! the label
+        integer(int32), intent(out) :: n_chars
+            !! its length without trailing blanks
+        character(len=FX_LABEL_LEN), intent(out) :: tag
+            !! always `fx`
+        n_chars = len_trim(label)
+        tag = 'fx'
+    end subroutine label_length_impl
 
     !> summary: Copies a value and counts that it ran
     !| author: A Developer

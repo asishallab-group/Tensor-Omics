@@ -343,3 +343,42 @@ class TestTheTargetsDocumentTheSame:
         # and it lands where numpydoc puts an extended summary: after the summary line,
         # before Parameters
         assert text.index("0 means uniform expression") < text.index("Parameters")
+
+
+class TestConstantSizesInBothBindings:
+    """Neither binding can name a Fortran module constant, so both use its value (#221 M2)."""
+
+    def module(self):
+        import builders as b
+        from codegen.abi.c_abi import build_module
+        from codegen.ir.roles import analyse
+        from codegen.ir.types import Intent
+
+        module = b.module(
+            "m",
+            b.procedure(
+                "p",
+                b.integer("n", Intent.IN, doc="points"),
+                b.real("points", Intent.IN, "(N_AXES, n)", doc="the points"),
+                b.character("name", Intent.IN, length="MAX_LEN", doc="a name"),
+                b.real("sums", Intent.OUT, "(N_AXES)", doc="per axis"),
+                b.ierr(),
+            ),
+            parameters=(b.parameter("N_AXES", "2"), b.parameter("MAX_LEN", "8")),
+        )
+        b.project(module)
+        bag = DiagnosticBag()
+        analyse(module.procedure("p"), bag)
+        return build_module(module, bag)
+
+    def test_python_allocates_and_pads_with_the_values(self):
+        text = PythonEmitter().module(self.module())
+
+        assert "np.empty((2,)" in text
+        assert ".ljust(8)" in text
+        assert "N_AXES" not in text and "MAX_LEN" not in text
+
+    def test_the_r_wrapper_names_no_constant(self):
+        text = RWrapperEmitter().module(self.module())
+
+        assert "N_AXES" not in text and "MAX_LEN" not in text

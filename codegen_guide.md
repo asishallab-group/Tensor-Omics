@@ -354,8 +354,9 @@ Extents are recognised on sight: `n_tissues` in `expression_vectors(n_tissues, n
 extent, is validated as one, and is never asked of a Python or R caller — they pass the array,
 and the binding reads its shape.
 
-An extent may also be a module constant (`points(N_AXES, n_points)`, `character(len=MAX_LEN)`),
-which the generated wrappers import, or `:` for an assumed-shape dummy, which is validated with
+An extent may also be a module constant (`points(N_AXES, n_points)`, `character(len=MAX_LEN)`):
+the Fortran and C wrappers import it, and Python and R use its value, so it must be an integer
+constant the generator can evaluate. Or it may be `:` for an assumed-shape dummy, which is validated with
 the size of the array it is given. Every axis starts at 1: `x(1:n)` is accepted as `x(n)`, and
 any other lower bound is refused (Section 8). Spell a dummy in whatever case you like where you
 use it — `integer :: N` may size `x(n)` — but the declaration's spelling is the published name.
@@ -1188,6 +1189,7 @@ source and carries a note saying what to write instead.
 | an optional shape or extent argument | the wrapper must read it before it may take `c_loc` of what it sizes |
 | an axis with a lower bound other than 1 (`x(0:n)`, `x(0:)`) | every layer sizes an axis from its extent alone; declare `x(n + 1)` and shift the index inside the implementation. `x(1:n)` is accepted as `x(n)` |
 | a `DM_DEFAULT` that is not a constant the compiler would accept, or that does not fit its argument's kind | Python and R pass the evaluated value, so it has to be the one a Fortran caller gets (Section 5.5) |
+| a module constant in an extent or a length that does not evaluate to an integer | Python and R allocate and pad with its value (Section 4) |
 | a `tmp_` argument that is `intent(in)` | a work array is an output or an in-out |
 | an **optional output** (`intent(out), optional`, and not a `tmp_`) | no binding can honour it — Python would return a dict whose keys vary per call, R a list of varying length. Express it as an optional input *flag* plus a `tmp_` work array, the way `loess_fit_plain_impl` does with `compute_influence`: the work stays skippable and the return type stays fixed |
 | `DM_DEFAULT` **and** `DM_REQUIRED_IF_MODE` on a mode that does *not* split | with a runtime mode the argument is always passed on, so "required in that mode" says nothing. On a split mode (Section 5.11) the pair is meaningful and accepted |
