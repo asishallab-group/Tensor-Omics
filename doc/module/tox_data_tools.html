@@ -176,11 +176,11 @@ layers, everything here works from delimited text rather than the library's bina
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='f42_config.html'>f42_config</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -200,7 +200,7 @@ layers, everything here works from delimited text rather than the library's bina
         <section>
           <h2>Subroutines</h2>
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-read_expression_vectors_tsv"></span> <h3>public  subroutine <a href='../proc/read_expression_vectors_tsv.html'>read_expression_vectors_tsv</a>(file_list, gene_ids, expression_vectors, n_header_rows, gene_col, value_cols, start_row, ierr, delimiter)  
+    <div class="card-header codesum"><span class="anchor" id="proc-read_expression_vectors_tsv"></span> <h3>public  subroutine <a href='../proc/read_expression_vectors_tsv.html'>read_expression_vectors_tsv</a>(file_list, gene_ids, expression_vectors, n_header_rows, gene_col, value_cols, start_row, delimiter, ierr)  
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
@@ -239,7 +239,7 @@ layers, everything here works from delimited text rather than the library's bina
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~16"></span>
+              <span class="anchor" id="variable-gene_ids~12"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -254,7 +254,7 @@ layers, everything here works from delimited text rather than the library's bina
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~31"></span>
+              <span class="anchor" id="variable-expression_vectors~21"></span>
               real(kind=real64),
             </td>
 <td>intent(inout)</td>
@@ -329,21 +329,6 @@ layers, everything here works from delimited text rather than the library's bina
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~375"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
               <span class="anchor" id="variable-delimiter~2"></span>
               character(len=1),
             </td>
@@ -356,6 +341,21 @@ layers, everything here works from delimited text rather than the library's bina
             <td>
 <p>optional delimiter
 The default value is <code>char(9)</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~286"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -390,7 +390,7 @@ The default value is <code>char(9)</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~90"></span>
+              <span class="anchor" id="variable-filename~70"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -405,7 +405,7 @@ The default value is <code>char(9)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~17"></span>
+              <span class="anchor" id="variable-gene_ids~13"></span>
               character(len=*),
             </td>
 <td>intent(out)</td>
@@ -450,7 +450,7 @@ The default value is <code>char(9)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~376"></span>
+              <span class="anchor" id="variable-ierr~287"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -495,7 +495,7 @@ The default value is <code>char(9)</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~91"></span>
+              <span class="anchor" id="variable-filename~71"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -510,7 +510,7 @@ The default value is <code>char(9)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~18"></span>
+              <span class="anchor" id="variable-gene_ids~14"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -525,7 +525,7 @@ The default value is <code>char(9)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids~10"></span>
+              <span class="anchor" id="variable-family_ids~8"></span>
               character(len=*),
             </td>
 <td>intent(out)</td>
@@ -540,7 +540,7 @@ The default value is <code>char(9)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~37"></span>
+              <span class="anchor" id="variable-gene_to_fam~28"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -555,7 +555,7 @@ The default value is <code>char(9)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~377"></span>
+              <span class="anchor" id="variable-ierr~288"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -576,7 +576,7 @@ The default value is <code>char(9)</code>.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-split_string"></span> <h3>public  subroutine <a href='../proc/split_string.html'>split_string</a>(input, output, ierr, delimiter)  
+    <div class="card-header codesum"><span class="anchor" id="proc-split_string"></span> <h3>public  subroutine <a href='../proc/split_string.html'>split_string</a>(input, output, delimiter, ierr)  
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
@@ -629,21 +629,6 @@ The default value is <code>char(9)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~378"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
               <span class="anchor" id="variable-delimiter~3"></span>
               character(len=1),
             </td>
@@ -655,6 +640,21 @@ The default value is <code>char(9)</code>.</p>
             <td><strong>delimiter</strong></td>
             <td>
 <p>delimiter, default is space</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~289"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -689,7 +689,7 @@ The default value is <code>char(9)</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~38"></span>
+              <span class="anchor" id="variable-gene_to_fam~29"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -763,7 +763,7 @@ The default value is <code>char(9)</code>.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~19"></span>
+              <span class="anchor" id="variable-gene_ids~15"></span>
               character(len=*),
             </td>
 <td>intent(inout),</td>
@@ -778,7 +778,7 @@ The default value is <code>char(9)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~32"></span>
+              <span class="anchor" id="variable-expression_vectors~22"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -793,7 +793,7 @@ The default value is <code>char(9)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~39"></span>
+              <span class="anchor" id="variable-gene_to_fam~30"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout),</td>
@@ -838,7 +838,7 @@ The default value is <code>char(9)</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~379"></span>
+              <span class="anchor" id="variable-ierr~290"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -881,7 +881,7 @@ The default value is <code>char(9)</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-10-08 18:38 +0000             </p>
+ on 2026-10-26 09:16 +0000             </p>
           </div>
         </div>
         <br>

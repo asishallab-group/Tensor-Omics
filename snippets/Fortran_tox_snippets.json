@@ -141,19 +141,19 @@
     "body": [
       "call save_tox_data( &",
       "    zip_filename=${1:zip_filename}, &",
-      "    ierr=${2:ierr}, &",
-      "    gene_ids=${3:gene_ids}, &",
-      "    gene_ids_file=${4:gene_ids_file}, &",
-      "    expression=${5:expression}, &",
-      "    expression_file=${6:expression_file}, &",
-      "    gene_to_family=${7:gene_to_family}, &",
-      "    gene_to_family_file=${8:gene_to_family_file}, &",
-      "    family_ids=${9:family_ids}, &",
-      "    family_ids_file=${10:family_ids_file}, &",
-      "    family_centroids=${11:family_centroids}, &",
-      "    family_centroids_file=${12:family_centroids_file}, &",
-      "    shift_vectors=${13:shift_vectors}, &",
-      "    shift_vectors_file=${14:shift_vectors_file})"
+      "    gene_ids=${2:gene_ids}, &",
+      "    gene_ids_file=${3:gene_ids_file}, &",
+      "    expression=${4:expression}, &",
+      "    expression_file=${5:expression_file}, &",
+      "    gene_to_family=${6:gene_to_family}, &",
+      "    gene_to_family_file=${7:gene_to_family_file}, &",
+      "    family_ids=${8:family_ids}, &",
+      "    family_ids_file=${9:family_ids_file}, &",
+      "    family_centroids=${10:family_centroids}, &",
+      "    family_centroids_file=${11:family_centroids_file}, &",
+      "    shift_vectors=${12:shift_vectors}, &",
+      "    shift_vectors_file=${13:shift_vectors_file}, &",
+      "    ierr=${14:ierr})"
     ]
   },
   "save_tox_data (call, checked)": {
@@ -162,19 +162,19 @@
     "body": [
       "call save_tox_data( &",
       "    zip_filename=${1:zip_filename}, &",
-      "    ierr=${2:ierr}, &",
-      "    gene_ids=${3:gene_ids}, &",
-      "    gene_ids_file=${4:gene_ids_file}, &",
-      "    expression=${5:expression}, &",
-      "    expression_file=${6:expression_file}, &",
-      "    gene_to_family=${7:gene_to_family}, &",
-      "    gene_to_family_file=${8:gene_to_family_file}, &",
-      "    family_ids=${9:family_ids}, &",
-      "    family_ids_file=${10:family_ids_file}, &",
-      "    family_centroids=${11:family_centroids}, &",
-      "    family_centroids_file=${12:family_centroids_file}, &",
-      "    shift_vectors=${13:shift_vectors}, &",
-      "    shift_vectors_file=${14:shift_vectors_file})",
+      "    gene_ids=${2:gene_ids}, &",
+      "    gene_ids_file=${3:gene_ids_file}, &",
+      "    expression=${4:expression}, &",
+      "    expression_file=${5:expression_file}, &",
+      "    gene_to_family=${6:gene_to_family}, &",
+      "    gene_to_family_file=${7:gene_to_family_file}, &",
+      "    family_ids=${8:family_ids}, &",
+      "    family_ids_file=${9:family_ids_file}, &",
+      "    family_centroids=${10:family_centroids}, &",
+      "    family_centroids_file=${11:family_centroids_file}, &",
+      "    shift_vectors=${12:shift_vectors}, &",
+      "    shift_vectors_file=${13:shift_vectors_file}, &",
+      "    ierr=${14:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -876,8 +876,8 @@
       "    gene_col=${5:gene_col}, &",
       "    value_cols=${6:value_cols}, &",
       "    start_row=${7:start_row}, &",
-      "    ierr=${8:ierr}, &",
-      "    delimiter=${9:delimiter})"
+      "    delimiter=${8:delimiter}, &",
+      "    ierr=${9:ierr})"
     ]
   },
   "read_expression_vectors_tsv (call, checked)": {
@@ -892,8 +892,8 @@
       "    gene_col=${5:gene_col}, &",
       "    value_cols=${6:value_cols}, &",
       "    start_row=${7:start_row}, &",
-      "    ierr=${8:ierr}, &",
-      "    delimiter=${9:delimiter})",
+      "    delimiter=${8:delimiter}, &",
+      "    ierr=${9:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1120,9 +1120,9 @@
       "    expression_vectors=${7:expression_vectors}, &",
       "    family_centroids=${8:family_centroids}, &",
       "    shift_vectors=${9:shift_vectors}, &",
-      "    ierr=${10:ierr}, &",
-      "    check_uniqueness=${11:check_uniqueness}, &",
-      "    check_shift_consistency=${12:check_shift_consistency})"
+      "    check_uniqueness=${10:check_uniqueness}, &",
+      "    check_shift_consistency=${11:check_shift_consistency}, &",
+      "    ierr=${12:ierr})"
     ]
   },
   "validate_all_data (call, checked)": {
@@ -1139,9 +1139,9 @@
       "    expression_vectors=${7:expression_vectors}, &",
       "    family_centroids=${8:family_centroids}, &",
       "    shift_vectors=${9:shift_vectors}, &",
-      "    ierr=${10:ierr}, &",
-      "    check_uniqueness=${11:check_uniqueness}, &",
-      "    check_shift_consistency=${12:check_shift_consistency})",
+      "    check_uniqueness=${10:check_uniqueness}, &",
+      "    check_shift_consistency=${11:check_shift_consistency}, &",
+      "    ierr=${12:ierr})",
       "if (is_err(ierr)) return"
     ]
   },
@@ -1434,8 +1434,8 @@
       "    loess_y=${7:loess_y}, &",
       "    loess_n=${8:loess_n}, &",
       "    tail_probability=${9:tail_probability}, &",
-      "    ierr=${10:ierr}, &",
-      "    quantile_level=${11:quantile_level})"
+      "    quantile_level=${10:quantile_level}, &",
+      "    ierr=${11:ierr})"
     ]
   },
   "detect_outliers (call, checked)": {
@@ -1452,8 +1452,8 @@
       "    loess_y=${7:loess_y}, &",
       "    loess_n=${8:loess_n}, &",
       "    tail_probability=${9:tail_probability}, &",
-      "    ierr=${10:ierr}, &",
-      "    quantile_level=${11:quantile_level})",
+      "    quantile_level=${10:quantile_level}, &",
+      "    ierr=${11:ierr})",
       "if (is_err(ierr)) return"
     ]
   },

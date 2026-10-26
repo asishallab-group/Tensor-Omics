@@ -183,7 +183,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~103"></span>
+              <span class="anchor" id="variable-n_genes~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -198,7 +198,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~38"></span>
+              <span class="anchor" id="variable-n_families~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -213,7 +213,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~24"></span>
+              <span class="anchor" id="variable-distances~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -230,7 +230,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~41"></span>
+              <span class="anchor" id="variable-gene_to_fam~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -245,7 +245,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dscale~8"></span>
+              <span class="anchor" id="variable-dscale~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -260,7 +260,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_x~8"></span>
+              <span class="anchor" id="variable-loess_x~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -270,12 +270,13 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>loess_x</strong></td>
             <td>
-                <p>Reference x-coordinates for LOESS smoothing</p>
+                <p>Mean distance of each family in the LOESS fit, packed at the front in the order of
+<code>indices_used</code>. The remaining slots hold <code>-1</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_y~8"></span>
+              <span class="anchor" id="variable-loess_y~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -285,12 +286,13 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>loess_y</strong></td>
             <td>
-                <p>Reference y-coordinates for LOESS smoothing</p>
+                <p>Standard deviation of the distances of each family in the LOESS fit, packed like
+<code>loess_x</code>. The remaining slots hold <code>-1</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-indices_used~8"></span>
+              <span class="anchor" id="variable-indices_used~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -300,12 +302,14 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>indices_used</strong></td>
             <td>
-                <p>Indices of reference points used for smoothing</p>
+                <p>Family index of each point in the LOESS fit, packed at the front. Families with a
+single member, and those with the lowest spread, are left out of the fit; the
+remaining slots hold <code>0</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_perm~12"></span>
+              <span class="anchor" id="variable-tmp_perm"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -320,7 +324,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_stack_left~16"></span>
+              <span class="anchor" id="variable-tmp_stack_left"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -335,7 +339,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_stack_right~16"></span>
+              <span class="anchor" id="variable-tmp_stack_right"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -350,7 +354,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_int_workspace~24"></span>
+              <span class="anchor" id="variable-tmp_int_workspace~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -365,7 +369,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~29"></span>
+              <span class="anchor" id="variable-int_workspace_size~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -403,7 +407,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_real_workspace~24"></span>
+              <span class="anchor" id="variable-tmp_real_workspace~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -418,7 +422,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_worksp
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size~29"></span>
+              <span class="anchor" id="variable-real_workspace_size~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -456,7 +460,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_diagl~7"></span>
+              <span class="anchor" id="variable-tmp_diagl"></span>
               real(kind=c_double),
             </td>
 <td>intent(inout),</td>
@@ -471,7 +475,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_weights~11"></span>
+              <span class="anchor" id="variable-tmp_weights"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -486,7 +490,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_eval_points~16"></span>
+              <span class="anchor" id="variable-tmp_eval_points"></span>
               real(kind=c_double),
             </td>
 <td>intent(inout),</td>
@@ -501,7 +505,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_robust_weights~20"></span>
+              <span class="anchor" id="variable-tmp_robust_weights~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -516,7 +520,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_combined_weights~20"></span>
+              <span class="anchor" id="variable-tmp_combined_weights~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -531,7 +535,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_residuals~20"></span>
+              <span class="anchor" id="variable-tmp_residuals~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -546,7 +550,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation_indices~20"></span>
+              <span class="anchor" id="variable-tmp_permutation_indices~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -561,7 +565,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_fitted_values~7"></span>
+              <span class="anchor" id="variable-tmp_fitted_values"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -576,7 +580,7 @@ It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_works
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~27"></span>
+              <span class="anchor" id="variable-span~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -596,7 +600,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~28"></span>
+              <span class="anchor" id="variable-degree~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -607,12 +611,14 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <td><strong>degree</strong></td>
             <td>
                 <p>Degree of the LOESS polynomial
-The default value is <code>2_int32</code>.</p>
+The default value is <code>2_int32</code>.
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~6"></span>
+              <span class="anchor" id="variable-mode~2"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -646,7 +652,7 @@ The default value is <code>'robust'</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_iters~10"></span>
+              <span class="anchor" id="variable-n_iters~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -662,7 +668,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-low_sd_cutoff~5"></span>
+              <span class="anchor" id="variable-low_sd_cutoff~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -677,7 +683,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-excluded_low_sd~5"></span>
+              <span class="anchor" id="variable-excluded_low_sd~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -692,7 +698,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_means_aux~7"></span>
+              <span class="anchor" id="variable-tmp_means_aux"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -707,7 +713,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~394"></span>
+              <span class="anchor" id="variable-ierr~45"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -754,7 +760,7 @@ The default value is <code>3_int32</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-10-08 18:38 +0000             </p>
+ on 2026-10-26 09:16 +0000             </p>
           </div>
         </div>
         <br>

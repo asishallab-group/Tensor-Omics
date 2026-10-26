@@ -866,10 +866,10 @@
 <a id="ln-696" name="ln-696" href="#ln-696"></a><span class="s2">    !&gt; M_EXPORT_C</span>
 <a id="ln-697" name="ln-697" href="#ln-697"></a><span class="s2">    !| summary: Save standard tox data</span>
 <a id="ln-698" name="ln-698" href="#ln-698"></a><span class="s2">    !| AUTHOR_AARON_SCHROEDER</span>
-<a id="ln-699" name="ln-699" href="#ln-699"></a><span class="s2">    subroutine save_tox_data(zip_filename, ierr, gene_ids, gene_ids_file, expression, &amp;</span>
+<a id="ln-699" name="ln-699" href="#ln-699"></a><span class="s2">    subroutine save_tox_data(zip_filename, gene_ids, gene_ids_file, expression, &amp;</span>
 <a id="ln-700" name="ln-700" href="#ln-700"></a><span class="s2">                             expression_file, gene_to_family, gene_to_family_file, &amp;</span>
 <a id="ln-701" name="ln-701" href="#ln-701"></a><span class="s2">                             family_ids, family_ids_file, family_centroids, &amp;</span>
-<a id="ln-702" name="ln-702" href="#ln-702"></a><span class="s2">                             family_centroids_file, shift_vectors, shift_vectors_file)</span>
+<a id="ln-702" name="ln-702" href="#ln-702"></a><span class="s2">                             family_centroids_file, shift_vectors, shift_vectors_file, ierr)</span>
 <a id="ln-703" name="ln-703" href="#ln-703"></a><span class="s2">        M_IMPLICIT_NONE</span>
 <a id="ln-704" name="ln-704" href="#ln-704"></a>
 <a id="ln-705" name="ln-705" href="#ln-705"></a><span class="s2">        character(len=*), intent(in) :: zip_filename</span>
@@ -1057,9 +1057,9 @@
 <a id="ln-887" name="ln-887" href="#ln-887"></a>
 <a id="ln-888" name="ln-888" href="#ln-888"></a><span class="s2">    !&gt; AUTHOR_AARON_SCHROEDER</span>
 <a id="ln-889" name="ln-889" href="#ln-889"></a><span class="s2">    !| Read standard tox from a zip archive</span>
-<a id="ln-890" name="ln-890" href="#ln-890"></a><span class="s2">    subroutine read_tox_data(zip_filename, ierr, gene_ids, gene_ids_file, expression, expression_file, &amp;</span>
+<a id="ln-890" name="ln-890" href="#ln-890"></a><span class="s2">    subroutine read_tox_data(zip_filename, gene_ids, gene_ids_file, expression, expression_file, &amp;</span>
 <a id="ln-891" name="ln-891" href="#ln-891"></a><span class="s2">                             gene_to_family, gene_to_family_file, family_ids, family_ids_file, &amp;</span>
-<a id="ln-892" name="ln-892" href="#ln-892"></a><span class="s2">                             family_centroids, family_centroids_file, shift_vectors, shift_vectors_file)</span>
+<a id="ln-892" name="ln-892" href="#ln-892"></a><span class="s2">                             family_centroids, family_centroids_file, shift_vectors, shift_vectors_file, ierr)</span>
 <a id="ln-893" name="ln-893" href="#ln-893"></a><span class="s2">        use f42_serde_arrays_utils, only: get_array_metadata, REAL_TYPE_CODE, INTEGER_TYPE_CODE</span>
 <a id="ln-894" name="ln-894" href="#ln-894"></a><span class="s2">        use tox_data_read_write</span>
 <a id="ln-895" name="ln-895" href="#ln-895"></a><span class="s2">        use iso_fortran_env, only: real64, int32</span>
@@ -1067,32 +1067,32 @@
 <a id="ln-897" name="ln-897" href="#ln-897"></a>
 <a id="ln-898" name="ln-898" href="#ln-898"></a><span class="s2">        character(len=*), intent(in) :: zip_filename</span>
 <a id="ln-899" name="ln-899" href="#ln-899"></a><span class="s2">        !! Name of the zipfile</span>
-<a id="ln-900" name="ln-900" href="#ln-900"></a><span class="s2">        integer(int32), intent(out) :: ierr</span>
-<a id="ln-901" name="ln-901" href="#ln-901"></a><span class="s2">        !! Error code</span>
-<a id="ln-902" name="ln-902" href="#ln-902"></a><span class="s2">        character(len=:), allocatable, optional, intent(out) :: gene_ids(:)</span>
-<a id="ln-903" name="ln-903" href="#ln-903"></a><span class="s2">        !! Gene IDs array, will be populated if provided</span>
-<a id="ln-904" name="ln-904" href="#ln-904"></a><span class="s2">        character(len=:), allocatable, optional, intent(out) :: family_ids(:)</span>
-<a id="ln-905" name="ln-905" href="#ln-905"></a><span class="s2">        !! Family IDs array, will be populated if provided</span>
-<a id="ln-906" name="ln-906" href="#ln-906"></a><span class="s2">        real(real64), allocatable, optional, intent(out) :: expression(:, :)</span>
-<a id="ln-907" name="ln-907" href="#ln-907"></a><span class="s2">        !! Expression vectors array, will be populated if provided</span>
-<a id="ln-908" name="ln-908" href="#ln-908"></a><span class="s2">        real(real64), allocatable, optional, intent(out) :: family_centroids(:, :)</span>
-<a id="ln-909" name="ln-909" href="#ln-909"></a><span class="s2">        !! Family centroids array, will be populated if provided</span>
-<a id="ln-910" name="ln-910" href="#ln-910"></a><span class="s2">        real(real64), allocatable, optional, intent(out) :: shift_vectors(:, :)</span>
-<a id="ln-911" name="ln-911" href="#ln-911"></a><span class="s2">        !! Shift vectors array, will be populated if provided</span>
-<a id="ln-912" name="ln-912" href="#ln-912"></a><span class="s2">        integer(int32), allocatable, optional, intent(out) :: gene_to_family(:)</span>
-<a id="ln-913" name="ln-913" href="#ln-913"></a><span class="s2">        !! Gene to family mapping array, will be populated if provided</span>
-<a id="ln-914" name="ln-914" href="#ln-914"></a><span class="s2">        character(len=:), allocatable, optional, intent(out) :: gene_ids_file</span>
-<a id="ln-915" name="ln-915" href="#ln-915"></a><span class="s2">        !! Name of the gene ids file in the zip archive</span>
-<a id="ln-916" name="ln-916" href="#ln-916"></a><span class="s2">        character(len=:), allocatable, optional, intent(out) :: expression_file</span>
-<a id="ln-917" name="ln-917" href="#ln-917"></a><span class="s2">        !! Name of the expression vectors file in the zip archive</span>
-<a id="ln-918" name="ln-918" href="#ln-918"></a><span class="s2">        character(len=:), allocatable, optional, intent(out) :: gene_to_family_file</span>
-<a id="ln-919" name="ln-919" href="#ln-919"></a><span class="s2">        !! Name of the gene to family mapping file in the zip archive</span>
-<a id="ln-920" name="ln-920" href="#ln-920"></a><span class="s2">        character(len=:), allocatable, optional, intent(out) :: family_ids_file</span>
-<a id="ln-921" name="ln-921" href="#ln-921"></a><span class="s2">        !! Name of the family ids file in the zip archive</span>
-<a id="ln-922" name="ln-922" href="#ln-922"></a><span class="s2">        character(len=:), allocatable, optional, intent(out) :: family_centroids_file</span>
-<a id="ln-923" name="ln-923" href="#ln-923"></a><span class="s2">        !! Name of the family centroids file in the zip archive</span>
-<a id="ln-924" name="ln-924" href="#ln-924"></a><span class="s2">        character(len=:), allocatable, optional, intent(out) :: shift_vectors_file</span>
-<a id="ln-925" name="ln-925" href="#ln-925"></a><span class="s2">        !! Name of the shift vectors file in the zip archive</span>
+<a id="ln-900" name="ln-900" href="#ln-900"></a><span class="s2">        character(len=:), allocatable, optional, intent(out) :: gene_ids(:)</span>
+<a id="ln-901" name="ln-901" href="#ln-901"></a><span class="s2">        !! Gene IDs array, will be populated if provided</span>
+<a id="ln-902" name="ln-902" href="#ln-902"></a><span class="s2">        character(len=:), allocatable, optional, intent(out) :: family_ids(:)</span>
+<a id="ln-903" name="ln-903" href="#ln-903"></a><span class="s2">        !! Family IDs array, will be populated if provided</span>
+<a id="ln-904" name="ln-904" href="#ln-904"></a><span class="s2">        real(real64), allocatable, optional, intent(out) :: expression(:, :)</span>
+<a id="ln-905" name="ln-905" href="#ln-905"></a><span class="s2">        !! Expression vectors array, will be populated if provided</span>
+<a id="ln-906" name="ln-906" href="#ln-906"></a><span class="s2">        real(real64), allocatable, optional, intent(out) :: family_centroids(:, :)</span>
+<a id="ln-907" name="ln-907" href="#ln-907"></a><span class="s2">        !! Family centroids array, will be populated if provided</span>
+<a id="ln-908" name="ln-908" href="#ln-908"></a><span class="s2">        real(real64), allocatable, optional, intent(out) :: shift_vectors(:, :)</span>
+<a id="ln-909" name="ln-909" href="#ln-909"></a><span class="s2">        !! Shift vectors array, will be populated if provided</span>
+<a id="ln-910" name="ln-910" href="#ln-910"></a><span class="s2">        integer(int32), allocatable, optional, intent(out) :: gene_to_family(:)</span>
+<a id="ln-911" name="ln-911" href="#ln-911"></a><span class="s2">        !! Gene to family mapping array, will be populated if provided</span>
+<a id="ln-912" name="ln-912" href="#ln-912"></a><span class="s2">        character(len=:), allocatable, optional, intent(out) :: gene_ids_file</span>
+<a id="ln-913" name="ln-913" href="#ln-913"></a><span class="s2">        !! Name of the gene ids file in the zip archive</span>
+<a id="ln-914" name="ln-914" href="#ln-914"></a><span class="s2">        character(len=:), allocatable, optional, intent(out) :: expression_file</span>
+<a id="ln-915" name="ln-915" href="#ln-915"></a><span class="s2">        !! Name of the expression vectors file in the zip archive</span>
+<a id="ln-916" name="ln-916" href="#ln-916"></a><span class="s2">        character(len=:), allocatable, optional, intent(out) :: gene_to_family_file</span>
+<a id="ln-917" name="ln-917" href="#ln-917"></a><span class="s2">        !! Name of the gene to family mapping file in the zip archive</span>
+<a id="ln-918" name="ln-918" href="#ln-918"></a><span class="s2">        character(len=:), allocatable, optional, intent(out) :: family_ids_file</span>
+<a id="ln-919" name="ln-919" href="#ln-919"></a><span class="s2">        !! Name of the family ids file in the zip archive</span>
+<a id="ln-920" name="ln-920" href="#ln-920"></a><span class="s2">        character(len=:), allocatable, optional, intent(out) :: family_centroids_file</span>
+<a id="ln-921" name="ln-921" href="#ln-921"></a><span class="s2">        !! Name of the family centroids file in the zip archive</span>
+<a id="ln-922" name="ln-922" href="#ln-922"></a><span class="s2">        character(len=:), allocatable, optional, intent(out) :: shift_vectors_file</span>
+<a id="ln-923" name="ln-923" href="#ln-923"></a><span class="s2">        !! Name of the shift vectors file in the zip archive</span>
+<a id="ln-924" name="ln-924" href="#ln-924"></a><span class="s2">        integer(int32), intent(out) :: ierr</span>
+<a id="ln-925" name="ln-925" href="#ln-925"></a><span class="s2">        !! Error code</span>
 <a id="ln-926" name="ln-926" href="#ln-926"></a>
 <a id="ln-927" name="ln-927" href="#ln-927"></a><span class="s2">        character(len=:), allocatable :: keys(:), filenames(:)</span>
 <a id="ln-928" name="ln-928" href="#ln-928"></a><span class="s2">        integer(int32) :: i_key, type_code</span>
@@ -1555,7 +1555,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-10-08 18:38 +0000             </p>
+ on 2026-10-26 09:16 +0000             </p>
           </div>
         </div>
         <br>

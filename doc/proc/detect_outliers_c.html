@@ -150,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public  subroutine detect_outliers_c(n_genes, n_families, distances, gene_to_fam, is_outlier, loess_x, loess_y, loess_n, tail_probability, ierr, quantile_level) bind(C, name="detect_outliers_c")  
+    <h2>public  subroutine detect_outliers_c(n_genes, n_families, distances, gene_to_fam, is_outlier, loess_x, loess_y, loess_n, tail_probability, quantile_level, ierr) bind(C, name="detect_outliers_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -185,7 +185,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~107"></span>
+              <span class="anchor" id="variable-n_genes~8"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -200,7 +200,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~39"></span>
+              <span class="anchor" id="variable-n_families~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -215,7 +215,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~27"></span>
+              <span class="anchor" id="variable-distances~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -232,7 +232,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~44"></span>
+              <span class="anchor" id="variable-gene_to_fam~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -247,7 +247,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-is_outlier~7"></span>
+              <span class="anchor" id="variable-is_outlier~2"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(out),</td>
@@ -262,7 +262,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_x~9"></span>
+              <span class="anchor" id="variable-loess_x~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -272,12 +272,13 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>loess_x</strong></td>
             <td>
-                <p>Reference x-coordinates.</p>
+                <p>Mean distance of each family in the LOESS fit of the family scaling, packed at the
+front in the order of <code>loess_n</code>. The remaining slots hold <code>-1</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_y~9"></span>
+              <span class="anchor" id="variable-loess_y~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -287,12 +288,13 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>loess_y</strong></td>
             <td>
-                <p>Reference y-coordinates (length n_total).</p>
+                <p>Standard deviation of the distances of each family in that fit, packed like
+<code>loess_x</code>. The remaining slots hold <code>-1</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_n~4"></span>
+              <span class="anchor" id="variable-loess_n"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -302,12 +304,14 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>loess_n</strong></td>
             <td>
-                <p>Indices of reference points used for smoothing.</p>
+                <p>Family index of each point in that fit, packed at the front. Families with a single
+member, and those with the lowest spread, are left out of the fit; the remaining
+slots hold <code>0</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tail_probability~12"></span>
+              <span class="anchor" id="variable-tail_probability~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -325,22 +329,7 @@ upper-tail probability is used.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~398"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-                <p>Error code</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-quantile_level~8"></span>
+              <span class="anchor" id="variable-quantile_level~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -354,6 +343,21 @@ upper-tail probability is used.</p>
 The default value is <code>0.95_real64</code>.
 The minimum valid value is <code>0.0_real64</code>.
 The maximum valid value is <code>1.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~49"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -390,7 +394,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-10-08 18:38 +0000             </p>
+ on 2026-10-26 09:16 +0000             </p>
           </div>
         </div>
         <br>

@@ -92,6 +92,27 @@
 <li><strong>Robust to sparsity and noise</strong>: percentile-based empirical thresholds and local geometric measures enable stability.</li>
 <li><strong>Broad applications</strong>: demonstrated on medical biomarker discovery, gene duplication outcomes, developmental trajectories, and socioeconomic indicators.</li>
 </ul>
+<h2>How the API is shaped</h2>
+<p>Every procedure has one name in Fortran, Python and R. From C you call it by that name with the suffix <code>_c</code> (<code>compute_rdi_c</code>): a C-compatible Fortran wrapper, kept in a module whose name ends in <code>_c</code> as well. That is why these pages list a module up to three times: <code>tox_get_outliers_impl</code> holds the implementation, <code>tox_get_outliers</code> is the Fortran API and <code>tox_get_outliers_c</code> the C API. A procedure whose name ends in <code>_impl</code> is never published, because it skips all input validation. A procedure's documentation, found on these pages, is its documentation in every language.</p>
+<p><strong>Two tiers, where there is something to take over.</strong> <code>foo</code> is the entry point to reach for first: it validates its arguments, allocates the work arrays and prepares what it can derive itself (a sorted permutation, a workspace size, a threshold), then computes. <code>foo_expert</code>, where it exists, validates and computes with what you hand it. It allocates nothing and prepares nothing, so you can reuse your own buffers or supply a different sort order. Fortran and C always get both tiers. Python and R get the expert tier only where it offers more than buffers: their <code>foo</code> calls the library's <code>foo</code>, which allocates its own work arrays, so an expert tier that only takes buffers would save them nothing.</p>
+<p><strong>The calling language allocates the outputs.</strong> No procedure allocates an array and hands it back. In Fortran and C you pass the output arrays in. In Python and R the binding allocates them as NumPy arrays or R vectors before the call, and the library writes into that memory directly. Every result is therefore an ordinary object of your language: its garbage collector frees it, and there is nothing to release by hand. The only memory the library allocates itself is scratch space inside <code>foo</code>, and it is released before <code>foo</code> returns.</p>
+<p>This is deliberate. An all-in-one entry point that allocates its outputs inside the library and returns them would save the bindings a few lines. But memory the library allocated must also be freed by the library, so every language would need its own finaliser calling back into it, or a copy of each result into a native array. The cleanup would still be needed, only harder to get right and in more places.</p>
+<h3>In every language</h3>
+<p><strong>Errors come back in <code>ierr</code>,</strong> the last argument of every procedure. <code>0</code> is success. Anything else is <code>10000*arg_pos + code</code>: the last four digits are the code, which names the failure (1xx input and output, 2xx invalid input, 3xx memory, 5xxx Fortran runtime, 9xxx internal), and the digits before them are <code>arg_pos</code>, the argument to blame, counted in the Fortran signature and <code>0</code> when no argument is at fault. Python turns it into an exception derived from <code>ToxError</code> (<code>ToxInputError</code>, <code>ToxIOError</code>, ...) and R into a condition of class <code>tox_error</code> (<code>tox_input_error</code>, ...), both naming the argument.</p>
+<p><strong>Indices are 1-based,</strong> as in Fortran: family indices and permutations alike. Where an index can be "none", its value is <code>0</code>, such as a gene that belongs to no family.</p>
+<p><strong>Results never contain NaN.</strong> Where an output value is undefined, the documentation of that output names a sentinel outside the range the quantity can take, such as <code>-1</code> for a distance that was not measured. A NaN in a result is a bug; please report it. On input, NaN and infinite values are rejected unless an argument's documentation says they are permitted.</p>
+<h3>From C</h3>
+<p>Link against <code>libtensor_omics.so</code>. No header is shipped; the prototypes follow from the <code>_c</code> modules on these pages.</p>
+<ul>
+<li>Every argument is passed by pointer. The types are <code>double</code>, <code>int</code> (32 bit), <code>bool</code> (<code>_Bool</code>) and <code>char</code>.</li>
+<li>Arrays are column-major, as in Fortran. Their extents are arguments: either named ones such as <code>n_genes</code>, or <code>n_&lt;name&gt;_elements</code> right after the array. Arrays that share an extent must agree on it; the C layer does not check that, Python and R do.</li>
+<li>A string is a <code>char</code> buffer followed by its width, <code>&lt;name&gt;_strlen</code>. An array of strings is one column-major block of equally wide strings, followed by <code>&lt;name&gt;_strlen</code> and <code>n_&lt;name&gt;_elements</code>. <strong>Pad with blanks, do not terminate with NUL</strong>: <code>"genes.tsv"</code> in a <code>char[16]</code> passes a filename that ends in NULs. Fill an output buffer with blanks before the call and trim the trailing blanks from what comes back, so a value that itself ends in blanks does not survive the trip. Mode arguments (<code>mode</code>, <code>method</code>) are the exception and accept either convention.</li>
+<li>An optional argument without a default is absent when you pass <code>NULL</code>. An argument with a default is required in C, and its documentation states the default.</li>
+<li><code>foo_expert_c</code> takes the workspace sizes that <code>foo_c</code> computes for you. The documentation of each size names the routine that computes it.</li>
+<li>An output whose valid length is known only after the call has its full size, and a count argument says how much of it is valid, such as <code>n_unique</code>. Python and R return only the valid part.</li>
+</ul>
+<h3>From Python and R</h3>
+<p>Python finds the library through <code>TENSOR_OMICS_LIBRARY</code> or at <code>build/libtensor_omics.so</code>, and R loads it with <code>r/load_tensor_omics.R</code>. Neither asks for an extent that follows from the arrays you pass, nor for workspace sizes or string widths. An extent that only sizes an output, such as <code>n_families</code>, is still an argument. Python passes arrays to the library in column-major order, so a row-major NumPy array is copied first; pass <code>np.asfortranarray</code> data to avoid that for large inputs. Python results are read-only: <code>.copy()</code> one to modify it. An argument the procedure changes in place is changed in place in Python and returned as a new value in R.</p>
 <p><em>Tensor Omics shows that geometry, when treated not as preprocessing but as the central instrument of analysis, can open entirely new ways to read complex biological and social data — simple, transparent, and surprisingly powerful.</em></p>
         </div>
       </div>
@@ -157,7 +178,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-10-08 18:38 +0000             </p>
+ on 2026-10-26 09:16 +0000             </p>
           </div>
         </div>
         <br>

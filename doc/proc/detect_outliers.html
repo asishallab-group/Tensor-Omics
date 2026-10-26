@@ -150,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public  subroutine detect_outliers(n_genes, n_families, distances, gene_to_fam, is_outlier, loess_x, loess_y, loess_n, tail_probability, ierr, quantile_level)  
+    <h2>public  subroutine detect_outliers(n_genes, n_families, distances, gene_to_fam, is_outlier, loess_x, loess_y, loess_n, tail_probability, quantile_level, ierr)  
 </h2>
     
 
@@ -173,7 +173,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~26"></span>
+              <span class="anchor" id="variable-n_genes~78"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -188,7 +188,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~3"></span>
+              <span class="anchor" id="variable-n_families~26"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -203,7 +203,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~6"></span>
+              <span class="anchor" id="variable-distances~16"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -220,7 +220,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~5"></span>
+              <span class="anchor" id="variable-gene_to_fam~26"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -235,7 +235,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-is_outlier~2"></span>
+              <span class="anchor" id="variable-is_outlier~5"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(out),</td>
@@ -250,7 +250,7 @@ Infinite values are permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_x~3"></span>
+              <span class="anchor" id="variable-loess_x~7"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -260,12 +260,13 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>loess_x</strong></td>
             <td>
-                <p>Reference x-coordinates.</p>
+                <p>Mean distance of each family in the LOESS fit of the family scaling, packed at the
+front in the order of <code>loess_n</code>. The remaining slots hold <code>-1</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_y~3"></span>
+              <span class="anchor" id="variable-loess_y~7"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -275,12 +276,13 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>loess_y</strong></td>
             <td>
-                <p>Reference y-coordinates (length n_total).</p>
+                <p>Standard deviation of the distances of each family in that fit, packed like
+<code>loess_x</code>. The remaining slots hold <code>-1</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_n"></span>
+              <span class="anchor" id="variable-loess_n~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -290,12 +292,14 @@ Infinite values are permitted for this value.</p>
             <td>::</td>
             <td><strong>loess_n</strong></td>
             <td>
-                <p>Indices of reference points used for smoothing.</p>
+                <p>Family index of each point in that fit, packed at the front. Families with a single
+member, and those with the lowest spread, are left out of the fit; the remaining
+slots hold <code>0</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tail_probability~2"></span>
+              <span class="anchor" id="variable-tail_probability~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -313,22 +317,7 @@ upper-tail probability is used.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~59"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-                <p>Error code</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-quantile_level~2"></span>
+              <span class="anchor" id="variable-quantile_level~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -342,6 +331,21 @@ upper-tail probability is used.</p>
 The default value is <code>0.95_real64</code>.
 The minimum valid value is <code>0.0_real64</code>.
 The maximum valid value is <code>1.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~282"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -378,7 +382,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-10-08 18:38 +0000             </p>
+ on 2026-10-26 09:16 +0000             </p>
           </div>
         </div>
         <br>
