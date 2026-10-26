@@ -36,12 +36,12 @@ _lib.read_expression_vectors_tsv_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(ndim=1),
+    ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_READ_EXPRESSION_VECTORS_TSV_ARGUMENTS = ("file_list", "gene_ids", "expression_vectors", "n_header_rows", "gene_col", "value_cols", "start_row", "ierr", "delimiter",)
+_READ_EXPRESSION_VECTORS_TSV_ARGUMENTS = ("file_list", "gene_ids", "expression_vectors", "n_header_rows", "gene_col", "value_cols", "start_row", "delimiter", "ierr",)
 
 _lib.read_gene_ids_from_tsv_file_c.restype = None
 _lib.read_gene_ids_from_tsv_file_c.argtypes = (
@@ -192,8 +192,8 @@ def read_expression_vectors_tsv(
         value_cols,
         ctypes.byref(ctypes.c_int(n_value_cols_elements)),
         ctypes.byref(ctypes.c_int(start_row)),
-        ctypes.byref(ierr),
         delimiter,
+        ctypes.byref(ierr),
     )
 
     check_err_code(ierr.value, _READ_EXPRESSION_VECTORS_TSV_ARGUMENTS)

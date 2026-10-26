@@ -43,7 +43,6 @@ _lib.save_tox_data_c.restype = None
 _lib.save_tox_data_c.argtypes = (
     np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
     nullable(np.ctypeslib.ndpointer(ndim=1)),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
@@ -73,10 +72,11 @@ _lib.save_tox_data_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     nullable(np.ctypeslib.ndpointer(ndim=1)),
     ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_SAVE_TOX_DATA_ARGUMENTS = ("zip_filename", "ierr", "gene_ids", "gene_ids_file", "expression", "expression_file", "gene_to_family", "gene_to_family_file", "family_ids", "family_ids_file", "family_centroids", "family_centroids_file", "shift_vectors", "shift_vectors_file",)
+_SAVE_TOX_DATA_ARGUMENTS = ("zip_filename", "gene_ids", "gene_ids_file", "expression", "expression_file", "gene_to_family", "gene_to_family_file", "family_ids", "family_ids_file", "family_centroids", "family_centroids_file", "shift_vectors", "shift_vectors_file", "ierr",)
 
 _lib.get_tox_data_dims_c.restype = None
 _lib.get_tox_data_dims_c.argtypes = (
@@ -350,7 +350,6 @@ def save_tox_data(
     _lib.save_tox_data_c(
         zip_filename,
         ctypes.byref(ctypes.c_int(zip_filename_strlen)),
-        ctypes.byref(ierr),
         gene_ids,
         ctypes.byref(ctypes.c_int(gene_ids_strlen)),
         ctypes.byref(ctypes.c_int(n_gene_ids_elements)),
@@ -380,6 +379,7 @@ def save_tox_data(
         ctypes.byref(ctypes.c_int(n_shift_vectors_elements_dim_2)),
         shift_vectors_file,
         ctypes.byref(ctypes.c_int(shift_vectors_file_strlen)),
+        ctypes.byref(ierr),
     )
 
     check_err_code(ierr.value, _SAVE_TOX_DATA_ARGUMENTS)

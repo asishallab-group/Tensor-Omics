@@ -430,7 +430,7 @@ contains
     !| AUTHOR_AARON_SCHROEDER
     subroutine validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids, &
                                  gene_to_fam, expression_vectors, family_centroids, &
-                                 shift_vectors, ierr, check_uniqueness, check_shift_consistency)
+                                 shift_vectors, check_uniqueness, check_shift_consistency, ierr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes
         integer(int32), intent(in) :: n_families
@@ -449,14 +449,14 @@ contains
             !! family centroids
         real(real64), intent(in) :: shift_vectors(:, :)
             !! shift vectors
-        integer(int32), intent(out) :: ierr
-            !! error code
         logical(c_bool), intent(in), optional :: check_uniqueness
             !! Check ID arrays for uniqueness.
             !! DM_DEFAULT(.true.)
         logical(c_bool), intent(in), optional :: check_shift_consistency
             !! Check consitency of shift array.
             !! DM_DEFAULT(.true.)
+        integer(int32), intent(out) :: ierr
+            !! error code
 
         logical(c_bool) :: do_check_uniqueness, do_check_shift_consistency
 

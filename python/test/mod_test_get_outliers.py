@@ -415,5 +415,22 @@ def test_detect_outliers_edge_cases():
     assert len(result['loess_x']) == 3
 
 
+def test_detect_outliers_unused_loess_slots_hold_sentinel():
+    """Slots of loess_x / loess_y that no family occupies hold -1, never NaN (#180)"""
+    rng = np.random.default_rng(4)
+    n_families = 40
+    sizes = [1, 1, 1] + [6] * (n_families - 3)  # three one-member families
+    gene_to_fam = np.repeat(np.arange(1, n_families + 1), sizes).astype(np.int32)
+    distances = rng.lognormal(0.0, 0.5, size=len(gene_to_fam))
+
+    result = _detect_outliers(n_families, distances, gene_to_fam)
+
+    unused = result['loess_n'] == 0
+    assert unused.sum() >= 3, "the three one-member families leave slots unused"
+    for key in ('loess_x', 'loess_y'):
+        assert not np.isnan(result[key]).any(), f"{key} contains NaN"
+        assert np.all(result[key][unused] == -1.0), f"{key}: unused slots must hold -1"
+        assert np.all(result[key][~unused] >= 0.0), f"{key}: used slots must be non-negative"
+
 if __name__ == '__main__':
     run_all_tests(globals().values())

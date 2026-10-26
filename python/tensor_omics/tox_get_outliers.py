@@ -93,12 +93,12 @@ _lib.detect_outliers_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_DETECT_OUTLIERS_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "is_outlier", "loess_x", "loess_y", "loess_n", "tail_probability", "ierr", "quantile_level",)
+_DETECT_OUTLIERS_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "is_outlier", "loess_x", "loess_y", "loess_n", "tail_probability", "quantile_level", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _DETECT_OUTLIERS_ARGUMENT_SOURCES = ("distances", "loess_x", None, None, None, None, None, None, None, None, None,)
 
@@ -135,6 +135,8 @@ def compute_family_scaling(
     degree : int, optional, default 2
         Degree of the LOESS polynomial
         The default value is `2`.
+        The minimum valid value is `0`.
+        The maximum valid value is `2`.
     mode : str, one of 'plain' | 'robust', optional, default 'robust'
         Mode for LOESS fitting
         The default value is `'robust'`.
@@ -152,13 +154,17 @@ def compute_family_scaling(
             Array of scaling factors per family (output)
             A result is a value; call `.copy()` to obtain a modifiable array.
         loess_x : np.ndarray[np.float64] of shape (n_families,), read-only
-            Reference x-coordinates for LOESS smoothing
+            Mean distance of each family in the LOESS fit, packed at the front in the order of
+            `indices_used`. The remaining slots hold `-1`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         loess_y : np.ndarray[np.float64] of shape (n_families,), read-only
-            Reference y-coordinates for LOESS smoothing
+            Standard deviation of the distances of each family in the LOESS fit, packed like
+            `loess_x`. The remaining slots hold `-1`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         indices_used : np.ndarray[np.int32] of shape (n_families,), read-only
-            Indices of reference points used for smoothing
+            Family index of each point in the LOESS fit, packed at the front. Families with a
+            single member, and those with the lowest spread, are left out of the fit; the
+            remaining slots hold `0`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         low_sd_cutoff : float
             cutoff used to filter families with low std
@@ -510,13 +516,17 @@ def detect_outliers(
             Output boolean array indicating outliers
             A result is a value; call `.copy()` to obtain a modifiable array.
         loess_x : np.ndarray[np.float64] of shape (n_families,), read-only
-            Reference x-coordinates.
+            Mean distance of each family in the LOESS fit of the family scaling, packed at the
+            front in the order of `loess_n`. The remaining slots hold `-1`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         loess_y : np.ndarray[np.float64] of shape (n_families,), read-only
-            Reference y-coordinates (length n_total).
+            Standard deviation of the distances of each family in that fit, packed like
+            `loess_x`. The remaining slots hold `-1`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         loess_n : np.ndarray[np.int32] of shape (n_families,), read-only
-            Indices of reference points used for smoothing.
+            Family index of each point in that fit, packed at the front. Families with a single
+            member, and those with the lowest spread, are left out of the fit; the remaining
+            slots hold `0`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         tail_probability : np.ndarray[np.float64] of shape (n_genes,), read-only
             Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
@@ -576,8 +586,8 @@ def detect_outliers(
         loess_y,
         loess_n,
         tail_probability,
-        ctypes.byref(ierr),
         ctypes.byref(ctypes.c_double(quantile_level)),
+        ctypes.byref(ierr),
     )
 
     check_err_code(ierr.value, _DETECT_OUTLIERS_ARGUMENTS, _DETECT_OUTLIERS_ARGUMENT_SOURCES)

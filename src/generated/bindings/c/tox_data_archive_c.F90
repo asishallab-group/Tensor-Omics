@@ -91,7 +91,6 @@ contains
     subroutine save_tox_data_c(&
             zip_filename,&
             zip_filename_strlen,&
-            ierr,&
             gene_ids,&
             gene_ids_strlen,&
             n_gene_ids_elements,&
@@ -120,7 +119,8 @@ contains
             n_shift_vectors_elements_dim_1,&
             n_shift_vectors_elements_dim_2,&
             shift_vectors_file,&
-            shift_vectors_file_strlen&
+            shift_vectors_file_strlen,&
+            ierr&
         ) bind(C, name="save_tox_data_c")
         use tox_data_archive, only: save_tox_data
 
@@ -162,8 +162,6 @@ contains
             !! length of the strings in `shift_vectors_file`
         character(len=1, kind=c_char), dimension(zip_filename_strlen), intent(in), target :: zip_filename
             !! Zip filename
-        integer(c_int), intent(out), target :: ierr
-            !! Error code
         character(len=1, kind=c_char), dimension(gene_ids_strlen, n_gene_ids_elements), intent(in), optional, target :: gene_ids
             !! Gene ids array, will be saved if provided
         character(len=1, kind=c_char), dimension(gene_ids_file_strlen), intent(in), optional, target :: gene_ids_file
@@ -188,6 +186,8 @@ contains
             !! Shift vectors array, will be saved if provided
         character(len=1, kind=c_char), dimension(shift_vectors_file_strlen), intent(in), optional, target :: shift_vectors_file
             !! Name of the shift vectors file
+        integer(c_int), intent(out), target :: ierr
+            !! Error code
         character(len=zip_filename_strlen), pointer :: zip_filename_f
         character(len=gene_ids_strlen), pointer, dimension(:) :: gene_ids_f
         character(len=gene_ids_file_strlen), pointer :: gene_ids_file_f
@@ -265,7 +265,6 @@ contains
 
         call save_tox_data(&
             zip_filename = zip_filename_f,&
-            ierr = ierr,&
             gene_ids = gene_ids_f,&
             gene_ids_file = gene_ids_file_f,&
             expression = expression,&
@@ -277,7 +276,8 @@ contains
             family_centroids = family_centroids,&
             family_centroids_file = family_centroids_file_f,&
             shift_vectors = shift_vectors,&
-            shift_vectors_file = shift_vectors_file_f&
+            shift_vectors_file = shift_vectors_file_f,&
+            ierr = ierr&
         )
     end subroutine save_tox_data_c
 

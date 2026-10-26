@@ -50,7 +50,7 @@ contains
     !| summary: Read expression vectors from csv/tsv files
     !| AUTHOR_AARON_SCHROEDER
     subroutine read_expression_vectors_tsv(file_list, gene_ids, expression_vectors, &
-                                           n_header_rows, gene_col, value_cols, start_row, ierr, delimiter)
+                                           n_header_rows, gene_col, value_cols, start_row, delimiter, ierr)
         use f42_xxh3_hashmap
         use ieee_arithmetic, only: ieee_is_finite
         character(len=*), intent(in) :: file_list(:)
@@ -67,11 +67,11 @@ contains
             !! Indicies of columns containing values
         integer(int32), intent(in) :: start_row
             !! Row in the expression vectors to start in
-        integer(int32), intent(out) :: ierr
-            !! Error code
         character(len=1), intent(in), optional :: delimiter
             !! optional delimiter
             !! DM_DEFAULT(char(9))
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
         integer(int32) :: i, j, k, unit, ios, idx, n_genes, expected_idx, n_value_cols
         integer(int32) :: current_sample, n_columns_in_file, n_valid_cols
@@ -153,7 +153,7 @@ contains
                 return
             end if
 
-            call split_string(line, test_fields, ierr, actual_delimiter)
+            call split_string(line, test_fields, actual_delimiter, ierr)
             n_columns_in_file = size(test_fields)
 
             ! Rewind to beginning of data section so the main read loop below re-reads (rather
@@ -206,7 +206,7 @@ contains
                     RETURN
                 end if
 
-                call split_string(line, fields, ierr, actual_delimiter)
+                call split_string(line, fields, actual_delimiter, ierr)
                 if (size(fields) < max(gene_col, maxval(valid_cols(1:n_valid_cols)))) then
                     if (DEBUG) print *, 'Invalid input:'
                     if (DEBUG) print *, 'size: ', size(fields)
@@ -307,7 +307,7 @@ contains
                 return
             end if
 
-            call split_string(line, fields, ierr, char(9))
+            call split_string(line, fields, char(9), ierr)
             if (size(fields) < gene_col) cycle
 
             gene_ids(row_count) = trim(adjustl(fields(gene_col)))
@@ -381,7 +381,7 @@ contains
 
             fam_idx = fam_idx + 1
 
-            call split_string(line, fields, ierr, char(9))
+            call split_string(line, fields, char(9), ierr)
 
             if (size(fields) < 2) then
                 if (DEBUG) write (*, *) 'Warning: Skipping invalid line (less than 2 fields).'
@@ -394,7 +394,7 @@ contains
 
             ! Process all gene columns with Hashmap-Lookup
             do i = 2, size(fields)
-                call split_string(fields(i), genes, ierr, ',')
+                call split_string(fields(i), genes, ',', ierr)
                 if (is_err(ierr)) then
                     call hashmap_destroy(gene_map)
                     close (unit)
@@ -420,7 +420,7 @@ contains
 
     !> AUTHOR_AARON_SCHROEDER
     !| Helper subroutine to split strings
-    subroutine split_string(input, output, ierr, delimiter)
+    subroutine split_string(input, output, delimiter, ierr)
         character(len=*), intent(in) :: input
         !! Input string to split
         character(len=:), allocatable, intent(out) :: output(:)

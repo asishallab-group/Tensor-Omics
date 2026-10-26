@@ -9,7 +9,7 @@
 void compute_family_scaling_c(const int*, const int*, const double*, const int*, double*, double*, double*, int*, const double*, const int*, const char*, const int*, double*, int*, int*);
 void compute_rdi_c(const int*, const double*, const int*, const double*, const int*, double*, double*, int*, int*);
 void identify_outliers_c(const int*, const double*, const double*, const int*, unsigned char*, double*, double*, const double*, int*);
-void detect_outliers_c(const int*, const int*, const double*, const int*, unsigned char*, double*, double*, int*, double*, int*, const double*);
+void detect_outliers_c(const int*, const int*, const double*, const int*, unsigned char*, double*, double*, int*, double*, const double*, int*);
 
 SEXP compute_family_scaling_call(SEXP n_families, SEXP distances, SEXP gene_to_fam, SEXP span, SEXP degree, SEXP mode, SEXP n_iters) {
     int nprot = 0;
@@ -183,8 +183,8 @@ SEXP detect_outliers_call(SEXP n_families, SEXP distances, SEXP gene_to_fam, SEX
         REAL(loess_y),
         INTEGER(loess_n),
         REAL(tail_probability),
-        &ierr,
-        &quantile_level_v
+        &quantile_level_v,
+        &ierr
     );
 
     // convert the outputs back
