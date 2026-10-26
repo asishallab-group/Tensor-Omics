@@ -26,7 +26,7 @@ read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors,
     start_row <- .tox_as_integer_scalar(start_row, "start_row")
     delimiter <- .tox_as_character(delimiter, "delimiter")
     .result <- .Call("read_expression_vectors_tsv_call", file_list, gene_ids, expression_vectors, n_header_rows, gene_col, value_cols, start_row, delimiter)
-    .arguments <- c("file_list", "gene_ids", "expression_vectors", "n_header_rows", "gene_col", "value_cols", "start_row", "ierr", "delimiter")
+    .arguments <- c("file_list", "gene_ids", "expression_vectors", "n_header_rows", "gene_col", "value_cols", "start_row", "delimiter", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
 
     .result$expression_vectors

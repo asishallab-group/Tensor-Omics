@@ -333,7 +333,7 @@ contains
         ! Median of sorted array above = 0.5 * (sorted(12) + sorted(13)) = 5.5
         !
         q = 0.5_real64
-        call determine_study_shared_residual_range(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr, residual_range_quantile=q)
+        call determine_study_shared_residual_range(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr, residual_range_quantile_level=q)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_determine_shared_residual_range: Test 2: ierr should be OK")
         call assert_equal_real(R, 4.0_real64, TOL, "test_determine_shared_residual_range: Test 2: R should be 4.0")
 
@@ -341,14 +341,14 @@ contains
         ! Test 3 — Quantile < 0 → error
         ! ============================================================
         q = below(0.0_real64)
-        call determine_study_shared_residual_range(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr, residual_range_quantile=q)
+        call determine_study_shared_residual_range(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr, residual_range_quantile_level=q)
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_determine_shared_residual_range: Test 3: ierr should be INVALID_INPUT")
 
         ! ============================================================
         ! Test 4 — Quantile > 1 → error
         ! ============================================================
         q = above(1.0_real64)
-        call determine_study_shared_residual_range(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr, residual_range_quantile=q)
+        call determine_study_shared_residual_range(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr, residual_range_quantile_level=q)
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_determine_shared_residual_range: Test 4: ierr should be INVALID_INPUT")
 
         ! ============================================================

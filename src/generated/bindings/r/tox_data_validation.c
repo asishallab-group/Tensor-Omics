@@ -12,7 +12,7 @@ void validate_expression_data_c(const double*, const int*, const int*, const uns
 void validate_family_centroids_c(const double*, const int*, const int*, int*);
 void validate_shift_vectors_c(const double*, const int*, const int*, const double*, const int*, const int*, const double*, const int*, const int*, const int*, const int*, const int*, int*);
 void validate_string_array_uniqueness_c(const char*, const int*, const int*, int*);
-void validate_all_data_c(const int*, const int*, const int*, const char*, const int*, const int*, const char*, const int*, const int*, const int*, const int*, const double*, const int*, const int*, const double*, const int*, const int*, const double*, const int*, const int*, int*, const unsigned char*, const unsigned char*);
+void validate_all_data_c(const int*, const int*, const int*, const char*, const int*, const int*, const char*, const int*, const int*, const int*, const int*, const double*, const int*, const int*, const double*, const int*, const int*, const double*, const int*, const int*, const unsigned char*, const unsigned char*, int*);
 
 SEXP validate_data_structure_call(SEXP n_genes, SEXP n_families, SEXP n_samples, SEXP gene_ids, SEXP gene_family_ids, SEXP gene_to_fam, SEXP expression_vectors, SEXP family_centroids, SEXP shift_vectors) {
     int nprot = 0;
@@ -275,9 +275,9 @@ SEXP validate_all_data_call(SEXP n_genes, SEXP n_families, SEXP n_samples, SEXP 
         REAL(shift_vectors),
         &n_shift_vectors_elements_dim_1,
         &n_shift_vectors_elements_dim_2,
-        &ierr,
         &check_uniqueness_v,
-        &check_shift_consistency_v
+        &check_shift_consistency_v,
+        &ierr
     );
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 1)); nprot++;

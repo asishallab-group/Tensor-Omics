@@ -3,7 +3,7 @@ program main
     use, intrinsic :: iso_fortran_env, only: int32
     use test_suite
     use mod_test_compute_edf, only: get_all_tests_compute_edf
-    use mod_test_percentile, only: get_all_tests_percentile
+    use mod_test_quantile, only: get_all_tests_quantile
     use mod_test_bst, only: get_all_tests_bst
     use mod_test_kd_tree, only: get_all_tests_kd_tree
     use mod_test_sorting, only: get_all_tests_sorting
@@ -34,7 +34,7 @@ program main
     use mod_test_data_integration, only: get_all_tests_data_integration
     use mod_test_binary_search, only: get_all_tests_binary_search
     use mod_test_root_mean_sq_normalization, only: get_all_tests_root_mean_sq_normalization
-    use mod_test_empirical_pvalue, only: get_all_tests_empirical_pvalue
+    use mod_test_tail_probability, only: get_all_tests_tail_probability
     implicit none
 
     integer :: nargs
@@ -44,7 +44,7 @@ program main
     call initialize_suites()
     call add_suite("bst", get_all_tests_bst)
     call add_suite("compute_edf", get_all_tests_compute_edf)
-    call add_suite("percentile", get_all_tests_percentile)
+    call add_suite("quantile", get_all_tests_quantile)
     call add_suite("kd_tree", get_all_tests_kd_tree)
     call add_suite("sorting", get_all_tests_sorting)
     call add_suite("get_outliers", get_all_tests_get_outliers)
@@ -73,7 +73,7 @@ program main
     call add_suite("clustering", get_all_tests_clustering)
     call add_suite("data_integration", get_all_tests_data_integration)
     call add_suite("binary_search", get_all_tests_binary_search)
-    call add_suite("empirical_pvalue", get_all_tests_empirical_pvalue)
+    call add_suite("tail_probability", get_all_tests_tail_probability)
     call add_suite("root_mean_sq_normalization", get_all_tests_root_mean_sq_normalization)
 
     nargs = command_argument_count()
