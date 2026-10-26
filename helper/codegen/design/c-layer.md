@@ -514,6 +514,10 @@ not standard Fortran — `gfortran -std=f2018` rejects `dimension(n)` above `int
 So anything named in someone's extents is hoisted; everything else keeps the author's
 order.
 
+An extent that names no argument is a module constant (`points(N_AXES, n)`), and the wrapper,
+which redeclares every argument but imports only the procedure it calls, imports it from the
+module that defines it, beside the mode parameters (`CWrapper.size_constants`, #221 B13).
+
 ---
 
 ## Decision: a function is exposed as a subroutine

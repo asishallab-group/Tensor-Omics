@@ -172,6 +172,10 @@ implementation is the single statement of the fact, and a `DM_PURE` would be a s
 keep in step. The default is impure, deliberately — claiming purity that is not there is a
 compile error in generated code, while missing it only costs the caller.
 
+`elemental` implies `pure` unless the procedure also says `impure` (F2008), and Ford lists both
+attributes. Reading `elemental` alone as purity is exactly the claim-that-is-not-there case: an
+`impure elemental` implementation got a `pure` wrapper, which does not compile (#221, B17).
+
 ---
 
 ## What an implementation may reach

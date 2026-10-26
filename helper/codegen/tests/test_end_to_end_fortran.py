@@ -5,6 +5,8 @@ other generator test stops at the emitted text. This one compiles the emitted `f
 `foo_expert` against the real `tox_errors` and `f42_sort` and runs them -- the only thing
 that can show that validation rejects what it should, with the argument position the caller
 actually sees, and that `foo` allocates, sorts and computes what the implementation computes.
+The C wrappers are compiled too, because a declaration they cannot compile (an extent naming
+a constant they do not import) is as much a broken wrapper as a wrong answer.
 
 Skipped without gfortran.
 """
@@ -65,8 +67,9 @@ def built(tmp_path_factory):
     impl_dir = REPO_ROOT / FIXTURE_IMPL
 
     result = generate(
-        paths=Paths(root=REPO_ROOT, src_dir=impl_dir, generated_dir=out),
-        targets=("fortran",),
+        paths=Paths(root=REPO_ROOT, src_dir=impl_dir, generated_dir=out,
+                    c_binding_dir=out / "bindings" / "c"),
+        targets=("fortran", "c"),
     )
     # the fixtures are the specification, so they must generate cleanly
     assert result.diagnostics.render() == ""
@@ -75,8 +78,10 @@ def built(tmp_path_factory):
 
     for dependency in DEPENDENCIES:
         _compile(REPO_ROOT / dependency, out, DEPENDENCY_FLAGS)
-    _compile(impl_dir / "fx_ranks_impl.F90", out, WRAPPER_FLAGS)
-    for file in result.files:
+    for impl in sorted(impl_dir.glob("*_impl.F90")):
+        _compile(impl, out, WRAPPER_FLAGS)
+    # the Fortran wrappers first: each C wrapper uses the one it wraps
+    for file in sorted(result.files, key=lambda file: file.path.name.endswith("_c.F90")):
         _compile(file.path, out, WRAPPER_FLAGS)
     return out
 
@@ -101,10 +106,28 @@ end program probe
 """
 
 
-def run_fortran(built: Path, tmp_path: Path, body: str) -> list[str]:
+#: The probe for `fx_shapes_impl`: the extent forms and purities a wrapper must reproduce
+_SHAPES_PROBE = """\
+program probe
+    use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
+    use fx_shapes, only: sum_values, axis_sums, note_value
+    use fx_shapes_impl, only: FX_N_AXES, n_noted
+    implicit none
+    real(real64) :: values(3) = [1.0_real64, 2.0_real64, 4.0_real64]
+    real(real64) :: points(FX_N_AXES, 3) = reshape([1, 10, 2, 20, 3, 30] * 1.0_real64, [FX_N_AXES, 3])
+    real(real64) :: scalar, sums(FX_N_AXES)
+    integer(int32) :: ierr
+
+{body}
+end program probe
+"""
+
+
+def run_fortran(built: Path, tmp_path: Path, body: str, probe: str = _PROBE) -> list[str]:
     """Compile a probe around `body`, link it against `built`, return its output words."""
     source = tmp_path / "probe.F90"
-    source.write_text(_PROBE.format(body=textwrap.indent(textwrap.dedent(body), "    ")))
+    source.write_text(probe.format(body=textwrap.indent(textwrap.dedent(body), "    ")))
     exe = tmp_path / "probe"
     compiled = subprocess.run(
         [GFORTRAN, *WRAPPER_FLAGS, f"-I{built}", f"-J{tmp_path}",
@@ -196,3 +219,43 @@ class TestValidationRejects:
         """)
 
         assert out == ["10202"]
+
+
+class TestExtentForms:
+    """What the wrappers must reproduce of a declaration they redeclare (issue #221, B13)."""
+
+    def test_an_assumed_shape_input_is_validated_with_its_own_size(self, built, tmp_path):
+        # the validator was handed the extent `(:)` verbatim, which is not Fortran
+        out = run_fortran(built, tmp_path, """
+            call sum_values(values, scalar, ierr)
+            print '(i0, 1x, f6.2)', ierr, scalar
+            values(2) = ieee_value(0.0_real64, ieee_quiet_nan)
+            call sum_values(values, scalar, ierr)
+            print '(i0)', ierr
+        """, probe=_SHAPES_PROBE)
+
+        # ERR_NAN_INF (204) at arg_pos 1: the whole array was checked, not none of it
+        assert out == ["0", "7.00", "10204"]
+
+    def test_an_extent_naming_a_module_constant_compiles_and_runs(self, built, tmp_path):
+        # the wrapper and the C wrapper redeclare `points(FX_N_AXES, n_points)`, so both
+        # import the constant; neither compiled before
+        out = run_fortran(built, tmp_path, """
+            call axis_sums(3_int32, points, sums, ierr)
+            print '(i0, 2(1x, f6.2))', ierr, sums
+        """, probe=_SHAPES_PROBE)
+
+        assert out == ["0", "6.00", "60.00"]
+        assert (built / "fx_shapes_c.o").exists()
+
+
+class TestPurity:
+    def test_an_impure_elemental_implementation_gets_an_impure_wrapper(self, built, tmp_path):
+        # a `pure` wrapper calling it was a compile error; the call must also really happen
+        out = run_fortran(built, tmp_path, """
+            call note_value(2.5_real64, scalar, ierr)
+            call note_value(3.5_real64, scalar, ierr)
+            print '(i0, 1x, i0, 1x, f6.2)', ierr, n_noted, scalar
+        """, probe=_SHAPES_PROBE)
+
+        assert out == ["0", "2", "3.50"]

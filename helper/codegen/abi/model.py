@@ -138,6 +138,9 @@ class CWrapper:
     #: The procedure being wrapped
     procedure: Procedure
     arguments: tuple[CArgument, ...]
+    #: The module constants the declarations are sized by (`x(N_FIXED, n)`), as
+    #: `(module, name)`: the wrapper redeclares every argument, so it imports them
+    size_constants: tuple[tuple[str, str], ...] = ()
 
     @property
     def module_name(self) -> str:

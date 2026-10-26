@@ -149,7 +149,7 @@ class FortranCEmitter:
 
         with writer.indent():
             writer.line(f"use {wrapper.module_name}, only: {procedure.name}")
-            self._mode_uses(writer, wrapper)
+            self._parameter_uses(writer, wrapper)
             writer.blank()
             self._declarations(writer, wrapper)
             self._locals(writer, wrapper)
@@ -163,13 +163,16 @@ class FortranCEmitter:
         writer.line(f"end subroutine {wrapper.name}")
         return writer.render()
 
-    def _mode_uses(self, writer: Writer, wrapper: CWrapper) -> None:
+    def _parameter_uses(self, writer: Writer, wrapper: CWrapper) -> None:
+        """The module parameters the wrapper names: mode values, and constant extents."""
         by_module: dict[str, set[str]] = {}
         for argument in wrapper:
             if argument.mode is None:
                 continue
             for value in argument.mode.values:
                 by_module.setdefault(value.module, set()).add(value.parameter)
+        for module_name, name in wrapper.size_constants:
+            by_module.setdefault(module_name, set()).add(name)
         for module_name in sorted(by_module):
             names = ", ".join(sorted(by_module[module_name]))
             writer.line(f"use {module_name}, only: {names}")

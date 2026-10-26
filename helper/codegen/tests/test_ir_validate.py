@@ -309,6 +309,30 @@ class TestExtentArguments:
         assert bag.errors == ()
 
 
+class TestLowerBounds:
+    """An axis must start at 1: every layer sizes it from its extent alone (#221, B13)."""
+
+    @pytest.mark.parametrize("dimension", ["(0:n)", "(0:)", "(n, -1:m)", "(lo:hi)"])
+    def test_a_lower_bound_other_than_1_is_refused(self, bag, dimension):
+        checked(
+            b.procedure(
+                "p", b.integer("n"), b.integer("m"), b.integer("lo"), b.integer("hi"),
+                b.real("x", Intent.IN, dimension),
+            ),
+            bag,
+        )
+
+        error = only_error(bag)
+        assert "argument 'x' has a lower bound other than 1" in error.message
+        assert "start at 1" in error.note
+
+    @pytest.mark.parametrize("dimension", ["(:)", "(n)", "(n, :)", "(*)", "(max(0, n - 1))"])
+    def test_an_axis_without_a_lower_bound_is_fine(self, bag, dimension):
+        checked(b.procedure("p", b.integer("n"), b.real("x", Intent.IN, dimension)), bag)
+
+        assert bag.errors == ()
+
+
 class TestErrorArgument:
     def test_a_well_formed_ierr_is_accepted(self, bag):
         checked(b.procedure("p", b.ierr()), bag)

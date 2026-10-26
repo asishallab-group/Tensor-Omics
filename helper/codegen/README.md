@@ -287,6 +287,13 @@ The parts a source author does not need, and a generator maintainer does:
   identity — it was not until 2026-08-12, when it translated a hand-written `foo` / `foo_alloc`
   pair into the published `foo` / `foo_expert`. f42 wrote the last of those, and the rule went
   with them: renaming a procedure behind its author's back needs a live customer.
+- **A dummy is referred to by its declared spelling.** Fortran is case-insensitive, so
+  `integer :: N` sizes `x(n)`; Python and the R shim are not, and saw two variables, one never
+  defined. The frontend rewrites every reference to a dummy -- in extents, character lengths,
+  `DM_RESULT_SIZE_IS`, `DM_REQUIRED_IF_MODE` and the `DM_MIN`/`DM_MAX`/`DM_SENTINEL`
+  expressions -- to the declared spelling once (`ford_frontend._use_declared_spellings`), so
+  every emitter can compare names exactly. The declared names are never changed: they are the
+  published API, mixed case included (`neighbor_mask_S1`, `omics_field_RAP_projection`).
 - **A default is the value a Fortran caller gets** (`ir/constants.py`). The bindings pass the
   evaluated `DM_DEFAULT`, so it is evaluated with Fortran's arithmetic, not Python's: every
   integer carries its kind (`constants.Integer`; a literal without one is default, kind 4) and
@@ -351,6 +358,10 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
 - an **optional shape or extent argument** — the wrapper must read it before `c_loc`
 - an **optional output** — no binding can honour it; use an optional input flag plus a `tmp_`
   work array
+- an axis with a **lower bound other than 1** (`x(0:n)`, `x(0:)`) — every layer sizes an axis
+  from its extent alone, so the validator's count, the C wrapper's null check and the bindings'
+  shapes would all paste `0:n` where a number belongs. A written-out lower bound of 1 is
+  dropped by the frontend (`x(1:n)` is `x(n)`)
 - a **`DM_DEFAULT` that does not fit its argument's kind** (`3000000000_int64` on an
   `integer(int32)`), or that is not a constant Fortran would accept (an overflowing integer, a
   negative real raised to a real power) — the bindings would pass a value no Fortran caller can
@@ -496,6 +507,19 @@ the compiler or a run rejected the first attempt.
   names it (`invalid input arguments (argument 'n_dims')`).
 - **`M_IMPLICIT_NONE`** (`implicit none (type, external)`) in generated modules, so a typo
   in a called helper is a compile error, not a link-time surprise.
+- **An entity's own array-spec wins over `DIMENSION`**: in `dimension(n) :: a, b(m)`, `b` has
+  `m` elements (F2018 8.2). Ford keeps listing `dimension(n)` among `b`'s attributes, and
+  reading the attribute first sized `b` by `n` in every layer.
+- **Assumed shape** (`x(:)`) is validated with the size asked of the array, `size(x, 1)`, where
+  the extent `(:)` used to be pasted into the validator call. The C ABI already turned each `:`
+  into an `n_<x>_elements` argument (`compute_rdi`'s `dscale`).
+- **A module constant in an extent** (`points(N_AXES, n)`, `len=MAX_LEN`) is imported by both
+  the Fortran wrapper and the C wrapper, which redeclare every argument. Before, such a wrapper
+  compiled only where a range directive happened to name the same constant (#178's
+  `MAX_N_BINS`). The C wrapper's import list comes from `CWrapper.size_constants`.
+- **`impure elemental`** is impure. `elemental` implies `pure` unless `impure` says otherwise,
+  and Ford lists both; taking `elemental` alone gave the wrapper a `pure` prefix it cannot
+  compile with.
 - **NA** (R) is rejected only where the check is free — integers, logicals, characters —
   never doubles, whose `NA` is a NaN Fortran already catches.
 

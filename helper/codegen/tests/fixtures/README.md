@@ -39,8 +39,9 @@ generated from it, and it must produce no diagnostics either.
 | File | Covers |
 |---|---|
 | `src/fx_basics.F90` | the ordinary cases: extents, a shared extent, optionals with defaults, temporaries, mode and method arguments, a function, an internal procedure |
-| `src/fx_edges.F90` | the awkward ones: every character length form, a separately-travelling shape, a mask and its count, `c_bool`, a hand-written `foo` / `foo_alloc` pair (the shape f42 still uses), `DM_OUTPUT_FROM`, a nullable optional, a procedure with no `ierr` |
+| `src/fx_edges.F90` | the awkward ones: every character length form, a separately-travelling shape, a mask and its count, `c_bool`, a hand-written `foo` / `foo_alloc` pair (the shape f42 still uses), `DM_OUTPUT_FROM`, a nullable optional, a procedure with no `ierr`, two arrays in one declaration (`dimension(n) :: a, b(m)`), an extent spelled in another case than its declaration, a kinded logical default |
 | `impl/fx_ranks_impl.F90` | an implementation with a documented minimum, a work array and a permutation, so both generated wrappers are meaningful -- compiled and run by `test_end_to_end_fortran.py` |
+| `impl/fx_shapes_impl.F90` | an assumed-shape input the wrapper validates, an extent named by a module constant, an `impure elemental` implementation -- compiled and run by `test_end_to_end_fortran.py`, C wrappers included |
 
 The implementation fixture sits in `impl/`, not beside the other two in `src/`, because `src/` is
 parsed as one project whose module list is asserted exactly (`test_frontend.py`) and globbed

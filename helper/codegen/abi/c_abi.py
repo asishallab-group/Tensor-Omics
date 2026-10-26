@@ -13,6 +13,8 @@ must agree cannot each be left to work it out.
 
 from __future__ import annotations
 
+import re
+
 from ..config import CONVENTIONS, Conventions
 from ..diagnostics import DiagnosticBag
 from ..ir.constants import ConstantError, ConstantEvaluator, fits_integer_kind, integer_kind_value
@@ -51,6 +53,10 @@ KIND_MAP = {
         "c_double_complex": "c_double_complex",
     },
 }
+
+#: An identifier in an extent. A kind suffix (`0_int32` -> `_int32`) is the only spurious
+#: match, and it names no module constant.
+_IDENTIFIER_RE = re.compile(r"[A-Za-z_]\w*")
 
 #: The C kind of a logical. Agreed ABI: C passes a real bool rather than an int, so the
 #: binding languages hand over a boolean and not a 0/1 integer. The copy into a
@@ -154,7 +160,33 @@ class _Builder:
             stripped_name=stripped_name(self.procedure, self.conventions),
             procedure=self.procedure,
             arguments=tuple(arguments),
+            size_constants=self._size_constants(arguments),
         )
+
+    def _size_constants(self, arguments: list[CArgument]) -> tuple[tuple[str, str], ...]:
+        """The module constants named in the extents C sees, and where each is defined.
+
+        An extent that is not an argument of this wrapper may be a module constant
+        (`x(N_FIXED, n)`, a character's `len=MAX_LEN`). The C wrapper redeclares every
+        argument and imports only the procedure it calls, so without these imports such a
+        declaration names something undefined.
+        """
+        module = self.procedure.module
+        project = module.project if module is not None else None
+        if project is None:
+            return ()
+        dummies = {argument.name.lower() for argument in arguments}
+        parameters = {parameter.name.lower(): parameter for parameter in project.parameters}
+        found: set[tuple[str, str]] = set()
+        for argument in arguments:
+            for extent in argument.dimension.extents:
+                for identifier in _IDENTIFIER_RE.findall(extent):
+                    parameter = parameters.get(identifier.lower())
+                    if (identifier.lower() in dummies or parameter is None
+                            or parameter.parent is None):
+                        continue
+                    found.add((parameter.parent.name, parameter.name))
+        return tuple(sorted(found))
 
     # -- arguments --------------------------------------------------------------
 

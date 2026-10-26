@@ -177,7 +177,8 @@ A wrapper is **`pure` exactly when everything it calls is** — the implementati
 `DM_OUTPUT_FROM` producers and the prologue. `tox_errors`' validators and `f42_sort`'s
 `init_perm` / `sort_array_heapsort` already are, and `allocate(..., stat=)` is permitted in a
 pure procedure, so the allocating tier is no less eligible than the expert one. You declare
-nothing: write `pure` on the implementation and the wrapper follows. That is what lets a
+nothing: write `pure` on the implementation and the wrapper follows. `elemental` counts as
+pure, `impure elemental` does not. That is what lets a
 caller reach a validated entry point from `do concurrent` instead of reaching past it.
 
 **The plain name always goes to the entry point a caller should reach for first**, and it is the
@@ -352,6 +353,12 @@ docs, and an `ierr` that raises a typed error naming the offending argument.
 Extents are recognised on sight: `n_tissues` in `expression_vectors(n_tissues, n_genes)` is an
 extent, is validated as one, and is never asked of a Python or R caller — they pass the array,
 and the binding reads its shape.
+
+An extent may also be a module constant (`points(N_AXES, n_points)`, `character(len=MAX_LEN)`),
+which the generated wrappers import, or `:` for an assumed-shape dummy, which is validated with
+the size of the array it is given. Every axis starts at 1: `x(1:n)` is accepted as `x(n)`, and
+any other lower bound is refused (Section 8). Spell a dummy in whatever case you like where you
+use it — `integer :: N` may size `x(n)` — but the declaration's spelling is the published name.
 
 ---
 
@@ -1177,6 +1184,7 @@ source and carries a note saying what to write instead.
 | a missing `intent` | constness and direction are undecidable |
 | a kind with no C mapping | an error, never a guess — a wrong guess compiles and lies |
 | an optional shape or extent argument | the wrapper must read it before it may take `c_loc` of what it sizes |
+| an axis with a lower bound other than 1 (`x(0:n)`, `x(0:)`) | every layer sizes an axis from its extent alone; declare `x(n + 1)` and shift the index inside the implementation. `x(1:n)` is accepted as `x(n)` |
 | a `DM_DEFAULT` that is not a constant the compiler would accept, or that does not fit its argument's kind | Python and R pass the evaluated value, so it has to be the one a Fortran caller gets (Section 5.5) |
 | a `tmp_` argument that is `intent(in)` | a work array is an output or an in-out |
 | an **optional output** (`intent(out), optional`, and not a `tmp_`) | no binding can honour it — Python would return a dict whose keys vary per call, R a list of varying length. Express it as an optional input *flag* plus a `tmp_` work array, the way `loess_fit_plain_impl` does with `compute_influence`: the work stays skippable and the return type stays fixed |

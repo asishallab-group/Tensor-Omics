@@ -488,6 +488,38 @@ class TestModes:
         assert "mode = mode_mode_f,&" in emit(self._mode_procedure(), bag, emitter)
 
 
+class TestConstantExtents:
+    """A module constant sizing an argument is imported, like a mode's values (#221, B13)."""
+
+    def _emitted(self, bag, emitter, *parameters):
+        module = b.module(
+            "m",
+            b.procedure(
+                "p",
+                b.integer("n", Intent.IN, doc="points"),
+                b.real("points", Intent.IN, "(N_AXES, n)", doc="the points"),
+                b.ierr(),
+            ),
+            parameters=parameters,
+        )
+        b.project(module)
+        analyse(module.procedure("p"), bag)
+        return emitter.wrapper(build_module(module, bag).wrappers[0])
+
+    def test_the_constant_is_imported_from_its_module(self, bag, emitter):
+        text = self._emitted(bag, emitter, b.parameter("N_AXES", "2"))
+
+        assert "real(c_double), dimension(N_AXES, n), intent(in), target :: points" in text
+        assert "use m, only: N_AXES" in text
+
+    def test_an_undefined_name_is_not_imported_from_anywhere(self, bag, emitter):
+        # nothing defines it, so there is nothing to import; the compiler says so
+        text = self._emitted(bag, emitter)
+
+        uses = [line.strip() for line in text.splitlines() if line.strip().startswith("use ")]
+        assert uses == ["use m, only: p"]
+
+
 class TestModule:
     def test_the_module_is_named_and_guarded(self, bag, emitter):
         text = emit_module(b.module("fx_basics", normalize()), bag, emitter)

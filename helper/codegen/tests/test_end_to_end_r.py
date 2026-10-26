@@ -344,6 +344,25 @@ class TestPythonCanLoadTheBundledLibrary:
         assert hasattr(lib, "fx_normalize_c")   # a Fortran C-ABI symbol is callable
 
 
+class TestDeclarationForms:
+    """Declarations Fortran reads one way and a binding could read another (issue #221)."""
+
+    def test_an_entity_s_own_extent_overrides_the_dimension_attribute(self, built):
+        # `dimension(n) :: a, b(m)`: `b` has m elements, and R asked the caller for `m`
+        out = run_r(built, """
+            cat(paste(names(formals(fx_two_lengths)), collapse = ","),
+                fx_two_lengths(c(1, 1), c(1, 1, 1)))
+        """)
+        assert out.split() == ["a,b", "302"]
+
+    def test_an_extent_in_another_case_than_its_declaration_works(self, built):
+        # `N_Values` sizes `values(n_values)`; the shim named two variables and declared one
+        out = run_r(built, """
+            cat(paste(names(formals(fx_case_mix)), collapse = ","), fx_case_mix(c(1, 2.5)))
+        """)
+        assert out.split() == ["values", "2", "5"]
+
+
 class TestKindedDefaults:
     """A default written with its kind, as the guide asks (issue #221, G-R7)."""
 

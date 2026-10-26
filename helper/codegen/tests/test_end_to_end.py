@@ -391,6 +391,21 @@ class TestErrors:
         assert tox.fx_normalize(np.array([3.0, 4.0])) is None
 
 
+class TestDeclarationForms:
+    """Declarations Fortran reads one way and a binding could read another (issue #221)."""
+
+    def test_an_entity_s_own_extent_overrides_the_dimension_attribute(self, tox, np):
+        # `dimension(n) :: a, b(m)`: `b` has m elements; it was sized by n, so this valid
+        # call was refused and a two-element `b` was read past its end
+        assert list(inspect.signature(tox.fx_two_lengths).parameters) == ["a", "b"]
+        assert tox.fx_two_lengths(np.ones(2), np.ones(3)) == pytest.approx(302.0)
+
+    def test_an_extent_in_another_case_than_its_declaration_works(self, tox, np):
+        # `N_Values` sizes `values(n_values)`; Python saw two names, one never defined
+        assert list(inspect.signature(tox.fx_case_mix).parameters) == ["values"]
+        assert np.allclose(tox.fx_case_mix(np.array([1.0, 2.5])), [2.0, 5.0])
+
+
 class TestKindedDefaults:
     """A default written with its kind, as the guide asks (issue #221, G-R7)."""
 

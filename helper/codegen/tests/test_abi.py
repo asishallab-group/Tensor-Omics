@@ -553,3 +553,32 @@ class TestDefaultsAreFortranValues:
     def test_a_default_that_fits_a_wide_kind_is_kept(self, bag):
         assert self._default_of(bag, "3000000000_int64", kind="int64") == 3000000000
         assert bag.errors == ()
+
+
+class TestSizeConstants:
+    """A module constant naming an extent is imported by the C wrapper (issue #221, B13)."""
+
+    def _wrapper(self, bag, *arguments):
+        module = b.module(
+            "m", b.procedure("p", *arguments, b.ierr()),
+            parameters=(b.parameter("N_AXES", "2"), b.parameter("MAX_LEN", "8")),
+        )
+        b.project(module)
+        return wrap_in_module(module, "p", bag)
+
+    def test_a_constant_extent_is_listed_with_its_module(self, bag):
+        wrapper = self._wrapper(
+            bag, b.integer("n"), b.real("points", Intent.IN, "(N_AXES, n)")
+        )
+
+        assert wrapper.size_constants == (("m", "N_AXES"),)
+
+    def test_a_constant_character_length_is_listed(self, bag):
+        wrapper = self._wrapper(bag, b.character("name", Intent.IN, length="MAX_LEN"))
+
+        assert wrapper.size_constants == (("m", "MAX_LEN"),)
+
+    def test_an_argument_extent_is_not_a_constant(self, bag):
+        wrapper = self._wrapper(bag, b.integer("n"), b.real("x", Intent.IN, "(n)"))
+
+        assert wrapper.size_constants == ()

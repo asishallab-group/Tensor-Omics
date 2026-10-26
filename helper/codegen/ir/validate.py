@@ -16,7 +16,7 @@ from ..config import CONVENTIONS, Conventions
 from ..diagnostics import DiagnosticBag
 from .doc import EXTERNAL_PREFIX
 from .entities import Argument, Module, Procedure, Project
-from .types import BaseType, Intent
+from .types import BaseType, Intent, split_top_level
 
 #: Attributes on a dummy argument that have no C interoperable form
 NON_INTEROPERABLE_ATTRIBUTES = ("allocatable", "pointer")
@@ -546,6 +546,7 @@ class _Validator:
         self._check_required_if_mode(argument)
         self._check_shape_argument(argument)
         self._check_extent(argument)
+        self._check_lower_bounds(argument)
         self._check_error_argument(argument)
 
     def _check_documented(self, argument: Argument) -> None:
@@ -750,6 +751,30 @@ class _Validator:
                 f"extent argument '{argument.name}' is optional, but {owners} needs it",
                 argument,
                 note=_NON_OPTIONAL_NOTE,
+            )
+
+    def _check_lower_bounds(self, argument: Argument) -> None:
+        """An axis that does not start at 1 (`x(0:n)`, `x(0:)`).
+
+        Every layer counts an axis from its extent alone: the validator's element count,
+        the C wrapper's null check and the bindings' shapes would all read `0:n` as an
+        expression and paste it where a number belongs. A lower bound of 1 is the default,
+        and the frontend already drops it where it is written out.
+        """
+        bounded = [
+            extent for extent in argument.dimension.extents
+            if extent != ":" and len(split_top_level(extent, ":")) > 1
+        ]
+        if bounded:
+            self.error(
+                f"argument '{argument.name}' has a lower bound other than 1 "
+                f"({', '.join(bounded)})",
+                argument,
+                note=(
+                    "every layer sizes an axis from its extent alone, so an axis must start "
+                    "at 1: declare the extent (`x(n + 1)`) and shift the index inside the "
+                    "implementation"
+                ),
             )
 
     def _check_error_argument(self, argument: Argument) -> None:
