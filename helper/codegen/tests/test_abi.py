@@ -2,6 +2,7 @@ import pytest
 
 from codegen.abi.c_abi import build_module, build_project, build_wrapper, stripped_name
 from codegen.abi.model import Conversion, Origin, SizeConstant
+from codegen.config import CONVENTIONS
 from codegen.diagnostics import DiagnosticBag
 from codegen.ir.entities import Meta
 from codegen.ir.roles import analyse
@@ -114,6 +115,33 @@ class TestErrorArgument:
         assert error.intent is Intent.OUT
         assert error.is_synthesised
         assert error.source is None
+
+    def test_an_ierr_in_the_middle_is_left_to_validate(self, bag):
+        # the C order follows the Fortran one, which `validate` reports; once is enough
+        wrap(b.procedure("p", b.ierr(), b.real("x", Intent.IN)), bag)
+
+        assert bag.errors == ()
+
+    def test_a_function_with_its_own_ierr_is_exempt_for_now(self, bag):
+        # its result still goes after `ierr` until #221's B1 moves it
+        procedure = b.procedure(
+            "f", b.real("x", Intent.IN), b.ierr(),
+            result=b.real("total", Intent.OUT, is_result=True),
+        )
+
+        assert [a.name for a in wrap(procedure, bag)] == ["x", "ierr", "total"]
+        assert bag.errors == ()
+
+    def test_a_c_signature_not_ending_in_ierr_is_refused(self, bag):
+        # nothing builds one today; this is the guard on what an added argument would do
+        from codegen.abi.c_abi import _Builder
+
+        builder = _Builder(b.procedure("p", b.real("x", Intent.IN), b.ierr()), bag, CONVENTIONS)
+        error = builder._argument(builder.procedure.argument("ierr"))[0]
+        x = builder._argument(builder.procedure.argument("x"))[0]
+        builder._check_error_is_last([error, x])
+
+        assert [d.message for d in bag.errors] == ["the C wrapper of 'p' does not end in 'ierr'"]
 
     def test_error_argument_finds_it_either_way(self, bag):
         assert wrap(b.procedure("p", b.ierr()), bag).error_argument.name == "ierr"
@@ -605,6 +633,6 @@ class TestSizeConstants:
 
         wrap_in_module(module, "p", bag)
 
-        assert "sized by the module constant 'N_AXES', which does not evaluate" in (
+        assert "sized by the module constant 'N_AXES', which the generator cannot evaluate" in (
             bag.errors[0].message
         )

@@ -360,6 +360,33 @@ in Python and `TRUE` in R.
 arguments and neither was optional, so "a mode with a default" was generated nowhere in the
 test suite. `link_method` now carries `DM_DEFAULT(METHOD_WARD)`.
 
+---
+
+## Decision: an argument's name must work in every layer, and is refused where it would not
+
+A dummy's name is published verbatim: a Python parameter, an R parameter, a parameter of the C
+`.Call` shim and a dummy of every generated wrapper. Nothing checked it, and a name one layer
+reserves broke more than its own procedure -- a parameter called `lambda` is a SyntaxError, and the
+package `__init__` imports every module, so `import tensor_omics` failed; `next` failed
+`r/load_tensor_omics.R` for every wrapper; `default` failed the C build of the whole library; `np`
+hid numpy inside the function. So `validate` refuses the words each layer reserves and the names
+the generated code binds itself, from one table (`names.py`) the emitters build their locals from.
+
+**Rejected -- renaming instead.** The published name is the API, and a binding that quietly calls
+an argument `lambda_` is one more thing a reader of the Fortran cannot predict.
+
+**Rejected -- refusing Fortran keywords and R function names too.** Fortran reserves no word, and
+an R argument cannot shadow a function call (R skips non-function bindings when it looks a call
+up), while main publishes `value`, `mode`, `vector`, `array`, `expression`, `factor`, `points` and
+`weights`. Refusing them would refuse working API for a clash that does not happen.
+
+**Rejected -- prefixing every generated local with `_`** (no Fortran name can start with one).
+It works in C and Python, which is why the Python emitter's own private names already do; but
+the Fortran wrappers' locals (`<name>_f`, `<name>_value`) cannot, and a rule that holds for two
+layers out of three still needs the table for the third.
+
+---
+
 ## Open
 
 - **ifx** — `optional` in `bind(C)` and `implicit none (type, external)` are verified with

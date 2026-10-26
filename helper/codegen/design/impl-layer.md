@@ -676,7 +676,10 @@ argument too, since a name that merely ends in `_perm` and orders something the 
 never receives is the caller's own data. There is no override macro: an ordering the default
 sort cannot give is expressed by a prologue that declares the permutation `intent(out)`
 (below), and an argument the convention does not recognise — a bare `perm` — stays the
-caller's own.
+caller's own. Since `foo` builds the permutation, it is something the implementation is handed:
+an `intent(out)` `<base>_perm` is the implementation's *result*, which `foo` would compute and
+throw away (Python and R got nothing back), so `validate` refuses it (#221 B7) rather than the
+convention growing an intent-dependent exception. A result is named for what it is.
 
 `foo` calls the **implementation directly**, not `foo_expert`. It has just built the
 permutation and work arrays itself, so re-running the expert tier's validation — in particular
@@ -794,8 +797,9 @@ the caller passes.
 prologue derives *from* is the allocating tier's own vocabulary -- a threshold's `quantile_level` --
 and
 the implementation, which takes the threshold, has no use for it. So it joins that wrapper's
-signature, after the implementation's own arguments and before `ierr`, and is validated there
-like any other argument. `foo_expert` is untouched: it takes the derived value directly. This
+signature, after the implementation's own arguments and before `ierr` -- the implementation's
+own `ierr` too, where it declares one: until #221 they were appended after that one, publishing
+`..., ierr, quantile_level` -- and is validated there like any other argument. `foo_expert` is untouched: it takes the derived value directly. This
 is also why the two tiers now appear whenever their signatures would differ, rather than only
 when something is taken over -- a prologue with an argument of its own is reason enough.
 

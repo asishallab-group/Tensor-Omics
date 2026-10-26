@@ -116,7 +116,7 @@ class TestTypes:
         from codegen.ir.entities import Argument
         from codegen.ir.types import BaseType, FortranType
 
-        argument = Argument("p", FortranType(BaseType.DERIVED, derived_name="point"), intent=Intent.IN)
+        argument = Argument("pt", FortranType(BaseType.DERIVED, derived_name="point"), intent=Intent.IN)
         checked(b.procedure("p", argument), bag)
 
         assert "derived type" in only_error(bag).message
@@ -896,7 +896,7 @@ class TestPrologue:
             impl_arguments=[
                 b.real("values", Intent.INOUT, "(n)", doc="the data"),
                 b.integer("n", Intent.IN, doc="length"),
-                b.integer("values_perm", Intent.OUT, "(n)", doc="values, ordered"),
+                b.integer("values_perm", Intent.IN, "(n)", doc="values, ordered"),
                 b.real("tmp_other", Intent.OUT, "(n)", doc="what makes it run late"),
                 b.real("result", Intent.OUT, "(n)", doc="the answer"),
             ],
@@ -923,7 +923,7 @@ class TestPrologue:
             impl_arguments=[
                 b.real("values", Intent.INOUT, "(n)", doc="the data"),
                 b.integer("n", Intent.IN, doc="length"),
-                b.integer("values_perm", Intent.OUT, "(n)", doc="values, ordered"),
+                b.integer("values_perm", Intent.IN, "(n)", doc="values, ordered"),
                 b.real("tmp_other", Intent.OUT, "(n)", doc="a work array"),
                 b.real("result", Intent.OUT, "(n)", doc="the answer"),
             ],
@@ -1521,3 +1521,443 @@ class TestExtentsAreDeclaredFirst:
         self._check(internal, bag)
 
         assert "not declared above it" in only_error(bag).message
+
+
+# -- #221 WP2: constructs the bindings cannot express -------------------------------------------
+
+
+class TestKinds:
+    """B4: only the kinds R and the generated validators carry, compared by value."""
+
+    @pytest.mark.parametrize(
+        "argument",
+        [
+            b.integer("x", Intent.IN, "(n)", kind="int64"),
+            b.integer("x", Intent.IN, "(n)", kind="int8"),
+            b.integer("x", Intent.IN, "(n)", kind="int16"),
+            b.integer("x", Intent.IN, "(n)", kind="c_size_t"),
+            b.integer("x", Intent.IN, "(n)", kind="c_int64_t"),
+            b.real("x", Intent.IN, "(n)", kind="real32"),
+            b.real("x", Intent.IN, "(n)", kind="c_float"),
+            b.complex_("x", Intent.IN, "(n)", kind="real32"),
+            b.logical("x", Intent.IN, "(n)", kind="int8"),
+        ],
+        ids=lambda a: str(a.type),
+    )
+    def test_a_kind_the_bindings_cannot_carry_is_refused(self, bag, argument):
+        checked(b.procedure("p", b.integer("n"), argument, b.ierr()), bag)
+
+        error = only_error(bag)
+        assert error.message == f"argument 'x' is {argument.type}, which the bindings cannot carry"
+        assert "int32" in error.note and "real64" in error.note
+        assert str(error.context).startswith("argument 'x'") and "'p'" in str(error.context)
+
+    @pytest.mark.parametrize(
+        "argument",
+        [
+            b.integer("x", Intent.IN, "(n)", kind="int32"),
+            b.integer("x", Intent.IN, "(n)", kind="c_int"),
+            b.integer("x", Intent.IN, "(n)", kind="c_int32_t"),
+            b.real("x", Intent.IN, "(n)", kind="real64"),
+            b.real("x", Intent.IN, "(n)", kind="c_double"),
+            b.complex_("x", Intent.IN, "(n)", kind="real64"),
+            b.complex_("x", Intent.IN, "(n)", kind="c_double_complex"),
+            b.logical("x", Intent.IN, "(n)", kind="c_bool"),
+            b.logical("x", Intent.OUT),  # a default logical, as `mask_check_state` returns
+        ],
+        ids=lambda a: str(a.type),
+    )
+    def test_the_supported_kinds_are_accepted(self, bag, argument):
+        checked(b.procedure("p", b.integer("n"), argument, b.ierr()), bag)
+
+        assert bag.errors == ()
+
+    def test_a_function_result_is_held_to_it_too(self, bag):
+        result = b.integer("total", Intent.OUT, kind="int64", is_result=True)
+        checked(b.procedure("p", b.integer("n"), result=result), bag)
+
+        assert "'total' is integer(int64)" in only_error(bag).message
+
+
+class TestOptionalInout:
+    """B5: an optional argument modified in place."""
+
+    @pytest.mark.parametrize("dimension", ["", "(n)"])
+    def test_an_optional_inout_is_refused(self, bag, dimension):
+        checked(
+            b.procedure(
+                "p", b.integer("n"), b.real("x", Intent.IN, "(n)"),
+                b.real("counter", Intent.INOUT, dimension, optional=True), b.ierr(),
+            ),
+            bag,
+        )
+
+        assert only_error(bag).message == "argument 'counter' is optional and intent(inout)"
+
+    def test_an_optional_input_is_accepted(self, bag):
+        checked(b.procedure("p", b.real("x", Intent.IN, optional=True), b.ierr()), bag)
+
+        assert bag.errors == ()
+
+
+class TestInoutConversions:
+    """B12: what crosses through a buffer the bindings build cannot be modified in place."""
+
+    @pytest.mark.parametrize(
+        "argument, what",
+        [
+            (b.character("word", Intent.INOUT, length="8"), "a character"),
+            (b.character("names", Intent.INOUT, "(n)", length="8"), "a character"),
+            (b.logical("flags", Intent.INOUT, "(n)", kind="c_bool"), "a logical array"),
+            (b.logical("flags", Intent.INOUT, "(n)"), "a logical array"),
+        ],
+    )
+    def test_a_converted_inout_is_refused(self, bag, argument, what):
+        checked(b.procedure("p", b.integer("n"), argument, b.ierr()), bag)
+
+        error = only_error(bag)
+        assert error.message == f"argument '{argument.name}' is {what} that is intent(inout)"
+        assert "intent(out)" in error.note
+
+    @pytest.mark.parametrize(
+        "argument",
+        [b.logical("flag", Intent.INOUT, kind="c_bool"), b.real("v", Intent.INOUT, "(n)"),
+         b.character("word", Intent.IN, length="8")],
+    )
+    def test_what_crosses_as_it_is_may_be_modified(self, bag, argument):
+        checked(b.procedure("p", b.integer("n"), argument, b.ierr()), bag)
+
+        assert bag.errors == ()
+
+
+class TestPublishedNames:
+    """B15: a published name every binding language takes, and that no generated name takes."""
+
+    @pytest.mark.parametrize(
+        "name, word",
+        [
+            ("lambda", "a Python keyword"), ("from", "a Python keyword"),
+            ("next", "an R reserved word"), ("function", "an R reserved word"),
+            ("NA", "an R reserved word"), ("Inf", "an R reserved word"),
+            ("default", "a C keyword"), ("register", "a C keyword"), ("long", "a C keyword"),
+            ("len", "a Python builtin"), ("input", "a Python builtin"),
+            ("type", "a Python builtin"),
+            ("np", "a name the generated Python module binds itself"),
+            ("ctypes", "a name the generated Python module binds itself"),
+            ("check_err_code", "a name the generated Python module binds itself"),
+            ("error", "a name the generated Python module binds itself"),
+        ],
+    )
+    def test_a_word_a_binding_language_reserves_is_refused(self, bag, name, word):
+        checked(b.procedure("p", b.real(name, Intent.IN), b.ierr()), bag)
+
+        assert only_error(bag).message == f"argument '{name}' is {word}"
+
+    @pytest.mark.parametrize(
+        "name",
+        # not Fortran keywords, not R function names (main publishes all of these), not
+        # Python soft keywords, and a reserved word only in its own case
+        ["value", "vector", "array", "expression", "factor", "points", "weights", "length",
+         "match", "na", "inf", "Default"],
+    )
+    def test_what_is_not_reserved_is_accepted(self, bag, name):
+        checked(b.procedure("p", b.real(name, Intent.IN), b.ierr()), bag)
+
+        assert bag.errors == ()
+
+    @pytest.mark.parametrize(
+        "name, where", [("nprot", "R shim"), ("handled", "Fortran wrapper"),
+                        ("HANDLED", "Fortran wrapper")],
+    )
+    def test_a_local_every_wrapper_declares_is_refused(self, bag, name, where):
+        checked(b.procedure("p", b.real(name, Intent.IN), b.ierr()), bag)
+
+        assert only_error(bag).message == (
+            f"argument '{name}' is the name of a local every generated {where} declares"
+        )
+
+    @pytest.mark.parametrize(
+        "other, name, suffix, where",
+        [
+            ("k", "k_v", "_v", "R shim"), ("x", "x_p", "_p", "R shim"),
+            ("x", "x_size", "_size", "R shim"), ("x", "x_dim", "_dim", "R shim"),
+            ("x", "x_d", "_d", "R shim"), ("x", "x_c", "_c", "R shim"),
+            ("x", "x_out", "_out", "R shim"), ("x", "x_out_dim", "_out_dim", "R shim"),
+            ("name", "name_f", "_f", "Fortran wrapper"),
+            ("name", "NAME_F", "_f", "Fortran wrapper"),
+            ("link", "link_mode_f", "_mode_f", "Fortran wrapper"),
+            ("span", "span_value", "_value", "Fortran wrapper"),
+        ],
+    )
+    def test_a_local_built_from_another_argument_is_refused(self, bag, other, name, suffix,
+                                                             where):
+        checked(b.procedure("p", b.real(other, Intent.IN), b.real(name, Intent.IN), b.ierr()),
+                bag)
+
+        assert only_error(bag).message == (
+            f"argument '{name}' is the name of the local the generated {where} declares for "
+            f"'{other}' ('{other}' + '{suffix}')"
+        )
+
+    def test_a_suffix_alone_is_no_clash(self, bag):
+        # `x_v` is only a local where there is an `x`
+        checked(b.procedure("p", b.real("x_v", Intent.IN), b.real("y_c", Intent.IN), b.ierr()),
+                bag)
+
+        assert bag.errors == ()
+
+    @pytest.mark.parametrize(
+        "name, called",
+        [("total", "the procedure 'total' itself"), ("TOTAL", "the procedure 'total' itself"),
+         ("total_c", "the C wrapper of 'total'")],
+    )
+    def test_the_name_of_a_procedure_the_wrapper_names_is_refused(self, bag, name, called):
+        checked(b.procedure("total", b.real(name, Intent.OUT), b.ierr()), bag)
+
+        assert only_error(bag).message == f"argument '{name}' has the name of {called}"
+
+    def test_the_name_of_a_producer_the_wrapper_calls_is_refused(self, bag):
+        from codegen.ir.directives import Directives, OutputFrom, OutputFromMode
+
+        directive = OutputFrom("n_work", "work_size", "m", OutputFromMode.AUTO)
+        checked(
+            b.procedure(
+                "p",
+                b.integer("work_size", Intent.IN),
+                b.integer("n_work", Intent.IN, directives=Directives(output_from=directive)),
+                b.ierr(),
+            ),
+            bag,
+        )
+
+        assert "argument 'work_size' has the name of 'work_size', which computes 'n_work'" in (
+            messages(bag)
+        )
+
+    def test_a_result_is_held_to_it_too(self, bag):
+        result = b.real("lambda", Intent.OUT, is_result=True)
+        checked(b.procedure("p", b.integer("n"), result=result), bag)
+
+        assert only_error(bag).message == "result 'lambda' is a Python keyword"
+
+
+class TestExtentIntents:
+    """G-R1 and G-R2: an extent the bindings read off an array."""
+
+    @pytest.mark.parametrize("intent", [Intent.INOUT, Intent.OUT])
+    def test_an_extent_that_is_written_is_refused(self, bag, intent):
+        checked(b.procedure("p", b.integer("n", intent), b.real("x", Intent.IN, "(n)"),
+                            b.ierr()), bag)
+
+        assert only_error(bag).message == f"extent argument 'n' is intent({intent.value})"
+
+    def test_an_extent_only_an_optional_array_has_is_refused(self, bag):
+        checked(
+            b.procedure("p", b.integer("n"), b.real("x", Intent.IN, "(n)", optional=True),
+                        b.real("s", Intent.OUT), b.ierr()),
+            bag,
+        )
+
+        assert only_error(bag).message == (
+            "extent argument 'n' can only be read off 'x', which may be omitted"
+        )
+
+    def test_an_extent_a_required_array_has_too_is_accepted(self, bag):
+        checked(
+            b.procedure("p", b.integer("n"), b.real("x", Intent.IN, "(n)", optional=True),
+                        b.real("y", Intent.IN, "(n)"), b.ierr()),
+            bag,
+        )
+
+        assert bag.errors == ()
+
+    def test_an_output_it_sizes_does_not_make_it_readable(self, bag):
+        # the bindings still drop it, as `x` could say it -- and an output says nothing yet
+        checked(
+            b.procedure("p", b.integer("n"), b.real("x", Intent.IN, "(n)", optional=True),
+                        b.real("y", Intent.OUT, "(n)"), b.ierr()),
+            bag,
+        )
+
+        assert "can only be read off" in only_error(bag).message
+
+
+class TestMaskCounts:
+    """B14 and G-R3: an `n_selected_<x>` is counted from its mask."""
+
+    def procedure(self, mask_intent=Intent.IN, count_intent=Intent.IN, optional=False):
+        return b.procedure(
+            "p",
+            b.integer("n_genes"),
+            b.real("values", Intent.IN, "(n_genes)"),
+            b.logical("genes_mask", mask_intent, "(n_genes)", kind="c_bool", optional=optional),
+            b.integer("n_selected_genes", count_intent),
+            b.ierr(),
+        )
+
+    def test_an_input_mask_and_count_are_accepted(self, bag):
+        checked(self.procedure(), bag)
+
+        assert bag.errors == ()
+
+    @pytest.mark.parametrize(
+        "mask_intent, count_intent",
+        [(Intent.OUT, Intent.OUT), (Intent.OUT, Intent.IN), (Intent.IN, Intent.OUT),
+         (Intent.IN, Intent.INOUT)],
+    )
+    def test_a_mask_or_count_that_is_written_is_refused(self, bag, mask_intent, count_intent):
+        checked(self.procedure(mask_intent, count_intent), bag)
+
+        assert only_error(bag).message == (
+            "'n_selected_genes' counts mask 'genes_mask', so both must be intent(in) (they are "
+            f"intent({mask_intent.value}) and intent({count_intent.value}))"
+        )
+
+    def test_an_optional_mask_with_a_count_is_refused(self, bag):
+        checked(self.procedure(optional=True), bag)
+
+        assert only_error(bag).message == (
+            "mask 'genes_mask' is optional, but 'n_selected_genes' is counted from it"
+        )
+
+
+class TestDefaultsOnArrays:
+    """G-R4: a default is one value."""
+
+    @pytest.mark.parametrize("optional", [True, False])
+    def test_a_default_on_an_array_is_refused(self, bag, optional):
+        from codegen.ir.directives import Default, Directives
+
+        checked(
+            b.procedure(
+                "p", b.integer("n"), b.real("x", Intent.IN, "(n)"),
+                b.real("weights", Intent.IN, "(n)", optional=optional,
+                       directives=Directives(default=Default("1.0_real64"))),
+                b.ierr(),
+            ),
+            bag,
+        )
+
+        assert "array argument 'weights' has a DM_DEFAULT" in messages(bag)
+
+
+class TestResultSizes:
+    """G-R5: `DM_RESULT_SIZE_IS` names what the procedure reports back."""
+
+    @pytest.mark.parametrize("intent", [Intent.IN, Intent.OUT, Intent.INOUT])
+    def test_the_count_must_be_an_output(self, bag, intent):
+        from codegen.ir.directives import Directives, ResultSizeIs
+
+        checked(
+            b.procedure(
+                "p", b.integer("n"), b.integer("k", intent),
+                b.real("res", Intent.OUT, "(n)", directives=Directives(result_size_is=ResultSizeIs("k"))),
+                b.ierr(),
+            ),
+            bag,
+        )
+
+        if intent is Intent.IN:
+            assert only_error(bag).message == (
+                "the result size of 'res' is 'k', which is intent(in)"
+            )
+        else:
+            assert bag.errors == ()
+
+
+class TestErrorIsLast:
+    """B2: every published signature ends in the error code."""
+
+    def test_an_ierr_in_the_middle_is_refused(self, bag):
+        checked(b.procedure("p", b.integer("n"), b.ierr(), b.real("total", Intent.OUT)), bag)
+
+        error = only_error(bag)
+        assert error.message == "'ierr' is not the last argument of 'p'"
+        assert "last" in error.note
+
+    def test_an_ierr_first_is_refused(self, bag):
+        checked(b.procedure("p", b.ierr(), b.integer("n")), bag)
+
+        assert only_error(bag).message == "'ierr' is not the last argument of 'p'"
+
+    def test_an_ierr_last_or_none_is_accepted(self, bag):
+        checked(b.procedure("p", b.integer("n"), b.ierr()), bag)
+        checked(b.procedure("q", b.integer("n")), bag)
+
+        assert bag.errors == ()
+
+    def test_a_function_with_its_own_ierr_is_accepted_for_now(self, bag):
+        # its C wrapper still puts the result after `ierr`; #221's B1 moves it
+        result = b.real("total", Intent.OUT, is_result=True)
+        checked(b.procedure("p", b.integer("n"), b.ierr(), result=result), bag)
+
+        assert bag.errors == ()
+
+
+class TestExportedNamesAreUnique:
+    """B16: an exported name is unique across the library, ignoring case."""
+
+    def test_the_same_name_in_two_modules_is_refused(self, bag):
+        project = b.project(
+            b.module("tox_a", b.procedure("twice", b.ierr())),
+            b.module("tox_b", b.procedure("Twice", b.ierr())),
+        )
+
+        validate_project(project, bag)
+
+        error = only_error(bag)
+        assert error.message == "both 'tox_a' and 'tox_b' export a procedure called 'Twice'"
+        assert "ignoring case" in error.note
+
+    def test_the_same_name_twice_in_one_module_is_refused(self, bag):
+        project = b.project(
+            b.module("tox_a", b.procedure("twice", b.ierr()), b.procedure("TWICE", b.ierr()))
+        )
+
+        validate_project(project, bag)
+
+        assert only_error(bag).message == "'tox_a' exports twice a procedure called 'TWICE'"
+
+    def test_an_unexported_namesake_is_no_clash(self, bag):
+        project = b.project(
+            b.module("tox_a", b.procedure("twice", b.ierr())),
+            b.module("tox_b", b.procedure("twice", b.ierr(), meta=Meta(summary="s", author="a"))),
+        )
+
+        validate_project(project, bag)
+
+        assert bag.errors == ()
+
+
+class TestPermutationOutputs:
+    """B7: a `<base>_perm` the allocating wrapper builds cannot be what the implementation returns."""
+
+    def impl_module(self, perm):
+        return b.module(
+            "tox_thing_impl",
+            b.procedure(
+                "argsort_impl", b.integer("n"), b.real("values", Intent.IN, "(n)"), perm,
+                meta=Meta(summary="s", author="a"),
+            ),
+            doc="an implementation module",
+        )
+
+    def test_an_output_permutation_is_refused(self, bag):
+        validate_module(self.impl_module(b.integer("values_perm", Intent.OUT, "(n)")), bag)
+
+        error = only_error(bag)
+        assert error.message == (
+            "'values_perm' is an output, but the allocating wrapper builds it from 'values' itself"
+        )
+        assert "discard" in error.note
+
+    @pytest.mark.parametrize(
+        "perm",
+        [b.integer("values_perm", Intent.IN, "(n)"), b.integer("values_perm", Intent.INOUT, "(n)"),
+         b.integer("tmp_values_perm", Intent.OUT, "(n)"), b.integer("other_perm", Intent.OUT, "(n)")],
+        ids=["in", "inout", "work array", "base not an argument"],
+    )
+    def test_a_permutation_the_wrapper_may_build_is_accepted(self, bag, perm):
+        validate_module(self.impl_module(perm), bag)
+
+        assert bag.errors == ()

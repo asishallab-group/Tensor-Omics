@@ -22,6 +22,7 @@ import re
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..config import CONVENTIONS, Conventions
 from ..ir.types import Intent
+from ..names import CONVERTED, MODE_VALUE
 from ..render import Writer
 from .doc_ford import render_doc
 from .doc_literals import render_mode_default
@@ -31,10 +32,10 @@ from .doc_literals import render_mode_default
 #: match, and that never collides with a real argument name.
 _EXTENT_IDENTIFIER_RE = re.compile(r"[A-Za-z_]\w*")
 
-#: Suffix of the local a converted argument is passed to the callee as
-CONVERTED_SUFFIX = "_f"
-#: Suffix of the local holding a mode string's integer parameter
-MODE_SUFFIX = "_mode_f"
+#: Suffix of the local a converted argument is passed to the callee as, and of the local
+#: holding a mode string's integer parameter; `names` is where every generated name is kept
+CONVERTED_SUFFIX = CONVERTED
+MODE_SUFFIX = MODE_VALUE
 
 
 def _product(extents) -> str:

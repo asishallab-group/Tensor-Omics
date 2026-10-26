@@ -258,6 +258,7 @@ else.
 | `generate.py` | a `_<lang>_files()` builder, and its branch in `generate()` |
 | `generate.py` `_clean` | so a procedure that stops being exported leaves no stale wrapper |
 | `cli.py` | add the target to `C_BINDING_TARGETS` (and thus `ALL_TARGETS`) |
+| `names.py` | the host's reserved words, and every name your emitter binds beside the arguments (an import, a local, an `<argument><suffix>`), built from the table so `validate` refuses an argument that would clash; extend `tests/test_names.py` to read your output back |
 | `emit/vscode_snippets.py` | a snippet flavour for the host, if you want editor support |
 | `.gitattributes` | mark the output tree `linguist-generated` |
 | `README.md`, `design/language-layers.md` | what the layer costs in this host, and every decision you took above |

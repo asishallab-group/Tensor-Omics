@@ -21,6 +21,7 @@ from ..ir.constants import ConstantError, ConstantEvaluator, fits_integer_kind, 
 from ..ir.doc import Doc
 from ..ir.entities import Argument, Module, Procedure, Project
 from ..ir.types import BaseType, CharacterLength, Dimension, FortranType, Intent
+from ..names import extent_argument_name, strlen_argument_name
 from .model import (
     CArgument,
     CBinding,
@@ -162,6 +163,7 @@ class _Builder:
         # emitted above, in the place the author put it.
         if not self.procedure.has_error_argument:
             arguments.append(self._error_argument())
+        self._check_error_is_last(arguments)
 
         return CWrapper(
             name=c_symbol_name(self.procedure, self.conventions),
@@ -169,6 +171,29 @@ class _Builder:
             procedure=self.procedure,
             arguments=tuple(arguments),
             size_constants=self._size_constants(arguments),
+        )
+
+    def _check_error_is_last(self, arguments: list[CArgument]) -> None:
+        """The C signature ends in the error code, as every published signature does.
+
+        `validate` checks the Fortran order, and a procedure that passes it gets a C
+        signature that ends in `ierr` too, with one exception: a function declaring its own
+        `ierr` gets its result appended after it. That shape is left alone until the result
+        is placed before the error code (#221, B1). Checked here all the same, because this
+        is where C's order is decided, and an added argument is exactly what would move it.
+        """
+        error = next((a for a in arguments if a.origin is Origin.ERROR), None)
+        if error is None or arguments[-1] is error:
+            return
+        own = self.procedure.argument(self.conventions.error_arg)
+        if own is not None and self.procedure.arguments[-1] is not own:
+            return  # `validate` reports the Fortran order, which this one only follows
+        if own is not None and self.procedure.result is not None:
+            return  # a function's result still goes after its own `ierr` (B1)
+        self.diagnostics.error(
+            f"the C wrapper of '{self.procedure.name}' does not end in '{error.name}'",
+            entity=self.procedure,
+            note="every published signature ends in the error code",
         )
 
     def _size_constants(self, arguments: list[CArgument]) -> tuple[SizeConstant, ...]:
@@ -201,7 +226,8 @@ class _Builder:
                     if value is None:
                         self.diagnostics.error(
                             f"'{argument.name}' is sized by the module constant "
-                            f"'{parameter.name}', which does not evaluate to an integer",
+                            f"'{parameter.name}', which the generator cannot evaluate to an "
+                            f"integer",
                             entity=argument.source or self.procedure,
                             note=(
                                 "Python and R allocate and check the argument with the "
@@ -300,8 +326,7 @@ class _Builder:
         return [c_argument, *extras]
 
     def _extent_argument(self, argument: Argument, axis: int) -> CArgument:
-        suffix = f"_dim_{axis + 1}" if argument.rank > 1 else ""
-        name = self._unique(f"n_{argument.name}_elements{suffix}", argument)
+        name = self._unique(extent_argument_name(argument.name, axis, argument.rank), argument)
         ordinal = f"{axis + 1}. dimension of" if argument.rank > 1 else "number of elements in"
         return CArgument(
             name=name,
@@ -323,7 +348,7 @@ class _Builder:
         """
         length = argument.type.length
         if length.is_assumed:
-            name = self._unique(f"{argument.name}_strlen", argument)
+            name = self._unique(strlen_argument_name(argument.name), argument)
             extra = CArgument(
                 name=name,
                 type=FortranType(BaseType.INTEGER, kind="c_int"),

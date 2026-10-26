@@ -246,6 +246,7 @@ class FordFrontend:
 
         location = self.index.module(path, name)
         doc, _ = self._documentation(ford_module.doc_list, location)
+        self._check_no_private_export(ford_module, path)
 
         return Module(
             name=name,
@@ -264,6 +265,34 @@ class FordFrontend:
             location=location,
             uses=self._uses_of(ford_module),
         )
+
+    def _check_no_private_export(self, ford_module, path: Path) -> None:
+        """An `M_EXPORT_C` on a private procedure is an error, not a silent no-op.
+
+        Ford leaves a private procedure out of a module's routines, so nothing downstream ever
+        sees it, and the marker its author wrote to publish it did nothing at all -- no
+        wrapper, no binding, and no word about it. Ford still knows the procedure (its
+        `all_procs` holds every one, public or not), which is the only place it can be seen.
+        """
+        category = self.conventions.c_binding_category.lower()
+        for procedure in (getattr(ford_module, "all_procs", {}) or {}).values():
+            if getattr(procedure, "parent", None) is not ford_module:
+                continue  # reached through a `use`, or from a parent module
+            if getattr(procedure, "permission", "public") != "private":
+                continue
+            meta = getattr(procedure, "meta", None)
+            if _plain_text(getattr(meta, "category", None)).strip().lower() != category:
+                continue
+            self.diagnostics.error(
+                f"'{procedure.name}' in module '{ford_module.name}' is marked "
+                f"{self.conventions.export_marker} but is private",
+                location=self.index.procedure(path, procedure.name),
+                note=(
+                    "a private procedure is not part of the module's interface, so there is "
+                    "nothing to publish and the marker would do nothing at all; make it "
+                    f"public, or drop the {self.conventions.export_marker}"
+                ),
+            )
 
     def _declarations(self, ford_module, path: Path):
         """The public generic interfaces and derived types, by name and documentation.

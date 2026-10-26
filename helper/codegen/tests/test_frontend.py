@@ -521,6 +521,52 @@ class TestUnexpandedMacros:
         assert len(bag.warnings) == 2
 
 
+class TestPrivateExports:
+    """#221 B20: an `M_EXPORT_C` on a private procedure did nothing at all, silently."""
+
+    def source(self, tmp_path, visibility):
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "fx_hidden.F90").write_text(
+            "#include <src/macros.h>\n"
+            "!> a module\n"
+            "module fx_hidden\n"
+            "    use, intrinsic :: iso_fortran_env, only: int32\n"
+            "    implicit none\n"
+            "    private\n"
+            f"    {visibility}\n"
+            "contains\n"
+            "    !> M_EXPORT_C\n"
+            "    !| summary: p\n"
+            "    !| author: A\n"
+            "    subroutine fx_p(n, ierr)\n"
+            "        integer(int32), intent(in) :: n\n"
+            "            !! a count\n"
+            "        integer(int32), intent(out) :: ierr\n"
+            "            !! Error code\n"
+            "        ierr = n * 0\n"
+            "    end subroutine fx_p\n"
+            "end module fx_hidden\n"
+        )
+        return src
+
+    def test_a_private_export_is_an_error(self, tmp_path):
+        parsed, bag = parse(src_dir=self.source(tmp_path, "! fx_p stays private"))
+
+        assert parsed.project.module("fx_hidden").exported_procedures == ()
+        error = bag.errors[0]
+        assert len(bag.errors) == 1
+        assert error.message == "'fx_p' in module 'fx_hidden' is marked M_EXPORT_C but is private"
+        assert error.location.line == 12
+        assert "make it public" in error.note
+
+    def test_a_public_export_is_not(self, tmp_path):
+        parsed, bag = parse(src_dir=self.source(tmp_path, "public :: fx_p"))
+
+        assert bag.errors == ()
+        assert [p.name for p in parsed.project.module("fx_hidden").exported_procedures] == ["fx_p"]
+
+
 def _module_with(tmp_path, doc_line):
     """A minimal exported procedure carrying `doc_line` on its argument."""
     src = tmp_path / "src"

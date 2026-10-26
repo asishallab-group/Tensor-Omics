@@ -839,3 +839,39 @@ class TestAnAllocatingWrapperWithoutWorkArrays:
         spec = next(s for s in self.synthesised().specs if s.validating.name == "crunch_expert")
 
         assert spec.alloc_does_more
+
+
+class TestThePrologueArgumentsComeBeforeAnOwnIerr:
+    """#221 B2: a prologue's own arguments are placed before the implementation's own `ierr`, so
+    the published signature still ends in it. They used to be appended after it."""
+
+    def synthesised(self):
+        from codegen.diagnostics import DiagnosticBag
+
+        guard = (
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length"),
+            real("tolerance", Intent.IN, doc="how degenerate is too degenerate"),
+            logical("handled", Intent.OUT, doc="dealt with"),
+            ierr(),
+        )
+        impl = (
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length"),
+            real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+            real("result", Intent.OUT, "(n)", doc="the answer"),
+            ierr(),
+        )
+        return synthesize_wrappers(
+            project(prologue_impl_module(guard, impl)), diagnostics=DiagnosticBag()
+        ).project.module("tox_demo")
+
+    def test_the_allocating_wrapper_ends_in_ierr(self):
+        assert [a.name for a in self.synthesised().procedure("crunch").arguments] == [
+            "values", "n", "result", "tolerance", "ierr",
+        ]
+
+    def test_the_expert_wrapper_keeps_the_implementation_order(self):
+        assert [a.name for a in self.synthesised().procedure("crunch_expert").arguments] == [
+            "values", "n", "tmp_scratch", "result", "ierr",
+        ]

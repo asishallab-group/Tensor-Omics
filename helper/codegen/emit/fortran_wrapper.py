@@ -27,6 +27,7 @@ from ..config import CONVENTIONS, Conventions
 from ..ir.doc import Doc, DocLine
 from ..ir.entities import Argument, Module, Procedure
 from ..ir.types import BaseType
+from ..names import DEFAULT_VALUE, local_name
 from ..render import Writer
 from ..synthesize import (
     ModeFix,
@@ -905,7 +906,7 @@ class FortranWrapperEmitter:
 
     @staticmethod
     def _materialized_name(name: str) -> str:
-        return f"{name}_value"
+        return local_name(name, DEFAULT_VALUE)
 
     def _materialized_locals(self, writer: Writer, materialized: dict[str, Argument]) -> None:
         for name, argument in materialized.items():

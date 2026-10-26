@@ -628,9 +628,16 @@ def _wrappers_for(
         return validating, None
 
     # the prologue's own arguments go after the implementation's, before `ierr`: they are
-    # the allocating tier's own vocabulary, not part of what the implementation asked for
-    kept = [a for a in arguments if a not in taken]
-    alloc_arguments = [a.with_name(a.name) for a in kept] + extra
+    # the allocating tier's own vocabulary, not part of what the implementation asked for.
+    # Before the implementation's own `ierr` too, where it has one, so the published
+    # signature still ends in it.
+    kept = [a.with_name(a.name) for a in arguments if a not in taken]
+    error = next(
+        (index for index, a in enumerate(kept)
+         if a.name.lower() == conventions.error_arg.lower()),
+        len(kept),
+    )
+    alloc_arguments = kept[:error] + extra + kept[error:]
     _append_error(alloc_arguments, impl, conventions)
     return validating, _wrapper(base, alloc_arguments, impl, conventions)
 

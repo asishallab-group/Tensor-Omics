@@ -316,6 +316,10 @@ The parts a source author does not need, and a generator maintainer does:
   rather than at the top of the file, because two modules may size each other's outputs and a
   module-level import would then be circular. R needs no import: every wrapper is sourced into
   one environment.
+- **`foo` ends in `ierr` even with a prologue.** A prologue's own arguments are `foo`'s
+  vocabulary, so they go after the implementation's -- and before the implementation's own
+  `ierr` where it declares one (`synthesize._wrappers_for`). They used to be appended after it,
+  publishing `..., ierr, quantile_level` -- the shape `detect_outliers` once had.
 - **The drop set of `foo`** -- what it prepares rather than asks for -- is
   `synthesize.taken_over_arguments`: `tmp_` work arrays, `<base>_perm` permutations,
   `DM_OUTPUT_FROM` values, and anything the prologue writes that the implementation only
@@ -368,7 +372,48 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
 - a **`DM_DEFAULT` that does not fit its argument's kind** (`3000000000_int64` on an
   `integer(int32)`), or that is not a constant Fortran would accept (an overflowing integer, a
   negative real raised to a real power) — the bindings would pass a value no Fortran caller can
-- a **module constant sizing an argument that does not evaluate to an integer** — Python and R
+- a **kind the bindings cannot carry** — anything but `integer(int32)`, `real(real64)`,
+  `complex(real64)`, `logical(c_bool)` and a default `logical`, compared by value
+  (`validate.SUPPORTED_KIND_VALUES`, so `c_int` is `int32`). R stores an integer as int32 and a
+  number as real64, so the shim handed Fortran the wrong storage for every other kind (an `int64`
+  output was written eight bytes per element into a four-byte `INTSXP`, a heap overflow), and
+  the generated validators exist for int32 and real64 only. `KIND_MAP` still knows the C
+  counterparts of the others; it is the bindings, not C, that cannot take them
+- an **argument named like a word a binding language reserves, or like a name the generated
+  code introduces** — Python's hard keywords and builtins, R's reserved words (case-sensitively:
+  `NA` is refused, `na` is a name), C's keywords, the names a generated Python module binds
+  (`np`, `ctypes`, `os`, `check_err_code`, `error`, ...), the locals a generated wrapper declares
+  (`nprot`, `handled`), a local built from another argument's name (`k_v` beside `k`, `name_f`
+  beside `name`), and the procedures the wrapper names (its own name, its C symbol, a
+  `DM_OUTPUT_FROM` producer). One table, [`names.py`](names.py), which the emitters also build
+  their locals from, so a new local cannot be forgotten by the check (`tests/test_names.py` reads
+  the generated code back to hold them to it). Not refused: Fortran keywords (Fortran has none
+  reserved, and main publishes `value`) and R function names (an argument cannot shadow a call in
+  R, and main publishes `mode`, `vector`, `array`, `expression`, `factor`, `points`, `weights`)
+- an **`ierr` that is not the last argument**, of a hand-written export or, through the
+  synthesised tiers, of an implementation. Every published signature ends in the error code; the C
+  ABI checks its own order too (`c_abi._Builder._check_error_is_last`), with one exemption until
+  #221's B1 lands: a function declaring its own `ierr` still gets its result appended after it
+- the **same exported name twice**, in two modules or in one (a mode table's third column can do
+  it), compared ignoring case: it is the C symbol, the R `.Call` entry and the name Python and R
+  publish, so the link fails with a duplicate symbol, or the second silently shadows the first
+- an **`M_EXPORT_C` on a private procedure** (reported by the frontend, which is the only place
+  that sees one: Ford leaves it out of the module's routines, so it used to publish nothing,
+  silently)
+- an **optional `intent(inout)`** — Python kept no result for it and R wrote into the caller's
+  own vector, which breaks copy-on-modify
+- an **`intent(inout)` character or logical array** — both cross through a buffer the binding
+  builds, and nothing hands the modification back (the R shim did not even compile)
+- a **`DM_DEFAULT` on an array** — a default is one value, so an omitted array arrived with one
+  element and failed its shape check
+- an **extent that is not `intent(in)`, or that only optional arrays carry** — the bindings read
+  an extent off the arrays they are passed and drop it from the signature, so a written one is
+  neither theirs to read nor to return, and one only an omitted array carries is read off nothing
+- an **`n_selected_<x>` count and its mask that are not both `intent(in)`, or an optional mask
+  with a count** — the count is derived from the mask before the call, in every layer
+- a **`DM_RESULT_SIZE_IS` naming an `intent(in)` count** — the bindings read the count back after
+  the call; a size the caller chooses sizes the result directly
+- a **module constant sizing an argument that the generator cannot evaluate to an integer** — Python and R
   allocate and pad with its value, so the generator has to know it
 
 An implementation module is checked separately, because its procedures are read rather than
@@ -388,6 +433,9 @@ dropping the fixed directory they used to be scoped to:
   `DM_OUTPUT_FROM` recommend routines) have no wrapper and stay exported, which is why an
   implementation module can itself show up in the bindings — `tox_loess_impl.py` is the
   Python home of `tox_loess_required_workspace`, and holds no implementation at all
+- an **`intent(out)` `<base>_perm` whose `<base>` is an argument** — the allocating wrapper
+  takes it over, seeding and sorting it itself, and would discard what the implementation
+  computes; only the expert tier returned it. A `tmp_` permutation stays exempt
 - an implementation named **`<x>_expert_impl`** or **`<x>_alloc_impl`** — both name a wrapper,
   and the suffix is the generator's to add. `foo_expert_impl` beside `foo_impl` yields two
   procedures called `foo_expert`, and the emitter would strip the suffix and call `foo_impl`
@@ -588,7 +636,9 @@ The end-to-end tests skip cleanly without `gfortran` / `R`.
   kind is already an error, so a gap is loud.
 
 Every convention lives in `config.py`; there are no naming literals scattered through the
-code.
+code. Every name the generated code introduces beside the arguments -- a local, an import, a
+`<argument><suffix>` -- lives in `names.py`, which `validate` refuses as an argument name: an
+emitter that starts declaring a new one adds it there, or `tests/test_names.py` fails.
 
 ---
 

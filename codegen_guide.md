@@ -339,6 +339,9 @@ docs, and an `ierr` that raises a typed error naming the offending argument.
 | **The module's own name as the file name** (`tox_x_impl` in `tox_x_impl.F90`) | two independent things read that name and must agree: generation triggers on the *module* name, while the cleaner and the Ford exclusion scan *file* names without parsing. Let them diverge and the generator writes a wrapper nothing cleans and nothing excludes — so the next run parses its own output and defines the module twice |
 | Explicit `intent` on every dummy | decides constness in C and R, and input/output/in-out everywhere |
 | Kinded numeric types (`real(real64)`, `integer(int32)`) | a default kind has no defensible C mapping |
+| **Only `integer(int32)`, `real(real64)`, `complex(real64)`, `logical(c_bool)` or a default `logical`** on an argument | R holds integers as int32 and numbers as real64, and the generated validators take only those kinds — an `int64` output would be written eight bytes per element into R's four-byte integers. Compared by value, so `c_int` and `c_double` are fine; `int64`, `int8`, `int16`, `real32`, `c_size_t` and `complex(real32)` are refused |
+| **An argument name every binding language accepts** | the name is a Python parameter, an R parameter, a C parameter of the R binding and a dummy of every generated wrapper. Refused: Python keywords (`lambda`, `from`) and builtins (`len`, `input`, `type`), R reserved words (`next`, `function`, `NA` — in that case), C keywords (`default`, `long`), and the names the generated code binds itself (`np`, `ctypes`, `os`, `error`, `nprot`, `handled`, a name `<other argument>_v`, `_f`, ...: the list is `helper/codegen/names.py`). Fortran keywords and R function names are fine — `value`, `mode`, `vector`, `weights` all are. Nor may an argument share its procedure's name (`total` in `total_impl`) |
+| **`ierr`, where you declare one, last** | every published signature ends in it, which is where the generator adds it when you declare none |
 | **`logical(c_bool)` for every logical that occupies storage** | one byte rather than four, and the kind the bindings already use, so a mask crosses without being copied — the wrapper used to declare an automatic array of default `logical` and convert elementwise both ways. A `logical, parameter` and a `logical function` result are the exceptions: no storage, nothing to save. Note a literal needs the kind too — `.true._c_bool`, because argument association does not convert kinds, though plain assignment does |
 | `!> summary: ...` on the procedure | becomes the docstring in Python and R |
 | **A `!>` block on the module, written as API prose** | it is carried verbatim onto the generated module, so it is the Python module docstring and the Ford page for the published API. Say what the family is for and name its entry points; do *not* describe the implementation, and do not explain what the generator will do with it (Section 7) |
@@ -449,6 +452,15 @@ if (count(axes_selection_mask, kind=int32) /= n_selected_axes) &
 
 and Python/R callers who pass the mask alone — `n_selected_axes` is computed from it at the call.
 
+That makes both of them **inputs**: the mask and its count are `intent(in)`, and the mask is
+required. A mask the procedure fills, a count it reports, or a mask that may be omitted leaves
+nothing to count before the call, and is refused. To return a selection and its size, name the
+count something other than `n_selected_<arg>`.
+
+An extent is an input too: `intent(in)`, and readable off at least one array the caller must pass.
+One only optional arrays carry is refused — the bindings drop it from the signature and would then
+have nothing to read it off.
+
 ### 5.4 A distance matrix
 
 **When** a square real matrix holds pairwise distances.
@@ -500,13 +512,18 @@ An unkinded `0.95` is the real32 0.949999988 to the compiler and 0.95 to Python 
 An optional **without** a default is nullable: absent in Fortran, `None`/`NULL` from the
 language layers. An optional **with** one is always passed, which keeps the wrapper flat.
 
+A default is one value, so an **array** with a `DM_DEFAULT` is refused: an omitted array would
+arrive as one element. And an optional is an input: `intent(inout), optional` is refused, because
+no binding can return a value the caller may have omitted.
+
 ### 5.6 An output filled only partially
 
 **When** a result array is sized for the worst case but only its leading elements are filled —
 a selection whose size is not known until the work is done.
 
 **Write** `DM_RESULT_SIZE_IS(<argument>)` on the result, naming the `intent(out)` scalar integer
-your implementation sets to the number of elements it actually filled:
+your implementation sets to the number of elements it actually filled (an `intent(in)` one is
+refused: a size the caller chooses sizes the result directly, `results(k)`):
 
 ```fortran
 real(real64), dimension(n_genes), intent(out) :: results
@@ -597,6 +614,11 @@ M_ALLOCATE(pooled_means_perm(pool_size))
 call init_perm(pooled_means_perm)
 call sort_array_heapsort(pooled_means, pooled_means_perm)
 ```
+
+The permutation is what the implementation is *handed*, so it is `intent(in)` (or `intent(inout)`).
+An `intent(out)` `<base>_perm` would be the implementation's result — an argsort — and `foo`, which
+builds the permutation itself, would throw it away; it is refused. Name such a result for what it
+is (`order`, `ranks`).
 
 `foo_expert` still takes it, because an expert caller may already have it sorted. A `<base>` that
 is not an argument means the wrapper cannot build the permutation, so the argument stays an
@@ -773,7 +795,8 @@ foo         (values, n, result, quantile_level, ierr)           ← you supply t
 foo_expert  (values, n, threshold, tmp_scratch, result, ierr)   ← you supply the threshold
 ```
 
-The prologue's own arguments come after the implementation's and before `ierr`.
+The prologue's own arguments come after the implementation's and before `ierr` — before the
+implementation's own `ierr` too, where it declares one, so the signature still ends in it.
 
 A name that is *nearly* one the implementation has is refused as a misspelling — `n_gene` beside
 `n_genes` would otherwise become a new argument silently, leaving the prologue and the
@@ -1186,10 +1209,22 @@ source and carries a note saying what to write instead.
 | a derived type | not mapped |
 | a missing `intent` | constness and direction are undecidable |
 | a kind with no C mapping | an error, never a guess — a wrong guess compiles and lies |
+| a kind the bindings cannot carry: anything but `integer(int32)`, `real(real64)`, `complex(real64)`, `logical(c_bool)` and a default `logical`, compared by value | R holds int32 and real64 only, and the validators take only those (Section 4) |
+| an argument named like a Python keyword or builtin, an R reserved word, a C keyword, or a name the generated code binds (`np`, `nprot`, `handled`, `<other>_v`, ...; `helper/codegen/names.py`), or like its procedure | a parse error in one binding language fails the whole package, and a clash with a generated name fails the build (Section 4) |
+| an `ierr` that is not the last argument | every published signature ends in the error code (Section 4) |
+| the same exported name in two modules, or twice in one, ignoring case | it is the C symbol and the name Python and R publish; two link as a duplicate symbol |
+| an `M_EXPORT_C` on a **private** procedure | it would publish nothing, silently |
+| an `intent(inout), optional` argument | no binding can return a value the caller may have omitted (Section 5.5) |
+| an `intent(inout)` character, or an `intent(inout)` logical array | both cross through a buffer the binding builds and cannot hand the change back; take it `intent(in)` and return a separate `intent(out)` |
+| a `DM_DEFAULT` on an array | a default is one value (Section 5.5) |
+| an extent that is not `intent(in)`, or that only optional arrays carry | the bindings read an extent off the arrays they are passed (Section 5.3) |
+| a mask and its `n_selected_` count that are not both `intent(in)`, or an optional mask with a count | the count is derived from the mask before the call (Section 5.3) |
+| a `DM_RESULT_SIZE_IS` naming an `intent(in)` count | the count is what the procedure reports back (Section 5.6) |
+| an `intent(out)` `<base>_perm` whose base is an argument | `foo` builds that permutation itself and would discard the result (Section 5.8) |
 | an optional shape or extent argument | the wrapper must read it before it may take `c_loc` of what it sizes |
 | an axis with a lower bound other than 1 (`x(0:n)`, `x(0:)`) | every layer sizes an axis from its extent alone; declare `x(n + 1)` and shift the index inside the implementation. `x(1:n)` is accepted as `x(n)` |
 | a `DM_DEFAULT` that is not a constant the compiler would accept, or that does not fit its argument's kind | Python and R pass the evaluated value, so it has to be the one a Fortran caller gets (Section 5.5) |
-| a module constant in an extent or a length that does not evaluate to an integer | Python and R allocate and pad with its value (Section 4) |
+| a module constant in an extent or a length that the generator cannot evaluate to an integer (`size(NAMES)` is one, though it is an integer) | Python and R allocate and pad with its value (Section 4) |
 | a `tmp_` argument that is `intent(in)` | a work array is an output or an in-out |
 | an **optional output** (`intent(out), optional`, and not a `tmp_`) | no binding can honour it — Python would return a dict whose keys vary per call, R a list of varying length. Express it as an optional input *flag* plus a `tmp_` work array, the way `loess_fit_plain_impl` does with `compute_influence`: the work stays skippable and the return type stays fixed |
 | `DM_DEFAULT` **and** `DM_REQUIRED_IF_MODE` on a mode that does *not* split | with a runtime mode the argument is always passed on, so "required in that mode" says nothing. On a split mode (Section 5.11) the pair is meaningful and accepted |

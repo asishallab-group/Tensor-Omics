@@ -12,14 +12,29 @@ from __future__ import annotations
 
 import re
 
+from .. import names
 from ..config import CONVENTIONS, Conventions
 from ..diagnostics import DiagnosticBag
+from .constants import KIND_VALUES
 from .doc import EXTERNAL_PREFIX
 from .entities import Argument, Module, Procedure, Project
 from .types import BaseType, Intent, split_top_level
 
 #: Attributes on a dummy argument that have no C interoperable form
 NON_INTEROPERABLE_ATTRIBUTES = ("allocatable", "pointer")
+
+#: The one kind, by value, each numeric type may have in an exported signature. R holds an
+#: integer as int32 and a number as real64 (a complex as two of them), and the generated
+#: validators exist for those kinds only; anything else reaches R as the wrong storage -- an
+#: int64 output is written eight bytes per element into a four-byte INTSXP -- and the
+#: validator call does not compile. Compared by value, so `c_int` is `int32` and `c_double`
+#: is `real64`; a kind whose value the generator does not know is the C ABI's to refuse.
+SUPPORTED_KIND_VALUES = {BaseType.INTEGER: 4, BaseType.REAL: 8, BaseType.COMPLEX: 8}
+
+#: The kinds a logical may have: `c_bool`, which C passes as it is, and the default kind, which
+#: the C wrapper converts. Any other logical kind would be converted into a default logical
+#: and handed to a dummy of another kind, which does not compile.
+SUPPORTED_LOGICAL_KINDS = (None, "c_bool")
 
 #: The greatest character rank the C layer can carry. A character's length is a leading C
 #: extent, so a scalar character is a 1-D c_char buffer and a character vector a 2-D one.
@@ -36,6 +51,39 @@ def validate_project(project: Project, diagnostics: DiagnosticBag,
     check_whitelist_is_allocation_free(project, diagnostics, conventions)
     check_c_kinds_depend_on_the_safeguard(project, diagnostics)
     check_extents_are_declared_first(project, diagnostics)
+    check_exported_names_are_unique(project, diagnostics)
+
+
+def check_exported_names_are_unique(project: Project, diagnostics: DiagnosticBag) -> None:
+    """No two exported procedures share a name, ignoring case.
+
+    The name is the C symbol (`foo_c`), the R shim's `.Call` entry (`foo_call`), the name the
+    Python package re-exports and the name in R's one environment. Two modules exporting
+    `foo` link as `multiple definition of 'foo_c'`; and were it not for the link, Python and R
+    would quietly let the second shadow the first. Ignoring case because a Fortran caller
+    cannot tell `foo` from `FOO` either. Within one module the same can come from a mode
+    table, whose third column names a generated procedure that something else may already be
+    called.
+    """
+    seen: dict[str, Procedure] = {}
+    for module in project:
+        for procedure in module.exported_procedures:
+            first = seen.setdefault(procedure.name.lower(), procedure)
+            if first is procedure:
+                continue
+            where = (
+                f"both '{first.module.name}' and '{module.name}' export"
+                if first.module is not module else f"'{module.name}' exports twice"
+            )
+            diagnostics.error(
+                f"{where} a procedure called '{procedure.name}'",
+                entity=procedure,
+                note=(
+                    "an exported name is the C symbol, the R `.Call` entry and the name the "
+                    "Python package and the R environment publish, so it has to be unique "
+                    "across the whole library, ignoring case; rename one of them"
+                ),
+            )
 
 
 def allocations_in(procedure: Procedure) -> list[str]:
@@ -342,6 +390,7 @@ def validate_impl_module(module: Module, diagnostics: DiagnosticBag,
             continue  # a recommend routine or a private helper, not an implementation
         _check_impl_is_not_exported(procedure, diagnostics, conventions)
         _check_impl_is_not_named_for_a_wrapper(procedure, diagnostics, conventions)
+        _check_permutation_is_not_an_output(procedure, diagnostics, conventions)
         _check_prologue(procedure, diagnostics, conventions)
 
 
@@ -502,6 +551,41 @@ def _check_impl_is_not_named_for_a_wrapper(procedure: Procedure, diagnostics: Di
         return
 
 
+def _check_permutation_is_not_an_output(impl: Procedure, diagnostics: DiagnosticBag,
+                                        conventions: Conventions) -> None:
+    """A `<base>_perm` the allocating wrapper builds cannot also be what the implementation returns.
+
+    The allocating wrapper takes over every `<base>_perm` whose `<base>` is an argument: it
+    seeds and heapsorts it as a local and hands it in (`synthesize.taken_over_arguments`).
+    An `intent(out)` one is the implementation's *result* -- an argsort -- and taking it over
+    swallows it: `foo` computes it and throws it away, and Python and R return nothing. Only
+    the expert tier would return it. A `tmp_` permutation is scratch and stays exempt.
+    """
+    from ..synthesize import is_permutation, is_temporary  # local: synthesize imports this module
+
+    arguments = {argument.name.lower() for argument in impl.arguments}
+    for argument in impl.arguments:
+        if argument.intent is not Intent.OUT or is_temporary(argument, conventions):
+            continue
+        if not is_permutation(argument, conventions):
+            continue
+        base = argument.name[: -len(conventions.perm_suffix)]
+        if base.lower() not in arguments:
+            continue
+        diagnostics.error(
+            f"'{argument.name}' is an output, but the allocating wrapper builds it from "
+            f"'{base}' itself",
+            entity=argument,
+            note=(
+                f"a '<base>{conventions.perm_suffix}' whose base is an argument is seeded and "
+                "sorted by the allocating wrapper, which would then discard what the "
+                "implementation computes. Name the result for what it is (`order`, "
+                f"`ranks`), or make it intent(in) or intent(inout) if the implementation "
+                "really is handed a sorted order"
+            ),
+        )
+
+
 def validate_procedure(procedure: Procedure, diagnostics: DiagnosticBag,
                        conventions: Conventions = CONVENTIONS) -> None:
     _Validator(procedure, diagnostics, conventions).run()
@@ -522,8 +606,31 @@ class _Validator:
 
     def run(self) -> None:
         self._check_meta()
+        self._check_error_is_last()
         for argument in self.arguments:
             self._check_argument(argument)
+
+    def _check_error_is_last(self) -> None:
+        """The error code ends the published signature.
+
+        Every published signature -- each Fortran tier, the C wrapper, and through them the
+        Python and R call order -- ends in `ierr`, where it is added when a procedure has
+        none of its own. One that declares its own somewhere else would publish it in the
+        middle, and only for this procedure: a caller passing arguments by position gets them
+        shifted by one. A synthesised wrapper takes the implementation's order, so this also
+        reaches an implementation's `ierr`.
+        """
+        error = self.procedure.argument(self.conventions.error_arg)
+        if error is None or self.procedure.arguments[-1] is error:
+            return
+        self.error(
+            f"'{error.name}' is not the last argument of '{self.procedure.name}'",
+            error,
+            note=(
+                "every published signature ends in the error code, which is where the "
+                "generator adds it to a procedure that has none -- declare it last"
+            ),
+        )
 
     def _check_meta(self) -> None:
         if not self.procedure.meta.summary:
@@ -538,16 +645,152 @@ class _Validator:
     def _check_argument(self, argument: Argument) -> None:
         self._check_documented(argument)
         self._check_intent(argument)
+        self._check_name(argument)
         self._check_optional_output(argument)
+        self._check_optional_inout(argument)
         self._check_attributes(argument)
         self._check_type(argument)
+        self._check_inout_conversion(argument)
         self._check_temporary(argument)
         self._check_mode(argument)
         self._check_required_if_mode(argument)
+        self._check_default_on_an_array(argument)
         self._check_shape_argument(argument)
         self._check_extent(argument)
+        self._check_mask_count(argument)
+        self._check_result_size(argument)
         self._check_lower_bounds(argument)
         self._check_error_argument(argument)
+
+    def _check_name(self, argument: Argument) -> None:
+        """A published name every binding language takes, and that no generated name takes.
+
+        The name is a Python parameter, an R parameter, a parameter of the R `.Call` shim and
+        a dummy of every generated wrapper, so the words those languages reserve are refused
+        (`names.language_word`), and so is every name the generated code introduces beside
+        the arguments: a local of its own (`nprot`, `handled`), one built from another
+        argument's name (`k_v` beside `k`), and the procedures it names -- itself, its C
+        symbol, and a `DM_OUTPUT_FROM` producer it calls. A function's result is published as
+        an output argument, so it is held to the same.
+        """
+        name = argument.name
+        what = "result" if argument.is_result else "argument"
+        word = names.language_word(name)
+        if word is not None:
+            self.error(
+                f"{what} '{name}' is {word}",
+                argument,
+                note=(
+                    "a published argument is a parameter in Python, R and the C of the R "
+                    "binding, so it cannot be a word one of them reserves or a name the "
+                    "generated code relies on; rename it"
+                ),
+            )
+        where = names.generated_local(name)
+        if where is not None:
+            self.error(
+                f"{what} '{name}' is the name of a local every generated {where} declares",
+                argument,
+                note="the wrapper would declare it twice; rename it",
+            )
+        others = [other.name for other in self.arguments if other is not argument]
+        clash = names.clashing_local(name, others)
+        if clash is not None:
+            other, suffix, where = clash
+            self.error(
+                f"{what} '{name}' is the name of the local the generated {where} declares "
+                f"for '{other}' ('{other}' + '{suffix}')",
+                argument,
+                note="the wrapper would declare it twice; rename one of the two",
+            )
+        called = self._called_procedure(name)
+        if called is not None:
+            self.error(
+                f"{what} '{name}' has the name of {called}",
+                argument,
+                note=(
+                    "the generated wrapper names that procedure, and inside it the argument "
+                    "would hide it; rename the argument"
+                ),
+            )
+
+    def _called_procedure(self, name: str) -> str | None:
+        """What a generated wrapper of this procedure names that is called `name`, or None."""
+        lowered = name.lower()
+        procedure = self.procedure.name
+        if lowered == procedure.lower():
+            return f"the procedure '{procedure}' itself"
+        if lowered == f"{procedure}{self.conventions.c_suffix}".lower():
+            return f"the C wrapper of '{procedure}'"
+        for argument in self.arguments:
+            directive = argument.directives.output_from
+            if directive is not None and directive.procedure.lower() == lowered:
+                return f"'{directive.procedure}', which computes '{argument.name}'"
+        return None
+
+    def _check_optional_inout(self, argument: Argument) -> None:
+        """An optional argument that is modified in place cannot be bound.
+
+        Python passes a temporary for an optional scalar and keeps no result for it, so the
+        new value is lost; R points straight into the caller's vector, which breaks R's
+        copy-on-modify for every other object sharing it, and returns a stale copy. There is
+        no shape that honours both "may be absent" and "is returned" in the bindings either
+        -- the same reason an optional output is refused.
+        """
+        if argument.intent is not Intent.INOUT or not argument.optional:
+            return
+        self.error(
+            f"argument '{argument.name}' is optional and intent(inout)",
+            argument,
+            note=(
+                "the bindings cannot return a value the caller may omit. Make it a required "
+                "intent(inout), or an optional intent(in) beside a required output"
+            ),
+        )
+
+    def _check_inout_conversion(self, argument: Argument) -> None:
+        """A string, or a logical array, modified in place cannot be bound.
+
+        Both cross into Fortran through a buffer the binding builds -- R's logicals are four
+        bytes wide and its strings are not blank-padded -- and nothing copies that buffer
+        back: the R shim names its result after the input it already has (a compile error
+        that fails the library), and Python discards the buffer, so the modification is lost.
+        """
+        if argument.intent is not Intent.INOUT:
+            return
+        if argument.type.is_character:
+            what = "a character"
+        elif argument.type.is_logical and argument.is_array:
+            what = "a logical array"
+        else:
+            return
+        self.error(
+            f"argument '{argument.name}' is {what} that is intent(inout)",
+            argument,
+            note=(
+                "the bindings convert it into a buffer of their own and cannot hand the "
+                "modification back; take it intent(in) and return the result as a separate "
+                "intent(out) argument"
+            ),
+        )
+
+    def _check_default_on_an_array(self, argument: Argument) -> None:
+        """A `DM_DEFAULT` is one value, and an array is not.
+
+        The binding passes the default in the argument's place, so an omitted array arrives
+        as a one-element array and fails the shape check against its extent.
+        """
+        if not argument.is_array or not argument.directives.has_default:
+            return
+        self.error(
+            f"array argument '{argument.name}' has a DM_DEFAULT",
+            argument,
+            note=(
+                "a default is a single value the bindings pass in the argument's place, so "
+                "an omitted array would arrive with one element. Leave it optional without a "
+                "default and let the implementation fill it in when it is absent"
+            ),
+        )
 
     def _check_documented(self, argument: Argument) -> None:
         if not argument.doc and not argument.is_result:
@@ -624,6 +867,30 @@ class _Validator:
 
         if argument.type.is_character:
             self._check_character(argument)
+        self._check_kind(argument)
+
+    def _check_kind(self, argument: Argument) -> None:
+        """Only the kinds R and the validators can carry (`SUPPORTED_KIND_VALUES`)."""
+        fortran = argument.type
+        if fortran.is_logical:
+            if ((fortran.kind or "").lower() or None) in SUPPORTED_LOGICAL_KINDS:
+                return
+        else:
+            supported = SUPPORTED_KIND_VALUES.get(fortran.base)
+            if supported is None:
+                return
+            value = _kind_value(fortran.kind)
+            if value is None or value == supported:
+                return
+        self.error(
+            f"argument '{argument.name}' is {fortran}, which the bindings cannot carry",
+            argument,
+            note=(
+                "R holds integers as int32 and numbers as real64, and the generated "
+                "validators take only those kinds: declare it integer(int32), real(real64), "
+                "complex(real64), logical(c_bool) or a default logical"
+            ),
+        )
 
     def _check_character(self, argument: Argument) -> None:
         length = argument.type.length
@@ -745,13 +1012,94 @@ class _Validator:
         roles = argument.roles
         if roles is None or not roles.is_extent:
             return
+        owners = ", ".join(f"'{owner.name}'" for owner in roles.extent_of)
         if argument.optional:
-            owners = ", ".join(f"'{owner.name}'" for owner in roles.extent_of)
             self.error(
                 f"extent argument '{argument.name}' is optional, but {owners} needs it",
                 argument,
                 note=_NON_OPTIONAL_NOTE,
             )
+        if argument.intent is not None and argument.intent is not Intent.IN:
+            # Python and R read it off the arrays it sizes and pass that value; an extent the
+            # procedure also writes is neither theirs to read nor theirs to return.
+            self.error(
+                f"extent argument '{argument.name}' is intent({argument.intent.value})",
+                argument,
+                note=(
+                    f"an extent sizes {owners} on the way in, so it is intent(in); return "
+                    "a count the procedure computes as a separate intent(out) argument"
+                ),
+            )
+        readable = roles.readable_owners
+        if readable and all(owner.optional for owner in readable):
+            # the bindings drop it from the signature, since an array says what it is, and
+            # then have nothing to read it off when that array is omitted
+            names_ = ", ".join(f"'{owner.name}'" for owner in readable)
+            self.error(
+                f"extent argument '{argument.name}' can only be read off {names_}, which "
+                f"may be omitted",
+                argument,
+                note=(
+                    "Python and R read an extent off the arrays it sizes and do not ask for it; "
+                    "make one of them required, or size the optional array by an extent that a "
+                    "required argument also has"
+                ),
+            )
+
+    def _check_mask_count(self, argument: Argument) -> None:
+        """An `n_selected_<x>` is counted from its mask, so both are inputs, and both present.
+
+        The bindings count the mask's `.true.` values and the wrapper checks the count against
+        it before the call. With the mask an output there is nothing to count yet; with the
+        count an output the check reads a value the caller never set (Python's
+        UnboundLocalError, a compile error in the R shim, and a spurious
+        `ERR_INVALID_INPUT` from Fortran). An omitted mask has nothing to count either.
+        """
+        roles = argument.roles
+        if roles is None or roles.mask_count_of is None:
+            return
+        mask = roles.mask_count_of
+        if mask.optional:
+            self.error(
+                f"mask '{mask.name}' is optional, but '{argument.name}' is counted from it",
+                argument,
+                note=(
+                    "an omitted mask leaves nothing to count, in any layer. Make the mask "
+                    f"required, or name the count something other than "
+                    f"'{self.conventions.mask_count_prefix}<x>'"
+                ),
+            )
+        if mask.intent is not Intent.IN or argument.intent is not Intent.IN:
+            self.error(
+                f"'{argument.name}' counts mask '{mask.name}', so both must be intent(in) "
+                f"(they are intent({_intent(mask)}) and intent({_intent(argument)}))",
+                argument,
+                note=(
+                    "the count is derived from the mask before the call, which needs both on "
+                    "the way in. To return a selection and its size, name the count something "
+                    f"other than '{self.conventions.mask_count_prefix}<x>'"
+                ),
+            )
+
+    def _check_result_size(self, argument: Argument) -> None:
+        """`DM_RESULT_SIZE_IS` names what the procedure reports back, not what it was given.
+
+        The bindings trim the result to the count after the call, reading it as an output;
+        an `intent(in)` count is the caller's own value and is never returned.
+        """
+        roles = argument.roles
+        counter = roles.result_size_arg if roles is not None else None
+        if counter is None or counter.intent is not Intent.IN:
+            return
+        self.error(
+            f"the result size of '{argument.name}' is '{counter.name}', which is intent(in)",
+            argument,
+            note=(
+                "DM_RESULT_SIZE_IS names the count the procedure fills in, as an output. A "
+                f"size the caller chooses sizes the result directly: declare it "
+                f"'{argument.name}({counter.name})'"
+            ),
+        )
 
     def _check_lower_bounds(self, argument: Argument) -> None:
         """An axis that does not start at 1 (`x(0:n)`, `x(0:)`).
@@ -1152,6 +1500,18 @@ def _wrapper_arguments_with_plans(impl: Procedure, conventions: Conventions):
 
 #: Identifiers named in an extent expression
 _IDENTIFIER_RE = re.compile(r"[A-Za-z_]\w*")
+
+
+def _kind_value(kind: str | None) -> int | None:
+    """A kind's value, from its name (`int32`, `c_double`) or as written (`8`); None if unknown."""
+    text = (kind or "").strip().lower()
+    if text.isdigit():
+        return int(text)
+    return KIND_VALUES.get(text)
+
+
+def _intent(argument: Argument) -> str:
+    return argument.intent.value if argument.intent is not None else "unknown"
 
 _READ_FIRST_NOTE = (
     "a prologue runs below the work arrays it prepares; take this value as a 'tmp_' argument "

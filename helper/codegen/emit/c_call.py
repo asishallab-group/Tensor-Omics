@@ -27,6 +27,17 @@ import re
 
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
+from ..names import (
+    BUFFER,
+    C_PROTECT_COUNT,
+    DIM,
+    INOUT_COPY,
+    OPTIONAL_DIM_ATTRIBUTE,
+    OPTIONAL_POINTER,
+    OPTIONAL_SIZE,
+    SCALAR_VALUE,
+    local_name,
+)
 from ..render import Writer
 
 #: The R shared object this binding is registered into.
@@ -269,7 +280,7 @@ class CCallEmitter:
         writer.line(f"SEXP {wrapper.stripped_name}_call({params}) {{")
 
         with writer.indent():
-            writer.line("int nprot = 0;")
+            writer.line(f"int {C_PROTECT_COUNT} = 0;")
             self._materialize_optionals(writer, wrapper)
             self._derive(writer, wrapper)
             self._extract_scalars(writer, wrapper)
@@ -330,7 +341,7 @@ class CCallEmitter:
             if is_shape(argument):
                 # a shape is a fresh SEXP (the dim attribute or a length-1 vector); it must
                 # be protected while it sizes outputs and is set back as their dim
-                lines.line(f"SEXP {argument.name} = PROTECT({expression}); nprot++;")
+                lines.line(f"SEXP {argument.name} = PROTECT({expression}); {C_PROTECT_COUNT}++;")
             else:
                 lines.line(f"int {argument.name} = {expression};")
         if lines:
@@ -397,8 +408,8 @@ class CCallEmitter:
         """The size of `owner` along `axis`, as a C expression."""
         if owner.optional:
             if owner.rank > 1 and not owner.type.is_character:
-                return f"{owner.name}_dim[{axis}]"
-            return f"{owner.name}_size"
+                return f"{local_name(owner.name, DIM)}[{axis}]"
+            return local_name(owner.name, OPTIONAL_SIZE)
         if owner.rank <= 1 or (owner.type.is_character and owner.rank == 2):
             return f"(int) Rf_length({owner.name})"
         return f"INTEGER(Rf_getAttrib({owner.name}, R_DimSymbol))[{axis}]"
@@ -438,7 +449,7 @@ class CCallEmitter:
         """A Fortran extent as C, with any by-value scalar name read from its `_v` local."""
         out = c_extent(expr)
         for name in self._scalar_names:
-            out = re.sub(rf"\b{re.escape(name)}\b", f"{name}_v", out)
+            out = re.sub(rf"\b{re.escape(name)}\b", local_name(name, SCALAR_VALUE), out)
         return out
 
     def _extract_scalars(self, writer: Writer, wrapper: CWrapper) -> None:
@@ -453,7 +464,7 @@ class CCallEmitter:
 
     def _scalar_local(self, argument: CArgument) -> str:
         return (
-            f"{self._scalar_local_type(argument)} {argument.name}_v"
+            f"{self._scalar_local_type(argument)} {local_name(argument.name, SCALAR_VALUE)}"
             f" = {self._scalar_value(argument)};"
         )
 
@@ -500,31 +511,36 @@ class CCallEmitter:
                 and _r_marshals(argument)
                 and not self._converts_via_buffer(argument)
             )
+            value = local_name(name, SCALAR_VALUE)
+            pointer = local_name(name, OPTIONAL_POINTER)
+            size = local_name(name, OPTIONAL_SIZE)
+            dim = local_name(name, DIM)
+            dim_attribute = local_name(name, OPTIONAL_DIM_ATTRIBUTE)
             if converts_in_place:
                 local_type = self._scalar_local_type(argument)
-                lines.line(f"{local_type} {name}_v = 0;")
-                lines.line(f"const {local_type}* {name}_p = NULL;")
+                lines.line(f"{local_type} {value} = 0;")
+                lines.line(f"const {local_type}* {pointer} = NULL;")
             elif not _r_marshals(argument):
-                lines.line(f"const {ctype}* {name}_p = NULL;")
-            lines.line(f"int {name}_size = 0;")
+                lines.line(f"const {ctype}* {pointer} = NULL;")
+            lines.line(f"int {size} = 0;")
             if has_axes:
-                lines.line(f"int {name}_dim[{rank}]; "
-                           f"for (int i = 0; i < {rank}; ++i) {name}_dim[i] = 0;")
+                lines.line(f"int {dim}[{rank}]; "
+                           f"for (int i = 0; i < {rank}; ++i) {dim}[i] = 0;")
             lines.line(f"if ({name} != R_NilValue) {{")
             with lines.indent():
-                lines.line(f"{name}_size = (int) Rf_length({name});")
+                lines.line(f"{size} = (int) Rf_length({name});")
                 if converts_in_place:
-                    lines.line(f"{name}_v = {self._scalar_value(argument)};")
-                    lines.line(f"{name}_p = &{name}_v;")
+                    lines.line(f"{value} = {self._scalar_value(argument)};")
+                    lines.line(f"{pointer} = &{value};")
                 elif not _r_marshals(argument):
-                    lines.line(f"{name}_p = {self._c_pointer(argument, name)};")
+                    lines.line(f"{pointer} = {self._c_pointer(argument, name)};")
                 if has_axes:
-                    lines.line(f"SEXP {name}_d = Rf_getAttrib({name}, R_DimSymbol);")
-                    lines.line(f"if ({name}_d != R_NilValue) {{")
+                    lines.line(f"SEXP {dim_attribute} = Rf_getAttrib({name}, R_DimSymbol);")
+                    lines.line(f"if ({dim_attribute} != R_NilValue) {{")
                     with lines.indent():
                         lines.line(
-                            f"for (int i = 0; i < {rank} && i < (int) Rf_length({name}_d); ++i)"
-                            f" {name}_dim[i] = INTEGER({name}_d)[i];"
+                            f"for (int i = 0; i < {rank} && i < (int) Rf_length({dim_attribute}); ++i)"
+                            f" {dim}[i] = INTEGER({dim_attribute})[i];"
                         )
                     lines.line("}")
             lines.line("}")
@@ -552,14 +568,19 @@ class CCallEmitter:
         )
 
     def _working_name(self, argument: CArgument) -> str:
-        return f"{argument.name}_out" if self._is_inout_copy(argument) else argument.name
+        if self._is_inout_copy(argument):
+            return local_name(argument.name, INOUT_COPY)
+        return argument.name
 
     def _copy_inout(self, writer: Writer, wrapper: CWrapper) -> None:
         """A plain array modified in place is duplicated, so the caller's stays intact."""
         lines = Writer()
         for argument in wrapper:
             if self._is_inout_copy(argument):
-                lines.line(f"SEXP {argument.name}_out = PROTECT(Rf_duplicate({argument.name})); nprot++;")
+                copy = local_name(argument.name, INOUT_COPY)
+                lines.line(
+                    f"SEXP {copy} = PROTECT(Rf_duplicate({argument.name})); {C_PROTECT_COUNT}++;"
+                )
         if lines:
             writer.line("// copy what is modified in place, so the caller's stays intact")
             writer.extend(lines)
@@ -579,9 +600,9 @@ class CCallEmitter:
     def _input_buffer(self, argument: CArgument) -> str:
         name = argument.name
         if argument.type.is_logical:
-            return f"unsigned char* {name}_c = tox_bool_in({name});"
+            return f"unsigned char* {local_name(name, BUFFER)} = tox_bool_in({name});"
         length = self._extent(argument.dimension.extents[0])
-        return f"char* {name}_c = tox_char_in({name}, {length});"
+        return f"char* {local_name(name, BUFFER)} = tox_char_in({name}, {length});"
 
     # -- allocating outputs and work space --------------------------------------
 
@@ -617,16 +638,17 @@ class CCallEmitter:
             size = _product(extents)
 
         if argument.type.is_logical:
-            return [f"unsigned char* {name}_c = tox_bool_alloc({size});"]
+            return [f"unsigned char* {local_name(name, BUFFER)} = tox_bool_alloc({size});"]
         if argument.type.is_character:
             length = extents[0]
             count = size if argument.shape_arg is not None else _product(extents[1:])
-            return [f"char* {name}_c = tox_char_alloc({length}, {count});"]
+            return [f"char* {local_name(name, BUFFER)} = tox_char_alloc({length}, {count});"]
         if argument.is_temporary:
             ctype = c_ctype(argument)
             return [f"{ctype}* {name} = ({ctype}*) R_alloc({size}, sizeof({ctype}));"]
         # a plain output: an R vector, protected, with a dim attribute if rank >= 2
-        out = [f"SEXP {name} = PROTECT(Rf_allocVector({R_SEXPTYPE[argument.type.base]}, {size})); nprot++;"]
+        sexptype = R_SEXPTYPE[argument.type.base]
+        out = [f"SEXP {name} = PROTECT(Rf_allocVector({sexptype}, {size})); {C_PROTECT_COUNT}++;"]
         dim = self._dim_lines(argument)
         return out + dim
 
@@ -639,10 +661,11 @@ class CCallEmitter:
         if len(extents) < 2:
             return []
         rank = len(extents)
-        assigns = " ".join(f"INTEGER({target}_dim)[{i}] = {e};" for i, e in enumerate(extents))
+        dim = local_name(target, DIM)
+        assigns = " ".join(f"INTEGER({dim})[{i}] = {e};" for i, e in enumerate(extents))
         return [
-            f"{{ SEXP {target}_dim = PROTECT(Rf_allocVector(INTSXP, {rank})); "
-            f"{assigns} Rf_setAttrib({target}, R_DimSymbol, {target}_dim); UNPROTECT(1); }}"
+            f"{{ SEXP {dim} = PROTECT(Rf_allocVector(INTSXP, {rank})); "
+            f"{assigns} Rf_setAttrib({target}, R_DimSymbol, {dim}); UNPROTECT(1); }}"
         ]
 
     def _r_extents(self, argument: CArgument) -> list[str]:
@@ -667,14 +690,14 @@ class CCallEmitter:
         name = argument.name
         if argument.optional:
             if self._converts_via_buffer(argument):
-                return f"{name} != R_NilValue ? {name}_c : NULL"
-            return f"{name}_p"
+                return f"{name} != R_NilValue ? {local_name(name, BUFFER)} : NULL"
+            return local_name(name, OPTIONAL_POINTER)
         if self._converts_via_buffer(argument):
-            return f"{name}_c"
+            return local_name(name, BUFFER)
         if argument.is_scalar:
             # a by-value scalar input lives in <name>_v; a derived extent, scalar output or
             # ierr is a plain <name> local
-            ref = f"{name}_v" if name in self._scalar_names else name
+            ref = local_name(name, SCALAR_VALUE) if name in self._scalar_names else name
             if argument.type.base is BaseType.COMPLEX:
                 const = "const " if argument.intent is Intent.IN else ""
                 return f"({const}double _Complex*) &{ref}"
@@ -704,12 +727,18 @@ class CCallEmitter:
             if argument.intent is Intent.IN or not self._converts_via_buffer(argument):
                 continue
             name = argument.name
+            buffer = local_name(name, BUFFER)
             count = self._converted_count(argument)
             if argument.type.is_logical:
-                lines.line(f"SEXP {name} = PROTECT(tox_bool_out({name}_c, {count})); nprot++;")
+                lines.line(
+                    f"SEXP {name} = PROTECT(tox_bool_out({buffer}, {count})); {C_PROTECT_COUNT}++;"
+                )
             else:
                 length = self._extent(argument.dimension.extents[0])
-                lines.line(f"SEXP {name} = PROTECT(tox_char_out({name}_c, {length}, {count})); nprot++;")
+                lines.line(
+                    f"SEXP {name} = PROTECT(tox_char_out({buffer}, {length}, {count})); "
+                    f"{C_PROTECT_COUNT}++;"
+                )
             for line in self._dim_lines(argument):
                 lines.line(line)
         if lines:
@@ -732,14 +761,14 @@ class CCallEmitter:
         entries.append((error.name, f"Rf_ScalarInteger({error.name})"))
         n = len(entries)
 
-        writer.line(f"SEXP _out = PROTECT(Rf_allocVector(VECSXP, {n})); nprot++;")
+        writer.line(f"SEXP _out = PROTECT(Rf_allocVector(VECSXP, {n})); {C_PROTECT_COUNT}++;")
         for index, (_, value) in enumerate(entries):
             writer.line(f"SET_VECTOR_ELT(_out, {index}, {value});")
-        writer.line(f"SEXP _nms = PROTECT(Rf_allocVector(STRSXP, {n})); nprot++;")
+        writer.line(f"SEXP _nms = PROTECT(Rf_allocVector(STRSXP, {n})); {C_PROTECT_COUNT}++;")
         for index, (nm, _) in enumerate(entries):
             writer.line(f'SET_STRING_ELT(_nms, {index}, Rf_mkChar("{nm}"));')
         writer.line("Rf_setAttrib(_out, R_NamesSymbol, _nms);")
-        writer.line("UNPROTECT(nprot);")
+        writer.line(f"UNPROTECT({C_PROTECT_COUNT});")
         writer.line("return _out;")
 
     def _result_sexp(self, argument: CArgument) -> str:
@@ -748,7 +777,9 @@ class CCallEmitter:
             base = argument.type.base
             # an inout scalar was pulled into <name>_v and written there; a pure output
             # scalar is a plain <name> local
-            name = f"{argument.name}_v" if argument.name in self._scalar_names else argument.name
+            name = argument.name
+            if name in self._scalar_names:
+                name = local_name(name, SCALAR_VALUE)
             if base is BaseType.LOGICAL:
                 return f"Rf_ScalarLogical({name} != 0)"
             if base is BaseType.REAL:

@@ -177,6 +177,11 @@ class ArgumentRoles:
         Treating either as derived would drop it from the signature and then leave nothing
         to compute it from, so it stays a parameter.
         """
+        return bool(self.readable_owners)
+
+    @property
+    def readable_owners(self) -> tuple[Argument, ...]:
+        """The arrays naming this extent that it can be read off (`is_inferable_extent`)."""
         def readable(owner) -> bool:
             if owner.roles and owner.roles.is_temporary:
                 return False
@@ -188,7 +193,7 @@ class ArgumentRoles:
             # dereferencing it here ends the run in a traceback instead
             return owner.intent is not None and owner.intent.is_input
 
-        return any(readable(owner) for owner in self.extent_of)
+        return tuple(owner for owner in self.extent_of if readable(owner))
 
     @property
     def is_shape_arg(self) -> bool:

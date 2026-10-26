@@ -528,6 +528,24 @@ value is what the Fortran wrapper's own declaration means anyway.
 C receives the result as an `intent(out)` argument, placed **before** the error code, so
 that adding a result to a subroutine does not move `ierr` for existing callers.
 
+That holds where the generator adds the error code. A function declaring its *own* `ierr` gets
+its result appended after it today (`hw_ownierr_c(n, x, ierr, total)`), the one published
+signature that does not end in `ierr`. #221's B1 moves the result in front of it; until then the
+order check that every other C wrapper is held to (`_Builder._check_error_is_last`, beside
+`validate`'s check of the Fortran order) exempts exactly that shape.
+
+---
+
+## Decision: only the kinds R can hold
+
+`KIND_MAP` knows the C counterpart of `int8`, `int64`, `real32`, `c_size_t` and the rest, and the
+C layer could pass any of them. The bindings cannot: R holds an integer as int32 and a number as
+real64, its shim takes `INTEGER()` / `REAL()` storage whatever the Fortran kind, and the generated
+validators exist for int32 and real64 only. So `validate` refuses every other kind on an exported
+argument (`SUPPORTED_KIND_VALUES`, compared by value so `c_int` and `c_double` pass), rather than
+`KIND_MAP` losing entries: what C could carry and what the bindings can are two different
+questions, and the refusal says which one failed.
+
 ---
 
 ## How this is checked

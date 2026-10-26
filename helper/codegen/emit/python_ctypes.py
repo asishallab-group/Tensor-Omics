@@ -20,6 +20,7 @@ import re
 from ..abi.c_abi import stripped_name
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
+from ..names import PYTHON_CAUGHT_ERROR, PYTHON_IMPORTS, PYTHON_PACKAGE_IMPORTS
 from ..render import Writer
 from .error_arguments import sources_of
 from .doc_numpydoc import _description, render_docstring
@@ -303,13 +304,17 @@ class PythonEmitter:
         )
         writer.line('"""')
         writer.blank()
-        writer.line("import ctypes")
-        writer.line("import os")
+        # from the name table, so no argument may take a name this module binds; the one
+        # aliased import is numpy, third-party, which gets a group of its own
+        for module_name, bound in PYTHON_IMPORTS:
+            if module_name != bound:
+                writer.blank()
+                writer.line(f"import {module_name} as {bound}")
+            else:
+                writer.line(f"import {module_name}")
         writer.blank()
-        writer.line("import numpy as np")
-        writer.blank()
-        writer.line("from .error_handling import check_err_code")
-        writer.line("from .library import load_library, nullable")
+        for module_name, names in PYTHON_PACKAGE_IMPORTS:
+            writer.line(f"from {module_name} import {', '.join(names)}")
         writer.blank()
         writer.line("_lib = load_library()")
         writer.blank()
@@ -539,11 +544,11 @@ class PythonEmitter:
             body.line("try:")
             with body.indent():
                 body.line(f"{name} = {converter}({name}, dtype={dtype_of(argument)})")
-            body.line("except (TypeError, ValueError) as error:")
+            body.line(f"except (TypeError, ValueError) as {PYTHON_CAUGHT_ERROR}:")
             with body.indent():
                 body.line(
                     f'raise TypeError('
-                    f'f"\'{name}\' must be an array of {dtype_of(argument)}: {{error}}"'
+                    f'f"\'{name}\' must be an array of {dtype_of(argument)}: {{{PYTHON_CAUGHT_ERROR}}}"'
                     f") from None"
                 )
             self._check_rank(argument, body)
@@ -628,11 +633,11 @@ class PythonEmitter:
                         f"[str(_s).encode().ljust({width}) for _s in {items}], "
                         f"dtype={dtype_of(argument)})"
                     )
-            body.line("except TypeError as error:")
+            body.line(f"except TypeError as {PYTHON_CAUGHT_ERROR}:")
             with body.indent():
                 body.line(
                     f'raise TypeError('
-                    f'f"\'{name}\' must be a sequence of strings: {{error}}"'
+                    f'f"\'{name}\' must be a sequence of strings: {{{PYTHON_CAUGHT_ERROR}}}"'
                     f") from None"
                 )
             self._check_rank(argument, body)
