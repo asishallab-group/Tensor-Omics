@@ -11,14 +11,14 @@ void group_centroid_orthologs_c(const double*, const int*, const int*, const int
 void group_centroid_all_c(const double*, const int*, const int*, const int*, const int*, double*, int*);
 
 SEXP mean_vector_call(SEXP expression_vectors, SEXP gene_indices) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_axes = INTEGER(Rf_getAttrib(expression_vectors, R_DimSymbol))[0];
     int n_genes = INTEGER(Rf_getAttrib(expression_vectors, R_DimSymbol))[1];
     int n_selected_genes = (int) Rf_length(gene_indices);
 
     // outputs and work space
-    SEXP centroid = PROTECT(Rf_allocVector(REALSXP, n_axes)); nprot++;
+    SEXP centroid = PROTECT(Rf_allocVector(REALSXP, n_axes)); _nprot++;
     int ierr = 0;
 
     mean_vector_c(
@@ -31,32 +31,32 @@ SEXP mean_vector_call(SEXP expression_vectors, SEXP gene_indices) {
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, centroid);
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("centroid"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 
 SEXP group_centroid_orthologs_call(SEXP expression_vectors, SEXP gene_to_family, SEXP n_families, SEXP ortholog_set) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_axes = INTEGER(Rf_getAttrib(expression_vectors, R_DimSymbol))[0];
     int n_genes = INTEGER(Rf_getAttrib(expression_vectors, R_DimSymbol))[1];
 
     // scalar inputs, pulled from their length-1 vectors
-    int n_families_v = Rf_asInteger(n_families);
+    int _v_n_families = Rf_asInteger(n_families);
 
     // convert what Fortran cannot take from R directly
-    unsigned char* ortholog_set_c = tox_bool_in(ortholog_set);
+    unsigned char* _c_ortholog_set = tox_bool_in(ortholog_set);
 
     // outputs and work space
-    SEXP centroid_matrix = PROTECT(Rf_allocVector(REALSXP, n_axes * n_families_v)); nprot++;
-    { SEXP centroid_matrix_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(centroid_matrix_dim)[0] = n_axes; INTEGER(centroid_matrix_dim)[1] = n_families_v; Rf_setAttrib(centroid_matrix, R_DimSymbol, centroid_matrix_dim); UNPROTECT(1); }
+    SEXP centroid_matrix = PROTECT(Rf_allocVector(REALSXP, n_axes * _v_n_families)); _nprot++;
+    { SEXP _dim_centroid_matrix = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_centroid_matrix)[0] = n_axes; INTEGER(_dim_centroid_matrix)[1] = _v_n_families; Rf_setAttrib(centroid_matrix, R_DimSymbol, _dim_centroid_matrix); UNPROTECT(1); }
     int ierr = 0;
 
     group_centroid_orthologs_c(
@@ -64,35 +64,35 @@ SEXP group_centroid_orthologs_call(SEXP expression_vectors, SEXP gene_to_family,
         &n_axes,
         &n_genes,
         INTEGER(gene_to_family),
-        &n_families_v,
+        &_v_n_families,
         REAL(centroid_matrix),
-        ortholog_set_c,
+        _c_ortholog_set,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, centroid_matrix);
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("centroid_matrix"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 
 SEXP group_centroid_all_call(SEXP expression_vectors, SEXP gene_to_family, SEXP n_families) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_axes = INTEGER(Rf_getAttrib(expression_vectors, R_DimSymbol))[0];
     int n_genes = INTEGER(Rf_getAttrib(expression_vectors, R_DimSymbol))[1];
 
     // scalar inputs, pulled from their length-1 vectors
-    int n_families_v = Rf_asInteger(n_families);
+    int _v_n_families = Rf_asInteger(n_families);
 
     // outputs and work space
-    SEXP centroid_matrix = PROTECT(Rf_allocVector(REALSXP, n_axes * n_families_v)); nprot++;
-    { SEXP centroid_matrix_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(centroid_matrix_dim)[0] = n_axes; INTEGER(centroid_matrix_dim)[1] = n_families_v; Rf_setAttrib(centroid_matrix, R_DimSymbol, centroid_matrix_dim); UNPROTECT(1); }
+    SEXP centroid_matrix = PROTECT(Rf_allocVector(REALSXP, n_axes * _v_n_families)); _nprot++;
+    { SEXP _dim_centroid_matrix = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_centroid_matrix)[0] = n_axes; INTEGER(_dim_centroid_matrix)[1] = _v_n_families; Rf_setAttrib(centroid_matrix, R_DimSymbol, _dim_centroid_matrix); UNPROTECT(1); }
     int ierr = 0;
 
     group_centroid_all_c(
@@ -100,19 +100,19 @@ SEXP group_centroid_all_call(SEXP expression_vectors, SEXP gene_to_family, SEXP 
         &n_axes,
         &n_genes,
         INTEGER(gene_to_family),
-        &n_families_v,
+        &_v_n_families,
         REAL(centroid_matrix),
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, centroid_matrix);
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("centroid_matrix"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 

@@ -373,23 +373,36 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
   `integer(int32)`), or that is not a constant Fortran would accept (an overflowing integer, a
   negative real raised to a real power) — the bindings would pass a value no Fortran caller can
 - a **kind the bindings cannot carry** — anything but `integer(int32)`, `real(real64)`,
-  `complex(real64)`, `logical(c_bool)` and a default `logical`, compared by value
-  (`validate.SUPPORTED_KIND_VALUES`, so `c_int` is `int32`). R stores an integer as int32 and a
+  `complex(real64)`, `logical(c_bool)` and a default `logical`. A numeric kind is compared by
+  value (`validate.SUPPORTED_KIND_VALUES`, so `c_int` is `int32` and `integer(8)` is int64); a
+  logical kind by name, since `logical(1)` -- c_bool's value -- would still be converted into a
+  default logical and fail to compile. One error per cause: the C ABI stays quiet about a kind
+  this refuses (`validate.bindings_cannot_carry`). R stores an integer as int32 and a
   number as real64, so the shim handed Fortran the wrong storage for every other kind (an `int64`
   output was written eight bytes per element into a four-byte `INTSXP`, a heap overflow), and
   the generated validators exist for int32 and real64 only. `KIND_MAP` still knows the C
   counterparts of the others; it is the bindings, not C, that cannot take them
-- an **argument named like a word a binding language reserves, or like a name the generated
-  code introduces** — Python's hard keywords and builtins, R's reserved words (case-sensitively:
-  `NA` is refused, `na` is a name), C's keywords, the names a generated Python module binds
-  (`np`, `ctypes`, `os`, `check_err_code`, `error`, ...), the locals a generated wrapper declares
-  (`nprot`, `handled`), a local built from another argument's name (`k_v` beside `k`, `name_f`
-  beside `name`), and the procedures the wrapper names (its own name, its C symbol, a
-  `DM_OUTPUT_FROM` producer). One table, [`names.py`](names.py), which the emitters also build
-  their locals from, so a new local cannot be forgotten by the check (`tests/test_names.py` reads
-  the generated code back to hold them to it). Not refused: Fortran keywords (Fortran has none
+- an **argument named like a word a binding language reserves** — Python's hard keywords and
+  builtins (a frozen list, not read from the running interpreter), R's reserved words
+  (case-sensitively: `NA` is refused, `na` is a name), and C's keywords as R's `gcc -std=gnu2x`
+  takes them (`asm` included); or named like a procedure the wrapper names (its own name, its C
+  symbol, a `DM_OUTPUT_FROM` producer). Not refused: Fortran keywords (Fortran has none
   reserved, and main publishes `value`) and R function names (an argument cannot shadow a call in
   R, and main publishes `mode`, `vector`, `array`, `expression`, `factor`, `points`, `weights`)
+- a **procedure named like a Python keyword or builtin, or an R reserved word** — it is a Python
+  and an R function of that name. Its C symbols (`foo_c`, `foo_call`) carry a suffix, so C's
+  keywords do not apply
+- an **argument named like something its generated Fortran wrapper uses** — an intrinsic it
+  calls (`count(mask, kind=int32)` beside an `n_selected_` count, `size(x, 1)` for an
+  assumed-shape array), a name it imports (`set_err_once`, a validator, a kind), a kind it writes
+  (`3_int32`, `.true._c_bool`), or a local it declares (`handled` beside a prologue, `<x>_f` for a
+  converted `x`, `<x>_value` for a materialised default). Read off the wrappers as emitted, after
+  their macros are expanded (`emit/name_clashes.py`), so it is refused exactly where it collides:
+  `count` stays a good argument of `mask_chunk_count`, which counts nothing. The R shim and Python
+  have no such clash to refuse -- everything they bind beside the arguments starts with `_`
+  (`_v_k`, `_nprot`, `_np`, `_error`), which no Fortran name can. All of these names are built in
+  [`names.py`](names.py), and `tests/test_names.py` reads the generated Python, R shim, R wrapper
+  and both Fortran wrappers back to hold the emitters to it
 - an **`ierr` that is not the last argument**, of a hand-written export or, through the
   synthesised tiers, of an implementation. Every published signature ends in the error code; the C
   ABI checks its own order too (`c_abi._Builder._check_error_is_last`), with one exemption until
@@ -433,9 +446,10 @@ dropping the fixed directory they used to be scoped to:
   `DM_OUTPUT_FROM` recommend routines) have no wrapper and stay exported, which is why an
   implementation module can itself show up in the bindings — `tox_loess_impl.py` is the
   Python home of `tox_loess_required_workspace`, and holds no implementation at all
-- an **`intent(out)` `<base>_perm` whose `<base>` is an argument** — the allocating wrapper
-  takes it over, seeding and sorting it itself, and would discard what the implementation
-  computes; only the expert tier returned it. A `tmp_` permutation stays exempt
+- an **`intent(out)` argument the allocating wrapper takes over** — a `<base>_perm` whose
+  `<base>` is an argument (it seeds and sorts it itself) or a `DM_OUTPUT_FROM(..., AUTO)` value
+  (it calls the producer itself). Either way it would discard what the implementation computes;
+  only the expert tier returned it. A `tmp_` work array stays exempt
 - an implementation named **`<x>_expert_impl`** or **`<x>_alloc_impl`** — both name a wrapper,
   and the suffix is the generator's to add. `foo_expert_impl` beside `foo_impl` yields two
   procedures called `foo_expert`, and the emitter would strip the suffix and call `foo_impl`
@@ -637,8 +651,9 @@ The end-to-end tests skip cleanly without `gfortran` / `R`.
 
 Every convention lives in `config.py`; there are no naming literals scattered through the
 code. Every name the generated code introduces beside the arguments -- a local, an import, a
-`<argument><suffix>` -- lives in `names.py`, which `validate` refuses as an argument name: an
-emitter that starts declaring a new one adds it there, or `tests/test_names.py` fails.
+`<argument><suffix>` -- is built from `names.py`: underscored where the language allows it, so it
+meets no argument, and otherwise refused where a Fortran wrapper emits it. An emitter that starts
+binding a plain name of its own fails `tests/test_names.py`.
 
 ---
 

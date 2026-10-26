@@ -18,30 +18,30 @@ routines themselves are not re-documented beyond their calling convention.
 Python binding, generated from tox_loess. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.loess_fit_plain_c.restype = None
 _lib.loess_fit_plain_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_bool),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -51,19 +51,19 @@ _LOESS_FIT_PLAIN_ARGUMENT_SOURCES = ("x", None, None, None, None, None, None, No
 
 _lib.loess_fit_robust_c.restype = None
 _lib.loess_fit_robust_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -134,27 +134,27 @@ def loess_fit_plain(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        x = np.ascontiguousarray(x, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'x' must be an array of np.float64: {error}") from None
+        x = _np.ascontiguousarray(x, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'x' must be an array of np.float64: {_error}") from None
     if x.ndim != 1:
         raise ValueError(f"'x' must have 1 dimension, but has {x.ndim}")
     try:
-        y = np.ascontiguousarray(y, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'y' must be an array of np.float64: {error}") from None
+        y = _np.ascontiguousarray(y, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'y' must be an array of np.float64: {_error}") from None
     if y.ndim != 1:
         raise ValueError(f"'y' must have 1 dimension, but has {y.ndim}")
     try:
-        weights = np.ascontiguousarray(weights, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'weights' must be an array of np.float64: {error}") from None
+        weights = _np.ascontiguousarray(weights, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'weights' must be an array of np.float64: {_error}") from None
     if weights.ndim != 1:
         raise ValueError(f"'weights' must have 1 dimension, but has {weights.ndim}")
     try:
-        eval_points = np.asfortranarray(eval_points, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'eval_points' must be an array of np.float64: {error}") from None
+        eval_points = _np.asfortranarray(eval_points, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'eval_points' must be an array of np.float64: {_error}") from None
     if eval_points.ndim != 2:
         raise ValueError(f"'eval_points' must have 2 dimensions, but has {eval_points.ndim}")
 
@@ -176,25 +176,25 @@ def loess_fit_plain(
         )
 
     # outputs and work arrays, which the caller never sees
-    fitted_values = np.empty((n,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    fitted_values = _np.empty((n,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.loess_fit_plain_c(
-        ctypes.byref(ctypes.c_int(n)),
+        _ctypes.byref(_ctypes.c_int(n)),
         x,
         y,
         weights,
         eval_points,
-        ctypes.byref(ctypes.c_double(span)),
-        ctypes.byref(ctypes.c_int(degree)),
-        ctypes.byref(ctypes.c_int(max_neighborhood_size)),
-        ctypes.byref(ctypes.c_bool(compute_influence)),
-        ctypes.byref(ctypes.c_bool(save_factorization)),
+        _ctypes.byref(_ctypes.c_double(span)),
+        _ctypes.byref(_ctypes.c_int(degree)),
+        _ctypes.byref(_ctypes.c_int(max_neighborhood_size)),
+        _ctypes.byref(_ctypes.c_bool(compute_influence)),
+        _ctypes.byref(_ctypes.c_bool(save_factorization)),
         fitted_values,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _LOESS_FIT_PLAIN_ARGUMENTS, _LOESS_FIT_PLAIN_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _LOESS_FIT_PLAIN_ARGUMENTS, _LOESS_FIT_PLAIN_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     fitted_values.flags.writeable = False
@@ -273,27 +273,27 @@ def loess_fit_robust(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        x = np.ascontiguousarray(x, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'x' must be an array of np.float64: {error}") from None
+        x = _np.ascontiguousarray(x, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'x' must be an array of np.float64: {_error}") from None
     if x.ndim != 1:
         raise ValueError(f"'x' must have 1 dimension, but has {x.ndim}")
     try:
-        y = np.ascontiguousarray(y, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'y' must be an array of np.float64: {error}") from None
+        y = _np.ascontiguousarray(y, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'y' must be an array of np.float64: {_error}") from None
     if y.ndim != 1:
         raise ValueError(f"'y' must have 1 dimension, but has {y.ndim}")
     try:
-        weights = np.ascontiguousarray(weights, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'weights' must be an array of np.float64: {error}") from None
+        weights = _np.ascontiguousarray(weights, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'weights' must be an array of np.float64: {_error}") from None
     if weights.ndim != 1:
         raise ValueError(f"'weights' must have 1 dimension, but has {weights.ndim}")
     try:
-        eval_points = np.asfortranarray(eval_points, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'eval_points' must be an array of np.float64: {error}") from None
+        eval_points = _np.asfortranarray(eval_points, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'eval_points' must be an array of np.float64: {_error}") from None
     if eval_points.ndim != 2:
         raise ValueError(f"'eval_points' must have 2 dimensions, but has {eval_points.ndim}")
 
@@ -315,26 +315,26 @@ def loess_fit_robust(
         )
 
     # outputs and work arrays, which the caller never sees
-    fitted_values = np.empty((n,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    fitted_values = _np.empty((n,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.loess_fit_robust_c(
-        ctypes.byref(ctypes.c_int(n)),
+        _ctypes.byref(_ctypes.c_int(n)),
         x,
         y,
         weights,
         eval_points,
-        ctypes.byref(ctypes.c_double(span)),
-        ctypes.byref(ctypes.c_int(degree)),
-        ctypes.byref(ctypes.c_int(max_neighborhood_size)),
-        ctypes.byref(ctypes.c_bool(compute_influence)),
-        ctypes.byref(ctypes.c_bool(save_factorization)),
-        ctypes.byref(ctypes.c_int(n_iters)),
+        _ctypes.byref(_ctypes.c_double(span)),
+        _ctypes.byref(_ctypes.c_int(degree)),
+        _ctypes.byref(_ctypes.c_int(max_neighborhood_size)),
+        _ctypes.byref(_ctypes.c_bool(compute_influence)),
+        _ctypes.byref(_ctypes.c_bool(save_factorization)),
+        _ctypes.byref(_ctypes.c_int(n_iters)),
         fitted_values,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _LOESS_FIT_ROBUST_ARGUMENTS, _LOESS_FIT_ROBUST_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _LOESS_FIT_ROBUST_ARGUMENTS, _LOESS_FIT_ROBUST_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     fitted_values.flags.writeable = False

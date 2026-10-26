@@ -679,7 +679,9 @@ sort cannot give is expressed by a prologue that declares the permutation `inten
 caller's own. Since `foo` builds the permutation, it is something the implementation is handed:
 an `intent(out)` `<base>_perm` is the implementation's *result*, which `foo` would compute and
 throw away (Python and R got nothing back), so `validate` refuses it (#221 B7) rather than the
-convention growing an intent-dependent exception. A result is named for what it is.
+convention growing an intent-dependent exception. A result is named for what it is. The same
+holds for a `DM_OUTPUT_FROM(..., AUTO)` value, which `foo` computes with the producer: an
+`intent(out)` one is refused for the same reason (`validate._check_taken_over_is_not_an_output`).
 
 `foo` calls the **implementation directly**, not `foo_expert`. It has just built the
 permutation and work arrays itself, so re-running the expert tier's validation — in particular

@@ -29,6 +29,7 @@ from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..names import (
     BUFFER,
+    C_LOOP_INDEX,
     C_PROTECT_COUNT,
     DIM,
     INOUT_COPY,
@@ -36,7 +37,7 @@ from ..names import (
     OPTIONAL_POINTER,
     OPTIONAL_SIZE,
     SCALAR_VALUE,
-    local_name,
+    shim_local,
 )
 from ..render import Writer
 
@@ -271,7 +272,7 @@ class CCallEmitter:
 
     def function(self, wrapper: CWrapper) -> str:
         writer = Writer()
-        # scalars pulled into <name>_v locals; extent expressions naming one must read the
+        # scalars pulled into `_v_<name>` locals; extent expressions naming one must read the
         # local, not the SEXP parameter. Held for the duration of emitting this function.
         self._scalar_names = self._scalar_local_names(wrapper)
         params = ", ".join(f"SEXP {a.name}" for a in self._inputs(wrapper))
@@ -408,8 +409,8 @@ class CCallEmitter:
         """The size of `owner` along `axis`, as a C expression."""
         if owner.optional:
             if owner.rank > 1 and not owner.type.is_character:
-                return f"{local_name(owner.name, DIM)}[{axis}]"
-            return local_name(owner.name, OPTIONAL_SIZE)
+                return f"{shim_local(owner.name, DIM)}[{axis}]"
+            return shim_local(owner.name, OPTIONAL_SIZE)
         if owner.rank <= 1 or (owner.type.is_character and owner.rank == 2):
             return f"(int) Rf_length({owner.name})"
         return f"INTEGER(Rf_getAttrib({owner.name}, R_DimSymbol))[{axis}]"
@@ -427,11 +428,11 @@ class CCallEmitter:
     # -- scalars ----------------------------------------------------------------
 
     def _scalar_local_names(self, wrapper: CWrapper) -> set[str]:
-        """Scalar inputs pulled into a `<name>_v` local before the call.
+        """Scalar inputs pulled into a `_v_<name>` local before the call.
 
         Exactly the by-value scalars among the `.Call` parameters (`_inputs`): a derived
         extent/strlen/shape-count is an `int <name>` local already, a scalar output or
-        `ierr` is a plain C local, an optional goes through `<name>_p`, a mode/character
+        `ierr` is a plain C local, an optional goes through `_p_<name>`, a mode/character
         goes through a buffer. Membership in `_inputs` is the reliable discriminator --
         `_is_derived` alone misses STRLEN and shape-count derivations.
         """
@@ -446,10 +447,10 @@ class CCallEmitter:
         return [a for a in self._inputs(wrapper) if a.name in names]
 
     def _extent(self, expr: str) -> str:
-        """A Fortran extent as C, with any by-value scalar name read from its `_v` local."""
+        """A Fortran extent as C, with any by-value scalar name read from its `_v_` local."""
         out = c_extent(expr)
         for name in self._scalar_names:
-            out = re.sub(rf"\b{re.escape(name)}\b", local_name(name, SCALAR_VALUE), out)
+            out = re.sub(rf"\b{re.escape(name)}\b", shim_local(name, SCALAR_VALUE), out)
         return out
 
     def _extract_scalars(self, writer: Writer, wrapper: CWrapper) -> None:
@@ -464,7 +465,7 @@ class CCallEmitter:
 
     def _scalar_local(self, argument: CArgument) -> str:
         return (
-            f"{self._scalar_local_type(argument)} {local_name(argument.name, SCALAR_VALUE)}"
+            f"{self._scalar_local_type(argument)} {shim_local(argument.name, SCALAR_VALUE)}"
             f" = {self._scalar_value(argument)};"
         )
 
@@ -511,11 +512,12 @@ class CCallEmitter:
                 and _r_marshals(argument)
                 and not self._converts_via_buffer(argument)
             )
-            value = local_name(name, SCALAR_VALUE)
-            pointer = local_name(name, OPTIONAL_POINTER)
-            size = local_name(name, OPTIONAL_SIZE)
-            dim = local_name(name, DIM)
-            dim_attribute = local_name(name, OPTIONAL_DIM_ATTRIBUTE)
+            value = shim_local(name, SCALAR_VALUE)
+            pointer = shim_local(name, OPTIONAL_POINTER)
+            size = shim_local(name, OPTIONAL_SIZE)
+            dim = shim_local(name, DIM)
+            dim_attribute = shim_local(name, OPTIONAL_DIM_ATTRIBUTE)
+            i = C_LOOP_INDEX
             if converts_in_place:
                 local_type = self._scalar_local_type(argument)
                 lines.line(f"{local_type} {value} = 0;")
@@ -525,7 +527,7 @@ class CCallEmitter:
             lines.line(f"int {size} = 0;")
             if has_axes:
                 lines.line(f"int {dim}[{rank}]; "
-                           f"for (int i = 0; i < {rank}; ++i) {dim}[i] = 0;")
+                           f"for (int {i} = 0; {i} < {rank}; ++{i}) {dim}[{i}] = 0;")
             lines.line(f"if ({name} != R_NilValue) {{")
             with lines.indent():
                 lines.line(f"{size} = (int) Rf_length({name});")
@@ -539,8 +541,8 @@ class CCallEmitter:
                     lines.line(f"if ({dim_attribute} != R_NilValue) {{")
                     with lines.indent():
                         lines.line(
-                            f"for (int i = 0; i < {rank} && i < (int) Rf_length({dim_attribute}); ++i)"
-                            f" {dim}[i] = INTEGER({dim_attribute})[i];"
+                            f"for (int {i} = 0; {i} < {rank} && {i} < (int) Rf_length({dim_attribute}); ++{i})"
+                            f" {dim}[{i}] = INTEGER({dim_attribute})[{i}];"
                         )
                     lines.line("}")
             lines.line("}")
@@ -569,7 +571,7 @@ class CCallEmitter:
 
     def _working_name(self, argument: CArgument) -> str:
         if self._is_inout_copy(argument):
-            return local_name(argument.name, INOUT_COPY)
+            return shim_local(argument.name, INOUT_COPY)
         return argument.name
 
     def _copy_inout(self, writer: Writer, wrapper: CWrapper) -> None:
@@ -577,7 +579,7 @@ class CCallEmitter:
         lines = Writer()
         for argument in wrapper:
             if self._is_inout_copy(argument):
-                copy = local_name(argument.name, INOUT_COPY)
+                copy = shim_local(argument.name, INOUT_COPY)
                 lines.line(
                     f"SEXP {copy} = PROTECT(Rf_duplicate({argument.name})); {C_PROTECT_COUNT}++;"
                 )
@@ -600,9 +602,9 @@ class CCallEmitter:
     def _input_buffer(self, argument: CArgument) -> str:
         name = argument.name
         if argument.type.is_logical:
-            return f"unsigned char* {local_name(name, BUFFER)} = tox_bool_in({name});"
+            return f"unsigned char* {shim_local(name, BUFFER)} = tox_bool_in({name});"
         length = self._extent(argument.dimension.extents[0])
-        return f"char* {local_name(name, BUFFER)} = tox_char_in({name}, {length});"
+        return f"char* {shim_local(name, BUFFER)} = tox_char_in({name}, {length});"
 
     # -- allocating outputs and work space --------------------------------------
 
@@ -638,11 +640,11 @@ class CCallEmitter:
             size = _product(extents)
 
         if argument.type.is_logical:
-            return [f"unsigned char* {local_name(name, BUFFER)} = tox_bool_alloc({size});"]
+            return [f"unsigned char* {shim_local(name, BUFFER)} = tox_bool_alloc({size});"]
         if argument.type.is_character:
             length = extents[0]
             count = size if argument.shape_arg is not None else _product(extents[1:])
-            return [f"char* {local_name(name, BUFFER)} = tox_char_alloc({length}, {count});"]
+            return [f"char* {shim_local(name, BUFFER)} = tox_char_alloc({length}, {count});"]
         if argument.is_temporary:
             ctype = c_ctype(argument)
             return [f"{ctype}* {name} = ({ctype}*) R_alloc({size}, sizeof({ctype}));"]
@@ -661,7 +663,7 @@ class CCallEmitter:
         if len(extents) < 2:
             return []
         rank = len(extents)
-        dim = local_name(target, DIM)
+        dim = shim_local(argument.name, DIM)
         assigns = " ".join(f"INTEGER({dim})[{i}] = {e};" for i, e in enumerate(extents))
         return [
             f"{{ SEXP {dim} = PROTECT(Rf_allocVector(INTSXP, {rank})); "
@@ -690,14 +692,14 @@ class CCallEmitter:
         name = argument.name
         if argument.optional:
             if self._converts_via_buffer(argument):
-                return f"{name} != R_NilValue ? {local_name(name, BUFFER)} : NULL"
-            return local_name(name, OPTIONAL_POINTER)
+                return f"{name} != R_NilValue ? {shim_local(name, BUFFER)} : NULL"
+            return shim_local(name, OPTIONAL_POINTER)
         if self._converts_via_buffer(argument):
-            return local_name(name, BUFFER)
+            return shim_local(name, BUFFER)
         if argument.is_scalar:
-            # a by-value scalar input lives in <name>_v; a derived extent, scalar output or
+            # a by-value scalar input lives in _v_<name>; a derived extent, scalar output or
             # ierr is a plain <name> local
-            ref = local_name(name, SCALAR_VALUE) if name in self._scalar_names else name
+            ref = shim_local(name, SCALAR_VALUE) if name in self._scalar_names else name
             if argument.type.base is BaseType.COMPLEX:
                 const = "const " if argument.intent is Intent.IN else ""
                 return f"({const}double _Complex*) &{ref}"
@@ -727,7 +729,7 @@ class CCallEmitter:
             if argument.intent is Intent.IN or not self._converts_via_buffer(argument):
                 continue
             name = argument.name
-            buffer = local_name(name, BUFFER)
+            buffer = shim_local(name, BUFFER)
             count = self._converted_count(argument)
             if argument.type.is_logical:
                 lines.line(
@@ -775,11 +777,11 @@ class CCallEmitter:
         """The SEXP for one returned output, wrapping a scalar or naming an allocated one."""
         if argument.is_scalar:
             base = argument.type.base
-            # an inout scalar was pulled into <name>_v and written there; a pure output
+            # an inout scalar was pulled into _v_<name> and written there; a pure output
             # scalar is a plain <name> local
             name = argument.name
             if name in self._scalar_names:
-                name = local_name(name, SCALAR_VALUE)
+                name = shim_local(name, SCALAR_VALUE)
             if base is BaseType.LOGICAL:
                 return f"Rf_ScalarLogical({name} != 0)"
             if base is BaseType.REAL:

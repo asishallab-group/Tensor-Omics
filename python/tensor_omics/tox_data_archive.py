@@ -13,27 +13,27 @@ fixed TensorOmics data set schema; `create_zip_archive`/`extract_zip_archive` an
 Python binding, generated from tox_data_archive. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.create_zip_archive_c.restype = None
 _lib.create_zip_archive_c.argtypes = (
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -41,38 +41,38 @@ _CREATE_ZIP_ARCHIVE_ARGUMENTS = ("zip_filename", "keys", "filenames", "ierr",)
 
 _lib.save_tox_data_c.restype = None
 _lib.save_tox_data_c.argtypes = (
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    nullable(np.ctypeslib.ndpointer(ndim=1)),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    nullable(np.ctypeslib.ndpointer(ndim=1)),
-    ctypes.POINTER(ctypes.c_int),
-    nullable(np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS')),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    nullable(np.ctypeslib.ndpointer(ndim=1)),
-    ctypes.POINTER(ctypes.c_int),
-    nullable(np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS')),
-    ctypes.POINTER(ctypes.c_int),
-    nullable(np.ctypeslib.ndpointer(ndim=1)),
-    ctypes.POINTER(ctypes.c_int),
-    nullable(np.ctypeslib.ndpointer(ndim=1)),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    nullable(np.ctypeslib.ndpointer(ndim=1)),
-    ctypes.POINTER(ctypes.c_int),
-    nullable(np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS')),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    nullable(np.ctypeslib.ndpointer(ndim=1)),
-    ctypes.POINTER(ctypes.c_int),
-    nullable(np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS')),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    nullable(np.ctypeslib.ndpointer(ndim=1)),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _nullable(_np.ctypeslib.ndpointer(ndim=1)),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _nullable(_np.ctypeslib.ndpointer(ndim=1)),
+    _ctypes.POINTER(_ctypes.c_int),
+    _nullable(_np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS')),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _nullable(_np.ctypeslib.ndpointer(ndim=1)),
+    _ctypes.POINTER(_ctypes.c_int),
+    _nullable(_np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS')),
+    _ctypes.POINTER(_ctypes.c_int),
+    _nullable(_np.ctypeslib.ndpointer(ndim=1)),
+    _ctypes.POINTER(_ctypes.c_int),
+    _nullable(_np.ctypeslib.ndpointer(ndim=1)),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _nullable(_np.ctypeslib.ndpointer(ndim=1)),
+    _ctypes.POINTER(_ctypes.c_int),
+    _nullable(_np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS')),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _nullable(_np.ctypeslib.ndpointer(ndim=1)),
+    _ctypes.POINTER(_ctypes.c_int),
+    _nullable(_np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS')),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _nullable(_np.ctypeslib.ndpointer(ndim=1)),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -80,20 +80,20 @@ _SAVE_TOX_DATA_ARGUMENTS = ("zip_filename", "gene_ids", "gene_ids_file", "expres
 
 _lib.get_tox_data_dims_c.restype = None
 _lib.get_tox_data_dims_c.argtypes = (
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -101,26 +101,26 @@ _GET_TOX_DATA_DIMS_ARGUMENTS = ("zip_filename", "n_gene_ids", "gene_id_len", "n_
 
 _lib.read_tox_data_into_c.restype = None
 _lib.read_tox_data_into_c.argtypes = (
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -159,21 +159,21 @@ def create_zip_archive(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    zip_filename = np.array([str(zip_filename).encode().ljust(1)], dtype="S")
+    zip_filename = _np.array([str(zip_filename).encode().ljust(1)], dtype="S")
     try:
         _keys_bytes = [str(_s).encode() for _s in keys]
         _keys_width = max(map(len, _keys_bytes), default=0) or 1
-        keys = np.asarray([_b.ljust(_keys_width) for _b in _keys_bytes], dtype="S")
-    except TypeError as error:
-        raise TypeError(f"'keys' must be a sequence of strings: {error}") from None
+        keys = _np.asarray([_b.ljust(_keys_width) for _b in _keys_bytes], dtype="S")
+    except TypeError as _error:
+        raise TypeError(f"'keys' must be a sequence of strings: {_error}") from None
     if keys.ndim != 1:
         raise ValueError(f"'keys' must have 1 dimension, but has {keys.ndim}")
     try:
         _filenames_bytes = [str(_s).encode() for _s in filenames]
         _filenames_width = max(map(len, _filenames_bytes), default=0) or 1
-        filenames = np.asarray([_b.ljust(_filenames_width) for _b in _filenames_bytes], dtype="S")
-    except TypeError as error:
-        raise TypeError(f"'filenames' must be a sequence of strings: {error}") from None
+        filenames = _np.asarray([_b.ljust(_filenames_width) for _b in _filenames_bytes], dtype="S")
+    except TypeError as _error:
+        raise TypeError(f"'filenames' must be a sequence of strings: {_error}") from None
     if filenames.ndim != 1:
         raise ValueError(f"'filenames' must have 1 dimension, but has {filenames.ndim}")
 
@@ -185,21 +185,21 @@ def create_zip_archive(
     n_filenames_elements = filenames.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    ierr = ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.create_zip_archive_c(
         zip_filename,
-        ctypes.byref(ctypes.c_int(zip_filename_strlen)),
+        _ctypes.byref(_ctypes.c_int(zip_filename_strlen)),
         keys,
-        ctypes.byref(ctypes.c_int(keys_strlen)),
-        ctypes.byref(ctypes.c_int(n_keys_elements)),
+        _ctypes.byref(_ctypes.c_int(keys_strlen)),
+        _ctypes.byref(_ctypes.c_int(n_keys_elements)),
         filenames,
-        ctypes.byref(ctypes.c_int(filenames_strlen)),
-        ctypes.byref(ctypes.c_int(n_filenames_elements)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(filenames_strlen)),
+        _ctypes.byref(_ctypes.c_int(n_filenames_elements)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CREATE_ZIP_ARCHIVE_ARGUMENTS)
+    _check_err_code(ierr.value, _CREATE_ZIP_ARCHIVE_ARGUMENTS)
 
     return None
 
@@ -264,65 +264,65 @@ def save_tox_data(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    zip_filename = np.array([str(zip_filename).encode().ljust(1)], dtype="S")
+    zip_filename = _np.array([str(zip_filename).encode().ljust(1)], dtype="S")
     if gene_ids is not None:
         try:
             _gene_ids_bytes = [str(_s).encode() for _s in gene_ids]
             _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
-            gene_ids = np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
-        except TypeError as error:
-            raise TypeError(f"'gene_ids' must be a sequence of strings: {error}") from None
+            gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
+        except TypeError as _error:
+            raise TypeError(f"'gene_ids' must be a sequence of strings: {_error}") from None
         if gene_ids.ndim != 1:
             raise ValueError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}")
     if gene_ids_file is not None:
-        gene_ids_file = np.array([str(gene_ids_file).encode().ljust(1)], dtype="S")
+        gene_ids_file = _np.array([str(gene_ids_file).encode().ljust(1)], dtype="S")
     if expression is not None:
         try:
-            expression = np.asfortranarray(expression, dtype=np.float64)
-        except (TypeError, ValueError) as error:
-            raise TypeError(f"'expression' must be an array of np.float64: {error}") from None
+            expression = _np.asfortranarray(expression, dtype=_np.float64)
+        except (TypeError, ValueError) as _error:
+            raise TypeError(f"'expression' must be an array of np.float64: {_error}") from None
         if expression.ndim != 2:
             raise ValueError(f"'expression' must have 2 dimensions, but has {expression.ndim}")
     if expression_file is not None:
-        expression_file = np.array([str(expression_file).encode().ljust(1)], dtype="S")
+        expression_file = _np.array([str(expression_file).encode().ljust(1)], dtype="S")
     if gene_to_family is not None:
         try:
-            gene_to_family = np.ascontiguousarray(gene_to_family, dtype=np.int32)
-        except (TypeError, ValueError) as error:
-            raise TypeError(f"'gene_to_family' must be an array of np.int32: {error}") from None
+            gene_to_family = _np.ascontiguousarray(gene_to_family, dtype=_np.int32)
+        except (TypeError, ValueError) as _error:
+            raise TypeError(f"'gene_to_family' must be an array of np.int32: {_error}") from None
         if gene_to_family.ndim != 1:
             raise ValueError(f"'gene_to_family' must have 1 dimension, but has {gene_to_family.ndim}")
     if gene_to_family_file is not None:
-        gene_to_family_file = np.array([str(gene_to_family_file).encode().ljust(1)], dtype="S")
+        gene_to_family_file = _np.array([str(gene_to_family_file).encode().ljust(1)], dtype="S")
     if family_ids is not None:
         try:
             _family_ids_bytes = [str(_s).encode() for _s in family_ids]
             _family_ids_width = max(map(len, _family_ids_bytes), default=0) or 1
-            family_ids = np.asarray([_b.ljust(_family_ids_width) for _b in _family_ids_bytes], dtype="S")
-        except TypeError as error:
-            raise TypeError(f"'family_ids' must be a sequence of strings: {error}") from None
+            family_ids = _np.asarray([_b.ljust(_family_ids_width) for _b in _family_ids_bytes], dtype="S")
+        except TypeError as _error:
+            raise TypeError(f"'family_ids' must be a sequence of strings: {_error}") from None
         if family_ids.ndim != 1:
             raise ValueError(f"'family_ids' must have 1 dimension, but has {family_ids.ndim}")
     if family_ids_file is not None:
-        family_ids_file = np.array([str(family_ids_file).encode().ljust(1)], dtype="S")
+        family_ids_file = _np.array([str(family_ids_file).encode().ljust(1)], dtype="S")
     if family_centroids is not None:
         try:
-            family_centroids = np.asfortranarray(family_centroids, dtype=np.float64)
-        except (TypeError, ValueError) as error:
-            raise TypeError(f"'family_centroids' must be an array of np.float64: {error}") from None
+            family_centroids = _np.asfortranarray(family_centroids, dtype=_np.float64)
+        except (TypeError, ValueError) as _error:
+            raise TypeError(f"'family_centroids' must be an array of np.float64: {_error}") from None
         if family_centroids.ndim != 2:
             raise ValueError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}")
     if family_centroids_file is not None:
-        family_centroids_file = np.array([str(family_centroids_file).encode().ljust(1)], dtype="S")
+        family_centroids_file = _np.array([str(family_centroids_file).encode().ljust(1)], dtype="S")
     if shift_vectors is not None:
         try:
-            shift_vectors = np.asfortranarray(shift_vectors, dtype=np.float64)
-        except (TypeError, ValueError) as error:
-            raise TypeError(f"'shift_vectors' must be an array of np.float64: {error}") from None
+            shift_vectors = _np.asfortranarray(shift_vectors, dtype=_np.float64)
+        except (TypeError, ValueError) as _error:
+            raise TypeError(f"'shift_vectors' must be an array of np.float64: {_error}") from None
         if shift_vectors.ndim != 2:
             raise ValueError(f"'shift_vectors' must have 2 dimensions, but has {shift_vectors.ndim}")
     if shift_vectors_file is not None:
-        shift_vectors_file = np.array([str(shift_vectors_file).encode().ljust(1)], dtype="S")
+        shift_vectors_file = _np.array([str(shift_vectors_file).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     zip_filename_strlen = zip_filename.itemsize
@@ -345,44 +345,44 @@ def save_tox_data(
     shift_vectors_file_strlen = 0 if shift_vectors_file is None else shift_vectors_file.itemsize
 
     # outputs and work arrays, which the caller never sees
-    ierr = ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.save_tox_data_c(
         zip_filename,
-        ctypes.byref(ctypes.c_int(zip_filename_strlen)),
+        _ctypes.byref(_ctypes.c_int(zip_filename_strlen)),
         gene_ids,
-        ctypes.byref(ctypes.c_int(gene_ids_strlen)),
-        ctypes.byref(ctypes.c_int(n_gene_ids_elements)),
+        _ctypes.byref(_ctypes.c_int(gene_ids_strlen)),
+        _ctypes.byref(_ctypes.c_int(n_gene_ids_elements)),
         gene_ids_file,
-        ctypes.byref(ctypes.c_int(gene_ids_file_strlen)),
+        _ctypes.byref(_ctypes.c_int(gene_ids_file_strlen)),
         expression,
-        ctypes.byref(ctypes.c_int(n_expression_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_expression_elements_dim_2)),
+        _ctypes.byref(_ctypes.c_int(n_expression_elements_dim_1)),
+        _ctypes.byref(_ctypes.c_int(n_expression_elements_dim_2)),
         expression_file,
-        ctypes.byref(ctypes.c_int(expression_file_strlen)),
+        _ctypes.byref(_ctypes.c_int(expression_file_strlen)),
         gene_to_family,
-        ctypes.byref(ctypes.c_int(n_gene_to_family_elements)),
+        _ctypes.byref(_ctypes.c_int(n_gene_to_family_elements)),
         gene_to_family_file,
-        ctypes.byref(ctypes.c_int(gene_to_family_file_strlen)),
+        _ctypes.byref(_ctypes.c_int(gene_to_family_file_strlen)),
         family_ids,
-        ctypes.byref(ctypes.c_int(family_ids_strlen)),
-        ctypes.byref(ctypes.c_int(n_family_ids_elements)),
+        _ctypes.byref(_ctypes.c_int(family_ids_strlen)),
+        _ctypes.byref(_ctypes.c_int(n_family_ids_elements)),
         family_ids_file,
-        ctypes.byref(ctypes.c_int(family_ids_file_strlen)),
+        _ctypes.byref(_ctypes.c_int(family_ids_file_strlen)),
         family_centroids,
-        ctypes.byref(ctypes.c_int(n_family_centroids_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_family_centroids_elements_dim_2)),
+        _ctypes.byref(_ctypes.c_int(n_family_centroids_elements_dim_1)),
+        _ctypes.byref(_ctypes.c_int(n_family_centroids_elements_dim_2)),
         family_centroids_file,
-        ctypes.byref(ctypes.c_int(family_centroids_file_strlen)),
+        _ctypes.byref(_ctypes.c_int(family_centroids_file_strlen)),
         shift_vectors,
-        ctypes.byref(ctypes.c_int(n_shift_vectors_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_shift_vectors_elements_dim_2)),
+        _ctypes.byref(_ctypes.c_int(n_shift_vectors_elements_dim_1)),
+        _ctypes.byref(_ctypes.c_int(n_shift_vectors_elements_dim_2)),
         shift_vectors_file,
-        ctypes.byref(ctypes.c_int(shift_vectors_file_strlen)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(shift_vectors_file_strlen)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _SAVE_TOX_DATA_ARGUMENTS)
+    _check_err_code(ierr.value, _SAVE_TOX_DATA_ARGUMENTS)
 
     return None
 
@@ -440,43 +440,43 @@ def get_tox_data_dims(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    zip_filename = np.array([str(zip_filename).encode().ljust(1)], dtype="S")
+    zip_filename = _np.array([str(zip_filename).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     zip_filename_strlen = zip_filename.itemsize
 
     # outputs and work arrays, which the caller never sees
-    n_gene_ids = ctypes.c_int(0)
-    gene_id_len = ctypes.c_int(0)
-    n_expression_rows = ctypes.c_int(0)
-    n_expression_cols = ctypes.c_int(0)
-    n_gene_to_family = ctypes.c_int(0)
-    n_family_ids = ctypes.c_int(0)
-    family_id_len = ctypes.c_int(0)
-    n_family_centroids_rows = ctypes.c_int(0)
-    n_family_centroids_cols = ctypes.c_int(0)
-    n_shift_vectors_rows = ctypes.c_int(0)
-    n_shift_vectors_cols = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    n_gene_ids = _ctypes.c_int(0)
+    gene_id_len = _ctypes.c_int(0)
+    n_expression_rows = _ctypes.c_int(0)
+    n_expression_cols = _ctypes.c_int(0)
+    n_gene_to_family = _ctypes.c_int(0)
+    n_family_ids = _ctypes.c_int(0)
+    family_id_len = _ctypes.c_int(0)
+    n_family_centroids_rows = _ctypes.c_int(0)
+    n_family_centroids_cols = _ctypes.c_int(0)
+    n_shift_vectors_rows = _ctypes.c_int(0)
+    n_shift_vectors_cols = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.get_tox_data_dims_c(
         zip_filename,
-        ctypes.byref(ctypes.c_int(zip_filename_strlen)),
-        ctypes.byref(n_gene_ids),
-        ctypes.byref(gene_id_len),
-        ctypes.byref(n_expression_rows),
-        ctypes.byref(n_expression_cols),
-        ctypes.byref(n_gene_to_family),
-        ctypes.byref(n_family_ids),
-        ctypes.byref(family_id_len),
-        ctypes.byref(n_family_centroids_rows),
-        ctypes.byref(n_family_centroids_cols),
-        ctypes.byref(n_shift_vectors_rows),
-        ctypes.byref(n_shift_vectors_cols),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(zip_filename_strlen)),
+        _ctypes.byref(n_gene_ids),
+        _ctypes.byref(gene_id_len),
+        _ctypes.byref(n_expression_rows),
+        _ctypes.byref(n_expression_cols),
+        _ctypes.byref(n_gene_to_family),
+        _ctypes.byref(n_family_ids),
+        _ctypes.byref(family_id_len),
+        _ctypes.byref(n_family_centroids_rows),
+        _ctypes.byref(n_family_centroids_cols),
+        _ctypes.byref(n_shift_vectors_rows),
+        _ctypes.byref(n_shift_vectors_cols),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _GET_TOX_DATA_DIMS_ARGUMENTS)
+    _check_err_code(ierr.value, _GET_TOX_DATA_DIMS_ARGUMENTS)
 
     return {
         "n_gene_ids": n_gene_ids.value,
@@ -542,7 +542,7 @@ def read_tox_data_into(
     _zip_filename_raw = zip_filename
 
     # accept anything array-like, converting only when C needs it
-    zip_filename = np.array([str(zip_filename).encode().ljust(1)], dtype="S")
+    zip_filename = _np.array([str(zip_filename).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     zip_filename_strlen = zip_filename.itemsize
@@ -562,38 +562,38 @@ def read_tox_data_into(
     n_shift_vectors_cols = _get_tox_data_dims_result["n_shift_vectors_cols"]
 
     # outputs and work arrays, which the caller never sees
-    gene_ids = np.zeros((n_gene_ids,), dtype=f"S{gene_id_len}")
-    expression = np.empty((n_expression_rows, n_expression_cols,), dtype=np.float64, order='F')
-    gene_to_family = np.empty((n_gene_to_family,), dtype=np.int32, order='C')
-    family_ids = np.zeros((n_family_ids,), dtype=f"S{family_id_len}")
-    family_centroids = np.empty((n_family_centroids_rows, n_family_centroids_cols,), dtype=np.float64, order='F')
-    shift_vectors = np.empty((n_shift_vectors_rows, n_shift_vectors_cols,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    gene_ids = _np.zeros((n_gene_ids,), dtype=f"S{gene_id_len}")
+    expression = _np.empty((n_expression_rows, n_expression_cols,), dtype=_np.float64, order='F')
+    gene_to_family = _np.empty((n_gene_to_family,), dtype=_np.int32, order='C')
+    family_ids = _np.zeros((n_family_ids,), dtype=f"S{family_id_len}")
+    family_centroids = _np.empty((n_family_centroids_rows, n_family_centroids_cols,), dtype=_np.float64, order='F')
+    shift_vectors = _np.empty((n_shift_vectors_rows, n_shift_vectors_cols,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.read_tox_data_into_c(
         zip_filename,
-        ctypes.byref(ctypes.c_int(zip_filename_strlen)),
-        ctypes.byref(ctypes.c_int(n_gene_ids)),
-        ctypes.byref(ctypes.c_int(gene_id_len)),
+        _ctypes.byref(_ctypes.c_int(zip_filename_strlen)),
+        _ctypes.byref(_ctypes.c_int(n_gene_ids)),
+        _ctypes.byref(_ctypes.c_int(gene_id_len)),
         gene_ids,
-        ctypes.byref(ctypes.c_int(n_expression_rows)),
-        ctypes.byref(ctypes.c_int(n_expression_cols)),
+        _ctypes.byref(_ctypes.c_int(n_expression_rows)),
+        _ctypes.byref(_ctypes.c_int(n_expression_cols)),
         expression,
-        ctypes.byref(ctypes.c_int(n_gene_to_family)),
+        _ctypes.byref(_ctypes.c_int(n_gene_to_family)),
         gene_to_family,
-        ctypes.byref(ctypes.c_int(n_family_ids)),
-        ctypes.byref(ctypes.c_int(family_id_len)),
+        _ctypes.byref(_ctypes.c_int(n_family_ids)),
+        _ctypes.byref(_ctypes.c_int(family_id_len)),
         family_ids,
-        ctypes.byref(ctypes.c_int(n_family_centroids_rows)),
-        ctypes.byref(ctypes.c_int(n_family_centroids_cols)),
+        _ctypes.byref(_ctypes.c_int(n_family_centroids_rows)),
+        _ctypes.byref(_ctypes.c_int(n_family_centroids_cols)),
         family_centroids,
-        ctypes.byref(ctypes.c_int(n_shift_vectors_rows)),
-        ctypes.byref(ctypes.c_int(n_shift_vectors_cols)),
+        _ctypes.byref(_ctypes.c_int(n_shift_vectors_rows)),
+        _ctypes.byref(_ctypes.c_int(n_shift_vectors_cols)),
         shift_vectors,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _READ_TOX_DATA_INTO_ARGUMENTS, _READ_TOX_DATA_INTO_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _READ_TOX_DATA_INTO_ARGUMENTS, _READ_TOX_DATA_INTO_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     expression.flags.writeable = False

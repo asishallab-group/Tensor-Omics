@@ -9,23 +9,23 @@ of very different magnitudes can be compared by shape. `normalize_single_traject
 Python binding, generated from tox_trajectory_normalization. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.normalize_variable_timeseries_c.restype = None
 _lib.normalize_variable_timeseries_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -35,12 +35,12 @@ _NORMALIZE_VARIABLE_TIMESERIES_ARGUMENT_SOURCES = (None, None, "v", None, None,)
 
 _lib.normalize_single_trajectory_c.restype = None
 _lib.normalize_single_trajectory_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -50,13 +50,13 @@ _NORMALIZE_SINGLE_TRAJECTORY_ARGUMENT_SOURCES = (None, None, "trajectory", "traj
 
 _lib.normalize_all_trajectories_c.restype = None
 _lib.normalize_all_trajectories_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -97,9 +97,9 @@ def normalize_variable_timeseries(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        v = np.ascontiguousarray(v, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'v' must be an array of np.float64: {error}") from None
+        v = _np.ascontiguousarray(v, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'v' must be an array of np.float64: {_error}") from None
     if v.ndim != 1:
         raise ValueError(f"'v' must have 1 dimension, but has {v.ndim}")
 
@@ -107,19 +107,19 @@ def normalize_variable_timeseries(
     n_points = v.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    v_norm = np.empty((n_points,), dtype=np.float64, order='C')
-    status = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    v_norm = _np.empty((n_points,), dtype=_np.float64, order='C')
+    status = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.normalize_variable_timeseries_c(
         v,
         v_norm,
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(status),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(status),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _NORMALIZE_VARIABLE_TIMESERIES_ARGUMENTS, _NORMALIZE_VARIABLE_TIMESERIES_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _NORMALIZE_VARIABLE_TIMESERIES_ARGUMENTS, _NORMALIZE_VARIABLE_TIMESERIES_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     v_norm.flags.writeable = False
@@ -163,9 +163,9 @@ def normalize_single_trajectory(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        trajectory = np.asfortranarray(trajectory, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'trajectory' must be an array of np.float64: {error}") from None
+        trajectory = _np.asfortranarray(trajectory, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'trajectory' must be an array of np.float64: {_error}") from None
     if trajectory.ndim != 2:
         raise ValueError(f"'trajectory' must have 2 dimensions, but has {trajectory.ndim}")
 
@@ -174,20 +174,20 @@ def normalize_single_trajectory(
     n_timepoints = trajectory.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    trajectory_norm = np.empty((n_timepoints, n_factors,), dtype=np.float64, order='F')
-    status = np.empty((n_factors,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    trajectory_norm = _np.empty((n_timepoints, n_factors,), dtype=_np.float64, order='F')
+    status = _np.empty((n_factors,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.normalize_single_trajectory_c(
         trajectory,
         trajectory_norm,
-        ctypes.byref(ctypes.c_int(n_factors)),
-        ctypes.byref(ctypes.c_int(n_timepoints)),
+        _ctypes.byref(_ctypes.c_int(n_factors)),
+        _ctypes.byref(_ctypes.c_int(n_timepoints)),
         status,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _NORMALIZE_SINGLE_TRAJECTORY_ARGUMENTS, _NORMALIZE_SINGLE_TRAJECTORY_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _NORMALIZE_SINGLE_TRAJECTORY_ARGUMENTS, _NORMALIZE_SINGLE_TRAJECTORY_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     trajectory_norm.flags.writeable = False
@@ -234,9 +234,9 @@ def normalize_all_trajectories(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        trajectories = np.asfortranarray(trajectories, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'trajectories' must be an array of np.float64: {error}") from None
+        trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'trajectories' must be an array of np.float64: {_error}") from None
     if trajectories.ndim != 3:
         raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
 
@@ -246,21 +246,21 @@ def normalize_all_trajectories(
     n_timepoints = trajectories.shape[2]
 
     # outputs and work arrays, which the caller never sees
-    trajectories_norm = np.empty((n_factors, n_samples, n_timepoints,), dtype=np.float64, order='F')
-    status = np.empty((n_factors, n_samples,), dtype=np.int32, order='F')
-    ierr = ctypes.c_int(0)
+    trajectories_norm = _np.empty((n_factors, n_samples, n_timepoints,), dtype=_np.float64, order='F')
+    status = _np.empty((n_factors, n_samples,), dtype=_np.int32, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.normalize_all_trajectories_c(
         trajectories,
         trajectories_norm,
-        ctypes.byref(ctypes.c_int(n_factors)),
-        ctypes.byref(ctypes.c_int(n_samples)),
-        ctypes.byref(ctypes.c_int(n_timepoints)),
+        _ctypes.byref(_ctypes.c_int(n_factors)),
+        _ctypes.byref(_ctypes.c_int(n_samples)),
+        _ctypes.byref(_ctypes.c_int(n_timepoints)),
         status,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _NORMALIZE_ALL_TRAJECTORIES_ARGUMENTS, _NORMALIZE_ALL_TRAJECTORIES_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _NORMALIZE_ALL_TRAJECTORIES_ARGUMENTS, _NORMALIZE_ALL_TRAJECTORIES_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     trajectories_norm.flags.writeable = False

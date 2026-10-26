@@ -9,23 +9,23 @@ relative-distance index are built on.
 Python binding, generated from tox_euclidean_distance. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.euclidean_distance_c.restype = None
 _lib.euclidean_distance_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -35,14 +35,14 @@ _EUCLIDEAN_DISTANCE_ARGUMENT_SOURCES = (None, None, "vec1", None, None,)
 
 _lib.distance_to_centroid_c.restype = None
 _lib.distance_to_centroid_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -82,15 +82,15 @@ def euclidean_distance(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        vec1 = np.ascontiguousarray(vec1, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'vec1' must be an array of np.float64: {error}") from None
+        vec1 = _np.ascontiguousarray(vec1, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'vec1' must be an array of np.float64: {_error}") from None
     if vec1.ndim != 1:
         raise ValueError(f"'vec1' must have 1 dimension, but has {vec1.ndim}")
     try:
-        vec2 = np.ascontiguousarray(vec2, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'vec2' must be an array of np.float64: {error}") from None
+        vec2 = _np.ascontiguousarray(vec2, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'vec2' must be an array of np.float64: {_error}") from None
     if vec2.ndim != 1:
         raise ValueError(f"'vec2' must have 1 dimension, but has {vec2.ndim}")
 
@@ -104,18 +104,18 @@ def euclidean_distance(
         )
 
     # outputs and work arrays, which the caller never sees
-    result = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    result = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.euclidean_distance_c(
         vec1,
         vec2,
-        ctypes.byref(ctypes.c_int(n_elements)),
-        ctypes.byref(result),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_elements)),
+        _ctypes.byref(result),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _EUCLIDEAN_DISTANCE_ARGUMENTS, _EUCLIDEAN_DISTANCE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _EUCLIDEAN_DISTANCE_ARGUMENTS, _EUCLIDEAN_DISTANCE_ARGUMENT_SOURCES)
 
     return result.value
 
@@ -158,21 +158,21 @@ def distance_to_centroid(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        genes = np.asfortranarray(genes, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'genes' must be an array of np.float64: {error}") from None
+        genes = _np.asfortranarray(genes, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'genes' must be an array of np.float64: {_error}") from None
     if genes.ndim != 2:
         raise ValueError(f"'genes' must have 2 dimensions, but has {genes.ndim}")
     try:
-        centroids = np.asfortranarray(centroids, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'centroids' must be an array of np.float64: {error}") from None
+        centroids = _np.asfortranarray(centroids, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'centroids' must be an array of np.float64: {_error}") from None
     if centroids.ndim != 2:
         raise ValueError(f"'centroids' must have 2 dimensions, but has {centroids.ndim}")
     try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
+        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
     if gene_to_fam.ndim != 1:
         raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
 
@@ -192,21 +192,21 @@ def distance_to_centroid(
         )
 
     # outputs and work arrays, which the caller never sees
-    distances = np.empty((n_genes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    distances = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.distance_to_centroid_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         genes,
         centroids,
         gene_to_fam,
         distances,
-        ctypes.byref(ctypes.c_int(n_tissues)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_tissues)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DISTANCE_TO_CENTROID_ARGUMENTS, _DISTANCE_TO_CENTROID_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DISTANCE_TO_CENTROID_ARGUMENTS, _DISTANCE_TO_CENTROID_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     distances.flags.writeable = False

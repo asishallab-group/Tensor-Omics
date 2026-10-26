@@ -194,10 +194,23 @@ class TestTypeMapping:
         assert str(wrapper.argument("z").type) == "complex(c_double_complex)"
 
     def test_an_unknown_kind_is_reported_rather_than_guessed(self, bag):
-        wrap(b.procedure("p", b.real("x", kind="real128")), bag)
+        wrap(b.procedure("p", b.real("x", kind="wp")), bag)
 
-        assert "kind 'real128', which has no known C counterpart" in bag.errors[0].message
+        assert "kind 'wp', which has no known C counterpart" in bag.errors[0].message
         assert "c_double" in bag.errors[0].note
+
+    @pytest.mark.parametrize("kind", ["real128", "4"])
+    def test_a_kind_validate_refuses_is_not_reported_twice(self, bag, kind):
+        # `real(4)`: validate says the bindings cannot carry it, and that is the one error
+        from codegen.ir.validate import validate_procedure
+
+        procedure = b.procedure("p", b.real("x", kind=kind))
+        validate_procedure(procedure, bag)
+        wrap(procedure, bag)
+
+        assert [d.message for d in bag.errors] == [
+            f"argument 'x' is real({kind}), which the bindings cannot carry"
+        ]
 
 
 class TestLogicals:
@@ -543,7 +556,7 @@ class TestDefaultsAndMappingsThatCannotBeBuilt:
         assert "which has no C mapping" in bag.errors[0].message
 
     def test_a_kind_with_no_c_counterpart_is_reported(self, bag):
-        procedure = b.procedure("p", b.real("x", Intent.IN, kind="real128"), b.ierr())
+        procedure = b.procedure("p", b.real("x", Intent.IN, kind="dp"), b.ierr())
         analyse(procedure, bag)
 
         build_wrapper(procedure, bag)

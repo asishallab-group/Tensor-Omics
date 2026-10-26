@@ -7,29 +7,29 @@ One of the modules the `f42_utils` family gathers.
 Python binding, generated from f42_stats. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.loess_smooth_2d_c.restype = None
 _lib.loess_smooth_2d_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -39,12 +39,12 @@ _LOESS_SMOOTH_2D_ARGUMENT_SOURCES = ("x_ref", "x_query", None, None, None, "indi
 
 _lib.compute_edf_c.restype = None
 _lib.compute_edf_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -54,13 +54,13 @@ _COMPUTE_EDF_ARGUMENT_SOURCES = (None, "values", None, None, None, None,)
 
 _lib.compute_edf_expert_c.restype = None
 _lib.compute_edf_expert_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -70,12 +70,12 @@ _COMPUTE_EDF_EXPERT_ARGUMENT_SOURCES = (None, "values", None, None, None, None, 
 
 _lib.calc_quantile_c.restype = None
 _lib.calc_quantile_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -85,13 +85,13 @@ _CALC_QUANTILE_ARGUMENT_SOURCES = (None, "array", None, None, None, None,)
 
 _lib.calc_quantile_expert_c.restype = None
 _lib.calc_quantile_expert_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -101,12 +101,12 @@ _CALC_QUANTILE_EXPERT_ARGUMENT_SOURCES = (None, "array", None, None, None, None,
 
 _lib.compute_scaled_distance_tail_probability_c.restype = None
 _lib.compute_scaled_distance_tail_probability_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -116,13 +116,13 @@ _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_ARGUMENT_SOURCES = ("rdi", None, None,
 
 _lib.compute_scaled_distance_tail_probability_expert_c.restype = None
 _lib.compute_scaled_distance_tail_probability_expert_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -180,27 +180,27 @@ def loess_smooth_2d(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        x_ref = np.ascontiguousarray(x_ref, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'x_ref' must be an array of np.float64: {error}") from None
+        x_ref = _np.ascontiguousarray(x_ref, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'x_ref' must be an array of np.float64: {_error}") from None
     if x_ref.ndim != 1:
         raise ValueError(f"'x_ref' must have 1 dimension, but has {x_ref.ndim}")
     try:
-        y_ref = np.ascontiguousarray(y_ref, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'y_ref' must be an array of np.float64: {error}") from None
+        y_ref = _np.ascontiguousarray(y_ref, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'y_ref' must be an array of np.float64: {_error}") from None
     if y_ref.ndim != 1:
         raise ValueError(f"'y_ref' must have 1 dimension, but has {y_ref.ndim}")
     try:
-        indices_used = np.ascontiguousarray(indices_used, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'indices_used' must be an array of np.int32: {error}") from None
+        indices_used = _np.ascontiguousarray(indices_used, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'indices_used' must be an array of np.int32: {_error}") from None
     if indices_used.ndim != 1:
         raise ValueError(f"'indices_used' must have 1 dimension, but has {indices_used.ndim}")
     try:
-        x_query = np.ascontiguousarray(x_query, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'x_query' must be an array of np.float64: {error}") from None
+        x_query = _np.ascontiguousarray(x_query, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'x_query' must be an array of np.float64: {_error}") from None
     if x_query.ndim != 1:
         raise ValueError(f"'x_query' must have 1 dimension, but has {x_query.ndim}")
 
@@ -216,24 +216,24 @@ def loess_smooth_2d(
         )
 
     # outputs and work arrays, which the caller never sees
-    y_out = np.empty((n_target,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    y_out = _np.empty((n_target,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.loess_smooth_2d_c(
-        ctypes.byref(ctypes.c_int(n_total)),
-        ctypes.byref(ctypes.c_int(n_target)),
+        _ctypes.byref(_ctypes.c_int(n_total)),
+        _ctypes.byref(_ctypes.c_int(n_target)),
         x_ref,
         y_ref,
         indices_used,
-        ctypes.byref(ctypes.c_int(n_used)),
+        _ctypes.byref(_ctypes.c_int(n_used)),
         x_query,
-        ctypes.byref(ctypes.c_double(kernel_sigma)),
-        ctypes.byref(ctypes.c_double(kernel_cutoff)),
+        _ctypes.byref(_ctypes.c_double(kernel_sigma)),
+        _ctypes.byref(_ctypes.c_double(kernel_cutoff)),
         y_out,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _LOESS_SMOOTH_2D_ARGUMENTS, _LOESS_SMOOTH_2D_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _LOESS_SMOOTH_2D_ARGUMENTS, _LOESS_SMOOTH_2D_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     y_out.flags.writeable = False
@@ -282,9 +282,9 @@ def compute_edf(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        values = np.ascontiguousarray(values, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'values' must be an array of np.float64: {error}") from None
+        values = _np.ascontiguousarray(values, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'values' must be an array of np.float64: {_error}") from None
     if values.ndim != 1:
         raise ValueError(f"'values' must have 1 dimension, but has {values.ndim}")
 
@@ -292,21 +292,21 @@ def compute_edf(
     n_values = values.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    unique_values = np.empty((n_values,), dtype=np.float64, order='C')
-    cdf_values = np.empty((n_values,), dtype=np.float64, order='C')
-    n_unique = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    unique_values = _np.empty((n_values,), dtype=_np.float64, order='C')
+    cdf_values = _np.empty((n_values,), dtype=_np.float64, order='C')
+    n_unique = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_edf_c(
         values,
-        ctypes.byref(ctypes.c_int(n_values)),
+        _ctypes.byref(_ctypes.c_int(n_values)),
         unique_values,
         cdf_values,
-        ctypes.byref(n_unique),
-        ctypes.byref(ierr),
+        _ctypes.byref(n_unique),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_EDF_ARGUMENTS, _COMPUTE_EDF_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_EDF_ARGUMENTS, _COMPUTE_EDF_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     unique_values.flags.writeable = False
@@ -365,15 +365,15 @@ def compute_edf_expert(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        values = np.ascontiguousarray(values, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'values' must be an array of np.float64: {error}") from None
+        values = _np.ascontiguousarray(values, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'values' must be an array of np.float64: {_error}") from None
     if values.ndim != 1:
         raise ValueError(f"'values' must have 1 dimension, but has {values.ndim}")
     try:
-        values_perm = np.ascontiguousarray(values_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'values_perm' must be an array of np.int32: {error}") from None
+        values_perm = _np.ascontiguousarray(values_perm, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'values_perm' must be an array of np.int32: {_error}") from None
     if values_perm.ndim != 1:
         raise ValueError(f"'values_perm' must have 1 dimension, but has {values_perm.ndim}")
 
@@ -387,22 +387,22 @@ def compute_edf_expert(
         )
 
     # outputs and work arrays, which the caller never sees
-    unique_values = np.empty((n_values,), dtype=np.float64, order='C')
-    cdf_values = np.empty((n_values,), dtype=np.float64, order='C')
-    n_unique = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    unique_values = _np.empty((n_values,), dtype=_np.float64, order='C')
+    cdf_values = _np.empty((n_values,), dtype=_np.float64, order='C')
+    n_unique = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_edf_expert_c(
         values,
-        ctypes.byref(ctypes.c_int(n_values)),
+        _ctypes.byref(_ctypes.c_int(n_values)),
         values_perm,
         unique_values,
         cdf_values,
-        ctypes.byref(n_unique),
-        ctypes.byref(ierr),
+        _ctypes.byref(n_unique),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_EDF_EXPERT_ARGUMENTS, _COMPUTE_EDF_EXPERT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_EDF_EXPERT_ARGUMENTS, _COMPUTE_EDF_EXPERT_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     unique_values.flags.writeable = False
@@ -459,9 +459,9 @@ def calc_quantile(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        array = np.ascontiguousarray(array, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'array' must be an array of np.float64: {error}") from None
+        array = _np.ascontiguousarray(array, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'array' must be an array of np.float64: {_error}") from None
     if array.ndim != 1:
         raise ValueError(f"'array' must have 1 dimension, but has {array.ndim}")
 
@@ -469,19 +469,19 @@ def calc_quantile(
     n_array = array.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    value = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    value = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.calc_quantile_c(
         array,
-        ctypes.byref(ctypes.c_int(n_array)),
-        ctypes.byref(ctypes.c_double(level)),
-        ctypes.byref(value),
-        ctypes.byref(ctypes.c_int(n_considered)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_array)),
+        _ctypes.byref(_ctypes.c_double(level)),
+        _ctypes.byref(value),
+        _ctypes.byref(_ctypes.c_int(n_considered)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_QUANTILE_ARGUMENTS, _CALC_QUANTILE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CALC_QUANTILE_ARGUMENTS, _CALC_QUANTILE_ARGUMENT_SOURCES)
 
     return value.value
 
@@ -537,15 +537,15 @@ def calc_quantile_expert(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        array = np.ascontiguousarray(array, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'array' must be an array of np.float64: {error}") from None
+        array = _np.ascontiguousarray(array, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'array' must be an array of np.float64: {_error}") from None
     if array.ndim != 1:
         raise ValueError(f"'array' must have 1 dimension, but has {array.ndim}")
     try:
-        array_perm = np.ascontiguousarray(array_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'array_perm' must be an array of np.int32: {error}") from None
+        array_perm = _np.ascontiguousarray(array_perm, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'array_perm' must be an array of np.int32: {_error}") from None
     if array_perm.ndim != 1:
         raise ValueError(f"'array_perm' must have 1 dimension, but has {array_perm.ndim}")
 
@@ -559,20 +559,20 @@ def calc_quantile_expert(
         )
 
     # outputs and work arrays, which the caller never sees
-    value = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    value = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.calc_quantile_expert_c(
         array,
-        ctypes.byref(ctypes.c_int(n_array)),
+        _ctypes.byref(_ctypes.c_int(n_array)),
         array_perm,
-        ctypes.byref(ctypes.c_double(level)),
-        ctypes.byref(value),
-        ctypes.byref(ctypes.c_int(n_considered)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_double(level)),
+        _ctypes.byref(value),
+        _ctypes.byref(_ctypes.c_int(n_considered)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_QUANTILE_EXPERT_ARGUMENTS, _CALC_QUANTILE_EXPERT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CALC_QUANTILE_EXPERT_ARGUMENTS, _CALC_QUANTILE_EXPERT_ARGUMENT_SOURCES)
 
     return value.value
 
@@ -630,15 +630,15 @@ def compute_scaled_distance_tail_probability(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        rdi = np.ascontiguousarray(rdi, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'rdi' must be an array of np.float64: {error}") from None
+        rdi = _np.ascontiguousarray(rdi, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'rdi' must be an array of np.float64: {_error}") from None
     if rdi.ndim != 1:
         raise ValueError(f"'rdi' must have 1 dimension, but has {rdi.ndim}")
     try:
-        sorted_rdi = np.ascontiguousarray(sorted_rdi, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'sorted_rdi' must be an array of np.float64: {error}") from None
+        sorted_rdi = _np.ascontiguousarray(sorted_rdi, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'sorted_rdi' must be an array of np.float64: {_error}") from None
     if sorted_rdi.ndim != 1:
         raise ValueError(f"'sorted_rdi' must have 1 dimension, but has {sorted_rdi.ndim}")
 
@@ -652,19 +652,19 @@ def compute_scaled_distance_tail_probability(
         )
 
     # outputs and work arrays, which the caller never sees
-    tail_probability = np.empty((n_genes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    tail_probability = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_scaled_distance_tail_probability_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
         rdi,
         sorted_rdi,
         tail_probability,
-        ctypes.byref(ctypes.c_double(c_const)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_double(c_const)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_ARGUMENTS, _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_ARGUMENTS, _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     tail_probability.flags.writeable = False
@@ -731,21 +731,21 @@ def compute_scaled_distance_tail_probability_expert(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        rdi = np.ascontiguousarray(rdi, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'rdi' must be an array of np.float64: {error}") from None
+        rdi = _np.ascontiguousarray(rdi, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'rdi' must be an array of np.float64: {_error}") from None
     if rdi.ndim != 1:
         raise ValueError(f"'rdi' must have 1 dimension, but has {rdi.ndim}")
     try:
-        sorted_rdi = np.ascontiguousarray(sorted_rdi, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'sorted_rdi' must be an array of np.float64: {error}") from None
+        sorted_rdi = _np.ascontiguousarray(sorted_rdi, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'sorted_rdi' must be an array of np.float64: {_error}") from None
     if sorted_rdi.ndim != 1:
         raise ValueError(f"'sorted_rdi' must have 1 dimension, but has {sorted_rdi.ndim}")
     try:
-        sorted_rdi_perm = np.ascontiguousarray(sorted_rdi_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'sorted_rdi_perm' must be an array of np.int32: {error}") from None
+        sorted_rdi_perm = _np.ascontiguousarray(sorted_rdi_perm, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'sorted_rdi_perm' must be an array of np.int32: {_error}") from None
     if sorted_rdi_perm.ndim != 1:
         raise ValueError(f"'sorted_rdi_perm' must have 1 dimension, but has {sorted_rdi_perm.ndim}")
 
@@ -763,20 +763,20 @@ def compute_scaled_distance_tail_probability_expert(
         )
 
     # outputs and work arrays, which the caller never sees
-    tail_probability = np.empty((n_genes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    tail_probability = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_scaled_distance_tail_probability_expert_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
         rdi,
         sorted_rdi,
         sorted_rdi_perm,
         tail_probability,
-        ctypes.byref(ctypes.c_double(c_const)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_double(c_const)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_EXPERT_ARGUMENTS, _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_EXPERT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_EXPERT_ARGUMENTS, _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_EXPERT_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     tail_probability.flags.writeable = False

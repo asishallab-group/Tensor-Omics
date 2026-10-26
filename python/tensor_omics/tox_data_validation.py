@@ -12,39 +12,39 @@ expected. :func:`tensor_omics.validate_all_data` runs the full suite.
 Python binding, generated from tox_data_validation. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.validate_data_structure_c.restype = None
 _lib.validate_data_structure_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -52,10 +52,10 @@ _VALIDATE_DATA_STRUCTURE_ARGUMENTS = ("n_genes", "n_families", "n_samples", "gen
 
 _lib.validate_gene_to_family_mapping_c.restype = None
 _lib.validate_gene_to_family_mapping_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -63,11 +63,11 @@ _VALIDATE_GENE_TO_FAMILY_MAPPING_ARGUMENTS = ("gene_to_fam", "n_families", "ierr
 
 _lib.validate_expression_data_c.restype = None
 _lib.validate_expression_data_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -75,10 +75,10 @@ _VALIDATE_EXPRESSION_DATA_ARGUMENTS = ("expression_vectors", "check_non_negative
 
 _lib.validate_family_centroids_c.restype = None
 _lib.validate_family_centroids_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -86,19 +86,19 @@ _VALIDATE_FAMILY_CENTROIDS_ARGUMENTS = ("family_centroids", "ierr",)
 
 _lib.validate_shift_vectors_c.restype = None
 _lib.validate_shift_vectors_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -106,10 +106,10 @@ _VALIDATE_SHIFT_VECTORS_ARGUMENTS = ("shift_vectors", "expression_vectors", "fam
 
 _lib.validate_string_array_uniqueness_c.restype = None
 _lib.validate_string_array_uniqueness_c.argtypes = (
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -117,29 +117,29 @@ _VALIDATE_STRING_ARRAY_UNIQUENESS_ARGUMENTS = ("str_arr", "ierr",)
 
 _lib.validate_all_data_c.restype = None
 _lib.validate_all_data_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -197,41 +197,41 @@ def validate_data_structure(
     try:
         _gene_ids_bytes = [str(_s).encode() for _s in gene_ids]
         _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
-        gene_ids = np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
-    except TypeError as error:
-        raise TypeError(f"'gene_ids' must be a sequence of strings: {error}") from None
+        gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
+    except TypeError as _error:
+        raise TypeError(f"'gene_ids' must be a sequence of strings: {_error}") from None
     if gene_ids.ndim != 1:
         raise ValueError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}")
     try:
         _gene_family_ids_bytes = [str(_s).encode() for _s in gene_family_ids]
         _gene_family_ids_width = max(map(len, _gene_family_ids_bytes), default=0) or 1
-        gene_family_ids = np.asarray([_b.ljust(_gene_family_ids_width) for _b in _gene_family_ids_bytes], dtype="S")
-    except TypeError as error:
-        raise TypeError(f"'gene_family_ids' must be a sequence of strings: {error}") from None
+        gene_family_ids = _np.asarray([_b.ljust(_gene_family_ids_width) for _b in _gene_family_ids_bytes], dtype="S")
+    except TypeError as _error:
+        raise TypeError(f"'gene_family_ids' must be a sequence of strings: {_error}") from None
     if gene_family_ids.ndim != 1:
         raise ValueError(f"'gene_family_ids' must have 1 dimension, but has {gene_family_ids.ndim}")
     try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
+        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
     if gene_to_fam.ndim != 1:
         raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
     try:
-        expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {error}") from None
+        expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
     if expression_vectors.ndim != 2:
         raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
     try:
-        family_centroids = np.asfortranarray(family_centroids, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'family_centroids' must be an array of np.float64: {error}") from None
+        family_centroids = _np.asfortranarray(family_centroids, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'family_centroids' must be an array of np.float64: {_error}") from None
     if family_centroids.ndim != 2:
         raise ValueError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}")
     try:
-        shift_vectors = np.asfortranarray(shift_vectors, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'shift_vectors' must be an array of np.float64: {error}") from None
+        shift_vectors = _np.asfortranarray(shift_vectors, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'shift_vectors' must be an array of np.float64: {_error}") from None
     if shift_vectors.ndim != 2:
         raise ValueError(f"'shift_vectors' must have 2 dimensions, but has {shift_vectors.ndim}")
 
@@ -249,33 +249,33 @@ def validate_data_structure(
     n_shift_vectors_elements_dim_2 = shift_vectors.shape[1]
 
     # outputs and work arrays, which the caller never sees
-    ierr = ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.validate_data_structure_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
-        ctypes.byref(ctypes.c_int(n_samples)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_samples)),
         gene_ids,
-        ctypes.byref(ctypes.c_int(gene_ids_strlen)),
-        ctypes.byref(ctypes.c_int(n_gene_ids_elements)),
+        _ctypes.byref(_ctypes.c_int(gene_ids_strlen)),
+        _ctypes.byref(_ctypes.c_int(n_gene_ids_elements)),
         gene_family_ids,
-        ctypes.byref(ctypes.c_int(gene_family_ids_strlen)),
-        ctypes.byref(ctypes.c_int(n_gene_family_ids_elements)),
+        _ctypes.byref(_ctypes.c_int(gene_family_ids_strlen)),
+        _ctypes.byref(_ctypes.c_int(n_gene_family_ids_elements)),
         gene_to_fam,
-        ctypes.byref(ctypes.c_int(n_gene_to_fam_elements)),
+        _ctypes.byref(_ctypes.c_int(n_gene_to_fam_elements)),
         expression_vectors,
-        ctypes.byref(ctypes.c_int(n_expression_vectors_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_expression_vectors_elements_dim_2)),
+        _ctypes.byref(_ctypes.c_int(n_expression_vectors_elements_dim_1)),
+        _ctypes.byref(_ctypes.c_int(n_expression_vectors_elements_dim_2)),
         family_centroids,
-        ctypes.byref(ctypes.c_int(n_family_centroids_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_family_centroids_elements_dim_2)),
+        _ctypes.byref(_ctypes.c_int(n_family_centroids_elements_dim_1)),
+        _ctypes.byref(_ctypes.c_int(n_family_centroids_elements_dim_2)),
         shift_vectors,
-        ctypes.byref(ctypes.c_int(n_shift_vectors_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_shift_vectors_elements_dim_2)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_shift_vectors_elements_dim_1)),
+        _ctypes.byref(_ctypes.c_int(n_shift_vectors_elements_dim_2)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _VALIDATE_DATA_STRUCTURE_ARGUMENTS)
+    _check_err_code(ierr.value, _VALIDATE_DATA_STRUCTURE_ARGUMENTS)
 
     return None
 
@@ -308,9 +308,9 @@ def validate_gene_to_family_mapping(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
+        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
     if gene_to_fam.ndim != 1:
         raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
 
@@ -318,16 +318,16 @@ def validate_gene_to_family_mapping(
     n_gene_to_fam_elements = gene_to_fam.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    ierr = ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.validate_gene_to_family_mapping_c(
         gene_to_fam,
-        ctypes.byref(ctypes.c_int(n_gene_to_fam_elements)),
-        ctypes.byref(ctypes.c_int(n_families)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_gene_to_fam_elements)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _VALIDATE_GENE_TO_FAMILY_MAPPING_ARGUMENTS)
+    _check_err_code(ierr.value, _VALIDATE_GENE_TO_FAMILY_MAPPING_ARGUMENTS)
 
     return None
 
@@ -360,9 +360,9 @@ def validate_expression_data(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {error}") from None
+        expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
     if expression_vectors.ndim != 2:
         raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
 
@@ -371,17 +371,17 @@ def validate_expression_data(
     n_expression_vectors_elements_dim_2 = expression_vectors.shape[1]
 
     # outputs and work arrays, which the caller never sees
-    ierr = ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.validate_expression_data_c(
         expression_vectors,
-        ctypes.byref(ctypes.c_int(n_expression_vectors_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_expression_vectors_elements_dim_2)),
-        ctypes.byref(ctypes.c_bool(check_non_negative)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_expression_vectors_elements_dim_1)),
+        _ctypes.byref(_ctypes.c_int(n_expression_vectors_elements_dim_2)),
+        _ctypes.byref(_ctypes.c_bool(check_non_negative)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _VALIDATE_EXPRESSION_DATA_ARGUMENTS)
+    _check_err_code(ierr.value, _VALIDATE_EXPRESSION_DATA_ARGUMENTS)
 
     return None
 
@@ -411,9 +411,9 @@ def validate_family_centroids(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        family_centroids = np.asfortranarray(family_centroids, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'family_centroids' must be an array of np.float64: {error}") from None
+        family_centroids = _np.asfortranarray(family_centroids, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'family_centroids' must be an array of np.float64: {_error}") from None
     if family_centroids.ndim != 2:
         raise ValueError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}")
 
@@ -422,16 +422,16 @@ def validate_family_centroids(
     n_family_centroids_elements_dim_2 = family_centroids.shape[1]
 
     # outputs and work arrays, which the caller never sees
-    ierr = ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.validate_family_centroids_c(
         family_centroids,
-        ctypes.byref(ctypes.c_int(n_family_centroids_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_family_centroids_elements_dim_2)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_family_centroids_elements_dim_1)),
+        _ctypes.byref(_ctypes.c_int(n_family_centroids_elements_dim_2)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _VALIDATE_FAMILY_CENTROIDS_ARGUMENTS)
+    _check_err_code(ierr.value, _VALIDATE_FAMILY_CENTROIDS_ARGUMENTS)
 
     return None
 
@@ -473,27 +473,27 @@ def validate_shift_vectors(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        shift_vectors = np.asfortranarray(shift_vectors, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'shift_vectors' must be an array of np.float64: {error}") from None
+        shift_vectors = _np.asfortranarray(shift_vectors, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'shift_vectors' must be an array of np.float64: {_error}") from None
     if shift_vectors.ndim != 2:
         raise ValueError(f"'shift_vectors' must have 2 dimensions, but has {shift_vectors.ndim}")
     try:
-        expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {error}") from None
+        expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
     if expression_vectors.ndim != 2:
         raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
     try:
-        family_centroids = np.asfortranarray(family_centroids, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'family_centroids' must be an array of np.float64: {error}") from None
+        family_centroids = _np.asfortranarray(family_centroids, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'family_centroids' must be an array of np.float64: {_error}") from None
     if family_centroids.ndim != 2:
         raise ValueError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}")
     try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
+        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
     if gene_to_fam.ndim != 1:
         raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
 
@@ -507,25 +507,25 @@ def validate_shift_vectors(
     n_gene_to_fam_elements = gene_to_fam.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    ierr = ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.validate_shift_vectors_c(
         shift_vectors,
-        ctypes.byref(ctypes.c_int(n_shift_vectors_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_shift_vectors_elements_dim_2)),
+        _ctypes.byref(_ctypes.c_int(n_shift_vectors_elements_dim_1)),
+        _ctypes.byref(_ctypes.c_int(n_shift_vectors_elements_dim_2)),
         expression_vectors,
-        ctypes.byref(ctypes.c_int(n_expression_vectors_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_expression_vectors_elements_dim_2)),
+        _ctypes.byref(_ctypes.c_int(n_expression_vectors_elements_dim_1)),
+        _ctypes.byref(_ctypes.c_int(n_expression_vectors_elements_dim_2)),
         family_centroids,
-        ctypes.byref(ctypes.c_int(n_family_centroids_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_family_centroids_elements_dim_2)),
+        _ctypes.byref(_ctypes.c_int(n_family_centroids_elements_dim_1)),
+        _ctypes.byref(_ctypes.c_int(n_family_centroids_elements_dim_2)),
         gene_to_fam,
-        ctypes.byref(ctypes.c_int(n_gene_to_fam_elements)),
-        ctypes.byref(ctypes.c_int(n_samples)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_gene_to_fam_elements)),
+        _ctypes.byref(_ctypes.c_int(n_samples)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _VALIDATE_SHIFT_VECTORS_ARGUMENTS)
+    _check_err_code(ierr.value, _VALIDATE_SHIFT_VECTORS_ARGUMENTS)
 
     return None
 
@@ -557,9 +557,9 @@ def validate_string_array_uniqueness(
     try:
         _str_arr_bytes = [str(_s).encode() for _s in str_arr]
         _str_arr_width = max(map(len, _str_arr_bytes), default=0) or 1
-        str_arr = np.asarray([_b.ljust(_str_arr_width) for _b in _str_arr_bytes], dtype="S")
-    except TypeError as error:
-        raise TypeError(f"'str_arr' must be a sequence of strings: {error}") from None
+        str_arr = _np.asarray([_b.ljust(_str_arr_width) for _b in _str_arr_bytes], dtype="S")
+    except TypeError as _error:
+        raise TypeError(f"'str_arr' must be a sequence of strings: {_error}") from None
     if str_arr.ndim != 1:
         raise ValueError(f"'str_arr' must have 1 dimension, but has {str_arr.ndim}")
 
@@ -568,16 +568,16 @@ def validate_string_array_uniqueness(
     n_str_arr_elements = str_arr.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    ierr = ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.validate_string_array_uniqueness_c(
         str_arr,
-        ctypes.byref(ctypes.c_int(str_arr_strlen)),
-        ctypes.byref(ctypes.c_int(n_str_arr_elements)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(str_arr_strlen)),
+        _ctypes.byref(_ctypes.c_int(n_str_arr_elements)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _VALIDATE_STRING_ARRAY_UNIQUENESS_ARGUMENTS)
+    _check_err_code(ierr.value, _VALIDATE_STRING_ARRAY_UNIQUENESS_ARGUMENTS)
 
     return None
 
@@ -641,41 +641,41 @@ def validate_all_data(
     try:
         _gene_ids_bytes = [str(_s).encode() for _s in gene_ids]
         _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
-        gene_ids = np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
-    except TypeError as error:
-        raise TypeError(f"'gene_ids' must be a sequence of strings: {error}") from None
+        gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
+    except TypeError as _error:
+        raise TypeError(f"'gene_ids' must be a sequence of strings: {_error}") from None
     if gene_ids.ndim != 1:
         raise ValueError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}")
     try:
         _gene_family_ids_bytes = [str(_s).encode() for _s in gene_family_ids]
         _gene_family_ids_width = max(map(len, _gene_family_ids_bytes), default=0) or 1
-        gene_family_ids = np.asarray([_b.ljust(_gene_family_ids_width) for _b in _gene_family_ids_bytes], dtype="S")
-    except TypeError as error:
-        raise TypeError(f"'gene_family_ids' must be a sequence of strings: {error}") from None
+        gene_family_ids = _np.asarray([_b.ljust(_gene_family_ids_width) for _b in _gene_family_ids_bytes], dtype="S")
+    except TypeError as _error:
+        raise TypeError(f"'gene_family_ids' must be a sequence of strings: {_error}") from None
     if gene_family_ids.ndim != 1:
         raise ValueError(f"'gene_family_ids' must have 1 dimension, but has {gene_family_ids.ndim}")
     try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
+        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
     if gene_to_fam.ndim != 1:
         raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
     try:
-        expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {error}") from None
+        expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
     if expression_vectors.ndim != 2:
         raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
     try:
-        family_centroids = np.asfortranarray(family_centroids, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'family_centroids' must be an array of np.float64: {error}") from None
+        family_centroids = _np.asfortranarray(family_centroids, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'family_centroids' must be an array of np.float64: {_error}") from None
     if family_centroids.ndim != 2:
         raise ValueError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}")
     try:
-        shift_vectors = np.asfortranarray(shift_vectors, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'shift_vectors' must be an array of np.float64: {error}") from None
+        shift_vectors = _np.asfortranarray(shift_vectors, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'shift_vectors' must be an array of np.float64: {_error}") from None
     if shift_vectors.ndim != 2:
         raise ValueError(f"'shift_vectors' must have 2 dimensions, but has {shift_vectors.ndim}")
 
@@ -693,34 +693,34 @@ def validate_all_data(
     n_shift_vectors_elements_dim_2 = shift_vectors.shape[1]
 
     # outputs and work arrays, which the caller never sees
-    ierr = ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.validate_all_data_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
-        ctypes.byref(ctypes.c_int(n_samples)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_samples)),
         gene_ids,
-        ctypes.byref(ctypes.c_int(gene_ids_strlen)),
-        ctypes.byref(ctypes.c_int(n_gene_ids_elements)),
+        _ctypes.byref(_ctypes.c_int(gene_ids_strlen)),
+        _ctypes.byref(_ctypes.c_int(n_gene_ids_elements)),
         gene_family_ids,
-        ctypes.byref(ctypes.c_int(gene_family_ids_strlen)),
-        ctypes.byref(ctypes.c_int(n_gene_family_ids_elements)),
+        _ctypes.byref(_ctypes.c_int(gene_family_ids_strlen)),
+        _ctypes.byref(_ctypes.c_int(n_gene_family_ids_elements)),
         gene_to_fam,
-        ctypes.byref(ctypes.c_int(n_gene_to_fam_elements)),
+        _ctypes.byref(_ctypes.c_int(n_gene_to_fam_elements)),
         expression_vectors,
-        ctypes.byref(ctypes.c_int(n_expression_vectors_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_expression_vectors_elements_dim_2)),
+        _ctypes.byref(_ctypes.c_int(n_expression_vectors_elements_dim_1)),
+        _ctypes.byref(_ctypes.c_int(n_expression_vectors_elements_dim_2)),
         family_centroids,
-        ctypes.byref(ctypes.c_int(n_family_centroids_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_family_centroids_elements_dim_2)),
+        _ctypes.byref(_ctypes.c_int(n_family_centroids_elements_dim_1)),
+        _ctypes.byref(_ctypes.c_int(n_family_centroids_elements_dim_2)),
         shift_vectors,
-        ctypes.byref(ctypes.c_int(n_shift_vectors_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_shift_vectors_elements_dim_2)),
-        ctypes.byref(ctypes.c_bool(check_uniqueness)),
-        ctypes.byref(ctypes.c_bool(check_shift_consistency)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_shift_vectors_elements_dim_1)),
+        _ctypes.byref(_ctypes.c_int(n_shift_vectors_elements_dim_2)),
+        _ctypes.byref(_ctypes.c_bool(check_uniqueness)),
+        _ctypes.byref(_ctypes.c_bool(check_shift_consistency)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _VALIDATE_ALL_DATA_ARGUMENTS)
+    _check_err_code(ierr.value, _VALIDATE_ALL_DATA_ARGUMENTS)
 
     return None

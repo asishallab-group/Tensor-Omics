@@ -12,33 +12,33 @@ applies the threshold and reports which genes exceed it.
 Python binding, generated from tox_get_outliers. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.compute_family_scaling_c.restype = None
 _lib.compute_family_scaling_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -48,15 +48,15 @@ _COMPUTE_FAMILY_SCALING_ARGUMENT_SOURCES = ("distances", "dscale", None, None, N
 
 _lib.compute_rdi_c.restype = None
 _lib.compute_rdi_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -66,15 +66,15 @@ _COMPUTE_RDI_ARGUMENT_SOURCES = ("distances", None, None, None, None, None, None
 
 _lib.identify_outliers_c.restype = None
 _lib.identify_outliers_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -84,17 +84,17 @@ _IDENTIFY_OUTLIERS_ARGUMENT_SOURCES = ("rdi", None, None, None, None, None, None
 
 _lib.detect_outliers_c.restype = None
 _lib.detect_outliers_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -184,18 +184,18 @@ def compute_family_scaling(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        distances = np.ascontiguousarray(distances, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'distances' must be an array of np.float64: {error}") from None
+        distances = _np.ascontiguousarray(distances, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'distances' must be an array of np.float64: {_error}") from None
     if distances.ndim != 1:
         raise ValueError(f"'distances' must have 1 dimension, but has {distances.ndim}")
     try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
+        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
     if gene_to_fam.ndim != 1:
         raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
-    mode = np.array([str(mode).lower().encode().ljust(6)], dtype="S6")
+    mode = _np.array([str(mode).lower().encode().ljust(6)], dtype="S6")
 
     # what the inputs already say, rather than asking for it again
     n_genes = distances.shape[0]
@@ -207,33 +207,33 @@ def compute_family_scaling(
         )
 
     # outputs and work arrays, which the caller never sees
-    dscale = np.empty((n_families,), dtype=np.float64, order='C')
-    loess_x = np.empty((n_families,), dtype=np.float64, order='C')
-    loess_y = np.empty((n_families,), dtype=np.float64, order='C')
-    indices_used = np.empty((n_families,), dtype=np.int32, order='C')
-    low_sd_cutoff = ctypes.c_double(0)
-    excluded_low_sd = np.empty((n_families,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    dscale = _np.empty((n_families,), dtype=_np.float64, order='C')
+    loess_x = _np.empty((n_families,), dtype=_np.float64, order='C')
+    loess_y = _np.empty((n_families,), dtype=_np.float64, order='C')
+    indices_used = _np.empty((n_families,), dtype=_np.int32, order='C')
+    low_sd_cutoff = _ctypes.c_double(0)
+    excluded_low_sd = _np.empty((n_families,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_family_scaling_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         distances,
         gene_to_fam,
         dscale,
         loess_x,
         loess_y,
         indices_used,
-        ctypes.byref(ctypes.c_double(span)),
-        ctypes.byref(ctypes.c_int(degree)),
+        _ctypes.byref(_ctypes.c_double(span)),
+        _ctypes.byref(_ctypes.c_int(degree)),
         mode,
-        ctypes.byref(ctypes.c_int(n_iters)),
-        ctypes.byref(low_sd_cutoff),
+        _ctypes.byref(_ctypes.c_int(n_iters)),
+        _ctypes.byref(low_sd_cutoff),
         excluded_low_sd,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_FAMILY_SCALING_ARGUMENTS, _COMPUTE_FAMILY_SCALING_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_FAMILY_SCALING_ARGUMENTS, _COMPUTE_FAMILY_SCALING_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     dscale.flags.writeable = False
@@ -300,21 +300,21 @@ def compute_rdi(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        distances = np.ascontiguousarray(distances, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'distances' must be an array of np.float64: {error}") from None
+        distances = _np.ascontiguousarray(distances, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'distances' must be an array of np.float64: {_error}") from None
     if distances.ndim != 1:
         raise ValueError(f"'distances' must have 1 dimension, but has {distances.ndim}")
     try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
+        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
     if gene_to_fam.ndim != 1:
         raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
     try:
-        dscale = np.ascontiguousarray(dscale, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'dscale' must be an array of np.float64: {error}") from None
+        dscale = _np.ascontiguousarray(dscale, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'dscale' must be an array of np.float64: {_error}") from None
     if dscale.ndim != 1:
         raise ValueError(f"'dscale' must have 1 dimension, but has {dscale.ndim}")
 
@@ -329,24 +329,24 @@ def compute_rdi(
         )
 
     # outputs and work arrays, which the caller never sees
-    rdi = np.empty((n_genes,), dtype=np.float64, order='C')
-    sorted_rdi = np.empty((n_genes,), dtype=np.float64, order='C')
-    perm = np.empty((n_genes,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    rdi = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    sorted_rdi = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    perm = _np.empty((n_genes,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_rdi_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
         distances,
         gene_to_fam,
         dscale,
-        ctypes.byref(ctypes.c_int(n_dscale_elements)),
+        _ctypes.byref(_ctypes.c_int(n_dscale_elements)),
         rdi,
         sorted_rdi,
         perm,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_RDI_ARGUMENTS, _COMPUTE_RDI_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_RDI_ARGUMENTS, _COMPUTE_RDI_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     rdi.flags.writeable = False
@@ -417,21 +417,21 @@ def identify_outliers(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        rdi = np.ascontiguousarray(rdi, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'rdi' must be an array of np.float64: {error}") from None
+        rdi = _np.ascontiguousarray(rdi, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'rdi' must be an array of np.float64: {_error}") from None
     if rdi.ndim != 1:
         raise ValueError(f"'rdi' must have 1 dimension, but has {rdi.ndim}")
     try:
-        sorted_rdi = np.ascontiguousarray(sorted_rdi, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'sorted_rdi' must be an array of np.float64: {error}") from None
+        sorted_rdi = _np.ascontiguousarray(sorted_rdi, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'sorted_rdi' must be an array of np.float64: {_error}") from None
     if sorted_rdi.ndim != 1:
         raise ValueError(f"'sorted_rdi' must have 1 dimension, but has {sorted_rdi.ndim}")
     try:
-        perm = np.ascontiguousarray(perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'perm' must be an array of np.int32: {error}") from None
+        perm = _np.ascontiguousarray(perm, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'perm' must be an array of np.int32: {_error}") from None
     if perm.ndim != 1:
         raise ValueError(f"'perm' must have 1 dimension, but has {perm.ndim}")
 
@@ -449,24 +449,24 @@ def identify_outliers(
         )
 
     # outputs and work arrays, which the caller never sees
-    is_outlier = np.empty((n_genes,), dtype=np.bool_, order='C')
-    threshold = ctypes.c_double(0)
-    tail_probability = np.empty((n_genes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    is_outlier = _np.empty((n_genes,), dtype=_np.bool_, order='C')
+    threshold = _ctypes.c_double(0)
+    tail_probability = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.identify_outliers_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
         rdi,
         sorted_rdi,
         perm,
         is_outlier,
-        ctypes.byref(threshold),
+        _ctypes.byref(threshold),
         tail_probability,
-        ctypes.byref(ctypes.c_double(quantile_level)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_double(quantile_level)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _IDENTIFY_OUTLIERS_ARGUMENTS, _IDENTIFY_OUTLIERS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _IDENTIFY_OUTLIERS_ARGUMENTS, _IDENTIFY_OUTLIERS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     is_outlier.flags.writeable = False
@@ -547,15 +547,15 @@ def detect_outliers(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        distances = np.ascontiguousarray(distances, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'distances' must be an array of np.float64: {error}") from None
+        distances = _np.ascontiguousarray(distances, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'distances' must be an array of np.float64: {_error}") from None
     if distances.ndim != 1:
         raise ValueError(f"'distances' must have 1 dimension, but has {distances.ndim}")
     try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
+        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
     if gene_to_fam.ndim != 1:
         raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
 
@@ -569,16 +569,16 @@ def detect_outliers(
         )
 
     # outputs and work arrays, which the caller never sees
-    is_outlier = np.empty((n_genes,), dtype=np.bool_, order='C')
-    loess_x = np.empty((n_families,), dtype=np.float64, order='C')
-    loess_y = np.empty((n_families,), dtype=np.float64, order='C')
-    loess_n = np.empty((n_families,), dtype=np.int32, order='C')
-    tail_probability = np.empty((n_genes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    is_outlier = _np.empty((n_genes,), dtype=_np.bool_, order='C')
+    loess_x = _np.empty((n_families,), dtype=_np.float64, order='C')
+    loess_y = _np.empty((n_families,), dtype=_np.float64, order='C')
+    loess_n = _np.empty((n_families,), dtype=_np.int32, order='C')
+    tail_probability = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.detect_outliers_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         distances,
         gene_to_fam,
         is_outlier,
@@ -586,11 +586,11 @@ def detect_outliers(
         loess_y,
         loess_n,
         tail_probability,
-        ctypes.byref(ctypes.c_double(quantile_level)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_double(quantile_level)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETECT_OUTLIERS_ARGUMENTS, _DETECT_OUTLIERS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETECT_OUTLIERS_ARGUMENTS, _DETECT_OUTLIERS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     is_outlier.flags.writeable = False

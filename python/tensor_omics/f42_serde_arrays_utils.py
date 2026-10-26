@@ -22,25 +22,25 @@ written here does the same there. No other type code has moved.
 Python binding, generated from f42_serde_arrays_utils. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.get_array_metadata_c.restype = None
 _lib.get_array_metadata_c.argtypes = (
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -84,28 +84,28 @@ def get_array_metadata(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
+    filename = _np.array([str(filename).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     filename_strlen = filename.itemsize
 
     # outputs and work arrays, which the caller never sees
-    dims_out = np.empty((dims_out_capacity,), dtype=np.int32, order='C')
-    ndims = ctypes.c_int(0)
-    type_code = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    dims_out = _np.empty((dims_out_capacity,), dtype=_np.int32, order='C')
+    ndims = _ctypes.c_int(0)
+    type_code = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.get_array_metadata_c(
         filename,
-        ctypes.byref(ctypes.c_int(filename_strlen)),
+        _ctypes.byref(_ctypes.c_int(filename_strlen)),
         dims_out,
-        ctypes.byref(ctypes.c_int(dims_out_capacity)),
-        ctypes.byref(ndims),
-        ctypes.byref(type_code),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(dims_out_capacity)),
+        _ctypes.byref(ndims),
+        _ctypes.byref(type_code),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _GET_ARRAY_METADATA_ARGUMENTS, _GET_ARRAY_METADATA_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _GET_ARRAY_METADATA_ARGUMENTS, _GET_ARRAY_METADATA_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     dims_out.flags.writeable = False

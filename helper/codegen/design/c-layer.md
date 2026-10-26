@@ -542,9 +542,11 @@ order check that every other C wrapper is held to (`_Builder._check_error_is_las
 C layer could pass any of them. The bindings cannot: R holds an integer as int32 and a number as
 real64, its shim takes `INTEGER()` / `REAL()` storage whatever the Fortran kind, and the generated
 validators exist for int32 and real64 only. So `validate` refuses every other kind on an exported
-argument (`SUPPORTED_KIND_VALUES`, compared by value so `c_int` and `c_double` pass), rather than
-`KIND_MAP` losing entries: what C could carry and what the bindings can are two different
-questions, and the refusal says which one failed.
+argument (`SUPPORTED_KIND_VALUES`: a numeric kind compared by value so `c_int` and `c_double`
+pass, a logical kind by name), rather than `KIND_MAP` losing entries: what C could carry and what
+the bindings can are two different questions, and the refusal says which one failed. A kind both
+would refuse (`real(4)`, which `KIND_MAP` does not spell) gets the binding's error alone: the C ABI
+stays quiet about what `validate.bindings_cannot_carry` already refuses.
 
 ---
 

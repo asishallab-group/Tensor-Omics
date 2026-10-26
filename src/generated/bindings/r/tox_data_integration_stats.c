@@ -9,30 +9,30 @@
 void gjct_permutation_test_c(const double*, const double*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const int*, double*, double*, const int*, const unsigned char*, const unsigned char*, int*);
 
 SEXP gjct_permutation_test_call(SEXP neighborhood_residuals_S1, SEXP neighborhood_residuals_S2, SEXP global_jsd_observed, SEXP n_bins, SEXP shared_residual_range, SEXP n_permutations, SEXP random_seed, SEXP neighbor_mask_S1, SEXP neighbor_mask_S2) {
-    int nprot = 0;
+    int _nprot = 0;
     // optionals: a null pointer and size 0 when the caller omits them
-    const int* random_seed_p = NULL;
-    int random_seed_size = 0;
+    const int* _p_random_seed = NULL;
+    int _size_random_seed = 0;
     if (random_seed != R_NilValue) {
-        random_seed_size = (int) Rf_length(random_seed);
-        random_seed_p = INTEGER(random_seed);
+        _size_random_seed = (int) Rf_length(random_seed);
+        _p_random_seed = INTEGER(random_seed);
     }
-    int neighbor_mask_S1_size = 0;
-    int neighbor_mask_S1_dim[2]; for (int i = 0; i < 2; ++i) neighbor_mask_S1_dim[i] = 0;
+    int _size_neighbor_mask_S1 = 0;
+    int _dim_neighbor_mask_S1[2]; for (int _i = 0; _i < 2; ++_i) _dim_neighbor_mask_S1[_i] = 0;
     if (neighbor_mask_S1 != R_NilValue) {
-        neighbor_mask_S1_size = (int) Rf_length(neighbor_mask_S1);
-        SEXP neighbor_mask_S1_d = Rf_getAttrib(neighbor_mask_S1, R_DimSymbol);
-        if (neighbor_mask_S1_d != R_NilValue) {
-            for (int i = 0; i < 2 && i < (int) Rf_length(neighbor_mask_S1_d); ++i) neighbor_mask_S1_dim[i] = INTEGER(neighbor_mask_S1_d)[i];
+        _size_neighbor_mask_S1 = (int) Rf_length(neighbor_mask_S1);
+        SEXP _d_neighbor_mask_S1 = Rf_getAttrib(neighbor_mask_S1, R_DimSymbol);
+        if (_d_neighbor_mask_S1 != R_NilValue) {
+            for (int _i = 0; _i < 2 && _i < (int) Rf_length(_d_neighbor_mask_S1); ++_i) _dim_neighbor_mask_S1[_i] = INTEGER(_d_neighbor_mask_S1)[_i];
         }
     }
-    int neighbor_mask_S2_size = 0;
-    int neighbor_mask_S2_dim[2]; for (int i = 0; i < 2; ++i) neighbor_mask_S2_dim[i] = 0;
+    int _size_neighbor_mask_S2 = 0;
+    int _dim_neighbor_mask_S2[2]; for (int _i = 0; _i < 2; ++_i) _dim_neighbor_mask_S2[_i] = 0;
     if (neighbor_mask_S2 != R_NilValue) {
-        neighbor_mask_S2_size = (int) Rf_length(neighbor_mask_S2);
-        SEXP neighbor_mask_S2_d = Rf_getAttrib(neighbor_mask_S2, R_DimSymbol);
-        if (neighbor_mask_S2_d != R_NilValue) {
-            for (int i = 0; i < 2 && i < (int) Rf_length(neighbor_mask_S2_d); ++i) neighbor_mask_S2_dim[i] = INTEGER(neighbor_mask_S2_d)[i];
+        _size_neighbor_mask_S2 = (int) Rf_length(neighbor_mask_S2);
+        SEXP _d_neighbor_mask_S2 = Rf_getAttrib(neighbor_mask_S2, R_DimSymbol);
+        if (_d_neighbor_mask_S2 != R_NilValue) {
+            for (int _i = 0; _i < 2 && _i < (int) Rf_length(_d_neighbor_mask_S2); ++_i) _dim_neighbor_mask_S2[_i] = INTEGER(_d_neighbor_mask_S2)[_i];
         }
     }
 
@@ -43,17 +43,17 @@ SEXP gjct_permutation_test_call(SEXP neighborhood_residuals_S1, SEXP neighborhoo
     int n_points = INTEGER(Rf_getAttrib(neighborhood_residuals_S1, R_DimSymbol))[2];
 
     // scalar inputs, pulled from their length-1 vectors
-    double global_jsd_observed_v = Rf_asReal(global_jsd_observed);
-    int n_bins_v = Rf_asInteger(n_bins);
-    double shared_residual_range_v = Rf_asReal(shared_residual_range);
-    int n_permutations_v = Rf_asInteger(n_permutations);
+    double _v_global_jsd_observed = Rf_asReal(global_jsd_observed);
+    int _v_n_bins = Rf_asInteger(n_bins);
+    double _v_shared_residual_range = Rf_asReal(shared_residual_range);
+    int _v_n_permutations = Rf_asInteger(n_permutations);
 
     // convert what Fortran cannot take from R directly
-    unsigned char* neighbor_mask_S1_c = tox_bool_in(neighbor_mask_S1);
-    unsigned char* neighbor_mask_S2_c = tox_bool_in(neighbor_mask_S2);
+    unsigned char* _c_neighbor_mask_S1 = tox_bool_in(neighbor_mask_S1);
+    unsigned char* _c_neighbor_mask_S2 = tox_bool_in(neighbor_mask_S2);
 
     // outputs and work space
-    SEXP jsd_null = PROTECT(Rf_allocVector(REALSXP, n_permutations_v)); nprot++;
+    SEXP jsd_null = PROTECT(Rf_allocVector(REALSXP, _v_n_permutations)); _nprot++;
     double p_value = 0;
     int ierr = 0;
 
@@ -64,28 +64,28 @@ SEXP gjct_permutation_test_call(SEXP neighborhood_residuals_S1, SEXP neighborhoo
         &n_reps_S2,
         &n_neighbors,
         &n_points,
-        &global_jsd_observed_v,
-        &n_bins_v,
-        &shared_residual_range_v,
-        &n_permutations_v,
+        &_v_global_jsd_observed,
+        &_v_n_bins,
+        &_v_shared_residual_range,
+        &_v_n_permutations,
         REAL(jsd_null),
         &p_value,
-        random_seed_p,
-        neighbor_mask_S1 != R_NilValue ? neighbor_mask_S1_c : NULL,
-        neighbor_mask_S2 != R_NilValue ? neighbor_mask_S2_c : NULL,
+        _p_random_seed,
+        neighbor_mask_S1 != R_NilValue ? _c_neighbor_mask_S1 : NULL,
+        neighbor_mask_S2 != R_NilValue ? _c_neighbor_mask_S2 : NULL,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); _nprot++;
     SET_VECTOR_ELT(_out, 0, jsd_null);
     SET_VECTOR_ELT(_out, 1, Rf_ScalarReal(p_value));
     SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 3)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 3)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("jsd_null"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("p_value"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 

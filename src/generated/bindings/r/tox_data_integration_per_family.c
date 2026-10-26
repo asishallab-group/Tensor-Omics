@@ -11,7 +11,7 @@ void fjct_compute_masked_jsd_c(const double*, const double*, const int*, const i
 void fjct_compute_contribution_scores_c(const double*, const int*, const int*, double*, double*, int*);
 
 SEXP fjct_compute_jsd_call(SEXP family_idx, SEXP gene_to_family_S1, SEXP gene_to_family_S2, SEXP neighborhood_residuals_S1, SEXP neighborhood_residuals_S2, SEXP neighborhood_genes_S1, SEXP neighborhood_genes_S2, SEXP n_bins, SEXP shared_residual_range) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_genes_S1 = (int) Rf_length(gene_to_family_S1);
     int n_genes_S2 = (int) Rf_length(gene_to_family_S2);
@@ -21,21 +21,21 @@ SEXP fjct_compute_jsd_call(SEXP family_idx, SEXP gene_to_family_S1, SEXP gene_to
     int n_points = INTEGER(Rf_getAttrib(neighborhood_residuals_S1, R_DimSymbol))[2];
 
     // scalar inputs, pulled from their length-1 vectors
-    int family_idx_v = Rf_asInteger(family_idx);
-    int n_bins_v = Rf_asInteger(n_bins);
-    double shared_residual_range_v = Rf_asReal(shared_residual_range);
+    int _v_family_idx = Rf_asInteger(family_idx);
+    int _v_n_bins = Rf_asInteger(n_bins);
+    double _v_shared_residual_range = Rf_asReal(shared_residual_range);
 
     // outputs and work space
-    SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, n_points)); nprot++;
-    SEXP included_n_reps_S1 = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
-    SEXP included_n_reps_S2 = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
+    SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
+    SEXP included_n_reps_S1 = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
+    SEXP included_n_reps_S2 = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
     int total_included_n_reps = 0;
     double global_js_divergence = 0;
-    SEXP weights = PROTECT(Rf_allocVector(REALSXP, n_points)); nprot++;
+    SEXP weights = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
     int ierr = 0;
 
     fjct_compute_jsd_c(
-        &family_idx_v,
+        &_v_family_idx,
         INTEGER(gene_to_family_S1),
         INTEGER(gene_to_family_S2),
         &n_genes_S1,
@@ -48,8 +48,8 @@ SEXP fjct_compute_jsd_call(SEXP family_idx, SEXP gene_to_family_S1, SEXP gene_to
         &n_reps_S2,
         &n_neighbors,
         &n_points,
-        &n_bins_v,
-        &shared_residual_range_v,
+        &_v_n_bins,
+        &_v_shared_residual_range,
         REAL(js_divergences),
         INTEGER(included_n_reps_S1),
         INTEGER(included_n_reps_S2),
@@ -59,7 +59,7 @@ SEXP fjct_compute_jsd_call(SEXP family_idx, SEXP gene_to_family_S1, SEXP gene_to
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 7)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 7)); _nprot++;
     SET_VECTOR_ELT(_out, 0, js_divergences);
     SET_VECTOR_ELT(_out, 1, included_n_reps_S1);
     SET_VECTOR_ELT(_out, 2, included_n_reps_S2);
@@ -67,7 +67,7 @@ SEXP fjct_compute_jsd_call(SEXP family_idx, SEXP gene_to_family_S1, SEXP gene_to
     SET_VECTOR_ELT(_out, 4, Rf_ScalarReal(global_js_divergence));
     SET_VECTOR_ELT(_out, 5, weights);
     SET_VECTOR_ELT(_out, 6, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 7)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 7)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("js_divergences"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("included_n_reps_S1"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("included_n_reps_S2"));
@@ -76,12 +76,12 @@ SEXP fjct_compute_jsd_call(SEXP family_idx, SEXP gene_to_family_S1, SEXP gene_to
     SET_STRING_ELT(_nms, 5, Rf_mkChar("weights"));
     SET_STRING_ELT(_nms, 6, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 
 SEXP fjct_compute_masked_jsd_call(SEXP neighborhood_residuals_S1, SEXP neighborhood_residuals_S2, SEXP neighbor_mask_S1, SEXP neighbor_mask_S2, SEXP n_bins, SEXP shared_residual_range) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_reps_S1 = INTEGER(Rf_getAttrib(neighborhood_residuals_S1, R_DimSymbol))[0];
     int n_reps_S2 = INTEGER(Rf_getAttrib(neighborhood_residuals_S2, R_DimSymbol))[0];
@@ -89,24 +89,24 @@ SEXP fjct_compute_masked_jsd_call(SEXP neighborhood_residuals_S1, SEXP neighborh
     int n_points = INTEGER(Rf_getAttrib(neighborhood_residuals_S1, R_DimSymbol))[2];
 
     // scalar inputs, pulled from their length-1 vectors
-    int n_bins_v = Rf_asInteger(n_bins);
-    double shared_residual_range_v = Rf_asReal(shared_residual_range);
+    int _v_n_bins = Rf_asInteger(n_bins);
+    double _v_shared_residual_range = Rf_asReal(shared_residual_range);
 
     // convert what Fortran cannot take from R directly
-    unsigned char* neighbor_mask_S1_c = tox_bool_in(neighbor_mask_S1);
-    unsigned char* neighbor_mask_S2_c = tox_bool_in(neighbor_mask_S2);
+    unsigned char* _c_neighbor_mask_S1 = tox_bool_in(neighbor_mask_S1);
+    unsigned char* _c_neighbor_mask_S2 = tox_bool_in(neighbor_mask_S2);
 
     // outputs and work space
-    SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, n_points)); nprot++;
-    SEXP included_n_reps_S1 = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
-    SEXP included_n_reps_S2 = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
+    SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
+    SEXP included_n_reps_S1 = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
+    SEXP included_n_reps_S2 = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
     int total_included_n_reps = 0;
     double global_js_divergence = 0;
-    SEXP weights = PROTECT(Rf_allocVector(REALSXP, n_points)); nprot++;
-    SEXP pmf_S1 = PROTECT(Rf_allocVector(REALSXP, n_points * n_bins_v)); nprot++;
-    { SEXP pmf_S1_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(pmf_S1_dim)[0] = n_points; INTEGER(pmf_S1_dim)[1] = n_bins_v; Rf_setAttrib(pmf_S1, R_DimSymbol, pmf_S1_dim); UNPROTECT(1); }
-    SEXP pmf_S2 = PROTECT(Rf_allocVector(REALSXP, n_points * n_bins_v)); nprot++;
-    { SEXP pmf_S2_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(pmf_S2_dim)[0] = n_points; INTEGER(pmf_S2_dim)[1] = n_bins_v; Rf_setAttrib(pmf_S2, R_DimSymbol, pmf_S2_dim); UNPROTECT(1); }
+    SEXP weights = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
+    SEXP pmf_S1 = PROTECT(Rf_allocVector(REALSXP, n_points * _v_n_bins)); _nprot++;
+    { SEXP _dim_pmf_S1 = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_pmf_S1)[0] = n_points; INTEGER(_dim_pmf_S1)[1] = _v_n_bins; Rf_setAttrib(pmf_S1, R_DimSymbol, _dim_pmf_S1); UNPROTECT(1); }
+    SEXP pmf_S2 = PROTECT(Rf_allocVector(REALSXP, n_points * _v_n_bins)); _nprot++;
+    { SEXP _dim_pmf_S2 = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_pmf_S2)[0] = n_points; INTEGER(_dim_pmf_S2)[1] = _v_n_bins; Rf_setAttrib(pmf_S2, R_DimSymbol, _dim_pmf_S2); UNPROTECT(1); }
     int ierr = 0;
 
     fjct_compute_masked_jsd_c(
@@ -116,10 +116,10 @@ SEXP fjct_compute_masked_jsd_call(SEXP neighborhood_residuals_S1, SEXP neighborh
         &n_reps_S2,
         &n_neighbors,
         &n_points,
-        neighbor_mask_S1_c,
-        neighbor_mask_S2_c,
-        &n_bins_v,
-        &shared_residual_range_v,
+        _c_neighbor_mask_S1,
+        _c_neighbor_mask_S2,
+        &_v_n_bins,
+        &_v_shared_residual_range,
         REAL(js_divergences),
         INTEGER(included_n_reps_S1),
         INTEGER(included_n_reps_S2),
@@ -131,7 +131,7 @@ SEXP fjct_compute_masked_jsd_call(SEXP neighborhood_residuals_S1, SEXP neighborh
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 9)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 9)); _nprot++;
     SET_VECTOR_ELT(_out, 0, js_divergences);
     SET_VECTOR_ELT(_out, 1, included_n_reps_S1);
     SET_VECTOR_ELT(_out, 2, included_n_reps_S2);
@@ -141,7 +141,7 @@ SEXP fjct_compute_masked_jsd_call(SEXP neighborhood_residuals_S1, SEXP neighborh
     SET_VECTOR_ELT(_out, 6, pmf_S1);
     SET_VECTOR_ELT(_out, 7, pmf_S2);
     SET_VECTOR_ELT(_out, 8, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 9)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 9)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("js_divergences"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("included_n_reps_S1"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("included_n_reps_S2"));
@@ -152,18 +152,18 @@ SEXP fjct_compute_masked_jsd_call(SEXP neighborhood_residuals_S1, SEXP neighborh
     SET_STRING_ELT(_nms, 7, Rf_mkChar("pmf_S2"));
     SET_STRING_ELT(_nms, 8, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 
 SEXP fjct_compute_contribution_scores_call(SEXP global_js_divergences, SEXP total_included_n_reps_per_f) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int k_families = (int) Rf_length(global_js_divergences);
 
     // outputs and work space
-    SEXP support_weights = PROTECT(Rf_allocVector(REALSXP, k_families)); nprot++;
-    SEXP contribution_scores = PROTECT(Rf_allocVector(REALSXP, k_families)); nprot++;
+    SEXP support_weights = PROTECT(Rf_allocVector(REALSXP, k_families)); _nprot++;
+    SEXP contribution_scores = PROTECT(Rf_allocVector(REALSXP, k_families)); _nprot++;
     int ierr = 0;
 
     fjct_compute_contribution_scores_c(
@@ -175,16 +175,16 @@ SEXP fjct_compute_contribution_scores_call(SEXP global_js_divergences, SEXP tota
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); _nprot++;
     SET_VECTOR_ELT(_out, 0, support_weights);
     SET_VECTOR_ELT(_out, 1, contribution_scores);
     SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 3)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 3)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("support_weights"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("contribution_scores"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 

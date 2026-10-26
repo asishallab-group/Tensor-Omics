@@ -369,8 +369,17 @@ A dummy's name is published verbatim: a Python parameter, an R parameter, a para
 reserves broke more than its own procedure -- a parameter called `lambda` is a SyntaxError, and the
 package `__init__` imports every module, so `import tensor_omics` failed; `next` failed
 `r/load_tensor_omics.R` for every wrapper; `default` failed the C build of the whole library; `np`
-hid numpy inside the function. So `validate` refuses the words each layer reserves and the names
-the generated code binds itself, from one table (`names.py`) the emitters build their locals from.
+hid numpy inside the function. So `validate` refuses the words each layer reserves
+(`names.language_word`), for an argument and for a procedure's own name, which is a Python and an
+R function.
+
+The names the generated code binds itself are a different problem, and are designed out where the
+language lets them be. Everything the R shim's C and a generated Python module bind beside the
+arguments starts with `_` (`_v_<name>`, `_nprot`, `_np`, `_check_err_code`, `_error`); no Fortran
+name can, so no argument can meet one. A Fortran wrapper's own locals cannot start with `_`, so
+they stay `<name>_f`, `<name>_mode_f`, `<name>_value` and `handled`, and an argument is refused
+where the wrapper emits the same name -- read off the wrapper as emitted, together with what it
+calls, imports and uses as a kind (`emit/name_clashes.py`).
 
 **Rejected -- renaming instead.** The published name is the API, and a binding that quietly calls
 an argument `lambda_` is one more thing a reader of the Fortran cannot predict.
@@ -380,10 +389,14 @@ an R argument cannot shadow a function call (R skips non-function bindings when 
 up), while main publishes `value`, `mode`, `vector`, `array`, `expression`, `factor`, `points` and
 `weights`. Refusing them would refuse working API for a clash that does not happen.
 
-**Rejected -- prefixing every generated local with `_`** (no Fortran name can start with one).
-It works in C and Python, which is why the Python emitter's own private names already do; but
-the Fortran wrappers' locals (`<name>_f`, `<name>_value`) cannot, and a rule that holds for two
-layers out of three still needs the table for the third.
+**Rejected -- refusing every `<other>_<suffix>` and every name a wrapper might use** (WP2's first
+form). It refused `p_value` beside `p` and `window_size` beside `window`, ordinary names whose local
+is never emitted, and a blanket list of intrinsics would refuse `count`, which main publishes in
+`mask_chunk_count`. Refusing where the wrapper really emits the name is both narrower and complete.
+
+**Rejected -- a list of what each emitter might reference**, kept beside the emitter. It would be a
+second description of the emitted code that drifts from the first; reading the rendered wrapper
+cannot.
 
 ---
 

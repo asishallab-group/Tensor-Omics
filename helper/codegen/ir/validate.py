@@ -18,7 +18,7 @@ from ..diagnostics import DiagnosticBag
 from .constants import KIND_VALUES
 from .doc import EXTERNAL_PREFIX
 from .entities import Argument, Module, Procedure, Project
-from .types import BaseType, Intent, split_top_level
+from .types import BaseType, FortranType, Intent, split_top_level
 
 #: Attributes on a dummy argument that have no C interoperable form
 NON_INTEROPERABLE_ATTRIBUTES = ("allocatable", "pointer")
@@ -28,13 +28,32 @@ NON_INTEROPERABLE_ATTRIBUTES = ("allocatable", "pointer")
 #: validators exist for those kinds only; anything else reaches R as the wrong storage -- an
 #: int64 output is written eight bytes per element into a four-byte INTSXP -- and the
 #: validator call does not compile. Compared by value, so `c_int` is `int32` and `c_double`
-#: is `real64`; a kind whose value the generator does not know is the C ABI's to refuse.
+#: is `real64`, and `integer(8)` is int64; a kind whose value the generator does not know is
+#: the C ABI's to refuse. Logicals are compared by name (`SUPPORTED_LOGICAL_KINDS`).
 SUPPORTED_KIND_VALUES = {BaseType.INTEGER: 4, BaseType.REAL: 8, BaseType.COMPLEX: 8}
 
-#: The kinds a logical may have: `c_bool`, which C passes as it is, and the default kind, which
-#: the C wrapper converts. Any other logical kind would be converted into a default logical
-#: and handed to a dummy of another kind, which does not compile.
+#: The kinds a logical may have, by *name*: `c_bool`, which C passes as it is, and the default
+#: kind, which the C wrapper converts. Not by value: any other spelling -- `logical(1)`, though
+#: it is c_bool's value -- would be converted into a default logical and handed to a dummy of
+#: another kind, which does not compile.
 SUPPORTED_LOGICAL_KINDS = (None, "c_bool")
+
+
+def bindings_cannot_carry(fortran: FortranType) -> bool:
+    """Whether the bindings cannot carry a value of this type (#221 B4).
+
+    A numeric kind is compared by value with `SUPPORTED_KIND_VALUES`, a logical kind by name
+    with `SUPPORTED_LOGICAL_KINDS`. A numeric kind whose value is unknown is not this rule's:
+    the C ABI refuses it as having no C counterpart. Shared with `abi.c_abi`, which stays
+    silent about a kind this already refuses, so one cause gets one error.
+    """
+    if fortran.is_logical:
+        return ((fortran.kind or "").lower() or None) not in SUPPORTED_LOGICAL_KINDS
+    supported = SUPPORTED_KIND_VALUES.get(fortran.base)
+    if supported is None:
+        return False
+    value = _kind_value(fortran.kind)
+    return value is not None and value != supported
 
 #: The greatest character rank the C layer can carry. A character's length is a leading C
 #: extent, so a scalar character is a 1-D c_char buffer and a character vector a 2-D one.
@@ -390,7 +409,7 @@ def validate_impl_module(module: Module, diagnostics: DiagnosticBag,
             continue  # a recommend routine or a private helper, not an implementation
         _check_impl_is_not_exported(procedure, diagnostics, conventions)
         _check_impl_is_not_named_for_a_wrapper(procedure, diagnostics, conventions)
-        _check_permutation_is_not_an_output(procedure, diagnostics, conventions)
+        _check_taken_over_is_not_an_output(procedure, diagnostics, conventions)
         _check_prologue(procedure, diagnostics, conventions)
 
 
@@ -551,37 +570,51 @@ def _check_impl_is_not_named_for_a_wrapper(procedure: Procedure, diagnostics: Di
         return
 
 
-def _check_permutation_is_not_an_output(impl: Procedure, diagnostics: DiagnosticBag,
-                                        conventions: Conventions) -> None:
-    """A `<base>_perm` the allocating wrapper builds cannot also be what the implementation returns.
+def _check_taken_over_is_not_an_output(impl: Procedure, diagnostics: DiagnosticBag,
+                                       conventions: Conventions) -> None:
+    """What the allocating wrapper prepares itself cannot also be what the implementation returns.
 
-    The allocating wrapper takes over every `<base>_perm` whose `<base>` is an argument: it
-    seeds and heapsorts it as a local and hands it in (`synthesize.taken_over_arguments`).
-    An `intent(out)` one is the implementation's *result* -- an argsort -- and taking it over
-    swallows it: `foo` computes it and throws it away, and Python and R return nothing. Only
-    the expert tier would return it. A `tmp_` permutation is scratch and stays exempt.
+    `foo` takes over a `<base>_perm` whose `<base>` is an argument (it seeds and heapsorts
+    it) and a `DM_OUTPUT_FROM(..., AUTO)` value (it calls the producer), declaring each as a
+    local and handing it in (`synthesize.taken_over_arguments`). An `intent(out)` one is the
+    implementation's *result* -- an argsort, a count -- and taking it over swallows it: `foo`
+    computes it and throws it away, and Python and R return nothing. Only the expert tier would
+    return it. A `tmp_` work array is scratch and stays exempt, and a prologue only takes over
+    what the implementation reads.
     """
-    from ..synthesize import is_permutation, is_temporary  # local: synthesize imports this module
+    from ..synthesize import (  # local: synthesize imports this module
+        _prologue_of,
+        is_computed,
+        is_permutation,
+        is_temporary,
+        taken_over_arguments,
+    )
 
-    arguments = {argument.name.lower() for argument in impl.arguments}
-    for argument in impl.arguments:
+    project = impl.module.project if impl.module is not None else None
+    prologue = _prologue_of(impl, project) if project is not None else None
+    for argument in taken_over_arguments(impl.arguments, conventions, prologue):
         if argument.intent is not Intent.OUT or is_temporary(argument, conventions):
             continue
-        if not is_permutation(argument, conventions):
-            continue
-        base = argument.name[: -len(conventions.perm_suffix)]
-        if base.lower() not in arguments:
+        if is_permutation(argument, conventions):
+            base = argument.name[: -len(conventions.perm_suffix)]
+            how = f"builds it from '{base}' itself"
+            hint = (
+                f"a '<base>{conventions.perm_suffix}' whose base is an argument is seeded and "
+                "sorted by the allocating wrapper"
+            )
+        elif is_computed(argument):
+            producer = argument.directives.output_from.procedure
+            how = f"computes it with '{producer}' itself"
+            hint = "a DM_OUTPUT_FROM(..., AUTO) value is computed by the allocating wrapper"
+        else:
             continue
         diagnostics.error(
-            f"'{argument.name}' is an output, but the allocating wrapper builds it from "
-            f"'{base}' itself",
+            f"'{argument.name}' is an output, but the allocating wrapper {how}",
             entity=argument,
             note=(
-                f"a '<base>{conventions.perm_suffix}' whose base is an argument is seeded and "
-                "sorted by the allocating wrapper, which would then discard what the "
-                "implementation computes. Name the result for what it is (`order`, "
-                f"`ranks`), or make it intent(in) or intent(inout) if the implementation "
-                "really is handed a sorted order"
+                f"{hint}, which would then discard what the implementation computes. Name the "
+                "result for what it is (`order`, `ranks`) or drop the directive, or make it "
+                "intent(in) or intent(inout) if the implementation really is handed it"
             ),
         )
 
@@ -606,9 +639,30 @@ class _Validator:
 
     def run(self) -> None:
         self._check_meta()
+        self._check_procedure_name()
         self._check_error_is_last()
         for argument in self.arguments:
             self._check_argument(argument)
+
+    def _check_procedure_name(self) -> None:
+        """A procedure is a Python and an R function of the same name, so it is held to their words.
+
+        A keyword is a SyntaxError (and `import tensor_omics` fails with it) or an R parse
+        error; a builtin's name hides the builtin for the whole generated module, where the
+        other wrappers call it. Its C symbols carry a suffix (`foo_c`, `foo_call`), which no C
+        keyword has, so C's list does not apply.
+        """
+        word = names.language_word(self.procedure.name, languages=("Python", "R"))
+        if word is None:
+            return
+        self.diagnostics.error(
+            f"procedure '{self.procedure.name}' is {word}",
+            entity=self.procedure,
+            note=(
+                "a procedure is published as a Python and an R function of the same name; "
+                "rename it (an implementation, its `_impl` base name)"
+            ),
+        )
 
     def _check_error_is_last(self) -> None:
         """The error code ends the published signature.
@@ -663,15 +717,16 @@ class _Validator:
         self._check_error_argument(argument)
 
     def _check_name(self, argument: Argument) -> None:
-        """A published name every binding language takes, and that no generated name takes.
+        """A published name every binding language takes, and no procedure the wrapper names.
 
         The name is a Python parameter, an R parameter, a parameter of the R `.Call` shim and
         a dummy of every generated wrapper, so the words those languages reserve are refused
-        (`names.language_word`), and so is every name the generated code introduces beside
-        the arguments: a local of its own (`nprot`, `handled`), one built from another
-        argument's name (`k_v` beside `k`), and the procedures it names -- itself, its C
-        symbol, and a `DM_OUTPUT_FROM` producer it calls. A function's result is published as
-        an output argument, so it is held to the same.
+        (`names.language_word`). So are the procedures a generated wrapper names -- itself, its
+        C symbol, and a `DM_OUTPUT_FROM` producer it calls -- which a dummy would hide. The
+        locals and imports of the generated code are another matter: the R shim's and
+        Python's start with `_` and so meet no argument, and the Fortran wrappers' are checked
+        where they are emitted (`emit.name_clashes`). A function's result is published as an
+        output argument, so it is held to the same.
         """
         name = argument.name
         what = "result" if argument.is_result else "argument"
@@ -682,26 +737,8 @@ class _Validator:
                 argument,
                 note=(
                     "a published argument is a parameter in Python, R and the C of the R "
-                    "binding, so it cannot be a word one of them reserves or a name the "
-                    "generated code relies on; rename it"
+                    "binding, so it cannot be a word one of them reserves; rename it"
                 ),
-            )
-        where = names.generated_local(name)
-        if where is not None:
-            self.error(
-                f"{what} '{name}' is the name of a local every generated {where} declares",
-                argument,
-                note="the wrapper would declare it twice; rename it",
-            )
-        others = [other.name for other in self.arguments if other is not argument]
-        clash = names.clashing_local(name, others)
-        if clash is not None:
-            other, suffix, where = clash
-            self.error(
-                f"{what} '{name}' is the name of the local the generated {where} declares "
-                f"for '{other}' ('{other}' + '{suffix}')",
-                argument,
-                note="the wrapper would declare it twice; rename one of the two",
             )
         called = self._called_procedure(name)
         if called is not None:
@@ -870,18 +907,10 @@ class _Validator:
         self._check_kind(argument)
 
     def _check_kind(self, argument: Argument) -> None:
-        """Only the kinds R and the validators can carry (`SUPPORTED_KIND_VALUES`)."""
+        """Only the kinds R and the validators can carry (`bindings_cannot_carry`)."""
         fortran = argument.type
-        if fortran.is_logical:
-            if ((fortran.kind or "").lower() or None) in SUPPORTED_LOGICAL_KINDS:
-                return
-        else:
-            supported = SUPPORTED_KIND_VALUES.get(fortran.base)
-            if supported is None:
-                return
-            value = _kind_value(fortran.kind)
-            if value is None or value == supported:
-                return
+        if not bindings_cannot_carry(fortran):
+            return
         self.error(
             f"argument '{argument.name}' is {fortran}, which the bindings cannot carry",
             argument,

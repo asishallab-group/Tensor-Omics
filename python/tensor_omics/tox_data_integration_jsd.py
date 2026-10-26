@@ -10,23 +10,23 @@ figure for the pair of studies.
 Python binding, generated from tox_data_integration_jsd. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.determine_shared_residual_range_c.restype = None
 _lib.determine_shared_residual_range_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -36,12 +36,12 @@ _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES = (None, "abs_residual_pool", 
 
 _lib.determine_shared_residual_range_expert_c.restype = None
 _lib.determine_shared_residual_range_expert_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -51,15 +51,15 @@ _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENT_SOURCES = (None, None, "abs_res
 
 _lib.determine_study_shared_residual_range_c.restype = None
 _lib.determine_study_shared_residual_range_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -69,17 +69,17 @@ _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES = (None, None, "neighbor
 
 _lib.build_residual_histograms_c.restype = None
 _lib.build_residual_histograms_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    nullable(np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS')),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _nullable(_np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS')),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -89,12 +89,12 @@ _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENT_SOURCES = (None, "neighborhood_residuals", "
 
 _lib.compute_divergence_per_reference_point_c.restype = None
 _lib.compute_divergence_per_reference_point_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -104,13 +104,13 @@ _COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENT_SOURCES = (None, None, "pmf_S1"
 
 _lib.compute_weighted_global_divergence_c.restype = None
 _lib.compute_weighted_global_divergence_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -158,9 +158,9 @@ def determine_shared_residual_range(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        abs_residual_pool = np.ascontiguousarray(abs_residual_pool, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'abs_residual_pool' must be an array of np.float64: {error}") from None
+        abs_residual_pool = _np.ascontiguousarray(abs_residual_pool, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'abs_residual_pool' must be an array of np.float64: {_error}") from None
     if abs_residual_pool.ndim != 1:
         raise ValueError(f"'abs_residual_pool' must have 1 dimension, but has {abs_residual_pool.ndim}")
 
@@ -168,18 +168,18 @@ def determine_shared_residual_range(
     pool_size = abs_residual_pool.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    shared_residual_range = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    shared_residual_range = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.determine_shared_residual_range_c(
         abs_residual_pool,
-        ctypes.byref(ctypes.c_int(pool_size)),
-        ctypes.byref(shared_residual_range),
-        ctypes.byref(ctypes.c_double(residual_range_quantile_level)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(pool_size)),
+        _ctypes.byref(shared_residual_range),
+        _ctypes.byref(_ctypes.c_double(residual_range_quantile_level)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENTS, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENTS, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES)
 
     return shared_residual_range.value
 
@@ -228,15 +228,15 @@ def determine_shared_residual_range_expert(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        abs_residual_pool = np.ascontiguousarray(abs_residual_pool, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'abs_residual_pool' must be an array of np.float64: {error}") from None
+        abs_residual_pool = _np.ascontiguousarray(abs_residual_pool, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'abs_residual_pool' must be an array of np.float64: {_error}") from None
     if abs_residual_pool.ndim != 1:
         raise ValueError(f"'abs_residual_pool' must have 1 dimension, but has {abs_residual_pool.ndim}")
     try:
-        abs_residual_pool_perm = np.ascontiguousarray(abs_residual_pool_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'abs_residual_pool_perm' must be an array of np.int32: {error}") from None
+        abs_residual_pool_perm = _np.ascontiguousarray(abs_residual_pool_perm, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'abs_residual_pool_perm' must be an array of np.int32: {_error}") from None
     if abs_residual_pool_perm.ndim != 1:
         raise ValueError(f"'abs_residual_pool_perm' must have 1 dimension, but has {abs_residual_pool_perm.ndim}")
 
@@ -250,19 +250,19 @@ def determine_shared_residual_range_expert(
         )
 
     # outputs and work arrays, which the caller never sees
-    shared_residual_range = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    shared_residual_range = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.determine_shared_residual_range_expert_c(
         abs_residual_pool,
         abs_residual_pool_perm,
-        ctypes.byref(ctypes.c_int(pool_size)),
-        ctypes.byref(shared_residual_range),
-        ctypes.byref(ctypes.c_double(residual_range_quantile_level)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(pool_size)),
+        _ctypes.byref(shared_residual_range),
+        _ctypes.byref(_ctypes.c_double(residual_range_quantile_level)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENTS, _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENTS, _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENT_SOURCES)
 
     return shared_residual_range.value
 
@@ -307,15 +307,15 @@ def determine_study_shared_residual_range(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        neighborhood_residuals_S1 = np.asfortranarray(neighborhood_residuals_S1, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals_S1' must be an array of np.float64: {error}") from None
+        neighborhood_residuals_S1 = _np.asfortranarray(neighborhood_residuals_S1, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'neighborhood_residuals_S1' must be an array of np.float64: {_error}") from None
     if neighborhood_residuals_S1.ndim != 3:
         raise ValueError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}")
     try:
-        neighborhood_residuals_S2 = np.asfortranarray(neighborhood_residuals_S2, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals_S2' must be an array of np.float64: {error}") from None
+        neighborhood_residuals_S2 = _np.asfortranarray(neighborhood_residuals_S2, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'neighborhood_residuals_S2' must be an array of np.float64: {_error}") from None
     if neighborhood_residuals_S2.ndim != 3:
         raise ValueError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}")
 
@@ -336,22 +336,22 @@ def determine_study_shared_residual_range(
         )
 
     # outputs and work arrays, which the caller never sees
-    shared_residual_range = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    shared_residual_range = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.determine_study_shared_residual_range_c(
         neighborhood_residuals_S1,
         neighborhood_residuals_S2,
-        ctypes.byref(ctypes.c_int(n_reps_S1)),
-        ctypes.byref(ctypes.c_int(n_reps_S2)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(shared_residual_range),
-        ctypes.byref(ctypes.c_double(residual_range_quantile_level)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_reps_S1)),
+        _ctypes.byref(_ctypes.c_int(n_reps_S2)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(shared_residual_range),
+        _ctypes.byref(_ctypes.c_double(residual_range_quantile_level)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENTS, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENTS, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES)
 
     return shared_residual_range.value
 
@@ -405,16 +405,16 @@ def build_residual_histograms(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        neighborhood_residuals = np.asfortranarray(neighborhood_residuals, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals' must be an array of np.float64: {error}") from None
+        neighborhood_residuals = _np.asfortranarray(neighborhood_residuals, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'neighborhood_residuals' must be an array of np.float64: {_error}") from None
     if neighborhood_residuals.ndim != 3:
         raise ValueError(f"'neighborhood_residuals' must have 3 dimensions, but has {neighborhood_residuals.ndim}")
     if neighbor_mask is not None:
         try:
-            neighbor_mask = np.asfortranarray(neighbor_mask, dtype=np.bool_)
-        except (TypeError, ValueError) as error:
-            raise TypeError(f"'neighbor_mask' must be an array of np.bool_: {error}") from None
+            neighbor_mask = _np.asfortranarray(neighbor_mask, dtype=_np.bool_)
+        except (TypeError, ValueError) as _error:
+            raise TypeError(f"'neighbor_mask' must be an array of np.bool_: {_error}") from None
         if neighbor_mask.ndim != 2:
             raise ValueError(f"'neighbor_mask' must have 2 dimensions, but has {neighbor_mask.ndim}")
 
@@ -424,26 +424,26 @@ def build_residual_histograms(
     n_points = neighborhood_residuals.shape[2]
 
     # outputs and work arrays, which the caller never sees
-    counts = np.empty((n_points, n_bins,), dtype=np.int32, order='F')
-    pmf = np.empty((n_points, n_bins,), dtype=np.float64, order='F')
-    included_n_reps = np.empty((n_points,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    counts = _np.empty((n_points, n_bins,), dtype=_np.int32, order='F')
+    pmf = _np.empty((n_points, n_bins,), dtype=_np.float64, order='F')
+    included_n_reps = _np.empty((n_points,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.build_residual_histograms_c(
         neighborhood_residuals,
-        ctypes.byref(ctypes.c_int(n_reps)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_double(shared_residual_range)),
-        ctypes.byref(ctypes.c_int(n_bins)),
+        _ctypes.byref(_ctypes.c_int(n_reps)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_double(shared_residual_range)),
+        _ctypes.byref(_ctypes.c_int(n_bins)),
         counts,
         pmf,
         included_n_reps,
         neighbor_mask,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENTS, _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENTS, _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     counts.flags.writeable = False
@@ -493,15 +493,15 @@ def compute_divergence_per_reference_point(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        pmf_S1 = np.asfortranarray(pmf_S1, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pmf_S1' must be an array of np.float64: {error}") from None
+        pmf_S1 = _np.asfortranarray(pmf_S1, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'pmf_S1' must be an array of np.float64: {_error}") from None
     if pmf_S1.ndim != 2:
         raise ValueError(f"'pmf_S1' must have 2 dimensions, but has {pmf_S1.ndim}")
     try:
-        pmf_S2 = np.asfortranarray(pmf_S2, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pmf_S2' must be an array of np.float64: {error}") from None
+        pmf_S2 = _np.asfortranarray(pmf_S2, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'pmf_S2' must be an array of np.float64: {_error}") from None
     if pmf_S2.ndim != 2:
         raise ValueError(f"'pmf_S2' must have 2 dimensions, but has {pmf_S2.ndim}")
 
@@ -520,19 +520,19 @@ def compute_divergence_per_reference_point(
         )
 
     # outputs and work arrays, which the caller never sees
-    js_divergences = np.empty((n_points,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    js_divergences = _np.empty((n_points,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_divergence_per_reference_point_c(
         pmf_S1,
         pmf_S2,
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_int(n_bins)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_bins)),
         js_divergences,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENTS, _COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENTS, _COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     js_divergences.flags.writeable = False
@@ -583,21 +583,21 @@ def compute_weighted_global_divergence(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        js_divergences = np.ascontiguousarray(js_divergences, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'js_divergences' must be an array of np.float64: {error}") from None
+        js_divergences = _np.ascontiguousarray(js_divergences, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'js_divergences' must be an array of np.float64: {_error}") from None
     if js_divergences.ndim != 1:
         raise ValueError(f"'js_divergences' must have 1 dimension, but has {js_divergences.ndim}")
     try:
-        included_n_reps_S1 = np.ascontiguousarray(included_n_reps_S1, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'included_n_reps_S1' must be an array of np.int32: {error}") from None
+        included_n_reps_S1 = _np.ascontiguousarray(included_n_reps_S1, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'included_n_reps_S1' must be an array of np.int32: {_error}") from None
     if included_n_reps_S1.ndim != 1:
         raise ValueError(f"'included_n_reps_S1' must have 1 dimension, but has {included_n_reps_S1.ndim}")
     try:
-        included_n_reps_S2 = np.ascontiguousarray(included_n_reps_S2, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'included_n_reps_S2' must be an array of np.int32: {error}") from None
+        included_n_reps_S2 = _np.ascontiguousarray(included_n_reps_S2, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'included_n_reps_S2' must be an array of np.int32: {_error}") from None
     if included_n_reps_S2.ndim != 1:
         raise ValueError(f"'included_n_reps_S2' must have 1 dimension, but has {included_n_reps_S2.ndim}")
 
@@ -615,21 +615,21 @@ def compute_weighted_global_divergence(
         )
 
     # outputs and work arrays, which the caller never sees
-    global_js_divergence = ctypes.c_double(0)
-    weights = np.empty((n_points,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    global_js_divergence = _ctypes.c_double(0)
+    weights = _np.empty((n_points,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_weighted_global_divergence_c(
         js_divergences,
-        ctypes.byref(ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
         included_n_reps_S1,
         included_n_reps_S2,
-        ctypes.byref(global_js_divergence),
+        _ctypes.byref(global_js_divergence),
         weights,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENTS, _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENTS, _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     weights.flags.writeable = False

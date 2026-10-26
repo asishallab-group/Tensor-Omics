@@ -14,21 +14,21 @@ callers want. The individual routines are published for a caller assembling thei
 Python binding, generated from tox_normalization. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.normalize_unit_length_c.restype = None
 _lib.normalize_unit_length_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -38,16 +38,16 @@ _NORMALIZE_UNIT_LENGTH_ARGUMENT_SOURCES = (None, "vector", None,)
 
 _lib.normalization_pipeline_c.restype = None
 _lib.normalization_pipeline_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -57,13 +57,13 @@ _NORMALIZATION_PIPELINE_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, "l
 
 _lib.normalize_by_std_dev_c.restype = None
 _lib.normalize_by_std_dev_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -73,11 +73,11 @@ _NORMALIZE_BY_STD_DEV_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, None
 
 _lib.root_mean_sq_normalization_c.restype = None
 _lib.root_mean_sq_normalization_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -87,12 +87,12 @@ _ROOT_MEAN_SQ_NORMALIZATION_ARGUMENT_SOURCES = ("expr", "expr", None, None, None
 
 _lib.quantile_normalization_c.restype = None
 _lib.quantile_normalization_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -102,11 +102,11 @@ _QUANTILE_NORMALIZATION_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, No
 
 _lib.log2_transformation_c.restype = None
 _lib.log2_transformation_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -116,12 +116,12 @@ _LOG2_TRANSFORMATION_ARGUMENT_SOURCES = ("expr", "expr", None, None, None,)
 
 _lib.calc_tiss_avg_c.restype = None
 _lib.calc_tiss_avg_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -131,14 +131,14 @@ _CALC_TISS_AVG_ARGUMENT_SOURCES = ("expr", "reps_per_tissue", None, None, None, 
 
 _lib.calc_fchange_c.restype = None
 _lib.calc_fchange_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -173,8 +173,8 @@ def normalize_unit_length(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    if not isinstance(vector, np.ndarray) or vector.dtype != np.float64:
-        raise TypeError("'vector' is modified in place, so it must already be a numpy array of {}".format(np.float64))
+    if not isinstance(vector, _np.ndarray) or vector.dtype != _np.float64:
+        raise TypeError("'vector' is modified in place, so it must already be a numpy array of {}".format(_np.float64))
     if vector.ndim != 1:
         raise ValueError(f"'vector' must have 1 dimension, but has {vector.ndim}")
 
@@ -182,15 +182,15 @@ def normalize_unit_length(
     n_dims = vector.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    ierr = ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.normalize_unit_length_c(
         vector,
-        ctypes.byref(ctypes.c_int(n_dims)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_dims)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _NORMALIZE_UNIT_LENGTH_ARGUMENTS, _NORMALIZE_UNIT_LENGTH_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _NORMALIZE_UNIT_LENGTH_ARGUMENTS, _NORMALIZE_UNIT_LENGTH_ARGUMENT_SOURCES)
 
     return None
 
@@ -242,15 +242,15 @@ def normalization_pipeline(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        expr = np.asfortranarray(expr, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expr' must be an array of np.float64: {error}") from None
+        expr = _np.asfortranarray(expr, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
     if expr.ndim != 2:
         raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
     try:
-        reps_per_tissue = np.ascontiguousarray(reps_per_tissue, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'reps_per_tissue' must be an array of np.int32: {error}") from None
+        reps_per_tissue = _np.ascontiguousarray(reps_per_tissue, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'reps_per_tissue' must be an array of np.int32: {_error}") from None
     if reps_per_tissue.ndim != 1:
         raise ValueError(f"'reps_per_tissue' must have 1 dimension, but has {reps_per_tissue.ndim}")
 
@@ -260,23 +260,23 @@ def normalization_pipeline(
     n_tissues = reps_per_tissue.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    log_transformed_expr = np.empty((n_tissues, n_genes,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    log_transformed_expr = _np.empty((n_tissues, n_genes,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.normalization_pipeline_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_replicates)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_replicates)),
         expr,
         log_transformed_expr,
         reps_per_tissue,
-        ctypes.byref(ctypes.c_int(n_tissues)),
-        ctypes.byref(ctypes.c_double(span)),
-        ctypes.byref(ctypes.c_int(degree)),
-        ctypes.byref(ctypes.c_bool(use_quantile)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_tissues)),
+        _ctypes.byref(_ctypes.c_double(span)),
+        _ctypes.byref(_ctypes.c_int(degree)),
+        _ctypes.byref(_ctypes.c_bool(use_quantile)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _NORMALIZATION_PIPELINE_ARGUMENTS, _NORMALIZATION_PIPELINE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _NORMALIZATION_PIPELINE_ARGUMENTS, _NORMALIZATION_PIPELINE_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     log_transformed_expr.flags.writeable = False
@@ -324,9 +324,9 @@ def normalize_by_std_dev(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        expr = np.asfortranarray(expr, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expr' must be an array of np.float64: {error}") from None
+        expr = _np.asfortranarray(expr, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
     if expr.ndim != 2:
         raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
 
@@ -335,20 +335,20 @@ def normalize_by_std_dev(
     n_replicates = expr.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    normalized_expr = np.empty((n_replicates, n_genes,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    normalized_expr = _np.empty((n_replicates, n_genes,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.normalize_by_std_dev_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_replicates)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_replicates)),
         expr,
         normalized_expr,
-        ctypes.byref(ctypes.c_double(span)),
-        ctypes.byref(ctypes.c_int(degree)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_double(span)),
+        _ctypes.byref(_ctypes.c_int(degree)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _NORMALIZE_BY_STD_DEV_ARGUMENTS, _NORMALIZE_BY_STD_DEV_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _NORMALIZE_BY_STD_DEV_ARGUMENTS, _NORMALIZE_BY_STD_DEV_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     normalized_expr.flags.writeable = False
@@ -387,9 +387,9 @@ def root_mean_sq_normalization(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        expr = np.asfortranarray(expr, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expr' must be an array of np.float64: {error}") from None
+        expr = _np.asfortranarray(expr, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
     if expr.ndim != 2:
         raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
 
@@ -398,18 +398,18 @@ def root_mean_sq_normalization(
     n_replicates = expr.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    normalized_expr = np.empty((n_replicates, n_genes,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    normalized_expr = _np.empty((n_replicates, n_genes,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.root_mean_sq_normalization_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_replicates)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_replicates)),
         expr,
         normalized_expr,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _ROOT_MEAN_SQ_NORMALIZATION_ARGUMENTS, _ROOT_MEAN_SQ_NORMALIZATION_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _ROOT_MEAN_SQ_NORMALIZATION_ARGUMENTS, _ROOT_MEAN_SQ_NORMALIZATION_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     normalized_expr.flags.writeable = False
@@ -454,9 +454,9 @@ def quantile_normalization(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        expr = np.asfortranarray(expr, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expr' must be an array of np.float64: {error}") from None
+        expr = _np.asfortranarray(expr, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
     if expr.ndim != 2:
         raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
 
@@ -465,20 +465,20 @@ def quantile_normalization(
     n_replicates = expr.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    normalized_expr = np.empty((n_replicates, n_genes,), dtype=np.float64, order='F')
-    rank_means = np.empty((n_genes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    normalized_expr = _np.empty((n_replicates, n_genes,), dtype=_np.float64, order='F')
+    rank_means = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.quantile_normalization_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_replicates)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_replicates)),
         expr,
         normalized_expr,
         rank_means,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _QUANTILE_NORMALIZATION_ARGUMENTS, _QUANTILE_NORMALIZATION_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _QUANTILE_NORMALIZATION_ARGUMENTS, _QUANTILE_NORMALIZATION_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     normalized_expr.flags.writeable = False
@@ -524,9 +524,9 @@ def log2_transformation(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        expr = np.asfortranarray(expr, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expr' must be an array of np.float64: {error}") from None
+        expr = _np.asfortranarray(expr, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
     if expr.ndim != 2:
         raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
 
@@ -535,18 +535,18 @@ def log2_transformation(
     n_tissues = expr.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    transformed_expr = np.empty((n_tissues, n_genes,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    transformed_expr = _np.empty((n_tissues, n_genes,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.log2_transformation_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_tissues)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_tissues)),
         expr,
         transformed_expr,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _LOG2_TRANSFORMATION_ARGUMENTS, _LOG2_TRANSFORMATION_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _LOG2_TRANSFORMATION_ARGUMENTS, _LOG2_TRANSFORMATION_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     transformed_expr.flags.writeable = False
@@ -591,15 +591,15 @@ def calc_tiss_avg(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        reps_per_tissue = np.ascontiguousarray(reps_per_tissue, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'reps_per_tissue' must be an array of np.int32: {error}") from None
+        reps_per_tissue = _np.ascontiguousarray(reps_per_tissue, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'reps_per_tissue' must be an array of np.int32: {_error}") from None
     if reps_per_tissue.ndim != 1:
         raise ValueError(f"'reps_per_tissue' must have 1 dimension, but has {reps_per_tissue.ndim}")
     try:
-        expr = np.asfortranarray(expr, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expr' must be an array of np.float64: {error}") from None
+        expr = _np.asfortranarray(expr, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
     if expr.ndim != 2:
         raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
 
@@ -608,19 +608,19 @@ def calc_tiss_avg(
     n_tissues = reps_per_tissue.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    tissue_averages = np.empty((n_tissues, n_genes,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    tissue_averages = _np.empty((n_tissues, n_genes,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.calc_tiss_avg_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_tissues)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_tissues)),
         reps_per_tissue,
         expr,
         tissue_averages,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_TISS_AVG_ARGUMENTS, _CALC_TISS_AVG_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CALC_TISS_AVG_ARGUMENTS, _CALC_TISS_AVG_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     tissue_averages.flags.writeable = False
@@ -671,21 +671,21 @@ def calc_fchange(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        control_tissues = np.ascontiguousarray(control_tissues, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'control_tissues' must be an array of np.int32: {error}") from None
+        control_tissues = _np.ascontiguousarray(control_tissues, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'control_tissues' must be an array of np.int32: {_error}") from None
     if control_tissues.ndim != 1:
         raise ValueError(f"'control_tissues' must have 1 dimension, but has {control_tissues.ndim}")
     try:
-        condition_tissues = np.ascontiguousarray(condition_tissues, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'condition_tissues' must be an array of np.int32: {error}") from None
+        condition_tissues = _np.ascontiguousarray(condition_tissues, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'condition_tissues' must be an array of np.int32: {_error}") from None
     if condition_tissues.ndim != 1:
         raise ValueError(f"'condition_tissues' must have 1 dimension, but has {condition_tissues.ndim}")
     try:
-        expr = np.asfortranarray(expr, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expr' must be an array of np.float64: {error}") from None
+        expr = _np.asfortranarray(expr, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
     if expr.ndim != 2:
         raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
 
@@ -701,21 +701,21 @@ def calc_fchange(
         )
 
     # outputs and work arrays, which the caller never sees
-    fold_changes = np.empty((n_pairs, n_genes,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    fold_changes = _np.empty((n_pairs, n_genes,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.calc_fchange_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_tissues)),
-        ctypes.byref(ctypes.c_int(n_pairs)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_tissues)),
+        _ctypes.byref(_ctypes.c_int(n_pairs)),
         control_tissues,
         condition_tissues,
         expr,
         fold_changes,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_FCHANGE_ARGUMENTS, _CALC_FCHANGE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CALC_FCHANGE_ARGUMENTS, _CALC_FCHANGE_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     fold_changes.flags.writeable = False

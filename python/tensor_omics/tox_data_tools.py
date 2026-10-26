@@ -10,34 +10,34 @@ layers, everything here works from delimited text rather than the library's bina
 Python binding, generated from tox_data_tools. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.read_expression_vectors_tsv_c.restype = None
 _lib.read_expression_vectors_tsv_c.argtypes = (
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -45,14 +45,14 @@ _READ_EXPRESSION_VECTORS_TSV_ARGUMENTS = ("file_list", "gene_ids", "expression_v
 
 _lib.read_gene_ids_from_tsv_file_c.restype = None
 _lib.read_gene_ids_from_tsv_file_c.argtypes = (
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -60,17 +60,17 @@ _READ_GENE_IDS_FROM_TSV_FILE_ARGUMENTS = ("filename", "gene_ids", "n_header_rows
 
 _lib.read_orthofinder_file_c.restype = None
 _lib.read_orthofinder_file_c.argtypes = (
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -78,11 +78,11 @@ _READ_ORTHOFINDER_FILE_ARGUMENTS = ("filename", "gene_ids", "family_ids", "gene_
 
 _lib.get_unassigned_mask_c.restype = None
 _lib.get_unassigned_mask_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -138,32 +138,32 @@ def read_expression_vectors_tsv(
     try:
         _file_list_bytes = [str(_s).encode() for _s in file_list]
         _file_list_width = max(map(len, _file_list_bytes), default=0) or 1
-        file_list = np.asarray([_b.ljust(_file_list_width) for _b in _file_list_bytes], dtype="S")
-    except TypeError as error:
-        raise TypeError(f"'file_list' must be a sequence of strings: {error}") from None
+        file_list = _np.asarray([_b.ljust(_file_list_width) for _b in _file_list_bytes], dtype="S")
+    except TypeError as _error:
+        raise TypeError(f"'file_list' must be a sequence of strings: {_error}") from None
     if file_list.ndim != 1:
         raise ValueError(f"'file_list' must have 1 dimension, but has {file_list.ndim}")
     try:
         _gene_ids_bytes = [str(_s).encode() for _s in gene_ids]
         _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
-        gene_ids = np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
-    except TypeError as error:
-        raise TypeError(f"'gene_ids' must be a sequence of strings: {error}") from None
+        gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
+    except TypeError as _error:
+        raise TypeError(f"'gene_ids' must be a sequence of strings: {_error}") from None
     if gene_ids.ndim != 1:
         raise ValueError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}")
-    if not isinstance(expression_vectors, np.ndarray) or expression_vectors.dtype != np.float64:
-        raise TypeError("'expression_vectors' is modified in place, so it must already be a numpy array of {}".format(np.float64))
+    if not isinstance(expression_vectors, _np.ndarray) or expression_vectors.dtype != _np.float64:
+        raise TypeError("'expression_vectors' is modified in place, so it must already be a numpy array of {}".format(_np.float64))
     if expression_vectors.ndim != 2:
         raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
     if not expression_vectors.flags.f_contiguous:
         raise ValueError("'expression_vectors' is modified in place, so it must already be column-major (order='F')")
     try:
-        value_cols = np.ascontiguousarray(value_cols, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'value_cols' must be an array of np.int32: {error}") from None
+        value_cols = _np.ascontiguousarray(value_cols, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'value_cols' must be an array of np.int32: {_error}") from None
     if value_cols.ndim != 1:
         raise ValueError(f"'value_cols' must have 1 dimension, but has {value_cols.ndim}")
-    delimiter = np.array([str(delimiter).encode().ljust(1)], dtype="S1")
+    delimiter = _np.array([str(delimiter).encode().ljust(1)], dtype="S1")
 
     # what the inputs already say, rather than asking for it again
     file_list_strlen = file_list.itemsize
@@ -175,28 +175,28 @@ def read_expression_vectors_tsv(
     n_value_cols_elements = value_cols.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    ierr = ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.read_expression_vectors_tsv_c(
         file_list,
-        ctypes.byref(ctypes.c_int(file_list_strlen)),
-        ctypes.byref(ctypes.c_int(n_file_list_elements)),
+        _ctypes.byref(_ctypes.c_int(file_list_strlen)),
+        _ctypes.byref(_ctypes.c_int(n_file_list_elements)),
         gene_ids,
-        ctypes.byref(ctypes.c_int(gene_ids_strlen)),
-        ctypes.byref(ctypes.c_int(n_gene_ids_elements)),
+        _ctypes.byref(_ctypes.c_int(gene_ids_strlen)),
+        _ctypes.byref(_ctypes.c_int(n_gene_ids_elements)),
         expression_vectors,
-        ctypes.byref(ctypes.c_int(n_expression_vectors_elements_dim_1)),
-        ctypes.byref(ctypes.c_int(n_expression_vectors_elements_dim_2)),
-        ctypes.byref(ctypes.c_int(n_header_rows)),
-        ctypes.byref(ctypes.c_int(gene_col)),
+        _ctypes.byref(_ctypes.c_int(n_expression_vectors_elements_dim_1)),
+        _ctypes.byref(_ctypes.c_int(n_expression_vectors_elements_dim_2)),
+        _ctypes.byref(_ctypes.c_int(n_header_rows)),
+        _ctypes.byref(_ctypes.c_int(gene_col)),
         value_cols,
-        ctypes.byref(ctypes.c_int(n_value_cols_elements)),
-        ctypes.byref(ctypes.c_int(start_row)),
+        _ctypes.byref(_ctypes.c_int(n_value_cols_elements)),
+        _ctypes.byref(_ctypes.c_int(start_row)),
         delimiter,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _READ_EXPRESSION_VECTORS_TSV_ARGUMENTS)
+    _check_err_code(ierr.value, _READ_EXPRESSION_VECTORS_TSV_ARGUMENTS)
 
     return None
 
@@ -238,27 +238,27 @@ def read_gene_ids_from_tsv_file(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
+    filename = _np.array([str(filename).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     filename_strlen = filename.itemsize
 
     # outputs and work arrays, which the caller never sees
-    gene_ids = np.zeros((n_gene_ids_elements,), dtype=f"S{gene_ids_strlen}")
-    ierr = ctypes.c_int(0)
+    gene_ids = _np.zeros((n_gene_ids_elements,), dtype=f"S{gene_ids_strlen}")
+    ierr = _ctypes.c_int(0)
 
     _lib.read_gene_ids_from_tsv_file_c(
         filename,
-        ctypes.byref(ctypes.c_int(filename_strlen)),
+        _ctypes.byref(_ctypes.c_int(filename_strlen)),
         gene_ids,
-        ctypes.byref(ctypes.c_int(gene_ids_strlen)),
-        ctypes.byref(ctypes.c_int(n_gene_ids_elements)),
-        ctypes.byref(ctypes.c_int(n_header_rows)),
-        ctypes.byref(ctypes.c_int(gene_col)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(gene_ids_strlen)),
+        _ctypes.byref(_ctypes.c_int(n_gene_ids_elements)),
+        _ctypes.byref(_ctypes.c_int(n_header_rows)),
+        _ctypes.byref(_ctypes.c_int(gene_col)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _READ_GENE_IDS_FROM_TSV_FILE_ARGUMENTS)
+    _check_err_code(ierr.value, _READ_GENE_IDS_FROM_TSV_FILE_ARGUMENTS)
 
     return [_s.decode().rstrip(' ') for _s in gene_ids]
 
@@ -306,13 +306,13 @@ def read_orthofinder_file(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
+    filename = _np.array([str(filename).encode().ljust(1)], dtype="S")
     try:
         _gene_ids_bytes = [str(_s).encode() for _s in gene_ids]
         _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
-        gene_ids = np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
-    except TypeError as error:
-        raise TypeError(f"'gene_ids' must be a sequence of strings: {error}") from None
+        gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
+    except TypeError as _error:
+        raise TypeError(f"'gene_ids' must be a sequence of strings: {_error}") from None
     if gene_ids.ndim != 1:
         raise ValueError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}")
 
@@ -322,25 +322,25 @@ def read_orthofinder_file(
     n_gene_ids_elements = gene_ids.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    family_ids = np.zeros((n_family_ids_elements,), dtype=f"S{family_ids_strlen}")
-    gene_to_fam = np.empty((n_gene_to_fam_elements,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    family_ids = _np.zeros((n_family_ids_elements,), dtype=f"S{family_ids_strlen}")
+    gene_to_fam = _np.empty((n_gene_to_fam_elements,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.read_orthofinder_file_c(
         filename,
-        ctypes.byref(ctypes.c_int(filename_strlen)),
+        _ctypes.byref(_ctypes.c_int(filename_strlen)),
         gene_ids,
-        ctypes.byref(ctypes.c_int(gene_ids_strlen)),
-        ctypes.byref(ctypes.c_int(n_gene_ids_elements)),
+        _ctypes.byref(_ctypes.c_int(gene_ids_strlen)),
+        _ctypes.byref(_ctypes.c_int(n_gene_ids_elements)),
         family_ids,
-        ctypes.byref(ctypes.c_int(family_ids_strlen)),
-        ctypes.byref(ctypes.c_int(n_family_ids_elements)),
+        _ctypes.byref(_ctypes.c_int(family_ids_strlen)),
+        _ctypes.byref(_ctypes.c_int(n_family_ids_elements)),
         gene_to_fam,
-        ctypes.byref(ctypes.c_int(n_gene_to_fam_elements)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_gene_to_fam_elements)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _READ_ORTHOFINDER_FILE_ARGUMENTS)
+    _check_err_code(ierr.value, _READ_ORTHOFINDER_FILE_ARGUMENTS)
 
     # a result is a value: modify a copy, not this
     gene_to_fam.flags.writeable = False
@@ -383,9 +383,9 @@ def get_unassigned_mask(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
+        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
     if gene_to_fam.ndim != 1:
         raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
 
@@ -393,19 +393,19 @@ def get_unassigned_mask(
     n_gene_to_fam_elements = gene_to_fam.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    mask = np.empty((gene_to_fam.size,), dtype=np.bool_, order='C')
-    n_genes_kept = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    mask = _np.empty((gene_to_fam.size,), dtype=_np.bool_, order='C')
+    n_genes_kept = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.get_unassigned_mask_c(
         gene_to_fam,
-        ctypes.byref(ctypes.c_int(n_gene_to_fam_elements)),
+        _ctypes.byref(_ctypes.c_int(n_gene_to_fam_elements)),
         mask,
-        ctypes.byref(n_genes_kept),
-        ctypes.byref(ierr),
+        _ctypes.byref(n_genes_kept),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _GET_UNASSIGNED_MASK_ARGUMENTS)
+    _check_err_code(ierr.value, _GET_UNASSIGNED_MASK_ARGUMENTS)
 
     # a result is a value: modify a copy, not this
     mask.flags.writeable = False

@@ -12,23 +12,23 @@ conditioned on expression level rather than pooled across it.
 Python binding, generated from tox_data_integration_preprocessing. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.compute_gene_means_c.restype = None
 _lib.compute_gene_means_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -38,12 +38,12 @@ _COMPUTE_GENE_MEANS_ARGUMENT_SOURCES = ("expr", "expr", None, None, None,)
 
 _lib.compute_residuals_c.restype = None
 _lib.compute_residuals_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -53,12 +53,12 @@ _COMPUTE_RESIDUALS_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, None,)
 
 _lib.pool_means_c.restype = None
 _lib.pool_means_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -68,13 +68,13 @@ _POOL_MEANS_ARGUMENT_SOURCES = (None, "pooled_means", "x_star", None, None, None
 
 _lib.pool_means_expert_c.restype = None
 _lib.pool_means_expert_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -84,14 +84,14 @@ _POOL_MEANS_EXPERT_ARGUMENT_SOURCES = (None, None, "pooled_means", "x_star", Non
 
 _lib.pool_study_means_c.restype = None
 _lib.pool_study_means_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -101,16 +101,16 @@ _POOL_STUDY_MEANS_ARGUMENT_SOURCES = ("mean_S1", None, "mean_S2", None, "x_star"
 
 _lib.construct_neighborhoods_c.restype = None
 _lib.construct_neighborhoods_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -148,9 +148,9 @@ def compute_gene_means(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        expr = np.asfortranarray(expr, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expr' must be an array of np.float64: {error}") from None
+        expr = _np.asfortranarray(expr, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
     if expr.ndim != 2:
         raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
 
@@ -159,18 +159,18 @@ def compute_gene_means(
     n_reps = expr.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    means = np.empty((n_genes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    means = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_gene_means_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_reps)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_reps)),
         expr,
         means,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_GENE_MEANS_ARGUMENTS, _COMPUTE_GENE_MEANS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_GENE_MEANS_ARGUMENTS, _COMPUTE_GENE_MEANS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     means.flags.writeable = False
@@ -211,15 +211,15 @@ def compute_residuals(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        expr = np.asfortranarray(expr, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expr' must be an array of np.float64: {error}") from None
+        expr = _np.asfortranarray(expr, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
     if expr.ndim != 2:
         raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
     try:
-        means = np.ascontiguousarray(means, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'means' must be an array of np.float64: {error}") from None
+        means = _np.ascontiguousarray(means, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'means' must be an array of np.float64: {_error}") from None
     if means.ndim != 1:
         raise ValueError(f"'means' must have 1 dimension, but has {means.ndim}")
 
@@ -234,19 +234,19 @@ def compute_residuals(
         )
 
     # outputs and work arrays, which the caller never sees
-    resid = np.empty((n_reps, n_genes,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    resid = _np.empty((n_reps, n_genes,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_residuals_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_reps)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_reps)),
         expr,
         means,
         resid,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_RESIDUALS_ARGUMENTS, _COMPUTE_RESIDUALS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_RESIDUALS_ARGUMENTS, _COMPUTE_RESIDUALS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     resid.flags.writeable = False
@@ -296,9 +296,9 @@ def pool_means(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        pooled_means = np.ascontiguousarray(pooled_means, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pooled_means' must be an array of np.float64: {error}") from None
+        pooled_means = _np.ascontiguousarray(pooled_means, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'pooled_means' must be an array of np.float64: {_error}") from None
     if pooled_means.ndim != 1:
         raise ValueError(f"'pooled_means' must have 1 dimension, but has {pooled_means.ndim}")
 
@@ -306,20 +306,20 @@ def pool_means(
     pool_size = pooled_means.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    n_pool = ctypes.c_int(0)
-    x_star = np.empty((n_points,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    n_pool = _ctypes.c_int(0)
+    x_star = _np.empty((n_points,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.pool_means_c(
         pooled_means,
-        ctypes.byref(ctypes.c_int(pool_size)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(n_pool),
+        _ctypes.byref(_ctypes.c_int(pool_size)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(n_pool),
         x_star,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _POOL_MEANS_ARGUMENTS, _POOL_MEANS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _POOL_MEANS_ARGUMENTS, _POOL_MEANS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     x_star.flags.writeable = False
@@ -375,15 +375,15 @@ def pool_means_expert(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        pooled_means = np.ascontiguousarray(pooled_means, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pooled_means' must be an array of np.float64: {error}") from None
+        pooled_means = _np.ascontiguousarray(pooled_means, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'pooled_means' must be an array of np.float64: {_error}") from None
     if pooled_means.ndim != 1:
         raise ValueError(f"'pooled_means' must have 1 dimension, but has {pooled_means.ndim}")
     try:
-        pooled_means_perm = np.ascontiguousarray(pooled_means_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pooled_means_perm' must be an array of np.int32: {error}") from None
+        pooled_means_perm = _np.ascontiguousarray(pooled_means_perm, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'pooled_means_perm' must be an array of np.int32: {_error}") from None
     if pooled_means_perm.ndim != 1:
         raise ValueError(f"'pooled_means_perm' must have 1 dimension, but has {pooled_means_perm.ndim}")
 
@@ -397,21 +397,21 @@ def pool_means_expert(
         )
 
     # outputs and work arrays, which the caller never sees
-    n_pool = ctypes.c_int(0)
-    x_star = np.empty((n_points,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    n_pool = _ctypes.c_int(0)
+    x_star = _np.empty((n_points,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.pool_means_expert_c(
         pooled_means,
         pooled_means_perm,
-        ctypes.byref(ctypes.c_int(pool_size)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(n_pool),
+        _ctypes.byref(_ctypes.c_int(pool_size)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(n_pool),
         x_star,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _POOL_MEANS_EXPERT_ARGUMENTS, _POOL_MEANS_EXPERT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _POOL_MEANS_EXPERT_ARGUMENTS, _POOL_MEANS_EXPERT_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     x_star.flags.writeable = False
@@ -465,15 +465,15 @@ def pool_study_means(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        mean_S1 = np.ascontiguousarray(mean_S1, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'mean_S1' must be an array of np.float64: {error}") from None
+        mean_S1 = _np.ascontiguousarray(mean_S1, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'mean_S1' must be an array of np.float64: {_error}") from None
     if mean_S1.ndim != 1:
         raise ValueError(f"'mean_S1' must have 1 dimension, but has {mean_S1.ndim}")
     try:
-        mean_S2 = np.ascontiguousarray(mean_S2, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'mean_S2' must be an array of np.float64: {error}") from None
+        mean_S2 = _np.ascontiguousarray(mean_S2, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'mean_S2' must be an array of np.float64: {_error}") from None
     if mean_S2.ndim != 1:
         raise ValueError(f"'mean_S2' must have 1 dimension, but has {mean_S2.ndim}")
 
@@ -482,22 +482,22 @@ def pool_study_means(
     n_genes_S2 = mean_S2.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    n_pool = ctypes.c_int(0)
-    x_star = np.empty((n_points,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    n_pool = _ctypes.c_int(0)
+    x_star = _np.empty((n_points,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.pool_study_means_c(
-        ctypes.byref(ctypes.c_int(n_genes_S1)),
+        _ctypes.byref(_ctypes.c_int(n_genes_S1)),
         mean_S1,
-        ctypes.byref(ctypes.c_int(n_genes_S2)),
+        _ctypes.byref(_ctypes.c_int(n_genes_S2)),
         mean_S2,
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(n_pool),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(n_pool),
         x_star,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _POOL_STUDY_MEANS_ARGUMENTS, _POOL_STUDY_MEANS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _POOL_STUDY_MEANS_ARGUMENTS, _POOL_STUDY_MEANS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     x_star.flags.writeable = False
@@ -558,21 +558,21 @@ def construct_neighborhoods(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        x_star = np.ascontiguousarray(x_star, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'x_star' must be an array of np.float64: {error}") from None
+        x_star = _np.ascontiguousarray(x_star, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'x_star' must be an array of np.float64: {_error}") from None
     if x_star.ndim != 1:
         raise ValueError(f"'x_star' must have 1 dimension, but has {x_star.ndim}")
     try:
-        mean_S = np.ascontiguousarray(mean_S, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'mean_S' must be an array of np.float64: {error}") from None
+        mean_S = _np.ascontiguousarray(mean_S, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'mean_S' must be an array of np.float64: {_error}") from None
     if mean_S.ndim != 1:
         raise ValueError(f"'mean_S' must have 1 dimension, but has {mean_S.ndim}")
     try:
-        resid_S = np.asfortranarray(resid_S, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'resid_S' must be an array of np.float64: {error}") from None
+        resid_S = _np.asfortranarray(resid_S, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'resid_S' must be an array of np.float64: {_error}") from None
     if resid_S.ndim != 2:
         raise ValueError(f"'resid_S' must have 2 dimensions, but has {resid_S.ndim}")
 
@@ -588,24 +588,24 @@ def construct_neighborhoods(
         )
 
     # outputs and work arrays, which the caller never sees
-    neighborhood_residuals = np.empty((n_reps_S, n_neighbors, n_points,), dtype=np.float64, order='F')
-    neighborhood_indices = np.empty((n_neighbors, n_points,), dtype=np.int32, order='F')
-    ierr = ctypes.c_int(0)
+    neighborhood_residuals = _np.empty((n_reps_S, n_neighbors, n_points,), dtype=_np.float64, order='F')
+    neighborhood_indices = _np.empty((n_neighbors, n_points,), dtype=_np.int32, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.construct_neighborhoods_c(
-        ctypes.byref(ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
         x_star,
-        ctypes.byref(ctypes.c_int(n_genes_S)),
+        _ctypes.byref(_ctypes.c_int(n_genes_S)),
         mean_S,
-        ctypes.byref(ctypes.c_int(n_reps_S)),
+        _ctypes.byref(_ctypes.c_int(n_reps_S)),
         resid_S,
         neighborhood_residuals,
         neighborhood_indices,
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CONSTRUCT_NEIGHBORHOODS_ARGUMENTS, _CONSTRUCT_NEIGHBORHOODS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CONSTRUCT_NEIGHBORHOODS_ARGUMENTS, _CONSTRUCT_NEIGHBORHOODS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     neighborhood_residuals.flags.writeable = False

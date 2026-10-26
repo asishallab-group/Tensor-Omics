@@ -10,25 +10,25 @@ over is visible at the call site.
 Python binding, generated from tox_gene_centroids. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.mean_vector_c.restype = None
 _lib.mean_vector_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -38,14 +38,14 @@ _MEAN_VECTOR_ARGUMENT_SOURCES = (None, "expression_vectors", "expression_vectors
 
 _lib.group_centroid_orthologs_c.restype = None
 _lib.group_centroid_orthologs_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -55,13 +55,13 @@ _GROUP_CENTROID_ORTHOLOGS_ARGUMENT_SOURCES = (None, "expression_vectors", "expre
 
 _lib.group_centroid_all_c.restype = None
 _lib.group_centroid_all_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -102,15 +102,15 @@ def mean_vector(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {error}") from None
+        expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
     if expression_vectors.ndim != 2:
         raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
     try:
-        gene_indices = np.ascontiguousarray(gene_indices, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_indices' must be an array of np.int32: {error}") from None
+        gene_indices = _np.ascontiguousarray(gene_indices, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_indices' must be an array of np.int32: {_error}") from None
     if gene_indices.ndim != 1:
         raise ValueError(f"'gene_indices' must have 1 dimension, but has {gene_indices.ndim}")
 
@@ -120,20 +120,20 @@ def mean_vector(
     n_selected_genes = gene_indices.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    centroid = np.empty((n_axes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    centroid = _np.empty((n_axes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.mean_vector_c(
         expression_vectors,
-        ctypes.byref(ctypes.c_int(n_axes)),
-        ctypes.byref(ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_axes)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
         gene_indices,
-        ctypes.byref(ctypes.c_int(n_selected_genes)),
+        _ctypes.byref(_ctypes.c_int(n_selected_genes)),
         centroid,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _MEAN_VECTOR_ARGUMENTS, _MEAN_VECTOR_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _MEAN_VECTOR_ARGUMENTS, _MEAN_VECTOR_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     centroid.flags.writeable = False
@@ -180,21 +180,21 @@ def group_centroid_orthologs(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {error}") from None
+        expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
     if expression_vectors.ndim != 2:
         raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
     try:
-        gene_to_family = np.ascontiguousarray(gene_to_family, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_family' must be an array of np.int32: {error}") from None
+        gene_to_family = _np.ascontiguousarray(gene_to_family, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_to_family' must be an array of np.int32: {_error}") from None
     if gene_to_family.ndim != 1:
         raise ValueError(f"'gene_to_family' must have 1 dimension, but has {gene_to_family.ndim}")
     try:
-        ortholog_set = np.ascontiguousarray(ortholog_set, dtype=np.bool_)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'ortholog_set' must be an array of np.bool_: {error}") from None
+        ortholog_set = _np.ascontiguousarray(ortholog_set, dtype=_np.bool_)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'ortholog_set' must be an array of np.bool_: {_error}") from None
     if ortholog_set.ndim != 1:
         raise ValueError(f"'ortholog_set' must have 1 dimension, but has {ortholog_set.ndim}")
 
@@ -213,21 +213,21 @@ def group_centroid_orthologs(
         )
 
     # outputs and work arrays, which the caller never sees
-    centroid_matrix = np.empty((n_axes, n_families,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    centroid_matrix = _np.empty((n_axes, n_families,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.group_centroid_orthologs_c(
         expression_vectors,
-        ctypes.byref(ctypes.c_int(n_axes)),
-        ctypes.byref(ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_axes)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
         gene_to_family,
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         centroid_matrix,
         ortholog_set,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _GROUP_CENTROID_ORTHOLOGS_ARGUMENTS, _GROUP_CENTROID_ORTHOLOGS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _GROUP_CENTROID_ORTHOLOGS_ARGUMENTS, _GROUP_CENTROID_ORTHOLOGS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     centroid_matrix.flags.writeable = False
@@ -271,15 +271,15 @@ def group_centroid_all(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {error}") from None
+        expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
     if expression_vectors.ndim != 2:
         raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
     try:
-        gene_to_family = np.ascontiguousarray(gene_to_family, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_family' must be an array of np.int32: {error}") from None
+        gene_to_family = _np.ascontiguousarray(gene_to_family, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_to_family' must be an array of np.int32: {_error}") from None
     if gene_to_family.ndim != 1:
         raise ValueError(f"'gene_to_family' must have 1 dimension, but has {gene_to_family.ndim}")
 
@@ -294,20 +294,20 @@ def group_centroid_all(
         )
 
     # outputs and work arrays, which the caller never sees
-    centroid_matrix = np.empty((n_axes, n_families,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    centroid_matrix = _np.empty((n_axes, n_families,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.group_centroid_all_c(
         expression_vectors,
-        ctypes.byref(ctypes.c_int(n_axes)),
-        ctypes.byref(ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_axes)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
         gene_to_family,
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         centroid_matrix,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _GROUP_CENTROID_ALL_ARGUMENTS, _GROUP_CENTROID_ALL_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _GROUP_CENTROID_ALL_ARGUMENTS, _GROUP_CENTROID_ALL_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     centroid_matrix.flags.writeable = False

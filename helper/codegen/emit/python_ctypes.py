@@ -20,7 +20,17 @@ import re
 from ..abi.c_abi import stripped_name
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
-from ..names import PYTHON_CAUGHT_ERROR, PYTHON_IMPORTS, PYTHON_PACKAGE_IMPORTS
+from ..names import (
+    PYTHON_CAUGHT_ERROR,
+    PYTHON_CHECK_ERR_CODE,
+    PYTHON_CTYPES as _CTYPES,
+    PYTHON_LOAD_LIBRARY,
+    PYTHON_NULLABLE,
+    PYTHON_NUMPY as _NP,
+    PYTHON_PACKAGE_IMPORTS,
+    PYTHON_STDLIB_IMPORTS,
+    PYTHON_THIRD_PARTY_IMPORTS,
+)
 from ..render import Writer
 from .error_arguments import sources_of
 from .doc_numpydoc import _description, render_docstring
@@ -53,39 +63,39 @@ def _python_extent(extent: str) -> str:
     """
     return _FORTRAN_SIZE.sub(_size_as_numpy, _FORTRAN_KIND_SUFFIX.sub(r"\1", extent))
 
-#: Fortran base type -> the ctypes scalar C sees
+#: Fortran base type -> the ctypes scalar C sees, by its name in `ctypes`
 CTYPES = {
-    ("integer", "c_int"): "ctypes.c_int",
-    ("integer", "c_int8_t"): "ctypes.c_int8",
-    ("integer", "c_int16_t"): "ctypes.c_int16",
-    ("integer", "c_int32_t"): "ctypes.c_int32",
-    ("integer", "c_int64_t"): "ctypes.c_int64",
-    ("integer", "c_size_t"): "ctypes.c_size_t",
-    ("real", "c_float"): "ctypes.c_float",
-    ("real", "c_double"): "ctypes.c_double",
-    ("complex", "c_float_complex"): "ctypes.c_float",
-    ("complex", "c_double_complex"): "ctypes.c_double",
-    ("logical", "c_bool"): "ctypes.c_bool",
-    ("character", "c_char"): "ctypes.c_char",
+    ("integer", "c_int"): "c_int",
+    ("integer", "c_int8_t"): "c_int8",
+    ("integer", "c_int16_t"): "c_int16",
+    ("integer", "c_int32_t"): "c_int32",
+    ("integer", "c_int64_t"): "c_int64",
+    ("integer", "c_size_t"): "c_size_t",
+    ("real", "c_float"): "c_float",
+    ("real", "c_double"): "c_double",
+    ("complex", "c_float_complex"): "c_float",
+    ("complex", "c_double_complex"): "c_double",
+    ("logical", "c_bool"): "c_bool",
+    ("character", "c_char"): "c_char",
 }
 
-#: Fortran base type -> the numpy dtype of an array of it
+#: Fortran base type -> the numpy dtype of an array of it, by its name in `numpy`
 DTYPES = {
-    ("integer", "c_int"): "np.int32",
-    ("integer", "c_int8_t"): "np.int8",
-    ("integer", "c_int16_t"): "np.int16",
-    ("integer", "c_int32_t"): "np.int32",
-    ("integer", "c_int64_t"): "np.int64",
-    ("real", "c_float"): "np.float32",
-    ("real", "c_double"): "np.float64",
-    ("complex", "c_float_complex"): "np.complex64",
-    ("complex", "c_double_complex"): "np.complex128",
-    ("logical", "c_bool"): "np.bool_",
+    ("integer", "c_int"): "int32",
+    ("integer", "c_int8_t"): "int8",
+    ("integer", "c_int16_t"): "int16",
+    ("integer", "c_int32_t"): "int32",
+    ("integer", "c_int64_t"): "int64",
+    ("real", "c_float"): "float32",
+    ("real", "c_double"): "float64",
+    ("complex", "c_float_complex"): "complex64",
+    ("complex", "c_double_complex"): "complex128",
+    ("logical", "c_bool"): "bool_",
 }
 
 
 def ctype_of(argument: CArgument) -> str:
-    return CTYPES[(argument.type.base.value, argument.type.kind)]
+    return f"{_CTYPES}.{CTYPES[(argument.type.base.value, argument.type.kind)]}"
 
 
 def dtype_of(argument: CArgument) -> str:
@@ -98,7 +108,18 @@ def dtype_of(argument: CArgument) -> str:
     """
     if argument.type.is_character:
         return _character_dtype(argument)
-    return DTYPES[(argument.type.base.value, argument.type.kind)]
+    return f"{_NP}.{DTYPES[(argument.type.base.value, argument.type.kind)]}"
+
+
+def dtype_label(argument: CArgument) -> str:
+    """The dtype as a reader writes it (`np.float64`), for documentation and messages.
+
+    The generated code binds numpy as `_np` (`names`), which a docstring has no business
+    showing.
+    """
+    if argument.type.is_character:
+        return _character_dtype(argument)
+    return f"np.{DTYPES[(argument.type.base.value, argument.type.kind)]}"
 
 
 def _character_dtype(argument: CArgument) -> str:
@@ -304,19 +325,17 @@ class PythonEmitter:
         )
         writer.line('"""')
         writer.blank()
-        # from the name table, so no argument may take a name this module binds; the one
-        # aliased import is numpy, third-party, which gets a group of its own
-        for module_name, bound in PYTHON_IMPORTS:
-            if module_name != bound:
-                writer.blank()
+        # from the name table, every one bound to a name starting with `_`, which no argument
+        # can have (a Fortran name cannot start with one)
+        for group in (PYTHON_STDLIB_IMPORTS, PYTHON_THIRD_PARTY_IMPORTS):
+            for module_name, bound in group:
                 writer.line(f"import {module_name} as {bound}")
-            else:
-                writer.line(f"import {module_name}")
-        writer.blank()
+            writer.blank()
         for module_name, names in PYTHON_PACKAGE_IMPORTS:
-            writer.line(f"from {module_name} import {', '.join(names)}")
+            imported = ", ".join(f"{name} as {bound}" for name, bound in names)
+            writer.line(f"from {module_name} import {imported}")
         writer.blank()
-        writer.line("_lib = load_library()")
+        writer.line(f"_lib = {PYTHON_LOAD_LIBRARY}()")
         writer.blank()
 
         for wrapper in module:
@@ -356,24 +375,24 @@ class PythonEmitter:
 
     def _argtype(self, argument: CArgument) -> str:
         if argument.is_scalar:
-            argtype = f"ctypes.POINTER({ctype_of(argument)})"
+            argtype = f"{_CTYPES}.POINTER({ctype_of(argument)})"
         elif argument.type.is_character:
             # c_char_p is read-only bytes, so it cannot receive an output. Both
             # directions use a buffer instead. No dtype is stated: an S<len> item size
             # may only be known at call time, and the wrapper builds the buffer itself,
             # so there is nothing here for ctypes to catch.
-            argtype = f"np.ctypeslib.ndpointer(ndim={max(character_rank(argument), 1)})"
+            argtype = f"{_NP}.ctypeslib.ndpointer(ndim={max(character_rank(argument), 1)})"
         else:
             rank = argument.rank
             # Fortran is column-major; for rank 1 the two orders coincide
             flags = "'F_CONTIGUOUS'" if rank > 1 else "'C_CONTIGUOUS'"
             argtype = (
-                f"np.ctypeslib.ndpointer(dtype={dtype_of(argument)}, ndim={rank}, "
+                f"{_NP}.ctypeslib.ndpointer(dtype={dtype_of(argument)}, ndim={rank}, "
                 f"flags={flags})"
             )
         if argument.optional:
             # ctypes rejects None for a checked argtype, so absence needs to be allowed
-            argtype = f"nullable({argtype})"
+            argtype = f"{PYTHON_NULLABLE}({argtype})"
         return argtype
 
     # -- function ---------------------------------------------------------------
@@ -477,8 +496,8 @@ class PythonEmitter:
             return body
         writer = Writer()
         writer.line(
-            f"{argument.shape_arg} = np.ascontiguousarray("
-            f"np.shape({argument.name}), dtype=np.int32)"
+            f"{argument.shape_arg} = {_NP}.ascontiguousarray("
+            f"{_NP}.shape({argument.name}), dtype={_NP}.int32)"
         )
         if body:
             writer.block(body)
@@ -497,7 +516,7 @@ class PythonEmitter:
             # selects `case ("iqr")`.
             body = Writer()
             body.line(
-                f"{name} = np.array([str({name}).lower().encode()"
+                f"{name} = {_NP}.array([str({name}).lower().encode()"
                 f".ljust({character_length(argument)})], "
                 f"dtype={dtype_of(argument)})"
             )
@@ -520,7 +539,7 @@ class PythonEmitter:
         if argument.intent is Intent.INOUT:
             # Converting would copy, and the caller would never see the modification
             body.line(
-                f"if not isinstance({name}, np.ndarray) or {name}.dtype != {dtype_of(argument)}:"
+                f"if not isinstance({name}, {_NP}.ndarray) or {name}.dtype != {dtype_of(argument)}:"
             )
             with body.indent():
                 body.line(
@@ -538,9 +557,9 @@ class PythonEmitter:
         else:
             # numpy raises without saying which argument was wrong -- it cannot know --
             # so the name is put back on the way out
-            converter = ("np.asfortranarray"
+            converter = (f"{_NP}.asfortranarray"
                          if argument.rank > 1 or argument.shape_arg is not None
-                         else "np.ascontiguousarray")
+                         else f"{_NP}.ascontiguousarray")
             body.line("try:")
             with body.indent():
                 body.line(f"{name} = {converter}({name}, dtype={dtype_of(argument)})")
@@ -548,7 +567,7 @@ class PythonEmitter:
             with body.indent():
                 body.line(
                     f'raise TypeError('
-                    f'f"\'{name}\' must be an array of {dtype_of(argument)}: {{{PYTHON_CAUGHT_ERROR}}}"'
+                    f'f"\'{name}\' must be an array of {dtype_label(argument)}: {{{PYTHON_CAUGHT_ERROR}}}"'
                     f") from None"
                 )
             self._check_rank(argument, body)
@@ -607,13 +626,13 @@ class PythonEmitter:
             # every non-empty string, and it stops an empty one becoming numpy's forced
             # single null byte.
             body.line(
-                f"{name} = np.array([str({name}).encode().ljust({width or 1})], "
+                f"{name} = {_NP}.array([str({name}).encode().ljust({width or 1})], "
                 f"dtype={dtype_of(argument)})"
             )
         else:
             body.line("try:")
             with body.indent():
-                items = (f"np.asarray({name}).ravel(order='F')"
+                items = (f"{_NP}.asarray({name}).ravel(order='F')"
                          if argument.shape_arg is not None else name)
                 if width is None:
                     # numpy sizes the item from the longest element, so the width is not
@@ -623,13 +642,13 @@ class PythonEmitter:
                     body.line(f"_{name}_bytes = [str(_s).encode() for _s in {items}]")
                     body.line(f"_{name}_width = max(map(len, _{name}_bytes), default=0) or 1")
                     body.line(
-                        f"{name} = np.asarray("
+                        f"{name} = {_NP}.asarray("
                         f"[_b.ljust(_{name}_width) for _b in _{name}_bytes], "
                         f"dtype={dtype_of(argument)})"
                     )
                 else:
                     body.line(
-                        f"{name} = np.asarray("
+                        f"{name} = {_NP}.asarray("
                         f"[str(_s).encode().ljust({width}) for _s in {items}], "
                         f"dtype={dtype_of(argument)})"
                     )
@@ -884,7 +903,7 @@ class PythonEmitter:
         for owner in argument.source.roles.extent_of:
             c_owner = wrapper.argument(owner.name)
             if c_owner is not None and c_owner.shape_arg is not None:
-                return f"int(np.prod({c_owner.shape_arg}))"
+                return f"int({_NP}.prod({c_owner.shape_arg}))"
         return ""
 
     @staticmethod
@@ -977,10 +996,10 @@ class PythonEmitter:
         if argument.shape_arg is not None:
             # C sees one flat block, so the element count is the product of the extents
             # that travel beside it
-            count = f"int(np.prod({argument.shape_arg}))"
+            count = f"int({_NP}.prod({argument.shape_arg}))"
             if argument.type.is_character:
-                return f"np.zeros(({count},), dtype={dtype_of(argument)})"
-            return f"np.empty(({count},), dtype={dtype_of(argument)}, order='C')"
+                return f"{_NP}.zeros(({count},), dtype={dtype_of(argument)})"
+            return f"{_NP}.empty(({count},), dtype={dtype_of(argument)}, order='C')"
 
         if argument.type.is_character:
             # zeros, not empty, and this is the one case where it matters. Fortran writes
@@ -990,11 +1009,11 @@ class PythonEmitter:
             # rather than as garbage: numpy drops the trailing nulls of an `S` item.
             # Not `np.full(..., b" ")`, which fills each item with one blank and nulls.
             shape = ", ".join(_python_extent(e) for e in argument.dimension.extents[1:]) or "1"
-            return f"np.zeros(({shape},), dtype={dtype_of(argument)})"
+            return f"{_NP}.zeros(({shape},), dtype={dtype_of(argument)})"
 
         shape = ", ".join(_python_extent(e) for e in argument.dimension.extents)
         order = "'F'" if argument.rank > 1 else "'C'"
-        return f"np.empty(({shape},), dtype={dtype_of(argument)}, order={order})"
+        return f"{_NP}.empty(({shape},), dtype={dtype_of(argument)}, order={order})"
 
     def _call(self, writer: Writer, wrapper: CWrapper) -> None:
         writer.line(f"_lib.{wrapper.name}(")
@@ -1017,11 +1036,11 @@ class PythonEmitter:
                 # None must survive to the nullable argtype
                 return (
                     f"None if {name} is None "
-                    f"else ctypes.byref({ctype_of(argument)}({name}))"
+                    f"else {_CTYPES}.byref({ctype_of(argument)}({name}))"
                 )
             if argument.intent.is_output:
-                return f"ctypes.byref({name})"
-            return f"ctypes.byref({ctype_of(argument)}({name}))"
+                return f"{_CTYPES}.byref({name})"
+            return f"{_CTYPES}.byref({ctype_of(argument)}({name}))"
         return name
 
     def _check_error(self, writer: Writer, wrapper: CWrapper) -> None:
@@ -1029,9 +1048,9 @@ class PythonEmitter:
         arguments = f"_{wrapper.stripped_name.upper()}_ARGUMENTS"
         if any(sources_of(wrapper.procedure)):
             sources = f"_{wrapper.stripped_name.upper()}_ARGUMENT_SOURCES"
-            writer.line(f"check_err_code({error.name}.value, {arguments}, {sources})")
+            writer.line(f"{PYTHON_CHECK_ERR_CODE}({error.name}.value, {arguments}, {sources})")
         else:
-            writer.line(f"check_err_code({error.name}.value, {arguments})")
+            writer.line(f"{PYTHON_CHECK_ERR_CODE}({error.name}.value, {arguments})")
         writer.blank()
 
     def _freeze_outputs(self, writer: Writer, wrapper: CWrapper) -> None:
@@ -1116,7 +1135,7 @@ class PythonEmitter:
             # and a shape they have to reapply themselves. Column-major, as Fortran wrote.
             if argument.type.is_character:
                 decoded = f"[_s.decode().rstrip(' ') for _s in {argument.name}]"
-                return f"np.asarray({decoded}).reshape(tuple({argument.shape_arg}), order='F')"
+                return f"{_NP}.asarray({decoded}).reshape(tuple({argument.shape_arg}), order='F')"
             return f"{argument.name}.reshape(tuple({argument.shape_arg}), order='F')"
         if argument.type.is_character:
             # numpy hands back the bytes with any trailing nulls already dropped; Fortran

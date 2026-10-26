@@ -10,28 +10,28 @@ selected axes are comparable.
 Python binding, generated from tox_tissue_versatility. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.compute_tissue_versatility_c.restype = None
 _lib.compute_tissue_versatility_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -85,21 +85,21 @@ def compute_tissue_versatility(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        expression_vectors = np.asfortranarray(expression_vectors, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {error}") from None
+        expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
     if expression_vectors.ndim != 2:
         raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
     try:
-        vectors_selection_mask = np.ascontiguousarray(vectors_selection_mask, dtype=np.bool_)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'vectors_selection_mask' must be an array of np.bool_: {error}") from None
+        vectors_selection_mask = _np.ascontiguousarray(vectors_selection_mask, dtype=_np.bool_)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'vectors_selection_mask' must be an array of np.bool_: {_error}") from None
     if vectors_selection_mask.ndim != 1:
         raise ValueError(f"'vectors_selection_mask' must have 1 dimension, but has {vectors_selection_mask.ndim}")
     try:
-        axes_selection_mask = np.ascontiguousarray(axes_selection_mask, dtype=np.bool_)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'axes_selection_mask' must be an array of np.bool_: {error}") from None
+        axes_selection_mask = _np.ascontiguousarray(axes_selection_mask, dtype=_np.bool_)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'axes_selection_mask' must be an array of np.bool_: {_error}") from None
     if axes_selection_mask.ndim != 1:
         raise ValueError(f"'axes_selection_mask' must have 1 dimension, but has {axes_selection_mask.ndim}")
 
@@ -120,24 +120,24 @@ def compute_tissue_versatility(
         )
 
     # outputs and work arrays, which the caller never sees
-    tissue_versatilities = np.empty((n_selected_vectors,), dtype=np.float64, order='C')
-    tissue_angles_deg = np.empty((n_selected_vectors,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    tissue_versatilities = _np.empty((n_selected_vectors,), dtype=_np.float64, order='C')
+    tissue_angles_deg = _np.empty((n_selected_vectors,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_tissue_versatility_c(
-        ctypes.byref(ctypes.c_int(n_axes)),
-        ctypes.byref(ctypes.c_int(n_vectors)),
+        _ctypes.byref(_ctypes.c_int(n_axes)),
+        _ctypes.byref(_ctypes.c_int(n_vectors)),
         expression_vectors,
         vectors_selection_mask,
-        ctypes.byref(ctypes.c_int(n_selected_vectors)),
+        _ctypes.byref(_ctypes.c_int(n_selected_vectors)),
         axes_selection_mask,
-        ctypes.byref(ctypes.c_int(n_selected_axes)),
+        _ctypes.byref(_ctypes.c_int(n_selected_axes)),
         tissue_versatilities,
         tissue_angles_deg,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_TISSUE_VERSATILITY_ARGUMENTS, _COMPUTE_TISSUE_VERSATILITY_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_TISSUE_VERSATILITY_ARGUMENTS, _COMPUTE_TISSUE_VERSATILITY_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     tissue_versatilities.flags.writeable = False

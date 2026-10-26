@@ -20,6 +20,7 @@ from .emit.errors_python import PythonErrorEmitter
 from .emit.errors_r import RErrorEmitter
 from .emit.fortran_c import FortranCEmitter
 from .emit.fortran_wrapper import FortranWrapperEmitter, WrapperInfo
+from .emit.name_clashes import check_wrapper_names
 from .emit.doc_links import LinkResolver, build as build_links
 from .emit.doc_tiers import build as build_tiers
 from .emit.python_ctypes import PythonEmitter
@@ -102,6 +103,11 @@ def generate(
     validate_project(project, diagnostics, conventions)
 
     binding = build_project(project, diagnostics, conventions)
+
+    # What the Fortran wrappers call, import or declare is read off them as emitted, so it can
+    # only be checked once the model they are emitted from is known to be sound.
+    if not diagnostics.errors:
+        check_wrapper_names(binding, synthesis, parsed.macros, diagnostics, conventions)
 
     # Every emitter below assumes what validation and the ABI build have just checked: that
     # an argument has an intent, that its type maps to C, that a DM_OUTPUT_FROM resolved.

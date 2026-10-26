@@ -1,14 +1,20 @@
-"""The names a published argument may not take, in one table.
+"""The names the generated code introduces, and the words a published name may not be.
 
 A dummy argument's name is published verbatim: it is a Python parameter, an R parameter, a C
-parameter of the R `.Call` shim, and a dummy of every generated Fortran wrapper. So it has to
-be a name each of those languages accepts there, and it must not collide with a name the
-generated code introduces itself. Both are checked by `ir.validate`, from this table, and the
-emitters build their own local names from the same table -- so a local an emitter starts
-generating is a name the check knows about, rather than a list in `validate` that silently
-goes stale (`tests/test_names.py` reads the generated code back to hold the emitters to it).
+parameter of the R `.Call` shim, and a dummy of every generated Fortran wrapper. A procedure's
+name is published the same way, as a Python and an R function. So each has to be a name every
+one of those languages accepts there (`language_word`, which `ir.validate` refuses), and an
+argument must not collide with a name the generated code introduces itself.
 
-What is deliberately *not* here:
+That collision is designed out wherever a language allows it. Every name the R shim's C and a
+generated Python module bind beside the arguments starts with `_`, which no Fortran name can,
+so nothing an author writes can meet one. A Fortran wrapper cannot do that -- a Fortran name
+cannot start with `_` either -- so its locals keep the `<argument><suffix>` form built here, and
+`emit.name_clashes` refuses an argument only where the wrapper actually declares, calls, imports
+or uses as a kind the same name. The emitters build every name from this module, and
+`tests/test_names.py` reads the generated code back to hold them to it.
+
+What is deliberately *not* refused:
 
 - Fortran keywords. Fortran has no reserved words, and main publishes `value`.
 - R function names. An argument cannot shadow a function call in R -- R skips non-function
@@ -16,13 +22,10 @@ What is deliberately *not* here:
   `expression`, `factor`, `points` and `weights`.
 - Python soft keywords (`match`, `case`, `type`, `_`), which are valid parameter names. `type`
   is a builtin, though, so it is refused as one.
-
-A later change that makes an emitter introduce a new name adds it here, in the same commit.
 """
 
 from __future__ import annotations
 
-import builtins
 import keyword
 
 from .config import CONVENTIONS
@@ -33,21 +36,50 @@ from .config import CONVENTIONS
 #: `__init__` imports every module, `import tensor_omics` fails as a whole.
 PYTHON_KEYWORDS = frozenset(keyword.kwlist)
 
-#: Python's builtins (`len`, `max`, `str`, `input`, ...). The generated functions call several
-#: of them, and a parameter of the same name hides the builtin for the whole function body.
-PYTHON_BUILTINS = frozenset(name for name in vars(builtins) if not name.startswith("_"))
+#: Python's builtins (`len`, `max`, `str`, `input`, ...), as Python 3.14 has them with `site`
+#: loaded. The generated functions call several of them, and a parameter of the same name hides
+#: the builtin for the whole function body; a function of the same name hides it for the module.
+#: Written out rather than read from the running interpreter, so the same source is accepted or
+#: refused alike on every machine (`python -S` alone drops six of these).
+PYTHON_BUILTINS = frozenset({
+    "ArithmeticError", "AssertionError", "AttributeError", "BaseException",
+    "BaseExceptionGroup", "BlockingIOError", "BrokenPipeError", "BufferError", "BytesWarning",
+    "ChildProcessError", "ConnectionAbortedError", "ConnectionError", "ConnectionRefusedError",
+    "ConnectionResetError", "DeprecationWarning", "EOFError", "Ellipsis", "EncodingWarning",
+    "EnvironmentError", "Exception", "ExceptionGroup", "False", "FileExistsError",
+    "FileNotFoundError", "FloatingPointError", "FutureWarning", "GeneratorExit", "IOError",
+    "ImportError", "ImportWarning", "IndentationError", "IndexError", "InterruptedError",
+    "IsADirectoryError", "KeyError", "KeyboardInterrupt", "LookupError", "MemoryError",
+    "ModuleNotFoundError", "NameError", "None", "NotADirectoryError", "NotImplemented",
+    "NotImplementedError", "OSError", "OverflowError", "PendingDeprecationWarning",
+    "PermissionError", "ProcessLookupError", "PythonFinalizationError", "RecursionError",
+    "ReferenceError", "ResourceWarning", "RuntimeError", "RuntimeWarning", "StopAsyncIteration",
+    "StopIteration", "SyntaxError", "SyntaxWarning", "SystemError", "SystemExit", "TabError",
+    "TimeoutError", "True", "TypeError", "UnboundLocalError", "UnicodeDecodeError",
+    "UnicodeEncodeError", "UnicodeError", "UnicodeTranslateError", "UnicodeWarning",
+    "UserWarning", "ValueError", "Warning", "ZeroDivisionError",
+    "abs", "aiter", "all", "anext", "any", "ascii", "bin", "bool", "breakpoint", "bytearray",
+    "bytes", "callable", "chr", "classmethod", "compile", "complex", "copyright", "credits",
+    "delattr", "dict", "dir", "divmod", "enumerate", "eval", "exec", "exit", "filter", "float",
+    "format", "frozenset", "getattr", "globals", "hasattr", "hash", "help", "hex", "id", "input",
+    "int", "isinstance", "issubclass", "iter", "len", "license", "list", "locals", "map", "max",
+    "memoryview", "min", "next", "object", "oct", "open", "ord", "pow", "print", "property",
+    "quit", "range", "repr", "reversed", "round", "set", "setattr", "slice", "sorted",
+    "staticmethod", "str", "sum", "super", "tuple", "type", "vars", "zip",
+})
 
-#: R's reserved words (`?Reserved`). A parameter named like one is a parse error, which makes
-#: `r/load_tensor_omics.R` fail for every wrapper, not only the one that has it.
+#: R's reserved words (`?Reserved`). A parameter or a function named like one is a parse error,
+#: which makes `r/load_tensor_omics.R` fail for every wrapper, not only the one that has it.
 R_RESERVED = frozenset({
     "if", "else", "repeat", "while", "function", "for", "next", "break", "in",
     "TRUE", "FALSE", "NULL", "Inf", "NaN",
     "NA", "NA_integer_", "NA_real_", "NA_complex_", "NA_character_",
 })
 
-#: C's keywords, C23 included. Every published argument is a parameter of the R `.Call` shim,
-#: and the shims are compiled into the one library, so a C keyword fails the library build.
-#: The `_Upper` keywords are listed for completeness; no Fortran name can start with `_`.
+#: C's keywords as R's compiler takes them (`gcc -std=gnu2x`: C23, plus GNU's `asm`). Every
+#: published argument is a parameter of the R `.Call` shim, and the shims are compiled into the
+#: one library, so a C keyword fails the library build. The `_Upper` keywords are listed for
+#: completeness; no Fortran name can start with `_`.
 C_KEYWORDS = frozenset({
     "auto", "break", "case", "char", "const", "continue", "default", "do", "double",
     "else", "enum", "extern", "float", "for", "goto", "if", "inline", "int", "long",
@@ -55,100 +87,117 @@ C_KEYWORDS = frozenset({
     "switch", "typedef", "union", "unsigned", "void", "volatile", "while",
     "alignas", "alignof", "bool", "constexpr", "false", "nullptr", "static_assert",
     "thread_local", "true", "typeof", "typeof_unqual",
+    "asm",
     "_Alignas", "_Alignof", "_Atomic", "_BitInt", "_Bool", "_Complex", "_Decimal128",
     "_Decimal32", "_Decimal64", "_Generic", "_Imaginary", "_Noreturn", "_Static_assert",
     "_Thread_local",
 })
 
-# -- what the generated code binds itself -----------------------------------------------------
 
-#: The modules a generated Python module imports, as (module, the name it is bound to)
-PYTHON_IMPORTS = (("ctypes", "ctypes"), ("os", "os"), ("numpy", "np"))
-#: What a generated Python module imports from the package itself, as (module, names)
+def language_word(name: str, languages=("Python", "R", "C")) -> str | None:
+    """What makes `name` unusable where it is published, or None.
+
+    Case-sensitive, as Python, R and C are: the published name keeps its declared spelling, so
+    `NA` is R's reserved word while `na` is a name. `languages` narrows it to where the name is
+    published: an argument reaches all three, a procedure is a function in Python and R only
+    (its C symbols carry a suffix).
+    """
+    if "Python" in languages and name in PYTHON_KEYWORDS:
+        return "a Python keyword"
+    if "R" in languages and name in R_RESERVED:
+        return "an R reserved word"
+    if "C" in languages and name in C_KEYWORDS:
+        return "a C keyword"
+    if "Python" in languages and name in PYTHON_BUILTINS:
+        return "a Python builtin"
+    return None
+
+
+# -- what a generated Python module binds: all of it underscored -------------------------------
+
+#: The standard-library modules a generated Python module imports, as (module, bound name)
+PYTHON_STDLIB_IMPORTS = (("ctypes", "_ctypes"), ("os", "_os"))
+#: The third-party ones, in a group of their own
+PYTHON_THIRD_PARTY_IMPORTS = (("numpy", "_np"),)
+#: What it imports from the package itself, as (module, ((name, bound name), ...))
 PYTHON_PACKAGE_IMPORTS = (
-    (".error_handling", ("check_err_code",)),
-    (".library", ("load_library", "nullable")),
+    (".error_handling", (("check_err_code", "_check_err_code"),)),
+    (".library", (("load_library", "_load_library"), ("nullable", "_nullable"))),
 )
+#: The names those are bound to, as the generated code spells them
+PYTHON_NUMPY = "_np"
+PYTHON_CTYPES = "_ctypes"
+PYTHON_CHECK_ERR_CODE = "_check_err_code"
+PYTHON_LOAD_LIBRARY = "_load_library"
+PYTHON_NULLABLE = "_nullable"
 #: The exception a generated Python function catches while converting an input
-PYTHON_CAUGHT_ERROR = "error"
+PYTHON_CAUGHT_ERROR = "_error"
 
-#: Every name a generated Python module binds that a parameter could hide. Its own private
-#: names all start with `_`, which no Fortran name can.
+#: Every name a generated Python module binds beside its wrappers and their parameters
 PYTHON_BOUND = frozenset(
-    [bound for _, bound in PYTHON_IMPORTS]
-    + [name for _, names in PYTHON_PACKAGE_IMPORTS for name in names]
+    [bound for _, bound in PYTHON_STDLIB_IMPORTS + PYTHON_THIRD_PARTY_IMPORTS]
+    + [bound for _, names in PYTHON_PACKAGE_IMPORTS for _, bound in names]
     + [PYTHON_CAUGHT_ERROR]
 )
 
-#: The R `.Call` shim's count of protected objects, a local of every shim function
-C_PROTECT_COUNT = "nprot"
-
-#: The flag a generated Fortran wrapper declares for its prologue to set, which is the
-#: prologue's contract and so a convention
-FORTRAN_HANDLED = CONVENTIONS.prologue_handled_arg
-
-#: Where a generated local lives: the R binding's C, or a Fortran wrapper (either tier, or the
-#: C wrapper). Fortran compares names ignoring case.
-R_SHIM = "R shim"
-FORTRAN = "Fortran wrapper"
-
-#: Every whole name a generated wrapper declares beside the arguments, by where it is declared
-GENERATED_LOCALS = {
-    R_SHIM: frozenset({C_PROTECT_COUNT}),
-    FORTRAN: frozenset({FORTRAN_HANDLED}),
-}
-
-# -- the locals generated per argument --------------------------------------------------------
+# -- what the R shim declares: all of it underscored --------------------------------------------
 #
-# A wrapper needs a local beside some arguments: the R shim pulls a scalar out of its SEXP into
-# `<name>_v`, the Fortran C wrapper views a string through `<name>_f`. Another dummy called
-# `<name>_v` would then be declared twice. Every such local is `<argument><suffix>`, built
-# with `local_name`, and `validate` refuses an argument named like another one plus a suffix.
+# A shim local is `_<tag>_<argument>`: the leading underscore no Fortran name can have, then a
+# lower-case tag, so the identifier is legal C at block scope whatever case the argument has
+# (`_` before an upper-case letter is reserved everywhere; before a lower-case one only at file
+# scope, where the shim declares nothing).
 
-#: R shim: a by-value scalar input, pulled out of its length-1 vector
-SCALAR_VALUE = "_v"
-#: R shim: an optional, as the pointer C is handed (null when omitted)
-OPTIONAL_POINTER = "_p"
-#: R shim: an optional's length (0 when omitted)
-OPTIONAL_SIZE = "_size"
-#: R shim: an optional array's extents (all 0 when omitted); also the `dim` attribute built
-#: for a matrix output, which is block-scoped
-DIM = "_dim"
-#: R shim: an optional array's `dim` attribute, as read
-OPTIONAL_DIM_ATTRIBUTE = "_d"
-#: R shim: the C buffer a logical or a string is converted into
-BUFFER = "_c"
-#: R shim: the copy of an array modified in place, so the caller's stays intact
-INOUT_COPY = "_out"
+#: A by-value scalar input, pulled out of its length-1 vector
+SCALAR_VALUE = "v"
+#: An optional, as the pointer C is handed (null when omitted)
+OPTIONAL_POINTER = "p"
+#: An optional's length (0 when omitted)
+OPTIONAL_SIZE = "size"
+#: An optional array's extents (all 0 when omitted); also the `dim` attribute of a matrix output
+DIM = "dim"
+#: An optional array's `dim` attribute, as read
+OPTIONAL_DIM_ATTRIBUTE = "d"
+#: The C buffer a logical or a string is converted into
+BUFFER = "c"
+#: The copy of an array modified in place, so the caller's stays intact
+INOUT_COPY = "out"
+#: The count of protected objects, a local of every shim function
+C_PROTECT_COUNT = "_nprot"
+#: The index of the loops that copy an optional's extents
+C_LOOP_INDEX = "_i"
+
+
+def shim_local(argument: str, tag: str) -> str:
+    """The R shim's local for `argument`: `_<tag>_<argument>`."""
+    return f"_{tag}_{argument}"
+
+
+# -- what a Fortran wrapper declares: `<argument><suffix>`, refused where emitted -------------
+
 #: Fortran C wrapper: the local a converted argument is passed to the callee as
 CONVERTED = "_f"
 #: Fortran C wrapper: the integer parameter a mode string names
 MODE_VALUE = "_mode_f"
 #: Fortran wrapper: an omitted optional's default, materialised for a recommend routine
 DEFAULT_VALUE = "_value"
+#: Fortran wrapper: the flag a prologue sets, which is the prologue's contract and so a
+#: convention
+FORTRAN_HANDLED = CONVENTIONS.prologue_handled_arg
 
-#: Every suffix above, with where its local is declared. `_out` + `_dim` is the `dim` attribute
-#: of an in-place copy, built as one name.
-GENERATED_SUFFIXES = {
-    SCALAR_VALUE: R_SHIM, OPTIONAL_POINTER: R_SHIM, OPTIONAL_SIZE: R_SHIM, DIM: R_SHIM,
-    OPTIONAL_DIM_ATTRIBUTE: R_SHIM, BUFFER: R_SHIM, INOUT_COPY: R_SHIM,
-    INOUT_COPY + DIM: R_SHIM,
-    CONVERTED: FORTRAN, MODE_VALUE: FORTRAN, DEFAULT_VALUE: FORTRAN,
-}
+
+def local_name(argument: str, suffix: str) -> str:
+    """A Fortran wrapper's local for `argument`: `<argument><suffix>`."""
+    return f"{argument}{suffix}"
+
 
 # -- the arguments the C ABI adds -------------------------------------------------------------
 #
 # `abi.c_abi` adds arguments C needs and Fortran does not have, and refuses one whose name an
 # argument already takes (`_Builder._unique`). Their names are built here all the same, so the
-# whole vocabulary the generator writes is in one table.
+# whole vocabulary the generator writes is in one module.
 
 #: The length of a `character(len=*)` argument: `<name>_strlen`
 STRLEN = "_strlen"
-
-
-def local_name(argument: str, suffix: str) -> str:
-    """The local a wrapper declares for `argument`: `<argument><suffix>`."""
-    return f"{argument}{suffix}"
 
 
 def extent_argument_name(argument: str, axis: int, rank: int) -> str:
@@ -160,47 +209,3 @@ def extent_argument_name(argument: str, axis: int, rank: int) -> str:
 def strlen_argument_name(argument: str) -> str:
     """The length C is given for a `character(len=*)` argument."""
     return local_name(argument, STRLEN)
-
-
-def language_word(name: str) -> str | None:
-    """What makes `name` unusable as a published argument, or None.
-
-    Case-sensitive, as Python, R and C are: the published name keeps its declared spelling, so
-    `NA` is R's reserved word while `na` is a name.
-    """
-    if name in PYTHON_KEYWORDS:
-        return "a Python keyword"
-    if name in R_RESERVED:
-        return "an R reserved word"
-    if name in C_KEYWORDS:
-        return "a C keyword"
-    if name in PYTHON_BUILTINS:
-        return "a Python builtin"
-    if name in PYTHON_BOUND:
-        return "a name the generated Python module binds itself"
-    return None
-
-
-def generated_local(name: str) -> str | None:
-    """Which generated wrapper declares a local called `name`, or None."""
-    for where, locals_ in GENERATED_LOCALS.items():
-        if where == FORTRAN:
-            if name.lower() in {local.lower() for local in locals_}:
-                return where
-        elif name in locals_:
-            return where
-    return None
-
-
-def clashing_local(name: str, others) -> tuple[str, str, str] | None:
-    """The (other argument, suffix, wrapper) whose generated local `name` would be, or None.
-
-    Compared ignoring case: a Fortran local ignores it, and for a C local refusing `K_v` beside
-    `k` costs nobody anything.
-    """
-    lowered = name.lower()
-    for other in others:
-        for suffix, where in GENERATED_SUFFIXES.items():
-            if lowered == local_name(other, suffix).lower():
-                return other, suffix, where
-    return None

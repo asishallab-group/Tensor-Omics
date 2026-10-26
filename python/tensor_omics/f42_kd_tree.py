@@ -9,24 +9,24 @@ index array rather than as linked nodes.
 Python binding, generated from f42_kd_tree. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.build_kd_index_c.restype = None
 _lib.build_kd_index_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -36,12 +36,12 @@ _BUILD_KD_INDEX_ARGUMENT_SOURCES = (None, "points", "points", None, None, None,)
 
 _lib.build_spherical_kd_c.restype = None
 _lib.build_spherical_kd_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -82,15 +82,15 @@ def build_kd_index(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        points = np.asfortranarray(points, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'points' must be an array of np.float64: {error}") from None
+        points = _np.asfortranarray(points, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'points' must be an array of np.float64: {_error}") from None
     if points.ndim != 2:
         raise ValueError(f"'points' must have 2 dimensions, but has {points.ndim}")
     try:
-        dimension_order = np.ascontiguousarray(dimension_order, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'dimension_order' must be an array of np.int32: {error}") from None
+        dimension_order = _np.ascontiguousarray(dimension_order, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'dimension_order' must be an array of np.int32: {_error}") from None
     if dimension_order.ndim != 1:
         raise ValueError(f"'dimension_order' must have 1 dimension, but has {dimension_order.ndim}")
 
@@ -105,19 +105,19 @@ def build_kd_index(
         )
 
     # outputs and work arrays, which the caller never sees
-    kd_indices = np.empty((n_points,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    kd_indices = _np.empty((n_points,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.build_kd_index_c(
         points,
-        ctypes.byref(ctypes.c_int(n_dimensions)),
-        ctypes.byref(ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_dimensions)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
         kd_indices,
         dimension_order,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BUILD_KD_INDEX_ARGUMENTS, _BUILD_KD_INDEX_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BUILD_KD_INDEX_ARGUMENTS, _BUILD_KD_INDEX_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     kd_indices.flags.writeable = False
@@ -161,15 +161,15 @@ def build_spherical_kd(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        points = np.asfortranarray(points, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'points' must be an array of np.float64: {error}") from None
+        points = _np.asfortranarray(points, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'points' must be an array of np.float64: {_error}") from None
     if points.ndim != 2:
         raise ValueError(f"'points' must have 2 dimensions, but has {points.ndim}")
     try:
-        dimension_order = np.ascontiguousarray(dimension_order, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'dimension_order' must be an array of np.int32: {error}") from None
+        dimension_order = _np.ascontiguousarray(dimension_order, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'dimension_order' must be an array of np.int32: {_error}") from None
     if dimension_order.ndim != 1:
         raise ValueError(f"'dimension_order' must have 1 dimension, but has {dimension_order.ndim}")
 
@@ -184,19 +184,19 @@ def build_spherical_kd(
         )
 
     # outputs and work arrays, which the caller never sees
-    kd_indices = np.empty((n_points,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    kd_indices = _np.empty((n_points,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.build_spherical_kd_c(
         points,
-        ctypes.byref(ctypes.c_int(n_dimensions)),
-        ctypes.byref(ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_dimensions)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
         kd_indices,
         dimension_order,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BUILD_SPHERICAL_KD_ARGUMENTS, _BUILD_SPHERICAL_KD_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BUILD_SPHERICAL_KD_ARGUMENTS, _BUILD_SPHERICAL_KD_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     kd_indices.flags.writeable = False

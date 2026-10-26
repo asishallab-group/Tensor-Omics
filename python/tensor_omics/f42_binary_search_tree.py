@@ -7,22 +7,22 @@ and perform range queries over a real-valued array using the sorted index.
 Python binding, generated from f42_binary_search_tree. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.build_bst_index_c.restype = None
 _lib.build_bst_index_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -32,13 +32,13 @@ _BUILD_BST_INDEX_ARGUMENT_SOURCES = (None, "values", None, None,)
 
 _lib.bst_range_query_c.restype = None
 _lib.bst_range_query_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -48,14 +48,14 @@ _BST_RANGE_QUERY_ARGUMENT_SOURCES = (None, "values", None, None, None, None, Non
 
 _lib.bst_range_query_expert_c.restype = None
 _lib.bst_range_query_expert_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -91,9 +91,9 @@ def build_bst_index(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        values = np.ascontiguousarray(values, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'values' must be an array of np.float64: {error}") from None
+        values = _np.ascontiguousarray(values, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'values' must be an array of np.float64: {_error}") from None
     if values.ndim != 1:
         raise ValueError(f"'values' must have 1 dimension, but has {values.ndim}")
 
@@ -101,17 +101,17 @@ def build_bst_index(
     n_values = values.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    sorted_indices = np.empty((n_values,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    sorted_indices = _np.empty((n_values,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.build_bst_index_c(
         values,
-        ctypes.byref(ctypes.c_int(n_values)),
+        _ctypes.byref(_ctypes.c_int(n_values)),
         sorted_indices,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BUILD_BST_INDEX_ARGUMENTS, _BUILD_BST_INDEX_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BUILD_BST_INDEX_ARGUMENTS, _BUILD_BST_INDEX_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     sorted_indices.flags.writeable = False
@@ -157,9 +157,9 @@ def bst_range_query(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        values = np.ascontiguousarray(values, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'values' must be an array of np.float64: {error}") from None
+        values = _np.ascontiguousarray(values, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'values' must be an array of np.float64: {_error}") from None
     if values.ndim != 1:
         raise ValueError(f"'values' must have 1 dimension, but has {values.ndim}")
 
@@ -167,21 +167,21 @@ def bst_range_query(
     n_values = values.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    output_indices = np.empty((n_values,), dtype=np.int32, order='C')
-    n_matches = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    output_indices = _np.empty((n_values,), dtype=_np.int32, order='C')
+    n_matches = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.bst_range_query_c(
         values,
-        ctypes.byref(ctypes.c_int(n_values)),
-        ctypes.byref(ctypes.c_double(lower_bound)),
-        ctypes.byref(ctypes.c_double(upper_bound)),
+        _ctypes.byref(_ctypes.c_int(n_values)),
+        _ctypes.byref(_ctypes.c_double(lower_bound)),
+        _ctypes.byref(_ctypes.c_double(upper_bound)),
         output_indices,
-        ctypes.byref(n_matches),
-        ctypes.byref(ierr),
+        _ctypes.byref(n_matches),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BST_RANGE_QUERY_ARGUMENTS, _BST_RANGE_QUERY_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BST_RANGE_QUERY_ARGUMENTS, _BST_RANGE_QUERY_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     output_indices.flags.writeable = False
@@ -235,15 +235,15 @@ def bst_range_query_expert(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        values = np.ascontiguousarray(values, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'values' must be an array of np.float64: {error}") from None
+        values = _np.ascontiguousarray(values, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'values' must be an array of np.float64: {_error}") from None
     if values.ndim != 1:
         raise ValueError(f"'values' must have 1 dimension, but has {values.ndim}")
     try:
-        values_perm = np.ascontiguousarray(values_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'values_perm' must be an array of np.int32: {error}") from None
+        values_perm = _np.ascontiguousarray(values_perm, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'values_perm' must be an array of np.int32: {_error}") from None
     if values_perm.ndim != 1:
         raise ValueError(f"'values_perm' must have 1 dimension, but has {values_perm.ndim}")
 
@@ -257,22 +257,22 @@ def bst_range_query_expert(
         )
 
     # outputs and work arrays, which the caller never sees
-    output_indices = np.empty((n_values,), dtype=np.int32, order='C')
-    n_matches = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    output_indices = _np.empty((n_values,), dtype=_np.int32, order='C')
+    n_matches = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.bst_range_query_expert_c(
         values,
         values_perm,
-        ctypes.byref(ctypes.c_int(n_values)),
-        ctypes.byref(ctypes.c_double(lower_bound)),
-        ctypes.byref(ctypes.c_double(upper_bound)),
+        _ctypes.byref(_ctypes.c_int(n_values)),
+        _ctypes.byref(_ctypes.c_double(lower_bound)),
+        _ctypes.byref(_ctypes.c_double(upper_bound)),
         output_indices,
-        ctypes.byref(n_matches),
-        ctypes.byref(ierr),
+        _ctypes.byref(n_matches),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BST_RANGE_QUERY_EXPERT_ARGUMENTS, _BST_RANGE_QUERY_EXPERT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BST_RANGE_QUERY_EXPERT_ARGUMENTS, _BST_RANGE_QUERY_EXPERT_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     output_indices.flags.writeable = False

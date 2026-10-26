@@ -12,34 +12,34 @@ Work copies are shuffled, never the caller's arrays.
 Python binding, generated from tox_data_integration_stats. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.gjct_permutation_test_c.restype = None
 _lib.gjct_permutation_test_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    nullable(ctypes.POINTER(ctypes.c_int)),
-    nullable(np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS')),
-    nullable(np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS')),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _nullable(_ctypes.POINTER(_ctypes.c_int)),
+    _nullable(_np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS')),
+    _nullable(_np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS')),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -110,29 +110,29 @@ def gjct_permutation_test(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        neighborhood_residuals_S1 = np.asfortranarray(neighborhood_residuals_S1, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals_S1' must be an array of np.float64: {error}") from None
+        neighborhood_residuals_S1 = _np.asfortranarray(neighborhood_residuals_S1, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'neighborhood_residuals_S1' must be an array of np.float64: {_error}") from None
     if neighborhood_residuals_S1.ndim != 3:
         raise ValueError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}")
     try:
-        neighborhood_residuals_S2 = np.asfortranarray(neighborhood_residuals_S2, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals_S2' must be an array of np.float64: {error}") from None
+        neighborhood_residuals_S2 = _np.asfortranarray(neighborhood_residuals_S2, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'neighborhood_residuals_S2' must be an array of np.float64: {_error}") from None
     if neighborhood_residuals_S2.ndim != 3:
         raise ValueError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}")
     if neighbor_mask_S1 is not None:
         try:
-            neighbor_mask_S1 = np.asfortranarray(neighbor_mask_S1, dtype=np.bool_)
-        except (TypeError, ValueError) as error:
-            raise TypeError(f"'neighbor_mask_S1' must be an array of np.bool_: {error}") from None
+            neighbor_mask_S1 = _np.asfortranarray(neighbor_mask_S1, dtype=_np.bool_)
+        except (TypeError, ValueError) as _error:
+            raise TypeError(f"'neighbor_mask_S1' must be an array of np.bool_: {_error}") from None
         if neighbor_mask_S1.ndim != 2:
             raise ValueError(f"'neighbor_mask_S1' must have 2 dimensions, but has {neighbor_mask_S1.ndim}")
     if neighbor_mask_S2 is not None:
         try:
-            neighbor_mask_S2 = np.asfortranarray(neighbor_mask_S2, dtype=np.bool_)
-        except (TypeError, ValueError) as error:
-            raise TypeError(f"'neighbor_mask_S2' must be an array of np.bool_: {error}") from None
+            neighbor_mask_S2 = _np.asfortranarray(neighbor_mask_S2, dtype=_np.bool_)
+        except (TypeError, ValueError) as _error:
+            raise TypeError(f"'neighbor_mask_S2' must be an array of np.bool_: {_error}") from None
         if neighbor_mask_S2.ndim != 2:
             raise ValueError(f"'neighbor_mask_S2' must have 2 dimensions, but has {neighbor_mask_S2.ndim}")
 
@@ -153,30 +153,30 @@ def gjct_permutation_test(
         )
 
     # outputs and work arrays, which the caller never sees
-    jsd_null = np.empty((n_permutations,), dtype=np.float64, order='C')
-    p_value = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    jsd_null = _np.empty((n_permutations,), dtype=_np.float64, order='C')
+    p_value = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.gjct_permutation_test_c(
         neighborhood_residuals_S1,
         neighborhood_residuals_S2,
-        ctypes.byref(ctypes.c_int(n_reps_S1)),
-        ctypes.byref(ctypes.c_int(n_reps_S2)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_double(global_jsd_observed)),
-        ctypes.byref(ctypes.c_int(n_bins)),
-        ctypes.byref(ctypes.c_double(shared_residual_range)),
-        ctypes.byref(ctypes.c_int(n_permutations)),
+        _ctypes.byref(_ctypes.c_int(n_reps_S1)),
+        _ctypes.byref(_ctypes.c_int(n_reps_S2)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_double(global_jsd_observed)),
+        _ctypes.byref(_ctypes.c_int(n_bins)),
+        _ctypes.byref(_ctypes.c_double(shared_residual_range)),
+        _ctypes.byref(_ctypes.c_int(n_permutations)),
         jsd_null,
-        ctypes.byref(p_value),
-        None if random_seed is None else ctypes.byref(ctypes.c_int(random_seed)),
+        _ctypes.byref(p_value),
+        None if random_seed is None else _ctypes.byref(_ctypes.c_int(random_seed)),
         neighbor_mask_S1,
         neighbor_mask_S2,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _GJCT_PERMUTATION_TEST_ARGUMENTS, _GJCT_PERMUTATION_TEST_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _GJCT_PERMUTATION_TEST_ARGUMENTS, _GJCT_PERMUTATION_TEST_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     jsd_null.flags.writeable = False

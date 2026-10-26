@@ -9,40 +9,40 @@ compatible *for this family*, which the global figure can hide either way.
 Python binding, generated from tox_data_integration_per_family. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.fjct_compute_jsd_c.restype = None
 _lib.fjct_compute_jsd_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -52,25 +52,25 @@ _FJCT_COMPUTE_JSD_ARGUMENT_SOURCES = (None, None, None, "gene_to_family_S1", "ge
 
 _lib.fjct_compute_masked_jsd_c.restype = None
 _lib.fjct_compute_masked_jsd_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -80,12 +80,12 @@ _FJCT_COMPUTE_MASKED_JSD_ARGUMENT_SOURCES = (None, None, "neighborhood_residuals
 
 _lib.fjct_compute_contribution_scores_c.restype = None
 _lib.fjct_compute_contribution_scores_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -174,39 +174,39 @@ def fjct_compute_jsd(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        gene_to_family_S1 = np.ascontiguousarray(gene_to_family_S1, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_family_S1' must be an array of np.int32: {error}") from None
+        gene_to_family_S1 = _np.ascontiguousarray(gene_to_family_S1, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_to_family_S1' must be an array of np.int32: {_error}") from None
     if gene_to_family_S1.ndim != 1:
         raise ValueError(f"'gene_to_family_S1' must have 1 dimension, but has {gene_to_family_S1.ndim}")
     try:
-        gene_to_family_S2 = np.ascontiguousarray(gene_to_family_S2, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_family_S2' must be an array of np.int32: {error}") from None
+        gene_to_family_S2 = _np.ascontiguousarray(gene_to_family_S2, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_to_family_S2' must be an array of np.int32: {_error}") from None
     if gene_to_family_S2.ndim != 1:
         raise ValueError(f"'gene_to_family_S2' must have 1 dimension, but has {gene_to_family_S2.ndim}")
     try:
-        neighborhood_residuals_S1 = np.asfortranarray(neighborhood_residuals_S1, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals_S1' must be an array of np.float64: {error}") from None
+        neighborhood_residuals_S1 = _np.asfortranarray(neighborhood_residuals_S1, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'neighborhood_residuals_S1' must be an array of np.float64: {_error}") from None
     if neighborhood_residuals_S1.ndim != 3:
         raise ValueError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}")
     try:
-        neighborhood_residuals_S2 = np.asfortranarray(neighborhood_residuals_S2, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals_S2' must be an array of np.float64: {error}") from None
+        neighborhood_residuals_S2 = _np.asfortranarray(neighborhood_residuals_S2, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'neighborhood_residuals_S2' must be an array of np.float64: {_error}") from None
     if neighborhood_residuals_S2.ndim != 3:
         raise ValueError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}")
     try:
-        neighborhood_genes_S1 = np.asfortranarray(neighborhood_genes_S1, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_genes_S1' must be an array of np.int32: {error}") from None
+        neighborhood_genes_S1 = _np.asfortranarray(neighborhood_genes_S1, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'neighborhood_genes_S1' must be an array of np.int32: {_error}") from None
     if neighborhood_genes_S1.ndim != 2:
         raise ValueError(f"'neighborhood_genes_S1' must have 2 dimensions, but has {neighborhood_genes_S1.ndim}")
     try:
-        neighborhood_genes_S2 = np.asfortranarray(neighborhood_genes_S2, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_genes_S2' must be an array of np.int32: {error}") from None
+        neighborhood_genes_S2 = _np.asfortranarray(neighborhood_genes_S2, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'neighborhood_genes_S2' must be an array of np.int32: {_error}") from None
     if neighborhood_genes_S2.ndim != 2:
         raise ValueError(f"'neighborhood_genes_S2' must have 2 dimensions, but has {neighborhood_genes_S2.ndim}")
 
@@ -245,40 +245,40 @@ def fjct_compute_jsd(
         )
 
     # outputs and work arrays, which the caller never sees
-    js_divergences = np.empty((n_points,), dtype=np.float64, order='C')
-    included_n_reps_S1 = np.empty((n_points,), dtype=np.int32, order='C')
-    included_n_reps_S2 = np.empty((n_points,), dtype=np.int32, order='C')
-    total_included_n_reps = ctypes.c_int(0)
-    global_js_divergence = ctypes.c_double(0)
-    weights = np.empty((n_points,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    js_divergences = _np.empty((n_points,), dtype=_np.float64, order='C')
+    included_n_reps_S1 = _np.empty((n_points,), dtype=_np.int32, order='C')
+    included_n_reps_S2 = _np.empty((n_points,), dtype=_np.int32, order='C')
+    total_included_n_reps = _ctypes.c_int(0)
+    global_js_divergence = _ctypes.c_double(0)
+    weights = _np.empty((n_points,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.fjct_compute_jsd_c(
-        ctypes.byref(ctypes.c_int(family_idx)),
+        _ctypes.byref(_ctypes.c_int(family_idx)),
         gene_to_family_S1,
         gene_to_family_S2,
-        ctypes.byref(ctypes.c_int(n_genes_S1)),
-        ctypes.byref(ctypes.c_int(n_genes_S2)),
+        _ctypes.byref(_ctypes.c_int(n_genes_S1)),
+        _ctypes.byref(_ctypes.c_int(n_genes_S2)),
         neighborhood_residuals_S1,
         neighborhood_residuals_S2,
         neighborhood_genes_S1,
         neighborhood_genes_S2,
-        ctypes.byref(ctypes.c_int(n_reps_S1)),
-        ctypes.byref(ctypes.c_int(n_reps_S2)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_int(n_bins)),
-        ctypes.byref(ctypes.c_double(shared_residual_range)),
+        _ctypes.byref(_ctypes.c_int(n_reps_S1)),
+        _ctypes.byref(_ctypes.c_int(n_reps_S2)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_bins)),
+        _ctypes.byref(_ctypes.c_double(shared_residual_range)),
         js_divergences,
         included_n_reps_S1,
         included_n_reps_S2,
-        ctypes.byref(total_included_n_reps),
-        ctypes.byref(global_js_divergence),
+        _ctypes.byref(total_included_n_reps),
+        _ctypes.byref(global_js_divergence),
         weights,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _FJCT_COMPUTE_JSD_ARGUMENTS, _FJCT_COMPUTE_JSD_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _FJCT_COMPUTE_JSD_ARGUMENTS, _FJCT_COMPUTE_JSD_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     js_divergences.flags.writeable = False
@@ -368,27 +368,27 @@ def fjct_compute_masked_jsd(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        neighborhood_residuals_S1 = np.asfortranarray(neighborhood_residuals_S1, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals_S1' must be an array of np.float64: {error}") from None
+        neighborhood_residuals_S1 = _np.asfortranarray(neighborhood_residuals_S1, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'neighborhood_residuals_S1' must be an array of np.float64: {_error}") from None
     if neighborhood_residuals_S1.ndim != 3:
         raise ValueError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}")
     try:
-        neighborhood_residuals_S2 = np.asfortranarray(neighborhood_residuals_S2, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals_S2' must be an array of np.float64: {error}") from None
+        neighborhood_residuals_S2 = _np.asfortranarray(neighborhood_residuals_S2, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'neighborhood_residuals_S2' must be an array of np.float64: {_error}") from None
     if neighborhood_residuals_S2.ndim != 3:
         raise ValueError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}")
     try:
-        neighbor_mask_S1 = np.asfortranarray(neighbor_mask_S1, dtype=np.bool_)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighbor_mask_S1' must be an array of np.bool_: {error}") from None
+        neighbor_mask_S1 = _np.asfortranarray(neighbor_mask_S1, dtype=_np.bool_)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'neighbor_mask_S1' must be an array of np.bool_: {_error}") from None
     if neighbor_mask_S1.ndim != 2:
         raise ValueError(f"'neighbor_mask_S1' must have 2 dimensions, but has {neighbor_mask_S1.ndim}")
     try:
-        neighbor_mask_S2 = np.asfortranarray(neighbor_mask_S2, dtype=np.bool_)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighbor_mask_S2' must be an array of np.bool_: {error}") from None
+        neighbor_mask_S2 = _np.asfortranarray(neighbor_mask_S2, dtype=_np.bool_)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'neighbor_mask_S2' must be an array of np.bool_: {_error}") from None
     if neighbor_mask_S2.ndim != 2:
         raise ValueError(f"'neighbor_mask_S2' must have 2 dimensions, but has {neighbor_mask_S2.ndim}")
 
@@ -425,39 +425,39 @@ def fjct_compute_masked_jsd(
         )
 
     # outputs and work arrays, which the caller never sees
-    js_divergences = np.empty((n_points,), dtype=np.float64, order='C')
-    included_n_reps_S1 = np.empty((n_points,), dtype=np.int32, order='C')
-    included_n_reps_S2 = np.empty((n_points,), dtype=np.int32, order='C')
-    total_included_n_reps = ctypes.c_int(0)
-    global_js_divergence = ctypes.c_double(0)
-    weights = np.empty((n_points,), dtype=np.float64, order='C')
-    pmf_S1 = np.empty((n_points, n_bins,), dtype=np.float64, order='F')
-    pmf_S2 = np.empty((n_points, n_bins,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    js_divergences = _np.empty((n_points,), dtype=_np.float64, order='C')
+    included_n_reps_S1 = _np.empty((n_points,), dtype=_np.int32, order='C')
+    included_n_reps_S2 = _np.empty((n_points,), dtype=_np.int32, order='C')
+    total_included_n_reps = _ctypes.c_int(0)
+    global_js_divergence = _ctypes.c_double(0)
+    weights = _np.empty((n_points,), dtype=_np.float64, order='C')
+    pmf_S1 = _np.empty((n_points, n_bins,), dtype=_np.float64, order='F')
+    pmf_S2 = _np.empty((n_points, n_bins,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.fjct_compute_masked_jsd_c(
         neighborhood_residuals_S1,
         neighborhood_residuals_S2,
-        ctypes.byref(ctypes.c_int(n_reps_S1)),
-        ctypes.byref(ctypes.c_int(n_reps_S2)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_reps_S1)),
+        _ctypes.byref(_ctypes.c_int(n_reps_S2)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
         neighbor_mask_S1,
         neighbor_mask_S2,
-        ctypes.byref(ctypes.c_int(n_bins)),
-        ctypes.byref(ctypes.c_double(shared_residual_range)),
+        _ctypes.byref(_ctypes.c_int(n_bins)),
+        _ctypes.byref(_ctypes.c_double(shared_residual_range)),
         js_divergences,
         included_n_reps_S1,
         included_n_reps_S2,
-        ctypes.byref(total_included_n_reps),
-        ctypes.byref(global_js_divergence),
+        _ctypes.byref(total_included_n_reps),
+        _ctypes.byref(global_js_divergence),
         weights,
         pmf_S1,
         pmf_S2,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _FJCT_COMPUTE_MASKED_JSD_ARGUMENTS, _FJCT_COMPUTE_MASKED_JSD_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _FJCT_COMPUTE_MASKED_JSD_ARGUMENTS, _FJCT_COMPUTE_MASKED_JSD_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     js_divergences.flags.writeable = False
@@ -524,15 +524,15 @@ def fjct_compute_contribution_scores(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        global_js_divergences = np.ascontiguousarray(global_js_divergences, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'global_js_divergences' must be an array of np.float64: {error}") from None
+        global_js_divergences = _np.ascontiguousarray(global_js_divergences, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'global_js_divergences' must be an array of np.float64: {_error}") from None
     if global_js_divergences.ndim != 1:
         raise ValueError(f"'global_js_divergences' must have 1 dimension, but has {global_js_divergences.ndim}")
     try:
-        total_included_n_reps_per_f = np.ascontiguousarray(total_included_n_reps_per_f, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'total_included_n_reps_per_f' must be an array of np.int32: {error}") from None
+        total_included_n_reps_per_f = _np.ascontiguousarray(total_included_n_reps_per_f, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'total_included_n_reps_per_f' must be an array of np.int32: {_error}") from None
     if total_included_n_reps_per_f.ndim != 1:
         raise ValueError(f"'total_included_n_reps_per_f' must have 1 dimension, but has {total_included_n_reps_per_f.ndim}")
 
@@ -546,20 +546,20 @@ def fjct_compute_contribution_scores(
         )
 
     # outputs and work arrays, which the caller never sees
-    support_weights = np.empty((k_families,), dtype=np.float64, order='C')
-    contribution_scores = np.empty((k_families,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    support_weights = _np.empty((k_families,), dtype=_np.float64, order='C')
+    contribution_scores = _np.empty((k_families,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.fjct_compute_contribution_scores_c(
         global_js_divergences,
         total_included_n_reps_per_f,
-        ctypes.byref(ctypes.c_int(k_families)),
+        _ctypes.byref(_ctypes.c_int(k_families)),
         support_weights,
         contribution_scores,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _FJCT_COMPUTE_CONTRIBUTION_SCORES_ARGUMENTS, _FJCT_COMPUTE_CONTRIBUTION_SCORES_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _FJCT_COMPUTE_CONTRIBUTION_SCORES_ARGUMENTS, _FJCT_COMPUTE_CONTRIBUTION_SCORES_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     support_weights.flags.writeable = False

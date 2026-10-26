@@ -339,8 +339,9 @@ docs, and an `ierr` that raises a typed error naming the offending argument.
 | **The module's own name as the file name** (`tox_x_impl` in `tox_x_impl.F90`) | two independent things read that name and must agree: generation triggers on the *module* name, while the cleaner and the Ford exclusion scan *file* names without parsing. Let them diverge and the generator writes a wrapper nothing cleans and nothing excludes — so the next run parses its own output and defines the module twice |
 | Explicit `intent` on every dummy | decides constness in C and R, and input/output/in-out everywhere |
 | Kinded numeric types (`real(real64)`, `integer(int32)`) | a default kind has no defensible C mapping |
-| **Only `integer(int32)`, `real(real64)`, `complex(real64)`, `logical(c_bool)` or a default `logical`** on an argument | R holds integers as int32 and numbers as real64, and the generated validators take only those kinds — an `int64` output would be written eight bytes per element into R's four-byte integers. Compared by value, so `c_int` and `c_double` are fine; `int64`, `int8`, `int16`, `real32`, `c_size_t` and `complex(real32)` are refused |
-| **An argument name every binding language accepts** | the name is a Python parameter, an R parameter, a C parameter of the R binding and a dummy of every generated wrapper. Refused: Python keywords (`lambda`, `from`) and builtins (`len`, `input`, `type`), R reserved words (`next`, `function`, `NA` — in that case), C keywords (`default`, `long`), and the names the generated code binds itself (`np`, `ctypes`, `os`, `error`, `nprot`, `handled`, a name `<other argument>_v`, `_f`, ...: the list is `helper/codegen/names.py`). Fortran keywords and R function names are fine — `value`, `mode`, `vector`, `weights` all are. Nor may an argument share its procedure's name (`total` in `total_impl`) |
+| **Only `integer(int32)`, `real(real64)`, `complex(real64)`, `logical(c_bool)` or a default `logical`** on an argument | R holds integers as int32 and numbers as real64, and the generated validators take only those kinds — an `int64` output would be written eight bytes per element into R's four-byte integers. A numeric kind is compared by value, so `c_int` and `c_double` are fine; a logical kind by name, so `logical(1)` is refused although it is `c_bool`'s value. `int64`, `int8`, `int16`, `real32`, `c_size_t` and `complex(real32)` are refused |
+| **An argument name every binding language accepts** | the name is a Python parameter, an R parameter, a C parameter of the R binding and a dummy of every generated wrapper. Refused: Python keywords (`lambda`, `from`) and builtins (`len`, `input`, `type`), R reserved words (`next`, `function`, `NA` — in that case), C keywords (`default`, `long`, `asm`). Fortran keywords and R function names are fine — `value`, `mode`, `vector`, `weights` all are. Nor may an argument share its procedure's name (`total` in `total_impl`), or a name its generated Fortran wrapper uses: `count` beside an `n_selected_` count (the wrapper calls `count(...)`), `size` beside an assumed-shape array, `handled` beside a prologue, `<x>_f` for a string `x`. Only where the wrapper really uses it — `count` is fine elsewhere, and `p_value` beside `p` is always fine. The list is `helper/codegen/names.py` |
+| **A procedure name both languages accept** | it is a Python and an R function of that name: no Python keyword or builtin (`sum`, `filter`), no R reserved word |
 | **`ierr`, where you declare one, last** | every published signature ends in it, which is where the generator adds it when you declare none |
 | **`logical(c_bool)` for every logical that occupies storage** | one byte rather than four, and the kind the bindings already use, so a mask crosses without being copied — the wrapper used to declare an automatic array of default `logical` and convert elementwise both ways. A `logical, parameter` and a `logical function` result are the exceptions: no storage, nothing to save. Note a literal needs the kind too — `.true._c_bool`, because argument association does not convert kinds, though plain assignment does |
 | `!> summary: ...` on the procedure | becomes the docstring in Python and R |
@@ -671,6 +672,10 @@ M_ALLOCATE(tmp_int_workspace(int_workspace_size))
 
 — and, in the `foo_expert` binding, the size argument still exposed with its documentation
 pointing at the routine that computes it. One annotation, two consumers.
+
+The size argument is an input to the implementation, `intent(in)`: an `intent(out)` one would be
+the implementation's result, which `foo` computes with the producer itself and then throws away,
+so it is refused.
 
 The producer must be exported (`M_EXPORT_C`), so that a wrapper exists to call; recommend
 routines therefore live in the implementation module, public, tagged — they are not
@@ -1209,8 +1214,10 @@ source and carries a note saying what to write instead.
 | a derived type | not mapped |
 | a missing `intent` | constness and direction are undecidable |
 | a kind with no C mapping | an error, never a guess — a wrong guess compiles and lies |
-| a kind the bindings cannot carry: anything but `integer(int32)`, `real(real64)`, `complex(real64)`, `logical(c_bool)` and a default `logical`, compared by value | R holds int32 and real64 only, and the validators take only those (Section 4) |
-| an argument named like a Python keyword or builtin, an R reserved word, a C keyword, or a name the generated code binds (`np`, `nprot`, `handled`, `<other>_v`, ...; `helper/codegen/names.py`), or like its procedure | a parse error in one binding language fails the whole package, and a clash with a generated name fails the build (Section 4) |
+| a kind the bindings cannot carry: anything but `integer(int32)`, `real(real64)`, `complex(real64)`, `logical(c_bool)` and a default `logical` (numeric kinds compared by value, logicals by name) | R holds int32 and real64 only, and the validators take only those (Section 4) |
+| an argument named like a Python keyword or builtin, an R reserved word, a C keyword, or like its procedure | a parse error in one binding language fails the whole package (Section 4) |
+| an argument named like something its generated Fortran wrapper calls, imports, uses as a kind or declares, there | the wrapper would not compile, and with it the library (Section 4) |
+| a procedure named like a Python keyword or builtin, or an R reserved word | it is a Python and an R function of that name (Section 4) |
 | an `ierr` that is not the last argument | every published signature ends in the error code (Section 4) |
 | the same exported name in two modules, or twice in one, ignoring case | it is the C symbol and the name Python and R publish; two link as a duplicate symbol |
 | an `M_EXPORT_C` on a **private** procedure | it would publish nothing, silently |
@@ -1220,7 +1227,7 @@ source and carries a note saying what to write instead.
 | an extent that is not `intent(in)`, or that only optional arrays carry | the bindings read an extent off the arrays they are passed (Section 5.3) |
 | a mask and its `n_selected_` count that are not both `intent(in)`, or an optional mask with a count | the count is derived from the mask before the call (Section 5.3) |
 | a `DM_RESULT_SIZE_IS` naming an `intent(in)` count | the count is what the procedure reports back (Section 5.6) |
-| an `intent(out)` `<base>_perm` whose base is an argument | `foo` builds that permutation itself and would discard the result (Section 5.8) |
+| an `intent(out)` `<base>_perm` whose base is an argument, or an `intent(out)` `DM_OUTPUT_FROM(..., AUTO)` value | `foo` builds or computes it itself and would discard the result (Sections 5.8, 5.9) |
 | an optional shape or extent argument | the wrapper must read it before it may take `c_loc` of what it sizes |
 | an axis with a lower bound other than 1 (`x(0:n)`, `x(0:)`) | every layer sizes an axis from its extent alone; declare `x(n + 1)` and shift the index inside the implementation. `x(1:n)` is accepted as `x(n)` |
 | a `DM_DEFAULT` that is not a constant the compiler would accept, or that does not fit its argument's kind | Python and R pass the evaluated value, so it has to be the one a Fortran caller gets (Section 5.5) |

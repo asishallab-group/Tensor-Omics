@@ -21,6 +21,7 @@ from ..ir.constants import ConstantError, ConstantEvaluator, fits_integer_kind, 
 from ..ir.doc import Doc
 from ..ir.entities import Argument, Module, Procedure, Project
 from ..ir.types import BaseType, CharacterLength, Dimension, FortranType, Intent
+from ..ir.validate import bindings_cannot_carry
 from ..names import extent_argument_name, strlen_argument_name
 from .model import (
     CArgument,
@@ -488,6 +489,8 @@ class _Builder:
 
         c_kind = kinds.get((fortran.kind or "").lower())
         if c_kind is None:
+            if bindings_cannot_carry(fortran):
+                return None  # `validate` has refused it already (`integer(8)`, `real(4)`)
             self.diagnostics.error(
                 f"'{argument.name}' has kind '{fortran.kind}', which has no known C "
                 f"counterpart",

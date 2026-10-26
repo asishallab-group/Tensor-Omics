@@ -17,27 +17,27 @@ site, and each routine takes only the thresholds its own pattern needs.
 Python binding, generated from tox_paralog_analysis. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.detect_neofunctionalization_c.restype = None
 _lib.detect_neofunctionalization_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -47,19 +47,19 @@ _DETECT_NEOFUNCTIONALIZATION_ARGUMENT_SOURCES = (None, "ancestors", None, "ances
 
 _lib.detect_dosage_effect_c.restype = None
 _lib.detect_dosage_effect_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -69,20 +69,20 @@ _DETECT_DOSAGE_EFFECT_ARGUMENT_SOURCES = (None, None, "genes", "ancestor", None,
 
 _lib.detect_subfunctionalization_c.restype = None
 _lib.detect_subfunctionalization_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -92,14 +92,14 @@ _DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES = (None, None, "genes", "ancestor"
 
 _lib.filter_paralogs_by_pattern_dosage_effect_c.restype = None
 _lib.filter_paralogs_by_pattern_dosage_effect_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -109,14 +109,14 @@ _FILTER_PARALOGS_BY_PATTERN_DOSAGE_EFFECT_ARGUMENT_SOURCES = (None, None, "gene_
 
 _lib.filter_paralogs_by_pattern_subfunctionalization_c.restype = None
 _lib.filter_paralogs_by_pattern_subfunctionalization_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -170,27 +170,27 @@ def detect_neofunctionalization(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        ancestors = np.asfortranarray(ancestors, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'ancestors' must be an array of np.float64: {error}") from None
+        ancestors = _np.asfortranarray(ancestors, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'ancestors' must be an array of np.float64: {_error}") from None
     if ancestors.ndim != 2:
         raise ValueError(f"'ancestors' must have 2 dimensions, but has {ancestors.ndim}")
     try:
-        genes = np.asfortranarray(genes, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'genes' must be an array of np.float64: {error}") from None
+        genes = _np.asfortranarray(genes, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'genes' must be an array of np.float64: {_error}") from None
     if genes.ndim != 2:
         raise ValueError(f"'genes' must have 2 dimensions, but has {genes.ndim}")
     try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
+        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
     if gene_to_fam.ndim != 1:
         raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
     try:
-        thresholds = np.ascontiguousarray(thresholds, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'thresholds' must be an array of np.float64: {error}") from None
+        thresholds = _np.ascontiguousarray(thresholds, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'thresholds' must be an array of np.float64: {_error}") from None
     if thresholds.ndim != 1:
         raise ValueError(f"'thresholds' must have 1 dimension, but has {thresholds.ndim}")
 
@@ -214,22 +214,22 @@ def detect_neofunctionalization(
         )
 
     # outputs and work arrays, which the caller never sees
-    neofunc = np.empty((n_genes, n_axes,), dtype=np.bool_, order='F')
-    ierr = ctypes.c_int(0)
+    neofunc = _np.empty((n_genes, n_axes,), dtype=_np.bool_, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.detect_neofunctionalization_c(
         ancestors,
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         genes,
-        ctypes.byref(ctypes.c_int(n_axes)),
+        _ctypes.byref(_ctypes.c_int(n_axes)),
         gene_to_fam,
-        ctypes.byref(ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
         thresholds,
         neofunc,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETECT_NEOFUNCTIONALIZATION_ARGUMENTS, _DETECT_NEOFUNCTIONALIZATION_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETECT_NEOFUNCTIONALIZATION_ARGUMENTS, _DETECT_NEOFUNCTIONALIZATION_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     neofunc.flags.writeable = False
@@ -298,21 +298,21 @@ def detect_dosage_effect(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        ancestor = np.ascontiguousarray(ancestor, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'ancestor' must be an array of np.float64: {error}") from None
+        ancestor = _np.ascontiguousarray(ancestor, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'ancestor' must be an array of np.float64: {_error}") from None
     if ancestor.ndim != 1:
         raise ValueError(f"'ancestor' must have 1 dimension, but has {ancestor.ndim}")
     try:
-        genes = np.asfortranarray(genes, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'genes' must be an array of np.float64: {error}") from None
+        genes = _np.asfortranarray(genes, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'genes' must be an array of np.float64: {_error}") from None
     if genes.ndim != 2:
         raise ValueError(f"'genes' must have 2 dimensions, but has {genes.ndim}")
     try:
-        filtered_paralogs_mask = np.ascontiguousarray(filtered_paralogs_mask, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'filtered_paralogs_mask' must be an array of np.int32: {error}") from None
+        filtered_paralogs_mask = _np.ascontiguousarray(filtered_paralogs_mask, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'filtered_paralogs_mask' must be an array of np.int32: {_error}") from None
     if filtered_paralogs_mask.ndim != 1:
         raise ValueError(f"'filtered_paralogs_mask' must have 1 dimension, but has {filtered_paralogs_mask.ndim}")
 
@@ -334,27 +334,27 @@ def detect_dosage_effect(
         )
 
     # outputs and work arrays, which the caller never sees
-    n_results = ctypes.c_int(0)
-    work_arr_paralog_subsets = np.empty((n_mask_chunks, n_paralog_subsets,), dtype=np.int32, order='F')
-    ierr = ctypes.c_int(0)
+    n_results = _ctypes.c_int(0)
+    work_arr_paralog_subsets = _np.empty((n_mask_chunks, n_paralog_subsets,), dtype=_np.int32, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.detect_dosage_effect_c(
         ancestor,
         genes,
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_dims)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_dims)),
         filtered_paralogs_mask,
-        ctypes.byref(ctypes.c_int(n_mask_chunks)),
-        ctypes.byref(n_results),
-        ctypes.byref(ctypes.c_int(max_subset_size)),
+        _ctypes.byref(_ctypes.c_int(n_mask_chunks)),
+        _ctypes.byref(n_results),
+        _ctypes.byref(_ctypes.c_int(max_subset_size)),
         work_arr_paralog_subsets,
-        ctypes.byref(ctypes.c_int(n_paralog_subsets)),
-        ctypes.byref(ctypes.c_double(max_angle)),
-        ctypes.byref(ctypes.c_double(gain_gamma)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_paralog_subsets)),
+        _ctypes.byref(_ctypes.c_double(max_angle)),
+        _ctypes.byref(_ctypes.c_double(gain_gamma)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETECT_DOSAGE_EFFECT_ARGUMENTS, _DETECT_DOSAGE_EFFECT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETECT_DOSAGE_EFFECT_ARGUMENTS, _DETECT_DOSAGE_EFFECT_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     work_arr_paralog_subsets.flags.writeable = False
@@ -428,33 +428,33 @@ def detect_subfunctionalization(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        ancestor = np.ascontiguousarray(ancestor, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'ancestor' must be an array of np.float64: {error}") from None
+        ancestor = _np.ascontiguousarray(ancestor, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'ancestor' must be an array of np.float64: {_error}") from None
     if ancestor.ndim != 1:
         raise ValueError(f"'ancestor' must have 1 dimension, but has {ancestor.ndim}")
     try:
-        genes = np.asfortranarray(genes, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'genes' must be an array of np.float64: {error}") from None
+        genes = _np.asfortranarray(genes, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'genes' must be an array of np.float64: {_error}") from None
     if genes.ndim != 2:
         raise ValueError(f"'genes' must have 2 dimensions, but has {genes.ndim}")
     try:
-        filtered_paralogs_mask = np.ascontiguousarray(filtered_paralogs_mask, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'filtered_paralogs_mask' must be an array of np.int32: {error}") from None
+        filtered_paralogs_mask = _np.ascontiguousarray(filtered_paralogs_mask, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'filtered_paralogs_mask' must be an array of np.int32: {_error}") from None
     if filtered_paralogs_mask.ndim != 1:
         raise ValueError(f"'filtered_paralogs_mask' must have 1 dimension, but has {filtered_paralogs_mask.ndim}")
     try:
-        paralog_norms = np.ascontiguousarray(paralog_norms, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'paralog_norms' must be an array of np.float64: {error}") from None
+        paralog_norms = _np.ascontiguousarray(paralog_norms, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'paralog_norms' must be an array of np.float64: {_error}") from None
     if paralog_norms.ndim != 1:
         raise ValueError(f"'paralog_norms' must have 1 dimension, but has {paralog_norms.ndim}")
     try:
-        sorted_paralog_norms_perm = np.ascontiguousarray(sorted_paralog_norms_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'sorted_paralog_norms_perm' must be an array of np.int32: {error}") from None
+        sorted_paralog_norms_perm = _np.ascontiguousarray(sorted_paralog_norms_perm, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'sorted_paralog_norms_perm' must be an array of np.int32: {_error}") from None
     if sorted_paralog_norms_perm.ndim != 1:
         raise ValueError(f"'sorted_paralog_norms_perm' must have 1 dimension, but has {sorted_paralog_norms_perm.ndim}")
 
@@ -484,28 +484,28 @@ def detect_subfunctionalization(
         )
 
     # outputs and work arrays, which the caller never sees
-    n_results = ctypes.c_int(0)
-    work_arr_paralog_subsets = np.empty((n_mask_chunks, n_paralog_subsets,), dtype=np.int32, order='F')
-    ierr = ctypes.c_int(0)
+    n_results = _ctypes.c_int(0)
+    work_arr_paralog_subsets = _np.empty((n_mask_chunks, n_paralog_subsets,), dtype=_np.int32, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.detect_subfunctionalization_c(
         ancestor,
         genes,
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_dims)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_dims)),
         filtered_paralogs_mask,
-        ctypes.byref(ctypes.c_int(n_mask_chunks)),
-        ctypes.byref(n_results),
-        ctypes.byref(ctypes.c_int(max_subset_size)),
+        _ctypes.byref(_ctypes.c_int(n_mask_chunks)),
+        _ctypes.byref(n_results),
+        _ctypes.byref(_ctypes.c_int(max_subset_size)),
         work_arr_paralog_subsets,
-        ctypes.byref(ctypes.c_int(n_paralog_subsets)),
-        ctypes.byref(ctypes.c_double(rdi_threshold)),
+        _ctypes.byref(_ctypes.c_int(n_paralog_subsets)),
+        _ctypes.byref(_ctypes.c_double(rdi_threshold)),
         paralog_norms,
         sorted_paralog_norms_perm,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETECT_SUBFUNCTIONALIZATION_ARGUMENTS, _DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETECT_SUBFUNCTIONALIZATION_ARGUMENTS, _DETECT_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     work_arr_paralog_subsets.flags.writeable = False
@@ -564,15 +564,15 @@ def filter_paralogs_by_pattern_dosage_effect(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        gene_angles = np.ascontiguousarray(gene_angles, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_angles' must be an array of np.float64: {error}") from None
+        gene_angles = _np.ascontiguousarray(gene_angles, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_angles' must be an array of np.float64: {_error}") from None
     if gene_angles.ndim != 1:
         raise ValueError(f"'gene_angles' must have 1 dimension, but has {gene_angles.ndim}")
     try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
+        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
     if gene_to_fam.ndim != 1:
         raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
 
@@ -586,21 +586,21 @@ def filter_paralogs_by_pattern_dosage_effect(
         )
 
     # outputs and work arrays, which the caller never sees
-    masks = np.empty((n_mask_chunks, n_families,), dtype=np.int32, order='F')
-    ierr = ctypes.c_int(0)
+    masks = _np.empty((n_mask_chunks, n_families,), dtype=_np.int32, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.filter_paralogs_by_pattern_dosage_effect_c(
         gene_angles,
-        ctypes.byref(ctypes.c_double(threshold)),
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_double(threshold)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         gene_to_fam,
         masks,
-        ctypes.byref(ctypes.c_int(n_mask_chunks)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_mask_chunks)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _FILTER_PARALOGS_BY_PATTERN_DOSAGE_EFFECT_ARGUMENTS, _FILTER_PARALOGS_BY_PATTERN_DOSAGE_EFFECT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _FILTER_PARALOGS_BY_PATTERN_DOSAGE_EFFECT_ARGUMENTS, _FILTER_PARALOGS_BY_PATTERN_DOSAGE_EFFECT_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     masks.flags.writeable = False
@@ -656,15 +656,15 @@ def filter_paralogs_by_pattern_subfunctionalization(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        gene_angles = np.ascontiguousarray(gene_angles, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_angles' must be an array of np.float64: {error}") from None
+        gene_angles = _np.ascontiguousarray(gene_angles, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_angles' must be an array of np.float64: {_error}") from None
     if gene_angles.ndim != 1:
         raise ValueError(f"'gene_angles' must have 1 dimension, but has {gene_angles.ndim}")
     try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
+        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
     if gene_to_fam.ndim != 1:
         raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
 
@@ -678,21 +678,21 @@ def filter_paralogs_by_pattern_subfunctionalization(
         )
 
     # outputs and work arrays, which the caller never sees
-    masks = np.empty((n_mask_chunks, n_families,), dtype=np.int32, order='F')
-    ierr = ctypes.c_int(0)
+    masks = _np.empty((n_mask_chunks, n_families,), dtype=_np.int32, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.filter_paralogs_by_pattern_subfunctionalization_c(
         gene_angles,
-        ctypes.byref(ctypes.c_double(threshold)),
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_double(threshold)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         gene_to_fam,
         masks,
-        ctypes.byref(ctypes.c_int(n_mask_chunks)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_mask_chunks)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENTS, _FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENTS, _FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     masks.flags.writeable = False

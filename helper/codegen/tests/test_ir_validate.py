@@ -1641,11 +1641,7 @@ class TestPublishedNames:
             ("NA", "an R reserved word"), ("Inf", "an R reserved word"),
             ("default", "a C keyword"), ("register", "a C keyword"), ("long", "a C keyword"),
             ("len", "a Python builtin"), ("input", "a Python builtin"),
-            ("type", "a Python builtin"),
-            ("np", "a name the generated Python module binds itself"),
-            ("ctypes", "a name the generated Python module binds itself"),
-            ("check_err_code", "a name the generated Python module binds itself"),
-            ("error", "a name the generated Python module binds itself"),
+            ("type", "a Python builtin"), ("asm", "a C keyword"),
         ],
     )
     def test_a_word_a_binding_language_reserves_is_refused(self, bag, name, word):
@@ -1658,51 +1654,21 @@ class TestPublishedNames:
         # not Fortran keywords, not R function names (main publishes all of these), not
         # Python soft keywords, and a reserved word only in its own case
         ["value", "vector", "array", "expression", "factor", "points", "weights", "length",
-         "match", "na", "inf", "Default"],
+         "match", "na", "inf", "Default",
+         # what the generated Python binds is underscored now, so these meet nothing
+         "np", "ctypes", "os", "error", "check_err_code", "nullable"],
     )
     def test_what_is_not_reserved_is_accepted(self, bag, name):
         checked(b.procedure("p", b.real(name, Intent.IN), b.ierr()), bag)
 
         assert bag.errors == ()
 
-    @pytest.mark.parametrize(
-        "name, where", [("nprot", "R shim"), ("handled", "Fortran wrapper"),
-                        ("HANDLED", "Fortran wrapper")],
-    )
-    def test_a_local_every_wrapper_declares_is_refused(self, bag, name, where):
-        checked(b.procedure("p", b.real(name, Intent.IN), b.ierr()), bag)
-
-        assert only_error(bag).message == (
-            f"argument '{name}' is the name of a local every generated {where} declares"
-        )
-
-    @pytest.mark.parametrize(
-        "other, name, suffix, where",
-        [
-            ("k", "k_v", "_v", "R shim"), ("x", "x_p", "_p", "R shim"),
-            ("x", "x_size", "_size", "R shim"), ("x", "x_dim", "_dim", "R shim"),
-            ("x", "x_d", "_d", "R shim"), ("x", "x_c", "_c", "R shim"),
-            ("x", "x_out", "_out", "R shim"), ("x", "x_out_dim", "_out_dim", "R shim"),
-            ("name", "name_f", "_f", "Fortran wrapper"),
-            ("name", "NAME_F", "_f", "Fortran wrapper"),
-            ("link", "link_mode_f", "_mode_f", "Fortran wrapper"),
-            ("span", "span_value", "_value", "Fortran wrapper"),
-        ],
-    )
-    def test_a_local_built_from_another_argument_is_refused(self, bag, other, name, suffix,
-                                                             where):
-        checked(b.procedure("p", b.real(other, Intent.IN), b.real(name, Intent.IN), b.ierr()),
-                bag)
-
-        assert only_error(bag).message == (
-            f"argument '{name}' is the name of the local the generated {where} declares for "
-            f"'{other}' ('{other}' + '{suffix}')"
-        )
-
-    def test_a_suffix_alone_is_no_clash(self, bag):
-        # `x_v` is only a local where there is an `x`
-        checked(b.procedure("p", b.real("x_v", Intent.IN), b.real("y_c", Intent.IN), b.ierr()),
-                bag)
+    @pytest.mark.parametrize("name", ["nprot", "handled", "k_v", "x_out", "p_value"])
+    def test_a_generated_local_is_not_this_check_s_business(self, bag, name):
+        # the R shim's and Python's locals start with `_`; a Fortran wrapper's are refused
+        # only where it emits them (`emit.name_clashes`, tests/test_name_clashes.py)
+        checked(b.procedure("p", b.real("k", Intent.IN), b.real("x", Intent.IN),
+                            b.real(name, Intent.IN), b.ierr()), bag)
 
         assert bag.errors == ()
 
@@ -1739,6 +1705,27 @@ class TestPublishedNames:
         checked(b.procedure("p", b.integer("n"), result=result), bag)
 
         assert only_error(bag).message == "result 'lambda' is a Python keyword"
+
+
+class TestProcedureNames:
+    """A procedure is a Python and an R function, so it is held to their words."""
+
+    @pytest.mark.parametrize(
+        "name, word",
+        [("lambda", "a Python keyword"), ("next", "an R reserved word"),
+         ("sum", "a Python builtin"), ("filter", "a Python builtin")],
+    )
+    def test_a_reserved_procedure_name_is_refused(self, bag, name, word):
+        checked(b.procedure(name, b.real("x", Intent.IN), b.ierr()), bag)
+
+        assert only_error(bag).message == f"procedure '{name}' is {word}"
+
+    @pytest.mark.parametrize("name", ["default", "long", "c", "mode", "total"])
+    def test_a_c_keyword_or_an_r_function_is_accepted(self, bag, name):
+        # its C symbols carry a suffix, and an R function of that name is the wrapper itself
+        checked(b.procedure(name, b.real("x", Intent.IN), b.ierr()), bag)
+
+        assert bag.errors == ()
 
 
 class TestExtentIntents:
@@ -1950,6 +1937,40 @@ class TestPermutationOutputs:
             "'values_perm' is an output, but the allocating wrapper builds it from 'values' itself"
         )
         assert "discard" in error.note
+
+    def test_an_output_the_allocating_wrapper_computes_is_refused(self, bag):
+        from codegen.ir.directives import Directives, OutputFrom, OutputFromMode
+
+        directive = OutputFrom("wsize", "work_size", "tox_thing_impl", OutputFromMode.AUTO)
+        module = b.module(
+            "tox_thing_impl",
+            b.procedure("crunch_impl", b.integer("n"), b.real("values", Intent.IN, "(n)"),
+                        b.integer("wsize", Intent.OUT, directives=Directives(output_from=directive)),
+                        meta=Meta(summary="s", author="a")),
+            doc="an implementation module",
+        )
+
+        validate_module(module, bag)
+
+        assert only_error(bag).message == (
+            "'wsize' is an output, but the allocating wrapper computes it with 'work_size' itself"
+        )
+
+    def test_an_input_the_allocating_wrapper_computes_is_accepted(self, bag):
+        from codegen.ir.directives import Directives, OutputFrom, OutputFromMode
+
+        directive = OutputFrom("wsize", "work_size", "tox_thing_impl", OutputFromMode.AUTO)
+        module = b.module(
+            "tox_thing_impl",
+            b.procedure("crunch_impl", b.integer("n"), b.real("tmp_w", Intent.OUT, "(wsize)"),
+                        b.integer("wsize", Intent.IN, directives=Directives(output_from=directive)),
+                        meta=Meta(summary="s", author="a")),
+            doc="an implementation module",
+        )
+
+        validate_module(module, bag)
+
+        assert bag.errors == ()
 
     @pytest.mark.parametrize(
         "perm",

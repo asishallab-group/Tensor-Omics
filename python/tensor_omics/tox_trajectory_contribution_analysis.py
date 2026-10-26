@@ -11,31 +11,31 @@ other sample.
 Python binding, generated from tox_trajectory_contribution_analysis. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.perform_permutation_test_c.restype = None
 _lib.perform_permutation_test_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    nullable(ctypes.POINTER(ctypes.c_int)),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _nullable(_ctypes.POINTER(_ctypes.c_int)),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -45,15 +45,15 @@ _PERFORM_PERMUTATION_TEST_ARGUMENT_SOURCES = (None, "trajectories", "trajectorie
 
 _lib.compute_p_values_c.restype = None
 _lib.compute_p_values_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -63,13 +63,13 @@ _COMPUTE_P_VALUES_ARGUMENT_SOURCES = (None, None, None, None, "local_contributio
 
 _lib.compute_contributions_c.restype = None
 _lib.compute_contributions_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -79,18 +79,18 @@ _COMPUTE_CONTRIBUTIONS_ARGUMENT_SOURCES = (None, None, "factor", None, None, Non
 
 _lib.compute_all_contributions_c.restype = None
 _lib.compute_all_contributions_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=4, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=4, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -100,13 +100,13 @@ _COMPUTE_ALL_CONTRIBUTIONS_ARGUMENT_SOURCES = (None, "trajectories", "trajectori
 
 _lib.compute_baselines_factor_dependent_c.restype = None
 _lib.compute_baselines_factor_dependent_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -116,10 +116,10 @@ _COMPUTE_BASELINES_FACTOR_DEPENDENT_ARGUMENT_SOURCES = ("factor", None, None, No
 
 _lib.compute_velocity_trajectory_c.restype = None
 _lib.compute_velocity_trajectory_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -129,10 +129,10 @@ _COMPUTE_VELOCITY_TRAJECTORY_ARGUMENT_SOURCES = (None, None, "trajectory", None,
 
 _lib.compute_acceleration_from_velocity_trajectory_c.restype = None
 _lib.compute_acceleration_from_velocity_trajectory_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -140,12 +140,12 @@ _COMPUTE_ACCELERATION_FROM_VELOCITY_TRAJECTORY_ARGUMENTS = ("velocity", "acceler
 
 _lib.compute_velocity_trajectories_c.restype = None
 _lib.compute_velocity_trajectories_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -155,12 +155,12 @@ _COMPUTE_VELOCITY_TRAJECTORIES_ARGUMENT_SOURCES = (None, None, "trajectories", "
 
 _lib.compute_acceleration_from_velocity_c.restype = None
 _lib.compute_acceleration_from_velocity_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -170,16 +170,16 @@ _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENT_SOURCES = (None, None, "velocity", 
 
 _lib.compute_velocity_acceleration_contributions_c.restype = None
 _lib.compute_velocity_acceleration_contributions_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=4, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=4, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=4, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=4, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -244,12 +244,12 @@ def perform_permutation_test(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        trajectories = np.asfortranarray(trajectories, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'trajectories' must be an array of np.float64: {error}") from None
+        trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'trajectories' must be an array of np.float64: {_error}") from None
     if trajectories.ndim != 3:
         raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
-    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
+    baseline_mode = _np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]
@@ -257,27 +257,27 @@ def perform_permutation_test(
     n_timepoints = trajectories.shape[2]
 
     # outputs and work arrays, which the caller never sees
-    local_contributions = np.empty((n_timepoints, n_permutations,), dtype=np.float64, order='F')
-    total_contributions = np.empty((n_permutations,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    local_contributions = _np.empty((n_timepoints, n_permutations,), dtype=_np.float64, order='F')
+    total_contributions = _np.empty((n_permutations,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.perform_permutation_test_c(
         trajectories,
-        ctypes.byref(ctypes.c_int(n_factors)),
-        ctypes.byref(ctypes.c_int(n_samples)),
-        ctypes.byref(ctypes.c_int(n_timepoints)),
-        ctypes.byref(ctypes.c_int(factor_idx)),
-        ctypes.byref(ctypes.c_int(dependent_idx)),
-        ctypes.byref(ctypes.c_int(sample_idx)),
+        _ctypes.byref(_ctypes.c_int(n_factors)),
+        _ctypes.byref(_ctypes.c_int(n_samples)),
+        _ctypes.byref(_ctypes.c_int(n_timepoints)),
+        _ctypes.byref(_ctypes.c_int(factor_idx)),
+        _ctypes.byref(_ctypes.c_int(dependent_idx)),
+        _ctypes.byref(_ctypes.c_int(sample_idx)),
         baseline_mode,
-        ctypes.byref(ctypes.c_int(n_permutations)),
+        _ctypes.byref(_ctypes.c_int(n_permutations)),
         local_contributions,
         total_contributions,
-        None if random_seed is None else ctypes.byref(ctypes.c_int(random_seed)),
-        ctypes.byref(ierr),
+        None if random_seed is None else _ctypes.byref(_ctypes.c_int(random_seed)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _PERFORM_PERMUTATION_TEST_ARGUMENTS, _PERFORM_PERMUTATION_TEST_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _PERFORM_PERMUTATION_TEST_ARGUMENTS, _PERFORM_PERMUTATION_TEST_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     local_contributions.flags.writeable = False
@@ -333,21 +333,21 @@ def compute_p_values(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        local_contributions_observed = np.ascontiguousarray(local_contributions_observed, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'local_contributions_observed' must be an array of np.float64: {error}") from None
+        local_contributions_observed = _np.ascontiguousarray(local_contributions_observed, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'local_contributions_observed' must be an array of np.float64: {_error}") from None
     if local_contributions_observed.ndim != 1:
         raise ValueError(f"'local_contributions_observed' must have 1 dimension, but has {local_contributions_observed.ndim}")
     try:
-        local_contributions_perm_test = np.asfortranarray(local_contributions_perm_test, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'local_contributions_perm_test' must be an array of np.float64: {error}") from None
+        local_contributions_perm_test = _np.asfortranarray(local_contributions_perm_test, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'local_contributions_perm_test' must be an array of np.float64: {_error}") from None
     if local_contributions_perm_test.ndim != 2:
         raise ValueError(f"'local_contributions_perm_test' must have 2 dimensions, but has {local_contributions_perm_test.ndim}")
     try:
-        total_contributions_perm_test = np.ascontiguousarray(total_contributions_perm_test, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'total_contributions_perm_test' must be an array of np.float64: {error}") from None
+        total_contributions_perm_test = _np.ascontiguousarray(total_contributions_perm_test, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'total_contributions_perm_test' must be an array of np.float64: {_error}") from None
     if total_contributions_perm_test.ndim != 1:
         raise ValueError(f"'total_contributions_perm_test' must have 1 dimension, but has {total_contributions_perm_test.ndim}")
 
@@ -366,23 +366,23 @@ def compute_p_values(
         )
 
     # outputs and work arrays, which the caller never sees
-    local_p_values = np.empty((n_timepoints,), dtype=np.float64, order='C')
-    total_p_value = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    local_p_values = _np.empty((n_timepoints,), dtype=_np.float64, order='C')
+    total_p_value = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_p_values_c(
         local_contributions_observed,
-        ctypes.byref(ctypes.c_double(total_contribution_observed)),
+        _ctypes.byref(_ctypes.c_double(total_contribution_observed)),
         local_contributions_perm_test,
         total_contributions_perm_test,
-        ctypes.byref(ctypes.c_int(n_timepoints)),
-        ctypes.byref(ctypes.c_int(n_permutations)),
+        _ctypes.byref(_ctypes.c_int(n_timepoints)),
+        _ctypes.byref(_ctypes.c_int(n_permutations)),
         local_p_values,
-        ctypes.byref(total_p_value),
-        ctypes.byref(ierr),
+        _ctypes.byref(total_p_value),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_P_VALUES_ARGUMENTS, _COMPUTE_P_VALUES_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_P_VALUES_ARGUMENTS, _COMPUTE_P_VALUES_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     local_p_values.flags.writeable = False
@@ -430,18 +430,18 @@ def compute_contributions(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        factor = np.ascontiguousarray(factor, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'factor' must be an array of np.float64: {error}") from None
+        factor = _np.ascontiguousarray(factor, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'factor' must be an array of np.float64: {_error}") from None
     if factor.ndim != 1:
         raise ValueError(f"'factor' must have 1 dimension, but has {factor.ndim}")
     try:
-        dependent = np.ascontiguousarray(dependent, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'dependent' must be an array of np.float64: {error}") from None
+        dependent = _np.ascontiguousarray(dependent, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'dependent' must be an array of np.float64: {_error}") from None
     if dependent.ndim != 1:
         raise ValueError(f"'dependent' must have 1 dimension, but has {dependent.ndim}")
-    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
+    baseline_mode = _np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
     n_dims = factor.shape[0]
@@ -453,21 +453,21 @@ def compute_contributions(
         )
 
     # outputs and work arrays, which the caller never sees
-    local_contributions = np.empty((n_dims,), dtype=np.float64, order='C')
-    total_contribution = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    local_contributions = _np.empty((n_dims,), dtype=_np.float64, order='C')
+    total_contribution = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_contributions_c(
         factor,
         dependent,
-        ctypes.byref(ctypes.c_int(n_dims)),
+        _ctypes.byref(_ctypes.c_int(n_dims)),
         baseline_mode,
         local_contributions,
-        ctypes.byref(total_contribution),
-        ctypes.byref(ierr),
+        _ctypes.byref(total_contribution),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_CONTRIBUTIONS_ARGUMENTS, _COMPUTE_CONTRIBUTIONS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_CONTRIBUTIONS_ARGUMENTS, _COMPUTE_CONTRIBUTIONS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     local_contributions.flags.writeable = False
@@ -523,24 +523,24 @@ def compute_all_contributions(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        trajectories = np.asfortranarray(trajectories, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'trajectories' must be an array of np.float64: {error}") from None
+        trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'trajectories' must be an array of np.float64: {_error}") from None
     if trajectories.ndim != 3:
         raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
     try:
-        factor_indices = np.ascontiguousarray(factor_indices, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'factor_indices' must be an array of np.int32: {error}") from None
+        factor_indices = _np.ascontiguousarray(factor_indices, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'factor_indices' must be an array of np.int32: {_error}") from None
     if factor_indices.ndim != 1:
         raise ValueError(f"'factor_indices' must have 1 dimension, but has {factor_indices.ndim}")
     try:
-        dependent_indices = np.ascontiguousarray(dependent_indices, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'dependent_indices' must be an array of np.int32: {error}") from None
+        dependent_indices = _np.ascontiguousarray(dependent_indices, dtype=_np.int32)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'dependent_indices' must be an array of np.int32: {_error}") from None
     if dependent_indices.ndim != 1:
         raise ValueError(f"'dependent_indices' must have 1 dimension, but has {dependent_indices.ndim}")
-    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
+    baseline_mode = _np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]
@@ -550,26 +550,26 @@ def compute_all_contributions(
     n_selected_dependents = dependent_indices.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    local_contributions = np.empty((n_timepoints, n_selected_factors, n_selected_dependents, n_samples,), dtype=np.float64, order='F')
-    total_contributions = np.empty((n_selected_factors, n_selected_dependents, n_samples,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    local_contributions = _np.empty((n_timepoints, n_selected_factors, n_selected_dependents, n_samples,), dtype=_np.float64, order='F')
+    total_contributions = _np.empty((n_selected_factors, n_selected_dependents, n_samples,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_all_contributions_c(
         trajectories,
-        ctypes.byref(ctypes.c_int(n_factors)),
-        ctypes.byref(ctypes.c_int(n_samples)),
-        ctypes.byref(ctypes.c_int(n_timepoints)),
+        _ctypes.byref(_ctypes.c_int(n_factors)),
+        _ctypes.byref(_ctypes.c_int(n_samples)),
+        _ctypes.byref(_ctypes.c_int(n_timepoints)),
         factor_indices,
-        ctypes.byref(ctypes.c_int(n_selected_factors)),
+        _ctypes.byref(_ctypes.c_int(n_selected_factors)),
         dependent_indices,
-        ctypes.byref(ctypes.c_int(n_selected_dependents)),
+        _ctypes.byref(_ctypes.c_int(n_selected_dependents)),
         baseline_mode,
         local_contributions,
         total_contributions,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_ALL_CONTRIBUTIONS_ARGUMENTS, _COMPUTE_ALL_CONTRIBUTIONS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_ALL_CONTRIBUTIONS_ARGUMENTS, _COMPUTE_ALL_CONTRIBUTIONS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     local_contributions.flags.writeable = False
@@ -617,18 +617,18 @@ def compute_baselines_factor_dependent(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        factor = np.ascontiguousarray(factor, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'factor' must be an array of np.float64: {error}") from None
+        factor = _np.ascontiguousarray(factor, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'factor' must be an array of np.float64: {_error}") from None
     if factor.ndim != 1:
         raise ValueError(f"'factor' must have 1 dimension, but has {factor.ndim}")
     try:
-        dependent = np.ascontiguousarray(dependent, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'dependent' must be an array of np.float64: {error}") from None
+        dependent = _np.ascontiguousarray(dependent, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'dependent' must be an array of np.float64: {_error}") from None
     if dependent.ndim != 1:
         raise ValueError(f"'dependent' must have 1 dimension, but has {dependent.ndim}")
-    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
+    baseline_mode = _np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
     n_timepoints = factor.shape[0]
@@ -640,21 +640,21 @@ def compute_baselines_factor_dependent(
         )
 
     # outputs and work arrays, which the caller never sees
-    factor_baseline = ctypes.c_double(0)
-    dependent_baseline = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    factor_baseline = _ctypes.c_double(0)
+    dependent_baseline = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_baselines_factor_dependent_c(
-        ctypes.byref(ctypes.c_int(n_timepoints)),
+        _ctypes.byref(_ctypes.c_int(n_timepoints)),
         factor,
         dependent,
         baseline_mode,
-        ctypes.byref(factor_baseline),
-        ctypes.byref(dependent_baseline),
-        ctypes.byref(ierr),
+        _ctypes.byref(factor_baseline),
+        _ctypes.byref(dependent_baseline),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_BASELINES_FACTOR_DEPENDENT_ARGUMENTS, _COMPUTE_BASELINES_FACTOR_DEPENDENT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_BASELINES_FACTOR_DEPENDENT_ARGUMENTS, _COMPUTE_BASELINES_FACTOR_DEPENDENT_ARGUMENT_SOURCES)
 
     return {
         "factor_baseline": factor_baseline.value,
@@ -689,9 +689,9 @@ def compute_velocity_trajectory(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        trajectory = np.ascontiguousarray(trajectory, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'trajectory' must be an array of np.float64: {error}") from None
+        trajectory = _np.ascontiguousarray(trajectory, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'trajectory' must be an array of np.float64: {_error}") from None
     if trajectory.ndim != 1:
         raise ValueError(f"'trajectory' must have 1 dimension, but has {trajectory.ndim}")
 
@@ -699,17 +699,17 @@ def compute_velocity_trajectory(
     n_timepoints = trajectory.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    velocity = np.empty((max(0, n_timepoints - 1),), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    velocity = _np.empty((max(0, n_timepoints - 1),), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_velocity_trajectory_c(
         trajectory,
         velocity,
-        ctypes.byref(ctypes.c_int(n_timepoints)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_timepoints)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_VELOCITY_TRAJECTORY_ARGUMENTS, _COMPUTE_VELOCITY_TRAJECTORY_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_VELOCITY_TRAJECTORY_ARGUMENTS, _COMPUTE_VELOCITY_TRAJECTORY_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     velocity.flags.writeable = False
@@ -747,24 +747,24 @@ def compute_acceleration_from_velocity_trajectory(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        velocity = np.ascontiguousarray(velocity, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'velocity' must be an array of np.float64: {error}") from None
+        velocity = _np.ascontiguousarray(velocity, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'velocity' must be an array of np.float64: {_error}") from None
     if velocity.ndim != 1:
         raise ValueError(f"'velocity' must have 1 dimension, but has {velocity.ndim}")
 
     # outputs and work arrays, which the caller never sees
-    acceleration = np.empty((max(0, n_timepoints - 2),), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    acceleration = _np.empty((max(0, n_timepoints - 2),), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_acceleration_from_velocity_trajectory_c(
         velocity,
         acceleration,
-        ctypes.byref(ctypes.c_int(n_timepoints)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_timepoints)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_ACCELERATION_FROM_VELOCITY_TRAJECTORY_ARGUMENTS)
+    _check_err_code(ierr.value, _COMPUTE_ACCELERATION_FROM_VELOCITY_TRAJECTORY_ARGUMENTS)
 
     # a result is a value: modify a copy, not this
     acceleration.flags.writeable = False
@@ -799,9 +799,9 @@ def compute_velocity_trajectories(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        trajectories = np.asfortranarray(trajectories, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'trajectories' must be an array of np.float64: {error}") from None
+        trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'trajectories' must be an array of np.float64: {_error}") from None
     if trajectories.ndim != 3:
         raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
 
@@ -811,19 +811,19 @@ def compute_velocity_trajectories(
     n_timepoints = trajectories.shape[2]
 
     # outputs and work arrays, which the caller never sees
-    velocity = np.empty((max(0, n_timepoints - 1), n_factors, n_samples,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    velocity = _np.empty((max(0, n_timepoints - 1), n_factors, n_samples,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_velocity_trajectories_c(
         trajectories,
         velocity,
-        ctypes.byref(ctypes.c_int(n_factors)),
-        ctypes.byref(ctypes.c_int(n_samples)),
-        ctypes.byref(ctypes.c_int(n_timepoints)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_factors)),
+        _ctypes.byref(_ctypes.c_int(n_samples)),
+        _ctypes.byref(_ctypes.c_int(n_timepoints)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_VELOCITY_TRAJECTORIES_ARGUMENTS, _COMPUTE_VELOCITY_TRAJECTORIES_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_VELOCITY_TRAJECTORIES_ARGUMENTS, _COMPUTE_VELOCITY_TRAJECTORIES_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     velocity.flags.writeable = False
@@ -861,9 +861,9 @@ def compute_acceleration_from_velocity(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        velocity = np.asfortranarray(velocity, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'velocity' must be an array of np.float64: {error}") from None
+        velocity = _np.asfortranarray(velocity, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'velocity' must be an array of np.float64: {_error}") from None
     if velocity.ndim != 3:
         raise ValueError(f"'velocity' must have 3 dimensions, but has {velocity.ndim}")
 
@@ -872,19 +872,19 @@ def compute_acceleration_from_velocity(
     n_samples = velocity.shape[2]
 
     # outputs and work arrays, which the caller never sees
-    acceleration = np.empty((max(0, n_timepoints - 2), n_factors, n_samples,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    acceleration = _np.empty((max(0, n_timepoints - 2), n_factors, n_samples,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_acceleration_from_velocity_c(
         velocity,
         acceleration,
-        ctypes.byref(ctypes.c_int(n_factors)),
-        ctypes.byref(ctypes.c_int(n_samples)),
-        ctypes.byref(ctypes.c_int(n_timepoints)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_factors)),
+        _ctypes.byref(_ctypes.c_int(n_samples)),
+        _ctypes.byref(_ctypes.c_int(n_timepoints)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENTS, _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENTS, _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     acceleration.flags.writeable = False
@@ -944,12 +944,12 @@ def compute_velocity_acceleration_contributions(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        trajectories = np.asfortranarray(trajectories, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'trajectories' must be an array of np.float64: {error}") from None
+        trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'trajectories' must be an array of np.float64: {_error}") from None
     if trajectories.ndim != 3:
         raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
-    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
+    baseline_mode = _np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]
@@ -957,26 +957,26 @@ def compute_velocity_acceleration_contributions(
     n_timepoints = trajectories.shape[2]
 
     # outputs and work arrays, which the caller never sees
-    contrib_velocity = np.empty((n_factors, n_factors, n_samples,), dtype=np.float64, order='F')
-    velocity_contribution_series = np.empty((n_timepoints, n_factors, n_factors, n_samples,), dtype=np.float64, order='F')
-    contrib_acceleration = np.empty((n_factors, n_factors, n_samples,), dtype=np.float64, order='F')
-    acceleration_contribution_series = np.empty((n_timepoints, n_factors, n_factors, n_samples,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    contrib_velocity = _np.empty((n_factors, n_factors, n_samples,), dtype=_np.float64, order='F')
+    velocity_contribution_series = _np.empty((n_timepoints, n_factors, n_factors, n_samples,), dtype=_np.float64, order='F')
+    contrib_acceleration = _np.empty((n_factors, n_factors, n_samples,), dtype=_np.float64, order='F')
+    acceleration_contribution_series = _np.empty((n_timepoints, n_factors, n_factors, n_samples,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_velocity_acceleration_contributions_c(
         trajectories,
-        ctypes.byref(ctypes.c_int(n_factors)),
-        ctypes.byref(ctypes.c_int(n_samples)),
-        ctypes.byref(ctypes.c_int(n_timepoints)),
+        _ctypes.byref(_ctypes.c_int(n_factors)),
+        _ctypes.byref(_ctypes.c_int(n_samples)),
+        _ctypes.byref(_ctypes.c_int(n_timepoints)),
         baseline_mode,
         contrib_velocity,
         velocity_contribution_series,
         contrib_acceleration,
         acceleration_contribution_series,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_ARGUMENTS, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_ARGUMENTS, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     contrib_velocity.flags.writeable = False

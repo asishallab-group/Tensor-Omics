@@ -36,11 +36,11 @@ def python_type_of(argument: CArgument) -> str:
     if argument.is_scalar:
         return scalar
 
-    from .python_ctypes import dtype_of
+    from .python_ctypes import dtype_label
 
     shape = ", ".join(argument.dimension.extents)
     order = ", column-major (order='F')" if argument.rank > 1 else ""
-    return _render(f"np.ndarray[{dtype_of(argument)}] of shape ({shape},){order}", "python")
+    return _render(f"np.ndarray[{dtype_label(argument)}] of shape ({shape},){order}", "python")
 
 
 def render_docstring(wrapper: CWrapper, emitter=None) -> str:

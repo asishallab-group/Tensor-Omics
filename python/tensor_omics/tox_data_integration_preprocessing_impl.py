@@ -12,25 +12,25 @@ conditioned on expression level rather than pooled across it.
 Python binding, generated from tox_data_integration_preprocessing_impl. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from .error_handling import check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.calc_neighborhood_size_c.restype = None
 _lib.calc_neighborhood_size_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -79,9 +79,9 @@ def calc_neighborhood_size(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        mean_S = np.ascontiguousarray(mean_S, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'mean_S' must be an array of np.float64: {error}") from None
+        mean_S = _np.ascontiguousarray(mean_S, dtype=_np.float64)
+    except (TypeError, ValueError) as _error:
+        raise TypeError(f"'mean_S' must be an array of np.float64: {_error}") from None
     if mean_S.ndim != 1:
         raise ValueError(f"'mean_S' must have 1 dimension, but has {mean_S.ndim}")
 
@@ -89,19 +89,19 @@ def calc_neighborhood_size(
     n_genes_S = mean_S.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    n_neighbors = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    n_neighbors = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.calc_neighborhood_size_c(
-        ctypes.byref(ctypes.c_int(n_pool)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_int(n_genes_S)),
+        _ctypes.byref(_ctypes.c_int(n_pool)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_genes_S)),
         mean_S,
-        ctypes.byref(ctypes.c_int(desired_size)),
-        ctypes.byref(n_neighbors),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(desired_size)),
+        _ctypes.byref(n_neighbors),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_NEIGHBORHOOD_SIZE_ARGUMENTS, _CALC_NEIGHBORHOOD_SIZE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CALC_NEIGHBORHOOD_SIZE_ARGUMENTS, _CALC_NEIGHBORHOOD_SIZE_ARGUMENT_SOURCES)
 
     return n_neighbors.value

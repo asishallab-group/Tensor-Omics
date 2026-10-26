@@ -183,3 +183,19 @@ class TestTheRestOfTheFixture:
         out = run_r(built, "cat(sum_values(c(1, 2, 4)), note_value(2.5))")
 
         assert out == ["7", "2.5"]
+
+
+class TestAPrologueBesideAnOwnIerr:
+    """#221 B2: the prologue's own `fraction` comes before the implementation's own `ierr`.
+
+    It used to be appended after it, so `fx_clip_c` took `..., ierr, fraction` and the
+    languages, which pass by position into C, would have handed one for the other.
+    """
+
+    def test_python_clips_at_the_level_the_prologue_derives(self, built):
+        out = run_python(built, "print(json.dumps(list(tox.fx_clip([1.0, 2.0, 4.0], 0.5))))")
+
+        assert out == [1.0, 2.0, 2.0]
+
+    def test_r_clips_at_the_level_the_prologue_derives(self, built):
+        assert run_r(built, "cat(fx_clip(c(1, 2, 4), 0.5))") == ["1", "2", "2"]
