@@ -521,3 +521,35 @@ class TestDefaultsAndMappingsThatCannotBeBuilt:
         build_wrapper(procedure, bag)
 
         assert "has no known C counterpart" in bag.errors[0].message
+
+
+class TestDefaultsAreFortranValues:
+    """The default the bindings pass is the value a Fortran caller gets (issue #221, B9)."""
+
+    def _default_of(self, bag, expression, kind="int32", base=b.integer):
+        from codegen.ir.directives import Default, Directives
+
+        procedure = b.procedure(
+            "p",
+            base("x", Intent.IN, kind=kind, directives=Directives(default=Default(expression)),
+                 optional=True),
+            b.ierr(),
+        )
+        return wrap(procedure, bag).argument("x").default
+
+    def test_nint_rounds_half_away_from_zero(self, bag):
+        assert self._default_of(bag, "nint(2.5_real64)") == 3
+
+    def test_a_kinded_logical_default_evaluates(self, bag):
+        assert self._default_of(bag, ".true._c_bool", kind="c_bool", base=b.logical) is True
+
+    def test_a_default_that_does_not_fit_the_argument_s_kind_is_reported(self, bag):
+        # ctypes.c_int(3000000000) would wrap it to a negative number
+        self._default_of(bag, "3000000000_int64")
+
+        assert "does not fit its kind, integer(int32)" in bag.errors[0].message
+        assert "'x'" in bag.errors[0].message
+
+    def test_a_default_that_fits_a_wide_kind_is_kept(self, bag):
+        assert self._default_of(bag, "3000000000_int64", kind="int64") == 3000000000
+        assert bag.errors == ()

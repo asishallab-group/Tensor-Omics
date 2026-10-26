@@ -477,6 +477,12 @@ M_DEFAULT_VAL(span, actual_span, CM_FAMILY_SPAN_DEFAULT)
 **You get** an optional that Python and R expose *with the real default in the signature and in
 the docs*, evaluated: `CM_FAMILY_SPAN_DEFAULT` reaches a Python caller as `0.7`.
 
+It is evaluated the way the compiler would, so a caller in any language gets the value a Fortran
+caller does: integers keep their kind and may not overflow it, `7 / 2` is 3 and `2**-1` is 0,
+`nint(2.5)` is 3, and a kinded literal such as `.true._c_bool` or `300_int64` is read with its
+kind. The value must fit the argument's kind — `DM_DEFAULT(3000000000_int64)` on an
+`integer(int32)` is refused rather than wrapped.
+
 > **Never pass an optional dummy straight into a mandatory dummy of something you call.** That
 > is a null dereference when it is absent, and it is exactly how `loess_fit_robust_impl`
 > segfaulted. Resolve it with `M_DEFAULT_VAL` first and pass the local.
@@ -1171,6 +1177,7 @@ source and carries a note saying what to write instead.
 | a missing `intent` | constness and direction are undecidable |
 | a kind with no C mapping | an error, never a guess — a wrong guess compiles and lies |
 | an optional shape or extent argument | the wrapper must read it before it may take `c_loc` of what it sizes |
+| a `DM_DEFAULT` that is not a constant the compiler would accept, or that does not fit its argument's kind | Python and R pass the evaluated value, so it has to be the one a Fortran caller gets (Section 5.5) |
 | a `tmp_` argument that is `intent(in)` | a work array is an output or an in-out |
 | an **optional output** (`intent(out), optional`, and not a `tmp_`) | no binding can honour it — Python would return a dict whose keys vary per call, R a list of varying length. Express it as an optional input *flag* plus a `tmp_` work array, the way `loess_fit_plain_impl` does with `compute_influence`: the work stays skippable and the return type stays fixed |
 | `DM_DEFAULT` **and** `DM_REQUIRED_IF_MODE` on a mode that does *not* split | with a runtime mode the argument is always passed on, so "required in that mode" says nothing. On a split mode (Section 5.11) the pair is meaningful and accepted |

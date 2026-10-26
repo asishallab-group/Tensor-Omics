@@ -268,6 +268,18 @@ one place and out of the wrapper.
 The default must therefore be a **constant expression**, evaluable at generation time. It
 is evaluated once, in the ABI layer, so Python and R cannot disagree about it.
 
+It is evaluated with **Fortran's arithmetic**, because the value a binding passes has to be the
+one a Fortran caller gets when it omits the argument. Python's arithmetic differs in exactly the
+places a default reaches (#221, B9): `round` rounds a half to even (`nint(2.5)` gave 2, Fortran
+3), `**` with a negative exponent gives a float (`2**-1` gave 0.5, Fortran's integer result is
+0), `int(a / b)` goes through a float and loses integers above 2^53, a negative base raised to a
+real power gives a complex number where Fortran refuses, and an unbounded `int` never
+overflows. So every integer carries its kind (`constants.Integer`), overflowing it is an error,
+division and `mod` truncate exactly, and `nint` compares the exact distance to the floor with a
+half rather than computing `floor(x + 0.5)` -- whose addition rounds `0.49999999999999994` to 1.
+The evaluated default must also fit the argument's own kind: `ctypes.c_int` wraps an
+out-of-range value silently, so a default of 3000000000 on an `integer(int32)` is refused.
+
 ---
 
 ## Decision: R keeps a hand-generated wrapper over the C `.Call`

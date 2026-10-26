@@ -389,3 +389,13 @@ class TestErrors:
 
     def test_a_successful_call_returns_no_error_code(self, tox, np):
         assert tox.fx_normalize(np.array([3.0, 4.0])) is None
+
+
+class TestKindedDefaults:
+    """A default written with its kind, as the guide asks (issue #221, G-R7)."""
+
+    def test_a_kinded_logical_default_is_passed(self, tox):
+        # DM_DEFAULT(.true._c_bool) could not be evaluated at all
+        assert inspect.signature(tox.fx_kinded_default).parameters["negate"].default is True
+        assert tox.fx_kinded_default(2.0) == pytest.approx(-2.0)
+        assert tox.fx_kinded_default(2.0, negate=False) == pytest.approx(2.0)

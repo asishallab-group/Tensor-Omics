@@ -22,10 +22,10 @@ from typing import ClassVar, Iterator, Sequence
 
 from ..config import CONVENTIONS, Conventions
 from ..diagnostics import SourceLocation
-from .constants import ConstantError, ConstantEvaluator
+from .constants import ConstantError, ConstantEvaluator, Integer, integer_kind_value
 from .directives import Directives
 from .doc import Doc
-from .types import Dimension, FortranType, Intent
+from .types import BaseType, Dimension, FortranType, Intent
 
 
 class Entity:
@@ -383,9 +383,19 @@ class Project(Entity):
         Parameters whose value is not a constant expression are skipped rather than
         reported: most of them are of no interest to any default, and a default that does
         refer to one fails with a message naming that default instead.
+
+        An integer keeps the kind it is declared with (`constants.Integer`), so an
+        expression using it is computed, and checked for overflow, in that kind. A value
+        that does not fit its declared kind is not a constant Fortran would compile, and is
+        skipped like any other.
         """
         evaluator = evaluator or ConstantEvaluator()
         resolved: dict[str, object] = {}
+        declared_kinds = {
+            p.name: integer_kind_value(p.type.kind)
+            for p in self.parameters
+            if p.type is not None and p.type.base is BaseType.INTEGER
+        }
 
         # Repeat until nothing new resolves, so a parameter defined in terms of another
         # is picked up regardless of the order modules were parsed in.
@@ -394,7 +404,11 @@ class Project(Entity):
             progressed = False
             for name, expression in list(remaining.items()):
                 try:
-                    value = ConstantEvaluator(resolved, evaluator.intrinsics).evaluate(expression)
+                    value = ConstantEvaluator(
+                        resolved, evaluator.intrinsics
+                    ).evaluate_with_kind(expression)
+                    if isinstance(value, Integer) and declared_kinds.get(name):
+                        value = Integer(value, declared_kinds[name])
                 except ConstantError:
                     continue
                 resolved[name] = value

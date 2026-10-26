@@ -300,6 +300,27 @@ contains
     end subroutine fx_nullable
 
     !> M_EXPORT_C
+    !| summary: A logical default written with its kind, as a `c_bool` literal needs
+    !| author: A Developer
+    subroutine fx_kinded_default(value, negate, signed_value, ierr)
+        real(real64), intent(in) :: value
+            !! the value
+        logical(c_bool), intent(in), optional :: negate
+            !! whether to negate `value`
+            !! DM_DEFAULT(.true._c_bool)
+        real(real64), intent(out) :: signed_value
+            !! `value`, negated when `negate` is true
+        integer(int32), intent(out) :: ierr
+            !! Error code
+        logical(c_bool) :: actual_negate
+        call set_ok(ierr)
+        actual_negate = .true._c_bool
+        if (present(negate)) actual_negate = negate
+        signed_value = value
+        if (actual_negate) signed_value = -value
+    end subroutine fx_kinded_default
+
+    !> M_EXPORT_C
     !| summary: A procedure that reports no errors of its own
     !| author: A Developer
     pure subroutine fx_no_ierr(value, doubled)

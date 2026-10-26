@@ -287,6 +287,16 @@ The parts a source author does not need, and a generator maintainer does:
   identity — it was not until 2026-08-12, when it translated a hand-written `foo` / `foo_alloc`
   pair into the published `foo` / `foo_expert`. f42 wrote the last of those, and the rule went
   with them: renaming a procedure behind its author's back needs a live customer.
+- **A default is the value a Fortran caller gets** (`ir/constants.py`). The bindings pass the
+  evaluated `DM_DEFAULT`, so it is evaluated with Fortran's arithmetic, not Python's: every
+  integer carries its kind (`constants.Integer`; a literal without one is default, kind 4) and
+  overflowing that kind is an error, as it is for the compiler; integer `/` and `mod` truncate
+  toward zero without going through a float (`9007199254740993_int64 / 1` is exact); an integer
+  to a negative power is an integer (`2**-1` is 0); `nint`/`anint` round a half away from zero,
+  and not as `floor(x + 0.5)`, whose addition rounds `0.49999999999999994` up; a negative real
+  to a real power, a complex result and an infinite real are errors. Module parameters keep the
+  kind they are declared with (`Project.constant_values`), and a kinded logical
+  (`.true._c_bool`, as the guide asks for) evaluates like a plain one.
 - **A mode crosses as a string.** The binding languages pass the parameter name without its
   prefix, lower-cased (`METHOD_WARD` → `"ward"`), and the C wrapper maps it back to the integer,
   rejecting an unknown one before Fortran is entered. The Fortran wrapper separately checks
@@ -341,6 +351,9 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
 - an **optional shape or extent argument** — the wrapper must read it before `c_loc`
 - an **optional output** — no binding can honour it; use an optional input flag plus a `tmp_`
   work array
+- a **`DM_DEFAULT` that does not fit its argument's kind** (`3000000000_int64` on an
+  `integer(int32)`), or that is not a constant Fortran would accept (an overflowing integer, a
+  negative real raised to a real power) — the bindings would pass a value no Fortran caller can
 
 An implementation module is checked separately, because its procedures are read rather than
 exported and so are reached by none of the above. These rules follow the `_impl` suffix

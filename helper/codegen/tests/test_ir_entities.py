@@ -302,6 +302,28 @@ class TestConstantValues:
 
         assert project.constant_values() == {}
 
+    def test_a_parameter_is_evaluated_in_its_declared_kind(self):
+        # `BIG * 2` is computed in BIG's int64, so it does not overflow
+        project = b.project(
+            b.module(
+                "m",
+                parameters=(
+                    b.parameter("BIG", "2_int64**40", kind="int64"),
+                    b.parameter("TWICE", "BIG * 2", kind="int64"),
+                ),
+            )
+        )
+
+        assert project.constant_values()["TWICE"] == 2**41
+
+    def test_a_value_that_does_not_fit_its_declared_kind_is_skipped(self):
+        # Fortran would not compile `integer(int32), parameter :: TOO_BIG = 3000000000_int64`
+        project = b.project(
+            b.module("m", parameters=(b.parameter("TOO_BIG", "3000000000_int64"),))
+        )
+
+        assert project.constant_values() == {}
+
     def test_the_values_feed_the_default_evaluator(self):
         # the point of collecting them: DM_DEFAULT(PI) has to resolve
         project = b.project(

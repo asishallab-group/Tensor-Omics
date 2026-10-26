@@ -342,3 +342,11 @@ class TestPythonCanLoadTheBundledLibrary:
         import ctypes
         lib = ctypes.CDLL(str(built / "libfixtures.so"))   # default mode == eager
         assert hasattr(lib, "fx_normalize_c")   # a Fortran C-ABI symbol is callable
+
+
+class TestKindedDefaults:
+    """A default written with its kind, as the guide asks (issue #221, G-R7)."""
+
+    def test_a_kinded_logical_default_is_passed(self, built):
+        out = run_r(built, 'cat(fx_kinded_default(2), fx_kinded_default(2, negate = FALSE))')
+        assert out.split() == ["-2", "2"]

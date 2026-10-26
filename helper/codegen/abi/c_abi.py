@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from ..config import CONVENTIONS, Conventions
 from ..diagnostics import DiagnosticBag
-from ..ir.constants import ConstantError, ConstantEvaluator
+from ..ir.constants import ConstantError, ConstantEvaluator, fits_integer_kind, integer_kind_value
 from ..ir.doc import Doc
 from ..ir.entities import Argument, Module, Procedure, Project
 from ..ir.types import BaseType, CharacterLength, Dimension, FortranType, Intent
@@ -287,6 +287,21 @@ class _Builder:
                 note=(
                     "a default must be evaluable at generation time, because Python and "
                     "R pass it when the argument is omitted"
+                ),
+            )
+            return None
+
+        kind = integer_kind_value(argument.type.kind)
+        if (argument.type.base is BaseType.INTEGER and kind is not None
+                and isinstance(value, int) and not isinstance(value, bool)
+                and not fits_integer_kind(value, kind)):
+            self.diagnostics.error(
+                f"the default of '{argument.name}' ({value}) does not fit its kind, "
+                f"{argument.type}",
+                entity=argument,
+                note=(
+                    "Python and R would pass a value no Fortran caller can, wrapped to "
+                    "the kind's range"
                 ),
             )
             return None
