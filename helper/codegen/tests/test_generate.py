@@ -14,7 +14,7 @@ from codegen import cli
 from codegen.config import CONVENTIONS, Paths
 from codegen.diagnostics import DiagnosticBag
 from codegen.frontend.ford_frontend import FordFrontend
-from codegen.generate import generate, generate_and_write
+from codegen.generate import GeneratedFile, Result, files_to_remove, generate, generate_and_write
 
 from conftest import REPO_ROOT
 
@@ -170,6 +170,25 @@ class TestCli:
         assert cli.main(common) == 0
 
         assert cli.main(common + ["--check"]) == 0
+
+    def test_check_reports_an_orphan(self, isolated_repo, capsys):
+        # #221: a committed orphan is the file a clean run deletes and a checkout built
+        # without regenerating compiles, so `--check` must not call that tree up to date
+        common = ["--root", str(isolated_repo), "--src", str(REAL_SRC), "--target", "python"]
+        assert cli.main(common) == 0
+        package = isolated_repo / "python" / "tensor_omics"
+        (package / "was_exported_once.py").write_text("# a module nothing generates any more")
+        (package / "__pycache__").mkdir(exist_ok=True)
+        (package / "__pycache__" / "cache.cpython-314.pyc").write_bytes(b"")
+        capsys.readouterr()
+
+        assert cli.main(common + ["--check", "--no-color"]) == 1
+
+        err = capsys.readouterr().err
+        assert "1 file(s) would be removed:" in err
+        assert "was_exported_once.py" in err
+        assert "__pycache__" not in err
+        assert "would change" not in err
 
     def test_a_run_that_errors_exits_non_zero(self, isolated_repo, capsys):
         # the fixtures lack tox_errors
@@ -462,3 +481,36 @@ class TestTheCLayerAllocatesNothingOnTheStack:
                 for line in text.splitlines()
                 if line.strip().startswith("allocate(")]
         assert bare == []
+
+
+class TestFilesToRemove:
+    """What `--check` reports as stale: files the clean deletes and the run does not write."""
+
+    def _tree(self, root, *files):
+        for file in files:
+            (root / file).parent.mkdir(parents=True, exist_ok=True)
+            (root / file).write_text("x")
+
+    def test_every_target_reports_what_it_would_delete(self, tmp_path):
+        written = ["src/generated/tox/tox_loess.F90", "src/generated/bindings/c/tox_loess_c.F90",
+                   "src/generated/bindings/r/tox_loess.c", "python/tensor_omics/tox_loess.py",
+                   "r/tensor_omics/tox_loess.R"]
+        orphans = ["src/generated/tox/tox_gone.F90", "src/generated/bindings/c/tox_gone_c.F90",
+                   "src/generated/bindings/r/tox_gone.c", "python/tensor_omics/tox_gone.py",
+                   "r/tensor_omics/tox_gone.R"]
+        kept = ["src/tox/tox_loess_impl.F90", "r/tensor_omics/DESCRIPTION",
+                "python/tensor_omics/__pycache__/tox_loess.cpython-314.pyc"]
+        self._tree(tmp_path, *written, *orphans, *kept)
+        result = Result(DiagnosticBag(), [GeneratedFile(tmp_path / f, "x") for f in written])
+
+        stale = files_to_remove(result, ("fortran", "c", "python", "r"), Paths(root=tmp_path))
+
+        assert [p.relative_to(tmp_path).as_posix() for p in stale] == sorted(orphans)
+
+    def test_only_the_targets_asked_for(self, tmp_path):
+        self._tree(tmp_path, "src/tox/tox_loess_impl.F90", "src/generated/tox/tox_gone.F90",
+                   "python/tensor_omics/tox_gone.py")
+
+        stale = files_to_remove(Result(DiagnosticBag()), ("python",), Paths(root=tmp_path))
+
+        assert stale == [tmp_path / "python/tensor_omics/tox_gone.py"]

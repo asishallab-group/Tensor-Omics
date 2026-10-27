@@ -1292,7 +1292,7 @@ errors, and the house bar is **zero warnings**, so treat them as errors anyway:
 ./build.sh --skip-code-generation   # compile the tree as it stands
 
 python helper/generate_code.py            # regenerate only
-python helper/generate_code.py --check    # write nothing; non-zero if the tree is stale
+python helper/generate_code.py --check    # write nothing; non-zero if a file would change or be removed
 python helper/generate_code.py --target python
 ```
 

@@ -333,9 +333,13 @@ def _catalogue(project, arg_pos_factor: int, diagnostics: DiagnosticBag,
     )
 
 
-def _clean(targets: tuple[str, ...], paths: Paths) -> None:
+def _owned(targets: tuple[str, ...], paths: Paths) -> tuple[list[Path], list[Path]]:
+    """What the clean step removes for `targets`: whole directories, and single files.
+
+    One list for `_clean`, which removes them, and `files_to_remove`, which `--check` reports
+    from, so the two cannot disagree about what a target owns.
+    """
     directories = []
-    globs = []
     files = []
     if "c" in targets:
         directories.append(paths.resolve(paths.c_binding_dir))
@@ -345,16 +349,42 @@ def _clean(targets: tuple[str, ...], paths: Paths) -> None:
         directories.append(paths.resolve(paths.r_binding_dir))   # the C .Call shims
         # the R wrappers sit directly in r_out_dir; remove only the generated `.R` so a
         # hand-written DESCRIPTION or NAMESPACE alongside them is left alone
-        globs.append((paths.resolve(paths.r_out_dir), "*.R"))
+        files += sorted(paths.resolve(paths.r_out_dir).glob("*.R"))
     if "fortran" in targets:
         # file by file rather than the whole directory, which holds the binding trees too
         files += generated_wrapper_paths(paths)
+    return directories, files
+
+
+def _clean(targets: tuple[str, ...], paths: Paths) -> None:
+    directories, files = _owned(targets, paths)
     for directory in directories:
         if directory.is_dir():
             shutil.rmtree(directory)
-    for directory, pattern in globs:
-        for path in directory.glob(pattern):
-            path.unlink()
     for path in files:
         if path.exists():
             path.unlink()
+
+
+def files_to_remove(result: Result, targets: tuple[str, ...], paths: Paths) -> list[Path]:
+    """The files a clean run would delete and not write back: what `--check` calls stale.
+
+    An orphan -- the wrapper of an implementation since deleted, the binding of a procedure no
+    longer exported -- is removed by the clean, so a regenerated tree is fine. A *committed*
+    one is not: a checkout built without regenerating compiles it, and fails on the module it
+    still uses. `--check` compares only the files this run produces, so without this it would
+    call that tree up to date.
+
+    Python's bytecode cache is not counted: Python writes `__pycache__` beside any package it
+    imports, so after the test suites have run it is always there, and it is no output at all.
+    """
+    directories, files = _owned(targets, paths)
+    on_disk = [
+        path
+        for directory in directories if directory.is_dir()
+        for path in directory.rglob("*")
+        if path.is_file() and "__pycache__" not in path.relative_to(directory).parts
+    ]
+    on_disk += [path for path in files if path.exists()]
+    written = {file.path.resolve() for file in result.files}
+    return sorted(path for path in on_disk if path.resolve() not in written)

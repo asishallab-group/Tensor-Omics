@@ -76,7 +76,10 @@ python helper/generate_code.py --help
 ```
 
 Run from the repository root. `--check` is what a CI guard wants: it exits non-zero if the
-committed bindings no longer match the sources.
+committed bindings no longer match the sources -- a file that would change, or one the clean
+step would remove and not write back, such as the wrapper of a deleted implementation
+(`generate.files_to_remove`, which reads the same per-target list `_clean` deletes from).
+Python's `__pycache__` is not counted: it is there after any test run and is no output.
 
 Requirements: Python 3.11+ (`contextlib.chdir`), and `FORD`, `pcpp`, `numpy` (see
 `requirements-dev.txt`). The generator reads the Ford settings from `fpm.toml`.
@@ -179,7 +182,9 @@ Three things worth knowing:
   one survived — and fpm compiles all of `src/generated`, so that orphan, still `use`-ing the
   module that went with it, broke every build after, regenerated or not (#221). Reading the
   disk is safe because nothing hand-written lives under `generated_dir`; a missing source tree
-  (a mistyped `--src`) owns nothing. The snippets target is not cleaned at all: `snippets/`
+  (a mistyped `--src`) owns nothing. `--check` reports such an orphan as a file that would be
+  removed, so a committed one fails the CI guard rather than only a build that skips
+  regenerating. The snippets target is not cleaned at all: `snippets/`
   holds the hand-written `toxdev_snippets.json` beside the generated files, each of which is
   rewritten whole.
 - **`--library`** (default `build/libtensor_omics.so`) is not an output path; it is where the
