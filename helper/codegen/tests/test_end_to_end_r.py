@@ -174,6 +174,28 @@ class TestResultsAreRight:
         out = run_r(built, 'cat(is.null(fx_optionals(c(1, 2, 3))))')
         assert out.strip() == "TRUE"
 
+    def test_a_matrix_result_is_column_truncated_not_row_truncated(self, built):
+        # fx_masked_matrix mirrors candidates_n_points_n_neighbors: a fixed 2-row,
+        # N-column output where only the first n_results columns are real.
+        # utils::head() would (wrongly) take the first n_results *rows*; this must take
+        # the first n_results *columns*, and must not return anything from the columns
+        # past n_results (which the fixture leaves unfilled).
+        out = run_r(built, """
+            r <- fx_masked_matrix(c(TRUE, FALSE, TRUE, TRUE))
+            cat(dim(r)[1], dim(r)[2], all(r == matrix(c(1, 10, 2, 20, 3, 30), nrow = 2)))
+        """)
+        assert out.split() == ["2", "3", "TRUE"]
+
+    def test_a_matrix_result_with_one_real_column_stays_a_matrix(self, built):
+        # the n=1 collapse case the original bug lost entirely: without drop = FALSE,
+        # slicing down to a single remaining column silently collapses the result to a
+        # bare vector, dropping the second row instead of the extra columns
+        out = run_r(built, """
+            r <- fx_masked_matrix(c(FALSE, TRUE, FALSE))
+            cat(is.matrix(r), dim(r)[1], dim(r)[2], r[1, 1], r[2, 1])
+        """)
+        assert out.split() == ["TRUE", "2", "1", "1", "10"]
+
 
 class TestModes:
     def test_a_mode_string_selects_the_branch(self, built):

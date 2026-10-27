@@ -557,6 +557,10 @@ the compiler or a run rejected the first attempt.
   [`design/c-layer.md`](design/c-layer.md).
 - **Nullable optionals** cross as `bind(C)` `OPTIONAL` (interoperable since F2018), a plain
   pointer that is absent when C passes null — no descriptor, no branch.
+- **`DM_RESULT_SIZE_IS` counts along the last axis**, at any rank: Python slices
+  `[..., :n]`, R takes `utils::head(x, n)` for a vector and `x[, seq_len(n), drop = FALSE]`,
+  with one leading comma per further axis, for an array. `head()` on a matrix took rows, the
+  padding columns included (#221).
 - **`intent(inout)`** is modified in place in Python but copied-and-returned in R, because R
   is copy-on-modify. The R side clones before Fortran touches the data.
 - **Characters** carry their length as a leading C extent, and the wrapper takes a zero-copy

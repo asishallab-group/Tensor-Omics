@@ -24,11 +24,16 @@ from codegen.emit.python_ctypes import PythonEmitter
 from codegen.emit.c_call import CCallEmitter
 from codegen.emit.r_wrapper import RWrapperEmitter
 from codegen.frontend.ford_frontend import FordFrontend
+from codegen.ir.directives import Directives, ResultSizeIs
 from codegen.ir.doc import DocTable
+from codegen.ir.entities import Project
 from codegen.ir.roles import analyse_project
+from codegen.ir.types import Intent
 from codegen.ir.validate import validate_project
 from codegen.synthesize import synthesize_wrappers
 from conftest import REPO_ROOT
+
+import builders as b
 
 FIXTURE_SRC = Path("helper/codegen/tests/fixtures/src")
 
@@ -382,3 +387,34 @@ class TestConstantSizesInBothBindings:
         text = RWrapperEmitter().module(self.module())
 
         assert "N_AXES" not in text and "MAX_LEN" not in text
+
+
+class TestTheTargetsTrimTheSameAxis:
+    """#221 B8: `DM_RESULT_SIZE_IS` counts along the LAST axis, at any rank, in both languages.
+
+    R took `utils::head(x, n)`, which on a matrix keeps the first n rows -- the padding
+    columns included -- while Python's `[..., :n]` kept the first n columns.
+    """
+
+    @pytest.mark.parametrize("rank", [1, 2, 3])
+    def test_the_count_trims_the_last_axis(self, rank):
+        extents = ", ".join(["2"] * (rank - 1) + ["n"])
+        found = b.real("found", Intent.OUT, f"({extents})",
+                       directives=Directives(result_size_is=ResultSizeIs("n_found")))
+        procedure = b.procedure("p", b.integer("n"), found, b.integer("n_found", Intent.OUT),
+                                b.ierr())
+        project = Project([b.module("m", procedure)])
+        bag = DiagnosticBag()
+        analyse_project(project, bag)
+        (wrapper,) = _wrappers(build_project(project, bag))
+        result = next(a for a in wrapper if a.name == "found")
+
+        python = PythonEmitter()._result_expression(result, wrapper)
+        r = RWrapperEmitter()._result_expression(result, wrapper)
+
+        assert python == "found[..., :n_found.value]"
+        if rank == 1:
+            assert r == "utils::head(.result$found, .result$n_found)"
+        else:
+            leading = ", " * (rank - 1)
+            assert r == f".result$found[{leading}seq_len(.result$n_found), drop = FALSE]"
