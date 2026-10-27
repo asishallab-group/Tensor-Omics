@@ -22,6 +22,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -169,25 +170,10 @@ def omics_vector_RAP_projection(
     Generated from the Fortran procedure `tox_relative_axis_plane_tools::omics_vector_RAP_projection`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        vecs = _np.asfortranarray(vecs, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'vecs' must be an array of np.float64: {_error}", argument="vecs") from None
-    if vecs.ndim != 2:
-        raise _ToxArgumentError(f"'vecs' must have 2 dimensions, but has {vecs.ndim}", argument="vecs")
-    try:
-        vecs_selection_mask = _np.ascontiguousarray(vecs_selection_mask, dtype=_np.bool_)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'vecs_selection_mask' must be an array of np.bool_: {_error}", argument="vecs_selection_mask") from None
-    if vecs_selection_mask.ndim != 1:
-        raise _ToxArgumentError(f"'vecs_selection_mask' must have 1 dimension, but has {vecs_selection_mask.ndim}", argument="vecs_selection_mask")
-    try:
-        axes_selection_mask = _np.ascontiguousarray(axes_selection_mask, dtype=_np.bool_)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'axes_selection_mask' must be an array of np.bool_: {_error}", argument="axes_selection_mask") from None
-    if axes_selection_mask.ndim != 1:
-        raise _ToxArgumentError(f"'axes_selection_mask' must have 1 dimension, but has {axes_selection_mask.ndim}", argument="axes_selection_mask")
+    # check every input by the input contract, converting only when C needs it
+    vecs = _contract.reals(vecs, "vecs", ndim=2, order="F")
+    vecs_selection_mask = _contract.logicals(vecs_selection_mask, "vecs_selection_mask", ndim=1)
+    axes_selection_mask = _contract.logicals(axes_selection_mask, "axes_selection_mask", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_axes = vecs.shape[0]
@@ -259,25 +245,10 @@ def omics_field_RAP_projection(
     Generated from the Fortran procedure `tox_relative_axis_plane_tools::omics_field_RAP_projection`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        fields = _np.asfortranarray(fields, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'fields' must be an array of np.float64: {_error}", argument="fields") from None
-    if fields.ndim != 3:
-        raise _ToxArgumentError(f"'fields' must have 3 dimensions, but has {fields.ndim}", argument="fields")
-    try:
-        fields_selection_mask = _np.ascontiguousarray(fields_selection_mask, dtype=_np.bool_)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'fields_selection_mask' must be an array of np.bool_: {_error}", argument="fields_selection_mask") from None
-    if fields_selection_mask.ndim != 1:
-        raise _ToxArgumentError(f"'fields_selection_mask' must have 1 dimension, but has {fields_selection_mask.ndim}", argument="fields_selection_mask")
-    try:
-        axes_selection_mask = _np.ascontiguousarray(axes_selection_mask, dtype=_np.bool_)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'axes_selection_mask' must be an array of np.bool_: {_error}", argument="axes_selection_mask") from None
-    if axes_selection_mask.ndim != 1:
-        raise _ToxArgumentError(f"'axes_selection_mask' must have 1 dimension, but has {axes_selection_mask.ndim}", argument="axes_selection_mask")
+    # check every input by the input contract, converting only when C needs it
+    fields = _contract.reals(fields, "fields", ndim=3, order="F")
+    fields_selection_mask = _contract.logicals(fields_selection_mask, "fields_selection_mask", ndim=1)
+    axes_selection_mask = _contract.logicals(axes_selection_mask, "axes_selection_mask", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_axes = fields.shape[0]
@@ -358,25 +329,10 @@ def clock_hand_angle_between_vectors(
     Generated from the Fortran procedure `tox_relative_axis_plane_tools::clock_hand_angle_between_vectors`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        v1 = _np.ascontiguousarray(v1, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'v1' must be an array of np.float64: {_error}", argument="v1") from None
-    if v1.ndim != 1:
-        raise _ToxArgumentError(f"'v1' must have 1 dimension, but has {v1.ndim}", argument="v1")
-    try:
-        v2 = _np.ascontiguousarray(v2, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'v2' must be an array of np.float64: {_error}", argument="v2") from None
-    if v2.ndim != 1:
-        raise _ToxArgumentError(f"'v2' must have 1 dimension, but has {v2.ndim}", argument="v2")
-    try:
-        orientation_reference = _np.ascontiguousarray(orientation_reference, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'orientation_reference' must be an array of np.float64: {_error}", argument="orientation_reference") from None
-    if orientation_reference.ndim != 1:
-        raise _ToxArgumentError(f"'orientation_reference' must have 1 dimension, but has {orientation_reference.ndim}", argument="orientation_reference")
+    # check every input by the input contract, converting only when C needs it
+    v1 = _contract.reals(v1, "v1", ndim=1)
+    v2 = _contract.reals(v2, "v2", ndim=1)
+    orientation_reference = _contract.reals(orientation_reference, "orientation_reference", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_dims = v1.shape[0]
@@ -448,25 +404,10 @@ def clock_hand_angles_for_shift_vectors(
     Generated from the Fortran procedure `tox_relative_axis_plane_tools::clock_hand_angles_for_shift_vectors`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        fields = _np.asfortranarray(fields, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'fields' must be an array of np.float64: {_error}", argument="fields") from None
-    if fields.ndim != 3:
-        raise _ToxArgumentError(f"'fields' must have 3 dimensions, but has {fields.ndim}", argument="fields")
-    try:
-        fields_selection_mask = _np.ascontiguousarray(fields_selection_mask, dtype=_np.bool_)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'fields_selection_mask' must be an array of np.bool_: {_error}", argument="fields_selection_mask") from None
-    if fields_selection_mask.ndim != 1:
-        raise _ToxArgumentError(f"'fields_selection_mask' must have 1 dimension, but has {fields_selection_mask.ndim}", argument="fields_selection_mask")
-    try:
-        orientation_reference = _np.ascontiguousarray(orientation_reference, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'orientation_reference' must be an array of np.float64: {_error}", argument="orientation_reference") from None
-    if orientation_reference.ndim != 1:
-        raise _ToxArgumentError(f"'orientation_reference' must have 1 dimension, but has {orientation_reference.ndim}", argument="orientation_reference")
+    # check every input by the input contract, converting only when C needs it
+    fields = _contract.reals(fields, "fields", ndim=3, order="F")
+    fields_selection_mask = _contract.logicals(fields_selection_mask, "fields_selection_mask", ndim=1)
+    orientation_reference = _contract.reals(orientation_reference, "orientation_reference", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_dims = fields.shape[0]
@@ -534,13 +475,8 @@ def compute_relative_axis_contributions(
     Generated from the Fortran procedure `tox_relative_axis_plane_tools::compute_relative_axis_contributions`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        vec = _np.ascontiguousarray(vec, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'vec' must be an array of np.float64: {_error}", argument="vec") from None
-    if vec.ndim != 1:
-        raise _ToxArgumentError(f"'vec' must have 1 dimension, but has {vec.ndim}", argument="vec")
+    # check every input by the input contract, converting only when C needs it
+    vec = _contract.reals(vec, "vec", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_axes = vec.shape[0]
@@ -594,13 +530,8 @@ def relative_axes_changes_from_shift_vector(
     Generated from the Fortran procedure `tox_relative_axis_plane_tools::relative_axes_changes_from_shift_vector`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        vec = _np.ascontiguousarray(vec, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'vec' must be an array of np.float64: {_error}", argument="vec") from None
-    if vec.ndim != 1:
-        raise _ToxArgumentError(f"'vec' must have 1 dimension, but has {vec.ndim}", argument="vec")
+    # check every input by the input contract, converting only when C needs it
+    vec = _contract.reals(vec, "vec", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_axes = vec.shape[0]
@@ -654,13 +585,8 @@ def relative_axes_expression_from_expression_vector(
     Generated from the Fortran procedure `tox_relative_axis_plane_tools::relative_axes_expression_from_expression_vector`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        vec = _np.ascontiguousarray(vec, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'vec' must be an array of np.float64: {_error}", argument="vec") from None
-    if vec.ndim != 1:
-        raise _ToxArgumentError(f"'vec' must have 1 dimension, but has {vec.ndim}", argument="vec")
+    # check every input by the input contract, converting only when C needs it
+    vec = _contract.reals(vec, "vec", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_axes = vec.shape[0]

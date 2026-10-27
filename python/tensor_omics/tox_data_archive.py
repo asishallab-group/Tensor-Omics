@@ -18,6 +18,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -139,10 +140,13 @@ def create_zip_archive(
     ----------
     zip_filename : str
         Name of the zip file to create
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     keys : sequence of str, of length n_keys_elements
         Array of keys for manifest entries
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     filenames : sequence of str, of length n_filenames_elements
         Array of filenames to add to zip
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -161,24 +165,14 @@ def create_zip_archive(
     Generated from the Fortran procedure `tox_data_archive::create_zip_archive`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    zip_filename = _np.array([str(zip_filename).encode().ljust(1)], dtype="S")
-    try:
-        _keys_bytes = [str(_s).encode() for _s in keys]
-        _keys_width = max(map(len, _keys_bytes), default=0) or 1
-        keys = _np.asarray([_b.ljust(_keys_width) for _b in _keys_bytes], dtype="S")
-    except TypeError as _error:
-        raise _ToxArgumentError(f"'keys' must be a sequence of strings: {_error}", argument="keys") from None
-    if keys.ndim != 1:
-        raise _ToxArgumentError(f"'keys' must have 1 dimension, but has {keys.ndim}", argument="keys")
-    try:
-        _filenames_bytes = [str(_s).encode() for _s in filenames]
-        _filenames_width = max(map(len, _filenames_bytes), default=0) or 1
-        filenames = _np.asarray([_b.ljust(_filenames_width) for _b in _filenames_bytes], dtype="S")
-    except TypeError as _error:
-        raise _ToxArgumentError(f"'filenames' must be a sequence of strings: {_error}", argument="filenames") from None
-    if filenames.ndim != 1:
-        raise _ToxArgumentError(f"'filenames' must have 1 dimension, but has {filenames.ndim}", argument="filenames")
+    # check every input by the input contract, converting only when C needs it
+    zip_filename = _np.array([_contract.string(zip_filename, "zip_filename").ljust(1)], dtype="S")
+    _keys_bytes = _contract.strings(keys, "keys")
+    _keys_width = max(map(len, _keys_bytes), default=0) or 1
+    keys = _np.asarray([_b.ljust(_keys_width) for _b in _keys_bytes], dtype="S")
+    _filenames_bytes = _contract.strings(filenames, "filenames")
+    _filenames_width = max(map(len, _filenames_bytes), default=0) or 1
+    filenames = _np.asarray([_b.ljust(_filenames_width) for _b in _filenames_bytes], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     zip_filename_strlen = zip_filename.itemsize
@@ -227,30 +221,39 @@ def save_tox_data(
     ----------
     zip_filename : str
         Zip filename
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     gene_ids : sequence of str, of length n_gene_ids_elements, optional
         Gene ids array, will be saved if provided
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     gene_ids_file : str, optional
         Name of the gene ids file
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     expression : np.ndarray[np.float64] of shape (n_expression_elements_dim_1, n_expression_elements_dim_2,), column-major (order='F'), optional
         Expression vectors array, will be saved if provided
     expression_file : str, optional
         Name of the expression file
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     gene_to_family : np.ndarray[np.int32] of shape (n_gene_to_family_elements,), optional
         Gene to family mapping array, will be saved if provided
     gene_to_family_file : str, optional
         Name of the gene to family mapping file
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     family_ids : sequence of str, of length n_family_ids_elements, optional
         Family ids array, will be saved if provided
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     family_ids_file : str, optional
         Name of the family ids file
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     family_centroids : np.ndarray[np.float64] of shape (n_family_centroids_elements_dim_1, n_family_centroids_elements_dim_2,), column-major (order='F'), optional
         Family centroids array, will be saved if provided
     family_centroids_file : str, optional
         Name of the family centroids file
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     shift_vectors : np.ndarray[np.float64] of shape (n_shift_vectors_elements_dim_1, n_shift_vectors_elements_dim_2,), column-major (order='F'), optional
         Shift vectors array, will be saved if provided
     shift_vectors_file : str, optional
         Name of the shift vectors file
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -269,66 +272,36 @@ def save_tox_data(
     Generated from the Fortran procedure `tox_data_archive::save_tox_data`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    zip_filename = _np.array([str(zip_filename).encode().ljust(1)], dtype="S")
+    # check every input by the input contract, converting only when C needs it
+    zip_filename = _np.array([_contract.string(zip_filename, "zip_filename").ljust(1)], dtype="S")
     if gene_ids is not None:
-        try:
-            _gene_ids_bytes = [str(_s).encode() for _s in gene_ids]
-            _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
-            gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
-        except TypeError as _error:
-            raise _ToxArgumentError(f"'gene_ids' must be a sequence of strings: {_error}", argument="gene_ids") from None
-        if gene_ids.ndim != 1:
-            raise _ToxArgumentError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}", argument="gene_ids")
+        _gene_ids_bytes = _contract.strings(gene_ids, "gene_ids")
+        _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
+        gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
     if gene_ids_file is not None:
-        gene_ids_file = _np.array([str(gene_ids_file).encode().ljust(1)], dtype="S")
+        gene_ids_file = _np.array([_contract.string(gene_ids_file, "gene_ids_file").ljust(1)], dtype="S")
     if expression is not None:
-        try:
-            expression = _np.asfortranarray(expression, dtype=_np.float64)
-        except (TypeError, ValueError) as _error:
-            raise _ToxArgumentError(f"'expression' must be an array of np.float64: {_error}", argument="expression") from None
-        if expression.ndim != 2:
-            raise _ToxArgumentError(f"'expression' must have 2 dimensions, but has {expression.ndim}", argument="expression")
+        expression = _contract.reals(expression, "expression", ndim=2, order="F")
     if expression_file is not None:
-        expression_file = _np.array([str(expression_file).encode().ljust(1)], dtype="S")
+        expression_file = _np.array([_contract.string(expression_file, "expression_file").ljust(1)], dtype="S")
     if gene_to_family is not None:
-        try:
-            gene_to_family = _np.ascontiguousarray(gene_to_family, dtype=_np.int32)
-        except (TypeError, ValueError) as _error:
-            raise _ToxArgumentError(f"'gene_to_family' must be an array of np.int32: {_error}", argument="gene_to_family") from None
-        if gene_to_family.ndim != 1:
-            raise _ToxArgumentError(f"'gene_to_family' must have 1 dimension, but has {gene_to_family.ndim}", argument="gene_to_family")
+        gene_to_family = _contract.integers(gene_to_family, "gene_to_family", ndim=1)
     if gene_to_family_file is not None:
-        gene_to_family_file = _np.array([str(gene_to_family_file).encode().ljust(1)], dtype="S")
+        gene_to_family_file = _np.array([_contract.string(gene_to_family_file, "gene_to_family_file").ljust(1)], dtype="S")
     if family_ids is not None:
-        try:
-            _family_ids_bytes = [str(_s).encode() for _s in family_ids]
-            _family_ids_width = max(map(len, _family_ids_bytes), default=0) or 1
-            family_ids = _np.asarray([_b.ljust(_family_ids_width) for _b in _family_ids_bytes], dtype="S")
-        except TypeError as _error:
-            raise _ToxArgumentError(f"'family_ids' must be a sequence of strings: {_error}", argument="family_ids") from None
-        if family_ids.ndim != 1:
-            raise _ToxArgumentError(f"'family_ids' must have 1 dimension, but has {family_ids.ndim}", argument="family_ids")
+        _family_ids_bytes = _contract.strings(family_ids, "family_ids")
+        _family_ids_width = max(map(len, _family_ids_bytes), default=0) or 1
+        family_ids = _np.asarray([_b.ljust(_family_ids_width) for _b in _family_ids_bytes], dtype="S")
     if family_ids_file is not None:
-        family_ids_file = _np.array([str(family_ids_file).encode().ljust(1)], dtype="S")
+        family_ids_file = _np.array([_contract.string(family_ids_file, "family_ids_file").ljust(1)], dtype="S")
     if family_centroids is not None:
-        try:
-            family_centroids = _np.asfortranarray(family_centroids, dtype=_np.float64)
-        except (TypeError, ValueError) as _error:
-            raise _ToxArgumentError(f"'family_centroids' must be an array of np.float64: {_error}", argument="family_centroids") from None
-        if family_centroids.ndim != 2:
-            raise _ToxArgumentError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}", argument="family_centroids")
+        family_centroids = _contract.reals(family_centroids, "family_centroids", ndim=2, order="F")
     if family_centroids_file is not None:
-        family_centroids_file = _np.array([str(family_centroids_file).encode().ljust(1)], dtype="S")
+        family_centroids_file = _np.array([_contract.string(family_centroids_file, "family_centroids_file").ljust(1)], dtype="S")
     if shift_vectors is not None:
-        try:
-            shift_vectors = _np.asfortranarray(shift_vectors, dtype=_np.float64)
-        except (TypeError, ValueError) as _error:
-            raise _ToxArgumentError(f"'shift_vectors' must be an array of np.float64: {_error}", argument="shift_vectors") from None
-        if shift_vectors.ndim != 2:
-            raise _ToxArgumentError(f"'shift_vectors' must have 2 dimensions, but has {shift_vectors.ndim}", argument="shift_vectors")
+        shift_vectors = _contract.reals(shift_vectors, "shift_vectors", ndim=2, order="F")
     if shift_vectors_file is not None:
-        shift_vectors_file = _np.array([str(shift_vectors_file).encode().ljust(1)], dtype="S")
+        shift_vectors_file = _np.array([_contract.string(shift_vectors_file, "shift_vectors_file").ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     zip_filename_strlen = zip_filename.itemsize
@@ -406,6 +379,7 @@ def get_tox_data_dims(
     ----------
     zip_filename : str
         Name of the zip file
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -448,8 +422,8 @@ def get_tox_data_dims(
     Generated from the Fortran procedure `tox_data_archive::get_tox_data_dims`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    zip_filename = _np.array([str(zip_filename).encode().ljust(1)], dtype="S")
+    # check every input by the input contract, converting only when C needs it
+    zip_filename = _np.array([_contract.string(zip_filename, "zip_filename").ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     zip_filename_strlen = zip_filename.itemsize
@@ -514,6 +488,7 @@ def read_tox_data_into(
     ----------
     zip_filename : str
         Name of the zip file
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -553,8 +528,8 @@ def read_tox_data_into(
     # kept before conversion, for the producers called below
     _zip_filename_raw = zip_filename
 
-    # accept anything array-like, converting only when C needs it
-    zip_filename = _np.array([str(zip_filename).encode().ljust(1)], dtype="S")
+    # check every input by the input contract, converting only when C needs it
+    zip_filename = _np.array([_contract.string(zip_filename, "zip_filename").ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     zip_filename_strlen = zip_filename.itemsize

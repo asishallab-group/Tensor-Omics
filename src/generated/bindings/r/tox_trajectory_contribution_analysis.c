@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void perform_permutation_test_c(const double*, const int*, const int*, const int*, const int*, const int*, const int*, const char*, const int*, double*, double*, const int*, int*);
@@ -39,7 +39,7 @@ SEXP perform_permutation_test_call(SEXP trajectories, SEXP factor_idx, SEXP depe
     int _v_n_permutations = Rf_asInteger(n_permutations);
 
     // convert what Fortran cannot take from R directly
-    char* _c_baseline_mode = tox_char_in(baseline_mode, 13);
+    char* _c_baseline_mode = tox_char_in(baseline_mode, 13, "baseline_mode");
 
     // outputs and work space
     SEXP local_contributions = PROTECT(Rf_allocVector(REALSXP, n_timepoints * _v_n_permutations)); _nprot++;
@@ -121,7 +121,7 @@ SEXP compute_contributions_call(SEXP factor, SEXP dependent, SEXP baseline_mode)
     int n_dims = (int) Rf_length(factor);
 
     // convert what Fortran cannot take from R directly
-    char* _c_baseline_mode = tox_char_in(baseline_mode, 13);
+    char* _c_baseline_mode = tox_char_in(baseline_mode, 13, "baseline_mode");
 
     // outputs and work space
     SEXP local_contributions = PROTECT(Rf_allocVector(REALSXP, n_dims)); _nprot++;
@@ -161,7 +161,9 @@ SEXP compute_all_contributions_call(SEXP trajectories, SEXP factor_indices, SEXP
     int n_selected_dependents = (int) Rf_length(dependent_indices);
 
     // convert what Fortran cannot take from R directly
-    char* _c_baseline_mode = tox_char_in(baseline_mode, 13);
+    const int* _c_factor_indices = tox_int_in(factor_indices, "factor_indices");
+    const int* _c_dependent_indices = tox_int_in(dependent_indices, "dependent_indices");
+    char* _c_baseline_mode = tox_char_in(baseline_mode, 13, "baseline_mode");
 
     // outputs and work space
     SEXP local_contributions = PROTECT(Rf_allocVector(REALSXP, n_timepoints * n_selected_factors * n_selected_dependents * n_samples)); _nprot++;
@@ -175,9 +177,9 @@ SEXP compute_all_contributions_call(SEXP trajectories, SEXP factor_indices, SEXP
         &n_factors,
         &n_samples,
         &n_timepoints,
-        INTEGER(factor_indices),
+        _c_factor_indices,
         &n_selected_factors,
-        INTEGER(dependent_indices),
+        _c_dependent_indices,
         &n_selected_dependents,
         _c_baseline_mode,
         REAL(local_contributions),
@@ -204,7 +206,7 @@ SEXP compute_baselines_factor_dependent_call(SEXP factor, SEXP dependent, SEXP b
     int n_timepoints = (int) Rf_length(factor);
 
     // convert what Fortran cannot take from R directly
-    char* _c_baseline_mode = tox_char_in(baseline_mode, 13);
+    char* _c_baseline_mode = tox_char_in(baseline_mode, 13, "baseline_mode");
 
     // outputs and work space
     double factor_baseline = 0;
@@ -368,7 +370,7 @@ SEXP compute_velocity_acceleration_contributions_call(SEXP trajectories, SEXP ba
     int n_timepoints = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[2];
 
     // convert what Fortran cannot take from R directly
-    char* _c_baseline_mode = tox_char_in(baseline_mode, 13);
+    char* _c_baseline_mode = tox_char_in(baseline_mode, 13, "baseline_mode");
 
     // outputs and work space
     SEXP contrib_velocity = PROTECT(Rf_allocVector(REALSXP, n_factors * n_factors * n_samples)); _nprot++;

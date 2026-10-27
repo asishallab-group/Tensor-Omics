@@ -24,12 +24,14 @@ from .emit.fortran_wrapper import FortranWrapperEmitter, WrapperInfo
 from .emit.name_clashes import check_wrapper_names
 from .emit.doc_links import LinkResolver, build as build_links
 from .emit.doc_tiers import build as build_tiers
+from .emit.python_contract import contract_module
 from .emit.python_ctypes import PythonEmitter
 from .emit.r_wrapper import RWrapperEmitter
 from .emit.c_call import CCallEmitter
 from .emit.vscode_snippets import SnippetEmitter
 from .frontend.ford_frontend import FordFrontend, ParsedProject
 from .ir.errors import ErrorCatalogue
+from .names import PYTHON_CONTRACT
 from .ir.roles import analyse_project
 from .ir.validate import validate_project
 from .synthesize import (
@@ -271,6 +273,7 @@ def _python_files(binding: CBinding, catalogue, paths: Paths, library: str,
         GeneratedFile(out / "library.py", emitter.library_module()),
         GeneratedFile(out / "__init__.py", emitter.package_init(list(binding))),
         GeneratedFile(out / "error_handling.py", PythonErrorEmitter(catalogue).module()),
+        GeneratedFile(out / f"{PYTHON_CONTRACT}.py", contract_module()),
     ]
     files += [
         GeneratedFile(out / f"{module.stripped_name}.py", emitter.module(module))

@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void validate_data_structure_c(const int*, const int*, const int*, const char*, const int*, const int*, const char*, const int*, const int*, const int*, const int*, const double*, const int*, const int*, const double*, const int*, const int*, const double*, const int*, const int*, int*);
@@ -35,8 +35,9 @@ SEXP validate_data_structure_call(SEXP n_genes, SEXP n_families, SEXP n_samples,
     int _v_n_samples = Rf_asInteger(n_samples);
 
     // convert what Fortran cannot take from R directly
-    char* _c_gene_ids = tox_char_in(gene_ids, gene_ids_strlen);
-    char* _c_gene_family_ids = tox_char_in(gene_family_ids, gene_family_ids_strlen);
+    char* _c_gene_ids = tox_char_in(gene_ids, gene_ids_strlen, "gene_ids");
+    char* _c_gene_family_ids = tox_char_in(gene_family_ids, gene_family_ids_strlen, "gene_family_ids");
+    const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
     int ierr = 0;
@@ -51,7 +52,7 @@ SEXP validate_data_structure_call(SEXP n_genes, SEXP n_families, SEXP n_samples,
         _c_gene_family_ids,
         &gene_family_ids_strlen,
         &n_gene_family_ids_elements,
-        INTEGER(gene_to_fam),
+        _c_gene_to_fam,
         &n_gene_to_fam_elements,
         REAL(expression_vectors),
         &n_expression_vectors_elements_dim_1,
@@ -82,11 +83,14 @@ SEXP validate_gene_to_family_mapping_call(SEXP gene_to_fam, SEXP n_families) {
     // scalar inputs, pulled from their length-1 vectors
     int _v_n_families = Rf_asInteger(n_families);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
+
     // outputs and work space
     int ierr = 0;
 
     validate_gene_to_family_mapping_c(
-        INTEGER(gene_to_fam),
+        _c_gene_to_fam,
         &n_gene_to_fam_elements,
         &_v_n_families,
         &ierr
@@ -169,6 +173,9 @@ SEXP validate_shift_vectors_call(SEXP shift_vectors, SEXP expression_vectors, SE
     // scalar inputs, pulled from their length-1 vectors
     int _v_n_samples = Rf_asInteger(n_samples);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
+
     // outputs and work space
     int ierr = 0;
 
@@ -182,7 +189,7 @@ SEXP validate_shift_vectors_call(SEXP shift_vectors, SEXP expression_vectors, SE
         REAL(family_centroids),
         &n_family_centroids_elements_dim_1,
         &n_family_centroids_elements_dim_2,
-        INTEGER(gene_to_fam),
+        _c_gene_to_fam,
         &n_gene_to_fam_elements,
         &_v_n_samples,
         &ierr
@@ -204,7 +211,7 @@ SEXP validate_string_array_uniqueness_call(SEXP str_arr) {
     int n_str_arr_elements = (int) Rf_length(str_arr);
 
     // convert what Fortran cannot take from R directly
-    char* _c_str_arr = tox_char_in(str_arr, str_arr_strlen);
+    char* _c_str_arr = tox_char_in(str_arr, str_arr_strlen, "str_arr");
 
     // outputs and work space
     int ierr = 0;
@@ -248,8 +255,9 @@ SEXP validate_all_data_call(SEXP n_genes, SEXP n_families, SEXP n_samples, SEXP 
     unsigned char _v_check_shift_consistency = (Rf_asLogical(check_shift_consistency) == TRUE) ? 1 : 0;
 
     // convert what Fortran cannot take from R directly
-    char* _c_gene_ids = tox_char_in(gene_ids, gene_ids_strlen);
-    char* _c_gene_family_ids = tox_char_in(gene_family_ids, gene_family_ids_strlen);
+    char* _c_gene_ids = tox_char_in(gene_ids, gene_ids_strlen, "gene_ids");
+    char* _c_gene_family_ids = tox_char_in(gene_family_ids, gene_family_ids_strlen, "gene_family_ids");
+    const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
     int ierr = 0;
@@ -264,7 +272,7 @@ SEXP validate_all_data_call(SEXP n_genes, SEXP n_families, SEXP n_samples, SEXP 
         _c_gene_family_ids,
         &gene_family_ids_strlen,
         &n_gene_family_ids_elements,
-        INTEGER(gene_to_fam),
+        _c_gene_to_fam,
         &n_gene_to_fam_elements,
         REAL(expression_vectors),
         &n_expression_vectors_elements_dim_1,

@@ -14,6 +14,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -175,43 +176,16 @@ def fjct_compute_jsd(
     Generated from the Fortran procedure `tox_data_integration_per_family::fjct_compute_jsd`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        gene_to_family_S1 = _np.ascontiguousarray(gene_to_family_S1, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'gene_to_family_S1' must be an array of np.int32: {_error}", argument="gene_to_family_S1") from None
-    if gene_to_family_S1.ndim != 1:
-        raise _ToxArgumentError(f"'gene_to_family_S1' must have 1 dimension, but has {gene_to_family_S1.ndim}", argument="gene_to_family_S1")
-    try:
-        gene_to_family_S2 = _np.ascontiguousarray(gene_to_family_S2, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'gene_to_family_S2' must be an array of np.int32: {_error}", argument="gene_to_family_S2") from None
-    if gene_to_family_S2.ndim != 1:
-        raise _ToxArgumentError(f"'gene_to_family_S2' must have 1 dimension, but has {gene_to_family_S2.ndim}", argument="gene_to_family_S2")
-    try:
-        neighborhood_residuals_S1 = _np.asfortranarray(neighborhood_residuals_S1, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S1' must be an array of np.float64: {_error}", argument="neighborhood_residuals_S1") from None
-    if neighborhood_residuals_S1.ndim != 3:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}", argument="neighborhood_residuals_S1")
-    try:
-        neighborhood_residuals_S2 = _np.asfortranarray(neighborhood_residuals_S2, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S2' must be an array of np.float64: {_error}", argument="neighborhood_residuals_S2") from None
-    if neighborhood_residuals_S2.ndim != 3:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}", argument="neighborhood_residuals_S2")
-    try:
-        neighborhood_genes_S1 = _np.asfortranarray(neighborhood_genes_S1, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'neighborhood_genes_S1' must be an array of np.int32: {_error}", argument="neighborhood_genes_S1") from None
-    if neighborhood_genes_S1.ndim != 2:
-        raise _ToxArgumentError(f"'neighborhood_genes_S1' must have 2 dimensions, but has {neighborhood_genes_S1.ndim}", argument="neighborhood_genes_S1")
-    try:
-        neighborhood_genes_S2 = _np.asfortranarray(neighborhood_genes_S2, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'neighborhood_genes_S2' must be an array of np.int32: {_error}", argument="neighborhood_genes_S2") from None
-    if neighborhood_genes_S2.ndim != 2:
-        raise _ToxArgumentError(f"'neighborhood_genes_S2' must have 2 dimensions, but has {neighborhood_genes_S2.ndim}", argument="neighborhood_genes_S2")
+    # check every input by the input contract, converting only when C needs it
+    family_idx = _contract.integer(family_idx, "family_idx")
+    gene_to_family_S1 = _contract.integers(gene_to_family_S1, "gene_to_family_S1", ndim=1)
+    gene_to_family_S2 = _contract.integers(gene_to_family_S2, "gene_to_family_S2", ndim=1)
+    neighborhood_residuals_S1 = _contract.reals(neighborhood_residuals_S1, "neighborhood_residuals_S1", ndim=3, order="F")
+    neighborhood_residuals_S2 = _contract.reals(neighborhood_residuals_S2, "neighborhood_residuals_S2", ndim=3, order="F")
+    neighborhood_genes_S1 = _contract.integers(neighborhood_genes_S1, "neighborhood_genes_S1", ndim=2, order="F")
+    neighborhood_genes_S2 = _contract.integers(neighborhood_genes_S2, "neighborhood_genes_S2", ndim=2, order="F")
+    n_bins = _contract.integer(n_bins, "n_bins")
+    shared_residual_range = _contract.real(shared_residual_range, "shared_residual_range")
 
     # what the inputs already say, rather than asking for it again
     n_genes_S1 = gene_to_family_S1.shape[0]
@@ -360,31 +334,13 @@ def fjct_compute_masked_jsd(
     Generated from the Fortran procedure `tox_data_integration_per_family::fjct_compute_masked_jsd`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        neighborhood_residuals_S1 = _np.asfortranarray(neighborhood_residuals_S1, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S1' must be an array of np.float64: {_error}", argument="neighborhood_residuals_S1") from None
-    if neighborhood_residuals_S1.ndim != 3:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}", argument="neighborhood_residuals_S1")
-    try:
-        neighborhood_residuals_S2 = _np.asfortranarray(neighborhood_residuals_S2, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S2' must be an array of np.float64: {_error}", argument="neighborhood_residuals_S2") from None
-    if neighborhood_residuals_S2.ndim != 3:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}", argument="neighborhood_residuals_S2")
-    try:
-        neighbor_mask_S1 = _np.asfortranarray(neighbor_mask_S1, dtype=_np.bool_)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'neighbor_mask_S1' must be an array of np.bool_: {_error}", argument="neighbor_mask_S1") from None
-    if neighbor_mask_S1.ndim != 2:
-        raise _ToxArgumentError(f"'neighbor_mask_S1' must have 2 dimensions, but has {neighbor_mask_S1.ndim}", argument="neighbor_mask_S1")
-    try:
-        neighbor_mask_S2 = _np.asfortranarray(neighbor_mask_S2, dtype=_np.bool_)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'neighbor_mask_S2' must be an array of np.bool_: {_error}", argument="neighbor_mask_S2") from None
-    if neighbor_mask_S2.ndim != 2:
-        raise _ToxArgumentError(f"'neighbor_mask_S2' must have 2 dimensions, but has {neighbor_mask_S2.ndim}", argument="neighbor_mask_S2")
+    # check every input by the input contract, converting only when C needs it
+    neighborhood_residuals_S1 = _contract.reals(neighborhood_residuals_S1, "neighborhood_residuals_S1", ndim=3, order="F")
+    neighborhood_residuals_S2 = _contract.reals(neighborhood_residuals_S2, "neighborhood_residuals_S2", ndim=3, order="F")
+    neighbor_mask_S1 = _contract.logicals(neighbor_mask_S1, "neighbor_mask_S1", ndim=2, order="F")
+    neighbor_mask_S2 = _contract.logicals(neighbor_mask_S2, "neighbor_mask_S2", ndim=2, order="F")
+    n_bins = _contract.integer(n_bins, "n_bins")
+    shared_residual_range = _contract.real(shared_residual_range, "shared_residual_range")
 
     # what the inputs already say, rather than asking for it again
     n_reps_S1 = neighborhood_residuals_S1.shape[0]
@@ -507,19 +463,9 @@ def fjct_compute_contribution_scores(
     Generated from the Fortran procedure `tox_data_integration_per_family::fjct_compute_contribution_scores`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        global_js_divergences = _np.ascontiguousarray(global_js_divergences, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'global_js_divergences' must be an array of np.float64: {_error}", argument="global_js_divergences") from None
-    if global_js_divergences.ndim != 1:
-        raise _ToxArgumentError(f"'global_js_divergences' must have 1 dimension, but has {global_js_divergences.ndim}", argument="global_js_divergences")
-    try:
-        total_included_n_reps_per_f = _np.ascontiguousarray(total_included_n_reps_per_f, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'total_included_n_reps_per_f' must be an array of np.int32: {_error}", argument="total_included_n_reps_per_f") from None
-    if total_included_n_reps_per_f.ndim != 1:
-        raise _ToxArgumentError(f"'total_included_n_reps_per_f' must have 1 dimension, but has {total_included_n_reps_per_f.ndim}", argument="total_included_n_reps_per_f")
+    # check every input by the input contract, converting only when C needs it
+    global_js_divergences = _contract.reals(global_js_divergences, "global_js_divergences", ndim=1)
+    total_included_n_reps_per_f = _contract.integers(total_included_n_reps_per_f, "total_included_n_reps_per_f", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     k_families = global_js_divergences.shape[0]

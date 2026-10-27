@@ -17,6 +17,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -80,13 +81,11 @@ def calc_neighborhood_size(
     Generated from the Fortran procedure `tox_data_integration_preprocessing_impl::calc_neighborhood_size`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        mean_S = _np.ascontiguousarray(mean_S, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'mean_S' must be an array of np.float64: {_error}", argument="mean_S") from None
-    if mean_S.ndim != 1:
-        raise _ToxArgumentError(f"'mean_S' must have 1 dimension, but has {mean_S.ndim}", argument="mean_S")
+    # check every input by the input contract, converting only when C needs it
+    n_pool = _contract.integer(n_pool, "n_pool")
+    n_points = _contract.integer(n_points, "n_points")
+    mean_S = _contract.reals(mean_S, "mean_S", ndim=1)
+    desired_size = _contract.integer(desired_size, "desired_size")
 
     # what the inputs already say, rather than asking for it again
     n_genes_S = mean_S.shape[0]

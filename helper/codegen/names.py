@@ -119,8 +119,14 @@ def language_word(name: str, languages=("Python", "R", "C")) -> str | None:
 PYTHON_STDLIB_IMPORTS = (("ctypes", "_ctypes"), ("os", "_os"))
 #: The third-party ones, in a group of their own
 PYTHON_THIRD_PARTY_IMPORTS = (("numpy", "_np"),)
+#: The package module that holds the input contract, which every generated function checks its
+#: inputs by (`emit.python_ctypes`), and the name a generated module binds it to. It starts with
+#: `_` like everything here: no module generated from a Fortran one can have its name, and it
+#: stays out of the package's public surface.
+PYTHON_CONTRACT = "_contract"
 #: What it imports from the package itself, as (module, ((name, bound name), ...))
 PYTHON_PACKAGE_IMPORTS = (
+    (".", ((PYTHON_CONTRACT, PYTHON_CONTRACT),)),
     (".error_handling", (("ToxArgumentError", "_ToxArgumentError"),
                          ("check_err_code", "_check_err_code"))),
     (".library", (("load_library", "_load_library"), ("nullable", "_nullable"))),

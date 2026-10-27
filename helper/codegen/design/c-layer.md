@@ -369,24 +369,26 @@ FITS headers, `sockaddr_un.sun_path`, and NumPy's own `S`/`U` dtypes are all exa
 
 ## Decision: a string crosses as a fixed-length pointer view, blank-padded, and is never converted
 
-### Multibyte characters: the width is right, the encoding flag is not
+### Multibyte characters: the width is right, and the encoding is UTF-8 both ways
 
 Checked 2026-08-14, because a fixed-width format truncates the moment the width is measured in
 different units from the payload.
 
 **It is not.** Both bindings measure bytes, which is the same unit the buffer is filled in, so a
-UTF-8 string is never truncated by the sizing. R's `tox_max_strlen` uses `LENGTH()` on a
-`CHARSXP`, which is the byte length and not the character count (`nchar()` would have been the
-bug). Python builds the buffer with `.encode()` — UTF-8 bytes — into a NumPy `S` dtype whose
-`itemsize` is likewise bytes. Fortran agrees: `character(len=n)` of kind `c_char` is n bytes.
+UTF-8 string is never truncated by the sizing. R's `tox_max_strlen` measures the UTF-8 bytes of
+each `CHARSXP`, not the character count (`nchar()` would have been the bug). Python builds the
+buffer with `.encode()` — UTF-8 bytes — into a NumPy `S` dtype whose `itemsize` is likewise
+bytes. Fortran agrees: `character(len=n)` of kind `c_char` is n bytes.
 
-**What is lost is the encoding flag, not the content.** `tox_char_out` rebuilds R strings with
-`Rf_mkCharLen`, which marks the result native/unknown. A UTF-8 string handed in comes back
-byte-identical but with its `Encoding()` reset, which is harmless in a UTF-8 locale and wrong
-outside one. `Rf_mkCharLenCE(p, m, CE_UTF8)` is the fix, and it needs a decision rather than a
-patch: the shim would be asserting an encoding for bytes Fortran may have built itself, so the
-honest version marks UTF-8 only where the input was UTF-8, or the API declares that it always
-is.
+**The API declares that a string is UTF-8** (#221, the input contract in
+`language-layers.md`). R used to copy a string's bytes as they stood, so a latin1 `"\xe9"` and
+the UTF-8 `"\u00e9"` reached Fortran as two different strings, and marked what came back
+native/unknown, which is wrong outside a UTF-8 locale. Now `tox_char_in` translates every
+string to UTF-8 (`Rf_translateCharUTF8`, which is `enc2utf8` in C) and refuses one that is still
+not well-formed UTF-8, or is marked "bytes", and `tox_char_out` marks what it returns
+`CE_UTF8`. Python's `str` is Unicode already: it refuses a lone surrogate, which no encoding
+can carry, and a NUL, which R cannot hold at all. So what Fortran sees and builds is UTF-8 by
+contract, and marking it so is not an assertion about bytes it never checked.
 
 **For the pointer view specifically, blank padding is safe.** No UTF-8 continuation byte is
 `0x20` — they are all `0x80`-`0xBF` — so `trim` and `len_trim` cannot split a character, and

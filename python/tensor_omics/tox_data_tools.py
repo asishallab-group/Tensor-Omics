@@ -15,6 +15,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -104,8 +105,10 @@ def read_expression_vectors_tsv(
     ----------
     file_list : sequence of str, of length n_file_list_elements
         List of files to read from
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     gene_ids : sequence of str, of length n_gene_ids_elements
         Array of gene IDS
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     expression_vectors : np.ndarray[np.float64] of shape (n_expression_vectors_elements_dim_1, n_expression_vectors_elements_dim_2,), column-major (order='F'), modified in place
         Array of expression vectors
     n_header_rows : int
@@ -119,6 +122,8 @@ def read_expression_vectors_tsv(
     delimiter : str, optional, default '\t'
         optional delimiter
         The default value is `char(9)`.
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
+        At most 1 byte long in UTF-8: a longer value is refused, not cut short.
 
     Returns
     -------
@@ -137,36 +142,24 @@ def read_expression_vectors_tsv(
     Generated from the Fortran procedure `tox_data_tools::read_expression_vectors_tsv`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        _file_list_bytes = [str(_s).encode() for _s in file_list]
-        _file_list_width = max(map(len, _file_list_bytes), default=0) or 1
-        file_list = _np.asarray([_b.ljust(_file_list_width) for _b in _file_list_bytes], dtype="S")
-    except TypeError as _error:
-        raise _ToxArgumentError(f"'file_list' must be a sequence of strings: {_error}", argument="file_list") from None
-    if file_list.ndim != 1:
-        raise _ToxArgumentError(f"'file_list' must have 1 dimension, but has {file_list.ndim}", argument="file_list")
-    try:
-        _gene_ids_bytes = [str(_s).encode() for _s in gene_ids]
-        _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
-        gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
-    except TypeError as _error:
-        raise _ToxArgumentError(f"'gene_ids' must be a sequence of strings: {_error}", argument="gene_ids") from None
-    if gene_ids.ndim != 1:
-        raise _ToxArgumentError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}", argument="gene_ids")
+    # check every input by the input contract, converting only when C needs it
+    _file_list_bytes = _contract.strings(file_list, "file_list")
+    _file_list_width = max(map(len, _file_list_bytes), default=0) or 1
+    file_list = _np.asarray([_b.ljust(_file_list_width) for _b in _file_list_bytes], dtype="S")
+    _gene_ids_bytes = _contract.strings(gene_ids, "gene_ids")
+    _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
+    gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
     if not isinstance(expression_vectors, _np.ndarray) or expression_vectors.dtype != _np.float64:
         raise _ToxArgumentError("'expression_vectors' is modified in place, so it must already be a numpy array of {}".format(_np.float64), argument="expression_vectors")
     if expression_vectors.ndim != 2:
         raise _ToxArgumentError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}", argument="expression_vectors")
     if not expression_vectors.flags.f_contiguous:
         raise _ToxArgumentError("'expression_vectors' is modified in place, so it must already be column-major (order='F')", argument="expression_vectors")
-    try:
-        value_cols = _np.ascontiguousarray(value_cols, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'value_cols' must be an array of np.int32: {_error}", argument="value_cols") from None
-    if value_cols.ndim != 1:
-        raise _ToxArgumentError(f"'value_cols' must have 1 dimension, but has {value_cols.ndim}", argument="value_cols")
-    delimiter = _np.array([str(delimiter).encode().ljust(1)], dtype="S1")
+    n_header_rows = _contract.integer(n_header_rows, "n_header_rows")
+    gene_col = _contract.integer(gene_col, "gene_col")
+    value_cols = _contract.integers(value_cols, "value_cols", ndim=1)
+    start_row = _contract.integer(start_row, "start_row")
+    delimiter = _np.array([_contract.string(delimiter, "delimiter", 1).ljust(1)], dtype="S1")
 
     # what the inputs already say, rather than asking for it again
     file_list_strlen = file_list.itemsize
@@ -216,6 +209,7 @@ def read_gene_ids_from_tsv_file(
     ----------
     filename : str
         Name of the file
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     gene_ids_strlen : int
         length of the strings in `gene_ids`
     n_gene_ids_elements : int
@@ -243,8 +237,12 @@ def read_gene_ids_from_tsv_file(
     Generated from the Fortran procedure `tox_data_tools::read_gene_ids_from_tsv_file`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    filename = _np.array([str(filename).encode().ljust(1)], dtype="S")
+    # check every input by the input contract, converting only when C needs it
+    filename = _np.array([_contract.string(filename, "filename").ljust(1)], dtype="S")
+    gene_ids_strlen = _contract.integer(gene_ids_strlen, "gene_ids_strlen")
+    n_gene_ids_elements = _contract.integer(n_gene_ids_elements, "n_gene_ids_elements")
+    n_header_rows = _contract.integer(n_header_rows, "n_header_rows")
+    gene_col = _contract.integer(gene_col, "gene_col")
 
     # what the inputs already say, rather than asking for it again
     filename_strlen = filename.itemsize
@@ -281,8 +279,10 @@ def read_orthofinder_file(
     ----------
     filename : str
         Name of the file
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     gene_ids : sequence of str, of length n_gene_ids_elements
         gene ids array
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     family_ids_strlen : int
         length of the strings in `family_ids`
     n_family_ids_elements : int
@@ -314,16 +314,14 @@ def read_orthofinder_file(
     Generated from the Fortran procedure `tox_data_tools::read_orthofinder_file`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    filename = _np.array([str(filename).encode().ljust(1)], dtype="S")
-    try:
-        _gene_ids_bytes = [str(_s).encode() for _s in gene_ids]
-        _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
-        gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
-    except TypeError as _error:
-        raise _ToxArgumentError(f"'gene_ids' must be a sequence of strings: {_error}", argument="gene_ids") from None
-    if gene_ids.ndim != 1:
-        raise _ToxArgumentError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}", argument="gene_ids")
+    # check every input by the input contract, converting only when C needs it
+    filename = _np.array([_contract.string(filename, "filename").ljust(1)], dtype="S")
+    _gene_ids_bytes = _contract.strings(gene_ids, "gene_ids")
+    _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
+    gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
+    family_ids_strlen = _contract.integer(family_ids_strlen, "family_ids_strlen")
+    n_family_ids_elements = _contract.integer(n_family_ids_elements, "n_family_ids_elements")
+    n_gene_to_fam_elements = _contract.integer(n_gene_to_fam_elements, "n_gene_to_fam_elements")
 
     # what the inputs already say, rather than asking for it again
     filename_strlen = filename.itemsize
@@ -393,13 +391,8 @@ def get_unassigned_mask(
     Generated from the Fortran procedure `tox_data_tools::get_unassigned_mask`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
-    if gene_to_fam.ndim != 1:
-        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
+    # check every input by the input contract, converting only when C needs it
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_gene_to_fam_elements = gene_to_fam.shape[0]

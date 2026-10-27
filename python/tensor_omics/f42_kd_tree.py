@@ -14,6 +14,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -83,19 +84,9 @@ def build_kd_index(
     Generated from the Fortran procedure `f42_kd_tree::build_kd_index`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        points = _np.asfortranarray(points, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'points' must be an array of np.float64: {_error}", argument="points") from None
-    if points.ndim != 2:
-        raise _ToxArgumentError(f"'points' must have 2 dimensions, but has {points.ndim}", argument="points")
-    try:
-        dimension_order = _np.ascontiguousarray(dimension_order, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'dimension_order' must be an array of np.int32: {_error}", argument="dimension_order") from None
-    if dimension_order.ndim != 1:
-        raise _ToxArgumentError(f"'dimension_order' must have 1 dimension, but has {dimension_order.ndim}", argument="dimension_order")
+    # check every input by the input contract, converting only when C needs it
+    points = _contract.reals(points, "points", ndim=2, order="F")
+    dimension_order = _contract.integers(dimension_order, "dimension_order", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_dimensions = points.shape[0]
@@ -163,19 +154,9 @@ def build_spherical_kd(
     Generated from the Fortran procedure `f42_kd_tree::build_spherical_kd`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        points = _np.asfortranarray(points, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'points' must be an array of np.float64: {_error}", argument="points") from None
-    if points.ndim != 2:
-        raise _ToxArgumentError(f"'points' must have 2 dimensions, but has {points.ndim}", argument="points")
-    try:
-        dimension_order = _np.ascontiguousarray(dimension_order, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'dimension_order' must be an array of np.int32: {_error}", argument="dimension_order") from None
-    if dimension_order.ndim != 1:
-        raise _ToxArgumentError(f"'dimension_order' must have 1 dimension, but has {dimension_order.ndim}", argument="dimension_order")
+    # check every input by the input contract, converting only when C needs it
+    points = _contract.reals(points, "points", ndim=2, order="F")
+    dimension_order = _contract.integers(dimension_order, "dimension_order", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_dimensions = points.shape[0]

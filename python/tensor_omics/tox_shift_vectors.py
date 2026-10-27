@@ -14,6 +14,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -76,25 +77,10 @@ def compute_shift_vector_field(
     Generated from the Fortran procedure `tox_shift_vectors::compute_shift_vector_field`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'expression_vectors' must be an array of np.float64: {_error}", argument="expression_vectors") from None
-    if expression_vectors.ndim != 2:
-        raise _ToxArgumentError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}", argument="expression_vectors")
-    try:
-        family_centroids = _np.asfortranarray(family_centroids, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'family_centroids' must be an array of np.float64: {_error}", argument="family_centroids") from None
-    if family_centroids.ndim != 2:
-        raise _ToxArgumentError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}", argument="family_centroids")
-    try:
-        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
-    if gene_to_fam.ndim != 1:
-        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
+    # check every input by the input contract, converting only when C needs it
+    expression_vectors = _contract.reals(expression_vectors, "expression_vectors", ndim=2, order="F")
+    family_centroids = _contract.reals(family_centroids, "family_centroids", ndim=2, order="F")
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_tissues = expression_vectors.shape[0]

@@ -6,7 +6,11 @@
 #' are the ones an error message reports.
 #'
 #' @param file_list a character vector. List of files to read from
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @param gene_ids a character vector. Array of gene IDS
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @param expression_vectors a numeric matrix. Array of expression vectors
 #' @param n_header_rows a integer scalar. Number of header rows to skip
 #' @param gene_col a integer scalar. Index of column with gene_ids
@@ -14,6 +18,8 @@
 #' @param start_row a integer scalar. Row in the expression vectors to start in
 #' @param delimiter a string. optional delimiter
 #'   The default value is `char(9)`.
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   At most 1 byte long in UTF-8: a longer value is refused, not cut short.
 #' @return a numeric matrix. Array of expression vectors
 #' @export
 read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors, n_header_rows, gene_col, value_cols, start_row, delimiter = "	") {
@@ -24,7 +30,7 @@ read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors,
     gene_col <- .tox_as_integer_scalar(gene_col, "gene_col")
     value_cols <- .tox_as_integer_vector(value_cols, "value_cols")
     start_row <- .tox_as_integer_scalar(start_row, "start_row")
-    delimiter <- .tox_as_character(delimiter, "delimiter")
+    delimiter <- .tox_as_string(delimiter, "delimiter")
     .result <- .Call("read_expression_vectors_tsv_call", file_list, gene_ids, expression_vectors, n_header_rows, gene_col, value_cols, start_row, delimiter)
     .arguments <- c("file_list", "gene_ids", "expression_vectors", "n_header_rows", "gene_col", "value_cols", "start_row", "delimiter", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
@@ -38,6 +44,7 @@ read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors,
 #' are the ones an error message reports.
 #'
 #' @param filename a string. Name of the file
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param gene_ids_strlen a integer scalar. length of the strings in `gene_ids`
 #' @param n_gene_ids_elements a integer scalar. number of elements in `gene_ids`
 #' @param n_header_rows a integer scalar. number of headers to skip
@@ -45,7 +52,7 @@ read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors,
 #' @return a character vector. gene ids array
 #' @export
 read_gene_ids_from_tsv_file <- function(filename, gene_ids_strlen, n_gene_ids_elements, n_header_rows, gene_col) {
-    filename <- .tox_as_character(filename, "filename")
+    filename <- .tox_as_string(filename, "filename")
     gene_ids_strlen <- .tox_as_integer_scalar(gene_ids_strlen, "gene_ids_strlen")
     n_gene_ids_elements <- .tox_as_integer_scalar(n_gene_ids_elements, "n_gene_ids_elements")
     n_header_rows <- .tox_as_integer_scalar(n_header_rows, "n_header_rows")
@@ -63,7 +70,10 @@ read_gene_ids_from_tsv_file <- function(filename, gene_ids_strlen, n_gene_ids_el
 #' are the ones an error message reports.
 #'
 #' @param filename a string. Name of the file
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param gene_ids a character vector. gene ids array
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @param family_ids_strlen a integer scalar. length of the strings in `family_ids`
 #' @param n_family_ids_elements a integer scalar. number of elements in `family_ids`
 #' @param n_gene_to_fam_elements a integer scalar. number of elements in `gene_to_fam`
@@ -72,7 +82,7 @@ read_gene_ids_from_tsv_file <- function(filename, gene_ids_strlen, n_gene_ids_el
 #'   \item{gene_to_fam}{a integer vector. gene to family mapping}
 #' @export
 read_orthofinder_file <- function(filename, gene_ids, family_ids_strlen, n_family_ids_elements, n_gene_to_fam_elements) {
-    filename <- .tox_as_character(filename, "filename")
+    filename <- .tox_as_string(filename, "filename")
     gene_ids <- .tox_as_character(gene_ids, "gene_ids")
     family_ids_strlen <- .tox_as_integer_scalar(family_ids_strlen, "family_ids_strlen")
     n_family_ids_elements <- .tox_as_integer_scalar(n_family_ids_elements, "n_family_ids_elements")

@@ -14,6 +14,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -83,19 +84,9 @@ def euclidean_distance(
     Generated from the Fortran procedure `tox_euclidean_distance::euclidean_distance`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        vec1 = _np.ascontiguousarray(vec1, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'vec1' must be an array of np.float64: {_error}", argument="vec1") from None
-    if vec1.ndim != 1:
-        raise _ToxArgumentError(f"'vec1' must have 1 dimension, but has {vec1.ndim}", argument="vec1")
-    try:
-        vec2 = _np.ascontiguousarray(vec2, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'vec2' must be an array of np.float64: {_error}", argument="vec2") from None
-    if vec2.ndim != 1:
-        raise _ToxArgumentError(f"'vec2' must have 1 dimension, but has {vec2.ndim}", argument="vec2")
+    # check every input by the input contract, converting only when C needs it
+    vec1 = _contract.reals(vec1, "vec1", ndim=1)
+    vec2 = _contract.reals(vec2, "vec2", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_elements = vec1.shape[0]
@@ -160,25 +151,10 @@ def distance_to_centroid(
     Generated from the Fortran procedure `tox_euclidean_distance::distance_to_centroid`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        genes = _np.asfortranarray(genes, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'genes' must be an array of np.float64: {_error}", argument="genes") from None
-    if genes.ndim != 2:
-        raise _ToxArgumentError(f"'genes' must have 2 dimensions, but has {genes.ndim}", argument="genes")
-    try:
-        centroids = _np.asfortranarray(centroids, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'centroids' must be an array of np.float64: {_error}", argument="centroids") from None
-    if centroids.ndim != 2:
-        raise _ToxArgumentError(f"'centroids' must have 2 dimensions, but has {centroids.ndim}", argument="centroids")
-    try:
-        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
-    if gene_to_fam.ndim != 1:
-        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
+    # check every input by the input contract, converting only when C needs it
+    genes = _contract.reals(genes, "genes", ndim=2, order="F")
+    centroids = _contract.reals(centroids, "centroids", ndim=2, order="F")
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_genes = genes.shape[1]

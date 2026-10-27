@@ -15,6 +15,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -103,19 +104,9 @@ def mean_vector(
     Generated from the Fortran procedure `tox_gene_centroids::mean_vector`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'expression_vectors' must be an array of np.float64: {_error}", argument="expression_vectors") from None
-    if expression_vectors.ndim != 2:
-        raise _ToxArgumentError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}", argument="expression_vectors")
-    try:
-        gene_indices = _np.ascontiguousarray(gene_indices, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'gene_indices' must be an array of np.int32: {_error}", argument="gene_indices") from None
-    if gene_indices.ndim != 1:
-        raise _ToxArgumentError(f"'gene_indices' must have 1 dimension, but has {gene_indices.ndim}", argument="gene_indices")
+    # check every input by the input contract, converting only when C needs it
+    expression_vectors = _contract.reals(expression_vectors, "expression_vectors", ndim=2, order="F")
+    gene_indices = _contract.integers(gene_indices, "gene_indices", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]
@@ -184,25 +175,11 @@ def group_centroid_orthologs(
     Generated from the Fortran procedure `tox_gene_centroids::group_centroid_orthologs`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'expression_vectors' must be an array of np.float64: {_error}", argument="expression_vectors") from None
-    if expression_vectors.ndim != 2:
-        raise _ToxArgumentError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}", argument="expression_vectors")
-    try:
-        gene_to_family = _np.ascontiguousarray(gene_to_family, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'gene_to_family' must be an array of np.int32: {_error}", argument="gene_to_family") from None
-    if gene_to_family.ndim != 1:
-        raise _ToxArgumentError(f"'gene_to_family' must have 1 dimension, but has {gene_to_family.ndim}", argument="gene_to_family")
-    try:
-        ortholog_set = _np.ascontiguousarray(ortholog_set, dtype=_np.bool_)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'ortholog_set' must be an array of np.bool_: {_error}", argument="ortholog_set") from None
-    if ortholog_set.ndim != 1:
-        raise _ToxArgumentError(f"'ortholog_set' must have 1 dimension, but has {ortholog_set.ndim}", argument="ortholog_set")
+    # check every input by the input contract, converting only when C needs it
+    expression_vectors = _contract.reals(expression_vectors, "expression_vectors", ndim=2, order="F")
+    gene_to_family = _contract.integers(gene_to_family, "gene_to_family", ndim=1)
+    n_families = _contract.integer(n_families, "n_families")
+    ortholog_set = _contract.logicals(ortholog_set, "ortholog_set", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]
@@ -274,19 +251,10 @@ def group_centroid_all(
     Generated from the Fortran procedure `tox_gene_centroids::group_centroid_all`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'expression_vectors' must be an array of np.float64: {_error}", argument="expression_vectors") from None
-    if expression_vectors.ndim != 2:
-        raise _ToxArgumentError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}", argument="expression_vectors")
-    try:
-        gene_to_family = _np.ascontiguousarray(gene_to_family, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'gene_to_family' must be an array of np.int32: {_error}", argument="gene_to_family") from None
-    if gene_to_family.ndim != 1:
-        raise _ToxArgumentError(f"'gene_to_family' must have 1 dimension, but has {gene_to_family.ndim}", argument="gene_to_family")
+    # check every input by the input contract, converting only when C needs it
+    expression_vectors = _contract.reals(expression_vectors, "expression_vectors", ndim=2, order="F")
+    gene_to_family = _contract.integers(gene_to_family, "gene_to_family", ndim=1)
+    n_families = _contract.integer(n_families, "n_families")
 
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]

@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void read_expression_vectors_tsv_c(const char*, const int*, const int*, const char*, const int*, const int*, double*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, const char*, int*);
@@ -31,9 +31,10 @@ SEXP read_expression_vectors_tsv_call(SEXP file_list, SEXP gene_ids, SEXP expres
     SEXP _out_expression_vectors = PROTECT(Rf_duplicate(expression_vectors)); _nprot++;
 
     // convert what Fortran cannot take from R directly
-    char* _c_file_list = tox_char_in(file_list, file_list_strlen);
-    char* _c_gene_ids = tox_char_in(gene_ids, gene_ids_strlen);
-    char* _c_delimiter = tox_char_in(delimiter, 1);
+    char* _c_file_list = tox_char_in(file_list, file_list_strlen, "file_list");
+    char* _c_gene_ids = tox_char_in(gene_ids, gene_ids_strlen, "gene_ids");
+    const int* _c_value_cols = tox_int_in(value_cols, "value_cols");
+    char* _c_delimiter = tox_char_in(delimiter, 1, "delimiter");
 
     // outputs and work space
     int ierr = 0;
@@ -50,7 +51,7 @@ SEXP read_expression_vectors_tsv_call(SEXP file_list, SEXP gene_ids, SEXP expres
         &n_expression_vectors_elements_dim_2,
         &_v_n_header_rows,
         &_v_gene_col,
-        INTEGER(value_cols),
+        _c_value_cols,
         &n_value_cols_elements,
         &_v_start_row,
         _c_delimiter,
@@ -80,7 +81,7 @@ SEXP read_gene_ids_from_tsv_file_call(SEXP filename, SEXP gene_ids_strlen, SEXP 
     int _v_gene_col = Rf_asInteger(gene_col);
 
     // convert what Fortran cannot take from R directly
-    char* _c_filename = tox_char_in(filename, filename_strlen);
+    char* _c_filename = tox_char_in(filename, filename_strlen, "filename");
 
     // outputs and work space
     char* _c_gene_ids = tox_char_alloc(_v_gene_ids_strlen, _v_n_gene_ids_elements);
@@ -124,8 +125,8 @@ SEXP read_orthofinder_file_call(SEXP filename, SEXP gene_ids, SEXP family_ids_st
     int _v_n_gene_to_fam_elements = Rf_asInteger(n_gene_to_fam_elements);
 
     // convert what Fortran cannot take from R directly
-    char* _c_filename = tox_char_in(filename, filename_strlen);
-    char* _c_gene_ids = tox_char_in(gene_ids, gene_ids_strlen);
+    char* _c_filename = tox_char_in(filename, filename_strlen, "filename");
+    char* _c_gene_ids = tox_char_in(gene_ids, gene_ids_strlen, "gene_ids");
 
     // outputs and work space
     char* _c_family_ids = tox_char_alloc(_v_family_ids_strlen, _v_n_family_ids_elements);
@@ -167,13 +168,16 @@ SEXP get_unassigned_mask_call(SEXP gene_to_fam) {
     // derived from the inputs, not asked of the caller
     int n_gene_to_fam_elements = (int) Rf_length(gene_to_fam);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
+
     // outputs and work space
     unsigned char* _c_mask = tox_bool_alloc(((int) Rf_length(gene_to_fam)));
     int n_genes_kept = 0;
     int ierr = 0;
 
     get_unassigned_mask_c(
-        INTEGER(gene_to_fam),
+        _c_gene_to_fam,
         &n_gene_to_fam_elements,
         _c_mask,
         &n_genes_kept,

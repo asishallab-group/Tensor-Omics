@@ -743,9 +743,12 @@ integer(int32), intent(in), optional :: mode
 ```
 
 **You get** two things. Python and R callers pass a **string** — the parameter name without its
-prefix, lower-cased, so `MODE_PLAIN` is `"plain"` — which the C wrapper maps back to the
-integer, rejecting an unknown one before Fortran is entered. And the wrapper checks membership
-against exactly the values the table names:
+prefix, lower-cased, so `MODE_PLAIN` is `"plain"` — which both bindings match whole against the
+table's modes, refusing any other with a message that lists them, and which the C wrapper maps
+back to the integer, rejecting an unknown one from a C caller before Fortran is entered. Matched
+whole because the C buffer is only as wide as the longest mode: `"plainest"` would otherwise
+arrive as `"plain"`. And the wrapper checks membership against exactly the values the table
+names:
 
 ```fortran
 if (present(mode)) then
@@ -1206,8 +1209,16 @@ What that means for you:
   reaches you as an array of size 0, as any other empty array does: whether that is an error is
   yours to decide, with `validate_dimension_size` if it is. Only a C caller can send a string of
   zero width, and the wrapper refuses it as empty input before your procedure runs.
-- **A value that genuinely ends in a blank will not round-trip.** That is the accepted price of
-  the padding convention.
+- **Trailing blanks are not part of a value**, as in Fortran: `'TP53 '` and `'TP53'` are the
+  same gene id to your procedure, and a value that genuinely ends in a blank does not
+  round-trip. That is the library's semantics, like 1-based indexing, so the bindings accept such
+  a string and say so in every generated string parameter's documentation, rather than refuse it.
+- **A declared length is a limit.** For `character(len=8)` the bindings refuse a longer string
+  (in UTF-8 bytes) instead of cutting it short, which is what happened before: `delimiter='::'`
+  reached a `len=1` dummy as `':'`. Declare `len=*` where the caller's string decides the length.
+- **What reaches you is valid UTF-8 without a NUL**, whatever the caller held: the bindings refuse
+  a NUL, a lone surrogate and invalid UTF-8, and R translates a latin1 string before it crosses,
+  so `"\u00e9"` is one value whichever encoding R marked it with.
 
 ### 6.8 Never export an implementation
 
@@ -1283,6 +1294,13 @@ authored: **an array a Python binding returns is read-only.** A result is a valu
 modifying one in place raises, and `.copy()` is the way to a modifiable array. An
 `intent(inout)` argument is untouched by this — it is the caller's array and is still modified
 in place. R needs no equivalent, being copy-on-modify.
+
+And what a binding accepts for each of your arguments is one table, the same in Python and R
+(`helper/codegen/design/language-layers.md`, "what an argument accepts"), so you need not guard
+against it: an `integer(int32)` gets only whole numbers in range (a whole float or an R double is
+fine, `1.7` or `2**32 + 5` is refused, never truncated or wrapped), a logical only booleans or the
+numbers 0 and 1, a real only numbers, and no argument a bool, a string parsed as a number, a
+datetime or an NA. A wrong rank is refused, never flattened.
 
 ---
 

@@ -17,6 +17,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -149,13 +150,8 @@ def compute_gene_means(
     Generated from the Fortran procedure `tox_data_integration_preprocessing::compute_gene_means`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expr = _np.asfortranarray(expr, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
-    if expr.ndim != 2:
-        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
+    # check every input by the input contract, converting only when C needs it
+    expr = _contract.reals(expr, "expr", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -215,19 +211,9 @@ def compute_residuals(
     Generated from the Fortran procedure `tox_data_integration_preprocessing::compute_residuals`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expr = _np.asfortranarray(expr, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
-    if expr.ndim != 2:
-        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
-    try:
-        means = _np.ascontiguousarray(means, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'means' must be an array of np.float64: {_error}", argument="means") from None
-    if means.ndim != 1:
-        raise _ToxArgumentError(f"'means' must have 1 dimension, but has {means.ndim}", argument="means")
+    # check every input by the input contract, converting only when C needs it
+    expr = _contract.reals(expr, "expr", ndim=2, order="F")
+    means = _contract.reals(means, "means", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -301,13 +287,9 @@ def pool_means(
     This entry point seeds `pooled_means_perm` and sorts it by `pooled_means`.
     Call `pool_means_expert` to do that yourself.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        pooled_means = _np.ascontiguousarray(pooled_means, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'pooled_means' must be an array of np.float64: {_error}", argument="pooled_means") from None
-    if pooled_means.ndim != 1:
-        raise _ToxArgumentError(f"'pooled_means' must have 1 dimension, but has {pooled_means.ndim}", argument="pooled_means")
+    # check every input by the input contract, converting only when C needs it
+    pooled_means = _contract.reals(pooled_means, "pooled_means", ndim=1)
+    n_points = _contract.integer(n_points, "n_points")
 
     # what the inputs already say, rather than asking for it again
     pool_size = pooled_means.shape[0]
@@ -383,19 +365,10 @@ def pool_means_expert(
     The expert entry point: you supply `pooled_means_perm` yourself.
     `pool_means` seeds `pooled_means_perm` and sorts it by `pooled_means`.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        pooled_means = _np.ascontiguousarray(pooled_means, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'pooled_means' must be an array of np.float64: {_error}", argument="pooled_means") from None
-    if pooled_means.ndim != 1:
-        raise _ToxArgumentError(f"'pooled_means' must have 1 dimension, but has {pooled_means.ndim}", argument="pooled_means")
-    try:
-        pooled_means_perm = _np.ascontiguousarray(pooled_means_perm, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'pooled_means_perm' must be an array of np.int32: {_error}", argument="pooled_means_perm") from None
-    if pooled_means_perm.ndim != 1:
-        raise _ToxArgumentError(f"'pooled_means_perm' must have 1 dimension, but has {pooled_means_perm.ndim}", argument="pooled_means_perm")
+    # check every input by the input contract, converting only when C needs it
+    pooled_means = _contract.reals(pooled_means, "pooled_means", ndim=1)
+    pooled_means_perm = _contract.integers(pooled_means_perm, "pooled_means_perm", ndim=1)
+    n_points = _contract.integer(n_points, "n_points")
 
     # what the inputs already say, rather than asking for it again
     pool_size = pooled_means.shape[0]
@@ -474,19 +447,10 @@ def pool_study_means(
     Generated from the Fortran procedure `tox_data_integration_preprocessing::pool_study_means`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        mean_S1 = _np.ascontiguousarray(mean_S1, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'mean_S1' must be an array of np.float64: {_error}", argument="mean_S1") from None
-    if mean_S1.ndim != 1:
-        raise _ToxArgumentError(f"'mean_S1' must have 1 dimension, but has {mean_S1.ndim}", argument="mean_S1")
-    try:
-        mean_S2 = _np.ascontiguousarray(mean_S2, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'mean_S2' must be an array of np.float64: {_error}", argument="mean_S2") from None
-    if mean_S2.ndim != 1:
-        raise _ToxArgumentError(f"'mean_S2' must have 1 dimension, but has {mean_S2.ndim}", argument="mean_S2")
+    # check every input by the input contract, converting only when C needs it
+    mean_S1 = _contract.reals(mean_S1, "mean_S1", ndim=1)
+    mean_S2 = _contract.reals(mean_S2, "mean_S2", ndim=1)
+    n_points = _contract.integer(n_points, "n_points")
 
     # what the inputs already say, rather than asking for it again
     n_genes_S1 = mean_S1.shape[0]
@@ -570,25 +534,11 @@ def construct_neighborhoods(
     Generated from the Fortran procedure `tox_data_integration_preprocessing::construct_neighborhoods`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        x_star = _np.ascontiguousarray(x_star, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'x_star' must be an array of np.float64: {_error}", argument="x_star") from None
-    if x_star.ndim != 1:
-        raise _ToxArgumentError(f"'x_star' must have 1 dimension, but has {x_star.ndim}", argument="x_star")
-    try:
-        mean_S = _np.ascontiguousarray(mean_S, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'mean_S' must be an array of np.float64: {_error}", argument="mean_S") from None
-    if mean_S.ndim != 1:
-        raise _ToxArgumentError(f"'mean_S' must have 1 dimension, but has {mean_S.ndim}", argument="mean_S")
-    try:
-        resid_S = _np.asfortranarray(resid_S, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'resid_S' must be an array of np.float64: {_error}", argument="resid_S") from None
-    if resid_S.ndim != 2:
-        raise _ToxArgumentError(f"'resid_S' must have 2 dimensions, but has {resid_S.ndim}", argument="resid_S")
+    # check every input by the input contract, converting only when C needs it
+    x_star = _contract.reals(x_star, "x_star", ndim=1)
+    mean_S = _contract.reals(mean_S, "mean_S", ndim=1)
+    resid_S = _contract.reals(resid_S, "resid_S", ndim=2, order="F")
+    n_neighbors = _contract.integer(n_neighbors, "n_neighbors")
 
     # what the inputs already say, rather than asking for it again
     n_points = x_star.shape[0]

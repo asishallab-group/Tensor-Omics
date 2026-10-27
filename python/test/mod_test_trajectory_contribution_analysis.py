@@ -24,7 +24,7 @@ from tensor_omics import (
     compute_velocity_acceleration_contributions
 )
 from test_helpers import run_all_tests, assert_error
-from tensor_omics.error_handling import ERR_INVALID_INPUT, ERR_NAN_INF, ERR_SIZE_MISMATCH
+from tensor_omics.error_handling import ERR_NAN_INF, ERR_SIZE_MISMATCH
 
 
 # Constants
@@ -189,8 +189,10 @@ def test_tox_compute_baselines_factor_dependent():
     # Mismatched lengths should raise ValueError
     assert_error(lambda: compute_baselines_factor_dependent(factor, dependent[:-1], baseline_mode="baseline_raw"), "Expected ValueError for mismatched lengths")
 
-    # Invalid mode should bubble up as RuntimeError from Fortran layer
-    assert_error(lambda: compute_baselines_factor_dependent(factor, dependent, baseline_mode="baseline_unknown_mode"), "Expected RuntimeError for invalid mode", ERR_INVALID_INPUT)
+    # An invalid mode is refused by the binding before the call, naming the argument and the
+    # modes: it carries no tox code, as in R. It reached the C wrapper cut to the buffer's 13
+    # bytes before (#221 G-I1, G-I2)
+    assert_error(lambda: compute_baselines_factor_dependent(factor, dependent, baseline_mode="baseline_unknown_mode"), "Expected an error for an invalid mode")
 
 
 def test_compute_contributions():

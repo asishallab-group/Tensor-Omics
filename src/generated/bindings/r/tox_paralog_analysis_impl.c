@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void mask_check_state_c(const int*, const int*, const int*, unsigned char*, int*);
@@ -18,12 +18,15 @@ SEXP mask_check_state_call(SEXP bit_mask, SEXP i_gene) {
     // scalar inputs, pulled from their length-1 vectors
     int _v_i_gene = Rf_asInteger(i_gene);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_bit_mask = tox_int_in(bit_mask, "bit_mask");
+
     // outputs and work space
     unsigned char state = 0;
     int ierr = 0;
 
     mask_check_state_c(
-        INTEGER(bit_mask),
+        _c_bit_mask,
         &n_bit_mask_elements,
         &_v_i_gene,
         &state,
@@ -76,6 +79,9 @@ SEXP calc_work_arr_paralog_subsets_size_call(SEXP max_subset_size, SEXP n_genes,
     int _v_max_subset_size = Rf_asInteger(max_subset_size);
     int _v_n_genes = Rf_asInteger(n_genes);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_filtered_paralogs_mask = tox_int_in(filtered_paralogs_mask, "filtered_paralogs_mask");
+
     // outputs and work space
     int work_array_size = 0;
     int ierr = 0;
@@ -84,7 +90,7 @@ SEXP calc_work_arr_paralog_subsets_size_call(SEXP max_subset_size, SEXP n_genes,
         &_v_max_subset_size,
         &_v_n_genes,
         &work_array_size,
-        INTEGER(filtered_paralogs_mask),
+        _c_filtered_paralogs_mask,
         &n_mask_chunks,
         &ierr
     );

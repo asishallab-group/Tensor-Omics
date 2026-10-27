@@ -33,6 +33,18 @@ BASE_CONDITION = "tox_error"
 #: without a code (#221). `tryCatch(tox_input_error = ...)` catches both.
 ARGUMENT_CONDITION_PARENT = GROUP_CONDITIONS[ErrorGroup.INPUT]
 
+#: The classes every condition inherits after its own, and which a binding-side refusal
+#: inherits after its own too, input error first. The R shim raises the same refusals from C
+#: (`tox_refuse` in `tox_marshal.h`), built from these, so the two cannot drift apart.
+RAISED_CLASSES = (BASE_CONDITION, "error", "condition")
+ARGUMENT_CONDITION_CLASSES = (ARGUMENT_CONDITION_PARENT, *RAISED_CLASSES)
+
+#: The fields of every condition, in order -- what `.tox_raise` builds and `tox_refuse` too
+CONDITION_FIELDS = ("message", "call", "code", "name", "argument")
+
+#: The message of an NA refused, as a `sprintf` format taking the argument's name
+NA_MESSAGE = "'%s' contains NA, which tensor-omics cannot represent"
+
 
 class RErrorEmitter:
     def __init__(self, catalogue: ErrorCatalogue):
@@ -110,7 +122,8 @@ class RErrorEmitter:
         with writer.indent():
             writer.line("cond <- structure(")
             with writer.indent():
-                writer.line("class = c(class, \"tox_error\", \"error\", \"condition\"),")
+                classes = ", ".join(f'"{name}"' for name in RAISED_CLASSES)
+                writer.line(f"class = c(class, {classes}),")
                 writer.line("list(message = message, call = sys.call(-1),")
             with writer.indent(5):
                 writer.line("code = code, name = name, argument = argument)")
@@ -153,10 +166,7 @@ class RErrorEmitter:
         with writer.indent():
             writer.line(".tox_argument_error(")
             with writer.indent():
-                writer.line(
-                    'sprintf("\'%s\' contains NA, which tensor-omics cannot represent", '
-                    "argument),"
-                )
+                writer.line(f'sprintf("{NA_MESSAGE}", argument),')
                 writer.line('"tox_na_error", argument')
             writer.line(")")
         writer.line("}")

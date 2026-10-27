@@ -22,6 +22,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -95,13 +96,9 @@ def mask_check_state(
     Generated from the Fortran procedure `tox_paralog_analysis_impl::mask_check_state`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        bit_mask = _np.ascontiguousarray(bit_mask, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'bit_mask' must be an array of np.int32: {_error}", argument="bit_mask") from None
-    if bit_mask.ndim != 1:
-        raise _ToxArgumentError(f"'bit_mask' must have 1 dimension, but has {bit_mask.ndim}", argument="bit_mask")
+    # check every input by the input contract, converting only when C needs it
+    bit_mask = _contract.integers(bit_mask, "bit_mask", ndim=1)
+    i_gene = _contract.integer(i_gene, "i_gene")
 
     # what the inputs already say, rather than asking for it again
     n_bit_mask_elements = bit_mask.shape[0]
@@ -152,6 +149,9 @@ def mask_chunk_count(
     Generated from the Fortran procedure `tox_paralog_analysis_impl::mask_chunk_count`, whose argument names are
     the ones an error message reports.
     """
+    # check every input by the input contract, converting only when C needs it
+    n_genes = _contract.integer(n_genes, "n_genes")
+
     # outputs and work arrays, which the caller never sees
     count = _ctypes.c_int(0)
     ierr = _ctypes.c_int(0)
@@ -221,14 +221,10 @@ def calc_work_arr_paralog_subsets_size(
     Generated from the Fortran procedure `tox_paralog_analysis_impl::calc_work_arr_paralog_subsets_size`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    max_subset_size = _ctypes.c_int(max_subset_size)
-    try:
-        filtered_paralogs_mask = _np.ascontiguousarray(filtered_paralogs_mask, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'filtered_paralogs_mask' must be an array of np.int32: {_error}", argument="filtered_paralogs_mask") from None
-    if filtered_paralogs_mask.ndim != 1:
-        raise _ToxArgumentError(f"'filtered_paralogs_mask' must have 1 dimension, but has {filtered_paralogs_mask.ndim}", argument="filtered_paralogs_mask")
+    # check every input by the input contract, converting only when C needs it
+    max_subset_size = _ctypes.c_int(_contract.integer(max_subset_size, "max_subset_size"))
+    n_genes = _contract.integer(n_genes, "n_genes")
+    filtered_paralogs_mask = _contract.integers(filtered_paralogs_mask, "filtered_paralogs_mask", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_mask_chunks = filtered_paralogs_mask.shape[0]

@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void compute_tissue_versatility_c(const int*, const int*, const double*, const unsigned char*, const int*, const unsigned char*, const int*, double*, double*, int*);
@@ -17,8 +17,8 @@ SEXP compute_tissue_versatility_call(SEXP expression_vectors, SEXP vectors_selec
     int n_selected_axes = tox_sum_true(axes_selection_mask);
 
     // convert what Fortran cannot take from R directly
-    unsigned char* _c_vectors_selection_mask = tox_bool_in(vectors_selection_mask);
-    unsigned char* _c_axes_selection_mask = tox_bool_in(axes_selection_mask);
+    unsigned char* _c_vectors_selection_mask = tox_bool_in(vectors_selection_mask, "vectors_selection_mask");
+    unsigned char* _c_axes_selection_mask = tox_bool_in(axes_selection_mask, "axes_selection_mask");
 
     // outputs and work space
     SEXP tissue_versatilities = PROTECT(Rf_allocVector(REALSXP, n_selected_vectors)); _nprot++;

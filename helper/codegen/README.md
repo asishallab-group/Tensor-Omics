@@ -154,6 +154,7 @@ src/generated/bindings/r/                      # R C .Call shims -- fpm compiles
     tox_marshal.h  init.c  <module>.c
 python/tensor_omics/
     __init__.py  library.py  error_handling.py
+    _contract.py                      # the input contract every wrapper checks by
     <module>.py                       # one per module
 r/tensor_omics/
     tox_validate.R   error_handling.R   <module>.R
@@ -334,6 +335,23 @@ The parts a source author does not need, and a generator maintainer does:
   `tox_input_error` (`.tox_argument_error`), `code` NA. They used to be a bare `ValueError` /
   `TypeError` and a plain `tox_error`, so the same wrong shape needed a different handler when
   the binding caught it than when the Fortran did. Each docstring's `Raises` names it.
+- **Every input is checked by one input contract, the same in Python and R** (#221,
+  `design/language-layers.md`, "what an argument accepts"). The input's own kind first -- an
+  allowlist on numpy's `dtype.kind`, R's `is.numeric` / `is.logical` / `is.character`, never
+  `typeof` -- then a conversion accepted only if converting back gives exactly the same values:
+  an integer takes whole floats in range, a logical takes numbers that are 0 or 1, a real takes
+  any integer or float, and nothing parses a string, counts a datetime or reads a factor's codes.
+  A string is a `str` (or an `os.PathLike`) or one R string, valid Unicode without a NUL, at most
+  its declared length; an array of strings is a sequence of them (an R factor by its labels); a
+  mode matches whole, never cut to the buffer; a rank is the declared one, nothing is flattened
+  (an R 1-D array and table are vectors, a numeric data.frame a matrix). Python's is one generated
+  module every wrapper calls, `tensor_omics/_contract.py` (`emit.python_contract`), free for an
+  input of the Fortran type. R checks kind, rank and a single value in `tox_validate.R`; every
+  element of an integer, logical or character array is checked by the C shim as it converts it
+  (`tox_int_in`, `tox_bool_in`, `tox_char_in` in `tox_marshal.h`), which raises the R wrapper's own
+  condition from C (`tox_refuse`, from `emit.errors_r`'s classes). A latin1 string reaches Fortran
+  as UTF-8, and a returned string is marked UTF-8. Trailing blanks are Fortran semantics,
+  accepted and dropped, and every generated string parameter says so (`emit.doc_contract`).
 - **Every input axis is compared before the call, by one rule** (#221 A-shape,
   `emit.shape_checks`): an axis that names an extent is compared with that extent's value, except
   the axis the value was read from, and an axis the declaration fixes at a constant (`fields(n, 2,
@@ -590,6 +608,16 @@ A `DM_PROLOGUE` is checked too, having had no analysis or validation at all befo
   anything is taken over, or when the prologue asks for an argument of its own)
 - it may not produce anything the allocations, permutation sorts or recommend calls above it read
 
+At run time, the bindings refuse what the input contract does not accept, before anything is
+called and naming the argument (`ToxArgumentError` / a `tox_input_error`, no code; the table is in
+`design/language-layers.md`): a bool for a number, a fraction, NaN or out-of-range value for an
+integer, any number but 0 and 1 for a logical, a string, object, datetime or complex for a
+number, an R factor, Date or `integer64` for a number, a masked array with masked elements, a
+non-`str` for a string, a bare `str` for an array of strings, a NUL, a lone surrogate or invalid
+UTF-8, an NA, a string longer than its declared length, an unknown or over-long mode, and any
+other rank. A refusal that has a fix names it: `.view(np.int32)` for a uint32 bit-mask word,
+`.astype(str)` for bytes, `as.integer()` for an `integer64`, `.filled()` for a masked array.
+
 ### Documentation that names something
 
 **Every Ford `[[...]]` cross-reference is resolved against the project, and one that names
@@ -694,8 +722,9 @@ the compiler or a run rejected the first attempt.
 - **`impure elemental`** is impure. `elemental` implies `pure` unless `impure` says otherwise,
   and Ford lists both; taking `elemental` alone gave the wrapper a `pure` prefix it cannot
   compile with.
-- **NA** (R) is rejected only where the check is free — integers, logicals, characters —
-  never doubles, whose `NA` is a NaN Fortran already catches.
+- **NA** (R) is rejected only where the check is free — integers, logicals, characters, in the
+  shim's conversion pass (`INTEGER_NO_NA` keeps `1:n` O(1)) — never doubles, whose `NA` is a NaN
+  Fortran already catches.
 
 The full rationale for each is in [`design/language-layers.md`](design/language-layers.md)
 and [`design/c-layer.md`](design/c-layer.md), including the alternatives that were rejected.

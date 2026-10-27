@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from ..abi.model import CArgument, Conversion, CWrapper
 from ..ir.doc import Doc, DocTable
+from .doc_contract import string_input_notes
 from .doc_links import render_spans as _spans
 from .doc_literals import is_ford_block_tag, render as _render, render_mode_default
 from ..ir.types import BaseType
@@ -102,6 +103,11 @@ def _param_lines(argument: CArgument, resolver=None) -> list[str]:
     """
     type_ = r_type_of(argument)
     lines = _prose_lines(argument.doc, resolver, argument.mode_default)
+    notes = string_input_notes(argument)
+    if notes and argument.rank > 1:
+        # as.integer() would give its codes; a string has no such trap
+        notes.append("A factor is taken by its labels.")
+    lines += notes
     if not lines:
         return [type_]
     return [f"{type_}. {lines[0]}", *lines[1:]]

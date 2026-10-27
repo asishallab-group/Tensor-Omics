@@ -12,6 +12,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -181,31 +182,13 @@ def loess_smooth_2d(
     Generated from the Fortran procedure `f42_stats::loess_smooth_2d`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        x_ref = _np.ascontiguousarray(x_ref, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'x_ref' must be an array of np.float64: {_error}", argument="x_ref") from None
-    if x_ref.ndim != 1:
-        raise _ToxArgumentError(f"'x_ref' must have 1 dimension, but has {x_ref.ndim}", argument="x_ref")
-    try:
-        y_ref = _np.ascontiguousarray(y_ref, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'y_ref' must be an array of np.float64: {_error}", argument="y_ref") from None
-    if y_ref.ndim != 1:
-        raise _ToxArgumentError(f"'y_ref' must have 1 dimension, but has {y_ref.ndim}", argument="y_ref")
-    try:
-        indices_used = _np.ascontiguousarray(indices_used, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'indices_used' must be an array of np.int32: {_error}", argument="indices_used") from None
-    if indices_used.ndim != 1:
-        raise _ToxArgumentError(f"'indices_used' must have 1 dimension, but has {indices_used.ndim}", argument="indices_used")
-    try:
-        x_query = _np.ascontiguousarray(x_query, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'x_query' must be an array of np.float64: {_error}", argument="x_query") from None
-    if x_query.ndim != 1:
-        raise _ToxArgumentError(f"'x_query' must have 1 dimension, but has {x_query.ndim}", argument="x_query")
+    # check every input by the input contract, converting only when C needs it
+    x_ref = _contract.reals(x_ref, "x_ref", ndim=1)
+    y_ref = _contract.reals(y_ref, "y_ref", ndim=1)
+    indices_used = _contract.integers(indices_used, "indices_used", ndim=1)
+    x_query = _contract.reals(x_query, "x_query", ndim=1)
+    kernel_sigma = _contract.real(kernel_sigma, "kernel_sigma")
+    kernel_cutoff = _contract.real(kernel_cutoff, "kernel_cutoff")
 
     # what the inputs already say, rather than asking for it again
     n_total = x_ref.shape[0]
@@ -284,13 +267,8 @@ def compute_edf(
     This entry point seeds `values_perm` and sorts it by `values`.
     Call `compute_edf_expert` to do that yourself.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        values = _np.ascontiguousarray(values, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'values' must be an array of np.float64: {_error}", argument="values") from None
-    if values.ndim != 1:
-        raise _ToxArgumentError(f"'values' must have 1 dimension, but has {values.ndim}", argument="values")
+    # check every input by the input contract, converting only when C needs it
+    values = _contract.reals(values, "values", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_values = values.shape[0]
@@ -370,19 +348,9 @@ def compute_edf_expert(
     The expert entry point: you supply `values_perm` yourself.
     `compute_edf` seeds `values_perm` and sorts it by `values`.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        values = _np.ascontiguousarray(values, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'values' must be an array of np.float64: {_error}", argument="values") from None
-    if values.ndim != 1:
-        raise _ToxArgumentError(f"'values' must have 1 dimension, but has {values.ndim}", argument="values")
-    try:
-        values_perm = _np.ascontiguousarray(values_perm, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'values_perm' must be an array of np.int32: {_error}", argument="values_perm") from None
-    if values_perm.ndim != 1:
-        raise _ToxArgumentError(f"'values_perm' must have 1 dimension, but has {values_perm.ndim}", argument="values_perm")
+    # check every input by the input contract, converting only when C needs it
+    values = _contract.reals(values, "values", ndim=1)
+    values_perm = _contract.integers(values_perm, "values_perm", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_values = values.shape[0]
@@ -465,13 +433,10 @@ def calc_quantile(
     This entry point seeds `array_perm` and sorts it by `array`.
     Call `calc_quantile_expert` to do that yourself.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        array = _np.ascontiguousarray(array, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'array' must be an array of np.float64: {_error}", argument="array") from None
-    if array.ndim != 1:
-        raise _ToxArgumentError(f"'array' must have 1 dimension, but has {array.ndim}", argument="array")
+    # check every input by the input contract, converting only when C needs it
+    array = _contract.reals(array, "array", ndim=1)
+    level = _contract.real(level, "level")
+    n_considered = _contract.integer(n_considered, "n_considered")
 
     # what the inputs already say, rather than asking for it again
     n_array = array.shape[0]
@@ -546,19 +511,11 @@ def calc_quantile_expert(
     The expert entry point: you supply `array_perm` yourself.
     `calc_quantile` seeds `array_perm` and sorts it by `array`.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        array = _np.ascontiguousarray(array, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'array' must be an array of np.float64: {_error}", argument="array") from None
-    if array.ndim != 1:
-        raise _ToxArgumentError(f"'array' must have 1 dimension, but has {array.ndim}", argument="array")
-    try:
-        array_perm = _np.ascontiguousarray(array_perm, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'array_perm' must be an array of np.int32: {_error}", argument="array_perm") from None
-    if array_perm.ndim != 1:
-        raise _ToxArgumentError(f"'array_perm' must have 1 dimension, but has {array_perm.ndim}", argument="array_perm")
+    # check every input by the input contract, converting only when C needs it
+    array = _contract.reals(array, "array", ndim=1)
+    array_perm = _contract.integers(array_perm, "array_perm", ndim=1)
+    level = _contract.real(level, "level")
+    n_considered = _contract.integer(n_considered, "n_considered")
 
     # what the inputs already say, rather than asking for it again
     n_array = array.shape[0]
@@ -640,19 +597,10 @@ def compute_scaled_distance_tail_probability(
     This entry point seeds `sorted_rdi_perm` and sorts it by `sorted_rdi`.
     Call `compute_scaled_distance_tail_probability_expert` to do that yourself.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        rdi = _np.ascontiguousarray(rdi, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'rdi' must be an array of np.float64: {_error}", argument="rdi") from None
-    if rdi.ndim != 1:
-        raise _ToxArgumentError(f"'rdi' must have 1 dimension, but has {rdi.ndim}", argument="rdi")
-    try:
-        sorted_rdi = _np.ascontiguousarray(sorted_rdi, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'sorted_rdi' must be an array of np.float64: {_error}", argument="sorted_rdi") from None
-    if sorted_rdi.ndim != 1:
-        raise _ToxArgumentError(f"'sorted_rdi' must have 1 dimension, but has {sorted_rdi.ndim}", argument="sorted_rdi")
+    # check every input by the input contract, converting only when C needs it
+    rdi = _contract.reals(rdi, "rdi", ndim=1)
+    sorted_rdi = _contract.reals(sorted_rdi, "sorted_rdi", ndim=1)
+    c_const = _contract.real(c_const, "c_const")
 
     # what the inputs already say, rather than asking for it again
     n_genes = rdi.shape[0]
@@ -742,25 +690,11 @@ def compute_scaled_distance_tail_probability_expert(
     The expert entry point: you supply `sorted_rdi_perm` yourself.
     `compute_scaled_distance_tail_probability` seeds `sorted_rdi_perm` and sorts it by `sorted_rdi`.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        rdi = _np.ascontiguousarray(rdi, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'rdi' must be an array of np.float64: {_error}", argument="rdi") from None
-    if rdi.ndim != 1:
-        raise _ToxArgumentError(f"'rdi' must have 1 dimension, but has {rdi.ndim}", argument="rdi")
-    try:
-        sorted_rdi = _np.ascontiguousarray(sorted_rdi, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'sorted_rdi' must be an array of np.float64: {_error}", argument="sorted_rdi") from None
-    if sorted_rdi.ndim != 1:
-        raise _ToxArgumentError(f"'sorted_rdi' must have 1 dimension, but has {sorted_rdi.ndim}", argument="sorted_rdi")
-    try:
-        sorted_rdi_perm = _np.ascontiguousarray(sorted_rdi_perm, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'sorted_rdi_perm' must be an array of np.int32: {_error}", argument="sorted_rdi_perm") from None
-    if sorted_rdi_perm.ndim != 1:
-        raise _ToxArgumentError(f"'sorted_rdi_perm' must have 1 dimension, but has {sorted_rdi_perm.ndim}", argument="sorted_rdi_perm")
+    # check every input by the input contract, converting only when C needs it
+    rdi = _contract.reals(rdi, "rdi", ndim=1)
+    sorted_rdi = _contract.reals(sorted_rdi, "sorted_rdi", ndim=1)
+    sorted_rdi_perm = _contract.integers(sorted_rdi_perm, "sorted_rdi_perm", ndim=1)
+    c_const = _contract.real(c_const, "c_const")
 
     # what the inputs already say, rather than asking for it again
     n_genes = rdi.shape[0]

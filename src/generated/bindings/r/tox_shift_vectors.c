@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void compute_shift_vector_field_c(const int*, const int*, const int*, const double*, const double*, const int*, double*, int*);
@@ -14,6 +14,9 @@ SEXP compute_shift_vector_field_call(SEXP expression_vectors, SEXP family_centro
     int n_tissues = INTEGER(Rf_getAttrib(expression_vectors, R_DimSymbol))[0];
     int n_genes = INTEGER(Rf_getAttrib(expression_vectors, R_DimSymbol))[1];
     int n_families = INTEGER(Rf_getAttrib(family_centroids, R_DimSymbol))[1];
+
+    // convert what Fortran cannot take from R directly
+    const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
 
     // outputs and work space
     SEXP shift_vectors = PROTECT(Rf_allocVector(REALSXP, n_tissues * 2 * n_genes)); _nprot++;
@@ -26,7 +29,7 @@ SEXP compute_shift_vector_field_call(SEXP expression_vectors, SEXP family_centro
         &n_families,
         REAL(expression_vectors),
         REAL(family_centroids),
-        INTEGER(gene_to_fam),
+        _c_gene_to_fam,
         REAL(shift_vectors),
         &ierr
     );

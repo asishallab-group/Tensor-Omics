@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void compute_family_scaling_c(const int*, const int*, const double*, const int*, double*, double*, double*, int*, const double*, const int*, const char*, const int*, double*, int*, int*);
@@ -23,7 +23,8 @@ SEXP compute_family_scaling_call(SEXP n_families, SEXP distances, SEXP gene_to_f
     int _v_n_iters = Rf_asInteger(n_iters);
 
     // convert what Fortran cannot take from R directly
-    char* _c_mode = tox_char_in(mode, 6);
+    const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
+    char* _c_mode = tox_char_in(mode, 6, "mode");
 
     // outputs and work space
     SEXP dscale = PROTECT(Rf_allocVector(REALSXP, _v_n_families)); _nprot++;
@@ -38,7 +39,7 @@ SEXP compute_family_scaling_call(SEXP n_families, SEXP distances, SEXP gene_to_f
         &n_genes,
         &_v_n_families,
         REAL(distances),
-        INTEGER(gene_to_fam),
+        _c_gene_to_fam,
         REAL(dscale),
         REAL(loess_x),
         REAL(loess_y),
@@ -79,6 +80,9 @@ SEXP compute_rdi_call(SEXP distances, SEXP gene_to_fam, SEXP dscale) {
     int n_genes = (int) Rf_length(distances);
     int n_dscale_elements = (int) Rf_length(dscale);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
+
     // outputs and work space
     SEXP rdi = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
     SEXP sorted_rdi = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
@@ -88,7 +92,7 @@ SEXP compute_rdi_call(SEXP distances, SEXP gene_to_fam, SEXP dscale) {
     compute_rdi_c(
         &n_genes,
         REAL(distances),
-        INTEGER(gene_to_fam),
+        _c_gene_to_fam,
         REAL(dscale),
         &n_dscale_elements,
         REAL(rdi),
@@ -120,6 +124,9 @@ SEXP identify_outliers_call(SEXP rdi, SEXP sorted_rdi, SEXP perm, SEXP quantile_
     // scalar inputs, pulled from their length-1 vectors
     double _v_quantile_level = Rf_asReal(quantile_level);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_perm = tox_int_in(perm, "perm");
+
     // outputs and work space
     unsigned char* _c_is_outlier = tox_bool_alloc(n_genes);
     double threshold = 0;
@@ -130,7 +137,7 @@ SEXP identify_outliers_call(SEXP rdi, SEXP sorted_rdi, SEXP perm, SEXP quantile_
         &n_genes,
         REAL(rdi),
         REAL(sorted_rdi),
-        INTEGER(perm),
+        _c_perm,
         _c_is_outlier,
         &threshold,
         REAL(tail_probability),
@@ -165,6 +172,9 @@ SEXP detect_outliers_call(SEXP n_families, SEXP distances, SEXP gene_to_fam, SEX
     int _v_n_families = Rf_asInteger(n_families);
     double _v_quantile_level = Rf_asReal(quantile_level);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
+
     // outputs and work space
     unsigned char* _c_is_outlier = tox_bool_alloc(n_genes);
     SEXP loess_x = PROTECT(Rf_allocVector(REALSXP, _v_n_families)); _nprot++;
@@ -177,7 +187,7 @@ SEXP detect_outliers_call(SEXP n_families, SEXP distances, SEXP gene_to_fam, SEX
         &n_genes,
         &_v_n_families,
         REAL(distances),
-        INTEGER(gene_to_fam),
+        _c_gene_to_fam,
         _c_is_outlier,
         REAL(loess_x),
         REAL(loess_y),

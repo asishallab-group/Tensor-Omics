@@ -23,6 +23,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -83,6 +84,11 @@ def tox_loess_required_workspace(
     Generated from the Fortran procedure `tox_loess_impl::tox_loess_required_workspace`, whose argument names are
     the ones an error message reports.
     """
+    # check every input by the input contract, converting only when C needs it
+    n_dim = _contract.integer(n_dim, "n_dim")
+    max_neighborhood_size = _contract.integer(max_neighborhood_size, "max_neighborhood_size")
+    save_factorization = _contract.logical(save_factorization, "save_factorization")
+
     # outputs and work arrays, which the caller never sees
     int_workspace_size = _ctypes.c_int(0)
     real_workspace_size = _ctypes.c_int(0)

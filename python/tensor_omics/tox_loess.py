@@ -23,6 +23,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -135,31 +136,16 @@ def loess_fit_plain(
     Generated from the Fortran procedure `tox_loess::loess_fit_plain`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        x = _np.ascontiguousarray(x, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'x' must be an array of np.float64: {_error}", argument="x") from None
-    if x.ndim != 1:
-        raise _ToxArgumentError(f"'x' must have 1 dimension, but has {x.ndim}", argument="x")
-    try:
-        y = _np.ascontiguousarray(y, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'y' must be an array of np.float64: {_error}", argument="y") from None
-    if y.ndim != 1:
-        raise _ToxArgumentError(f"'y' must have 1 dimension, but has {y.ndim}", argument="y")
-    try:
-        weights = _np.ascontiguousarray(weights, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'weights' must be an array of np.float64: {_error}", argument="weights") from None
-    if weights.ndim != 1:
-        raise _ToxArgumentError(f"'weights' must have 1 dimension, but has {weights.ndim}", argument="weights")
-    try:
-        eval_points = _np.asfortranarray(eval_points, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'eval_points' must be an array of np.float64: {_error}", argument="eval_points") from None
-    if eval_points.ndim != 2:
-        raise _ToxArgumentError(f"'eval_points' must have 2 dimensions, but has {eval_points.ndim}", argument="eval_points")
+    # check every input by the input contract, converting only when C needs it
+    x = _contract.reals(x, "x", ndim=1)
+    y = _contract.reals(y, "y", ndim=1)
+    weights = _contract.reals(weights, "weights", ndim=1)
+    eval_points = _contract.reals(eval_points, "eval_points", ndim=2, order="F")
+    span = _contract.real(span, "span")
+    degree = _contract.integer(degree, "degree")
+    max_neighborhood_size = _contract.integer(max_neighborhood_size, "max_neighborhood_size")
+    compute_influence = _contract.logical(compute_influence, "compute_influence")
+    save_factorization = _contract.logical(save_factorization, "save_factorization")
 
     # what the inputs already say, rather than asking for it again
     n = x.shape[0]
@@ -273,31 +259,17 @@ def loess_fit_robust(
     Generated from the Fortran procedure `tox_loess::loess_fit_robust`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        x = _np.ascontiguousarray(x, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'x' must be an array of np.float64: {_error}", argument="x") from None
-    if x.ndim != 1:
-        raise _ToxArgumentError(f"'x' must have 1 dimension, but has {x.ndim}", argument="x")
-    try:
-        y = _np.ascontiguousarray(y, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'y' must be an array of np.float64: {_error}", argument="y") from None
-    if y.ndim != 1:
-        raise _ToxArgumentError(f"'y' must have 1 dimension, but has {y.ndim}", argument="y")
-    try:
-        weights = _np.ascontiguousarray(weights, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'weights' must be an array of np.float64: {_error}", argument="weights") from None
-    if weights.ndim != 1:
-        raise _ToxArgumentError(f"'weights' must have 1 dimension, but has {weights.ndim}", argument="weights")
-    try:
-        eval_points = _np.asfortranarray(eval_points, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'eval_points' must be an array of np.float64: {_error}", argument="eval_points") from None
-    if eval_points.ndim != 2:
-        raise _ToxArgumentError(f"'eval_points' must have 2 dimensions, but has {eval_points.ndim}", argument="eval_points")
+    # check every input by the input contract, converting only when C needs it
+    x = _contract.reals(x, "x", ndim=1)
+    y = _contract.reals(y, "y", ndim=1)
+    weights = _contract.reals(weights, "weights", ndim=1)
+    eval_points = _contract.reals(eval_points, "eval_points", ndim=2, order="F")
+    span = _contract.real(span, "span")
+    degree = _contract.integer(degree, "degree")
+    max_neighborhood_size = _contract.integer(max_neighborhood_size, "max_neighborhood_size")
+    compute_influence = _contract.logical(compute_influence, "compute_influence")
+    save_factorization = _contract.logical(save_factorization, "save_factorization")
+    n_iters = _contract.integer(n_iters, "n_iters")
 
     # what the inputs already say, rather than asking for it again
     n = x.shape[0]

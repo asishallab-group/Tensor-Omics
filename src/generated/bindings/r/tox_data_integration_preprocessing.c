@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void compute_gene_means_c(const int*, const int*, const double*, double*, int*);
@@ -116,6 +116,9 @@ SEXP pool_means_expert_call(SEXP pooled_means, SEXP pooled_means_perm, SEXP n_po
     // scalar inputs, pulled from their length-1 vectors
     int _v_n_points = Rf_asInteger(n_points);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_pooled_means_perm = tox_int_in(pooled_means_perm, "pooled_means_perm");
+
     // outputs and work space
     int n_pool = 0;
     SEXP x_star = PROTECT(Rf_allocVector(REALSXP, _v_n_points)); _nprot++;
@@ -123,7 +126,7 @@ SEXP pool_means_expert_call(SEXP pooled_means, SEXP pooled_means_perm, SEXP n_po
 
     pool_means_expert_c(
         REAL(pooled_means),
-        INTEGER(pooled_means_perm),
+        _c_pooled_means_perm,
         &pool_size,
         &_v_n_points,
         &n_pool,

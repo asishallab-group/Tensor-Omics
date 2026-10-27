@@ -14,6 +14,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -98,13 +99,8 @@ def normalize_variable_timeseries(
     Generated from the Fortran procedure `tox_trajectory_normalization::normalize_variable_timeseries`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        v = _np.ascontiguousarray(v, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'v' must be an array of np.float64: {_error}", argument="v") from None
-    if v.ndim != 1:
-        raise _ToxArgumentError(f"'v' must have 1 dimension, but has {v.ndim}", argument="v")
+    # check every input by the input contract, converting only when C needs it
+    v = _contract.reals(v, "v", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_points = v.shape[0]
@@ -167,13 +163,8 @@ def normalize_single_trajectory(
     Generated from the Fortran procedure `tox_trajectory_normalization::normalize_single_trajectory`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        trajectory = _np.asfortranarray(trajectory, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'trajectory' must be an array of np.float64: {_error}", argument="trajectory") from None
-    if trajectory.ndim != 2:
-        raise _ToxArgumentError(f"'trajectory' must have 2 dimensions, but has {trajectory.ndim}", argument="trajectory")
+    # check every input by the input contract, converting only when C needs it
+    trajectory = _contract.reals(trajectory, "trajectory", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectory.shape[1]
@@ -241,13 +232,8 @@ def normalize_all_trajectories(
     Generated from the Fortran procedure `tox_trajectory_normalization::normalize_all_trajectories`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'trajectories' must be an array of np.float64: {_error}", argument="trajectories") from None
-    if trajectories.ndim != 3:
-        raise _ToxArgumentError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}", argument="trajectories")
+    # check every input by the input contract, converting only when C needs it
+    trajectories = _contract.reals(trajectories, "trajectories", ndim=3, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]

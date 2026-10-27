@@ -76,11 +76,15 @@ Which one you need depends on whether the host can hand a raw pointer to a C fun
 FFI and MATLAB's `loadlibrary` can, so they look like Python; a MEX file or a CPython C extension
 cannot avoid a shim, so they look like R.
 
-If you do need a shim, the split that made R work is: **the host language decides and raises; C
-marshals and calls.** The shim receives an opaque host object, so it cannot name the argument in
-an error message; the host can, for free, and can raise a typed error the caller can catch.
-Validating in C means calling back into the host runtime to construct that error — fragile and
-slow. See `../design/language-layers.md`, "validation lives in R, not in the C marshalling layer".
+If you do need a shim, the split that made R work is: **the host language checks what an argument
+is; the shim checks every element while it converts it; both raise the same typed error.** The
+host has the kind, the rank and a single value in hand for free, and uses some of them before the
+call. Every element of an array is cheapest to check in the loop that converts it anyway -- in R,
+an element check written in R cost more than the call it guarded. The shim cannot know an
+argument's name from the object it is handed, so the emitter passes it as a literal, and the shim
+builds the host's own error and raises it through the host's plain raise (R's base `stop()`),
+needing nothing of the package. See `../design/language-layers.md`, "R checks what an argument
+is, the C shim checks every element".
 
 ---
 
@@ -91,7 +95,7 @@ step needs what the one before it settles.
 
 ```
 1  parameters      which C arguments the caller actually supplies (Section 4.3)
-2  coerce inputs   type check + convert; raise naming the argument (Section 4.5)
+2  coerce inputs   the input contract: kind, rank, exact conversion; raise naming the argument (Section 4.5)
 3  producers       call DM_OUTPUT_FROM(AUTO) producers (Section 4.3)
 4  derive extents  from the arrays, shape arguments and masks you were given (Section 4.3)
 5  cross-check     arguments sharing an extent must agree (Section 4.3)
@@ -173,8 +177,9 @@ other's outputs and a module-level import would be circular.
 | **logical** | `c_bool`, one byte | the host's boolean is probably an `int` (R) or an object (Python) — convert, and note the scan is free, so check for missing values while you are there |
 | **character in** | a `c_char` buffer with the length as the **leading extent** | encode, then **blank-pad every slot to the full width**. The item size *is* the string length, measured in **bytes** (so UTF-8 is never truncated by the sizing). Pad the encoded bytes, not the host's string |
 | **character out** | the same buffer | **blank-fill it** (Section 4.6), and strip trailing blanks — not NULs — on the way back |
-| **mode argument** | an integer, but the caller passes a **string** | lower-case the string and let the C wrapper map it; an unknown mode is rejected before Fortran is entered. The accepted set is in `.mode` |
-| **missing values** | nothing — Fortran has no `NA` | check where the check is free. R checks integers (`anyNA`, ALTREP-aware so `1:n` is O(1)), logicals and characters (converted anyway), never doubles (`NA_real_` is a NaN payload Fortran already catches). A host with a distinct missing marker needs the same table; one without needs none of it |
+| **mode argument** | an integer, but the caller passes a **string** | match it **whole** against `.mode` (case aside) and refuse anything else listing the modes, then lower-case it and let the C wrapper map it. Matching in the host is not optional: the buffer is only as wide as the longest mode, so an unmatched longer value would be cut down to a valid one |
+| **missing values** | nothing — Fortran has no `NA` | check where the check is free. R's shim checks integers (`INTEGER_NO_NA` first, ALTREP-aware so `1:n` is O(1)), logicals and characters while converting them, never doubles (`NA_real_` is a NaN payload Fortran already catches). A host with a distinct missing marker needs the same table; one without needs none of it |
+| **the input contract** | — | one table for every host (`../design/language-layers.md`, "what an argument accepts"): check the input's **kind** first by an allowlist, then accept only if converting to the Fortran type and back is exact; refuse a string that is not valid Unicode, holds a NUL or is longer than a declared length; never flatten a wrong rank. Write it once, in a module or file every wrapper calls (`_contract.py`, `tox_validate.R`), not per argument |
 | **kinds with no mapping** | — | already an error upstream. Never guess a mapping: a wrong guess compiles and lies |
 
 ### 4.6 Outputs
@@ -230,7 +235,9 @@ else.
   the mode string.
   Resolve parsed link spans, never by text substitution — a text pass over `[[...]]` mangles R's
   own `x[[i]]`.
-- Never rewrite author prose. If a sentence is wrong, it is wrong in the Fortran.
+- Never rewrite author prose. If a sentence is wrong, it is wrong in the Fortran. The one thing
+  the generator adds to an argument's description is the contract's, for a string the caller
+  passes: its trailing blanks are dropped, and a declared length is a limit (`doc_contract.py`).
 - State provenance: which Fortran procedure this came from, since its argument names are what
   errors report.
 

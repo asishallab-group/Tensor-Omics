@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void loess_smooth_2d_c(const int*, const int*, const double*, const double*, const int*, const int*, const double*, const double*, const double*, double*, int*);
@@ -25,6 +25,9 @@ SEXP loess_smooth_2d_call(SEXP x_ref, SEXP y_ref, SEXP indices_used, SEXP x_quer
     double _v_kernel_sigma = Rf_asReal(kernel_sigma);
     double _v_kernel_cutoff = Rf_asReal(kernel_cutoff);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_indices_used = tox_int_in(indices_used, "indices_used");
+
     // outputs and work space
     SEXP y_out = PROTECT(Rf_allocVector(REALSXP, n_target)); _nprot++;
     int ierr = 0;
@@ -34,7 +37,7 @@ SEXP loess_smooth_2d_call(SEXP x_ref, SEXP y_ref, SEXP indices_used, SEXP x_quer
         &n_target,
         REAL(x_ref),
         REAL(y_ref),
-        INTEGER(indices_used),
+        _c_indices_used,
         &n_used,
         REAL(x_query),
         &_v_kernel_sigma,
@@ -94,6 +97,9 @@ SEXP compute_edf_expert_call(SEXP values, SEXP values_perm) {
     // derived from the inputs, not asked of the caller
     int n_values = (int) Rf_length(values);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_values_perm = tox_int_in(values_perm, "values_perm");
+
     // outputs and work space
     SEXP unique_values = PROTECT(Rf_allocVector(REALSXP, n_values)); _nprot++;
     SEXP cdf_values = PROTECT(Rf_allocVector(REALSXP, n_values)); _nprot++;
@@ -103,7 +109,7 @@ SEXP compute_edf_expert_call(SEXP values, SEXP values_perm) {
     compute_edf_expert_c(
         REAL(values),
         &n_values,
-        INTEGER(values_perm),
+        _c_values_perm,
         REAL(unique_values),
         REAL(cdf_values),
         &n_unique,
@@ -167,6 +173,9 @@ SEXP calc_quantile_expert_call(SEXP array, SEXP array_perm, SEXP level, SEXP n_c
     double _v_level = Rf_asReal(level);
     int _v_n_considered = Rf_asInteger(n_considered);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_array_perm = tox_int_in(array_perm, "array_perm");
+
     // outputs and work space
     double value = 0;
     int ierr = 0;
@@ -174,7 +183,7 @@ SEXP calc_quantile_expert_call(SEXP array, SEXP array_perm, SEXP level, SEXP n_c
     calc_quantile_expert_c(
         REAL(array),
         &n_array,
-        INTEGER(array_perm),
+        _c_array_perm,
         &_v_level,
         &value,
         &_v_n_considered,
@@ -232,6 +241,9 @@ SEXP compute_scaled_distance_tail_probability_expert_call(SEXP rdi, SEXP sorted_
     // scalar inputs, pulled from their length-1 vectors
     double _v_c_const = Rf_asReal(c_const);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_sorted_rdi_perm = tox_int_in(sorted_rdi_perm, "sorted_rdi_perm");
+
     // outputs and work space
     SEXP tail_probability = PROTECT(Rf_allocVector(REALSXP, n_genes)); _nprot++;
     int ierr = 0;
@@ -240,7 +252,7 @@ SEXP compute_scaled_distance_tail_probability_expert_call(SEXP rdi, SEXP sorted_
         &n_genes,
         REAL(rdi),
         REAL(sorted_rdi),
-        INTEGER(sorted_rdi_perm),
+        _c_sorted_rdi_perm,
         REAL(tail_probability),
         &_v_c_const,
         &ierr

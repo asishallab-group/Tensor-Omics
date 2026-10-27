@@ -19,6 +19,8 @@ from codegen.abi.c_abi import build_project
 from codegen.config import Paths
 from codegen.diagnostics import DiagnosticBag
 from codegen.emit.errors_python import PythonErrorEmitter
+from codegen.emit.python_contract import contract_module
+from codegen.names import PYTHON_CONTRACT
 from codegen.emit.fortran_c import FortranCEmitter
 from codegen.emit.python_ctypes import PythonEmitter
 from codegen.frontend.ford_frontend import FordFrontend
@@ -64,6 +66,7 @@ def _generate(out: Path) -> None:
         arg_pos_factor=real.arg_pos_factor,
     )
     (package / "error_handling.py").write_text(PythonErrorEmitter(catalogue).module())
+    (package / f"{PYTHON_CONTRACT}.py").write_text(contract_module())
 
 
 def _build(out: Path) -> Path:
@@ -403,8 +406,7 @@ class TestCharacters:
         assert tox.fx_optional_strings(tag="") == 0
 
     def test_a_non_iterable_for_a_string_vector_names_the_argument(self, tox):
-        # str() of anything succeeds, so the failure is a non-iterable, not a bad element
-        with pytest.raises(TypeError, match="'names' must be a sequence of strings"):
+        with pytest.raises(TypeError, match="'names' must be a sequence of str, not int"):
             tox.fx_count_matching(42, "x")
 
 
@@ -438,14 +440,16 @@ class TestShapeChecking:
 
 class TestBadInputsAreNamed:
     def test_a_value_that_cannot_be_an_array_names_the_argument(self, tox):
-        # numpy raises "could not convert string to float", which does not say which
-        # argument was wrong -- it cannot know
-        with pytest.raises(TypeError, match="'values' must be an array of np.float64"):
+        # numpy would raise "could not convert string to float", which does not say which
+        # argument was wrong -- it cannot know -- or parse '1.5' as a number (#221)
+        with pytest.raises(TypeError, match="'values' must be an array of numbers"):
             tox.fx_count_positive("hello")
 
-    def test_the_underlying_reason_is_kept(self, tox):
-        with pytest.raises(TypeError, match="could not convert"):
+    def test_the_refusal_says_what_was_passed(self, tox):
+        with pytest.raises(TypeError, match="not 'hello' \\(str\\)"):
             tox.fx_count_positive("hello")
+        with pytest.raises(TypeError, match="not an array of dtype <U3"):
+            tox.fx_count_positive(["1.5", "2"])
 
     def test_a_wrong_type_in_a_second_argument_names_that_one(self, tox, np):
         matrix = np.asfortranarray([[1.0, 2.0], [3.0, 4.0]])

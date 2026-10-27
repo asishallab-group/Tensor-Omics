@@ -192,7 +192,7 @@ FC=ifx ./build.sh --max-performance
 Beyond the profiles above, `build.sh` accepts several options (which `test_runner.sh` inherits):
 
 * `--compiler=<gfortran|ifx|nvfortran>` — compiler to use (defaults to `gfortran`). The `FC` environment variable is also honoured, with precedence `--compiler` > `$TOX_COMPILER` > `$FC`.
-* `--max-performance` — enable the `optimization` profile: `-O3` plus the per-compiler optimisation flags in `fpm.toml`. Without it, every build compiles at `-O0`, whatever the compiler.
+* `--max-performance` — enable the `optimization` profile: `-O3` plus the per-compiler optimisation flags in `fpm.toml`. Without it, every build compiles the Fortran at `-O0`, whatever the compiler. The R binding's C shims are always compiled at `-O2`: they check every element of an integer, logical or string array while converting it, and carry no arithmetic a level could change.
 * `--diagnostics` — enable diagnostic/debugging flags (helpful when debugging). Can be combined with `--max-performance`.
 * `--debug` — implies `--diagnostics` plus `-O0`, so gdb doesn't hit optimized-out variables or misleading source stepping. Conflicts with `--max-performance` (`-O3` wins over `-O0`), so combining them asks for confirmation unless `--yes` is set.
 * `--yes` — skip the confirmation prompt that `--debug --max-performance` would otherwise show.

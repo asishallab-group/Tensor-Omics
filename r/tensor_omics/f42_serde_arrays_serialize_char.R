@@ -6,12 +6,15 @@
 #' are the ones an error message reports.
 #'
 #' @param arr a character vector. Array to be serialized
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @param filename a string. Name of the file to write to
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return invisibly `NULL`; called for its effect.
 #' @export
 serialize_char_helper <- function(arr, filename) {
     arr <- .tox_as_character_shaped(arr, "arr")
-    filename <- .tox_as_character(filename, "filename")
+    filename <- .tox_as_string(filename, "filename")
     .result <- .Call("serialize_char_helper_call", arr, filename)
     .arguments <- c("arr", "n_strings", "arr_shape", "filename", "ierr")
     .sources <- c(NA_character_, "arr", "arr", NA_character_, NA_character_)

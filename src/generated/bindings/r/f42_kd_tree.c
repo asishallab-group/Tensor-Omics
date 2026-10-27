@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void build_kd_index_c(const double*, const int*, const int*, int*, const int*, int*);
@@ -15,6 +15,9 @@ SEXP build_kd_index_call(SEXP points, SEXP dimension_order) {
     int n_dimensions = INTEGER(Rf_getAttrib(points, R_DimSymbol))[0];
     int n_points = INTEGER(Rf_getAttrib(points, R_DimSymbol))[1];
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_dimension_order = tox_int_in(dimension_order, "dimension_order");
+
     // outputs and work space
     SEXP kd_indices = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
     int ierr = 0;
@@ -24,7 +27,7 @@ SEXP build_kd_index_call(SEXP points, SEXP dimension_order) {
         &n_dimensions,
         &n_points,
         INTEGER(kd_indices),
-        INTEGER(dimension_order),
+        _c_dimension_order,
         &ierr
     );
 
@@ -45,6 +48,9 @@ SEXP build_spherical_kd_call(SEXP points, SEXP dimension_order) {
     int n_dimensions = INTEGER(Rf_getAttrib(points, R_DimSymbol))[0];
     int n_points = INTEGER(Rf_getAttrib(points, R_DimSymbol))[1];
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_dimension_order = tox_int_in(dimension_order, "dimension_order");
+
     // outputs and work space
     SEXP kd_indices = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
     int ierr = 0;
@@ -54,7 +60,7 @@ SEXP build_spherical_kd_call(SEXP points, SEXP dimension_order) {
         &n_dimensions,
         &n_points,
         INTEGER(kd_indices),
-        INTEGER(dimension_order),
+        _c_dimension_order,
         &ierr
     );
 

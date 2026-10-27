@@ -16,6 +16,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -251,14 +252,15 @@ def perform_permutation_test(
     Generated from the Fortran procedure `tox_trajectory_contribution_analysis::perform_permutation_test`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'trajectories' must be an array of np.float64: {_error}", argument="trajectories") from None
-    if trajectories.ndim != 3:
-        raise _ToxArgumentError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}", argument="trajectories")
-    baseline_mode = _np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
+    # check every input by the input contract, converting only when C needs it
+    trajectories = _contract.reals(trajectories, "trajectories", ndim=3, order="F")
+    factor_idx = _contract.integer(factor_idx, "factor_idx")
+    dependent_idx = _contract.integer(dependent_idx, "dependent_idx")
+    sample_idx = _contract.integer(sample_idx, "sample_idx")
+    baseline_mode = _np.array([_contract.mode(baseline_mode, "baseline_mode", ("baseline_raw", "baseline_mean", "baseline_min",)).ljust(13)], dtype="S13")
+    n_permutations = _contract.integer(n_permutations, "n_permutations")
+    if random_seed is not None:
+        random_seed = _contract.integer(random_seed, "random_seed")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]
@@ -343,25 +345,11 @@ def compute_p_values(
     Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_p_values`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        local_contributions_observed = _np.ascontiguousarray(local_contributions_observed, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'local_contributions_observed' must be an array of np.float64: {_error}", argument="local_contributions_observed") from None
-    if local_contributions_observed.ndim != 1:
-        raise _ToxArgumentError(f"'local_contributions_observed' must have 1 dimension, but has {local_contributions_observed.ndim}", argument="local_contributions_observed")
-    try:
-        local_contributions_perm_test = _np.asfortranarray(local_contributions_perm_test, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'local_contributions_perm_test' must be an array of np.float64: {_error}", argument="local_contributions_perm_test") from None
-    if local_contributions_perm_test.ndim != 2:
-        raise _ToxArgumentError(f"'local_contributions_perm_test' must have 2 dimensions, but has {local_contributions_perm_test.ndim}", argument="local_contributions_perm_test")
-    try:
-        total_contributions_perm_test = _np.ascontiguousarray(total_contributions_perm_test, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'total_contributions_perm_test' must be an array of np.float64: {_error}", argument="total_contributions_perm_test") from None
-    if total_contributions_perm_test.ndim != 1:
-        raise _ToxArgumentError(f"'total_contributions_perm_test' must have 1 dimension, but has {total_contributions_perm_test.ndim}", argument="total_contributions_perm_test")
+    # check every input by the input contract, converting only when C needs it
+    local_contributions_observed = _contract.reals(local_contributions_observed, "local_contributions_observed", ndim=1)
+    total_contribution_observed = _contract.real(total_contribution_observed, "total_contribution_observed")
+    local_contributions_perm_test = _contract.reals(local_contributions_perm_test, "local_contributions_perm_test", ndim=2, order="F")
+    total_contributions_perm_test = _contract.reals(total_contributions_perm_test, "total_contributions_perm_test", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_timepoints = local_contributions_observed.shape[0]
@@ -439,20 +427,10 @@ def compute_contributions(
     Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_contributions`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        factor = _np.ascontiguousarray(factor, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'factor' must be an array of np.float64: {_error}", argument="factor") from None
-    if factor.ndim != 1:
-        raise _ToxArgumentError(f"'factor' must have 1 dimension, but has {factor.ndim}", argument="factor")
-    try:
-        dependent = _np.ascontiguousarray(dependent, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'dependent' must be an array of np.float64: {_error}", argument="dependent") from None
-    if dependent.ndim != 1:
-        raise _ToxArgumentError(f"'dependent' must have 1 dimension, but has {dependent.ndim}", argument="dependent")
-    baseline_mode = _np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
+    # check every input by the input contract, converting only when C needs it
+    factor = _contract.reals(factor, "factor", ndim=1)
+    dependent = _contract.reals(dependent, "dependent", ndim=1)
+    baseline_mode = _np.array([_contract.mode(baseline_mode, "baseline_mode", ("baseline_raw", "baseline_mean", "baseline_min",)).ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
     n_dims = factor.shape[0]
@@ -533,26 +511,11 @@ def compute_all_contributions(
     Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_all_contributions`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'trajectories' must be an array of np.float64: {_error}", argument="trajectories") from None
-    if trajectories.ndim != 3:
-        raise _ToxArgumentError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}", argument="trajectories")
-    try:
-        factor_indices = _np.ascontiguousarray(factor_indices, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'factor_indices' must be an array of np.int32: {_error}", argument="factor_indices") from None
-    if factor_indices.ndim != 1:
-        raise _ToxArgumentError(f"'factor_indices' must have 1 dimension, but has {factor_indices.ndim}", argument="factor_indices")
-    try:
-        dependent_indices = _np.ascontiguousarray(dependent_indices, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'dependent_indices' must be an array of np.int32: {_error}", argument="dependent_indices") from None
-    if dependent_indices.ndim != 1:
-        raise _ToxArgumentError(f"'dependent_indices' must have 1 dimension, but has {dependent_indices.ndim}", argument="dependent_indices")
-    baseline_mode = _np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
+    # check every input by the input contract, converting only when C needs it
+    trajectories = _contract.reals(trajectories, "trajectories", ndim=3, order="F")
+    factor_indices = _contract.integers(factor_indices, "factor_indices", ndim=1)
+    dependent_indices = _contract.integers(dependent_indices, "dependent_indices", ndim=1)
+    baseline_mode = _np.array([_contract.mode(baseline_mode, "baseline_mode", ("baseline_raw", "baseline_mean", "baseline_min",)).ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]
@@ -630,20 +593,10 @@ def compute_baselines_factor_dependent(
     Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_baselines_factor_dependent`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        factor = _np.ascontiguousarray(factor, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'factor' must be an array of np.float64: {_error}", argument="factor") from None
-    if factor.ndim != 1:
-        raise _ToxArgumentError(f"'factor' must have 1 dimension, but has {factor.ndim}", argument="factor")
-    try:
-        dependent = _np.ascontiguousarray(dependent, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'dependent' must be an array of np.float64: {_error}", argument="dependent") from None
-    if dependent.ndim != 1:
-        raise _ToxArgumentError(f"'dependent' must have 1 dimension, but has {dependent.ndim}", argument="dependent")
-    baseline_mode = _np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
+    # check every input by the input contract, converting only when C needs it
+    factor = _contract.reals(factor, "factor", ndim=1)
+    dependent = _contract.reals(dependent, "dependent", ndim=1)
+    baseline_mode = _np.array([_contract.mode(baseline_mode, "baseline_mode", ("baseline_raw", "baseline_mean", "baseline_min",)).ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
     n_timepoints = factor.shape[0]
@@ -703,13 +656,8 @@ def compute_velocity_trajectory(
     Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_velocity_trajectory`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        trajectory = _np.ascontiguousarray(trajectory, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'trajectory' must be an array of np.float64: {_error}", argument="trajectory") from None
-    if trajectory.ndim != 1:
-        raise _ToxArgumentError(f"'trajectory' must have 1 dimension, but has {trajectory.ndim}", argument="trajectory")
+    # check every input by the input contract, converting only when C needs it
+    trajectory = _contract.reals(trajectory, "trajectory", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_timepoints = trajectory.shape[0]
@@ -764,13 +712,9 @@ def compute_acceleration_from_velocity_trajectory(
     Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_acceleration_from_velocity_trajectory`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        velocity = _np.ascontiguousarray(velocity, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'velocity' must be an array of np.float64: {_error}", argument="velocity") from None
-    if velocity.ndim != 1:
-        raise _ToxArgumentError(f"'velocity' must have 1 dimension, but has {velocity.ndim}", argument="velocity")
+    # check every input by the input contract, converting only when C needs it
+    velocity = _contract.reals(velocity, "velocity", ndim=1)
+    n_timepoints = _contract.integer(n_timepoints, "n_timepoints")
 
     # what the inputs already say, rather than asking for it again
     n_velocity_elements = velocity.shape[0]
@@ -823,13 +767,8 @@ def compute_velocity_trajectories(
     Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_velocity_trajectories`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'trajectories' must be an array of np.float64: {_error}", argument="trajectories") from None
-    if trajectories.ndim != 3:
-        raise _ToxArgumentError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}", argument="trajectories")
+    # check every input by the input contract, converting only when C needs it
+    trajectories = _contract.reals(trajectories, "trajectories", ndim=3, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]
@@ -888,13 +827,9 @@ def compute_acceleration_from_velocity(
     Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_acceleration_from_velocity`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        velocity = _np.asfortranarray(velocity, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'velocity' must be an array of np.float64: {_error}", argument="velocity") from None
-    if velocity.ndim != 3:
-        raise _ToxArgumentError(f"'velocity' must have 3 dimensions, but has {velocity.ndim}", argument="velocity")
+    # check every input by the input contract, converting only when C needs it
+    velocity = _contract.reals(velocity, "velocity", ndim=3, order="F")
+    n_timepoints = _contract.integer(n_timepoints, "n_timepoints")
 
     # what the inputs already say, rather than asking for it again
     n_velocity_elements_dim_1 = velocity.shape[0]
@@ -976,14 +911,9 @@ def compute_velocity_acceleration_contributions(
     Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_velocity_acceleration_contributions`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'trajectories' must be an array of np.float64: {_error}", argument="trajectories") from None
-    if trajectories.ndim != 3:
-        raise _ToxArgumentError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}", argument="trajectories")
-    baseline_mode = _np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
+    # check every input by the input contract, converting only when C needs it
+    trajectories = _contract.reals(trajectories, "trajectories", ndim=3, order="F")
+    baseline_mode = _np.array([_contract.mode(baseline_mode, "baseline_mode", ("baseline_raw", "baseline_mean", "baseline_min",)).ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]

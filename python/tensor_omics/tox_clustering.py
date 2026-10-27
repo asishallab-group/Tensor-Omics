@@ -16,6 +16,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -121,19 +122,15 @@ def cluster_factor_trajectories_k_means(
     Generated from the Fortran procedure `tox_clustering::cluster_factor_trajectories_k_means`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'trajectories' must be an array of np.float64: {_error}", argument="trajectories") from None
-    if trajectories.ndim != 3:
-        raise _ToxArgumentError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}", argument="trajectories")
+    # check every input by the input contract, converting only when C needs it
+    trajectories = _contract.reals(trajectories, "trajectories", ndim=3, order="F")
     if not isinstance(centroids, _np.ndarray) or centroids.dtype != _np.float64:
         raise _ToxArgumentError("'centroids' is modified in place, so it must already be a numpy array of {}".format(_np.float64), argument="centroids")
     if centroids.ndim != 2:
         raise _ToxArgumentError(f"'centroids' must have 2 dimensions, but has {centroids.ndim}", argument="centroids")
     if not centroids.flags.f_contiguous:
         raise _ToxArgumentError("'centroids' is modified in place, so it must already be column-major (order='F')", argument="centroids")
+    max_iterations = _contract.integer(max_iterations, "max_iterations")
 
     # what the inputs already say, rather than asking for it again
     n_clusters = centroids.shape[1]
@@ -225,19 +222,15 @@ def k_means_clustering(
     Generated from the Fortran procedure `tox_clustering::k_means_clustering`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        data_points = _np.asfortranarray(data_points, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'data_points' must be an array of np.float64: {_error}", argument="data_points") from None
-    if data_points.ndim != 2:
-        raise _ToxArgumentError(f"'data_points' must have 2 dimensions, but has {data_points.ndim}", argument="data_points")
+    # check every input by the input contract, converting only when C needs it
+    data_points = _contract.reals(data_points, "data_points", ndim=2, order="F")
     if not isinstance(centroids, _np.ndarray) or centroids.dtype != _np.float64:
         raise _ToxArgumentError("'centroids' is modified in place, so it must already be a numpy array of {}".format(_np.float64), argument="centroids")
     if centroids.ndim != 2:
         raise _ToxArgumentError(f"'centroids' must have 2 dimensions, but has {centroids.ndim}", argument="centroids")
     if not centroids.flags.f_contiguous:
         raise _ToxArgumentError("'centroids' is modified in place, so it must already be column-major (order='F')", argument="centroids")
+    max_iterations = _contract.integer(max_iterations, "max_iterations")
 
     # what the inputs already say, rather than asking for it again
     n_clusters = centroids.shape[1]
@@ -333,14 +326,14 @@ def linkage_clustering(
     Generated from the Fortran procedure `tox_clustering::linkage_clustering`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
+    # check every input by the input contract, converting only when C needs it
     if not isinstance(distances, _np.ndarray) or distances.dtype != _np.float64:
         raise _ToxArgumentError("'distances' is modified in place, so it must already be a numpy array of {}".format(_np.float64), argument="distances")
     if distances.ndim != 2:
         raise _ToxArgumentError(f"'distances' must have 2 dimensions, but has {distances.ndim}", argument="distances")
     if not distances.flags.f_contiguous:
         raise _ToxArgumentError("'distances' is modified in place, so it must already be column-major (order='F')", argument="distances")
-    method = _np.array([str(method).lower().encode().ljust(8)], dtype="S8")
+    method = _np.array([_contract.mode(method, "method", ("average", "weighted", "ward",)).ljust(8)], dtype="S8")
 
     # what the inputs already say, rather than asking for it again
     n_points = distances.shape[0]

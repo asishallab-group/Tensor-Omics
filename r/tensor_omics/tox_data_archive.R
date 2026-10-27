@@ -6,12 +6,17 @@
 #' are the ones an error message reports.
 #'
 #' @param zip_filename a string. Name of the zip file to create
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param keys a character vector. Array of keys for manifest entries
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @param filenames a character vector. Array of filenames to add to zip
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @return invisibly `NULL`; called for its effect.
 #' @export
 create_zip_archive <- function(zip_filename, keys, filenames) {
-    zip_filename <- .tox_as_character(zip_filename, "zip_filename")
+    zip_filename <- .tox_as_string(zip_filename, "zip_filename")
     keys <- .tox_as_character(keys, "keys")
     filenames <- .tox_as_character(filenames, "filenames")
     .result <- .Call("create_zip_archive_call", zip_filename, keys, filenames)
@@ -27,46 +32,57 @@ create_zip_archive <- function(zip_filename, keys, filenames) {
 #' are the ones an error message reports.
 #'
 #' @param zip_filename a string. Zip filename
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param gene_ids a character vector. Gene ids array, will be saved if provided
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @param gene_ids_file a string. Name of the gene ids file
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param expression a numeric matrix. Expression vectors array, will be saved if provided
 #' @param expression_file a string. Name of the expression file
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param gene_to_family a integer vector. Gene to family mapping array, will be saved if provided
 #' @param gene_to_family_file a string. Name of the gene to family mapping file
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param family_ids a character vector. Family ids array, will be saved if provided
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @param family_ids_file a string. Name of the family ids file
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param family_centroids a numeric matrix. Family centroids array, will be saved if provided
 #' @param family_centroids_file a string. Name of the family centroids file
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param shift_vectors a numeric matrix. Shift vectors array, will be saved if provided
 #' @param shift_vectors_file a string. Name of the shift vectors file
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return invisibly `NULL`; called for its effect.
 #' @export
 save_tox_data <- function(zip_filename, gene_ids = NULL, gene_ids_file = NULL, expression = NULL, expression_file = NULL, gene_to_family = NULL, gene_to_family_file = NULL, family_ids = NULL, family_ids_file = NULL, family_centroids = NULL, family_centroids_file = NULL, shift_vectors = NULL, shift_vectors_file = NULL) {
-    zip_filename <- .tox_as_character(zip_filename, "zip_filename")
+    zip_filename <- .tox_as_string(zip_filename, "zip_filename")
     if (!is.null(gene_ids))
         gene_ids <- .tox_as_character(gene_ids, "gene_ids")
     if (!is.null(gene_ids_file))
-        gene_ids_file <- .tox_as_character(gene_ids_file, "gene_ids_file")
+        gene_ids_file <- .tox_as_string(gene_ids_file, "gene_ids_file")
     if (!is.null(expression))
         expression <- .tox_as_double_matrix(expression, "expression")
     if (!is.null(expression_file))
-        expression_file <- .tox_as_character(expression_file, "expression_file")
+        expression_file <- .tox_as_string(expression_file, "expression_file")
     if (!is.null(gene_to_family))
         gene_to_family <- .tox_as_integer_vector(gene_to_family, "gene_to_family")
     if (!is.null(gene_to_family_file))
-        gene_to_family_file <- .tox_as_character(gene_to_family_file, "gene_to_family_file")
+        gene_to_family_file <- .tox_as_string(gene_to_family_file, "gene_to_family_file")
     if (!is.null(family_ids))
         family_ids <- .tox_as_character(family_ids, "family_ids")
     if (!is.null(family_ids_file))
-        family_ids_file <- .tox_as_character(family_ids_file, "family_ids_file")
+        family_ids_file <- .tox_as_string(family_ids_file, "family_ids_file")
     if (!is.null(family_centroids))
         family_centroids <- .tox_as_double_matrix(family_centroids, "family_centroids")
     if (!is.null(family_centroids_file))
-        family_centroids_file <- .tox_as_character(family_centroids_file, "family_centroids_file")
+        family_centroids_file <- .tox_as_string(family_centroids_file, "family_centroids_file")
     if (!is.null(shift_vectors))
         shift_vectors <- .tox_as_double_matrix(shift_vectors, "shift_vectors")
     if (!is.null(shift_vectors_file))
-        shift_vectors_file <- .tox_as_character(shift_vectors_file, "shift_vectors_file")
+        shift_vectors_file <- .tox_as_string(shift_vectors_file, "shift_vectors_file")
     .result <- .Call("save_tox_data_call", zip_filename, gene_ids, gene_ids_file, expression, expression_file, gene_to_family, gene_to_family_file, family_ids, family_ids_file, family_centroids, family_centroids_file, shift_vectors, shift_vectors_file)
     .arguments <- c("zip_filename", "gene_ids", "gene_ids_file", "expression", "expression_file", "gene_to_family", "gene_to_family_file", "family_ids", "family_ids_file", "family_centroids", "family_centroids_file", "shift_vectors", "shift_vectors_file", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
@@ -85,6 +101,7 @@ save_tox_data <- function(zip_filename, gene_ids = NULL, gene_ids_file = NULL, e
 #' are the ones an error message reports.
 #'
 #' @param zip_filename a string. Name of the zip file
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{n_gene_ids}{a integer scalar. Number of gene ids, 0 if absent}
 #'   \item{gene_id_len}{a integer scalar. String length of each gene id, 0 if absent}
@@ -99,7 +116,7 @@ save_tox_data <- function(zip_filename, gene_ids = NULL, gene_ids_file = NULL, e
 #'   \item{n_shift_vectors_cols}{a integer scalar. Columns of the shift vectors matrix, 0 if absent}
 #' @export
 get_tox_data_dims <- function(zip_filename) {
-    zip_filename <- .tox_as_character(zip_filename, "zip_filename")
+    zip_filename <- .tox_as_string(zip_filename, "zip_filename")
     .result <- .Call("get_tox_data_dims_call", zip_filename)
     .arguments <- c("zip_filename", "n_gene_ids", "gene_id_len", "n_expression_rows", "n_expression_cols", "n_gene_to_family", "n_family_ids", "family_id_len", "n_family_centroids_rows", "n_family_centroids_cols", "n_shift_vectors_rows", "n_shift_vectors_cols", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
@@ -129,6 +146,7 @@ get_tox_data_dims <- function(zip_filename) {
 #' are the ones an error message reports.
 #'
 #' @param zip_filename a string. Name of the zip file
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{gene_ids}{a character vector. Gene ids}
 #'   \item{expression}{a numeric matrix. Expression vectors}
@@ -138,7 +156,7 @@ get_tox_data_dims <- function(zip_filename) {
 #'   \item{shift_vectors}{a numeric matrix. Shift vectors}
 #' @export
 read_tox_data_into <- function(zip_filename) {
-    zip_filename <- .tox_as_character(zip_filename, "zip_filename")
+    zip_filename <- .tox_as_string(zip_filename, "zip_filename")
     .get_tox_data_dims_result <- get_tox_data_dims(zip_filename = zip_filename)
     n_gene_ids <- .get_tox_data_dims_result$n_gene_ids
     gene_id_len <- .get_tox_data_dims_result$gene_id_len

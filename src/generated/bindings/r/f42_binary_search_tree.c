@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void build_bst_index_c(const double*, const int*, int*, int*);
@@ -83,6 +83,9 @@ SEXP bst_range_query_expert_call(SEXP values, SEXP values_perm, SEXP lower_bound
     double _v_lower_bound = Rf_asReal(lower_bound);
     double _v_upper_bound = Rf_asReal(upper_bound);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_values_perm = tox_int_in(values_perm, "values_perm");
+
     // outputs and work space
     SEXP output_indices = PROTECT(Rf_allocVector(INTSXP, n_values)); _nprot++;
     int n_matches = 0;
@@ -90,7 +93,7 @@ SEXP bst_range_query_expert_call(SEXP values, SEXP values_perm, SEXP lower_bound
 
     bst_range_query_expert_c(
         REAL(values),
-        INTEGER(values_perm),
+        _c_values_perm,
         &n_values,
         &_v_lower_bound,
         &_v_upper_bound,

@@ -9,7 +9,11 @@
 #' @param n_families a integer scalar. Expected number of families
 #' @param n_samples a integer scalar. Expected number of samples
 #' @param gene_ids a character vector. Gene ids
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @param gene_family_ids a character vector. Gene family ids
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @param gene_to_fam a integer vector. gene to family mapping
 #' @param expression_vectors a numeric matrix. Expression vectors
 #' @param family_centroids a numeric matrix. Family centroids
@@ -119,6 +123,8 @@ validate_shift_vectors <- function(shift_vectors, expression_vectors, family_cen
 #' are the ones an error message reports.
 #'
 #' @param str_arr a character vector. string array
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @return invisibly `NULL`; called for its effect.
 #' @export
 validate_string_array_uniqueness <- function(str_arr) {
@@ -139,7 +145,11 @@ validate_string_array_uniqueness <- function(str_arr) {
 #' @param n_families a integer scalar. Number of families
 #' @param n_samples a integer scalar. Number of samples
 #' @param gene_ids a character vector. Gene ids array
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @param gene_family_ids a character vector. gene family ids
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
+#'   A factor is taken by its labels.
 #' @param gene_to_fam a integer vector. gene to family mapping
 #' @param expression_vectors a numeric matrix. Expression vectors
 #' @param family_centroids a numeric matrix. family centroids

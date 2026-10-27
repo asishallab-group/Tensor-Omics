@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void determine_shared_residual_range_c(const double*, const int*, double*, const double*, int*);
@@ -52,13 +52,16 @@ SEXP determine_shared_residual_range_expert_call(SEXP abs_residual_pool, SEXP ab
     // scalar inputs, pulled from their length-1 vectors
     double _v_residual_range_quantile_level = Rf_asReal(residual_range_quantile_level);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_abs_residual_pool_perm = tox_int_in(abs_residual_pool_perm, "abs_residual_pool_perm");
+
     // outputs and work space
     double shared_residual_range = 0;
     int ierr = 0;
 
     determine_shared_residual_range_expert_c(
         REAL(abs_residual_pool),
-        INTEGER(abs_residual_pool_perm),
+        _c_abs_residual_pool_perm,
         &pool_size,
         &shared_residual_range,
         &_v_residual_range_quantile_level,
@@ -137,7 +140,7 @@ SEXP build_residual_histograms_call(SEXP neighborhood_residuals, SEXP shared_res
     int _v_n_bins = Rf_asInteger(n_bins);
 
     // convert what Fortran cannot take from R directly
-    unsigned char* _c_neighbor_mask = tox_bool_in(neighbor_mask);
+    unsigned char* _c_neighbor_mask = tox_bool_in(neighbor_mask, "neighbor_mask");
 
     // outputs and work space
     SEXP counts = PROTECT(Rf_allocVector(INTSXP, n_points * _v_n_bins)); _nprot++;
@@ -211,6 +214,10 @@ SEXP compute_weighted_global_divergence_call(SEXP js_divergences, SEXP included_
     // derived from the inputs, not asked of the caller
     int n_points = (int) Rf_length(js_divergences);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_included_n_reps_S1 = tox_int_in(included_n_reps_S1, "included_n_reps_S1");
+    const int* _c_included_n_reps_S2 = tox_int_in(included_n_reps_S2, "included_n_reps_S2");
+
     // outputs and work space
     double global_js_divergence = 0;
     SEXP weights = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
@@ -219,8 +226,8 @@ SEXP compute_weighted_global_divergence_call(SEXP js_divergences, SEXP included_
     compute_weighted_global_divergence_c(
         REAL(js_divergences),
         &n_points,
-        INTEGER(included_n_reps_S1),
-        INTEGER(included_n_reps_S2),
+        _c_included_n_reps_S1,
+        _c_included_n_reps_S2,
         &global_js_divergence,
         REAL(weights),
         &ierr

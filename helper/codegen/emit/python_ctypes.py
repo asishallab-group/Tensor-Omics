@@ -7,9 +7,11 @@ What the generated function does, and why:
 - It checks the shapes. Fortran cannot: `expr(n_genes, n_tissues)` and `weights(n_tissues)`
   share an extent, and a mismatch is only discovered as a wrong answer or a segfault.
   Python is where that has to be caught.
-- It avoids copying. `np.asarray` and friends copy only when the array is not already what
-  C needs. An `intent(inout)` array is never converted at all -- a copy would silently
-  discard the modification the caller asked for -- so it is checked and rejected instead.
+- It checks every input by the input contract (`emit.python_contract`): the input's own kind
+  first, then a conversion accepted only if converting back gives the same values. It
+  avoids copying: an input that already has the Fortran type is not converted at all. An
+  `intent(inout)` array is never converted -- a copy would silently discard the
+  modification the caller asked for -- so it is checked and rejected instead.
 - It returns results, not error codes. `ierr` is decoded by `check_err_code`, which raises.
 """
 
@@ -23,6 +25,7 @@ from ..names import (
     PYTHON_ARGUMENT_ERROR,
     PYTHON_CAUGHT_ERROR,
     PYTHON_CHECK_ERR_CODE,
+    PYTHON_CONTRACT,
     PYTHON_CTYPES as _CTYPES,
     PYTHON_LOAD_LIBRARY,
     PYTHON_NULLABLE,
@@ -74,6 +77,34 @@ DTYPES = {
     ("complex", "c_double_complex"): "complex128",
     ("logical", "c_bool"): "bool_",
 }
+
+
+#: Fortran base type -> the input contract's check of an array of it, and of a single one, with
+#: the dtype the check produces (`emit.python_contract`). Complex is not in the contract's table.
+_CONTRACT_CHECKS = {
+    BaseType.INTEGER: ("integers", "integer", "int32"),
+    BaseType.REAL: ("reals", "real", "float64"),
+    BaseType.LOGICAL: ("logicals", "logical", "bool_"),
+}
+
+
+def _contract_call(argument: CArgument) -> str | None:
+    """The call that checks and converts one number or logical input, or None if none does.
+
+    An array's rank is the declared one, and a rank-2-or-more array is made column-major; an
+    array whose shape travels separately takes any rank, flattened in Fortran order at the
+    call. A single value is the 0-d case and comes back as a Python scalar.
+    """
+    check = _CONTRACT_CHECKS.get(argument.type.base)
+    if check is None or DTYPES.get((argument.type.base.value, argument.type.kind)) != check[2]:
+        return None
+    name = argument.name
+    if argument.is_scalar:
+        return f'{PYTHON_CONTRACT}.{check[1]}({name}, "{name}")'
+    if argument.shape_arg is not None:
+        return f'{PYTHON_CONTRACT}.{check[0]}({name}, "{name}", order="F")'
+    order = ', order="F"' if argument.rank > 1 else ""
+    return f'{PYTHON_CONTRACT}.{check[0]}({name}, "{name}", ndim={argument.rank}{order})'
 
 
 def ctype_of(argument: CArgument) -> str:
@@ -471,7 +502,7 @@ class PythonEmitter:
             if block:
                 lines.block(block)
         if lines:
-            writer.line("# accept anything array-like, converting only when C needs it")
+            writer.line("# check every input by the input contract, converting only when C needs it")
             writer.extend(lines)
             writer.blank()
 
@@ -500,14 +531,17 @@ class PythonEmitter:
 
         if argument.conversion is Conversion.MODE:
             # a mode is a character to C, so it goes through the same buffer as any
-            # string; only lower-cased first, since the C wrapper matches on the
-            # lower-case spelling of the parameter name. Blank-padded like every other
-            # string: the C wrapper matches the buffer with `select case`, and a Fortran
-            # character comparison blank-pads the shorter operand, so "iqr   " still
-            # selects `case ("iqr")`.
+            # string; matched whole against the modes first, and lower-cased, since the C
+            # wrapper matches on the lower-case spelling of the parameter name. Matched
+            # here, not left to C: the buffer is only as wide as the longest mode, so
+            # 'weightedXYZ' arrived as 'weighted', and C's refusal named no argument.
+            # Blank-padded like every other string: the C wrapper matches the buffer with
+            # `select case`, and a Fortran character comparison blank-pads the shorter
+            # operand, so "iqr   " still selects `case ("iqr")`.
             body = Writer()
+            choices = ", ".join(f'"{v.string}"' for v in argument.mode.values)
             body.line(
-                f"{name} = {_NP}.array([str({name}).lower().encode()"
+                f'{name} = {_NP}.array([{PYTHON_CONTRACT}.mode({name}, "{name}", ({choices},))'
                 f".ljust({character_length(argument)})], "
                 f"dtype={dtype_of(argument)})"
             )
@@ -516,15 +550,19 @@ class PythonEmitter:
         if argument.type.is_character:
             return self._guarded(argument, self._prepare_character(argument))
 
+        checked = _contract_call(argument)
         if argument.is_scalar:
+            if checked is None:
+                return ""
+            body = Writer()
             if argument.intent is Intent.INOUT and not argument.optional:
                 # Fortran writes back through the pointer, so C needs a box to write
                 # into rather than a temporary made at the call. The new value is
                 # returned, Python having no way to rebind the caller's name.
-                body = Writer()
-                body.line(f"{name} = {ctype_of(argument)}({name})")
-                return body.render()
-            return ""
+                body.line(f"{name} = {ctype_of(argument)}({checked})")
+            else:
+                body.line(f"{name} = {checked}")
+            return self._guarded(argument, body)
 
         body = Writer()
         if argument.intent is Intent.INOUT:
@@ -543,6 +581,8 @@ class PythonEmitter:
                     body.line(_refusal(
                         f'"\'{name}\' is modified in place, so it must '
                         f"already be column-major (order='F')\"", name))
+        elif checked is not None:
+            body.line(f"{name} = {checked}")
         else:
             # numpy raises without saying which argument was wrong -- it cannot know --
             # so the name is put back on the way out
@@ -604,44 +644,39 @@ class PythonEmitter:
         """
         name = argument.name
         width = _pad_width(argument)
+        # the contract checks the strings and encodes them, refusing one longer than a fixed
+        # width rather than letting the buffer cut it short (`emit.python_contract`)
+        limit = f", {width}" if width is not None else ""
         body = Writer()
         if character_rank(argument) == 0:
             # Where numpy sizes the item, ljust(1) is the whole job: it is a no-op for
             # every non-empty string, and it stops an empty one becoming numpy's forced
             # single null byte.
             body.line(
-                f"{name} = {_NP}.array([str({name}).encode().ljust({width or 1})], "
+                f'{name} = {_NP}.array([{PYTHON_CONTRACT}.string({name}, "{name}"{limit})'
+                f".ljust({width or 1})], dtype={dtype_of(argument)})"
+            )
+            return body
+        any_rank = ", any_rank=True" if argument.shape_arg is not None else ""
+        encoded = f'{PYTHON_CONTRACT}.strings({name}, "{name}"{limit}{any_rank})'
+        if width is None:
+            # numpy sizes the item from the longest element, so the width is not known
+            # until every string is encoded. `default=0` covers an empty sequence and `or 1`
+            # an array of nothing but empty strings, either of which would otherwise ask
+            # numpy for a width of zero.
+            body.line(f"_{name}_bytes = {encoded}")
+            body.line(f"_{name}_width = max(map(len, _{name}_bytes), default=0) or 1")
+            body.line(
+                f"{name} = {_NP}.asarray("
+                f"[_b.ljust(_{name}_width) for _b in _{name}_bytes], "
                 f"dtype={dtype_of(argument)})"
             )
         else:
-            body.line("try:")
-            with body.indent():
-                items = (f"{_NP}.asarray({name}).ravel(order='F')"
-                         if argument.shape_arg is not None else name)
-                if width is None:
-                    # numpy sizes the item from the longest element, so the width is not
-                    # known until every string is encoded. `default=0` covers an empty
-                    # sequence and `or 1` an array of nothing but empty strings, either of
-                    # which would otherwise ask numpy for a width of zero.
-                    body.line(f"_{name}_bytes = [str(_s).encode() for _s in {items}]")
-                    body.line(f"_{name}_width = max(map(len, _{name}_bytes), default=0) or 1")
-                    body.line(
-                        f"{name} = {_NP}.asarray("
-                        f"[_b.ljust(_{name}_width) for _b in _{name}_bytes], "
-                        f"dtype={dtype_of(argument)})"
-                    )
-                else:
-                    body.line(
-                        f"{name} = {_NP}.asarray("
-                        f"[str(_s).encode().ljust({width}) for _s in {items}], "
-                        f"dtype={dtype_of(argument)})"
-                    )
-            body.line(f"except TypeError as {PYTHON_CAUGHT_ERROR}:")
-            with body.indent():
-                body.line(_refusal(
-                    f'f"\'{name}\' must be a sequence of strings: {{{PYTHON_CAUGHT_ERROR}}}"',
-                    name, from_none=True))
-            self._check_rank(argument, body)
+            body.line(
+                f"{name} = {_NP}.asarray("
+                f"[_b.ljust({width}) for _b in {encoded}], "
+                f"dtype={dtype_of(argument)})"
+            )
         return body
 
     @staticmethod

@@ -10,6 +10,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -45,6 +46,7 @@ def serialize_logical_helper(
         Array to be serialized
     filename : str
         Name of the file to write to
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -63,13 +65,10 @@ def serialize_logical_helper(
     Generated from the Fortran procedure `f42_serde_arrays_serialize_logical::serialize_logical_helper`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
+    # check every input by the input contract, converting only when C needs it
     arr_shape = _np.ascontiguousarray(_np.shape(arr), dtype=_np.int32)
-    try:
-        arr = _np.asfortranarray(arr, dtype=_np.bool_)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'arr' must be an array of np.bool_: {_error}", argument="arr") from None
-    filename = _np.array([str(filename).encode().ljust(1)], dtype="S")
+    arr = _contract.logicals(arr, "arr", order="F")
+    filename = _np.array([_contract.string(filename, "filename").ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     n_elements = arr.size

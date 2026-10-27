@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void gjct_permutation_test_c(const double*, const double*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const int*, double*, double*, const int*, const unsigned char*, const unsigned char*, int*);
@@ -49,8 +49,8 @@ SEXP gjct_permutation_test_call(SEXP neighborhood_residuals_S1, SEXP neighborhoo
     int _v_n_permutations = Rf_asInteger(n_permutations);
 
     // convert what Fortran cannot take from R directly
-    unsigned char* _c_neighbor_mask_S1 = tox_bool_in(neighbor_mask_S1);
-    unsigned char* _c_neighbor_mask_S2 = tox_bool_in(neighbor_mask_S2);
+    unsigned char* _c_neighbor_mask_S1 = tox_bool_in(neighbor_mask_S1, "neighbor_mask_S1");
+    unsigned char* _c_neighbor_mask_S2 = tox_bool_in(neighbor_mask_S2, "neighbor_mask_S2");
 
     // outputs and work space
     SEXP jsd_null = PROTECT(Rf_allocVector(REALSXP, _v_n_permutations)); _nprot++;

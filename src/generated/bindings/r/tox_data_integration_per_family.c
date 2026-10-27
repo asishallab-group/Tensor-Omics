@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void fjct_compute_jsd_c(const int*, const int*, const int*, const int*, const int*, const double*, const double*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, const double*, double*, int*, int*, int*, double*, double*, int*);
@@ -25,6 +25,12 @@ SEXP fjct_compute_jsd_call(SEXP family_idx, SEXP gene_to_family_S1, SEXP gene_to
     int _v_n_bins = Rf_asInteger(n_bins);
     double _v_shared_residual_range = Rf_asReal(shared_residual_range);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_gene_to_family_S1 = tox_int_in(gene_to_family_S1, "gene_to_family_S1");
+    const int* _c_gene_to_family_S2 = tox_int_in(gene_to_family_S2, "gene_to_family_S2");
+    const int* _c_neighborhood_genes_S1 = tox_int_in(neighborhood_genes_S1, "neighborhood_genes_S1");
+    const int* _c_neighborhood_genes_S2 = tox_int_in(neighborhood_genes_S2, "neighborhood_genes_S2");
+
     // outputs and work space
     SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
     SEXP included_n_reps_S1 = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
@@ -36,14 +42,14 @@ SEXP fjct_compute_jsd_call(SEXP family_idx, SEXP gene_to_family_S1, SEXP gene_to
 
     fjct_compute_jsd_c(
         &_v_family_idx,
-        INTEGER(gene_to_family_S1),
-        INTEGER(gene_to_family_S2),
+        _c_gene_to_family_S1,
+        _c_gene_to_family_S2,
         &n_genes_S1,
         &n_genes_S2,
         REAL(neighborhood_residuals_S1),
         REAL(neighborhood_residuals_S2),
-        INTEGER(neighborhood_genes_S1),
-        INTEGER(neighborhood_genes_S2),
+        _c_neighborhood_genes_S1,
+        _c_neighborhood_genes_S2,
         &n_reps_S1,
         &n_reps_S2,
         &n_neighbors,
@@ -93,8 +99,8 @@ SEXP fjct_compute_masked_jsd_call(SEXP neighborhood_residuals_S1, SEXP neighborh
     double _v_shared_residual_range = Rf_asReal(shared_residual_range);
 
     // convert what Fortran cannot take from R directly
-    unsigned char* _c_neighbor_mask_S1 = tox_bool_in(neighbor_mask_S1);
-    unsigned char* _c_neighbor_mask_S2 = tox_bool_in(neighbor_mask_S2);
+    unsigned char* _c_neighbor_mask_S1 = tox_bool_in(neighbor_mask_S1, "neighbor_mask_S1");
+    unsigned char* _c_neighbor_mask_S2 = tox_bool_in(neighbor_mask_S2, "neighbor_mask_S2");
 
     // outputs and work space
     SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
@@ -161,6 +167,9 @@ SEXP fjct_compute_contribution_scores_call(SEXP global_js_divergences, SEXP tota
     // derived from the inputs, not asked of the caller
     int k_families = (int) Rf_length(global_js_divergences);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_total_included_n_reps_per_f = tox_int_in(total_included_n_reps_per_f, "total_included_n_reps_per_f");
+
     // outputs and work space
     SEXP support_weights = PROTECT(Rf_allocVector(REALSXP, k_families)); _nprot++;
     SEXP contribution_scores = PROTECT(Rf_allocVector(REALSXP, k_families)); _nprot++;
@@ -168,7 +177,7 @@ SEXP fjct_compute_contribution_scores_call(SEXP global_js_divergences, SEXP tota
 
     fjct_compute_contribution_scores_c(
         REAL(global_js_divergences),
-        INTEGER(total_included_n_reps_per_f),
+        _c_total_included_n_reps_per_f,
         &k_families,
         REAL(support_weights),
         REAL(contribution_scores),

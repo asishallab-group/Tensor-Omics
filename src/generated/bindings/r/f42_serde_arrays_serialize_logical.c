@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void serialize_logical_helper_c(const unsigned char*, const int*, const int*, const int*, const char*, const int*, int*);
@@ -17,8 +17,8 @@ SEXP serialize_logical_helper_call(SEXP arr, SEXP filename) {
     int filename_strlen = tox_max_strlen(filename);
 
     // convert what Fortran cannot take from R directly
-    unsigned char* _c_arr = tox_bool_in(arr);
-    char* _c_filename = tox_char_in(filename, filename_strlen);
+    unsigned char* _c_arr = tox_bool_in(arr, "arr");
+    char* _c_filename = tox_char_in(filename, filename_strlen, "filename");
 
     // outputs and work space
     int ierr = 0;

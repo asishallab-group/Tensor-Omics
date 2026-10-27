@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void normalize_unit_length_c(double*, const int*, int*);
@@ -55,6 +55,9 @@ SEXP normalization_pipeline_call(SEXP expr, SEXP reps_per_tissue, SEXP span, SEX
     int _v_degree = Rf_asInteger(degree);
     unsigned char _v_use_quantile = (Rf_asLogical(use_quantile) == TRUE) ? 1 : 0;
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_reps_per_tissue = tox_int_in(reps_per_tissue, "reps_per_tissue");
+
     // outputs and work space
     SEXP log_transformed_expr = PROTECT(Rf_allocVector(REALSXP, n_tissues * n_genes)); _nprot++;
     { SEXP _dim_log_transformed_expr = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_log_transformed_expr)[0] = n_tissues; INTEGER(_dim_log_transformed_expr)[1] = n_genes; Rf_setAttrib(log_transformed_expr, R_DimSymbol, _dim_log_transformed_expr); UNPROTECT(1); }
@@ -65,7 +68,7 @@ SEXP normalization_pipeline_call(SEXP expr, SEXP reps_per_tissue, SEXP span, SEX
         &n_replicates,
         REAL(expr),
         REAL(log_transformed_expr),
-        INTEGER(reps_per_tissue),
+        _c_reps_per_tissue,
         &n_tissues,
         &_v_span,
         &_v_degree,
@@ -221,6 +224,9 @@ SEXP calc_tiss_avg_call(SEXP reps_per_tissue, SEXP expr) {
     int n_tissues = (int) Rf_length(reps_per_tissue);
     int n_expr_elements_dim_1 = INTEGER(Rf_getAttrib(expr, R_DimSymbol))[0];
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_reps_per_tissue = tox_int_in(reps_per_tissue, "reps_per_tissue");
+
     // outputs and work space
     SEXP tissue_averages = PROTECT(Rf_allocVector(REALSXP, n_tissues * n_genes)); _nprot++;
     { SEXP _dim_tissue_averages = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_tissue_averages)[0] = n_tissues; INTEGER(_dim_tissue_averages)[1] = n_genes; Rf_setAttrib(tissue_averages, R_DimSymbol, _dim_tissue_averages); UNPROTECT(1); }
@@ -229,7 +235,7 @@ SEXP calc_tiss_avg_call(SEXP reps_per_tissue, SEXP expr) {
     calc_tiss_avg_c(
         &n_genes,
         &n_tissues,
-        INTEGER(reps_per_tissue),
+        _c_reps_per_tissue,
         REAL(expr),
         &n_expr_elements_dim_1,
         REAL(tissue_averages),
@@ -254,6 +260,10 @@ SEXP calc_fchange_call(SEXP control_tissues, SEXP condition_tissues, SEXP expr) 
     int n_tissues = INTEGER(Rf_getAttrib(expr, R_DimSymbol))[0];
     int n_pairs = (int) Rf_length(control_tissues);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_control_tissues = tox_int_in(control_tissues, "control_tissues");
+    const int* _c_condition_tissues = tox_int_in(condition_tissues, "condition_tissues");
+
     // outputs and work space
     SEXP fold_changes = PROTECT(Rf_allocVector(REALSXP, n_pairs * n_genes)); _nprot++;
     { SEXP _dim_fold_changes = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_fold_changes)[0] = n_pairs; INTEGER(_dim_fold_changes)[1] = n_genes; Rf_setAttrib(fold_changes, R_DimSymbol, _dim_fold_changes); UNPROTECT(1); }
@@ -263,8 +273,8 @@ SEXP calc_fchange_call(SEXP control_tissues, SEXP condition_tissues, SEXP expr) 
         &n_genes,
         &n_tissues,
         &n_pairs,
-        INTEGER(control_tissues),
-        INTEGER(condition_tissues),
+        _c_control_tissues,
+        _c_condition_tissues,
         REAL(expr),
         REAL(fold_changes),
         &ierr

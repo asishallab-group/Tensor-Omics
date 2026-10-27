@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from ..abi.model import CArgument, Conversion, CWrapper
 from ..ir.doc import Doc, DocTable
+from .doc_contract import string_input_notes
 from .doc_links import render_spans as _spans
 from .doc_literals import is_ford_block_tag, render as _render, render_mode_default
 from ..ir.types import BaseType, Intent
@@ -142,6 +143,8 @@ def _parameter(writer: Writer, argument: CArgument, emitter) -> None:
     writer.line(f"{argument.name} : {python_type_of(argument)}{suffix}")
     with writer.indent():
         _description(writer, argument.doc, emitter, argument.mode_default)
+        for note in string_input_notes(argument):
+            writer.line(note)
 
 
 def _result(writer: Writer, argument: CArgument, emitter=None) -> None:

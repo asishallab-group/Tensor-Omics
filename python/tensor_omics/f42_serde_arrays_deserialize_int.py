@@ -10,6 +10,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -42,6 +43,7 @@ def deserialize_int_helper(
     ----------
     filename : str
         Name of the file
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -65,8 +67,8 @@ def deserialize_int_helper(
     # kept before conversion, for the producers called below
     _filename_raw = filename
 
-    # accept anything array-like, converting only when C needs it
-    filename = _np.array([str(filename).encode().ljust(1)], dtype="S")
+    # check every input by the input contract, converting only when C needs it
+    filename = _np.array([_contract.string(filename, "filename").ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     filename_strlen = filename.itemsize

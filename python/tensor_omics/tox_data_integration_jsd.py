@@ -15,6 +15,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -159,13 +160,9 @@ def determine_shared_residual_range(
     This entry point seeds `abs_residual_pool_perm` and sorts it by `abs_residual_pool`.
     Call `determine_shared_residual_range_expert` to do that yourself.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        abs_residual_pool = _np.ascontiguousarray(abs_residual_pool, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'abs_residual_pool' must be an array of np.float64: {_error}", argument="abs_residual_pool") from None
-    if abs_residual_pool.ndim != 1:
-        raise _ToxArgumentError(f"'abs_residual_pool' must have 1 dimension, but has {abs_residual_pool.ndim}", argument="abs_residual_pool")
+    # check every input by the input contract, converting only when C needs it
+    abs_residual_pool = _contract.reals(abs_residual_pool, "abs_residual_pool", ndim=1)
+    residual_range_quantile_level = _contract.real(residual_range_quantile_level, "residual_range_quantile_level")
 
     # what the inputs already say, rather than asking for it again
     pool_size = abs_residual_pool.shape[0]
@@ -232,19 +229,10 @@ def determine_shared_residual_range_expert(
     The expert entry point: you supply `abs_residual_pool_perm` yourself.
     `determine_shared_residual_range` seeds `abs_residual_pool_perm` and sorts it by `abs_residual_pool`.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        abs_residual_pool = _np.ascontiguousarray(abs_residual_pool, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'abs_residual_pool' must be an array of np.float64: {_error}", argument="abs_residual_pool") from None
-    if abs_residual_pool.ndim != 1:
-        raise _ToxArgumentError(f"'abs_residual_pool' must have 1 dimension, but has {abs_residual_pool.ndim}", argument="abs_residual_pool")
-    try:
-        abs_residual_pool_perm = _np.ascontiguousarray(abs_residual_pool_perm, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'abs_residual_pool_perm' must be an array of np.int32: {_error}", argument="abs_residual_pool_perm") from None
-    if abs_residual_pool_perm.ndim != 1:
-        raise _ToxArgumentError(f"'abs_residual_pool_perm' must have 1 dimension, but has {abs_residual_pool_perm.ndim}", argument="abs_residual_pool_perm")
+    # check every input by the input contract, converting only when C needs it
+    abs_residual_pool = _contract.reals(abs_residual_pool, "abs_residual_pool", ndim=1)
+    abs_residual_pool_perm = _contract.integers(abs_residual_pool_perm, "abs_residual_pool_perm", ndim=1)
+    residual_range_quantile_level = _contract.real(residual_range_quantile_level, "residual_range_quantile_level")
 
     # what the inputs already say, rather than asking for it again
     pool_size = abs_residual_pool.shape[0]
@@ -312,19 +300,10 @@ def determine_study_shared_residual_range(
     Generated from the Fortran procedure `tox_data_integration_jsd::determine_study_shared_residual_range`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        neighborhood_residuals_S1 = _np.asfortranarray(neighborhood_residuals_S1, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S1' must be an array of np.float64: {_error}", argument="neighborhood_residuals_S1") from None
-    if neighborhood_residuals_S1.ndim != 3:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}", argument="neighborhood_residuals_S1")
-    try:
-        neighborhood_residuals_S2 = _np.asfortranarray(neighborhood_residuals_S2, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S2' must be an array of np.float64: {_error}", argument="neighborhood_residuals_S2") from None
-    if neighborhood_residuals_S2.ndim != 3:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}", argument="neighborhood_residuals_S2")
+    # check every input by the input contract, converting only when C needs it
+    neighborhood_residuals_S1 = _contract.reals(neighborhood_residuals_S1, "neighborhood_residuals_S1", ndim=3, order="F")
+    neighborhood_residuals_S2 = _contract.reals(neighborhood_residuals_S2, "neighborhood_residuals_S2", ndim=3, order="F")
+    residual_range_quantile_level = _contract.real(residual_range_quantile_level, "residual_range_quantile_level")
 
     # what the inputs already say, rather than asking for it again
     n_reps_S1 = neighborhood_residuals_S1.shape[0]
@@ -409,20 +388,12 @@ def build_residual_histograms(
     Generated from the Fortran procedure `tox_data_integration_jsd::build_residual_histograms`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        neighborhood_residuals = _np.asfortranarray(neighborhood_residuals, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'neighborhood_residuals' must be an array of np.float64: {_error}", argument="neighborhood_residuals") from None
-    if neighborhood_residuals.ndim != 3:
-        raise _ToxArgumentError(f"'neighborhood_residuals' must have 3 dimensions, but has {neighborhood_residuals.ndim}", argument="neighborhood_residuals")
+    # check every input by the input contract, converting only when C needs it
+    neighborhood_residuals = _contract.reals(neighborhood_residuals, "neighborhood_residuals", ndim=3, order="F")
+    shared_residual_range = _contract.real(shared_residual_range, "shared_residual_range")
+    n_bins = _contract.integer(n_bins, "n_bins")
     if neighbor_mask is not None:
-        try:
-            neighbor_mask = _np.asfortranarray(neighbor_mask, dtype=_np.bool_)
-        except (TypeError, ValueError) as _error:
-            raise _ToxArgumentError(f"'neighbor_mask' must be an array of np.bool_: {_error}", argument="neighbor_mask") from None
-        if neighbor_mask.ndim != 2:
-            raise _ToxArgumentError(f"'neighbor_mask' must have 2 dimensions, but has {neighbor_mask.ndim}", argument="neighbor_mask")
+        neighbor_mask = _contract.logicals(neighbor_mask, "neighbor_mask", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_reps = neighborhood_residuals.shape[0]
@@ -506,19 +477,9 @@ def compute_divergence_per_reference_point(
     Generated from the Fortran procedure `tox_data_integration_jsd::compute_divergence_per_reference_point`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        pmf_S1 = _np.asfortranarray(pmf_S1, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'pmf_S1' must be an array of np.float64: {_error}", argument="pmf_S1") from None
-    if pmf_S1.ndim != 2:
-        raise _ToxArgumentError(f"'pmf_S1' must have 2 dimensions, but has {pmf_S1.ndim}", argument="pmf_S1")
-    try:
-        pmf_S2 = _np.asfortranarray(pmf_S2, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'pmf_S2' must be an array of np.float64: {_error}", argument="pmf_S2") from None
-    if pmf_S2.ndim != 2:
-        raise _ToxArgumentError(f"'pmf_S2' must have 2 dimensions, but has {pmf_S2.ndim}", argument="pmf_S2")
+    # check every input by the input contract, converting only when C needs it
+    pmf_S1 = _contract.reals(pmf_S1, "pmf_S1", ndim=2, order="F")
+    pmf_S2 = _contract.reals(pmf_S2, "pmf_S2", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_points = pmf_S1.shape[0]
@@ -595,25 +556,10 @@ def compute_weighted_global_divergence(
     Generated from the Fortran procedure `tox_data_integration_jsd::compute_weighted_global_divergence`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        js_divergences = _np.ascontiguousarray(js_divergences, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'js_divergences' must be an array of np.float64: {_error}", argument="js_divergences") from None
-    if js_divergences.ndim != 1:
-        raise _ToxArgumentError(f"'js_divergences' must have 1 dimension, but has {js_divergences.ndim}", argument="js_divergences")
-    try:
-        included_n_reps_S1 = _np.ascontiguousarray(included_n_reps_S1, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'included_n_reps_S1' must be an array of np.int32: {_error}", argument="included_n_reps_S1") from None
-    if included_n_reps_S1.ndim != 1:
-        raise _ToxArgumentError(f"'included_n_reps_S1' must have 1 dimension, but has {included_n_reps_S1.ndim}", argument="included_n_reps_S1")
-    try:
-        included_n_reps_S2 = _np.ascontiguousarray(included_n_reps_S2, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'included_n_reps_S2' must be an array of np.int32: {_error}", argument="included_n_reps_S2") from None
-    if included_n_reps_S2.ndim != 1:
-        raise _ToxArgumentError(f"'included_n_reps_S2' must have 1 dimension, but has {included_n_reps_S2.ndim}", argument="included_n_reps_S2")
+    # check every input by the input contract, converting only when C needs it
+    js_divergences = _contract.reals(js_divergences, "js_divergences", ndim=1)
+    included_n_reps_S1 = _contract.integers(included_n_reps_S1, "included_n_reps_S1", ndim=1)
+    included_n_reps_S2 = _contract.integers(included_n_reps_S2, "included_n_reps_S2", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_points = js_divergences.shape[0]

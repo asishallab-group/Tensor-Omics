@@ -17,6 +17,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -185,20 +186,14 @@ def compute_family_scaling(
     Generated from the Fortran procedure `tox_get_outliers::compute_family_scaling`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        distances = _np.ascontiguousarray(distances, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'distances' must be an array of np.float64: {_error}", argument="distances") from None
-    if distances.ndim != 1:
-        raise _ToxArgumentError(f"'distances' must have 1 dimension, but has {distances.ndim}", argument="distances")
-    try:
-        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
-    if gene_to_fam.ndim != 1:
-        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
-    mode = _np.array([str(mode).lower().encode().ljust(6)], dtype="S6")
+    # check every input by the input contract, converting only when C needs it
+    n_families = _contract.integer(n_families, "n_families")
+    distances = _contract.reals(distances, "distances", ndim=1)
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
+    span = _contract.real(span, "span")
+    degree = _contract.integer(degree, "degree")
+    mode = _np.array([_contract.mode(mode, "mode", ("plain", "robust",)).ljust(6)], dtype="S6")
+    n_iters = _contract.integer(n_iters, "n_iters")
 
     # what the inputs already say, rather than asking for it again
     n_genes = distances.shape[0]
@@ -302,25 +297,10 @@ def compute_rdi(
     Generated from the Fortran procedure `tox_get_outliers::compute_rdi`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        distances = _np.ascontiguousarray(distances, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'distances' must be an array of np.float64: {_error}", argument="distances") from None
-    if distances.ndim != 1:
-        raise _ToxArgumentError(f"'distances' must have 1 dimension, but has {distances.ndim}", argument="distances")
-    try:
-        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
-    if gene_to_fam.ndim != 1:
-        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
-    try:
-        dscale = _np.ascontiguousarray(dscale, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'dscale' must be an array of np.float64: {_error}", argument="dscale") from None
-    if dscale.ndim != 1:
-        raise _ToxArgumentError(f"'dscale' must have 1 dimension, but has {dscale.ndim}", argument="dscale")
+    # check every input by the input contract, converting only when C needs it
+    distances = _contract.reals(distances, "distances", ndim=1)
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
+    dscale = _contract.reals(dscale, "dscale", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_genes = distances.shape[0]
@@ -420,25 +400,11 @@ def identify_outliers(
     Generated from the Fortran procedure `tox_get_outliers::identify_outliers`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        rdi = _np.ascontiguousarray(rdi, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'rdi' must be an array of np.float64: {_error}", argument="rdi") from None
-    if rdi.ndim != 1:
-        raise _ToxArgumentError(f"'rdi' must have 1 dimension, but has {rdi.ndim}", argument="rdi")
-    try:
-        sorted_rdi = _np.ascontiguousarray(sorted_rdi, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'sorted_rdi' must be an array of np.float64: {_error}", argument="sorted_rdi") from None
-    if sorted_rdi.ndim != 1:
-        raise _ToxArgumentError(f"'sorted_rdi' must have 1 dimension, but has {sorted_rdi.ndim}", argument="sorted_rdi")
-    try:
-        perm = _np.ascontiguousarray(perm, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'perm' must be an array of np.int32: {_error}", argument="perm") from None
-    if perm.ndim != 1:
-        raise _ToxArgumentError(f"'perm' must have 1 dimension, but has {perm.ndim}", argument="perm")
+    # check every input by the input contract, converting only when C needs it
+    rdi = _contract.reals(rdi, "rdi", ndim=1)
+    sorted_rdi = _contract.reals(sorted_rdi, "sorted_rdi", ndim=1)
+    perm = _contract.integers(perm, "perm", ndim=1)
+    quantile_level = _contract.real(quantile_level, "quantile_level")
 
     # what the inputs already say, rather than asking for it again
     n_genes = rdi.shape[0]
@@ -549,19 +515,11 @@ def detect_outliers(
     Generated from the Fortran procedure `tox_get_outliers::detect_outliers`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        distances = _np.ascontiguousarray(distances, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'distances' must be an array of np.float64: {_error}", argument="distances") from None
-    if distances.ndim != 1:
-        raise _ToxArgumentError(f"'distances' must have 1 dimension, but has {distances.ndim}", argument="distances")
-    try:
-        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
-    if gene_to_fam.ndim != 1:
-        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
+    # check every input by the input contract, converting only when C needs it
+    n_families = _contract.integer(n_families, "n_families")
+    distances = _contract.reals(distances, "distances", ndim=1)
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
+    quantile_level = _contract.real(quantile_level, "quantile_level")
 
     # what the inputs already say, rather than asking for it again
     n_genes = distances.shape[0]

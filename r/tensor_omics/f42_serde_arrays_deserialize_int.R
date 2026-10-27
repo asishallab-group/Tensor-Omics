@@ -6,10 +6,11 @@
 #' are the ones an error message reports.
 #'
 #' @param filename a string. Name of the file
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a integer vector. Pre-allocated array to read the data into
 #' @export
 deserialize_int_helper <- function(filename) {
-    filename <- .tox_as_character(filename, "filename")
+    filename <- .tox_as_string(filename, "filename")
     .get_array_metadata_result <- get_array_metadata(filename = filename, dims_out_capacity = 5L)
     arr_shape <- .get_array_metadata_result$dims_out
 

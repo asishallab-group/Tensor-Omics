@@ -17,6 +17,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -111,33 +112,19 @@ def gjct_permutation_test(
     Generated from the Fortran procedure `tox_data_integration_stats::gjct_permutation_test`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        neighborhood_residuals_S1 = _np.asfortranarray(neighborhood_residuals_S1, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S1' must be an array of np.float64: {_error}", argument="neighborhood_residuals_S1") from None
-    if neighborhood_residuals_S1.ndim != 3:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}", argument="neighborhood_residuals_S1")
-    try:
-        neighborhood_residuals_S2 = _np.asfortranarray(neighborhood_residuals_S2, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S2' must be an array of np.float64: {_error}", argument="neighborhood_residuals_S2") from None
-    if neighborhood_residuals_S2.ndim != 3:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}", argument="neighborhood_residuals_S2")
+    # check every input by the input contract, converting only when C needs it
+    neighborhood_residuals_S1 = _contract.reals(neighborhood_residuals_S1, "neighborhood_residuals_S1", ndim=3, order="F")
+    neighborhood_residuals_S2 = _contract.reals(neighborhood_residuals_S2, "neighborhood_residuals_S2", ndim=3, order="F")
+    global_jsd_observed = _contract.real(global_jsd_observed, "global_jsd_observed")
+    n_bins = _contract.integer(n_bins, "n_bins")
+    shared_residual_range = _contract.real(shared_residual_range, "shared_residual_range")
+    n_permutations = _contract.integer(n_permutations, "n_permutations")
+    if random_seed is not None:
+        random_seed = _contract.integer(random_seed, "random_seed")
     if neighbor_mask_S1 is not None:
-        try:
-            neighbor_mask_S1 = _np.asfortranarray(neighbor_mask_S1, dtype=_np.bool_)
-        except (TypeError, ValueError) as _error:
-            raise _ToxArgumentError(f"'neighbor_mask_S1' must be an array of np.bool_: {_error}", argument="neighbor_mask_S1") from None
-        if neighbor_mask_S1.ndim != 2:
-            raise _ToxArgumentError(f"'neighbor_mask_S1' must have 2 dimensions, but has {neighbor_mask_S1.ndim}", argument="neighbor_mask_S1")
+        neighbor_mask_S1 = _contract.logicals(neighbor_mask_S1, "neighbor_mask_S1", ndim=2, order="F")
     if neighbor_mask_S2 is not None:
-        try:
-            neighbor_mask_S2 = _np.asfortranarray(neighbor_mask_S2, dtype=_np.bool_)
-        except (TypeError, ValueError) as _error:
-            raise _ToxArgumentError(f"'neighbor_mask_S2' must be an array of np.bool_: {_error}", argument="neighbor_mask_S2") from None
-        if neighbor_mask_S2.ndim != 2:
-            raise _ToxArgumentError(f"'neighbor_mask_S2' must have 2 dimensions, but has {neighbor_mask_S2.ndim}", argument="neighbor_mask_S2")
+        neighbor_mask_S2 = _contract.logicals(neighbor_mask_S2, "neighbor_mask_S2", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_reps_S1 = neighborhood_residuals_S1.shape[0]

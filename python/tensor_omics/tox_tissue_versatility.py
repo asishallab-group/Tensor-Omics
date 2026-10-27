@@ -15,6 +15,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -86,25 +87,10 @@ def compute_tissue_versatility(
     Generated from the Fortran procedure `tox_tissue_versatility::compute_tissue_versatility`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'expression_vectors' must be an array of np.float64: {_error}", argument="expression_vectors") from None
-    if expression_vectors.ndim != 2:
-        raise _ToxArgumentError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}", argument="expression_vectors")
-    try:
-        vectors_selection_mask = _np.ascontiguousarray(vectors_selection_mask, dtype=_np.bool_)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'vectors_selection_mask' must be an array of np.bool_: {_error}", argument="vectors_selection_mask") from None
-    if vectors_selection_mask.ndim != 1:
-        raise _ToxArgumentError(f"'vectors_selection_mask' must have 1 dimension, but has {vectors_selection_mask.ndim}", argument="vectors_selection_mask")
-    try:
-        axes_selection_mask = _np.ascontiguousarray(axes_selection_mask, dtype=_np.bool_)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'axes_selection_mask' must be an array of np.bool_: {_error}", argument="axes_selection_mask") from None
-    if axes_selection_mask.ndim != 1:
-        raise _ToxArgumentError(f"'axes_selection_mask' must have 1 dimension, but has {axes_selection_mask.ndim}", argument="axes_selection_mask")
+    # check every input by the input contract, converting only when C needs it
+    expression_vectors = _contract.reals(expression_vectors, "expression_vectors", ndim=2, order="F")
+    vectors_selection_mask = _contract.logicals(vectors_selection_mask, "vectors_selection_mask", ndim=1)
+    axes_selection_mask = _contract.logicals(axes_selection_mask, "axes_selection_mask", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]

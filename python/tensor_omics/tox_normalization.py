@@ -19,6 +19,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -178,7 +179,7 @@ def normalize_unit_length(
     Generated from the Fortran procedure `tox_normalization::normalize_unit_length`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
+    # check every input by the input contract, converting only when C needs it
     if not isinstance(vector, _np.ndarray) or vector.dtype != _np.float64:
         raise _ToxArgumentError("'vector' is modified in place, so it must already be a numpy array of {}".format(_np.float64), argument="vector")
     if vector.ndim != 1:
@@ -249,19 +250,12 @@ def normalization_pipeline(
     Generated from the Fortran procedure `tox_normalization::normalization_pipeline`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expr = _np.asfortranarray(expr, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
-    if expr.ndim != 2:
-        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
-    try:
-        reps_per_tissue = _np.ascontiguousarray(reps_per_tissue, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'reps_per_tissue' must be an array of np.int32: {_error}", argument="reps_per_tissue") from None
-    if reps_per_tissue.ndim != 1:
-        raise _ToxArgumentError(f"'reps_per_tissue' must have 1 dimension, but has {reps_per_tissue.ndim}", argument="reps_per_tissue")
+    # check every input by the input contract, converting only when C needs it
+    expr = _contract.reals(expr, "expr", ndim=2, order="F")
+    reps_per_tissue = _contract.integers(reps_per_tissue, "reps_per_tissue", ndim=1)
+    span = _contract.real(span, "span")
+    degree = _contract.integer(degree, "degree")
+    use_quantile = _contract.logical(use_quantile, "use_quantile")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -334,13 +328,10 @@ def normalize_by_std_dev(
     Generated from the Fortran procedure `tox_normalization::normalize_by_std_dev`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expr = _np.asfortranarray(expr, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
-    if expr.ndim != 2:
-        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
+    # check every input by the input contract, converting only when C needs it
+    expr = _contract.reals(expr, "expr", ndim=2, order="F")
+    span = _contract.real(span, "span")
+    degree = _contract.integer(degree, "degree")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -400,13 +391,8 @@ def root_mean_sq_normalization(
     Generated from the Fortran procedure `tox_normalization::root_mean_sq_normalization`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expr = _np.asfortranarray(expr, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
-    if expr.ndim != 2:
-        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
+    # check every input by the input contract, converting only when C needs it
+    expr = _contract.reals(expr, "expr", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -470,13 +456,8 @@ def quantile_normalization(
     Generated from the Fortran procedure `tox_normalization::quantile_normalization`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expr = _np.asfortranarray(expr, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
-    if expr.ndim != 2:
-        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
+    # check every input by the input contract, converting only when C needs it
+    expr = _contract.reals(expr, "expr", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -543,13 +524,8 @@ def log2_transformation(
     Generated from the Fortran procedure `tox_normalization::log2_transformation`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expr = _np.asfortranarray(expr, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
-    if expr.ndim != 2:
-        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
+    # check every input by the input contract, converting only when C needs it
+    expr = _contract.reals(expr, "expr", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -613,19 +589,9 @@ def calc_tiss_avg(
     Generated from the Fortran procedure `tox_normalization::calc_tiss_avg`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        reps_per_tissue = _np.ascontiguousarray(reps_per_tissue, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'reps_per_tissue' must be an array of np.int32: {_error}", argument="reps_per_tissue") from None
-    if reps_per_tissue.ndim != 1:
-        raise _ToxArgumentError(f"'reps_per_tissue' must have 1 dimension, but has {reps_per_tissue.ndim}", argument="reps_per_tissue")
-    try:
-        expr = _np.asfortranarray(expr, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
-    if expr.ndim != 2:
-        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
+    # check every input by the input contract, converting only when C needs it
+    reps_per_tissue = _contract.integers(reps_per_tissue, "reps_per_tissue", ndim=1)
+    expr = _contract.reals(expr, "expr", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -698,25 +664,10 @@ def calc_fchange(
     Generated from the Fortran procedure `tox_normalization::calc_fchange`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        control_tissues = _np.ascontiguousarray(control_tissues, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'control_tissues' must be an array of np.int32: {_error}", argument="control_tissues") from None
-    if control_tissues.ndim != 1:
-        raise _ToxArgumentError(f"'control_tissues' must have 1 dimension, but has {control_tissues.ndim}", argument="control_tissues")
-    try:
-        condition_tissues = _np.ascontiguousarray(condition_tissues, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'condition_tissues' must be an array of np.int32: {_error}", argument="condition_tissues") from None
-    if condition_tissues.ndim != 1:
-        raise _ToxArgumentError(f"'condition_tissues' must have 1 dimension, but has {condition_tissues.ndim}", argument="condition_tissues")
-    try:
-        expr = _np.asfortranarray(expr, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
-    if expr.ndim != 2:
-        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
+    # check every input by the input contract, converting only when C needs it
+    control_tissues = _contract.integers(control_tissues, "control_tissues", ndim=1)
+    condition_tissues = _contract.integers(condition_tissues, "condition_tissues", ndim=1)
+    expr = _contract.reals(expr, "expr", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]

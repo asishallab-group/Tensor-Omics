@@ -7,6 +7,7 @@
 // see helper/codegen/emit/c_call.py
 #pragma weak COMPLEX
 #pragma weak INTEGER
+#pragma weak INTEGER_NO_NA
 #pragma weak LENGTH
 #pragma weak LOGICAL
 #pragma weak REAL
@@ -15,7 +16,14 @@
 #pragma weak XLENGTH
 #pragma weak SET_STRING_ELT
 #pragma weak SET_VECTOR_ELT
+#pragma weak R_BaseEnv
 #pragma weak R_CHAR
+#pragma weak STRING_PTR_RO
+#pragma weak R_ClassSymbol
+#pragma weak R_IsNA
+#pragma weak R_NaInt
+#pragma weak R_NegInf
+#pragma weak R_PosInf
 #pragma weak R_alloc
 #pragma weak R_DimSymbol
 #pragma weak R_NamesSymbol
@@ -25,21 +33,31 @@
 #pragma weak R_useDynamicSymbols
 #pragma weak Rf_allocVector
 #pragma weak Rf_asInteger
+#pragma weak Rf_charIsASCII
 #pragma weak Rf_asLogical
 #pragma weak Rf_asReal
 #pragma weak Rf_coerceVector
 #pragma weak Rf_duplicate
+#pragma weak Rf_eval
 #pragma weak Rf_getAttrib
+#pragma weak Rf_getCharCE
+#pragma weak Rf_install
+#pragma weak Rf_lang2
 #pragma weak Rf_length
 #pragma weak Rf_mkChar
 #pragma weak Rf_mkCharLen
+#pragma weak Rf_mkCharLenCE
+#pragma weak Rf_mkString
 #pragma weak Rf_protect
 #pragma weak Rf_setAttrib
+#pragma weak Rf_translateCharUTF8
+#pragma weak Rf_type2char
 #pragma weak Rf_unprotect
 #pragma weak Rf_ScalarComplex
 #pragma weak Rf_ScalarInteger
 #pragma weak Rf_ScalarLogical
 #pragma weak Rf_ScalarReal
+#pragma weak Rf_ScalarString
 
 // forward declarations of the .Call entry points
 SEXP build_bst_index_call(SEXP);

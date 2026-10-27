@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void omics_vector_RAP_projection_c(const double*, const int*, const int*, const unsigned char*, const int*, const unsigned char*, const int*, double*, int*);
@@ -23,8 +23,8 @@ SEXP omics_vector_RAP_projection_call(SEXP vecs, SEXP vecs_selection_mask, SEXP 
     int n_selected_axes = tox_sum_true(axes_selection_mask);
 
     // convert what Fortran cannot take from R directly
-    unsigned char* _c_vecs_selection_mask = tox_bool_in(vecs_selection_mask);
-    unsigned char* _c_axes_selection_mask = tox_bool_in(axes_selection_mask);
+    unsigned char* _c_vecs_selection_mask = tox_bool_in(vecs_selection_mask, "vecs_selection_mask");
+    unsigned char* _c_axes_selection_mask = tox_bool_in(axes_selection_mask, "axes_selection_mask");
 
     // outputs and work space
     SEXP projections = PROTECT(Rf_allocVector(REALSXP, n_selected_axes * n_selected_vecs)); _nprot++;
@@ -63,8 +63,8 @@ SEXP omics_field_RAP_projection_call(SEXP fields, SEXP fields_selection_mask, SE
     int n_selected_axes = tox_sum_true(axes_selection_mask);
 
     // convert what Fortran cannot take from R directly
-    unsigned char* _c_fields_selection_mask = tox_bool_in(fields_selection_mask);
-    unsigned char* _c_axes_selection_mask = tox_bool_in(axes_selection_mask);
+    unsigned char* _c_fields_selection_mask = tox_bool_in(fields_selection_mask, "fields_selection_mask");
+    unsigned char* _c_axes_selection_mask = tox_bool_in(axes_selection_mask, "axes_selection_mask");
 
     // outputs and work space
     SEXP projections = PROTECT(Rf_allocVector(REALSXP, n_selected_axes * n_selected_fields)); _nprot++;
@@ -131,7 +131,7 @@ SEXP clock_hand_angles_for_shift_vectors_call(SEXP fields, SEXP fields_selection
     int n_selected_fields = tox_sum_true(fields_selection_mask);
 
     // convert what Fortran cannot take from R directly
-    unsigned char* _c_fields_selection_mask = tox_bool_in(fields_selection_mask);
+    unsigned char* _c_fields_selection_mask = tox_bool_in(fields_selection_mask, "fields_selection_mask");
 
     // outputs and work space
     SEXP signed_angles = PROTECT(Rf_allocVector(REALSXP, n_selected_fields)); _nprot++;

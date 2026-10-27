@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 7902a51790babb50 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void create_zip_archive_c(const char*, const int*, const char*, const int*, const int*, const char*, const int*, const int*, int*);
@@ -21,9 +21,9 @@ SEXP create_zip_archive_call(SEXP zip_filename, SEXP keys, SEXP filenames) {
     int n_filenames_elements = (int) Rf_length(filenames);
 
     // convert what Fortran cannot take from R directly
-    char* _c_zip_filename = tox_char_in(zip_filename, zip_filename_strlen);
-    char* _c_keys = tox_char_in(keys, keys_strlen);
-    char* _c_filenames = tox_char_in(filenames, filenames_strlen);
+    char* _c_zip_filename = tox_char_in(zip_filename, zip_filename_strlen, "zip_filename");
+    char* _c_keys = tox_char_in(keys, keys_strlen, "keys");
+    char* _c_filenames = tox_char_in(filenames, filenames_strlen, "filenames");
 
     // outputs and work space
     int ierr = 0;
@@ -75,11 +75,9 @@ SEXP save_tox_data_call(SEXP zip_filename, SEXP gene_ids, SEXP gene_ids_file, SE
     if (expression_file != R_NilValue) {
         _size_expression_file = (int) Rf_length(expression_file);
     }
-    const int* _p_gene_to_family = NULL;
     int _size_gene_to_family = 0;
     if (gene_to_family != R_NilValue) {
         _size_gene_to_family = (int) Rf_length(gene_to_family);
-        _p_gene_to_family = INTEGER(gene_to_family);
     }
     int _size_gene_to_family_file = 0;
     if (gene_to_family_file != R_NilValue) {
@@ -145,15 +143,16 @@ SEXP save_tox_data_call(SEXP zip_filename, SEXP gene_ids, SEXP gene_ids_file, SE
     int shift_vectors_file_strlen = tox_max_strlen(shift_vectors_file);
 
     // convert what Fortran cannot take from R directly
-    char* _c_zip_filename = tox_char_in(zip_filename, zip_filename_strlen);
-    char* _c_gene_ids = tox_char_in(gene_ids, gene_ids_strlen);
-    char* _c_gene_ids_file = tox_char_in(gene_ids_file, gene_ids_file_strlen);
-    char* _c_expression_file = tox_char_in(expression_file, expression_file_strlen);
-    char* _c_gene_to_family_file = tox_char_in(gene_to_family_file, gene_to_family_file_strlen);
-    char* _c_family_ids = tox_char_in(family_ids, family_ids_strlen);
-    char* _c_family_ids_file = tox_char_in(family_ids_file, family_ids_file_strlen);
-    char* _c_family_centroids_file = tox_char_in(family_centroids_file, family_centroids_file_strlen);
-    char* _c_shift_vectors_file = tox_char_in(shift_vectors_file, shift_vectors_file_strlen);
+    char* _c_zip_filename = tox_char_in(zip_filename, zip_filename_strlen, "zip_filename");
+    char* _c_gene_ids = tox_char_in(gene_ids, gene_ids_strlen, "gene_ids");
+    char* _c_gene_ids_file = tox_char_in(gene_ids_file, gene_ids_file_strlen, "gene_ids_file");
+    char* _c_expression_file = tox_char_in(expression_file, expression_file_strlen, "expression_file");
+    const int* _c_gene_to_family = tox_int_in(gene_to_family, "gene_to_family");
+    char* _c_gene_to_family_file = tox_char_in(gene_to_family_file, gene_to_family_file_strlen, "gene_to_family_file");
+    char* _c_family_ids = tox_char_in(family_ids, family_ids_strlen, "family_ids");
+    char* _c_family_ids_file = tox_char_in(family_ids_file, family_ids_file_strlen, "family_ids_file");
+    char* _c_family_centroids_file = tox_char_in(family_centroids_file, family_centroids_file_strlen, "family_centroids_file");
+    char* _c_shift_vectors_file = tox_char_in(shift_vectors_file, shift_vectors_file_strlen, "shift_vectors_file");
 
     // outputs and work space
     int ierr = 0;
@@ -171,7 +170,7 @@ SEXP save_tox_data_call(SEXP zip_filename, SEXP gene_ids, SEXP gene_ids_file, SE
         &n_expression_elements_dim_2,
         expression_file != R_NilValue ? _c_expression_file : NULL,
         &expression_file_strlen,
-        _p_gene_to_family,
+        gene_to_family != R_NilValue ? _c_gene_to_family : NULL,
         &n_gene_to_family_elements,
         gene_to_family_file != R_NilValue ? _c_gene_to_family_file : NULL,
         &gene_to_family_file_strlen,
@@ -208,7 +207,7 @@ SEXP get_tox_data_dims_call(SEXP zip_filename) {
     int zip_filename_strlen = tox_max_strlen(zip_filename);
 
     // convert what Fortran cannot take from R directly
-    char* _c_zip_filename = tox_char_in(zip_filename, zip_filename_strlen);
+    char* _c_zip_filename = tox_char_in(zip_filename, zip_filename_strlen, "zip_filename");
 
     // outputs and work space
     int n_gene_ids = 0;
@@ -291,7 +290,7 @@ SEXP read_tox_data_into_call(SEXP zip_filename, SEXP n_gene_ids, SEXP gene_id_le
     int _v_n_shift_vectors_cols = Rf_asInteger(n_shift_vectors_cols);
 
     // convert what Fortran cannot take from R directly
-    char* _c_zip_filename = tox_char_in(zip_filename, zip_filename_strlen);
+    char* _c_zip_filename = tox_char_in(zip_filename, zip_filename_strlen, "zip_filename");
 
     // outputs and work space
     char* _c_gene_ids = tox_char_alloc(_v_gene_id_len, _v_n_gene_ids);

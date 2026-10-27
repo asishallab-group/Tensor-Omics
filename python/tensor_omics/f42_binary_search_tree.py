@@ -12,6 +12,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -92,13 +93,8 @@ def build_bst_index(
     Generated from the Fortran procedure `f42_binary_search_tree::build_bst_index`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        values = _np.ascontiguousarray(values, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'values' must be an array of np.float64: {_error}", argument="values") from None
-    if values.ndim != 1:
-        raise _ToxArgumentError(f"'values' must have 1 dimension, but has {values.ndim}", argument="values")
+    # check every input by the input contract, converting only when C needs it
+    values = _contract.reals(values, "values", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_values = values.shape[0]
@@ -161,13 +157,10 @@ def bst_range_query(
     This entry point seeds `values_perm` and sorts it by `values`.
     Call `bst_range_query_expert` to do that yourself.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        values = _np.ascontiguousarray(values, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'values' must be an array of np.float64: {_error}", argument="values") from None
-    if values.ndim != 1:
-        raise _ToxArgumentError(f"'values' must have 1 dimension, but has {values.ndim}", argument="values")
+    # check every input by the input contract, converting only when C needs it
+    values = _contract.reals(values, "values", ndim=1)
+    lower_bound = _contract.real(lower_bound, "lower_bound")
+    upper_bound = _contract.real(upper_bound, "upper_bound")
 
     # what the inputs already say, rather than asking for it again
     n_values = values.shape[0]
@@ -242,19 +235,11 @@ def bst_range_query_expert(
     The expert entry point: you supply `values_perm` yourself.
     `bst_range_query` seeds `values_perm` and sorts it by `values`.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        values = _np.ascontiguousarray(values, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'values' must be an array of np.float64: {_error}", argument="values") from None
-    if values.ndim != 1:
-        raise _ToxArgumentError(f"'values' must have 1 dimension, but has {values.ndim}", argument="values")
-    try:
-        values_perm = _np.ascontiguousarray(values_perm, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'values_perm' must be an array of np.int32: {_error}", argument="values_perm") from None
-    if values_perm.ndim != 1:
-        raise _ToxArgumentError(f"'values_perm' must have 1 dimension, but has {values_perm.ndim}", argument="values_perm")
+    # check every input by the input contract, converting only when C needs it
+    values = _contract.reals(values, "values", ndim=1)
+    values_perm = _contract.integers(values_perm, "values_perm", ndim=1)
+    lower_bound = _contract.real(lower_bound, "lower_bound")
+    upper_bound = _contract.real(upper_bound, "upper_bound")
 
     # what the inputs already say, rather than asking for it again
     n_values = values.shape[0]

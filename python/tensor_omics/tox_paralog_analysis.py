@@ -22,6 +22,7 @@ import os as _os
 
 import numpy as _np
 
+from . import _contract as _contract
 from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
@@ -171,31 +172,11 @@ def detect_neofunctionalization(
     Generated from the Fortran procedure `tox_paralog_analysis::detect_neofunctionalization`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        ancestors = _np.asfortranarray(ancestors, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'ancestors' must be an array of np.float64: {_error}", argument="ancestors") from None
-    if ancestors.ndim != 2:
-        raise _ToxArgumentError(f"'ancestors' must have 2 dimensions, but has {ancestors.ndim}", argument="ancestors")
-    try:
-        genes = _np.asfortranarray(genes, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'genes' must be an array of np.float64: {_error}", argument="genes") from None
-    if genes.ndim != 2:
-        raise _ToxArgumentError(f"'genes' must have 2 dimensions, but has {genes.ndim}", argument="genes")
-    try:
-        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
-    if gene_to_fam.ndim != 1:
-        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
-    try:
-        thresholds = _np.ascontiguousarray(thresholds, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'thresholds' must be an array of np.float64: {_error}", argument="thresholds") from None
-    if thresholds.ndim != 1:
-        raise _ToxArgumentError(f"'thresholds' must have 1 dimension, but has {thresholds.ndim}", argument="thresholds")
+    # check every input by the input contract, converting only when C needs it
+    ancestors = _contract.reals(ancestors, "ancestors", ndim=2, order="F")
+    genes = _contract.reals(genes, "genes", ndim=2, order="F")
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
+    thresholds = _contract.reals(thresholds, "thresholds", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_families = ancestors.shape[1]
@@ -296,25 +277,13 @@ def detect_dosage_effect(
     Generated from the Fortran procedure `tox_paralog_analysis::detect_dosage_effect`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        ancestor = _np.ascontiguousarray(ancestor, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'ancestor' must be an array of np.float64: {_error}", argument="ancestor") from None
-    if ancestor.ndim != 1:
-        raise _ToxArgumentError(f"'ancestor' must have 1 dimension, but has {ancestor.ndim}", argument="ancestor")
-    try:
-        genes = _np.asfortranarray(genes, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'genes' must be an array of np.float64: {_error}", argument="genes") from None
-    if genes.ndim != 2:
-        raise _ToxArgumentError(f"'genes' must have 2 dimensions, but has {genes.ndim}", argument="genes")
-    try:
-        filtered_paralogs_mask = _np.ascontiguousarray(filtered_paralogs_mask, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'filtered_paralogs_mask' must be an array of np.int32: {_error}", argument="filtered_paralogs_mask") from None
-    if filtered_paralogs_mask.ndim != 1:
-        raise _ToxArgumentError(f"'filtered_paralogs_mask' must have 1 dimension, but has {filtered_paralogs_mask.ndim}", argument="filtered_paralogs_mask")
+    # check every input by the input contract, converting only when C needs it
+    ancestor = _contract.reals(ancestor, "ancestor", ndim=1)
+    genes = _contract.reals(genes, "genes", ndim=2, order="F")
+    filtered_paralogs_mask = _contract.integers(filtered_paralogs_mask, "filtered_paralogs_mask", ndim=1)
+    max_subset_size = _contract.integer(max_subset_size, "max_subset_size")
+    max_angle = _contract.real(max_angle, "max_angle")
+    gain_gamma = _contract.real(gain_gamma, "gain_gamma")
 
     # what the inputs already say, rather than asking for it again
     n_genes = genes.shape[1]
@@ -427,37 +396,14 @@ def detect_subfunctionalization(
     Generated from the Fortran procedure `tox_paralog_analysis::detect_subfunctionalization`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        ancestor = _np.ascontiguousarray(ancestor, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'ancestor' must be an array of np.float64: {_error}", argument="ancestor") from None
-    if ancestor.ndim != 1:
-        raise _ToxArgumentError(f"'ancestor' must have 1 dimension, but has {ancestor.ndim}", argument="ancestor")
-    try:
-        genes = _np.asfortranarray(genes, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'genes' must be an array of np.float64: {_error}", argument="genes") from None
-    if genes.ndim != 2:
-        raise _ToxArgumentError(f"'genes' must have 2 dimensions, but has {genes.ndim}", argument="genes")
-    try:
-        filtered_paralogs_mask = _np.ascontiguousarray(filtered_paralogs_mask, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'filtered_paralogs_mask' must be an array of np.int32: {_error}", argument="filtered_paralogs_mask") from None
-    if filtered_paralogs_mask.ndim != 1:
-        raise _ToxArgumentError(f"'filtered_paralogs_mask' must have 1 dimension, but has {filtered_paralogs_mask.ndim}", argument="filtered_paralogs_mask")
-    try:
-        paralog_norms = _np.ascontiguousarray(paralog_norms, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'paralog_norms' must be an array of np.float64: {_error}", argument="paralog_norms") from None
-    if paralog_norms.ndim != 1:
-        raise _ToxArgumentError(f"'paralog_norms' must have 1 dimension, but has {paralog_norms.ndim}", argument="paralog_norms")
-    try:
-        sorted_paralog_norms_perm = _np.ascontiguousarray(sorted_paralog_norms_perm, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'sorted_paralog_norms_perm' must be an array of np.int32: {_error}", argument="sorted_paralog_norms_perm") from None
-    if sorted_paralog_norms_perm.ndim != 1:
-        raise _ToxArgumentError(f"'sorted_paralog_norms_perm' must have 1 dimension, but has {sorted_paralog_norms_perm.ndim}", argument="sorted_paralog_norms_perm")
+    # check every input by the input contract, converting only when C needs it
+    ancestor = _contract.reals(ancestor, "ancestor", ndim=1)
+    genes = _contract.reals(genes, "genes", ndim=2, order="F")
+    filtered_paralogs_mask = _contract.integers(filtered_paralogs_mask, "filtered_paralogs_mask", ndim=1)
+    max_subset_size = _contract.integer(max_subset_size, "max_subset_size")
+    rdi_threshold = _contract.real(rdi_threshold, "rdi_threshold")
+    paralog_norms = _contract.reals(paralog_norms, "paralog_norms", ndim=1)
+    sorted_paralog_norms_perm = _contract.integers(sorted_paralog_norms_perm, "sorted_paralog_norms_perm", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_genes = genes.shape[1]
@@ -560,19 +506,12 @@ def filter_paralogs_by_pattern_dosage_effect(
     Generated from the Fortran procedure `tox_paralog_analysis::filter_paralogs_by_pattern_dosage_effect`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        gene_angles = _np.ascontiguousarray(gene_angles, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'gene_angles' must be an array of np.float64: {_error}", argument="gene_angles") from None
-    if gene_angles.ndim != 1:
-        raise _ToxArgumentError(f"'gene_angles' must have 1 dimension, but has {gene_angles.ndim}", argument="gene_angles")
-    try:
-        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
-    if gene_to_fam.ndim != 1:
-        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
+    # check every input by the input contract, converting only when C needs it
+    gene_angles = _contract.reals(gene_angles, "gene_angles", ndim=1)
+    threshold = _contract.real(threshold, "threshold")
+    n_families = _contract.integer(n_families, "n_families")
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
+    n_mask_chunks = _contract.integer(n_mask_chunks, "n_mask_chunks")
 
     # what the inputs already say, rather than asking for it again
     n_genes = gene_angles.shape[0]
@@ -653,19 +592,12 @@ def filter_paralogs_by_pattern_subfunctionalization(
     Generated from the Fortran procedure `tox_paralog_analysis::filter_paralogs_by_pattern_subfunctionalization`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        gene_angles = _np.ascontiguousarray(gene_angles, dtype=_np.float64)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'gene_angles' must be an array of np.float64: {_error}", argument="gene_angles") from None
-    if gene_angles.ndim != 1:
-        raise _ToxArgumentError(f"'gene_angles' must have 1 dimension, but has {gene_angles.ndim}", argument="gene_angles")
-    try:
-        gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
-    except (TypeError, ValueError) as _error:
-        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
-    if gene_to_fam.ndim != 1:
-        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
+    # check every input by the input contract, converting only when C needs it
+    gene_angles = _contract.reals(gene_angles, "gene_angles", ndim=1)
+    threshold = _contract.real(threshold, "threshold")
+    n_families = _contract.integer(n_families, "n_families")
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
+    n_mask_chunks = _contract.integer(n_mask_chunks, "n_mask_chunks")
 
     # what the inputs already say, rather than asking for it again
     n_genes = gene_angles.shape[0]
