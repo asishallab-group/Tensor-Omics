@@ -937,6 +937,38 @@ without it the links inside it were read nowhere at all.
 
 ---
 
+## A function implementation (#221 B1, 2026-10-27)
+
+An implementation may be a function. Its wrappers cannot be: `ierr` has to come back beside the
+result, and the tiers share one signature shape with every other wrapper. So the result becomes
+an `intent(out)` argument of every tier, under the result's own name and with its own `!!` doc,
+**right before `ierr`** (FES's decision) -- before the implementation's own `ierr` where it
+declares one, and so after a prologue's own arguments. The wrapper assigns the call to it
+(`total = total_impl(n = n, x = x)`). `synthesize.published_arguments` is the one place that
+places it; the mode split, the drop set, the prologue's resolution and `validate`'s
+implementation rules all start from that list, so a prologue may answer the result on its
+`handled` path like any output, and a result is taken over, refused or documented exactly as an
+`intent(out)` argument of the same declaration would be. The implementation itself stays a
+function: another implementation calling it is untouched.
+
+Refused, because a result can break what a dummy cannot (`validate.function_result_problems`):
+no `result(...)` clause (the result would be named after the function, which the wrapper imports
+by that name: no compiler accepts the dummy), a result named `ierr`, one with the `tmp_` prefix
+(a work array is never returned, so the function's one output would be swallowed by the
+allocating tier), and an assumed length. Synthesis leaves such a result out rather than
+building a wrapper the error is about.
+
+An `elemental` function is wrapped as an elemental subroutine is, with scalars, and purity is
+derived as ever. A function cannot be `pure` once it has an `intent(out)` argument -- its own
+`ierr`, a `tmp_` work array -- so those implementations, and their wrappers, are impure.
+
+*Rejected:* refusing function implementations (#221 item 6 offered both). Their wrappers were
+`call`ed, which does not compile, and nothing reported it; supporting them costs one argument and
+an assignment. *Rejected:* naming the argument after the function where there is no clause --
+it never compiles.
+
+---
+
 ## How the generator builds it
 
 Only the frontend reads Fortran; everything after it works on the in-memory IR, which is

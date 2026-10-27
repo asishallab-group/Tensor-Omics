@@ -125,6 +125,25 @@ end program probe
 """
 
 
+#: The probe for `fx_functions_impl`: functions, published as subroutines with the result
+#: right before `ierr`, the call passing every argument by position to pin that order
+_FUNCTIONS_PROBE = """\
+program probe
+    use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
+    use fx_functions, only: fx_total, fx_doubled, fx_all_positive, fx_halve, fx_share, &
+        fx_smallest, fx_smallest_expert
+    implicit none
+    real(real64) :: values(3) = [1.0_real64, 2.0_real64, 5.0_real64]
+    real(real64) :: scalar, doubled(3), copy(3)
+    logical(c_bool) :: flag
+    integer(int32) :: ierr
+
+{body}
+end program probe
+"""
+
+
 def run_fortran(built: Path, tmp_path: Path, body: str, probe: str = _PROBE) -> list[str]:
     """Compile a probe around `body`, link it against `built`, return its output words."""
     source = tmp_path / "probe.F90"
@@ -260,3 +279,58 @@ class TestPurity:
         """, probe=_SHAPES_PROBE)
 
         assert out == ["0", "2", "3.50"]
+
+
+class TestFunctions:
+    """A function implementation is published as subroutines: its result an `intent(out)`
+    argument right before `ierr` (#221 B1). The wrapper used to `call` it, which does not
+    compile, and nothing said so."""
+
+    def test_a_scalar_an_array_and_a_logical_result(self, built, tmp_path):
+        out = run_fortran(built, tmp_path, """
+            call fx_total(3_int32, values, scalar, ierr)
+            print '(i0, 1x, f6.2)', ierr, scalar
+            call fx_doubled(3_int32, values, doubled, ierr)
+            print '(i0, 3(1x, f6.2))', ierr, doubled
+            call fx_all_positive(3_int32, values, flag, ierr)
+            print '(i0, 1x, l1)', ierr, flag
+        """, probe=_FUNCTIONS_PROBE)
+
+        assert out == ["0", "8.00", "0", "2.00", "4.00", "10.00", "0", "T"]
+
+    def test_an_elemental_function_is_wrapped_like_an_elemental_subroutine(self, built, tmp_path):
+        out = run_fortran(built, tmp_path, """
+            call fx_halve(5.0_real64, scalar, ierr)
+            print '(i0, 1x, f6.2)', ierr, scalar
+        """, probe=_FUNCTIONS_PROBE)
+
+        assert out == ["0", "2.50"]
+
+    def test_the_result_goes_before_the_implementation_s_own_ierr(self, built, tmp_path):
+        # ERR_DIVISION_BY_ZERO (210), the implementation's own, its position cleared
+        out = run_fortran(built, tmp_path, """
+            call fx_share(3_int32, values, scalar, ierr)
+            print '(i0, 1x, f6.3)', ierr, scalar
+            values = 0.0_real64
+            call fx_share(3_int32, values, scalar, ierr)
+            print '(i0)', ierr
+        """, probe=_FUNCTIONS_PROBE)
+
+        assert out == ["0", "0.125", "210"]
+
+    def test_both_tiers_publish_the_result(self, built, tmp_path):
+        # `fx_smallest` allocates the work array; the expert tier is handed one
+        out = run_fortran(built, tmp_path, """
+            call fx_smallest(3_int32, values, scalar, ierr)
+            print '(i0, 1x, f6.2)', ierr, scalar
+            call fx_smallest_expert(3_int32, values, copy, scalar, ierr)
+            print '(i0, 1x, f6.2, 1x, f6.2)', ierr, scalar, copy(3)
+        """, probe=_FUNCTIONS_PROBE)
+
+        assert out == ["0", "1.00", "0", "1.00", "5.00"]
+
+    def test_the_wrappers_are_pure_where_the_function_is(self, built, tmp_path):
+        text = (built / "fx_functions.F90").read_text()
+
+        assert "pure subroutine fx_total(" in text
+        assert "\n    subroutine fx_share(" in text  # it has an intent(out) `ierr`

@@ -373,10 +373,12 @@ class TestWarnings:
         assert bag.errors == ()
         assert "argument 'n' has no documentation" in bag.warnings[0].message
 
-    def test_an_undocumented_result_does_not_warn(self, bag):
+    def test_an_undocumented_result_warns(self, bag):
+        # #221 B1: it is published as an output argument, documented like any
         checked(b.procedure("f", result=b.real("out", Intent.OUT, is_result=True)), bag)
 
-        assert bag.warnings == () or all("result" not in w.message for w in bag.warnings)
+        assert bag.errors == ()
+        assert [w.message for w in bag.warnings] == ["result 'out' has no documentation"]
 
     def test_an_undocumented_module_warns(self, bag):
         validate_module(b.module("m"), bag)
@@ -1873,8 +1875,9 @@ class TestErrorIsLast:
 
         assert bag.errors == ()
 
-    def test_a_function_with_its_own_ierr_is_accepted_for_now(self, bag):
-        # its C wrapper still puts the result after `ierr`; #221's B1 moves it
+    def test_a_function_with_its_own_ierr_last_is_accepted(self, bag):
+        # its result is published before `ierr` (`abi.c_abi`, #221 B1), so the source order
+        # is the one that has to end in it
         result = b.real("total", Intent.OUT, is_result=True)
         checked(b.procedure("p", b.integer("n"), b.ierr(), result=result), bag)
 
@@ -1982,3 +1985,87 @@ class TestPermutationOutputs:
         validate_module(self.impl_module(perm), bag)
 
         assert bag.errors == ()
+
+
+class TestFunctionResults:
+    """#221 B1: a function's result is published as an output argument right before `ierr`, so
+    it is checked like an intent(out) dummy, and refused where it cannot be one."""
+
+    def exported(self, result, *arguments):
+        return b.procedure("total", b.integer("n"), *arguments, result=result)
+
+    def implementation(self, result, *arguments):
+        return b.module(
+            "tox_thing_impl",
+            b.procedure("total_impl", b.integer("n", doc="a count"), *arguments,
+                        result=result, meta=Meta(summary="s", author="a")),
+            doc="an implementation module",
+        )
+
+    @pytest.mark.parametrize("name", ["total", "TOTAL"])
+    def test_an_export_without_a_result_clause_is_refused(self, bag, name):
+        checked(self.exported(b.real(name, Intent.OUT, is_result=True, doc="d")), bag)
+
+        error = only_error(bag)
+        # the message WP2 gave it ("has the name of the procedure itself") is gone
+        assert error.message == "function 'total' has no result(...) clause"
+        assert "result(<name>)" in error.note
+
+    def test_an_implementation_without_a_result_clause_is_refused(self, bag):
+        validate_module(self.implementation(b.real("total_impl", Intent.OUT, is_result=True,
+                                                   doc="d")), bag)
+
+        assert only_error(bag).message == "function 'total_impl' has no result(...) clause"
+
+    @pytest.mark.parametrize("where", ["exported", "implementation"])
+    @pytest.mark.parametrize(
+        "result, message",
+        [
+            (lambda: b.integer("ierr", Intent.OUT, is_result=True, doc="d"),
+             "result 'ierr' is named like the error code"),
+            (lambda: b.integer("IERR", Intent.OUT, is_result=True, doc="d"),
+             "result 'IERR' is named like the error code"),
+            (lambda: b.real("tmp_sum", Intent.OUT, is_result=True, doc="d"),
+             "result 'tmp_sum' has the work-array prefix 'tmp_'"),
+            (lambda: b.character("label", Intent.OUT, length="*", is_result=True, doc="d"),
+             "result 'label' has an assumed length (len=*)"),
+        ],
+    )
+    def test_a_result_that_cannot_be_an_argument_is_refused(self, bag, where, result, message):
+        if where == "exported":
+            checked(self.exported(result()), bag)
+        else:
+            validate_module(self.implementation(result()), bag)
+
+        assert message in messages(bag)
+
+    @pytest.mark.parametrize(
+        "result, message",
+        [
+            (lambda: b.real("values", Intent.OUT, "(:)", is_result=True, doc="d",
+                            attributes=("allocatable",)),
+             "result 'values' is 'allocatable', which has no C interoperable form"),
+            (lambda: b.real("values", Intent.OUT, "(:)", is_result=True, doc="d",
+                            attributes=("pointer",)),
+             "result 'values' is 'pointer', which has no C interoperable form"),
+            (lambda: b.character("label", Intent.OUT, length=":", is_result=True, doc="d"),
+             "result 'label' has a deferred length (len=:)"),
+            (lambda: b.integer("count", Intent.OUT, kind="int64", is_result=True, doc="d"),
+             "result 'count' is integer(int64), which the bindings cannot carry"),
+        ],
+    )
+    def test_an_export_s_result_is_held_to_the_dummy_rules(self, bag, result, message):
+        checked(self.exported(result()), bag)
+
+        assert message in messages(bag)
+
+    def test_a_fixed_length_character_result_is_accepted(self, bag):
+        checked(self.exported(b.character("label", Intent.OUT, length="8", is_result=True,
+                                          doc="d")), bag)
+
+        assert bag.errors == ()
+
+    def test_a_subroutine_has_no_result_to_check(self, bag):
+        from codegen.ir.validate import function_result_problems
+
+        assert function_result_problems(b.procedure("p", b.ierr())) == []

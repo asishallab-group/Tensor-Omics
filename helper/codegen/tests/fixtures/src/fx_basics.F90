@@ -191,6 +191,28 @@ contains
     end function fx_count_positive
 
     !> M_EXPORT_C
+    !| summary: A function with its own `ierr`, whose result C receives right before it
+    !| author: A Developer
+    function fx_first_share(values, n_values, ierr) result(share)
+        integer(int32), intent(in) :: n_values
+            !! elements of `values`
+        real(real64), dimension(n_values), intent(in) :: values
+            !! the values
+        integer(int32), intent(out) :: ierr
+            !! error code
+        real(real64) :: share
+            !! the first value divided by the sum of all
+
+        call set_ok(ierr)
+        share = 0.0_real64
+        if (sum(values) == 0.0_real64) then
+            call set_err(ierr, ERR_DIVISION_BY_ZERO)
+            return
+        end if
+        share = values(1)/sum(values)
+    end function fx_first_share
+
+    !> M_EXPORT_C
     !| summary: A consumer whose work size is computed by a producer in another module
     !| author: A Developer
     !| The directive is documentation only, so naming fx_edges here creates no Fortran

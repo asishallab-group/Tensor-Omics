@@ -542,13 +542,19 @@ value is what the Fortran wrapper's own declaration means anyway.
 ## Decision: a function is exposed as a subroutine
 
 C receives the result as an `intent(out)` argument, placed **before** the error code, so
-that adding a result to a subroutine does not move `ierr` for existing callers.
+that adding a result to a subroutine does not move `ierr` for existing callers -- before the
+function's *own* `ierr` too, where it declares one (`_Builder.build`). That case used to get its
+result appended after it (`hw_ownierr_c(n, x, ierr, total)`), the one published signature that
+did not end in `ierr`, and the order check every C wrapper is held to
+(`_Builder._check_error_is_last`, beside `validate`'s check of the Fortran order) exempted it
+until #221's B1 moved the result. A function implementation's Fortran tiers take the result at
+the same place (`synthesize.published_arguments`), so every layer agrees: `..., result, ierr`.
 
-That holds where the generator adds the error code. A function declaring its *own* `ierr` gets
-its result appended after it today (`hw_ownierr_c(n, x, ierr, total)`), the one published
-signature that does not end in `ierr`. #221's B1 moves the result in front of it; until then the
-order check that every other C wrapper is held to (`_Builder._check_error_is_last`, beside
-`validate`'s check of the Fortran order) exempts exactly that shape.
+The result needs a `result(...)` clause (`validate.function_result_problems`). Named after the
+function, it would be a dummy of the wrapper that `use`s the function by that name -- which
+neither compiler accepts, and which the stripped name cannot avoid either, being the wrapper's
+own. *Rejected:* naming the argument after the function where there is no clause (#221's first
+design), for exactly that reason.
 
 ---
 

@@ -52,6 +52,7 @@ Related reading, once this is not enough:
   - [5.13 Work the plain wrapper does beyond allocating](#513-work-the-plain-wrapper-does-beyond-allocating)
   - [5.14 A genuine runtime error](#514-a-genuine-runtime-error)
   - [5.15 A family too big for one file](#515-a-family-too-big-for-one-file)
+  - [5.16 A function](#516-a-function)
 
 **Part II — the export path** (IO, infrastructure, and everything else)
 
@@ -343,6 +344,7 @@ docs, and an `ierr` that raises a typed error naming the offending argument.
 | **An argument name every binding language accepts** | the name is a Python parameter, an R parameter, a C parameter of the R binding and a dummy of every generated wrapper. Refused: Python keywords (`lambda`, `from`) and builtins (`len`, `input`, `type`), R reserved words (`next`, `function`, `NA` — in that case), C keywords (`default`, `long`, `asm`). Fortran keywords and R function names are fine — `value`, `mode`, `vector`, `weights` all are. Nor may an argument share its procedure's name (`total` in `total_impl`), or a name its generated Fortran wrapper uses: `count` beside an `n_selected_` count (the wrapper calls `count(...)`), `size` beside an assumed-shape array, `handled` beside a prologue, `<x>_f` for a string `x`. Only where the wrapper really uses it — `count` is fine elsewhere, and `p_value` beside `p` is always fine. The list is `helper/codegen/names.py` |
 | **A procedure name both languages accept** | it is a Python and an R function of that name: no Python keyword or builtin (`sum`, `filter`), no R reserved word |
 | **`ierr`, where you declare one, last** | every published signature ends in it, which is where the generator adds it when you declare none |
+| **A `result(...)` clause on a function** | the result is published as an argument of its name (Section 5.16), and a result named after the function would share that name with the function the wrapper calls — no compiler accepts it |
 | **`logical(c_bool)` for every logical that occupies storage** | one byte rather than four, and the kind the bindings already use, so a mask crosses without being copied — the wrapper used to declare an automatic array of default `logical` and convert elementwise both ways. A `logical, parameter` and a `logical function` result are the exceptions: no storage, nothing to save. Note a literal needs the kind too — `.true._c_bool`, because argument association does not convert kinds, though plain assignment does |
 | `!> summary: ...` on the procedure | becomes the docstring in Python and R |
 | **A `!>` block on the module, written as API prose** | it is carried verbatim onto the generated module, so it is the Python module docstring and the Ford page for the published API. Say what the family is for and name its entry points; do *not* describe the implementation, and do not explain what the generator will do with it (Section 7) |
@@ -956,6 +958,46 @@ Only children that actually generate something are re-exported, and a parent may
 parent. **Do not use `submodule`s** — they force every signature to be written twice (once in
 the parent's `interface`, once in the implementation) for encapsulation this already provides.
 
+### 5.16 A function
+
+**When** the implementation computes one value and is naturally a function.
+
+**Write** it as one, with a `result(...)` clause and a `!!` on the result as on any argument:
+
+```fortran
+!> summary: The sum of the values
+!| AUTHOR_A_N_AUTHOR
+pure function values_sum_impl(n_values, values) result(total)
+    integer(int32), intent(in) :: n_values
+        !! number of values
+    real(real64), intent(in) :: values(n_values)
+        !! the values
+    real(real64) :: total
+        !! their sum
+    total = sum(values)
+end function values_sum_impl
+```
+
+**You get** subroutines, as for every implementation: the result becomes an `intent(out)` argument
+of every tier, **right before `ierr`** — `values_sum(n_values, values, total, ierr)` — and the
+wrapper assigns the call to it; Python and R return it as the value of `values_sum(values)`.
+Before your own `ierr` too, if you declare one (Section 5.14), and after a prologue's own
+arguments (Section 5.13), so the signature ends in `..., total, ierr` either way. Other
+implementations keep calling `values_sum_impl` as the function it is.
+
+The result is an output argument from here on, so everything about outputs applies: it is
+returned, documented, checked for kind and name. On top of that, refused: **no `result(...)`
+clause** (the result would be named after the function, which the wrapper calls by that name),
+a result named **`ierr`**, one with the **`tmp_`** prefix (a work array is never returned), and one
+of **assumed length** (`character(len=*)`); `allocatable`, `pointer` and `len=:` are refused as on
+any argument. Type the result on its own declaration line rather than in the prefix (`pure
+real(real64) function ...`): the `!!` needs a line to sit under, or the result is published
+undocumented, with a warning.
+
+An **`elemental`** function is wrapped like an elemental subroutine, with scalars. A function with
+an `intent(out)` argument — its own `ierr`, a `tmp_` work array — cannot be `pure`, so neither are
+its wrappers.
+
 ---
 
 # Part II — the export path
@@ -1063,6 +1105,7 @@ Everything that is a *binding* rule rather than a wrapper rule, which is most of
 | `DM_OUTPUT_FROM(..., JUST_INFO)` | documentation pointing at where the value comes from |
 | `DM_RESULT_SIZE_IS` | as in Part I (Section 5.6): Python and R trim the result, Fortran callers still get the full buffer |
 | a mode table | Python and R still pass the mode as a *string*, and the C wrapper still rejects an unknown one |
+| a function | the C wrapper takes its result as an argument right before `ierr` — before your own `ierr` too — so it needs a `result(...)` clause (Section 5.16) |
 
 What is *not* available: the generated validation block, the plain wrapper's automatic allocation
 and sorting, the prologue hook, and the mode split. Those are things the generator writes into a
@@ -1240,6 +1283,8 @@ source and carries a note saying what to write instead.
 | an argument named like something its generated Fortran wrapper calls, imports, uses as a kind or declares, there | the wrapper would not compile, and with it the library (Section 4) |
 | a procedure named like a Python keyword or builtin, or an R reserved word | it is a Python and an R function of that name (Section 4) |
 | an `ierr` that is not the last argument | every published signature ends in the error code (Section 4) |
+| a function without a `result(...)` clause | its result is published under the result's name, which would then be the function's (Section 5.16) |
+| a function result named `ierr`, with the `tmp_` prefix, or of assumed length (`len=*`) | the result is an output argument right before `ierr`, which a work array never is, and its length would come from a declaration no binding writes (Section 5.16) |
 | the same exported name in two modules, or twice in one, ignoring case | it is the C symbol and the name Python and R publish; two link as a duplicate symbol |
 | an `M_EXPORT_C` on a **private** procedure | it would publish nothing, silently |
 | an `intent(inout), optional` argument | no binding can return a value the caller may have omitted (Section 5.5) |
@@ -1276,8 +1321,8 @@ source and carries a note saying what to write instead.
 Warnings never stop generation; errors write nothing. A few things are warnings rather than
 errors, and the house bar is **zero warnings**, so treat them as errors anyway:
 
-- a missing `summary:` or `author` meta tag, and an argument with no documentation — the API
-  would be generated undocumented
+- a missing `summary:` or `author` meta tag, and an argument or a function result with no
+  documentation — the API would be generated undocumented
 - a value table on an argument that is *not* named as a mode (`baseline` rather than
   `baseline_mode`) — the table is then documentation only, and the value crosses the binding as
   a bare integer instead of its name

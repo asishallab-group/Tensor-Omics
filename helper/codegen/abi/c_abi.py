@@ -150,15 +150,20 @@ class _Builder:
             self.taken.add(procedure.result.name.lower())
 
     def build(self) -> CWrapper:
+        # A function is exposed as a subroutine: C receives the result as an argument, right
+        # before the error code -- before the procedure's own `ierr` where it declares one,
+        # else last, ahead of the `ierr` added below -- so that adding a result to a
+        # subroutine does not move `ierr` for existing callers, and the signature ends in it
+        # (#221 B1; it was appended after an own `ierr`, `hw_ownierr_c(n, x, ierr, total)`).
         arguments: list[CArgument] = []
+        result = self.procedure.result
         for argument in self.procedure.arguments:
+            if result is not None and argument.name.lower() == self.conventions.error_arg:
+                arguments.extend(self._argument(result, is_result=True))
+                result = None
             arguments.extend(self._argument(argument))
-
-        # A function is exposed as a subroutine: C receives the result as an argument.
-        # It goes last so that adding a result to a subroutine does not renumber
-        # everything a caller already passes.
-        if self.procedure.result is not None:
-            arguments.extend(self._argument(self.procedure.result, is_result=True))
+        if result is not None:
+            arguments.extend(self._argument(result, is_result=True))
 
         # Only when the procedure has none of its own: one it already declares was
         # emitted above, in the place the author put it.
@@ -178,10 +183,9 @@ class _Builder:
         """The C signature ends in the error code, as every published signature does.
 
         `validate` checks the Fortran order, and a procedure that passes it gets a C
-        signature that ends in `ierr` too, with one exception: a function declaring its own
-        `ierr` gets its result appended after it. That shape is left alone until the result
-        is placed before the error code (#221, B1). Checked here all the same, because this
-        is where C's order is decided, and an added argument is exactly what would move it.
+        signature that ends in `ierr` too: a function's result is placed before it (`build`).
+        Checked here all the same, because this is where C's order is decided, and an added
+        argument is exactly what would move it.
         """
         error = next((a for a in arguments if a.origin is Origin.ERROR), None)
         if error is None or arguments[-1] is error:
@@ -189,8 +193,6 @@ class _Builder:
         own = self.procedure.argument(self.conventions.error_arg)
         if own is not None and self.procedure.arguments[-1] is not own:
             return  # `validate` reports the Fortran order, which this one only follows
-        if own is not None and self.procedure.result is not None:
-            return  # a function's result still goes after its own `ierr` (B1)
         self.diagnostics.error(
             f"the C wrapper of '{self.procedure.name}' does not end in '{error.name}'",
             entity=self.procedure,

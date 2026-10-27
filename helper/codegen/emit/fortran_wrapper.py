@@ -434,11 +434,7 @@ class FortranWrapperEmitter:
         None when there is none, or when the project is unavailable (a unit test), so the
         ordinary path is unaffected.
         """
-        if self.project is None:
-            return None
-        impl = self.project.procedure(
-            self._impl_module(module), self._impl_name(foo, module)
-        )
+        impl = self._impl(foo, module)
         if impl is None:
             return None
         directive = impl.directives.prologue
@@ -498,9 +494,7 @@ class FortranWrapperEmitter:
         """
         if self.project is None:
             return False
-        called = [
-            self.project.procedure(self._impl_module(module), self._impl_name(procedure, module))
-        ]
+        called = [self._impl(procedure, module)]
         foo = self._sibling(module, procedure) or procedure
         called.append(self._prologue_for(foo, module))
         for argument in foo.arguments:
@@ -589,13 +583,16 @@ class FortranWrapperEmitter:
         implementation itself when the project is available; without it (a unit test) the
         implementation has no ierr, since synthesis only appends one to the wrapper.
         """
-        if self.project is not None:
-            impl = self.project.procedure(
-                self._impl_module(module), self._impl_name(foo, module)
-            )
-            if impl is not None:
-                return list(impl.arguments)
+        impl = self._impl(foo, module)
+        if impl is not None:
+            return list(impl.arguments)
         return self._impl_arguments(foo)
+
+    def _impl(self, wrapper: Procedure, module: Module) -> Procedure | None:
+        """The implementation `wrapper` calls, or None without a project (a unit test)."""
+        if self.project is None:
+            return None
+        return self.project.procedure(self._impl_module(module), self._impl_name(wrapper, module))
 
     # -- declarations -----------------------------------------------------------
 
@@ -1016,7 +1013,12 @@ class FortranWrapperEmitter:
                 actuals.append((argument.name, mode_fix.parameter))
             elif lowered in present:
                 actuals.append((argument.name, argument.name))
-        self._call(writer, impl, actuals)
+        # A function is called for its value, which goes to the argument its result is
+        # published as (`synthesize.published_result`): of the same name, on both tiers.
+        implementation = self._impl(foo, module)
+        result = implementation.result if implementation is not None else None
+        published = result is not None and foo.argument(result.name) is not None
+        self._call(writer, impl, actuals, result=result.name if published else None)
         if self._impl_declares_error(foo, module):
             self._clear_arg_pos(writer)
 
@@ -1033,8 +1035,9 @@ class FortranWrapperEmitter:
         """
         writer.line(f"call clear_err_arg_pos({self.conventions.error_arg})")
 
-    def _call(self, writer: Writer, name: str, actuals) -> None:
-        writer.line(f"call {name}(&")
+    def _call(self, writer: Writer, name: str, actuals, result: str | None = None) -> None:
+        """`call name(dummy = value, ...)`, or `result = name(...)` for a function."""
+        writer.line(f"call {name}(&" if result is None else f"{result} = {name}(&")
         with writer.indent():
             for index, (dummy, value) in enumerate(actuals):
                 separator = "&" if index == len(actuals) - 1 else ",&"

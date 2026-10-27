@@ -267,6 +267,24 @@ class TestResultsAreRight:
     def test_a_function_result_comes_back_as_the_return_value(self, tox, np):
         assert tox.fx_count_positive(np.array([-1.0, 2.0, 3.0])) == 2
 
+    def test_a_function_with_its_own_ierr_returns_its_result_and_raises_its_error(self, tox):
+        assert tox.fx_first_share([1.0, 3.0]) == 0.25
+        with pytest.raises(tox.error_handling.ToxError) as raised:
+            tox.fx_first_share([0.0, 0.0])
+        assert raised.value.code == 210  # ERR_DIVISION_BY_ZERO
+
+    def test_c_takes_a_function_s_result_before_its_own_ierr(self, tox):
+        # #221 B1: the result was appended after it, `fx_first_share_c(values, n, ierr, share)`
+        import ctypes
+
+        library = ctypes.CDLL(os.environ["TENSOR_OMICS_LIBRARY"])
+        values = (ctypes.c_double * 2)(1.0, 3.0)
+        n_values, share, ierr = ctypes.c_int(2), ctypes.c_double(-1.0), ctypes.c_int(-1)
+        library.fx_first_share_c(values, ctypes.byref(n_values), ctypes.byref(share),
+                                 ctypes.byref(ierr))
+
+        assert (share.value, ierr.value) == (0.25, 0)
+
     def test_a_masked_matrix_result_is_column_truncated(self, tox, np):
         # fx_masked_matrix mirrors candidates_n_points_n_neighbors: a fixed 2-row,
         # N-column output where only the first n_results columns are real. Python's

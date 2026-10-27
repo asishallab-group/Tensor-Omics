@@ -974,3 +974,49 @@ class TestExtentForms:
         ))
 
         assert "use tox_demo_impl, only: MAX_LEN, measure_impl" in text
+
+
+class TestAFunctionImplementation:
+    """#221 B1: a function is called for its value, into the argument its result became.
+
+    The wrapper used to `call` it, which does not compile, and dropped the result."""
+
+    def text(self, *arguments):
+        from builders import Meta, integer, module, procedure, project, real
+
+        return emitted(project(module(
+            "tox_demo_impl",
+            procedure(
+                "add_up_impl",
+                real("values", Intent.IN, "(n)", doc="the data"),
+                integer("n", Intent.IN, doc="length"),
+                *arguments,
+                result=real("total", Intent.OUT, doc="their sum", is_result=True),
+                meta=Meta(summary="Total", author="AUTHOR"),
+                is_pure=True,
+            ),
+        )))
+
+    def test_the_call_assigns_the_result(self):
+        text = self.text()
+
+        assert "total = add_up_impl(&" in text
+        assert "call add_up_impl(" not in text
+        # the result is not an actual: the function has no such dummy
+        assert "total = total\n" not in text and "total = total&" not in text
+
+    def test_the_result_is_declared_as_an_output_before_ierr(self):
+        text = self.text()
+
+        assert "real(real64), intent(out) :: total" in text
+        signature = text[text.index("pure subroutine add_up("):text.index(")\n")]
+        assert signature.split() == [
+            "pure", "subroutine", "add_up(&", "values,&", "n,&", "total,&", "ierr&",
+        ]
+
+    def test_both_tiers_assign_it(self):
+        from builders import real
+
+        text = self.text(real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"))
+
+        assert text.count("total = add_up_impl(&") == 2

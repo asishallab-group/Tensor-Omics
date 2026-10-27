@@ -164,6 +164,14 @@ class TestResultsAreRight:
         out = run_r(built, 'cat(fx_count_positive(c(-1, 2, 3)))')
         assert int(out) == 2
 
+    def test_a_function_with_its_own_ierr_returns_its_result_and_raises_its_error(self, built):
+        # #221 B1: its C wrapper takes the result before `ierr`, which the shim passes on
+        out = run_r(built, """
+            cat(fx_first_share(c(1, 3)),
+                tryCatch(fx_first_share(c(0, 0)), tox_error = function(e) e$code))
+        """)
+        assert out.split() == ["0.25", "210"]
+
     def test_an_inout_scalar_is_capped_and_returned(self, built):
         # the modified scalar comes back from its <name>_v local, not the SEXP argument
         out = run_r(built, 'cat(fx_cap_value(15L), fx_cap_value(3L))')

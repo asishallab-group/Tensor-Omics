@@ -244,6 +244,60 @@ class TestAnOptionalModeWithoutADefault:
         assert out == ["2", "8", "1", "0.5", "2", "1"]
 
 
+class TestFunctions:
+    """#221 B1: a function implementation, its result published right before `ierr`.
+
+    The wrapper called it as a subroutine, which does not compile, and nothing said so.
+    """
+
+    def test_python_returns_each_result(self, built):
+        out = run_python(built, """
+            print(json.dumps([
+                tox.fx_total([1.0, 2.0, 5.0]), list(tox.fx_doubled([1.0, 2.0])),
+                bool(tox.fx_all_positive([1.0, -2.0])), tox.fx_halve(5.0),
+                tox.fx_share([1.0, 2.0, 5.0]), tox.fx_smallest([3.0, 1.0, 2.0]),
+            ]))
+        """)
+
+        assert out == [8.0, [2.0, 4.0], False, 2.5, 0.125, 1.0]
+
+    def test_r_returns_each_result(self, built):
+        out = run_r(built, """
+            cat(fx_total(c(1, 2, 5)), fx_doubled(c(1, 2)), fx_all_positive(c(1, -2)),
+                fx_halve(5), fx_share(c(1, 2, 5)), fx_smallest(c(3, 1, 2)))
+        """)
+
+        assert out == ["8", "2", "4", "FALSE", "2.5", "0.125", "1"]
+
+    def test_the_implementation_s_own_error_reaches_python_and_r(self, built):
+        # ERR_DIVISION_BY_ZERO (210), raised by the implementation itself
+        out = run_python(built, """
+            try:
+                tox.fx_share([0.0, 0.0])
+            except tox.error_handling.ToxError as error:
+                print(json.dumps(error.code))
+        """)
+        assert out == 210
+        assert run_r(built, """
+            r <- tryCatch(fx_share(c(0, 0)), tox_error = function(e) e$code); cat(r)
+        """) == ["210"]
+
+    def test_c_takes_the_result_right_before_ierr(self, built):
+        # by position, as a C caller passes it: fx_share_c(n_values, values, share, ierr)
+        out = run_python(built, """
+            import ctypes, os
+            library = ctypes.CDLL(os.environ["TENSOR_OMICS_LIBRARY"])
+            n_values = ctypes.c_int(3)
+            values = (ctypes.c_double * 3)(1.0, 2.0, 5.0)
+            share, ierr = ctypes.c_double(-1.0), ctypes.c_int(-1)
+            library.fx_share_c(ctypes.byref(n_values), values, ctypes.byref(share),
+                               ctypes.byref(ierr))
+            print(json.dumps([share.value, ierr.value]))
+        """)
+
+        assert out == [0.125, 0]
+
+
 #: Where `_generate` writes the Fortran wrappers, the C wrappers, the R shims, Python and R
 _TARGET_DIRS = ("fortran", "c", "shim", "py", "r")
 

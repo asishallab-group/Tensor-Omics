@@ -875,3 +875,105 @@ class TestThePrologueArgumentsComeBeforeAnOwnIerr:
         assert [a.name for a in self.synthesised().procedure("crunch_expert").arguments] == [
             "values", "n", "tmp_scratch", "result", "ierr",
         ]
+
+
+class TestFunctionImplementations:
+    """#221 B1: a function implementation's result becomes an intent(out) argument of every
+    wrapper, right before `ierr` -- the implementation's own `ierr` where it declares one."""
+
+    def add_up_impl(self, *arguments, result=None, directives=None):
+        return procedure(
+            "add_up_impl",
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length"),
+            *arguments,
+            result=result if result is not None else real(
+                "total", Intent.OUT, doc="their sum", is_result=True
+            ),
+            meta=Meta(summary="Total", author="AUTHOR"),
+            directives=directives,
+        )
+
+    def synthesised(self, *procedures):
+        from codegen.diagnostics import DiagnosticBag
+
+        return synthesize_wrappers(
+            project(module("tox_demo_impl", *procedures)), diagnostics=DiagnosticBag()
+        ).project.module("tox_demo")
+
+    def test_the_result_goes_before_the_appended_ierr(self):
+        wrapper = self.synthesised(self.add_up_impl()).procedure("add_up")
+
+        assert [a.name for a in wrapper.arguments] == ["values", "n", "total", "ierr"]
+        total = wrapper.argument("total")
+        assert total.intent is Intent.OUT and not total.is_result
+        assert wrapper.result is None  # the wrapper is a subroutine
+        assert str(total.doc) == str(self.add_up_impl().result.doc)
+
+    def test_the_result_goes_before_an_own_ierr(self):
+        wrapper = self.synthesised(self.add_up_impl(ierr())).procedure("add_up")
+
+        assert [a.name for a in wrapper.arguments] == ["values", "n", "total", "ierr"]
+
+    def test_both_tiers_carry_it_before_ierr(self):
+        demo = self.synthesised(
+            self.add_up_impl(real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"))
+        )
+
+        assert [a.name for a in demo.procedure("add_up").arguments] == [
+            "values", "n", "total", "ierr",
+        ]
+        assert [a.name for a in demo.procedure("add_up_expert").arguments] == [
+            "values", "n", "tmp_scratch", "total", "ierr",
+        ]
+
+    def test_a_prologue_s_own_arguments_go_before_the_result(self):
+        # the result is right before `ierr` on every tier, the prologue's vocabulary with it
+        from codegen.ir.directives import Prologue
+
+        guard = procedure(
+            "guard",
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length"),
+            real("level", Intent.IN, doc="what the prologue derives from"),
+            real("total", Intent.OUT, doc="answered directly when handled"),
+            logical("handled", Intent.OUT, doc="dealt with"),
+            ierr(),
+            meta=Meta(summary="Guard", author="AUTHOR"),
+        )
+        demo = self.synthesised(
+            guard, self.add_up_impl(ierr(), directives=Directives(
+                prologue=Prologue("guard", "tox_demo_impl"))),
+        )
+
+        assert [a.name for a in demo.procedure("add_up").arguments] == [
+            "values", "n", "level", "total", "ierr",
+        ]
+        assert [a.name for a in demo.procedure("add_up_expert").arguments] == [
+            "values", "n", "total", "ierr",
+        ]
+
+    def test_a_result_that_cannot_be_an_argument_is_left_out(self):
+        # validate refuses it; the wrappers must not carry two `ierr`s meanwhile
+        wrapper = self.synthesised(self.add_up_impl(
+            result=integer("ierr", Intent.OUT, doc="d", is_result=True))).procedure("add_up")
+
+        assert [a.name for a in wrapper.arguments] == ["values", "n", "ierr"]
+
+    def test_a_subroutine_is_unchanged(self):
+        from codegen.synthesize import published_arguments
+
+        impl = procedure("p_impl", integer("n", Intent.IN, doc="d"), ierr())
+
+        assert published_arguments(impl) == list(impl.arguments)
+
+    def test_every_per_mode_wrapper_carries_it(self):
+        impl = mode_split_impl_module().procedure("detect_patterns_impl")
+        impl.result = real("score", Intent.OUT, doc="the summary score", is_result=True)
+        impl.result.parent = impl
+        demo = synthesize_wrappers(project(module("tox_demo_impl", impl))).project.module(
+            "tox_demo"
+        )
+
+        for name in ("detect_dosage_effect", "detect_subfunctionalization"):
+            assert [a.name for a in demo.procedure(name).arguments][-2:] == ["score", "ierr"]

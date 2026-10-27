@@ -55,6 +55,72 @@ def bindings_cannot_carry(fortran: FortranType) -> bool:
     value = _kind_value(fortran.kind)
     return value is not None and value != supported
 
+
+def function_result_problems(procedure: Procedure,
+                             conventions: Conventions = CONVENTIONS) -> list[tuple[str, str]]:
+    """Why a function's result cannot be published as an output argument, as (message, note).
+
+    Every published signature is a subroutine's: an implementation function gets Fortran tiers
+    that are subroutines, and an exported function a C wrapper that is one. Its result becomes
+    an `intent(out)` argument right before `ierr` (#221 B1), under the result's own name, so it
+    is held to everything an `intent(out)` dummy is -- and these rules come on top, because a
+    result can break them where a dummy cannot:
+
+    - no `result(...)` clause: the result is then named after the function, and every wrapper
+      that calls the function names it too, so the dummy and the procedure it calls would be
+      one name (gfortran: "Symbol ... conflicts"; ifx: error #6401). The stripped name is no
+      way out, being the wrapper's own;
+    - named like `ierr`: the two would be one dummy (gfortran: "Duplicate symbol");
+    - named with the `tmp_` prefix: a work array, which the bindings allocate and never return,
+      and which the allocating tier takes over -- the function's only output, swallowed;
+    - an assumed length (`len=*`): the result's length comes from the caller's declaration,
+      which no binding writes. A deferred one is refused as on any dummy.
+
+    Empty for a subroutine. `synthesize.published_result` leaves a result with any of these
+    out of the wrappers, so nothing downstream builds the signature this refuses.
+    """
+    result = procedure.result
+    if result is None:
+        return []
+    problems = []
+    if result.name.lower() == procedure.name.lower():
+        problems.append((
+            f"function '{procedure.name}' has no result(...) clause",
+            "its result is published as an output argument under its own name, and the "
+            "wrapper that calls the function names the function too -- named after it, the "
+            "two are one name and the wrapper does not compile. Name the result: "
+            f"`function {procedure.name}(...) result(<name>)`",
+        ))
+    elif result.name.lower() == conventions.error_arg.lower():
+        problems.append((
+            f"result '{result.name}' is named like the error code",
+            f"the result is published as an output argument right before "
+            f"'{conventions.error_arg}', which every published signature ends in, so the two "
+            "would be one name. Name the result for what it is",
+        ))
+    elif result.name.lower().startswith(conventions.temporary_prefix):
+        problems.append((
+            f"result '{result.name}' has the work-array prefix "
+            f"'{conventions.temporary_prefix}'",
+            "a work array is allocated by the bindings and never returned, so the function's "
+            "result would be thrown away; drop the prefix",
+        ))
+    length = result.type.length if result.type is not None else None
+    if length is not None and length.is_assumed:
+        problems.append((
+            f"result '{result.name}' has an assumed length (len=*)",
+            "an assumed-length result takes its length from the caller's declaration, which "
+            "no binding writes (and the form is obsolescent); declare a fixed length, len=n",
+        ))
+    return problems
+
+
+def _check_function_result(procedure: Procedure, diagnostics: DiagnosticBag,
+                           conventions: Conventions) -> None:
+    for message, note in function_result_problems(procedure, conventions):
+        diagnostics.error(message, entity=procedure.result, note=note)
+
+
 #: The greatest character rank the C layer can carry. A character's length is a leading C
 #: extent, so a scalar character is a 1-D c_char buffer and a character vector a 2-D one.
 #: A rank-2 character array would need a rank-3 buffer, and the wrapper's pointer view of
@@ -409,6 +475,10 @@ def validate_impl_module(module: Module, diagnostics: DiagnosticBag,
             continue  # a recommend routine or a private helper, not an implementation
         _check_impl_is_not_exported(procedure, diagnostics, conventions)
         _check_impl_is_not_named_for_a_wrapper(procedure, diagnostics, conventions)
+        # the wrappers check the result they publish as any argument; what they cannot see is
+        # a result they had to leave out (an exported one is `_Validator`'s, as any export)
+        if not procedure.is_exported:
+            _check_function_result(procedure, diagnostics, conventions)
         _check_taken_over_is_not_an_output(procedure, diagnostics, conventions)
         _check_prologue(procedure, diagnostics, conventions)
 
@@ -586,12 +656,14 @@ def _check_taken_over_is_not_an_output(impl: Procedure, diagnostics: DiagnosticB
         is_computed,
         is_permutation,
         is_temporary,
+        published_arguments,
         taken_over_arguments,
     )
 
     project = impl.module.project if impl.module is not None else None
     prologue = _prologue_of(impl, project) if project is not None else None
-    for argument in taken_over_arguments(impl.arguments, conventions, prologue):
+    arguments = published_arguments(impl, conventions)
+    for argument in taken_over_arguments(arguments, conventions, prologue):
         if argument.intent is not Intent.OUT or is_temporary(argument, conventions):
             continue
         if is_permutation(argument, conventions):
@@ -618,6 +690,12 @@ def _check_taken_over_is_not_an_output(impl: Procedure, diagnostics: DiagnosticB
         )
 
 
+def _what(argument: Argument) -> str:
+    """How a diagnostic names it: a function's result is published as an argument, but the
+    author wrote a result."""
+    return "result" if argument.is_result else "argument"
+
+
 def validate_procedure(procedure: Procedure, diagnostics: DiagnosticBag,
                        conventions: Conventions = CONVENTIONS) -> None:
     _Validator(procedure, diagnostics, conventions).run()
@@ -640,6 +718,7 @@ class _Validator:
         self._check_meta()
         self._check_procedure_name()
         self._check_error_is_last()
+        _check_function_result(self.procedure, self.diagnostics, self.conventions)
         for argument in self.arguments:
             self._check_argument(argument)
 
@@ -728,7 +807,7 @@ class _Validator:
         output argument, so it is held to the same.
         """
         name = argument.name
-        what = "result" if argument.is_result else "argument"
+        what = _what(argument)
         word = names.language_word(name)
         if word is not None:
             self.error(
@@ -740,6 +819,8 @@ class _Validator:
                 ),
             )
         called = self._called_procedure(name)
+        if argument.is_result and name.lower() == self.procedure.name.lower():
+            called = None  # no `result(...)` clause, which `function_result_problems` says
         if called is not None:
             self.error(
                 f"{what} '{name}' has the name of {called}",
@@ -829,9 +910,10 @@ class _Validator:
         )
 
     def _check_documented(self, argument: Argument) -> None:
-        if not argument.doc and not argument.is_result:
+        # a result too: it is published as an output argument, documented like any (#221 B1)
+        if not argument.doc:
             self.diagnostics.warn(
-                f"argument '{argument.name}' has no documentation",
+                f"{_what(argument)} '{argument.name}' has no documentation",
                 entity=argument,
                 note="it is inherited by the C wrapper and by the Python and R docstrings",
             )
@@ -883,7 +965,7 @@ class _Validator:
         for attribute in NON_INTEROPERABLE_ATTRIBUTES:
             if argument.has_attribute(attribute):
                 self.error(
-                    f"argument '{argument.name}' is '{attribute}', which has no C "
+                    f"{_what(argument)} '{argument.name}' is '{attribute}', which has no C "
                     f"interoperable form",
                     argument,
                     note=(
@@ -911,7 +993,7 @@ class _Validator:
         if not bindings_cannot_carry(fortran):
             return
         self.error(
-            f"argument '{argument.name}' is {fortran}, which the bindings cannot carry",
+            f"{_what(argument)} '{argument.name}' is {fortran}, which the bindings cannot carry",
             argument,
             note=(
                 "R holds integers as int32 and numbers as real64, and the generated "
@@ -924,7 +1006,7 @@ class _Validator:
         length = argument.type.length
         if length.is_deferred:
             self.error(
-                f"argument '{argument.name}' has a deferred length (len=:)",
+                f"{_what(argument)} '{argument.name}' has a deferred length (len=:)",
                 argument,
                 note=(
                     "a deferred length implies allocatable or pointer, neither of which "
@@ -1214,11 +1296,12 @@ def _check_prologue_runs_somewhere(impl: Procedure, prologue: Procedure,
     its own. A prologue with neither is attached to a procedure that is never generated: no
     call is emitted anywhere, and nothing said so.
     """
-    from ..synthesize import prologue_only_arguments, taken_over_arguments
+    from ..synthesize import prologue_only_arguments, published_arguments, taken_over_arguments
 
-    if taken_over_arguments(impl.arguments, conventions, prologue):
+    arguments = published_arguments(impl, conventions)
+    if taken_over_arguments(arguments, conventions, prologue):
         return
-    if prologue_only_arguments(prologue, impl.arguments, conventions):
+    if prologue_only_arguments(prologue, arguments, conventions):
         return  # the wrapper exists to carry those, whether or not anything is allocated
     diagnostics.error(
         f"prologue '{prologue.name}' is on an implementation that generates no allocating wrapper",
@@ -1284,7 +1367,10 @@ def _check_prologue_arguments_resolve(impl: Procedure, prologue: Procedure,
     routine whose own parameter names cannot move, whereas a prologue is internal to the
     impl module and its dummy can simply be renamed to match.
     """
-    supplied = {argument.name.lower() for argument in impl.arguments}
+    from ..synthesize import published_arguments  # local: synthesize imports this module
+
+    # a function's result too: the wrappers publish it, so the prologue may answer it
+    supplied = {argument.name.lower() for argument in published_arguments(impl, conventions)}
     reserved = {conventions.error_arg.lower(), conventions.prologue_handled_arg.lower()}
     dropped = _dropped_by_the_mode_split(impl)
 
@@ -1402,14 +1488,16 @@ def _check_prologue_writes_what_it_may(impl: Procedure, prologue: Procedure,
     did with `fitted_values`. Impl `intent(inout)` means the caller supplies a value the
     prologue then refines.
     """
-    from ..synthesize import taken_over_arguments  # local: synthesize imports this module
+    # local: synthesize imports this module
+    from ..synthesize import published_arguments, taken_over_arguments
 
-    taken = {a.name.lower() for a in taken_over_arguments(impl.arguments, conventions,
-                                                          prologue)}
+    arguments = published_arguments(impl, conventions)
+    taken = {a.name.lower() for a in taken_over_arguments(arguments, conventions, prologue)}
+    by_name = {a.name.lower(): a for a in arguments}
     for dummy in prologue.arguments:
         if dummy.intent is None or not dummy.intent.is_output:
             continue
-        argument = impl.argument(dummy.name)
+        argument = by_name.get(dummy.name.lower())
         if argument is None or argument.intent is not Intent.IN:
             continue
         if argument.name.lower() in taken:
@@ -1438,7 +1526,7 @@ def _check_prologue_outputs_are_not_read_first(impl: Procedure, prologue: Proced
     rubbish rather than failing.
     """
     # local imports: synthesize imports this module
-    from ..synthesize import sorted_permutations, taken_over_arguments
+    from ..synthesize import published_arguments, sorted_permutations, taken_over_arguments
 
     written = {
         dummy.name.lower()
@@ -1449,7 +1537,8 @@ def _check_prologue_outputs_are_not_read_first(impl: Procedure, prologue: Proced
     if not written:
         return
 
-    taken = taken_over_arguments(impl.arguments, conventions, prologue)
+    taken = taken_over_arguments(published_arguments(impl, conventions), conventions,
+                                 prologue)
 
     # `M_ALLOCATE(tmp_x(<extent>))`
     for argument in taken:

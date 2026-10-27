@@ -29,6 +29,7 @@ from .ir.doc import Doc
 from .ir.entities import Argument, Meta, Module, Procedure, Project
 from .ir.roles import analyse
 from .ir.types import BaseType, FortranType, Intent
+from .ir.validate import function_result_problems
 
 #: Documentation for the `ierr` a wrapper carries when the implementation declares none
 _ERROR_DOC = "Error code; zero on success, non-zero on failure."
@@ -97,6 +98,56 @@ def generated_wrapper_paths(paths: Paths) -> list[Path]:
         for path in sorted(out.rglob("*.F90"))
         if bindings.isdisjoint(path.resolve().parents)
     ]
+
+
+# -- what the wrappers publish ---------------------------------------------------
+
+
+def published_result(impl: Procedure, conventions: Conventions = CONVENTIONS) -> Argument | None:
+    """An implementation function's result, as its wrappers publish it, or None.
+
+    Both tiers are subroutines, so the result becomes one of their `intent(out)` arguments,
+    named and documented as the author declared it, and the wrapper assigns the call to it
+    (`total = foo_impl(...)`). It is an ordinary argument from here on -- validated, bound and
+    returned like any output -- which is why the copy no longer says it is a result: the
+    wrapper has none. None for a subroutine, and for a result the wrappers cannot carry under
+    its name (`validate.function_result_problems`, which says why).
+    """
+    result = impl.result
+    if result is None or function_result_problems(impl, conventions):
+        return None
+    published = Argument(
+        result.name,
+        result.type,
+        dimension=result.dimension,
+        intent=Intent.OUT,
+        doc=result.doc,
+        directives=result.directives,
+        attributes=result.attributes,
+        location=result.location,
+    )
+    published.parent = impl
+    return published
+
+
+def published_arguments(impl: Procedure, conventions: Conventions = CONVENTIONS) -> list[Argument]:
+    """The implementation's arguments as its wrappers start from: a function's result included.
+
+    The result goes right before `ierr` (#221 B1, FES's decision): before the implementation's
+    own `ierr` where it declares one, else last, which is where the wrapper's `ierr` is then
+    appended -- so the published signature ends in `..., result, ierr` either way, as an
+    exported function's C wrapper does (`abi.c_abi`).
+    """
+    arguments = list(impl.arguments)
+    result = published_result(impl, conventions)
+    if result is None:
+        return arguments
+    error = next(
+        (index for index, argument in enumerate(arguments)
+         if argument.name.lower() == conventions.error_arg.lower()),
+        len(arguments),
+    )
+    return arguments[:error] + [result] + arguments[error:]
 
 
 # -- what the allocating wrapper takes over from the caller ----------------------
@@ -495,7 +546,7 @@ def _variants(
     One entry for an ordinary impl; one per mode value for a mode-split impl.
     """
     if mode_argument is None:
-        return [(_base_name(impl, conventions), list(impl.arguments), None)]
+        return [(_base_name(impl, conventions), published_arguments(impl, conventions), None)]
     return [
         (
             value.procedure_name,
@@ -516,7 +567,7 @@ def _mode_kept_arguments(
     mode is dropped; everything else is carried through.
     """
     kept: list[Argument] = []
-    for argument in impl.arguments:
+    for argument in published_arguments(impl, conventions):
         if argument is mode_argument:
             continue
         required = argument.directives.required_if_mode
@@ -631,12 +682,14 @@ def _wrappers_for(
 
     # the prologue's own arguments go after the implementation's, before `ierr`: they are
     # the allocating tier's own vocabulary, not part of what the implementation asked for.
-    # Before the implementation's own `ierr` too, where it has one, so the published
-    # signature still ends in it.
+    # Before the implementation's own `ierr` too, where it has one, and before a function's
+    # result, which is published right before `ierr`, so the signature still ends in both.
     kept = [a.with_name(a.name) for a in arguments if a not in taken]
+    ending = {conventions.error_arg.lower()}
+    if impl.result is not None:
+        ending.add(impl.result.name.lower())
     error = next(
-        (index for index, a in enumerate(kept)
-         if a.name.lower() == conventions.error_arg.lower()),
+        (index for index, a in enumerate(kept) if a.name.lower() in ending),
         len(kept),
     )
     alloc_arguments = kept[:error] + extra + kept[error:]

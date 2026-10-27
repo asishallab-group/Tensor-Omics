@@ -122,15 +122,31 @@ class TestErrorArgument:
 
         assert bag.errors == ()
 
-    def test_a_function_with_its_own_ierr_is_exempt_for_now(self, bag):
-        # its result still goes after `ierr` until #221's B1 moves it
+    def test_a_function_s_result_goes_before_its_own_ierr(self, bag):
+        # #221 B1: it was appended after it, `hw_ownierr_c(n, x, ierr, total)`
         procedure = b.procedure(
             "f", b.real("x", Intent.IN), b.ierr(),
             result=b.real("total", Intent.OUT, is_result=True),
         )
 
-        assert [a.name for a in wrap(procedure, bag)] == ["x", "ierr", "total"]
+        wrapper = wrap(procedure, bag)
+
+        assert [a.name for a in wrapper] == ["x", "total", "ierr"]
+        assert wrapper.argument("total").origin is Origin.RESULT
+        assert wrapper.argument("ierr").origin is Origin.ERROR
         assert bag.errors == ()
+
+    def test_a_function_is_no_longer_exempt_from_the_order_check(self, bag):
+        # the exemption WP2 made for the shape above is gone with it
+        from codegen.abi.c_abi import _Builder
+
+        procedure = b.procedure("f", b.ierr(), result=b.real("total", Intent.OUT, is_result=True))
+        builder = _Builder(procedure, bag, CONVENTIONS)
+        error = builder._argument(procedure.argument("ierr"))[0]
+        total = builder._argument(procedure.result, is_result=True)[0]
+        builder._check_error_is_last([error, total])
+
+        assert [d.message for d in bag.errors] == ["the C wrapper of 'f' does not end in 'ierr'"]
 
     def test_a_c_signature_not_ending_in_ierr_is_refused(self, bag):
         # nothing builds one today; this is the guard on what an added argument would do

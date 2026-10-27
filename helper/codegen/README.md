@@ -327,6 +327,16 @@ The parts a source author does not need, and a generator maintainer does:
   rather than at the top of the file, because two modules may size each other's outputs and a
   module-level import would then be circular. R needs no import: every wrapper is sourced into
   one environment.
+- **A function is published as a subroutine, its result right before `ierr`** (#221 B1). Both
+  Fortran tiers of a function implementation are subroutines taking the result as an
+  `intent(out)` argument of the result's own name, before the implementation's own `ierr` where
+  it declares one (`synthesize.published_arguments`), and the wrapper assigns the call to it:
+  `total = total_impl(n = n, x = x)`. From synthesis on it is an ordinary argument -- validated,
+  bound, documented and returned like any output -- and the implementation stays a function, so
+  other implementations keep calling it as one. An exported function's C wrapper takes its
+  result at the same place (`abi.c_abi`), which it used to append after an own `ierr`
+  (`hw_ownierr_c(n, x, ierr, total)`). An `elemental` function is wrapped as an elemental
+  subroutine is: the wrapper takes scalars.
 - **`foo` ends in `ierr` even with a prologue.** A prologue's own arguments are `foo`'s
   vocabulary, so they go after the implementation's -- and before the implementation's own
   `ierr` where it declares one (`synthesize._wrappers_for`). They used to be appended after it,
@@ -416,8 +426,18 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
   and both Fortran wrappers back to hold the emitters to it
 - an **`ierr` that is not the last argument**, of a hand-written export or, through the
   synthesised tiers, of an implementation. Every published signature ends in the error code; the C
-  ABI checks its own order too (`c_abi._Builder._check_error_is_last`), with one exemption until
-  #221's B1 lands: a function declaring its own `ierr` still gets its result appended after it
+  ABI checks its own order too (`c_abi._Builder._check_error_is_last`), a function included, whose
+  result goes before it
+- a **function without a `result(...)` clause**, an implementation or an export -- its result is
+  published under its own name, which is then the function's, and the wrapper that calls the
+  function names it too: gfortran says "Symbol ... conflicts", ifx error #6401. A result **named
+  `ierr`** (two dummies of one name), one **with the `tmp_` prefix** (a work array, never
+  returned: the function's only output, thrown away) and one of **assumed length** (`len=*`, whose
+  length comes from a declaration no binding writes) are refused as well
+  (`validate.function_result_problems`); synthesis leaves such a result out of the wrappers, so
+  nothing builds the signature the error is about. Otherwise a result is held to every rule an
+  `intent(out)` argument is -- `allocatable`, `pointer`, `len=:`, a kind the bindings cannot
+  carry, a reserved word -- and an undocumented one warns like any argument
 - the **same exported name twice**, in two modules or in one (a mode table's third column can do
   it), compared ignoring case: it is the C symbol, the R `.Call` entry and the name Python and R
   publish, so the link fails with a duplicate symbol, or the second silently shadows the first
