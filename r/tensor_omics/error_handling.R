@@ -164,28 +164,36 @@ ERR_UNKNOWN <- 9999L
     stop(cond)
 }
 
+#' Signal an argument the binding refused before calling the library
+#'
+#' A `tox_input_error`, like an input error the Fortran reports, with `code` NA.
+#' @keywords internal
+.tox_argument_error <- function(message, class, argument) {
+    .tox_raise(message, c(class, "tox_input_error"), argument = argument)
+}
+
 #' @keywords internal
 .tox_type_error <- function(argument, expected, value) {
-    .tox_raise(
+    .tox_argument_error(
         sprintf("'%s' must be %s, not %s", argument, expected, class(value)[1]),
-        "tox_type_error", argument = argument
+        "tox_type_error", argument
     )
 }
 
 #' @keywords internal
 .tox_na_error <- function(argument) {
-    .tox_raise(
+    .tox_argument_error(
         sprintf("'%s' contains NA, which tensor-omics cannot represent", argument),
-        "tox_na_error", argument = argument
+        "tox_na_error", argument
     )
 }
 
 #' @keywords internal
 .tox_shape_error <- function(argument, actual, other, expected) {
-    .tox_raise(
+    .tox_argument_error(
         sprintf("'%s' has extent %d, but '%s' implies it should be %d",
         argument, actual, other, expected),
-        "tox_shape_error", argument = argument
+        "tox_shape_error", argument
     )
 }
 

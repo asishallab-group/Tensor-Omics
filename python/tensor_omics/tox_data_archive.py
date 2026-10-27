@@ -18,7 +18,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -150,6 +150,9 @@ def create_zip_archive(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -165,17 +168,17 @@ def create_zip_archive(
         _keys_width = max(map(len, _keys_bytes), default=0) or 1
         keys = _np.asarray([_b.ljust(_keys_width) for _b in _keys_bytes], dtype="S")
     except TypeError as _error:
-        raise TypeError(f"'keys' must be a sequence of strings: {_error}") from None
+        raise _ToxArgumentError(f"'keys' must be a sequence of strings: {_error}", argument="keys") from None
     if keys.ndim != 1:
-        raise ValueError(f"'keys' must have 1 dimension, but has {keys.ndim}")
+        raise _ToxArgumentError(f"'keys' must have 1 dimension, but has {keys.ndim}", argument="keys")
     try:
         _filenames_bytes = [str(_s).encode() for _s in filenames]
         _filenames_width = max(map(len, _filenames_bytes), default=0) or 1
         filenames = _np.asarray([_b.ljust(_filenames_width) for _b in _filenames_bytes], dtype="S")
     except TypeError as _error:
-        raise TypeError(f"'filenames' must be a sequence of strings: {_error}") from None
+        raise _ToxArgumentError(f"'filenames' must be a sequence of strings: {_error}", argument="filenames") from None
     if filenames.ndim != 1:
-        raise ValueError(f"'filenames' must have 1 dimension, but has {filenames.ndim}")
+        raise _ToxArgumentError(f"'filenames' must have 1 dimension, but has {filenames.ndim}", argument="filenames")
 
     # what the inputs already say, rather than asking for it again
     zip_filename_strlen = zip_filename.itemsize
@@ -255,6 +258,9 @@ def save_tox_data(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -271,27 +277,27 @@ def save_tox_data(
             _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
             gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
         except TypeError as _error:
-            raise TypeError(f"'gene_ids' must be a sequence of strings: {_error}") from None
+            raise _ToxArgumentError(f"'gene_ids' must be a sequence of strings: {_error}", argument="gene_ids") from None
         if gene_ids.ndim != 1:
-            raise ValueError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}")
+            raise _ToxArgumentError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}", argument="gene_ids")
     if gene_ids_file is not None:
         gene_ids_file = _np.array([str(gene_ids_file).encode().ljust(1)], dtype="S")
     if expression is not None:
         try:
             expression = _np.asfortranarray(expression, dtype=_np.float64)
         except (TypeError, ValueError) as _error:
-            raise TypeError(f"'expression' must be an array of np.float64: {_error}") from None
+            raise _ToxArgumentError(f"'expression' must be an array of np.float64: {_error}", argument="expression") from None
         if expression.ndim != 2:
-            raise ValueError(f"'expression' must have 2 dimensions, but has {expression.ndim}")
+            raise _ToxArgumentError(f"'expression' must have 2 dimensions, but has {expression.ndim}", argument="expression")
     if expression_file is not None:
         expression_file = _np.array([str(expression_file).encode().ljust(1)], dtype="S")
     if gene_to_family is not None:
         try:
             gene_to_family = _np.ascontiguousarray(gene_to_family, dtype=_np.int32)
         except (TypeError, ValueError) as _error:
-            raise TypeError(f"'gene_to_family' must be an array of np.int32: {_error}") from None
+            raise _ToxArgumentError(f"'gene_to_family' must be an array of np.int32: {_error}", argument="gene_to_family") from None
         if gene_to_family.ndim != 1:
-            raise ValueError(f"'gene_to_family' must have 1 dimension, but has {gene_to_family.ndim}")
+            raise _ToxArgumentError(f"'gene_to_family' must have 1 dimension, but has {gene_to_family.ndim}", argument="gene_to_family")
     if gene_to_family_file is not None:
         gene_to_family_file = _np.array([str(gene_to_family_file).encode().ljust(1)], dtype="S")
     if family_ids is not None:
@@ -300,27 +306,27 @@ def save_tox_data(
             _family_ids_width = max(map(len, _family_ids_bytes), default=0) or 1
             family_ids = _np.asarray([_b.ljust(_family_ids_width) for _b in _family_ids_bytes], dtype="S")
         except TypeError as _error:
-            raise TypeError(f"'family_ids' must be a sequence of strings: {_error}") from None
+            raise _ToxArgumentError(f"'family_ids' must be a sequence of strings: {_error}", argument="family_ids") from None
         if family_ids.ndim != 1:
-            raise ValueError(f"'family_ids' must have 1 dimension, but has {family_ids.ndim}")
+            raise _ToxArgumentError(f"'family_ids' must have 1 dimension, but has {family_ids.ndim}", argument="family_ids")
     if family_ids_file is not None:
         family_ids_file = _np.array([str(family_ids_file).encode().ljust(1)], dtype="S")
     if family_centroids is not None:
         try:
             family_centroids = _np.asfortranarray(family_centroids, dtype=_np.float64)
         except (TypeError, ValueError) as _error:
-            raise TypeError(f"'family_centroids' must be an array of np.float64: {_error}") from None
+            raise _ToxArgumentError(f"'family_centroids' must be an array of np.float64: {_error}", argument="family_centroids") from None
         if family_centroids.ndim != 2:
-            raise ValueError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}")
+            raise _ToxArgumentError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}", argument="family_centroids")
     if family_centroids_file is not None:
         family_centroids_file = _np.array([str(family_centroids_file).encode().ljust(1)], dtype="S")
     if shift_vectors is not None:
         try:
             shift_vectors = _np.asfortranarray(shift_vectors, dtype=_np.float64)
         except (TypeError, ValueError) as _error:
-            raise TypeError(f"'shift_vectors' must be an array of np.float64: {_error}") from None
+            raise _ToxArgumentError(f"'shift_vectors' must be an array of np.float64: {_error}", argument="shift_vectors") from None
         if shift_vectors.ndim != 2:
-            raise ValueError(f"'shift_vectors' must have 2 dimensions, but has {shift_vectors.ndim}")
+            raise _ToxArgumentError(f"'shift_vectors' must have 2 dimensions, but has {shift_vectors.ndim}", argument="shift_vectors")
     if shift_vectors_file is not None:
         shift_vectors_file = _np.array([str(shift_vectors_file).encode().ljust(1)], dtype="S")
 
@@ -431,6 +437,9 @@ def get_tox_data_dims(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -530,6 +539,9 @@ def read_tox_data_into(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 

@@ -300,6 +300,18 @@ class TestClassedConditions:
         """)
         assert "'vector'" in out
 
+    def test_a_binding_refusal_is_an_input_error_without_a_code(self, built):
+        # the R wrapper's own refusals carry no tox code, like Python's (#221), and are input
+        # errors all the same, so one handler catches them beside the Fortran's
+        out = run_r(built, """
+            for (call in list(quote(fx_sum_matrix(matrix(c(1,2,3,4), 2), c(1,2,3))),
+                              quote(fx_normalize("hello")))) {
+              e <- tryCatch(eval(call), tox_input_error = function(e) e)
+              cat(class(e)[1], is.na(e$code), e$argument, "\\n")
+            }
+        """)
+        assert out.split("\n")[:2] == ["tox_shape_error TRUE weights ", "tox_type_error TRUE vector "]
+
     def test_a_fortran_error_is_a_classed_condition(self, built):
         out = run_r(built, """
             cat(tryCatch(fx_normalize(numeric(3)),

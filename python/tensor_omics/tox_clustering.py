@@ -16,7 +16,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -110,6 +110,9 @@ def cluster_factor_trajectories_k_means(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -122,15 +125,15 @@ def cluster_factor_trajectories_k_means(
     try:
         trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'trajectories' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'trajectories' must be an array of np.float64: {_error}", argument="trajectories") from None
     if trajectories.ndim != 3:
-        raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
+        raise _ToxArgumentError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}", argument="trajectories")
     if not isinstance(centroids, _np.ndarray) or centroids.dtype != _np.float64:
-        raise TypeError("'centroids' is modified in place, so it must already be a numpy array of {}".format(_np.float64))
+        raise _ToxArgumentError("'centroids' is modified in place, so it must already be a numpy array of {}".format(_np.float64), argument="centroids")
     if centroids.ndim != 2:
-        raise ValueError(f"'centroids' must have 2 dimensions, but has {centroids.ndim}")
+        raise _ToxArgumentError(f"'centroids' must have 2 dimensions, but has {centroids.ndim}", argument="centroids")
     if not centroids.flags.f_contiguous:
-        raise ValueError("'centroids' is modified in place, so it must already be column-major (order='F')")
+        raise _ToxArgumentError("'centroids' is modified in place, so it must already be column-major (order='F')", argument="centroids")
 
     # what the inputs already say, rather than asking for it again
     n_clusters = centroids.shape[1]
@@ -140,9 +143,7 @@ def cluster_factor_trajectories_k_means(
 
     # Fortran cannot check that shared extents agree; this can
     if centroids.shape[0] != n_factors:
-        raise ValueError(f"'centroids' has {centroids.shape[0]} along axis 0, but "
-            f"'trajectories' implies n_factors == {n_factors}"
-        )
+        raise _ToxArgumentError(f"'centroids' has {centroids.shape[0]} along axis 0, but 'trajectories' implies n_factors == {n_factors}", argument="centroids")
 
     # outputs and work arrays, which the caller never sees
     labels = _np.empty((n_samples*n_timepoints,), dtype=_np.int32, order='C')
@@ -213,6 +214,9 @@ def k_means_clustering(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -225,15 +229,15 @@ def k_means_clustering(
     try:
         data_points = _np.asfortranarray(data_points, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'data_points' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'data_points' must be an array of np.float64: {_error}", argument="data_points") from None
     if data_points.ndim != 2:
-        raise ValueError(f"'data_points' must have 2 dimensions, but has {data_points.ndim}")
+        raise _ToxArgumentError(f"'data_points' must have 2 dimensions, but has {data_points.ndim}", argument="data_points")
     if not isinstance(centroids, _np.ndarray) or centroids.dtype != _np.float64:
-        raise TypeError("'centroids' is modified in place, so it must already be a numpy array of {}".format(_np.float64))
+        raise _ToxArgumentError("'centroids' is modified in place, so it must already be a numpy array of {}".format(_np.float64), argument="centroids")
     if centroids.ndim != 2:
-        raise ValueError(f"'centroids' must have 2 dimensions, but has {centroids.ndim}")
+        raise _ToxArgumentError(f"'centroids' must have 2 dimensions, but has {centroids.ndim}", argument="centroids")
     if not centroids.flags.f_contiguous:
-        raise ValueError("'centroids' is modified in place, so it must already be column-major (order='F')")
+        raise _ToxArgumentError("'centroids' is modified in place, so it must already be column-major (order='F')", argument="centroids")
 
     # what the inputs already say, rather than asking for it again
     n_clusters = centroids.shape[1]
@@ -242,9 +246,7 @@ def k_means_clustering(
 
     # Fortran cannot check that shared extents agree; this can
     if centroids.shape[0] != n_dims:
-        raise ValueError(f"'centroids' has {centroids.shape[0]} along axis 0, but "
-            f"'data_points' implies n_dims == {n_dims}"
-        )
+        raise _ToxArgumentError(f"'centroids' has {centroids.shape[0]} along axis 0, but 'data_points' implies n_dims == {n_dims}", argument="centroids")
 
     # outputs and work arrays, which the caller never sees
     labels = _np.empty((n_points,), dtype=_np.int32, order='C')
@@ -320,6 +322,9 @@ def linkage_clustering(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -330,11 +335,11 @@ def linkage_clustering(
     """
     # accept anything array-like, converting only when C needs it
     if not isinstance(distances, _np.ndarray) or distances.dtype != _np.float64:
-        raise TypeError("'distances' is modified in place, so it must already be a numpy array of {}".format(_np.float64))
+        raise _ToxArgumentError("'distances' is modified in place, so it must already be a numpy array of {}".format(_np.float64), argument="distances")
     if distances.ndim != 2:
-        raise ValueError(f"'distances' must have 2 dimensions, but has {distances.ndim}")
+        raise _ToxArgumentError(f"'distances' must have 2 dimensions, but has {distances.ndim}", argument="distances")
     if not distances.flags.f_contiguous:
-        raise ValueError("'distances' is modified in place, so it must already be column-major (order='F')")
+        raise _ToxArgumentError("'distances' is modified in place, so it must already be column-major (order='F')", argument="distances")
     method = _np.array([str(method).lower().encode().ljust(8)], dtype="S8")
 
     # what the inputs already say, rather than asking for it again
@@ -342,9 +347,7 @@ def linkage_clustering(
 
     # Fortran cannot check that shared extents agree; this can
     if distances.shape[1] != n_points:
-        raise ValueError(f"'distances' has {distances.shape[1]} along axis 1, but "
-            f"'distances' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'distances' has {distances.shape[1]} along axis 1, but 'distances' implies n_points == {n_points}", argument="distances")
 
     # outputs and work arrays, which the caller never sees
     merge_i = _np.empty((n_points - 1,), dtype=_np.int32, order='C')

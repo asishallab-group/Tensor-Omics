@@ -12,7 +12,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -81,6 +81,9 @@ def build_bst_index(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -93,9 +96,9 @@ def build_bst_index(
     try:
         values = _np.ascontiguousarray(values, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'values' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'values' must be an array of np.float64: {_error}", argument="values") from None
     if values.ndim != 1:
-        raise ValueError(f"'values' must have 1 dimension, but has {values.ndim}")
+        raise _ToxArgumentError(f"'values' must have 1 dimension, but has {values.ndim}", argument="values")
 
     # what the inputs already say, rather than asking for it again
     n_values = values.shape[0]
@@ -144,6 +147,9 @@ def bst_range_query(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -159,9 +165,9 @@ def bst_range_query(
     try:
         values = _np.ascontiguousarray(values, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'values' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'values' must be an array of np.float64: {_error}", argument="values") from None
     if values.ndim != 1:
-        raise ValueError(f"'values' must have 1 dimension, but has {values.ndim}")
+        raise _ToxArgumentError(f"'values' must have 1 dimension, but has {values.ndim}", argument="values")
 
     # what the inputs already say, rather than asking for it again
     n_values = values.shape[0]
@@ -222,6 +228,9 @@ def bst_range_query_expert(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -237,24 +246,22 @@ def bst_range_query_expert(
     try:
         values = _np.ascontiguousarray(values, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'values' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'values' must be an array of np.float64: {_error}", argument="values") from None
     if values.ndim != 1:
-        raise ValueError(f"'values' must have 1 dimension, but has {values.ndim}")
+        raise _ToxArgumentError(f"'values' must have 1 dimension, but has {values.ndim}", argument="values")
     try:
         values_perm = _np.ascontiguousarray(values_perm, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'values_perm' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'values_perm' must be an array of np.int32: {_error}", argument="values_perm") from None
     if values_perm.ndim != 1:
-        raise ValueError(f"'values_perm' must have 1 dimension, but has {values_perm.ndim}")
+        raise _ToxArgumentError(f"'values_perm' must have 1 dimension, but has {values_perm.ndim}", argument="values_perm")
 
     # what the inputs already say, rather than asking for it again
     n_values = values.shape[0]
 
     # Fortran cannot check that shared extents agree; this can
     if values_perm.shape[0] != n_values:
-        raise ValueError(f"'values_perm' has {values_perm.shape[0]} along axis 0, but "
-            f"'values' implies n_values == {n_values}"
-        )
+        raise _ToxArgumentError(f"'values_perm' has {values_perm.shape[0]} along axis 0, but 'values' implies n_values == {n_values}", argument="values_perm")
 
     # outputs and work arrays, which the caller never sees
     output_indices = _np.empty((n_values,), dtype=_np.int32, order='C')

@@ -23,7 +23,7 @@ This is deliberate. An all-in-one entry point that allocates its outputs inside 
 
 ### In every language
 
-**Errors come back in `ierr`,** the last argument of every procedure. `0` is success. Anything else is `10000*arg_pos + code`: the last four digits are the code, which names the failure (1xx input and output, 2xx invalid input, 3xx memory, 5xxx Fortran runtime, 9xxx internal), and the digits before them are `arg_pos`, the argument to blame, counted in the Fortran signature and `0` when no argument is at fault. Python turns it into an exception derived from `ToxError` (`ToxInputError`, `ToxIOError`, ...) and R into a condition of class `tox_error` (`tox_input_error`, ...), both naming the argument.
+**Errors come back in `ierr`,** the last argument of every procedure. `0` is success. Anything else is `10000*arg_pos + code`: the last four digits are the code, which names the failure (1xx input and output, 2xx invalid input, 3xx memory, 5xxx Fortran runtime, 9xxx internal), and the digits before them are `arg_pos`, the argument to blame, counted in the Fortran signature and `0` when no argument is at fault. Python turns it into an exception derived from `ToxError` (`ToxInputError`, `ToxIOError`, ...) and R into a condition of class `tox_error` (`tox_input_error`, ...), both naming the argument. An argument Python or R refuses before the call, for its shape, type or value, is an input error too but carries no code: Python's `ToxArgumentError` (also a `TypeError` and a `ValueError`) with `code` None, R's `tox_type_error`, `tox_shape_error` or `tox_na_error` with `code` NA.
 
 **Indices are 1-based,** as in Fortran: family indices and permutations alike. Where an index can be "none", its value is `0`, such as a gene that belongs to no family.
 

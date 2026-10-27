@@ -14,7 +14,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -87,6 +87,9 @@ def normalize_variable_timeseries(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -99,9 +102,9 @@ def normalize_variable_timeseries(
     try:
         v = _np.ascontiguousarray(v, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'v' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'v' must be an array of np.float64: {_error}", argument="v") from None
     if v.ndim != 1:
-        raise ValueError(f"'v' must have 1 dimension, but has {v.ndim}")
+        raise _ToxArgumentError(f"'v' must have 1 dimension, but has {v.ndim}", argument="v")
 
     # what the inputs already say, rather than asking for it again
     n_points = v.shape[0]
@@ -153,6 +156,9 @@ def normalize_single_trajectory(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -165,9 +171,9 @@ def normalize_single_trajectory(
     try:
         trajectory = _np.asfortranarray(trajectory, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'trajectory' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'trajectory' must be an array of np.float64: {_error}", argument="trajectory") from None
     if trajectory.ndim != 2:
-        raise ValueError(f"'trajectory' must have 2 dimensions, but has {trajectory.ndim}")
+        raise _ToxArgumentError(f"'trajectory' must have 2 dimensions, but has {trajectory.ndim}", argument="trajectory")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectory.shape[1]
@@ -224,6 +230,9 @@ def normalize_all_trajectories(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -236,9 +245,9 @@ def normalize_all_trajectories(
     try:
         trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'trajectories' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'trajectories' must be an array of np.float64: {_error}", argument="trajectories") from None
     if trajectories.ndim != 3:
-        raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
+        raise _ToxArgumentError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}", argument="trajectories")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]

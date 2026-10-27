@@ -19,7 +19,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -164,6 +164,9 @@ def normalize_unit_length(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -174,9 +177,9 @@ def normalize_unit_length(
     """
     # accept anything array-like, converting only when C needs it
     if not isinstance(vector, _np.ndarray) or vector.dtype != _np.float64:
-        raise TypeError("'vector' is modified in place, so it must already be a numpy array of {}".format(_np.float64))
+        raise _ToxArgumentError("'vector' is modified in place, so it must already be a numpy array of {}".format(_np.float64), argument="vector")
     if vector.ndim != 1:
-        raise ValueError(f"'vector' must have 1 dimension, but has {vector.ndim}")
+        raise _ToxArgumentError(f"'vector' must have 1 dimension, but has {vector.ndim}", argument="vector")
 
     # what the inputs already say, rather than asking for it again
     n_dims = vector.shape[0]
@@ -232,6 +235,9 @@ def normalization_pipeline(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -244,15 +250,15 @@ def normalization_pipeline(
     try:
         expr = _np.asfortranarray(expr, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
     if expr.ndim != 2:
-        raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
+        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
     try:
         reps_per_tissue = _np.ascontiguousarray(reps_per_tissue, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'reps_per_tissue' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'reps_per_tissue' must be an array of np.int32: {_error}", argument="reps_per_tissue") from None
     if reps_per_tissue.ndim != 1:
-        raise ValueError(f"'reps_per_tissue' must have 1 dimension, but has {reps_per_tissue.ndim}")
+        raise _ToxArgumentError(f"'reps_per_tissue' must have 1 dimension, but has {reps_per_tissue.ndim}", argument="reps_per_tissue")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -314,6 +320,9 @@ def normalize_by_std_dev(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -326,9 +335,9 @@ def normalize_by_std_dev(
     try:
         expr = _np.asfortranarray(expr, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
     if expr.ndim != 2:
-        raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
+        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -377,6 +386,9 @@ def root_mean_sq_normalization(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -389,9 +401,9 @@ def root_mean_sq_normalization(
     try:
         expr = _np.asfortranarray(expr, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
     if expr.ndim != 2:
-        raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
+        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -444,6 +456,9 @@ def quantile_normalization(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -456,9 +471,9 @@ def quantile_normalization(
     try:
         expr = _np.asfortranarray(expr, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
     if expr.ndim != 2:
-        raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
+        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -514,6 +529,9 @@ def log2_transformation(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -526,9 +544,9 @@ def log2_transformation(
     try:
         expr = _np.asfortranarray(expr, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
     if expr.ndim != 2:
-        raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
+        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -581,6 +599,9 @@ def calc_tiss_avg(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -593,15 +614,15 @@ def calc_tiss_avg(
     try:
         reps_per_tissue = _np.ascontiguousarray(reps_per_tissue, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'reps_per_tissue' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'reps_per_tissue' must be an array of np.int32: {_error}", argument="reps_per_tissue") from None
     if reps_per_tissue.ndim != 1:
-        raise ValueError(f"'reps_per_tissue' must have 1 dimension, but has {reps_per_tissue.ndim}")
+        raise _ToxArgumentError(f"'reps_per_tissue' must have 1 dimension, but has {reps_per_tissue.ndim}", argument="reps_per_tissue")
     try:
         expr = _np.asfortranarray(expr, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
     if expr.ndim != 2:
-        raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
+        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -661,6 +682,9 @@ def calc_fchange(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -673,21 +697,21 @@ def calc_fchange(
     try:
         control_tissues = _np.ascontiguousarray(control_tissues, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'control_tissues' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'control_tissues' must be an array of np.int32: {_error}", argument="control_tissues") from None
     if control_tissues.ndim != 1:
-        raise ValueError(f"'control_tissues' must have 1 dimension, but has {control_tissues.ndim}")
+        raise _ToxArgumentError(f"'control_tissues' must have 1 dimension, but has {control_tissues.ndim}", argument="control_tissues")
     try:
         condition_tissues = _np.ascontiguousarray(condition_tissues, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'condition_tissues' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'condition_tissues' must be an array of np.int32: {_error}", argument="condition_tissues") from None
     if condition_tissues.ndim != 1:
-        raise ValueError(f"'condition_tissues' must have 1 dimension, but has {condition_tissues.ndim}")
+        raise _ToxArgumentError(f"'condition_tissues' must have 1 dimension, but has {condition_tissues.ndim}", argument="condition_tissues")
     try:
         expr = _np.asfortranarray(expr, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
     if expr.ndim != 2:
-        raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
+        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -696,9 +720,7 @@ def calc_fchange(
 
     # Fortran cannot check that shared extents agree; this can
     if condition_tissues.shape[0] != n_pairs:
-        raise ValueError(f"'condition_tissues' has {condition_tissues.shape[0]} along axis 0, but "
-            f"'control_tissues' implies n_pairs == {n_pairs}"
-        )
+        raise _ToxArgumentError(f"'condition_tissues' has {condition_tissues.shape[0]} along axis 0, but 'control_tissues' implies n_pairs == {n_pairs}", argument="condition_tissues")
 
     # outputs and work arrays, which the caller never sees
     fold_changes = _np.empty((n_pairs, n_genes,), dtype=_np.float64, order='F')

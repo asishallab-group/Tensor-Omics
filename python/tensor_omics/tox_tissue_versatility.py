@@ -15,7 +15,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -75,6 +75,9 @@ def compute_tissue_versatility(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -87,21 +90,21 @@ def compute_tissue_versatility(
     try:
         expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expression_vectors' must be an array of np.float64: {_error}", argument="expression_vectors") from None
     if expression_vectors.ndim != 2:
-        raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
+        raise _ToxArgumentError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}", argument="expression_vectors")
     try:
         vectors_selection_mask = _np.ascontiguousarray(vectors_selection_mask, dtype=_np.bool_)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'vectors_selection_mask' must be an array of np.bool_: {_error}") from None
+        raise _ToxArgumentError(f"'vectors_selection_mask' must be an array of np.bool_: {_error}", argument="vectors_selection_mask") from None
     if vectors_selection_mask.ndim != 1:
-        raise ValueError(f"'vectors_selection_mask' must have 1 dimension, but has {vectors_selection_mask.ndim}")
+        raise _ToxArgumentError(f"'vectors_selection_mask' must have 1 dimension, but has {vectors_selection_mask.ndim}", argument="vectors_selection_mask")
     try:
         axes_selection_mask = _np.ascontiguousarray(axes_selection_mask, dtype=_np.bool_)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'axes_selection_mask' must be an array of np.bool_: {_error}") from None
+        raise _ToxArgumentError(f"'axes_selection_mask' must be an array of np.bool_: {_error}", argument="axes_selection_mask") from None
     if axes_selection_mask.ndim != 1:
-        raise ValueError(f"'axes_selection_mask' must have 1 dimension, but has {axes_selection_mask.ndim}")
+        raise _ToxArgumentError(f"'axes_selection_mask' must have 1 dimension, but has {axes_selection_mask.ndim}", argument="axes_selection_mask")
 
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]
@@ -111,13 +114,9 @@ def compute_tissue_versatility(
 
     # Fortran cannot check that shared extents agree; this can
     if axes_selection_mask.shape[0] != n_axes:
-        raise ValueError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_axes == {n_axes}"
-        )
+        raise _ToxArgumentError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but 'expression_vectors' implies n_axes == {n_axes}", argument="axes_selection_mask")
     if vectors_selection_mask.shape[0] != n_vectors:
-        raise ValueError(f"'vectors_selection_mask' has {vectors_selection_mask.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_vectors == {n_vectors}"
-        )
+        raise _ToxArgumentError(f"'vectors_selection_mask' has {vectors_selection_mask.shape[0]} along axis 0, but 'expression_vectors' implies n_vectors == {n_vectors}", argument="vectors_selection_mask")
 
     # outputs and work arrays, which the caller never sees
     tissue_versatilities = _np.empty((n_selected_vectors,), dtype=_np.float64, order='C')

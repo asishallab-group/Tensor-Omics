@@ -17,7 +17,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -100,6 +100,9 @@ def gjct_permutation_test(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -112,29 +115,29 @@ def gjct_permutation_test(
     try:
         neighborhood_residuals_S1 = _np.asfortranarray(neighborhood_residuals_S1, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'neighborhood_residuals_S1' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'neighborhood_residuals_S1' must be an array of np.float64: {_error}", argument="neighborhood_residuals_S1") from None
     if neighborhood_residuals_S1.ndim != 3:
-        raise ValueError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}")
+        raise _ToxArgumentError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}", argument="neighborhood_residuals_S1")
     try:
         neighborhood_residuals_S2 = _np.asfortranarray(neighborhood_residuals_S2, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'neighborhood_residuals_S2' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' must be an array of np.float64: {_error}", argument="neighborhood_residuals_S2") from None
     if neighborhood_residuals_S2.ndim != 3:
-        raise ValueError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}")
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}", argument="neighborhood_residuals_S2")
     if neighbor_mask_S1 is not None:
         try:
             neighbor_mask_S1 = _np.asfortranarray(neighbor_mask_S1, dtype=_np.bool_)
         except (TypeError, ValueError) as _error:
-            raise TypeError(f"'neighbor_mask_S1' must be an array of np.bool_: {_error}") from None
+            raise _ToxArgumentError(f"'neighbor_mask_S1' must be an array of np.bool_: {_error}", argument="neighbor_mask_S1") from None
         if neighbor_mask_S1.ndim != 2:
-            raise ValueError(f"'neighbor_mask_S1' must have 2 dimensions, but has {neighbor_mask_S1.ndim}")
+            raise _ToxArgumentError(f"'neighbor_mask_S1' must have 2 dimensions, but has {neighbor_mask_S1.ndim}", argument="neighbor_mask_S1")
     if neighbor_mask_S2 is not None:
         try:
             neighbor_mask_S2 = _np.asfortranarray(neighbor_mask_S2, dtype=_np.bool_)
         except (TypeError, ValueError) as _error:
-            raise TypeError(f"'neighbor_mask_S2' must be an array of np.bool_: {_error}") from None
+            raise _ToxArgumentError(f"'neighbor_mask_S2' must be an array of np.bool_: {_error}", argument="neighbor_mask_S2") from None
         if neighbor_mask_S2.ndim != 2:
-            raise ValueError(f"'neighbor_mask_S2' must have 2 dimensions, but has {neighbor_mask_S2.ndim}")
+            raise _ToxArgumentError(f"'neighbor_mask_S2' must have 2 dimensions, but has {neighbor_mask_S2.ndim}", argument="neighbor_mask_S2")
 
     # what the inputs already say, rather than asking for it again
     n_reps_S1 = neighborhood_residuals_S1.shape[0]
@@ -144,13 +147,9 @@ def gjct_permutation_test(
 
     # Fortran cannot check that shared extents agree; this can
     if neighborhood_residuals_S2.shape[1] != n_neighbors:
-        raise ValueError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but "
-            f"'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}", argument="neighborhood_residuals_S2")
     if neighborhood_residuals_S2.shape[2] != n_points:
-        raise ValueError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but "
-            f"'neighborhood_residuals_S1' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but 'neighborhood_residuals_S1' implies n_points == {n_points}", argument="neighborhood_residuals_S2")
 
     # outputs and work arrays, which the caller never sees
     jsd_null = _np.empty((n_permutations,), dtype=_np.float64, order='C')

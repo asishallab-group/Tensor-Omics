@@ -327,6 +327,13 @@ The parts a source author does not need, and a generator maintainer does:
   rather than at the top of the file, because two modules may size each other's outputs and a
   module-level import would then be circular. R needs no import: every wrapper is sourced into
   one environment.
+- **A refusal of the binding's own is an input error without a code** (#221). Python raises
+  `ToxArgumentError` (`emit.errors_python.ARGUMENT_EXCEPTION`), a `ToxInputError` whose `code`
+  is None and which is a `TypeError` and a `ValueError` too, for every shape, type and value it
+  refuses before the call; R's `tox_type_error`, `tox_shape_error` and `tox_na_error` inherit
+  `tox_input_error` (`.tox_argument_error`), `code` NA. They used to be a bare `ValueError` /
+  `TypeError` and a plain `tox_error`, so the same wrong shape needed a different handler when
+  the binding caught it than when the Fortran did. Each docstring's `Raises` names it.
 - **A function is published as a subroutine, its result right before `ierr`** (#221 B1). Both
   Fortran tiers of a function implementation are subroutines taking the result as an
   `intent(out)` argument of the result's own name, before the implementation's own `ierr` where

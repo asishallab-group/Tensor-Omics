@@ -217,6 +217,21 @@ without calling back into the package environment.
 *Consequence:* in R, type errors are raised by R before the call and Fortran errors by R
 after it — one place, one set of condition classes.
 
+**A refusal of the binding's own carries no tox code, and is an input error all the same**
+(#221). A wrong shape, type or value is found before anything is called, so there is no code to
+report, and main's convention is to report none: Python's `assert_error` without a code and R's
+mean exactly that. But the caller made the same mistake as one the Fortran reports as
+`ERR_DIM_MISMATCH`, and had to catch the two apart -- a `ValueError` in one case, a
+`ToxInputError` in the other. So Python raises `ToxArgumentError(ToxInputError, TypeError,
+ValueError)` with `code` None: an `except ToxInputError` catches both, and an `except ValueError`
+written against the old refusal (the numpy idiom) still works. R's `tox_type_error`,
+`tox_shape_error` and `tox_na_error` gained `tox_input_error` between themselves and `tox_error`,
+with `code` NA, which R's `assert_error` already reads as "no tox code".
+
+*Rejected:* giving the refusal a code (`ERR_DIM_MISMATCH` for a shape). It would claim the
+library reported something it was never asked, and turn six Python tests that assert "no tox
+code" into failures for no gain.
+
 ---
 
 ## Decision: shape cross-checks happen in the binding language — and in R that is R, not C
@@ -228,7 +243,7 @@ mismatch surfaces as a wrong answer or a segfault.
 So the binding language checks it, naming both arguments:
 
 ```
-ValueError: 'weights' has 3 along axis 0, but 'matrix' implies n_cols == 2
+ToxArgumentError: 'weights' has 3 along axis 0, but 'matrix' implies n_cols == 2
 ```
 
 This is the single most valuable thing the generated layer does that a hand-written
@@ -236,7 +251,7 @@ wrapper usually forgets.
 
 In R the check is in the **R** wrapper, not the C. Everything a user can trip over --
 wrong type, wrong shape, an `NA` -- is caught in one place and raised as a **classed
-condition** (`tox_type_error`, `tox_shape_error`, `tox_error`), so `tryCatch` can select
+condition** (`tox_type_error`, `tox_shape_error`, `tox_input_error`, `tox_error`), so `tryCatch` can select
 on it. C raising these would mean calling back into the package environment, which is
 fragile. The split is clean: **R decides and raises; C marshals and calls.** C
 re-derives the extents it needs for the call from the R objects it is handed (`Rf_length(x)`

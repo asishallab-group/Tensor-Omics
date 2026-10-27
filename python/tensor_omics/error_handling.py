@@ -11,8 +11,9 @@ class ToxError(RuntimeError):
 
     Attributes
     ----------
-    code : int
-        The tox_errors code, without the argument position packed into it.
+    code : int or None
+        The tox_errors code, without the argument position packed into it; None
+        for a ToxArgumentError, which the binding raised before any code existed.
     name : str or None
         The name of the code, e.g. 'ERR_INVALID_INPUT'.
     argument : str or None
@@ -44,6 +45,18 @@ class ToxRuntimeError(ToxError):
 
 class ToxInternalError(ToxError):
     """A bug in tensor-omics."""
+
+
+class ToxArgumentError(ToxInputError, TypeError, ValueError):
+    """An argument the binding refused before calling the library.
+
+    A wrong shape, type or value, found by the generated function itself, so it
+    carries no tox code: `code` and `name` are None. It is a TypeError and a
+    ValueError as well, so code catching either keeps working.
+    """
+
+    def __init__(self, message, argument=None):
+        super().__init__(message, code=None, argument=argument)
 
 
 # The codes themselves, so a caller can compare against a name

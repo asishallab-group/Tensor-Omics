@@ -15,7 +15,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -126,6 +126,9 @@ def read_expression_vectors_tsv(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -140,29 +143,29 @@ def read_expression_vectors_tsv(
         _file_list_width = max(map(len, _file_list_bytes), default=0) or 1
         file_list = _np.asarray([_b.ljust(_file_list_width) for _b in _file_list_bytes], dtype="S")
     except TypeError as _error:
-        raise TypeError(f"'file_list' must be a sequence of strings: {_error}") from None
+        raise _ToxArgumentError(f"'file_list' must be a sequence of strings: {_error}", argument="file_list") from None
     if file_list.ndim != 1:
-        raise ValueError(f"'file_list' must have 1 dimension, but has {file_list.ndim}")
+        raise _ToxArgumentError(f"'file_list' must have 1 dimension, but has {file_list.ndim}", argument="file_list")
     try:
         _gene_ids_bytes = [str(_s).encode() for _s in gene_ids]
         _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
         gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
     except TypeError as _error:
-        raise TypeError(f"'gene_ids' must be a sequence of strings: {_error}") from None
+        raise _ToxArgumentError(f"'gene_ids' must be a sequence of strings: {_error}", argument="gene_ids") from None
     if gene_ids.ndim != 1:
-        raise ValueError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}")
+        raise _ToxArgumentError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}", argument="gene_ids")
     if not isinstance(expression_vectors, _np.ndarray) or expression_vectors.dtype != _np.float64:
-        raise TypeError("'expression_vectors' is modified in place, so it must already be a numpy array of {}".format(_np.float64))
+        raise _ToxArgumentError("'expression_vectors' is modified in place, so it must already be a numpy array of {}".format(_np.float64), argument="expression_vectors")
     if expression_vectors.ndim != 2:
-        raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
+        raise _ToxArgumentError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}", argument="expression_vectors")
     if not expression_vectors.flags.f_contiguous:
-        raise ValueError("'expression_vectors' is modified in place, so it must already be column-major (order='F')")
+        raise _ToxArgumentError("'expression_vectors' is modified in place, so it must already be column-major (order='F')", argument="expression_vectors")
     try:
         value_cols = _np.ascontiguousarray(value_cols, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'value_cols' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'value_cols' must be an array of np.int32: {_error}", argument="value_cols") from None
     if value_cols.ndim != 1:
-        raise ValueError(f"'value_cols' must have 1 dimension, but has {value_cols.ndim}")
+        raise _ToxArgumentError(f"'value_cols' must have 1 dimension, but has {value_cols.ndim}", argument="value_cols")
     delimiter = _np.array([str(delimiter).encode().ljust(1)], dtype="S1")
 
     # what the inputs already say, rather than asking for it again
@@ -229,6 +232,9 @@ def read_gene_ids_from_tsv_file(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -297,6 +303,9 @@ def read_orthofinder_file(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -312,9 +321,9 @@ def read_orthofinder_file(
         _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
         gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
     except TypeError as _error:
-        raise TypeError(f"'gene_ids' must be a sequence of strings: {_error}") from None
+        raise _ToxArgumentError(f"'gene_ids' must be a sequence of strings: {_error}", argument="gene_ids") from None
     if gene_ids.ndim != 1:
-        raise ValueError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}")
+        raise _ToxArgumentError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}", argument="gene_ids")
 
     # what the inputs already say, rather than asking for it again
     filename_strlen = filename.itemsize
@@ -373,6 +382,9 @@ def get_unassigned_mask(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -385,9 +397,9 @@ def get_unassigned_mask(
     try:
         gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
     if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
 
     # what the inputs already say, rather than asking for it again
     n_gene_to_fam_elements = gene_to_fam.shape[0]

@@ -121,13 +121,16 @@ PYTHON_STDLIB_IMPORTS = (("ctypes", "_ctypes"), ("os", "_os"))
 PYTHON_THIRD_PARTY_IMPORTS = (("numpy", "_np"),)
 #: What it imports from the package itself, as (module, ((name, bound name), ...))
 PYTHON_PACKAGE_IMPORTS = (
-    (".error_handling", (("check_err_code", "_check_err_code"),)),
+    (".error_handling", (("ToxArgumentError", "_ToxArgumentError"),
+                         ("check_err_code", "_check_err_code"))),
     (".library", (("load_library", "_load_library"), ("nullable", "_nullable"))),
 )
 #: The names those are bound to, as the generated code spells them
 PYTHON_NUMPY = "_np"
 PYTHON_CTYPES = "_ctypes"
 PYTHON_CHECK_ERR_CODE = "_check_err_code"
+#: What a generated function raises for an argument it refuses itself (`emit.errors_python`)
+PYTHON_ARGUMENT_ERROR = "_ToxArgumentError"
 PYTHON_LOAD_LIBRARY = "_load_library"
 PYTHON_NULLABLE = "_nullable"
 #: The exception a generated Python function catches while converting an input

@@ -568,10 +568,10 @@ _VALIDATORS = r'''# Generated. Do not edit.
   if (!is.character(x) || length(x) != 1L) .tox_type_error(name, "a single string", x)
   x <- tolower(x)
   if (!x %in% choices)
-    .tox_raise(
+    .tox_argument_error(
       sprintf("'%s' must be one of %s, not \"%s\"",
               name, paste(sprintf('"%s"', choices), collapse = ", "), x),
-      "tox_type_error", argument = name)
+      "tox_type_error", name)
   x
 }
 '''

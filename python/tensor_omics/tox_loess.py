@@ -23,7 +23,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -124,6 +124,9 @@ def loess_fit_plain(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -136,44 +139,38 @@ def loess_fit_plain(
     try:
         x = _np.ascontiguousarray(x, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'x' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'x' must be an array of np.float64: {_error}", argument="x") from None
     if x.ndim != 1:
-        raise ValueError(f"'x' must have 1 dimension, but has {x.ndim}")
+        raise _ToxArgumentError(f"'x' must have 1 dimension, but has {x.ndim}", argument="x")
     try:
         y = _np.ascontiguousarray(y, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'y' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'y' must be an array of np.float64: {_error}", argument="y") from None
     if y.ndim != 1:
-        raise ValueError(f"'y' must have 1 dimension, but has {y.ndim}")
+        raise _ToxArgumentError(f"'y' must have 1 dimension, but has {y.ndim}", argument="y")
     try:
         weights = _np.ascontiguousarray(weights, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'weights' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'weights' must be an array of np.float64: {_error}", argument="weights") from None
     if weights.ndim != 1:
-        raise ValueError(f"'weights' must have 1 dimension, but has {weights.ndim}")
+        raise _ToxArgumentError(f"'weights' must have 1 dimension, but has {weights.ndim}", argument="weights")
     try:
         eval_points = _np.asfortranarray(eval_points, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'eval_points' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'eval_points' must be an array of np.float64: {_error}", argument="eval_points") from None
     if eval_points.ndim != 2:
-        raise ValueError(f"'eval_points' must have 2 dimensions, but has {eval_points.ndim}")
+        raise _ToxArgumentError(f"'eval_points' must have 2 dimensions, but has {eval_points.ndim}", argument="eval_points")
 
     # what the inputs already say, rather than asking for it again
     n = x.shape[0]
 
     # Fortran cannot check that shared extents agree; this can
     if y.shape[0] != n:
-        raise ValueError(f"'y' has {y.shape[0]} along axis 0, but "
-            f"'x' implies n == {n}"
-        )
+        raise _ToxArgumentError(f"'y' has {y.shape[0]} along axis 0, but 'x' implies n == {n}", argument="y")
     if weights.shape[0] != n:
-        raise ValueError(f"'weights' has {weights.shape[0]} along axis 0, but "
-            f"'x' implies n == {n}"
-        )
+        raise _ToxArgumentError(f"'weights' has {weights.shape[0]} along axis 0, but 'x' implies n == {n}", argument="weights")
     if eval_points.shape[0] != n:
-        raise ValueError(f"'eval_points' has {eval_points.shape[0]} along axis 0, but "
-            f"'x' implies n == {n}"
-        )
+        raise _ToxArgumentError(f"'eval_points' has {eval_points.shape[0]} along axis 0, but 'x' implies n == {n}", argument="eval_points")
 
     # outputs and work arrays, which the caller never sees
     fitted_values = _np.empty((n,), dtype=_np.float64, order='C')
@@ -263,6 +260,9 @@ def loess_fit_robust(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -275,44 +275,38 @@ def loess_fit_robust(
     try:
         x = _np.ascontiguousarray(x, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'x' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'x' must be an array of np.float64: {_error}", argument="x") from None
     if x.ndim != 1:
-        raise ValueError(f"'x' must have 1 dimension, but has {x.ndim}")
+        raise _ToxArgumentError(f"'x' must have 1 dimension, but has {x.ndim}", argument="x")
     try:
         y = _np.ascontiguousarray(y, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'y' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'y' must be an array of np.float64: {_error}", argument="y") from None
     if y.ndim != 1:
-        raise ValueError(f"'y' must have 1 dimension, but has {y.ndim}")
+        raise _ToxArgumentError(f"'y' must have 1 dimension, but has {y.ndim}", argument="y")
     try:
         weights = _np.ascontiguousarray(weights, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'weights' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'weights' must be an array of np.float64: {_error}", argument="weights") from None
     if weights.ndim != 1:
-        raise ValueError(f"'weights' must have 1 dimension, but has {weights.ndim}")
+        raise _ToxArgumentError(f"'weights' must have 1 dimension, but has {weights.ndim}", argument="weights")
     try:
         eval_points = _np.asfortranarray(eval_points, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'eval_points' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'eval_points' must be an array of np.float64: {_error}", argument="eval_points") from None
     if eval_points.ndim != 2:
-        raise ValueError(f"'eval_points' must have 2 dimensions, but has {eval_points.ndim}")
+        raise _ToxArgumentError(f"'eval_points' must have 2 dimensions, but has {eval_points.ndim}", argument="eval_points")
 
     # what the inputs already say, rather than asking for it again
     n = x.shape[0]
 
     # Fortran cannot check that shared extents agree; this can
     if y.shape[0] != n:
-        raise ValueError(f"'y' has {y.shape[0]} along axis 0, but "
-            f"'x' implies n == {n}"
-        )
+        raise _ToxArgumentError(f"'y' has {y.shape[0]} along axis 0, but 'x' implies n == {n}", argument="y")
     if weights.shape[0] != n:
-        raise ValueError(f"'weights' has {weights.shape[0]} along axis 0, but "
-            f"'x' implies n == {n}"
-        )
+        raise _ToxArgumentError(f"'weights' has {weights.shape[0]} along axis 0, but 'x' implies n == {n}", argument="weights")
     if eval_points.shape[0] != n:
-        raise ValueError(f"'eval_points' has {eval_points.shape[0]} along axis 0, but "
-            f"'x' implies n == {n}"
-        )
+        raise _ToxArgumentError(f"'eval_points' has {eval_points.shape[0]} along axis 0, but 'x' implies n == {n}", argument="eval_points")
 
     # outputs and work arrays, which the caller never sees
     fitted_values = _np.empty((n,), dtype=_np.float64, order='C')

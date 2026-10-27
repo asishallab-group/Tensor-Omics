@@ -12,7 +12,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -170,6 +170,9 @@ def loess_smooth_2d(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -182,27 +185,27 @@ def loess_smooth_2d(
     try:
         x_ref = _np.ascontiguousarray(x_ref, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'x_ref' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'x_ref' must be an array of np.float64: {_error}", argument="x_ref") from None
     if x_ref.ndim != 1:
-        raise ValueError(f"'x_ref' must have 1 dimension, but has {x_ref.ndim}")
+        raise _ToxArgumentError(f"'x_ref' must have 1 dimension, but has {x_ref.ndim}", argument="x_ref")
     try:
         y_ref = _np.ascontiguousarray(y_ref, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'y_ref' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'y_ref' must be an array of np.float64: {_error}", argument="y_ref") from None
     if y_ref.ndim != 1:
-        raise ValueError(f"'y_ref' must have 1 dimension, but has {y_ref.ndim}")
+        raise _ToxArgumentError(f"'y_ref' must have 1 dimension, but has {y_ref.ndim}", argument="y_ref")
     try:
         indices_used = _np.ascontiguousarray(indices_used, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'indices_used' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'indices_used' must be an array of np.int32: {_error}", argument="indices_used") from None
     if indices_used.ndim != 1:
-        raise ValueError(f"'indices_used' must have 1 dimension, but has {indices_used.ndim}")
+        raise _ToxArgumentError(f"'indices_used' must have 1 dimension, but has {indices_used.ndim}", argument="indices_used")
     try:
         x_query = _np.ascontiguousarray(x_query, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'x_query' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'x_query' must be an array of np.float64: {_error}", argument="x_query") from None
     if x_query.ndim != 1:
-        raise ValueError(f"'x_query' must have 1 dimension, but has {x_query.ndim}")
+        raise _ToxArgumentError(f"'x_query' must have 1 dimension, but has {x_query.ndim}", argument="x_query")
 
     # what the inputs already say, rather than asking for it again
     n_total = x_ref.shape[0]
@@ -211,9 +214,7 @@ def loess_smooth_2d(
 
     # Fortran cannot check that shared extents agree; this can
     if y_ref.shape[0] != n_total:
-        raise ValueError(f"'y_ref' has {y_ref.shape[0]} along axis 0, but "
-            f"'x_ref' implies n_total == {n_total}"
-        )
+        raise _ToxArgumentError(f"'y_ref' has {y_ref.shape[0]} along axis 0, but 'x_ref' implies n_total == {n_total}", argument="y_ref")
 
     # outputs and work arrays, which the caller never sees
     y_out = _np.empty((n_target,), dtype=_np.float64, order='C')
@@ -269,6 +270,9 @@ def compute_edf(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -284,9 +288,9 @@ def compute_edf(
     try:
         values = _np.ascontiguousarray(values, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'values' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'values' must be an array of np.float64: {_error}", argument="values") from None
     if values.ndim != 1:
-        raise ValueError(f"'values' must have 1 dimension, but has {values.ndim}")
+        raise _ToxArgumentError(f"'values' must have 1 dimension, but has {values.ndim}", argument="values")
 
     # what the inputs already say, rather than asking for it again
     n_values = values.shape[0]
@@ -352,6 +356,9 @@ def compute_edf_expert(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -367,24 +374,22 @@ def compute_edf_expert(
     try:
         values = _np.ascontiguousarray(values, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'values' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'values' must be an array of np.float64: {_error}", argument="values") from None
     if values.ndim != 1:
-        raise ValueError(f"'values' must have 1 dimension, but has {values.ndim}")
+        raise _ToxArgumentError(f"'values' must have 1 dimension, but has {values.ndim}", argument="values")
     try:
         values_perm = _np.ascontiguousarray(values_perm, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'values_perm' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'values_perm' must be an array of np.int32: {_error}", argument="values_perm") from None
     if values_perm.ndim != 1:
-        raise ValueError(f"'values_perm' must have 1 dimension, but has {values_perm.ndim}")
+        raise _ToxArgumentError(f"'values_perm' must have 1 dimension, but has {values_perm.ndim}", argument="values_perm")
 
     # what the inputs already say, rather than asking for it again
     n_values = values.shape[0]
 
     # Fortran cannot check that shared extents agree; this can
     if values_perm.shape[0] != n_values:
-        raise ValueError(f"'values_perm' has {values_perm.shape[0]} along axis 0, but "
-            f"'values' implies n_values == {n_values}"
-        )
+        raise _ToxArgumentError(f"'values_perm' has {values_perm.shape[0]} along axis 0, but 'values' implies n_values == {n_values}", argument="values_perm")
 
     # outputs and work arrays, which the caller never sees
     unique_values = _np.empty((n_values,), dtype=_np.float64, order='C')
@@ -446,6 +451,9 @@ def calc_quantile(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -461,9 +469,9 @@ def calc_quantile(
     try:
         array = _np.ascontiguousarray(array, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'array' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'array' must be an array of np.float64: {_error}", argument="array") from None
     if array.ndim != 1:
-        raise ValueError(f"'array' must have 1 dimension, but has {array.ndim}")
+        raise _ToxArgumentError(f"'array' must have 1 dimension, but has {array.ndim}", argument="array")
 
     # what the inputs already say, rather than asking for it again
     n_array = array.shape[0]
@@ -524,6 +532,9 @@ def calc_quantile_expert(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -539,24 +550,22 @@ def calc_quantile_expert(
     try:
         array = _np.ascontiguousarray(array, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'array' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'array' must be an array of np.float64: {_error}", argument="array") from None
     if array.ndim != 1:
-        raise ValueError(f"'array' must have 1 dimension, but has {array.ndim}")
+        raise _ToxArgumentError(f"'array' must have 1 dimension, but has {array.ndim}", argument="array")
     try:
         array_perm = _np.ascontiguousarray(array_perm, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'array_perm' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'array_perm' must be an array of np.int32: {_error}", argument="array_perm") from None
     if array_perm.ndim != 1:
-        raise ValueError(f"'array_perm' must have 1 dimension, but has {array_perm.ndim}")
+        raise _ToxArgumentError(f"'array_perm' must have 1 dimension, but has {array_perm.ndim}", argument="array_perm")
 
     # what the inputs already say, rather than asking for it again
     n_array = array.shape[0]
 
     # Fortran cannot check that shared extents agree; this can
     if array_perm.shape[0] != n_array:
-        raise ValueError(f"'array_perm' has {array_perm.shape[0]} along axis 0, but "
-            f"'array' implies n_array == {n_array}"
-        )
+        raise _ToxArgumentError(f"'array_perm' has {array_perm.shape[0]} along axis 0, but 'array' implies n_array == {n_array}", argument="array_perm")
 
     # outputs and work arrays, which the caller never sees
     value = _ctypes.c_double(0)
@@ -617,6 +626,9 @@ def compute_scaled_distance_tail_probability(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -632,24 +644,22 @@ def compute_scaled_distance_tail_probability(
     try:
         rdi = _np.ascontiguousarray(rdi, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'rdi' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'rdi' must be an array of np.float64: {_error}", argument="rdi") from None
     if rdi.ndim != 1:
-        raise ValueError(f"'rdi' must have 1 dimension, but has {rdi.ndim}")
+        raise _ToxArgumentError(f"'rdi' must have 1 dimension, but has {rdi.ndim}", argument="rdi")
     try:
         sorted_rdi = _np.ascontiguousarray(sorted_rdi, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'sorted_rdi' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'sorted_rdi' must be an array of np.float64: {_error}", argument="sorted_rdi") from None
     if sorted_rdi.ndim != 1:
-        raise ValueError(f"'sorted_rdi' must have 1 dimension, but has {sorted_rdi.ndim}")
+        raise _ToxArgumentError(f"'sorted_rdi' must have 1 dimension, but has {sorted_rdi.ndim}", argument="sorted_rdi")
 
     # what the inputs already say, rather than asking for it again
     n_genes = rdi.shape[0]
 
     # Fortran cannot check that shared extents agree; this can
     if sorted_rdi.shape[0] != n_genes:
-        raise ValueError(f"'sorted_rdi' has {sorted_rdi.shape[0]} along axis 0, but "
-            f"'rdi' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'sorted_rdi' has {sorted_rdi.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}", argument="sorted_rdi")
 
     # outputs and work arrays, which the caller never sees
     tail_probability = _np.empty((n_genes,), dtype=_np.float64, order='C')
@@ -718,6 +728,9 @@ def compute_scaled_distance_tail_probability_expert(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -733,34 +746,30 @@ def compute_scaled_distance_tail_probability_expert(
     try:
         rdi = _np.ascontiguousarray(rdi, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'rdi' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'rdi' must be an array of np.float64: {_error}", argument="rdi") from None
     if rdi.ndim != 1:
-        raise ValueError(f"'rdi' must have 1 dimension, but has {rdi.ndim}")
+        raise _ToxArgumentError(f"'rdi' must have 1 dimension, but has {rdi.ndim}", argument="rdi")
     try:
         sorted_rdi = _np.ascontiguousarray(sorted_rdi, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'sorted_rdi' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'sorted_rdi' must be an array of np.float64: {_error}", argument="sorted_rdi") from None
     if sorted_rdi.ndim != 1:
-        raise ValueError(f"'sorted_rdi' must have 1 dimension, but has {sorted_rdi.ndim}")
+        raise _ToxArgumentError(f"'sorted_rdi' must have 1 dimension, but has {sorted_rdi.ndim}", argument="sorted_rdi")
     try:
         sorted_rdi_perm = _np.ascontiguousarray(sorted_rdi_perm, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'sorted_rdi_perm' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'sorted_rdi_perm' must be an array of np.int32: {_error}", argument="sorted_rdi_perm") from None
     if sorted_rdi_perm.ndim != 1:
-        raise ValueError(f"'sorted_rdi_perm' must have 1 dimension, but has {sorted_rdi_perm.ndim}")
+        raise _ToxArgumentError(f"'sorted_rdi_perm' must have 1 dimension, but has {sorted_rdi_perm.ndim}", argument="sorted_rdi_perm")
 
     # what the inputs already say, rather than asking for it again
     n_genes = rdi.shape[0]
 
     # Fortran cannot check that shared extents agree; this can
     if sorted_rdi.shape[0] != n_genes:
-        raise ValueError(f"'sorted_rdi' has {sorted_rdi.shape[0]} along axis 0, but "
-            f"'rdi' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'sorted_rdi' has {sorted_rdi.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}", argument="sorted_rdi")
     if sorted_rdi_perm.shape[0] != n_genes:
-        raise ValueError(f"'sorted_rdi_perm' has {sorted_rdi_perm.shape[0]} along axis 0, but "
-            f"'rdi' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'sorted_rdi_perm' has {sorted_rdi_perm.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}", argument="sorted_rdi_perm")
 
     # outputs and work arrays, which the caller never sees
     tail_probability = _np.empty((n_genes,), dtype=_np.float64, order='C')

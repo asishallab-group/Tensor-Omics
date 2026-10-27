@@ -22,7 +22,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -84,6 +84,9 @@ def mask_check_state(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -96,9 +99,9 @@ def mask_check_state(
     try:
         bit_mask = _np.ascontiguousarray(bit_mask, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'bit_mask' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'bit_mask' must be an array of np.int32: {_error}", argument="bit_mask") from None
     if bit_mask.ndim != 1:
-        raise ValueError(f"'bit_mask' must have 1 dimension, but has {bit_mask.ndim}")
+        raise _ToxArgumentError(f"'bit_mask' must have 1 dimension, but has {bit_mask.ndim}", argument="bit_mask")
 
     # what the inputs already say, rather than asking for it again
     n_bit_mask_elements = bit_mask.shape[0]
@@ -138,6 +141,9 @@ def mask_chunk_count(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -204,6 +210,9 @@ def calc_work_arr_paralog_subsets_size(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -217,9 +226,9 @@ def calc_work_arr_paralog_subsets_size(
     try:
         filtered_paralogs_mask = _np.ascontiguousarray(filtered_paralogs_mask, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'filtered_paralogs_mask' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'filtered_paralogs_mask' must be an array of np.int32: {_error}", argument="filtered_paralogs_mask") from None
     if filtered_paralogs_mask.ndim != 1:
-        raise ValueError(f"'filtered_paralogs_mask' must have 1 dimension, but has {filtered_paralogs_mask.ndim}")
+        raise _ToxArgumentError(f"'filtered_paralogs_mask' must have 1 dimension, but has {filtered_paralogs_mask.ndim}", argument="filtered_paralogs_mask")
 
     # what the inputs already say, rather than asking for it again
     n_mask_chunks = filtered_paralogs_mask.shape[0]

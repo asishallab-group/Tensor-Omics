@@ -17,7 +17,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -69,6 +69,9 @@ def calc_neighborhood_size(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -81,9 +84,9 @@ def calc_neighborhood_size(
     try:
         mean_S = _np.ascontiguousarray(mean_S, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'mean_S' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'mean_S' must be an array of np.float64: {_error}", argument="mean_S") from None
     if mean_S.ndim != 1:
-        raise ValueError(f"'mean_S' must have 1 dimension, but has {mean_S.ndim}")
+        raise _ToxArgumentError(f"'mean_S' must have 1 dimension, but has {mean_S.ndim}", argument="mean_S")
 
     # what the inputs already say, rather than asking for it again
     n_genes_S = mean_S.shape[0]

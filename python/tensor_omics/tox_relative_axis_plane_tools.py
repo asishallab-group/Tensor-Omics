@@ -22,7 +22,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -158,6 +158,9 @@ def omics_vector_RAP_projection(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -170,21 +173,21 @@ def omics_vector_RAP_projection(
     try:
         vecs = _np.asfortranarray(vecs, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'vecs' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'vecs' must be an array of np.float64: {_error}", argument="vecs") from None
     if vecs.ndim != 2:
-        raise ValueError(f"'vecs' must have 2 dimensions, but has {vecs.ndim}")
+        raise _ToxArgumentError(f"'vecs' must have 2 dimensions, but has {vecs.ndim}", argument="vecs")
     try:
         vecs_selection_mask = _np.ascontiguousarray(vecs_selection_mask, dtype=_np.bool_)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'vecs_selection_mask' must be an array of np.bool_: {_error}") from None
+        raise _ToxArgumentError(f"'vecs_selection_mask' must be an array of np.bool_: {_error}", argument="vecs_selection_mask") from None
     if vecs_selection_mask.ndim != 1:
-        raise ValueError(f"'vecs_selection_mask' must have 1 dimension, but has {vecs_selection_mask.ndim}")
+        raise _ToxArgumentError(f"'vecs_selection_mask' must have 1 dimension, but has {vecs_selection_mask.ndim}", argument="vecs_selection_mask")
     try:
         axes_selection_mask = _np.ascontiguousarray(axes_selection_mask, dtype=_np.bool_)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'axes_selection_mask' must be an array of np.bool_: {_error}") from None
+        raise _ToxArgumentError(f"'axes_selection_mask' must be an array of np.bool_: {_error}", argument="axes_selection_mask") from None
     if axes_selection_mask.ndim != 1:
-        raise ValueError(f"'axes_selection_mask' must have 1 dimension, but has {axes_selection_mask.ndim}")
+        raise _ToxArgumentError(f"'axes_selection_mask' must have 1 dimension, but has {axes_selection_mask.ndim}", argument="axes_selection_mask")
 
     # what the inputs already say, rather than asking for it again
     n_axes = vecs.shape[0]
@@ -194,13 +197,9 @@ def omics_vector_RAP_projection(
 
     # Fortran cannot check that shared extents agree; this can
     if axes_selection_mask.shape[0] != n_axes:
-        raise ValueError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but "
-            f"'vecs' implies n_axes == {n_axes}"
-        )
+        raise _ToxArgumentError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but 'vecs' implies n_axes == {n_axes}", argument="axes_selection_mask")
     if vecs_selection_mask.shape[0] != n_vecs:
-        raise ValueError(f"'vecs_selection_mask' has {vecs_selection_mask.shape[0]} along axis 0, but "
-            f"'vecs' implies n_vecs == {n_vecs}"
-        )
+        raise _ToxArgumentError(f"'vecs_selection_mask' has {vecs_selection_mask.shape[0]} along axis 0, but 'vecs' implies n_vecs == {n_vecs}", argument="vecs_selection_mask")
 
     # outputs and work arrays, which the caller never sees
     projections = _np.empty((n_selected_axes, n_selected_vecs,), dtype=_np.float64, order='F')
@@ -249,6 +248,9 @@ def omics_field_RAP_projection(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -261,21 +263,21 @@ def omics_field_RAP_projection(
     try:
         fields = _np.asfortranarray(fields, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'fields' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'fields' must be an array of np.float64: {_error}", argument="fields") from None
     if fields.ndim != 3:
-        raise ValueError(f"'fields' must have 3 dimensions, but has {fields.ndim}")
+        raise _ToxArgumentError(f"'fields' must have 3 dimensions, but has {fields.ndim}", argument="fields")
     try:
         fields_selection_mask = _np.ascontiguousarray(fields_selection_mask, dtype=_np.bool_)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'fields_selection_mask' must be an array of np.bool_: {_error}") from None
+        raise _ToxArgumentError(f"'fields_selection_mask' must be an array of np.bool_: {_error}", argument="fields_selection_mask") from None
     if fields_selection_mask.ndim != 1:
-        raise ValueError(f"'fields_selection_mask' must have 1 dimension, but has {fields_selection_mask.ndim}")
+        raise _ToxArgumentError(f"'fields_selection_mask' must have 1 dimension, but has {fields_selection_mask.ndim}", argument="fields_selection_mask")
     try:
         axes_selection_mask = _np.ascontiguousarray(axes_selection_mask, dtype=_np.bool_)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'axes_selection_mask' must be an array of np.bool_: {_error}") from None
+        raise _ToxArgumentError(f"'axes_selection_mask' must be an array of np.bool_: {_error}", argument="axes_selection_mask") from None
     if axes_selection_mask.ndim != 1:
-        raise ValueError(f"'axes_selection_mask' must have 1 dimension, but has {axes_selection_mask.ndim}")
+        raise _ToxArgumentError(f"'axes_selection_mask' must have 1 dimension, but has {axes_selection_mask.ndim}", argument="axes_selection_mask")
 
     # what the inputs already say, rather than asking for it again
     n_axes = fields.shape[0]
@@ -285,13 +287,9 @@ def omics_field_RAP_projection(
 
     # Fortran cannot check that shared extents agree; this can
     if axes_selection_mask.shape[0] != n_axes:
-        raise ValueError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but "
-            f"'fields' implies n_axes == {n_axes}"
-        )
+        raise _ToxArgumentError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but 'fields' implies n_axes == {n_axes}", argument="axes_selection_mask")
     if fields_selection_mask.shape[0] != n_fields:
-        raise ValueError(f"'fields_selection_mask' has {fields_selection_mask.shape[0]} along axis 0, but "
-            f"'fields' implies n_fields == {n_fields}"
-        )
+        raise _ToxArgumentError(f"'fields_selection_mask' has {fields_selection_mask.shape[0]} along axis 0, but 'fields' implies n_fields == {n_fields}", argument="fields_selection_mask")
 
     # outputs and work arrays, which the caller never sees
     projections = _np.empty((n_selected_axes, n_selected_fields,), dtype=_np.float64, order='F')
@@ -347,6 +345,9 @@ def clock_hand_angle_between_vectors(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -359,34 +360,30 @@ def clock_hand_angle_between_vectors(
     try:
         v1 = _np.ascontiguousarray(v1, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'v1' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'v1' must be an array of np.float64: {_error}", argument="v1") from None
     if v1.ndim != 1:
-        raise ValueError(f"'v1' must have 1 dimension, but has {v1.ndim}")
+        raise _ToxArgumentError(f"'v1' must have 1 dimension, but has {v1.ndim}", argument="v1")
     try:
         v2 = _np.ascontiguousarray(v2, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'v2' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'v2' must be an array of np.float64: {_error}", argument="v2") from None
     if v2.ndim != 1:
-        raise ValueError(f"'v2' must have 1 dimension, but has {v2.ndim}")
+        raise _ToxArgumentError(f"'v2' must have 1 dimension, but has {v2.ndim}", argument="v2")
     try:
         orientation_reference = _np.ascontiguousarray(orientation_reference, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'orientation_reference' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'orientation_reference' must be an array of np.float64: {_error}", argument="orientation_reference") from None
     if orientation_reference.ndim != 1:
-        raise ValueError(f"'orientation_reference' must have 1 dimension, but has {orientation_reference.ndim}")
+        raise _ToxArgumentError(f"'orientation_reference' must have 1 dimension, but has {orientation_reference.ndim}", argument="orientation_reference")
 
     # what the inputs already say, rather than asking for it again
     n_dims = v1.shape[0]
 
     # Fortran cannot check that shared extents agree; this can
     if v2.shape[0] != n_dims:
-        raise ValueError(f"'v2' has {v2.shape[0]} along axis 0, but "
-            f"'v1' implies n_dims == {n_dims}"
-        )
+        raise _ToxArgumentError(f"'v2' has {v2.shape[0]} along axis 0, but 'v1' implies n_dims == {n_dims}", argument="v2")
     if orientation_reference.shape[0] != n_dims:
-        raise ValueError(f"'orientation_reference' has {orientation_reference.shape[0]} along axis 0, but "
-            f"'v1' implies n_dims == {n_dims}"
-        )
+        raise _ToxArgumentError(f"'orientation_reference' has {orientation_reference.shape[0]} along axis 0, but 'v1' implies n_dims == {n_dims}", argument="orientation_reference")
 
     # outputs and work arrays, which the caller never sees
     signed_angle = _ctypes.c_double(0)
@@ -438,6 +435,9 @@ def clock_hand_angles_for_shift_vectors(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -450,21 +450,21 @@ def clock_hand_angles_for_shift_vectors(
     try:
         fields = _np.asfortranarray(fields, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'fields' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'fields' must be an array of np.float64: {_error}", argument="fields") from None
     if fields.ndim != 3:
-        raise ValueError(f"'fields' must have 3 dimensions, but has {fields.ndim}")
+        raise _ToxArgumentError(f"'fields' must have 3 dimensions, but has {fields.ndim}", argument="fields")
     try:
         fields_selection_mask = _np.ascontiguousarray(fields_selection_mask, dtype=_np.bool_)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'fields_selection_mask' must be an array of np.bool_: {_error}") from None
+        raise _ToxArgumentError(f"'fields_selection_mask' must be an array of np.bool_: {_error}", argument="fields_selection_mask") from None
     if fields_selection_mask.ndim != 1:
-        raise ValueError(f"'fields_selection_mask' must have 1 dimension, but has {fields_selection_mask.ndim}")
+        raise _ToxArgumentError(f"'fields_selection_mask' must have 1 dimension, but has {fields_selection_mask.ndim}", argument="fields_selection_mask")
     try:
         orientation_reference = _np.ascontiguousarray(orientation_reference, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'orientation_reference' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'orientation_reference' must be an array of np.float64: {_error}", argument="orientation_reference") from None
     if orientation_reference.ndim != 1:
-        raise ValueError(f"'orientation_reference' must have 1 dimension, but has {orientation_reference.ndim}")
+        raise _ToxArgumentError(f"'orientation_reference' must have 1 dimension, but has {orientation_reference.ndim}", argument="orientation_reference")
 
     # what the inputs already say, rather than asking for it again
     n_dims = fields.shape[0]
@@ -473,13 +473,9 @@ def clock_hand_angles_for_shift_vectors(
 
     # Fortran cannot check that shared extents agree; this can
     if orientation_reference.shape[0] != n_dims:
-        raise ValueError(f"'orientation_reference' has {orientation_reference.shape[0]} along axis 0, but "
-            f"'fields' implies n_dims == {n_dims}"
-        )
+        raise _ToxArgumentError(f"'orientation_reference' has {orientation_reference.shape[0]} along axis 0, but 'fields' implies n_dims == {n_dims}", argument="orientation_reference")
     if fields_selection_mask.shape[0] != n_fields:
-        raise ValueError(f"'fields_selection_mask' has {fields_selection_mask.shape[0]} along axis 0, but "
-            f"'fields' implies n_fields == {n_fields}"
-        )
+        raise _ToxArgumentError(f"'fields_selection_mask' has {fields_selection_mask.shape[0]} along axis 0, but 'fields' implies n_fields == {n_fields}", argument="fields_selection_mask")
 
     # outputs and work arrays, which the caller never sees
     signed_angles = _np.empty((n_selected_fields,), dtype=_np.float64, order='C')
@@ -523,6 +519,9 @@ def compute_relative_axis_contributions(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -535,9 +534,9 @@ def compute_relative_axis_contributions(
     try:
         vec = _np.ascontiguousarray(vec, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'vec' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'vec' must be an array of np.float64: {_error}", argument="vec") from None
     if vec.ndim != 1:
-        raise ValueError(f"'vec' must have 1 dimension, but has {vec.ndim}")
+        raise _ToxArgumentError(f"'vec' must have 1 dimension, but has {vec.ndim}", argument="vec")
 
     # what the inputs already say, rather than asking for it again
     n_axes = vec.shape[0]
@@ -580,6 +579,9 @@ def relative_axes_changes_from_shift_vector(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -592,9 +594,9 @@ def relative_axes_changes_from_shift_vector(
     try:
         vec = _np.ascontiguousarray(vec, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'vec' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'vec' must be an array of np.float64: {_error}", argument="vec") from None
     if vec.ndim != 1:
-        raise ValueError(f"'vec' must have 1 dimension, but has {vec.ndim}")
+        raise _ToxArgumentError(f"'vec' must have 1 dimension, but has {vec.ndim}", argument="vec")
 
     # what the inputs already say, rather than asking for it again
     n_axes = vec.shape[0]
@@ -637,6 +639,9 @@ def relative_axes_expression_from_expression_vector(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -649,9 +654,9 @@ def relative_axes_expression_from_expression_vector(
     try:
         vec = _np.ascontiguousarray(vec, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'vec' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'vec' must be an array of np.float64: {_error}", argument="vec") from None
     if vec.ndim != 1:
-        raise ValueError(f"'vec' must have 1 dimension, but has {vec.ndim}")
+        raise _ToxArgumentError(f"'vec' must have 1 dimension, but has {vec.ndim}", argument="vec")
 
     # what the inputs already say, rather than asking for it again
     n_axes = vec.shape[0]

@@ -28,6 +28,14 @@ GROUP_EXCEPTIONS = {
 
 BASE_EXCEPTION = "ToxError"
 
+#: What a generated binding raises for an argument it refuses itself -- a wrong shape, type or
+#: value found before the library is called. It carries no tox code (`code` is None), because
+#: none was reported: main's convention for a binding-side refusal (#221). An input error all
+#: the same, so `except ToxInputError` catches it beside the Fortran's own; and a `TypeError`
+#: and a `ValueError`, which is what these refusals were before, so an existing `except
+#: ValueError` -- the numpy idiom -- keeps catching them.
+ARGUMENT_EXCEPTION = "ToxArgumentError"
+
 
 class PythonErrorEmitter:
     def __init__(self, catalogue: ErrorCatalogue):
@@ -62,8 +70,9 @@ class PythonErrorEmitter:
                 "\n"
                 "Attributes\n"
                 "----------\n"
-                "code : int\n"
-                "    The tox_errors code, without the argument position packed into it.\n"
+                "code : int or None\n"
+                "    The tox_errors code, without the argument position packed into it; None\n"
+                "    for a ToxArgumentError, which the binding raised before any code existed.\n"
                 "name : str or None\n"
                 "    The name of the code, e.g. 'ERR_INVALID_INPUT'.\n"
                 "argument : str or None\n"
@@ -89,6 +98,29 @@ class PythonErrorEmitter:
                 writer.line(f'"""{description}"""')
             writer.blank(collapse=False)
             writer.blank(collapse=False)
+
+        self._argument_exception(writer)
+
+    def _argument_exception(self, writer: Writer) -> None:
+        """`ToxArgumentError`, under the input group's class where the catalogue has one."""
+        parent = (GROUP_EXCEPTIONS[ErrorGroup.INPUT][0]
+                  if ErrorGroup.INPUT in self.catalogue.groups() else BASE_EXCEPTION)
+        writer.line(f"class {ARGUMENT_EXCEPTION}({parent}, TypeError, ValueError):")
+        with writer.indent():
+            writer.block(
+                '"""An argument the binding refused before calling the library.\n'
+                "\n"
+                "A wrong shape, type or value, found by the generated function itself, so it\n"
+                "carries no tox code: `code` and `name` are None. It is a TypeError and a\n"
+                "ValueError as well, so code catching either keeps working.\n"
+                '"""'
+            )
+            writer.blank()
+            writer.line("def __init__(self, message, argument=None):")
+            with writer.indent():
+                writer.line("super().__init__(message, code=None, argument=argument)")
+        writer.blank(collapse=False)
+        writer.blank(collapse=False)
 
     def _codes(self, writer: Writer) -> None:
         writer.line("# The codes themselves, so a caller can compare against a name")

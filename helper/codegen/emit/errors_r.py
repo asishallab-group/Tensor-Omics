@@ -27,6 +27,11 @@ GROUP_CONDITIONS = {
 
 BASE_CONDITION = "tox_error"
 
+#: The class every binding-side refusal (`tox_type_error`, `tox_shape_error`, `tox_na_error`)
+#: inherits besides `tox_error`: it is an input error, the same as one the Fortran reports, only
+#: without a code (#221). `tryCatch(tox_input_error = ...)` catches both.
+ARGUMENT_CONDITION_PARENT = GROUP_CONDITIONS[ErrorGroup.INPUT]
+
 
 class RErrorEmitter:
     def __init__(self, catalogue: ErrorCatalogue):
@@ -113,17 +118,31 @@ class RErrorEmitter:
         writer.line("}")
         writer.blank()
 
-        # the type/shape/na conditions the R wrappers raise before the call
+        # the type/shape/na conditions the R wrappers raise before the call: input errors with
+        # no tox code (`code` NA), since nothing reported one -- a binding-side refusal
+        writer.block(
+            "#' Signal an argument the binding refused before calling the library\n"
+            "#'\n"
+            "#' A `tox_input_error`, like an input error the Fortran reports, with `code` NA.\n"
+            "#' @keywords internal"
+        )
+        writer.line(".tox_argument_error <- function(message, class, argument) {")
+        with writer.indent():
+            writer.line(f'.tox_raise(message, c(class, "{ARGUMENT_CONDITION_PARENT}"), '
+                        "argument = argument)")
+        writer.line("}")
+        writer.blank()
+
         writer.line("#' @keywords internal")
         writer.line(".tox_type_error <- function(argument, expected, value) {")
         with writer.indent():
-            writer.line(".tox_raise(")
+            writer.line(".tox_argument_error(")
             with writer.indent():
                 writer.line(
                     'sprintf("\'%s\' must be %s, not %s", argument, expected, '
                     'class(value)[1]),'
                 )
-                writer.line('"tox_type_error", argument = argument')
+                writer.line('"tox_type_error", argument')
             writer.line(")")
         writer.line("}")
         writer.blank()
@@ -131,13 +150,13 @@ class RErrorEmitter:
         writer.line("#' @keywords internal")
         writer.line(".tox_na_error <- function(argument) {")
         with writer.indent():
-            writer.line(".tox_raise(")
+            writer.line(".tox_argument_error(")
             with writer.indent():
                 writer.line(
                     'sprintf("\'%s\' contains NA, which tensor-omics cannot represent", '
                     "argument),"
                 )
-                writer.line('"tox_na_error", argument = argument')
+                writer.line('"tox_na_error", argument')
             writer.line(")")
         writer.line("}")
         writer.blank()
@@ -145,13 +164,13 @@ class RErrorEmitter:
         writer.line("#' @keywords internal")
         writer.line(".tox_shape_error <- function(argument, actual, other, expected) {")
         with writer.indent():
-            writer.line(".tox_raise(")
+            writer.line(".tox_argument_error(")
             with writer.indent():
                 writer.line(
                     'sprintf("\'%s\' has extent %d, but \'%s\' implies it should be %d",'
                 )
                 writer.line("argument, actual, other, expected),")
-                writer.line('"tox_shape_error", argument = argument')
+                writer.line('"tox_shape_error", argument')
             writer.line(")")
         writer.line("}")
         writer.blank()

@@ -14,7 +14,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -65,6 +65,9 @@ def compute_shift_vector_field(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -77,21 +80,21 @@ def compute_shift_vector_field(
     try:
         expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expression_vectors' must be an array of np.float64: {_error}", argument="expression_vectors") from None
     if expression_vectors.ndim != 2:
-        raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
+        raise _ToxArgumentError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}", argument="expression_vectors")
     try:
         family_centroids = _np.asfortranarray(family_centroids, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'family_centroids' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'family_centroids' must be an array of np.float64: {_error}", argument="family_centroids") from None
     if family_centroids.ndim != 2:
-        raise ValueError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}")
+        raise _ToxArgumentError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}", argument="family_centroids")
     try:
         gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
     if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
 
     # what the inputs already say, rather than asking for it again
     n_tissues = expression_vectors.shape[0]
@@ -100,13 +103,9 @@ def compute_shift_vector_field(
 
     # Fortran cannot check that shared extents agree; this can
     if family_centroids.shape[0] != n_tissues:
-        raise ValueError(f"'family_centroids' has {family_centroids.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_tissues == {n_tissues}"
-        )
+        raise _ToxArgumentError(f"'family_centroids' has {family_centroids.shape[0]} along axis 0, but 'expression_vectors' implies n_tissues == {n_tissues}", argument="family_centroids")
     if gene_to_fam.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
     shift_vectors = _np.empty((n_tissues, 2, n_genes,), dtype=_np.float64, order='F')

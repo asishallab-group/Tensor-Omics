@@ -21,6 +21,7 @@ from ..abi.c_abi import stripped_name
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..names import (
+    PYTHON_ARGUMENT_ERROR,
     PYTHON_CAUGHT_ERROR,
     PYTHON_CHECK_ERR_CODE,
     PYTHON_CTYPES as _CTYPES,
@@ -542,18 +543,16 @@ class PythonEmitter:
                 f"if not isinstance({name}, {_NP}.ndarray) or {name}.dtype != {dtype_of(argument)}:"
             )
             with body.indent():
-                body.line(
-                    f'raise TypeError("\'{name}\' is modified in place, so it must '
-                    f'already be a numpy array of {{}}".format({dtype_of(argument)}))'
-                )
+                body.line(_refusal(
+                    f'"\'{name}\' is modified in place, so it must '
+                    f'already be a numpy array of {{}}".format({dtype_of(argument)})', name))
             self._check_rank(argument, body)
             if argument.rank > 1:
                 body.line(f"if not {name}.flags.f_contiguous:")
                 with body.indent():
-                    body.line(
-                        f'raise ValueError("\'{name}\' is modified in place, so it must '
-                        f"already be column-major (order='F')\")"
-                    )
+                    body.line(_refusal(
+                        f'"\'{name}\' is modified in place, so it must '
+                        f"already be column-major (order='F')\"", name))
         else:
             # numpy raises without saying which argument was wrong -- it cannot know --
             # so the name is put back on the way out
@@ -565,11 +564,9 @@ class PythonEmitter:
                 body.line(f"{name} = {converter}({name}, dtype={dtype_of(argument)})")
             body.line(f"except (TypeError, ValueError) as {PYTHON_CAUGHT_ERROR}:")
             with body.indent():
-                body.line(
-                    f'raise TypeError('
-                    f'f"\'{name}\' must be an array of {dtype_label(argument)}: {{{PYTHON_CAUGHT_ERROR}}}"'
-                    f") from None"
-                )
+                body.line(_refusal(
+                    f'f"\'{name}\' must be an array of {dtype_label(argument)}: '
+                    f'{{{PYTHON_CAUGHT_ERROR}}}"', name, from_none=True))
             self._check_rank(argument, body)
         return self._guarded(argument, body)
 
@@ -599,12 +596,9 @@ class PythonEmitter:
         name = argument.name
         body.line(f"if {name}.ndim != {rank}:")
         with body.indent():
-            body.line(
-                f'raise ValueError('
+            body.line(_refusal(
                 f'f"\'{name}\' must have {rank} dimension{"" if rank == 1 else "s"}, '
-                f'but has {{{name}.ndim}}"'
-                f")"
-            )
+                f'but has {{{name}.ndim}}"', name))
 
     def _prepare_character(self, argument: CArgument) -> Writer:
         """Encode strings into the blank-padded buffer C expects.
@@ -654,11 +648,9 @@ class PythonEmitter:
                     )
             body.line(f"except TypeError as {PYTHON_CAUGHT_ERROR}:")
             with body.indent():
-                body.line(
-                    f'raise TypeError('
-                    f'f"\'{name}\' must be a sequence of strings: {{{PYTHON_CAUGHT_ERROR}}}"'
-                    f") from None"
-                )
+                body.line(_refusal(
+                    f'f"\'{name}\' must be a sequence of strings: {{{PYTHON_CAUGHT_ERROR}}}"',
+                    name, from_none=True))
             self._check_rank(argument, body)
         return body
 
@@ -954,16 +946,10 @@ class PythonEmitter:
                 actual = f"{owner.name}.shape[{axis}]"
                 lines.line(f"if {actual} != {argument.name}:")
                 with lines.indent():
-                    lines.line(
-                        f'raise ValueError('
-                        f'f"\'{owner.name}\' has {{{actual}}} along axis {axis}, but "'
-                    )
-                    with lines.indent():
-                        lines.line(
-                            f'f"\'{first.name}\' implies {argument.name} == '
-                            f'{{{argument.name}}}"'
-                        )
-                    lines.line(")")
+                    lines.line(_refusal(
+                        f'f"\'{owner.name}\' has {{{actual}}} along axis {axis}, but '
+                        f'\'{first.name}\' implies {argument.name} == '
+                        f'{{{argument.name}}}"', owner.name))
         if lines:
             writer.line("# Fortran cannot check that shared extents agree; this can")
             writer.extend(lines)
@@ -1154,6 +1140,17 @@ class PythonEmitter:
             # only the leading elements were filled
             return f"{argument.name}[..., :{roles.result_size_arg.name}.value]"
         return argument.name
+
+
+def _refusal(message: str, argument: str, from_none: bool = False) -> str:
+    """The statement refusing an argument: `message` is a Python expression giving the text.
+
+    Every refusal the binding makes itself raises `ToxArgumentError`, which carries no tox code
+    and is a `TypeError` and a `ValueError` as well (`emit.errors_python`), naming the argument
+    so `error.argument` says which one, as it does for an error the Fortran reports.
+    """
+    statement = f'raise {PYTHON_ARGUMENT_ERROR}({message}, argument="{argument}")'
+    return f"{statement} from None" if from_none else statement
 
 
 def python_literal(value) -> str:

@@ -17,7 +17,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -138,6 +138,9 @@ def compute_gene_means(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -150,9 +153,9 @@ def compute_gene_means(
     try:
         expr = _np.asfortranarray(expr, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
     if expr.ndim != 2:
-        raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
+        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -201,6 +204,9 @@ def compute_residuals(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -213,15 +219,15 @@ def compute_residuals(
     try:
         expr = _np.asfortranarray(expr, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expr' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expr' must be an array of np.float64: {_error}", argument="expr") from None
     if expr.ndim != 2:
-        raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
+        raise _ToxArgumentError(f"'expr' must have 2 dimensions, but has {expr.ndim}", argument="expr")
     try:
         means = _np.ascontiguousarray(means, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'means' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'means' must be an array of np.float64: {_error}", argument="means") from None
     if means.ndim != 1:
-        raise ValueError(f"'means' must have 1 dimension, but has {means.ndim}")
+        raise _ToxArgumentError(f"'means' must have 1 dimension, but has {means.ndim}", argument="means")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
@@ -229,9 +235,7 @@ def compute_residuals(
 
     # Fortran cannot check that shared extents agree; this can
     if means.shape[0] != n_genes:
-        raise ValueError(f"'means' has {means.shape[0]} along axis 0, but "
-            f"'expr' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'means' has {means.shape[0]} along axis 0, but 'expr' implies n_genes == {n_genes}", argument="means")
 
     # outputs and work arrays, which the caller never sees
     resid = _np.empty((n_reps, n_genes,), dtype=_np.float64, order='F')
@@ -283,6 +287,9 @@ def pool_means(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -298,9 +305,9 @@ def pool_means(
     try:
         pooled_means = _np.ascontiguousarray(pooled_means, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'pooled_means' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'pooled_means' must be an array of np.float64: {_error}", argument="pooled_means") from None
     if pooled_means.ndim != 1:
-        raise ValueError(f"'pooled_means' must have 1 dimension, but has {pooled_means.ndim}")
+        raise _ToxArgumentError(f"'pooled_means' must have 1 dimension, but has {pooled_means.ndim}", argument="pooled_means")
 
     # what the inputs already say, rather than asking for it again
     pool_size = pooled_means.shape[0]
@@ -362,6 +369,9 @@ def pool_means_expert(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -377,24 +387,22 @@ def pool_means_expert(
     try:
         pooled_means = _np.ascontiguousarray(pooled_means, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'pooled_means' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'pooled_means' must be an array of np.float64: {_error}", argument="pooled_means") from None
     if pooled_means.ndim != 1:
-        raise ValueError(f"'pooled_means' must have 1 dimension, but has {pooled_means.ndim}")
+        raise _ToxArgumentError(f"'pooled_means' must have 1 dimension, but has {pooled_means.ndim}", argument="pooled_means")
     try:
         pooled_means_perm = _np.ascontiguousarray(pooled_means_perm, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'pooled_means_perm' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'pooled_means_perm' must be an array of np.int32: {_error}", argument="pooled_means_perm") from None
     if pooled_means_perm.ndim != 1:
-        raise ValueError(f"'pooled_means_perm' must have 1 dimension, but has {pooled_means_perm.ndim}")
+        raise _ToxArgumentError(f"'pooled_means_perm' must have 1 dimension, but has {pooled_means_perm.ndim}", argument="pooled_means_perm")
 
     # what the inputs already say, rather than asking for it again
     pool_size = pooled_means.shape[0]
 
     # Fortran cannot check that shared extents agree; this can
     if pooled_means_perm.shape[0] != pool_size:
-        raise ValueError(f"'pooled_means_perm' has {pooled_means_perm.shape[0]} along axis 0, but "
-            f"'pooled_means' implies pool_size == {pool_size}"
-        )
+        raise _ToxArgumentError(f"'pooled_means_perm' has {pooled_means_perm.shape[0]} along axis 0, but 'pooled_means' implies pool_size == {pool_size}", argument="pooled_means_perm")
 
     # outputs and work arrays, which the caller never sees
     n_pool = _ctypes.c_int(0)
@@ -455,6 +463,9 @@ def pool_study_means(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -467,15 +478,15 @@ def pool_study_means(
     try:
         mean_S1 = _np.ascontiguousarray(mean_S1, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'mean_S1' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'mean_S1' must be an array of np.float64: {_error}", argument="mean_S1") from None
     if mean_S1.ndim != 1:
-        raise ValueError(f"'mean_S1' must have 1 dimension, but has {mean_S1.ndim}")
+        raise _ToxArgumentError(f"'mean_S1' must have 1 dimension, but has {mean_S1.ndim}", argument="mean_S1")
     try:
         mean_S2 = _np.ascontiguousarray(mean_S2, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'mean_S2' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'mean_S2' must be an array of np.float64: {_error}", argument="mean_S2") from None
     if mean_S2.ndim != 1:
-        raise ValueError(f"'mean_S2' must have 1 dimension, but has {mean_S2.ndim}")
+        raise _ToxArgumentError(f"'mean_S2' must have 1 dimension, but has {mean_S2.ndim}", argument="mean_S2")
 
     # what the inputs already say, rather than asking for it again
     n_genes_S1 = mean_S1.shape[0]
@@ -548,6 +559,9 @@ def construct_neighborhoods(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -560,21 +574,21 @@ def construct_neighborhoods(
     try:
         x_star = _np.ascontiguousarray(x_star, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'x_star' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'x_star' must be an array of np.float64: {_error}", argument="x_star") from None
     if x_star.ndim != 1:
-        raise ValueError(f"'x_star' must have 1 dimension, but has {x_star.ndim}")
+        raise _ToxArgumentError(f"'x_star' must have 1 dimension, but has {x_star.ndim}", argument="x_star")
     try:
         mean_S = _np.ascontiguousarray(mean_S, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'mean_S' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'mean_S' must be an array of np.float64: {_error}", argument="mean_S") from None
     if mean_S.ndim != 1:
-        raise ValueError(f"'mean_S' must have 1 dimension, but has {mean_S.ndim}")
+        raise _ToxArgumentError(f"'mean_S' must have 1 dimension, but has {mean_S.ndim}", argument="mean_S")
     try:
         resid_S = _np.asfortranarray(resid_S, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'resid_S' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'resid_S' must be an array of np.float64: {_error}", argument="resid_S") from None
     if resid_S.ndim != 2:
-        raise ValueError(f"'resid_S' must have 2 dimensions, but has {resid_S.ndim}")
+        raise _ToxArgumentError(f"'resid_S' must have 2 dimensions, but has {resid_S.ndim}", argument="resid_S")
 
     # what the inputs already say, rather than asking for it again
     n_points = x_star.shape[0]
@@ -583,9 +597,7 @@ def construct_neighborhoods(
 
     # Fortran cannot check that shared extents agree; this can
     if resid_S.shape[1] != n_genes_S:
-        raise ValueError(f"'resid_S' has {resid_S.shape[1]} along axis 1, but "
-            f"'mean_S' implies n_genes_S == {n_genes_S}"
-        )
+        raise _ToxArgumentError(f"'resid_S' has {resid_S.shape[1]} along axis 1, but 'mean_S' implies n_genes_S == {n_genes_S}", argument="resid_S")
 
     # outputs and work arrays, which the caller never sees
     neighborhood_residuals = _np.empty((n_reps_S, n_neighbors, n_points,), dtype=_np.float64, order='F')

@@ -14,7 +14,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -164,6 +164,9 @@ def fjct_compute_jsd(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -176,39 +179,39 @@ def fjct_compute_jsd(
     try:
         gene_to_family_S1 = _np.ascontiguousarray(gene_to_family_S1, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'gene_to_family_S1' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'gene_to_family_S1' must be an array of np.int32: {_error}", argument="gene_to_family_S1") from None
     if gene_to_family_S1.ndim != 1:
-        raise ValueError(f"'gene_to_family_S1' must have 1 dimension, but has {gene_to_family_S1.ndim}")
+        raise _ToxArgumentError(f"'gene_to_family_S1' must have 1 dimension, but has {gene_to_family_S1.ndim}", argument="gene_to_family_S1")
     try:
         gene_to_family_S2 = _np.ascontiguousarray(gene_to_family_S2, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'gene_to_family_S2' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'gene_to_family_S2' must be an array of np.int32: {_error}", argument="gene_to_family_S2") from None
     if gene_to_family_S2.ndim != 1:
-        raise ValueError(f"'gene_to_family_S2' must have 1 dimension, but has {gene_to_family_S2.ndim}")
+        raise _ToxArgumentError(f"'gene_to_family_S2' must have 1 dimension, but has {gene_to_family_S2.ndim}", argument="gene_to_family_S2")
     try:
         neighborhood_residuals_S1 = _np.asfortranarray(neighborhood_residuals_S1, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'neighborhood_residuals_S1' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'neighborhood_residuals_S1' must be an array of np.float64: {_error}", argument="neighborhood_residuals_S1") from None
     if neighborhood_residuals_S1.ndim != 3:
-        raise ValueError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}")
+        raise _ToxArgumentError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}", argument="neighborhood_residuals_S1")
     try:
         neighborhood_residuals_S2 = _np.asfortranarray(neighborhood_residuals_S2, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'neighborhood_residuals_S2' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' must be an array of np.float64: {_error}", argument="neighborhood_residuals_S2") from None
     if neighborhood_residuals_S2.ndim != 3:
-        raise ValueError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}")
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}", argument="neighborhood_residuals_S2")
     try:
         neighborhood_genes_S1 = _np.asfortranarray(neighborhood_genes_S1, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'neighborhood_genes_S1' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'neighborhood_genes_S1' must be an array of np.int32: {_error}", argument="neighborhood_genes_S1") from None
     if neighborhood_genes_S1.ndim != 2:
-        raise ValueError(f"'neighborhood_genes_S1' must have 2 dimensions, but has {neighborhood_genes_S1.ndim}")
+        raise _ToxArgumentError(f"'neighborhood_genes_S1' must have 2 dimensions, but has {neighborhood_genes_S1.ndim}", argument="neighborhood_genes_S1")
     try:
         neighborhood_genes_S2 = _np.asfortranarray(neighborhood_genes_S2, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'neighborhood_genes_S2' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'neighborhood_genes_S2' must be an array of np.int32: {_error}", argument="neighborhood_genes_S2") from None
     if neighborhood_genes_S2.ndim != 2:
-        raise ValueError(f"'neighborhood_genes_S2' must have 2 dimensions, but has {neighborhood_genes_S2.ndim}")
+        raise _ToxArgumentError(f"'neighborhood_genes_S2' must have 2 dimensions, but has {neighborhood_genes_S2.ndim}", argument="neighborhood_genes_S2")
 
     # what the inputs already say, rather than asking for it again
     n_genes_S1 = gene_to_family_S1.shape[0]
@@ -220,29 +223,17 @@ def fjct_compute_jsd(
 
     # Fortran cannot check that shared extents agree; this can
     if neighborhood_residuals_S2.shape[1] != n_neighbors:
-        raise ValueError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but "
-            f"'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}", argument="neighborhood_residuals_S2")
     if neighborhood_genes_S1.shape[0] != n_neighbors:
-        raise ValueError(f"'neighborhood_genes_S1' has {neighborhood_genes_S1.shape[0]} along axis 0, but "
-            f"'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_genes_S1' has {neighborhood_genes_S1.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}", argument="neighborhood_genes_S1")
     if neighborhood_genes_S2.shape[0] != n_neighbors:
-        raise ValueError(f"'neighborhood_genes_S2' has {neighborhood_genes_S2.shape[0]} along axis 0, but "
-            f"'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_genes_S2' has {neighborhood_genes_S2.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}", argument="neighborhood_genes_S2")
     if neighborhood_residuals_S2.shape[2] != n_points:
-        raise ValueError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but "
-            f"'neighborhood_residuals_S1' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but 'neighborhood_residuals_S1' implies n_points == {n_points}", argument="neighborhood_residuals_S2")
     if neighborhood_genes_S1.shape[1] != n_points:
-        raise ValueError(f"'neighborhood_genes_S1' has {neighborhood_genes_S1.shape[1]} along axis 1, but "
-            f"'neighborhood_residuals_S1' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_genes_S1' has {neighborhood_genes_S1.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}", argument="neighborhood_genes_S1")
     if neighborhood_genes_S2.shape[1] != n_points:
-        raise ValueError(f"'neighborhood_genes_S2' has {neighborhood_genes_S2.shape[1]} along axis 1, but "
-            f"'neighborhood_residuals_S1' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_genes_S2' has {neighborhood_genes_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}", argument="neighborhood_genes_S2")
 
     # outputs and work arrays, which the caller never sees
     js_divergences = _np.empty((n_points,), dtype=_np.float64, order='C')
@@ -358,6 +349,9 @@ def fjct_compute_masked_jsd(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -370,27 +364,27 @@ def fjct_compute_masked_jsd(
     try:
         neighborhood_residuals_S1 = _np.asfortranarray(neighborhood_residuals_S1, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'neighborhood_residuals_S1' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'neighborhood_residuals_S1' must be an array of np.float64: {_error}", argument="neighborhood_residuals_S1") from None
     if neighborhood_residuals_S1.ndim != 3:
-        raise ValueError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}")
+        raise _ToxArgumentError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}", argument="neighborhood_residuals_S1")
     try:
         neighborhood_residuals_S2 = _np.asfortranarray(neighborhood_residuals_S2, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'neighborhood_residuals_S2' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' must be an array of np.float64: {_error}", argument="neighborhood_residuals_S2") from None
     if neighborhood_residuals_S2.ndim != 3:
-        raise ValueError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}")
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}", argument="neighborhood_residuals_S2")
     try:
         neighbor_mask_S1 = _np.asfortranarray(neighbor_mask_S1, dtype=_np.bool_)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'neighbor_mask_S1' must be an array of np.bool_: {_error}") from None
+        raise _ToxArgumentError(f"'neighbor_mask_S1' must be an array of np.bool_: {_error}", argument="neighbor_mask_S1") from None
     if neighbor_mask_S1.ndim != 2:
-        raise ValueError(f"'neighbor_mask_S1' must have 2 dimensions, but has {neighbor_mask_S1.ndim}")
+        raise _ToxArgumentError(f"'neighbor_mask_S1' must have 2 dimensions, but has {neighbor_mask_S1.ndim}", argument="neighbor_mask_S1")
     try:
         neighbor_mask_S2 = _np.asfortranarray(neighbor_mask_S2, dtype=_np.bool_)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'neighbor_mask_S2' must be an array of np.bool_: {_error}") from None
+        raise _ToxArgumentError(f"'neighbor_mask_S2' must be an array of np.bool_: {_error}", argument="neighbor_mask_S2") from None
     if neighbor_mask_S2.ndim != 2:
-        raise ValueError(f"'neighbor_mask_S2' must have 2 dimensions, but has {neighbor_mask_S2.ndim}")
+        raise _ToxArgumentError(f"'neighbor_mask_S2' must have 2 dimensions, but has {neighbor_mask_S2.ndim}", argument="neighbor_mask_S2")
 
     # what the inputs already say, rather than asking for it again
     n_reps_S1 = neighborhood_residuals_S1.shape[0]
@@ -400,29 +394,17 @@ def fjct_compute_masked_jsd(
 
     # Fortran cannot check that shared extents agree; this can
     if neighborhood_residuals_S2.shape[1] != n_neighbors:
-        raise ValueError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but "
-            f"'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}", argument="neighborhood_residuals_S2")
     if neighbor_mask_S1.shape[0] != n_neighbors:
-        raise ValueError(f"'neighbor_mask_S1' has {neighbor_mask_S1.shape[0]} along axis 0, but "
-            f"'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}"
-        )
+        raise _ToxArgumentError(f"'neighbor_mask_S1' has {neighbor_mask_S1.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}", argument="neighbor_mask_S1")
     if neighbor_mask_S2.shape[0] != n_neighbors:
-        raise ValueError(f"'neighbor_mask_S2' has {neighbor_mask_S2.shape[0]} along axis 0, but "
-            f"'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}"
-        )
+        raise _ToxArgumentError(f"'neighbor_mask_S2' has {neighbor_mask_S2.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}", argument="neighbor_mask_S2")
     if neighborhood_residuals_S2.shape[2] != n_points:
-        raise ValueError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but "
-            f"'neighborhood_residuals_S1' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but 'neighborhood_residuals_S1' implies n_points == {n_points}", argument="neighborhood_residuals_S2")
     if neighbor_mask_S1.shape[1] != n_points:
-        raise ValueError(f"'neighbor_mask_S1' has {neighbor_mask_S1.shape[1]} along axis 1, but "
-            f"'neighborhood_residuals_S1' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'neighbor_mask_S1' has {neighbor_mask_S1.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}", argument="neighbor_mask_S1")
     if neighbor_mask_S2.shape[1] != n_points:
-        raise ValueError(f"'neighbor_mask_S2' has {neighbor_mask_S2.shape[1]} along axis 1, but "
-            f"'neighborhood_residuals_S1' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'neighbor_mask_S2' has {neighbor_mask_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}", argument="neighbor_mask_S2")
 
     # outputs and work arrays, which the caller never sees
     js_divergences = _np.empty((n_points,), dtype=_np.float64, order='C')
@@ -514,6 +496,9 @@ def fjct_compute_contribution_scores(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -526,24 +511,22 @@ def fjct_compute_contribution_scores(
     try:
         global_js_divergences = _np.ascontiguousarray(global_js_divergences, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'global_js_divergences' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'global_js_divergences' must be an array of np.float64: {_error}", argument="global_js_divergences") from None
     if global_js_divergences.ndim != 1:
-        raise ValueError(f"'global_js_divergences' must have 1 dimension, but has {global_js_divergences.ndim}")
+        raise _ToxArgumentError(f"'global_js_divergences' must have 1 dimension, but has {global_js_divergences.ndim}", argument="global_js_divergences")
     try:
         total_included_n_reps_per_f = _np.ascontiguousarray(total_included_n_reps_per_f, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'total_included_n_reps_per_f' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'total_included_n_reps_per_f' must be an array of np.int32: {_error}", argument="total_included_n_reps_per_f") from None
     if total_included_n_reps_per_f.ndim != 1:
-        raise ValueError(f"'total_included_n_reps_per_f' must have 1 dimension, but has {total_included_n_reps_per_f.ndim}")
+        raise _ToxArgumentError(f"'total_included_n_reps_per_f' must have 1 dimension, but has {total_included_n_reps_per_f.ndim}", argument="total_included_n_reps_per_f")
 
     # what the inputs already say, rather than asking for it again
     k_families = global_js_divergences.shape[0]
 
     # Fortran cannot check that shared extents agree; this can
     if total_included_n_reps_per_f.shape[0] != k_families:
-        raise ValueError(f"'total_included_n_reps_per_f' has {total_included_n_reps_per_f.shape[0]} along axis 0, but "
-            f"'global_js_divergences' implies k_families == {k_families}"
-        )
+        raise _ToxArgumentError(f"'total_included_n_reps_per_f' has {total_included_n_reps_per_f.shape[0]} along axis 0, but 'global_js_divergences' implies k_families == {k_families}", argument="total_included_n_reps_per_f")
 
     # outputs and work arrays, which the caller never sees
     support_weights = _np.empty((k_families,), dtype=_np.float64, order='C')

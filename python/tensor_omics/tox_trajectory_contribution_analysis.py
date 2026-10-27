@@ -16,7 +16,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -234,6 +234,9 @@ def perform_permutation_test(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -246,9 +249,9 @@ def perform_permutation_test(
     try:
         trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'trajectories' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'trajectories' must be an array of np.float64: {_error}", argument="trajectories") from None
     if trajectories.ndim != 3:
-        raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
+        raise _ToxArgumentError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}", argument="trajectories")
     baseline_mode = _np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
@@ -323,6 +326,9 @@ def compute_p_values(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -335,21 +341,21 @@ def compute_p_values(
     try:
         local_contributions_observed = _np.ascontiguousarray(local_contributions_observed, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'local_contributions_observed' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'local_contributions_observed' must be an array of np.float64: {_error}", argument="local_contributions_observed") from None
     if local_contributions_observed.ndim != 1:
-        raise ValueError(f"'local_contributions_observed' must have 1 dimension, but has {local_contributions_observed.ndim}")
+        raise _ToxArgumentError(f"'local_contributions_observed' must have 1 dimension, but has {local_contributions_observed.ndim}", argument="local_contributions_observed")
     try:
         local_contributions_perm_test = _np.asfortranarray(local_contributions_perm_test, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'local_contributions_perm_test' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'local_contributions_perm_test' must be an array of np.float64: {_error}", argument="local_contributions_perm_test") from None
     if local_contributions_perm_test.ndim != 2:
-        raise ValueError(f"'local_contributions_perm_test' must have 2 dimensions, but has {local_contributions_perm_test.ndim}")
+        raise _ToxArgumentError(f"'local_contributions_perm_test' must have 2 dimensions, but has {local_contributions_perm_test.ndim}", argument="local_contributions_perm_test")
     try:
         total_contributions_perm_test = _np.ascontiguousarray(total_contributions_perm_test, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'total_contributions_perm_test' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'total_contributions_perm_test' must be an array of np.float64: {_error}", argument="total_contributions_perm_test") from None
     if total_contributions_perm_test.ndim != 1:
-        raise ValueError(f"'total_contributions_perm_test' must have 1 dimension, but has {total_contributions_perm_test.ndim}")
+        raise _ToxArgumentError(f"'total_contributions_perm_test' must have 1 dimension, but has {total_contributions_perm_test.ndim}", argument="total_contributions_perm_test")
 
     # what the inputs already say, rather than asking for it again
     n_timepoints = local_contributions_observed.shape[0]
@@ -357,13 +363,9 @@ def compute_p_values(
 
     # Fortran cannot check that shared extents agree; this can
     if local_contributions_perm_test.shape[0] != n_timepoints:
-        raise ValueError(f"'local_contributions_perm_test' has {local_contributions_perm_test.shape[0]} along axis 0, but "
-            f"'local_contributions_observed' implies n_timepoints == {n_timepoints}"
-        )
+        raise _ToxArgumentError(f"'local_contributions_perm_test' has {local_contributions_perm_test.shape[0]} along axis 0, but 'local_contributions_observed' implies n_timepoints == {n_timepoints}", argument="local_contributions_perm_test")
     if total_contributions_perm_test.shape[0] != n_permutations:
-        raise ValueError(f"'total_contributions_perm_test' has {total_contributions_perm_test.shape[0]} along axis 0, but "
-            f"'local_contributions_perm_test' implies n_permutations == {n_permutations}"
-        )
+        raise _ToxArgumentError(f"'total_contributions_perm_test' has {total_contributions_perm_test.shape[0]} along axis 0, but 'local_contributions_perm_test' implies n_permutations == {n_permutations}", argument="total_contributions_perm_test")
 
     # outputs and work arrays, which the caller never sees
     local_p_values = _np.empty((n_timepoints,), dtype=_np.float64, order='C')
@@ -420,6 +422,9 @@ def compute_contributions(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -432,15 +437,15 @@ def compute_contributions(
     try:
         factor = _np.ascontiguousarray(factor, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'factor' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'factor' must be an array of np.float64: {_error}", argument="factor") from None
     if factor.ndim != 1:
-        raise ValueError(f"'factor' must have 1 dimension, but has {factor.ndim}")
+        raise _ToxArgumentError(f"'factor' must have 1 dimension, but has {factor.ndim}", argument="factor")
     try:
         dependent = _np.ascontiguousarray(dependent, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'dependent' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'dependent' must be an array of np.float64: {_error}", argument="dependent") from None
     if dependent.ndim != 1:
-        raise ValueError(f"'dependent' must have 1 dimension, but has {dependent.ndim}")
+        raise _ToxArgumentError(f"'dependent' must have 1 dimension, but has {dependent.ndim}", argument="dependent")
     baseline_mode = _np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
@@ -448,9 +453,7 @@ def compute_contributions(
 
     # Fortran cannot check that shared extents agree; this can
     if dependent.shape[0] != n_dims:
-        raise ValueError(f"'dependent' has {dependent.shape[0]} along axis 0, but "
-            f"'factor' implies n_dims == {n_dims}"
-        )
+        raise _ToxArgumentError(f"'dependent' has {dependent.shape[0]} along axis 0, but 'factor' implies n_dims == {n_dims}", argument="dependent")
 
     # outputs and work arrays, which the caller never sees
     local_contributions = _np.empty((n_dims,), dtype=_np.float64, order='C')
@@ -513,6 +516,9 @@ def compute_all_contributions(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -525,21 +531,21 @@ def compute_all_contributions(
     try:
         trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'trajectories' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'trajectories' must be an array of np.float64: {_error}", argument="trajectories") from None
     if trajectories.ndim != 3:
-        raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
+        raise _ToxArgumentError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}", argument="trajectories")
     try:
         factor_indices = _np.ascontiguousarray(factor_indices, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'factor_indices' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'factor_indices' must be an array of np.int32: {_error}", argument="factor_indices") from None
     if factor_indices.ndim != 1:
-        raise ValueError(f"'factor_indices' must have 1 dimension, but has {factor_indices.ndim}")
+        raise _ToxArgumentError(f"'factor_indices' must have 1 dimension, but has {factor_indices.ndim}", argument="factor_indices")
     try:
         dependent_indices = _np.ascontiguousarray(dependent_indices, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'dependent_indices' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'dependent_indices' must be an array of np.int32: {_error}", argument="dependent_indices") from None
     if dependent_indices.ndim != 1:
-        raise ValueError(f"'dependent_indices' must have 1 dimension, but has {dependent_indices.ndim}")
+        raise _ToxArgumentError(f"'dependent_indices' must have 1 dimension, but has {dependent_indices.ndim}", argument="dependent_indices")
     baseline_mode = _np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
@@ -607,6 +613,9 @@ def compute_baselines_factor_dependent(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -619,15 +628,15 @@ def compute_baselines_factor_dependent(
     try:
         factor = _np.ascontiguousarray(factor, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'factor' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'factor' must be an array of np.float64: {_error}", argument="factor") from None
     if factor.ndim != 1:
-        raise ValueError(f"'factor' must have 1 dimension, but has {factor.ndim}")
+        raise _ToxArgumentError(f"'factor' must have 1 dimension, but has {factor.ndim}", argument="factor")
     try:
         dependent = _np.ascontiguousarray(dependent, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'dependent' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'dependent' must be an array of np.float64: {_error}", argument="dependent") from None
     if dependent.ndim != 1:
-        raise ValueError(f"'dependent' must have 1 dimension, but has {dependent.ndim}")
+        raise _ToxArgumentError(f"'dependent' must have 1 dimension, but has {dependent.ndim}", argument="dependent")
     baseline_mode = _np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
@@ -635,9 +644,7 @@ def compute_baselines_factor_dependent(
 
     # Fortran cannot check that shared extents agree; this can
     if dependent.shape[0] != n_timepoints:
-        raise ValueError(f"'dependent' has {dependent.shape[0]} along axis 0, but "
-            f"'factor' implies n_timepoints == {n_timepoints}"
-        )
+        raise _ToxArgumentError(f"'dependent' has {dependent.shape[0]} along axis 0, but 'factor' implies n_timepoints == {n_timepoints}", argument="dependent")
 
     # outputs and work arrays, which the caller never sees
     factor_baseline = _ctypes.c_double(0)
@@ -679,6 +686,9 @@ def compute_velocity_trajectory(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -691,9 +701,9 @@ def compute_velocity_trajectory(
     try:
         trajectory = _np.ascontiguousarray(trajectory, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'trajectory' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'trajectory' must be an array of np.float64: {_error}", argument="trajectory") from None
     if trajectory.ndim != 1:
-        raise ValueError(f"'trajectory' must have 1 dimension, but has {trajectory.ndim}")
+        raise _ToxArgumentError(f"'trajectory' must have 1 dimension, but has {trajectory.ndim}", argument="trajectory")
 
     # what the inputs already say, rather than asking for it again
     n_timepoints = trajectory.shape[0]
@@ -737,6 +747,9 @@ def compute_acceleration_from_velocity_trajectory(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -749,9 +762,9 @@ def compute_acceleration_from_velocity_trajectory(
     try:
         velocity = _np.ascontiguousarray(velocity, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'velocity' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'velocity' must be an array of np.float64: {_error}", argument="velocity") from None
     if velocity.ndim != 1:
-        raise ValueError(f"'velocity' must have 1 dimension, but has {velocity.ndim}")
+        raise _ToxArgumentError(f"'velocity' must have 1 dimension, but has {velocity.ndim}", argument="velocity")
 
     # outputs and work arrays, which the caller never sees
     acceleration = _np.empty((max(0, n_timepoints - 2),), dtype=_np.float64, order='C')
@@ -789,6 +802,9 @@ def compute_velocity_trajectories(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -801,9 +817,9 @@ def compute_velocity_trajectories(
     try:
         trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'trajectories' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'trajectories' must be an array of np.float64: {_error}", argument="trajectories") from None
     if trajectories.ndim != 3:
-        raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
+        raise _ToxArgumentError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}", argument="trajectories")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]
@@ -851,6 +867,9 @@ def compute_acceleration_from_velocity(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -863,9 +882,9 @@ def compute_acceleration_from_velocity(
     try:
         velocity = _np.asfortranarray(velocity, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'velocity' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'velocity' must be an array of np.float64: {_error}", argument="velocity") from None
     if velocity.ndim != 3:
-        raise ValueError(f"'velocity' must have 3 dimensions, but has {velocity.ndim}")
+        raise _ToxArgumentError(f"'velocity' must have 3 dimensions, but has {velocity.ndim}", argument="velocity")
 
     # what the inputs already say, rather than asking for it again
     n_factors = velocity.shape[1]
@@ -934,6 +953,9 @@ def compute_velocity_acceleration_contributions(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -946,9 +968,9 @@ def compute_velocity_acceleration_contributions(
     try:
         trajectories = _np.asfortranarray(trajectories, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'trajectories' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'trajectories' must be an array of np.float64: {_error}", argument="trajectories") from None
     if trajectories.ndim != 3:
-        raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
+        raise _ToxArgumentError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}", argument="trajectories")
     baseline_mode = _np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again

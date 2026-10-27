@@ -422,6 +422,19 @@ class TestShapeChecking:
         with pytest.raises(ValueError, match="'weights'.*'matrix'"):
             tox.fx_sum_matrix(matrix, np.array([1.0, 2.0, 3.0]))
 
+    def test_the_refusal_is_an_input_error_without_a_code(self, tox, np):
+        # the binding's own refusal: a ToxArgumentError, which is a ToxInputError carrying no
+        # tox code, and still the ValueError it used to be (#221)
+        errors = tox.error_handling
+        matrix = np.asfortranarray([[1.0, 2.0], [3.0, 4.0]])
+
+        with pytest.raises(errors.ToxInputError) as caught:
+            tox.fx_sum_matrix(matrix, np.array([1.0, 2.0, 3.0]))
+
+        assert type(caught.value) is errors.ToxArgumentError
+        assert (caught.value.code, caught.value.argument) == (None, "weights")
+        assert isinstance(caught.value, ValueError) and isinstance(caught.value, TypeError)
+
 
 class TestBadInputsAreNamed:
     def test_a_value_that_cannot_be_an_array_names_the_argument(self, tox):

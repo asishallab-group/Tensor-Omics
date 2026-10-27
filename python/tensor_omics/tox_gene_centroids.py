@@ -15,7 +15,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -92,6 +92,9 @@ def mean_vector(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -104,15 +107,15 @@ def mean_vector(
     try:
         expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expression_vectors' must be an array of np.float64: {_error}", argument="expression_vectors") from None
     if expression_vectors.ndim != 2:
-        raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
+        raise _ToxArgumentError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}", argument="expression_vectors")
     try:
         gene_indices = _np.ascontiguousarray(gene_indices, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'gene_indices' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'gene_indices' must be an array of np.int32: {_error}", argument="gene_indices") from None
     if gene_indices.ndim != 1:
-        raise ValueError(f"'gene_indices' must have 1 dimension, but has {gene_indices.ndim}")
+        raise _ToxArgumentError(f"'gene_indices' must have 1 dimension, but has {gene_indices.ndim}", argument="gene_indices")
 
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]
@@ -170,6 +173,9 @@ def group_centroid_orthologs(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -182,21 +188,21 @@ def group_centroid_orthologs(
     try:
         expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expression_vectors' must be an array of np.float64: {_error}", argument="expression_vectors") from None
     if expression_vectors.ndim != 2:
-        raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
+        raise _ToxArgumentError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}", argument="expression_vectors")
     try:
         gene_to_family = _np.ascontiguousarray(gene_to_family, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'gene_to_family' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'gene_to_family' must be an array of np.int32: {_error}", argument="gene_to_family") from None
     if gene_to_family.ndim != 1:
-        raise ValueError(f"'gene_to_family' must have 1 dimension, but has {gene_to_family.ndim}")
+        raise _ToxArgumentError(f"'gene_to_family' must have 1 dimension, but has {gene_to_family.ndim}", argument="gene_to_family")
     try:
         ortholog_set = _np.ascontiguousarray(ortholog_set, dtype=_np.bool_)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'ortholog_set' must be an array of np.bool_: {_error}") from None
+        raise _ToxArgumentError(f"'ortholog_set' must be an array of np.bool_: {_error}", argument="ortholog_set") from None
     if ortholog_set.ndim != 1:
-        raise ValueError(f"'ortholog_set' must have 1 dimension, but has {ortholog_set.ndim}")
+        raise _ToxArgumentError(f"'ortholog_set' must have 1 dimension, but has {ortholog_set.ndim}", argument="ortholog_set")
 
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]
@@ -204,13 +210,9 @@ def group_centroid_orthologs(
 
     # Fortran cannot check that shared extents agree; this can
     if gene_to_family.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_family' has {gene_to_family.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_family' has {gene_to_family.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}", argument="gene_to_family")
     if ortholog_set.shape[0] != n_genes:
-        raise ValueError(f"'ortholog_set' has {ortholog_set.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'ortholog_set' has {ortholog_set.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}", argument="ortholog_set")
 
     # outputs and work arrays, which the caller never sees
     centroid_matrix = _np.empty((n_axes, n_families,), dtype=_np.float64, order='F')
@@ -261,6 +263,9 @@ def group_centroid_all(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -273,15 +278,15 @@ def group_centroid_all(
     try:
         expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expression_vectors' must be an array of np.float64: {_error}", argument="expression_vectors") from None
     if expression_vectors.ndim != 2:
-        raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
+        raise _ToxArgumentError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}", argument="expression_vectors")
     try:
         gene_to_family = _np.ascontiguousarray(gene_to_family, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'gene_to_family' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'gene_to_family' must be an array of np.int32: {_error}", argument="gene_to_family") from None
     if gene_to_family.ndim != 1:
-        raise ValueError(f"'gene_to_family' must have 1 dimension, but has {gene_to_family.ndim}")
+        raise _ToxArgumentError(f"'gene_to_family' must have 1 dimension, but has {gene_to_family.ndim}", argument="gene_to_family")
 
     # what the inputs already say, rather than asking for it again
     n_axes = expression_vectors.shape[0]
@@ -289,9 +294,7 @@ def group_centroid_all(
 
     # Fortran cannot check that shared extents agree; this can
     if gene_to_family.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_family' has {gene_to_family.shape[0]} along axis 0, but "
-            f"'expression_vectors' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_family' has {gene_to_family.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}", argument="gene_to_family")
 
     # outputs and work arrays, which the caller never sees
     centroid_matrix = _np.empty((n_axes, n_families,), dtype=_np.float64, order='F')

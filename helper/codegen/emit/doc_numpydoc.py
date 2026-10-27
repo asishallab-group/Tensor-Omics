@@ -177,6 +177,10 @@ def _raises(writer: Writer, wrapper: CWrapper) -> None:
     writer.blank()
     writer.line("Raises")
     writer.line("------")
+    writer.line("ToxArgumentError")
+    with writer.indent():
+        writer.line("If an argument is refused before the library is called: its shape, type")
+        writer.line("or value. A ToxInputError without a code, and a TypeError and a ValueError.")
     writer.line("ToxError")
     with writer.indent():
         writer.line("If the underlying Fortran reports an error.")

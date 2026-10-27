@@ -15,7 +15,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -145,6 +145,9 @@ def determine_shared_residual_range(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -160,9 +163,9 @@ def determine_shared_residual_range(
     try:
         abs_residual_pool = _np.ascontiguousarray(abs_residual_pool, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'abs_residual_pool' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'abs_residual_pool' must be an array of np.float64: {_error}", argument="abs_residual_pool") from None
     if abs_residual_pool.ndim != 1:
-        raise ValueError(f"'abs_residual_pool' must have 1 dimension, but has {abs_residual_pool.ndim}")
+        raise _ToxArgumentError(f"'abs_residual_pool' must have 1 dimension, but has {abs_residual_pool.ndim}", argument="abs_residual_pool")
 
     # what the inputs already say, rather than asking for it again
     pool_size = abs_residual_pool.shape[0]
@@ -215,6 +218,9 @@ def determine_shared_residual_range_expert(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -230,24 +236,22 @@ def determine_shared_residual_range_expert(
     try:
         abs_residual_pool = _np.ascontiguousarray(abs_residual_pool, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'abs_residual_pool' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'abs_residual_pool' must be an array of np.float64: {_error}", argument="abs_residual_pool") from None
     if abs_residual_pool.ndim != 1:
-        raise ValueError(f"'abs_residual_pool' must have 1 dimension, but has {abs_residual_pool.ndim}")
+        raise _ToxArgumentError(f"'abs_residual_pool' must have 1 dimension, but has {abs_residual_pool.ndim}", argument="abs_residual_pool")
     try:
         abs_residual_pool_perm = _np.ascontiguousarray(abs_residual_pool_perm, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'abs_residual_pool_perm' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'abs_residual_pool_perm' must be an array of np.int32: {_error}", argument="abs_residual_pool_perm") from None
     if abs_residual_pool_perm.ndim != 1:
-        raise ValueError(f"'abs_residual_pool_perm' must have 1 dimension, but has {abs_residual_pool_perm.ndim}")
+        raise _ToxArgumentError(f"'abs_residual_pool_perm' must have 1 dimension, but has {abs_residual_pool_perm.ndim}", argument="abs_residual_pool_perm")
 
     # what the inputs already say, rather than asking for it again
     pool_size = abs_residual_pool.shape[0]
 
     # Fortran cannot check that shared extents agree; this can
     if abs_residual_pool_perm.shape[0] != pool_size:
-        raise ValueError(f"'abs_residual_pool_perm' has {abs_residual_pool_perm.shape[0]} along axis 0, but "
-            f"'abs_residual_pool' implies pool_size == {pool_size}"
-        )
+        raise _ToxArgumentError(f"'abs_residual_pool_perm' has {abs_residual_pool_perm.shape[0]} along axis 0, but 'abs_residual_pool' implies pool_size == {pool_size}", argument="abs_residual_pool_perm")
 
     # outputs and work arrays, which the caller never sees
     shared_residual_range = _ctypes.c_double(0)
@@ -297,6 +301,9 @@ def determine_study_shared_residual_range(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -309,15 +316,15 @@ def determine_study_shared_residual_range(
     try:
         neighborhood_residuals_S1 = _np.asfortranarray(neighborhood_residuals_S1, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'neighborhood_residuals_S1' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'neighborhood_residuals_S1' must be an array of np.float64: {_error}", argument="neighborhood_residuals_S1") from None
     if neighborhood_residuals_S1.ndim != 3:
-        raise ValueError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}")
+        raise _ToxArgumentError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}", argument="neighborhood_residuals_S1")
     try:
         neighborhood_residuals_S2 = _np.asfortranarray(neighborhood_residuals_S2, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'neighborhood_residuals_S2' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' must be an array of np.float64: {_error}", argument="neighborhood_residuals_S2") from None
     if neighborhood_residuals_S2.ndim != 3:
-        raise ValueError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}")
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}", argument="neighborhood_residuals_S2")
 
     # what the inputs already say, rather than asking for it again
     n_reps_S1 = neighborhood_residuals_S1.shape[0]
@@ -327,13 +334,9 @@ def determine_study_shared_residual_range(
 
     # Fortran cannot check that shared extents agree; this can
     if neighborhood_residuals_S2.shape[1] != n_neighbors:
-        raise ValueError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but "
-            f"'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}", argument="neighborhood_residuals_S2")
     if neighborhood_residuals_S2.shape[2] != n_points:
-        raise ValueError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but "
-            f"'neighborhood_residuals_S1' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but 'neighborhood_residuals_S1' implies n_points == {n_points}", argument="neighborhood_residuals_S2")
 
     # outputs and work arrays, which the caller never sees
     shared_residual_range = _ctypes.c_double(0)
@@ -395,6 +398,9 @@ def build_residual_histograms(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -407,16 +413,16 @@ def build_residual_histograms(
     try:
         neighborhood_residuals = _np.asfortranarray(neighborhood_residuals, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'neighborhood_residuals' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'neighborhood_residuals' must be an array of np.float64: {_error}", argument="neighborhood_residuals") from None
     if neighborhood_residuals.ndim != 3:
-        raise ValueError(f"'neighborhood_residuals' must have 3 dimensions, but has {neighborhood_residuals.ndim}")
+        raise _ToxArgumentError(f"'neighborhood_residuals' must have 3 dimensions, but has {neighborhood_residuals.ndim}", argument="neighborhood_residuals")
     if neighbor_mask is not None:
         try:
             neighbor_mask = _np.asfortranarray(neighbor_mask, dtype=_np.bool_)
         except (TypeError, ValueError) as _error:
-            raise TypeError(f"'neighbor_mask' must be an array of np.bool_: {_error}") from None
+            raise _ToxArgumentError(f"'neighbor_mask' must be an array of np.bool_: {_error}", argument="neighbor_mask") from None
         if neighbor_mask.ndim != 2:
-            raise ValueError(f"'neighbor_mask' must have 2 dimensions, but has {neighbor_mask.ndim}")
+            raise _ToxArgumentError(f"'neighbor_mask' must have 2 dimensions, but has {neighbor_mask.ndim}", argument="neighbor_mask")
 
     # what the inputs already say, rather than asking for it again
     n_reps = neighborhood_residuals.shape[0]
@@ -483,6 +489,9 @@ def compute_divergence_per_reference_point(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -495,15 +504,15 @@ def compute_divergence_per_reference_point(
     try:
         pmf_S1 = _np.asfortranarray(pmf_S1, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'pmf_S1' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'pmf_S1' must be an array of np.float64: {_error}", argument="pmf_S1") from None
     if pmf_S1.ndim != 2:
-        raise ValueError(f"'pmf_S1' must have 2 dimensions, but has {pmf_S1.ndim}")
+        raise _ToxArgumentError(f"'pmf_S1' must have 2 dimensions, but has {pmf_S1.ndim}", argument="pmf_S1")
     try:
         pmf_S2 = _np.asfortranarray(pmf_S2, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'pmf_S2' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'pmf_S2' must be an array of np.float64: {_error}", argument="pmf_S2") from None
     if pmf_S2.ndim != 2:
-        raise ValueError(f"'pmf_S2' must have 2 dimensions, but has {pmf_S2.ndim}")
+        raise _ToxArgumentError(f"'pmf_S2' must have 2 dimensions, but has {pmf_S2.ndim}", argument="pmf_S2")
 
     # what the inputs already say, rather than asking for it again
     n_points = pmf_S1.shape[0]
@@ -511,13 +520,9 @@ def compute_divergence_per_reference_point(
 
     # Fortran cannot check that shared extents agree; this can
     if pmf_S2.shape[0] != n_points:
-        raise ValueError(f"'pmf_S2' has {pmf_S2.shape[0]} along axis 0, but "
-            f"'pmf_S1' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'pmf_S2' has {pmf_S2.shape[0]} along axis 0, but 'pmf_S1' implies n_points == {n_points}", argument="pmf_S2")
     if pmf_S2.shape[1] != n_bins:
-        raise ValueError(f"'pmf_S2' has {pmf_S2.shape[1]} along axis 1, but "
-            f"'pmf_S1' implies n_bins == {n_bins}"
-        )
+        raise _ToxArgumentError(f"'pmf_S2' has {pmf_S2.shape[1]} along axis 1, but 'pmf_S1' implies n_bins == {n_bins}", argument="pmf_S2")
 
     # outputs and work arrays, which the caller never sees
     js_divergences = _np.empty((n_points,), dtype=_np.float64, order='C')
@@ -573,6 +578,9 @@ def compute_weighted_global_divergence(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -585,34 +593,30 @@ def compute_weighted_global_divergence(
     try:
         js_divergences = _np.ascontiguousarray(js_divergences, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'js_divergences' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'js_divergences' must be an array of np.float64: {_error}", argument="js_divergences") from None
     if js_divergences.ndim != 1:
-        raise ValueError(f"'js_divergences' must have 1 dimension, but has {js_divergences.ndim}")
+        raise _ToxArgumentError(f"'js_divergences' must have 1 dimension, but has {js_divergences.ndim}", argument="js_divergences")
     try:
         included_n_reps_S1 = _np.ascontiguousarray(included_n_reps_S1, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'included_n_reps_S1' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'included_n_reps_S1' must be an array of np.int32: {_error}", argument="included_n_reps_S1") from None
     if included_n_reps_S1.ndim != 1:
-        raise ValueError(f"'included_n_reps_S1' must have 1 dimension, but has {included_n_reps_S1.ndim}")
+        raise _ToxArgumentError(f"'included_n_reps_S1' must have 1 dimension, but has {included_n_reps_S1.ndim}", argument="included_n_reps_S1")
     try:
         included_n_reps_S2 = _np.ascontiguousarray(included_n_reps_S2, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'included_n_reps_S2' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'included_n_reps_S2' must be an array of np.int32: {_error}", argument="included_n_reps_S2") from None
     if included_n_reps_S2.ndim != 1:
-        raise ValueError(f"'included_n_reps_S2' must have 1 dimension, but has {included_n_reps_S2.ndim}")
+        raise _ToxArgumentError(f"'included_n_reps_S2' must have 1 dimension, but has {included_n_reps_S2.ndim}", argument="included_n_reps_S2")
 
     # what the inputs already say, rather than asking for it again
     n_points = js_divergences.shape[0]
 
     # Fortran cannot check that shared extents agree; this can
     if included_n_reps_S1.shape[0] != n_points:
-        raise ValueError(f"'included_n_reps_S1' has {included_n_reps_S1.shape[0]} along axis 0, but "
-            f"'js_divergences' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'included_n_reps_S1' has {included_n_reps_S1.shape[0]} along axis 0, but 'js_divergences' implies n_points == {n_points}", argument="included_n_reps_S1")
     if included_n_reps_S2.shape[0] != n_points:
-        raise ValueError(f"'included_n_reps_S2' has {included_n_reps_S2.shape[0]} along axis 0, but "
-            f"'js_divergences' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'included_n_reps_S2' has {included_n_reps_S2.shape[0]} along axis 0, but 'js_divergences' implies n_points == {n_points}", argument="included_n_reps_S2")
 
     # outputs and work arrays, which the caller never sees
     global_js_divergence = _ctypes.c_double(0)

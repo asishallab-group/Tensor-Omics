@@ -22,7 +22,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -160,6 +160,9 @@ def detect_neofunctionalization(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -172,27 +175,27 @@ def detect_neofunctionalization(
     try:
         ancestors = _np.asfortranarray(ancestors, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'ancestors' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'ancestors' must be an array of np.float64: {_error}", argument="ancestors") from None
     if ancestors.ndim != 2:
-        raise ValueError(f"'ancestors' must have 2 dimensions, but has {ancestors.ndim}")
+        raise _ToxArgumentError(f"'ancestors' must have 2 dimensions, but has {ancestors.ndim}", argument="ancestors")
     try:
         genes = _np.asfortranarray(genes, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'genes' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'genes' must be an array of np.float64: {_error}", argument="genes") from None
     if genes.ndim != 2:
-        raise ValueError(f"'genes' must have 2 dimensions, but has {genes.ndim}")
+        raise _ToxArgumentError(f"'genes' must have 2 dimensions, but has {genes.ndim}", argument="genes")
     try:
         gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
     if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
     try:
         thresholds = _np.ascontiguousarray(thresholds, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'thresholds' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'thresholds' must be an array of np.float64: {_error}", argument="thresholds") from None
     if thresholds.ndim != 1:
-        raise ValueError(f"'thresholds' must have 1 dimension, but has {thresholds.ndim}")
+        raise _ToxArgumentError(f"'thresholds' must have 1 dimension, but has {thresholds.ndim}", argument="thresholds")
 
     # what the inputs already say, rather than asking for it again
     n_families = ancestors.shape[1]
@@ -201,17 +204,11 @@ def detect_neofunctionalization(
 
     # Fortran cannot check that shared extents agree; this can
     if genes.shape[0] != n_axes:
-        raise ValueError(f"'genes' has {genes.shape[0]} along axis 0, but "
-            f"'ancestors' implies n_axes == {n_axes}"
-        )
+        raise _ToxArgumentError(f"'genes' has {genes.shape[0]} along axis 0, but 'ancestors' implies n_axes == {n_axes}", argument="genes")
     if thresholds.shape[0] != n_axes:
-        raise ValueError(f"'thresholds' has {thresholds.shape[0]} along axis 0, but "
-            f"'ancestors' implies n_axes == {n_axes}"
-        )
+        raise _ToxArgumentError(f"'thresholds' has {thresholds.shape[0]} along axis 0, but 'ancestors' implies n_axes == {n_axes}", argument="thresholds")
     if gene_to_fam.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but "
-            f"'genes' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'genes' implies n_genes == {n_genes}", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
     neofunc = _np.empty((n_genes, n_axes,), dtype=_np.bool_, order='F')
@@ -288,6 +285,9 @@ def detect_dosage_effect(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -300,21 +300,21 @@ def detect_dosage_effect(
     try:
         ancestor = _np.ascontiguousarray(ancestor, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'ancestor' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'ancestor' must be an array of np.float64: {_error}", argument="ancestor") from None
     if ancestor.ndim != 1:
-        raise ValueError(f"'ancestor' must have 1 dimension, but has {ancestor.ndim}")
+        raise _ToxArgumentError(f"'ancestor' must have 1 dimension, but has {ancestor.ndim}", argument="ancestor")
     try:
         genes = _np.asfortranarray(genes, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'genes' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'genes' must be an array of np.float64: {_error}", argument="genes") from None
     if genes.ndim != 2:
-        raise ValueError(f"'genes' must have 2 dimensions, but has {genes.ndim}")
+        raise _ToxArgumentError(f"'genes' must have 2 dimensions, but has {genes.ndim}", argument="genes")
     try:
         filtered_paralogs_mask = _np.ascontiguousarray(filtered_paralogs_mask, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'filtered_paralogs_mask' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'filtered_paralogs_mask' must be an array of np.int32: {_error}", argument="filtered_paralogs_mask") from None
     if filtered_paralogs_mask.ndim != 1:
-        raise ValueError(f"'filtered_paralogs_mask' must have 1 dimension, but has {filtered_paralogs_mask.ndim}")
+        raise _ToxArgumentError(f"'filtered_paralogs_mask' must have 1 dimension, but has {filtered_paralogs_mask.ndim}", argument="filtered_paralogs_mask")
 
     # what the inputs already say, rather than asking for it again
     n_genes = genes.shape[1]
@@ -329,9 +329,7 @@ def detect_dosage_effect(
 
     # Fortran cannot check that shared extents agree; this can
     if genes.shape[0] != n_dims:
-        raise ValueError(f"'genes' has {genes.shape[0]} along axis 0, but "
-            f"'ancestor' implies n_dims == {n_dims}"
-        )
+        raise _ToxArgumentError(f"'genes' has {genes.shape[0]} along axis 0, but 'ancestor' implies n_dims == {n_dims}", argument="genes")
 
     # outputs and work arrays, which the caller never sees
     n_results = _ctypes.c_int(0)
@@ -418,6 +416,9 @@ def detect_subfunctionalization(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -430,33 +431,33 @@ def detect_subfunctionalization(
     try:
         ancestor = _np.ascontiguousarray(ancestor, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'ancestor' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'ancestor' must be an array of np.float64: {_error}", argument="ancestor") from None
     if ancestor.ndim != 1:
-        raise ValueError(f"'ancestor' must have 1 dimension, but has {ancestor.ndim}")
+        raise _ToxArgumentError(f"'ancestor' must have 1 dimension, but has {ancestor.ndim}", argument="ancestor")
     try:
         genes = _np.asfortranarray(genes, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'genes' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'genes' must be an array of np.float64: {_error}", argument="genes") from None
     if genes.ndim != 2:
-        raise ValueError(f"'genes' must have 2 dimensions, but has {genes.ndim}")
+        raise _ToxArgumentError(f"'genes' must have 2 dimensions, but has {genes.ndim}", argument="genes")
     try:
         filtered_paralogs_mask = _np.ascontiguousarray(filtered_paralogs_mask, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'filtered_paralogs_mask' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'filtered_paralogs_mask' must be an array of np.int32: {_error}", argument="filtered_paralogs_mask") from None
     if filtered_paralogs_mask.ndim != 1:
-        raise ValueError(f"'filtered_paralogs_mask' must have 1 dimension, but has {filtered_paralogs_mask.ndim}")
+        raise _ToxArgumentError(f"'filtered_paralogs_mask' must have 1 dimension, but has {filtered_paralogs_mask.ndim}", argument="filtered_paralogs_mask")
     try:
         paralog_norms = _np.ascontiguousarray(paralog_norms, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'paralog_norms' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'paralog_norms' must be an array of np.float64: {_error}", argument="paralog_norms") from None
     if paralog_norms.ndim != 1:
-        raise ValueError(f"'paralog_norms' must have 1 dimension, but has {paralog_norms.ndim}")
+        raise _ToxArgumentError(f"'paralog_norms' must have 1 dimension, but has {paralog_norms.ndim}", argument="paralog_norms")
     try:
         sorted_paralog_norms_perm = _np.ascontiguousarray(sorted_paralog_norms_perm, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'sorted_paralog_norms_perm' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'sorted_paralog_norms_perm' must be an array of np.int32: {_error}", argument="sorted_paralog_norms_perm") from None
     if sorted_paralog_norms_perm.ndim != 1:
-        raise ValueError(f"'sorted_paralog_norms_perm' must have 1 dimension, but has {sorted_paralog_norms_perm.ndim}")
+        raise _ToxArgumentError(f"'sorted_paralog_norms_perm' must have 1 dimension, but has {sorted_paralog_norms_perm.ndim}", argument="sorted_paralog_norms_perm")
 
     # what the inputs already say, rather than asking for it again
     n_genes = genes.shape[1]
@@ -471,17 +472,11 @@ def detect_subfunctionalization(
 
     # Fortran cannot check that shared extents agree; this can
     if paralog_norms.shape[0] != n_genes:
-        raise ValueError(f"'paralog_norms' has {paralog_norms.shape[0]} along axis 0, but "
-            f"'genes' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'paralog_norms' has {paralog_norms.shape[0]} along axis 0, but 'genes' implies n_genes == {n_genes}", argument="paralog_norms")
     if sorted_paralog_norms_perm.shape[0] != n_genes:
-        raise ValueError(f"'sorted_paralog_norms_perm' has {sorted_paralog_norms_perm.shape[0]} along axis 0, but "
-            f"'genes' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'sorted_paralog_norms_perm' has {sorted_paralog_norms_perm.shape[0]} along axis 0, but 'genes' implies n_genes == {n_genes}", argument="sorted_paralog_norms_perm")
     if genes.shape[0] != n_dims:
-        raise ValueError(f"'genes' has {genes.shape[0]} along axis 0, but "
-            f"'ancestor' implies n_dims == {n_dims}"
-        )
+        raise _ToxArgumentError(f"'genes' has {genes.shape[0]} along axis 0, but 'ancestor' implies n_dims == {n_dims}", argument="genes")
 
     # outputs and work arrays, which the caller never sees
     n_results = _ctypes.c_int(0)
@@ -554,6 +549,9 @@ def filter_paralogs_by_pattern_dosage_effect(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -566,24 +564,22 @@ def filter_paralogs_by_pattern_dosage_effect(
     try:
         gene_angles = _np.ascontiguousarray(gene_angles, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'gene_angles' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'gene_angles' must be an array of np.float64: {_error}", argument="gene_angles") from None
     if gene_angles.ndim != 1:
-        raise ValueError(f"'gene_angles' must have 1 dimension, but has {gene_angles.ndim}")
+        raise _ToxArgumentError(f"'gene_angles' must have 1 dimension, but has {gene_angles.ndim}", argument="gene_angles")
     try:
         gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
     if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
 
     # what the inputs already say, rather than asking for it again
     n_genes = gene_angles.shape[0]
 
     # Fortran cannot check that shared extents agree; this can
     if gene_to_fam.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but "
-            f"'gene_angles' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'gene_angles' implies n_genes == {n_genes}", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
     masks = _np.empty((n_mask_chunks, n_families,), dtype=_np.int32, order='F')
@@ -646,6 +642,9 @@ def filter_paralogs_by_pattern_subfunctionalization(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -658,24 +657,22 @@ def filter_paralogs_by_pattern_subfunctionalization(
     try:
         gene_angles = _np.ascontiguousarray(gene_angles, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'gene_angles' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'gene_angles' must be an array of np.float64: {_error}", argument="gene_angles") from None
     if gene_angles.ndim != 1:
-        raise ValueError(f"'gene_angles' must have 1 dimension, but has {gene_angles.ndim}")
+        raise _ToxArgumentError(f"'gene_angles' must have 1 dimension, but has {gene_angles.ndim}", argument="gene_angles")
     try:
         gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
     if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
 
     # what the inputs already say, rather than asking for it again
     n_genes = gene_angles.shape[0]
 
     # Fortran cannot check that shared extents agree; this can
     if gene_to_fam.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but "
-            f"'gene_angles' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'gene_angles' implies n_genes == {n_genes}", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
     masks = _np.empty((n_mask_chunks, n_families,), dtype=_np.int32, order='F')

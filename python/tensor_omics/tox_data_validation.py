@@ -17,7 +17,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -185,6 +185,9 @@ def validate_data_structure(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -199,41 +202,41 @@ def validate_data_structure(
         _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
         gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
     except TypeError as _error:
-        raise TypeError(f"'gene_ids' must be a sequence of strings: {_error}") from None
+        raise _ToxArgumentError(f"'gene_ids' must be a sequence of strings: {_error}", argument="gene_ids") from None
     if gene_ids.ndim != 1:
-        raise ValueError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}")
+        raise _ToxArgumentError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}", argument="gene_ids")
     try:
         _gene_family_ids_bytes = [str(_s).encode() for _s in gene_family_ids]
         _gene_family_ids_width = max(map(len, _gene_family_ids_bytes), default=0) or 1
         gene_family_ids = _np.asarray([_b.ljust(_gene_family_ids_width) for _b in _gene_family_ids_bytes], dtype="S")
     except TypeError as _error:
-        raise TypeError(f"'gene_family_ids' must be a sequence of strings: {_error}") from None
+        raise _ToxArgumentError(f"'gene_family_ids' must be a sequence of strings: {_error}", argument="gene_family_ids") from None
     if gene_family_ids.ndim != 1:
-        raise ValueError(f"'gene_family_ids' must have 1 dimension, but has {gene_family_ids.ndim}")
+        raise _ToxArgumentError(f"'gene_family_ids' must have 1 dimension, but has {gene_family_ids.ndim}", argument="gene_family_ids")
     try:
         gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
     if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
     try:
         expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expression_vectors' must be an array of np.float64: {_error}", argument="expression_vectors") from None
     if expression_vectors.ndim != 2:
-        raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
+        raise _ToxArgumentError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}", argument="expression_vectors")
     try:
         family_centroids = _np.asfortranarray(family_centroids, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'family_centroids' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'family_centroids' must be an array of np.float64: {_error}", argument="family_centroids") from None
     if family_centroids.ndim != 2:
-        raise ValueError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}")
+        raise _ToxArgumentError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}", argument="family_centroids")
     try:
         shift_vectors = _np.asfortranarray(shift_vectors, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'shift_vectors' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'shift_vectors' must be an array of np.float64: {_error}", argument="shift_vectors") from None
     if shift_vectors.ndim != 2:
-        raise ValueError(f"'shift_vectors' must have 2 dimensions, but has {shift_vectors.ndim}")
+        raise _ToxArgumentError(f"'shift_vectors' must have 2 dimensions, but has {shift_vectors.ndim}", argument="shift_vectors")
 
     # what the inputs already say, rather than asking for it again
     gene_ids_strlen = gene_ids.itemsize
@@ -298,6 +301,9 @@ def validate_gene_to_family_mapping(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -310,9 +316,9 @@ def validate_gene_to_family_mapping(
     try:
         gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
     if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
 
     # what the inputs already say, rather than asking for it again
     n_gene_to_fam_elements = gene_to_fam.shape[0]
@@ -350,6 +356,9 @@ def validate_expression_data(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -362,9 +371,9 @@ def validate_expression_data(
     try:
         expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expression_vectors' must be an array of np.float64: {_error}", argument="expression_vectors") from None
     if expression_vectors.ndim != 2:
-        raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
+        raise _ToxArgumentError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}", argument="expression_vectors")
 
     # what the inputs already say, rather than asking for it again
     n_expression_vectors_elements_dim_1 = expression_vectors.shape[0]
@@ -401,6 +410,9 @@ def validate_family_centroids(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -413,9 +425,9 @@ def validate_family_centroids(
     try:
         family_centroids = _np.asfortranarray(family_centroids, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'family_centroids' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'family_centroids' must be an array of np.float64: {_error}", argument="family_centroids") from None
     if family_centroids.ndim != 2:
-        raise ValueError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}")
+        raise _ToxArgumentError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}", argument="family_centroids")
 
     # what the inputs already say, rather than asking for it again
     n_family_centroids_elements_dim_1 = family_centroids.shape[0]
@@ -463,6 +475,9 @@ def validate_shift_vectors(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -475,27 +490,27 @@ def validate_shift_vectors(
     try:
         shift_vectors = _np.asfortranarray(shift_vectors, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'shift_vectors' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'shift_vectors' must be an array of np.float64: {_error}", argument="shift_vectors") from None
     if shift_vectors.ndim != 2:
-        raise ValueError(f"'shift_vectors' must have 2 dimensions, but has {shift_vectors.ndim}")
+        raise _ToxArgumentError(f"'shift_vectors' must have 2 dimensions, but has {shift_vectors.ndim}", argument="shift_vectors")
     try:
         expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expression_vectors' must be an array of np.float64: {_error}", argument="expression_vectors") from None
     if expression_vectors.ndim != 2:
-        raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
+        raise _ToxArgumentError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}", argument="expression_vectors")
     try:
         family_centroids = _np.asfortranarray(family_centroids, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'family_centroids' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'family_centroids' must be an array of np.float64: {_error}", argument="family_centroids") from None
     if family_centroids.ndim != 2:
-        raise ValueError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}")
+        raise _ToxArgumentError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}", argument="family_centroids")
     try:
         gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
     if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
 
     # what the inputs already say, rather than asking for it again
     n_shift_vectors_elements_dim_1 = shift_vectors.shape[0]
@@ -545,6 +560,9 @@ def validate_string_array_uniqueness(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -559,9 +577,9 @@ def validate_string_array_uniqueness(
         _str_arr_width = max(map(len, _str_arr_bytes), default=0) or 1
         str_arr = _np.asarray([_b.ljust(_str_arr_width) for _b in _str_arr_bytes], dtype="S")
     except TypeError as _error:
-        raise TypeError(f"'str_arr' must be a sequence of strings: {_error}") from None
+        raise _ToxArgumentError(f"'str_arr' must be a sequence of strings: {_error}", argument="str_arr") from None
     if str_arr.ndim != 1:
-        raise ValueError(f"'str_arr' must have 1 dimension, but has {str_arr.ndim}")
+        raise _ToxArgumentError(f"'str_arr' must have 1 dimension, but has {str_arr.ndim}", argument="str_arr")
 
     # what the inputs already say, rather than asking for it again
     str_arr_strlen = str_arr.itemsize
@@ -629,6 +647,9 @@ def validate_all_data(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -643,41 +664,41 @@ def validate_all_data(
         _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
         gene_ids = _np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
     except TypeError as _error:
-        raise TypeError(f"'gene_ids' must be a sequence of strings: {_error}") from None
+        raise _ToxArgumentError(f"'gene_ids' must be a sequence of strings: {_error}", argument="gene_ids") from None
     if gene_ids.ndim != 1:
-        raise ValueError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}")
+        raise _ToxArgumentError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}", argument="gene_ids")
     try:
         _gene_family_ids_bytes = [str(_s).encode() for _s in gene_family_ids]
         _gene_family_ids_width = max(map(len, _gene_family_ids_bytes), default=0) or 1
         gene_family_ids = _np.asarray([_b.ljust(_gene_family_ids_width) for _b in _gene_family_ids_bytes], dtype="S")
     except TypeError as _error:
-        raise TypeError(f"'gene_family_ids' must be a sequence of strings: {_error}") from None
+        raise _ToxArgumentError(f"'gene_family_ids' must be a sequence of strings: {_error}", argument="gene_family_ids") from None
     if gene_family_ids.ndim != 1:
-        raise ValueError(f"'gene_family_ids' must have 1 dimension, but has {gene_family_ids.ndim}")
+        raise _ToxArgumentError(f"'gene_family_ids' must have 1 dimension, but has {gene_family_ids.ndim}", argument="gene_family_ids")
     try:
         gene_to_fam = _np.ascontiguousarray(gene_to_fam, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'gene_to_fam' must be an array of np.int32: {_error}", argument="gene_to_fam") from None
     if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+        raise _ToxArgumentError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}", argument="gene_to_fam")
     try:
         expression_vectors = _np.asfortranarray(expression_vectors, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'expression_vectors' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'expression_vectors' must be an array of np.float64: {_error}", argument="expression_vectors") from None
     if expression_vectors.ndim != 2:
-        raise ValueError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}")
+        raise _ToxArgumentError(f"'expression_vectors' must have 2 dimensions, but has {expression_vectors.ndim}", argument="expression_vectors")
     try:
         family_centroids = _np.asfortranarray(family_centroids, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'family_centroids' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'family_centroids' must be an array of np.float64: {_error}", argument="family_centroids") from None
     if family_centroids.ndim != 2:
-        raise ValueError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}")
+        raise _ToxArgumentError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}", argument="family_centroids")
     try:
         shift_vectors = _np.asfortranarray(shift_vectors, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'shift_vectors' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'shift_vectors' must be an array of np.float64: {_error}", argument="shift_vectors") from None
     if shift_vectors.ndim != 2:
-        raise ValueError(f"'shift_vectors' must have 2 dimensions, but has {shift_vectors.ndim}")
+        raise _ToxArgumentError(f"'shift_vectors' must have 2 dimensions, but has {shift_vectors.ndim}", argument="shift_vectors")
 
     # what the inputs already say, rather than asking for it again
     gene_ids_strlen = gene_ids.itemsize

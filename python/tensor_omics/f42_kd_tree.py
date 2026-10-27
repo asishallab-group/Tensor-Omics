@@ -14,7 +14,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -72,6 +72,9 @@ def build_kd_index(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -84,15 +87,15 @@ def build_kd_index(
     try:
         points = _np.asfortranarray(points, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'points' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'points' must be an array of np.float64: {_error}", argument="points") from None
     if points.ndim != 2:
-        raise ValueError(f"'points' must have 2 dimensions, but has {points.ndim}")
+        raise _ToxArgumentError(f"'points' must have 2 dimensions, but has {points.ndim}", argument="points")
     try:
         dimension_order = _np.ascontiguousarray(dimension_order, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'dimension_order' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'dimension_order' must be an array of np.int32: {_error}", argument="dimension_order") from None
     if dimension_order.ndim != 1:
-        raise ValueError(f"'dimension_order' must have 1 dimension, but has {dimension_order.ndim}")
+        raise _ToxArgumentError(f"'dimension_order' must have 1 dimension, but has {dimension_order.ndim}", argument="dimension_order")
 
     # what the inputs already say, rather than asking for it again
     n_dimensions = points.shape[0]
@@ -100,9 +103,7 @@ def build_kd_index(
 
     # Fortran cannot check that shared extents agree; this can
     if dimension_order.shape[0] != n_dimensions:
-        raise ValueError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but "
-            f"'points' implies n_dimensions == {n_dimensions}"
-        )
+        raise _ToxArgumentError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but 'points' implies n_dimensions == {n_dimensions}", argument="dimension_order")
 
     # outputs and work arrays, which the caller never sees
     kd_indices = _np.empty((n_points,), dtype=_np.int32, order='C')
@@ -151,6 +152,9 @@ def build_spherical_kd(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -163,15 +167,15 @@ def build_spherical_kd(
     try:
         points = _np.asfortranarray(points, dtype=_np.float64)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'points' must be an array of np.float64: {_error}") from None
+        raise _ToxArgumentError(f"'points' must be an array of np.float64: {_error}", argument="points") from None
     if points.ndim != 2:
-        raise ValueError(f"'points' must have 2 dimensions, but has {points.ndim}")
+        raise _ToxArgumentError(f"'points' must have 2 dimensions, but has {points.ndim}", argument="points")
     try:
         dimension_order = _np.ascontiguousarray(dimension_order, dtype=_np.int32)
     except (TypeError, ValueError) as _error:
-        raise TypeError(f"'dimension_order' must be an array of np.int32: {_error}") from None
+        raise _ToxArgumentError(f"'dimension_order' must be an array of np.int32: {_error}", argument="dimension_order") from None
     if dimension_order.ndim != 1:
-        raise ValueError(f"'dimension_order' must have 1 dimension, but has {dimension_order.ndim}")
+        raise _ToxArgumentError(f"'dimension_order' must have 1 dimension, but has {dimension_order.ndim}", argument="dimension_order")
 
     # what the inputs already say, rather than asking for it again
     n_dimensions = points.shape[0]
@@ -179,9 +183,7 @@ def build_spherical_kd(
 
     # Fortran cannot check that shared extents agree; this can
     if dimension_order.shape[0] != n_dimensions:
-        raise ValueError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but "
-            f"'points' implies n_dimensions == {n_dimensions}"
-        )
+        raise _ToxArgumentError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but 'points' implies n_dimensions == {n_dimensions}", argument="dimension_order")
 
     # outputs and work arrays, which the caller never sees
     kd_indices = _np.empty((n_points,), dtype=_np.int32, order='C')

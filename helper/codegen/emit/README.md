@@ -207,6 +207,12 @@ else.
   types nobody would name individually is not a usable API. Prefix them, so a host-language
   `except`/`tryCatch` on the base type cannot catch something unrelated.
 - If you use a shim, raise from the **host**, not from C.
+- A refusal of your layer's **own** -- a wrong shape, type or value, found before the call --
+  carries no tox code, because nothing reported one, and is an *input* error all the same, so one
+  handler catches it beside the Fortran's. Python raises `ToxArgumentError(ToxInputError,
+  TypeError, ValueError)` with `code` None, which also keeps an `except ValueError` working; R's
+  `tox_type_error`, `tox_shape_error` and `tox_na_error` inherit `tox_input_error`, `code` NA.
+  Give your host's equivalent the same two properties.
 
 ### 4.8 Documentation
 

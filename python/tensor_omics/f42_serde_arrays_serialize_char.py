@@ -10,7 +10,7 @@ import os as _os
 
 import numpy as _np
 
-from .error_handling import check_err_code as _check_err_code
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
 from .library import load_library as _load_library, nullable as _nullable
 
 _lib = _load_library()
@@ -51,6 +51,9 @@ def serialize_char_helper(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -66,7 +69,7 @@ def serialize_char_helper(
         _arr_width = max(map(len, _arr_bytes), default=0) or 1
         arr = _np.asarray([_b.ljust(_arr_width) for _b in _arr_bytes], dtype="S")
     except TypeError as _error:
-        raise TypeError(f"'arr' must be a sequence of strings: {_error}") from None
+        raise _ToxArgumentError(f"'arr' must be a sequence of strings: {_error}", argument="arr") from None
     filename = _np.array([str(filename).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
