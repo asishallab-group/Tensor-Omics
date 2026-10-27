@@ -310,6 +310,17 @@ class TestTheDocsStateTheStringRules:
         assert TRAILING_BLANKS in PythonEmitter().function(wrapper)
         assert TRAILING_BLANKS in RWrapperEmitter().function(wrapper)
 
+    @pytest.mark.parametrize("procedure, line_before", [
+        ("linkage_clustering", "The maximum valid value is `2`."),
+        ("compute_family_scaling", "The default value is `'robust'`."),
+    ])
+    def test_a_mode_s_sentence_follows_its_text_as_a_string_s_does(self, real_binding,
+                                                                    procedure, line_before):
+        # the skipped mode table left a blank line, which made the sentence a paragraph
+        wrapper = next(w for m in real_binding for w in m if w.stripped_name == procedure)
+        lines = [line.strip() for line in PythonEmitter().function(wrapper).splitlines()]
+        assert lines[lines.index(TRAILING_BLANKS) - 1] == line_before
+
     def test_a_declared_length_is_stated(self):
         python = PythonEmitter().function(numbers())
         assert "At most 8 bytes long in UTF-8: a longer value is refused, not cut short." in python

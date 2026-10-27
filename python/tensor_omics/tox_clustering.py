@@ -294,7 +294,6 @@ def linkage_clustering(
         used algorithm
         The minimum valid value is `0`.
         The maximum valid value is `2`.
-
         Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns

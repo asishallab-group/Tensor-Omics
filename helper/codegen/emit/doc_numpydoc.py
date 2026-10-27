@@ -142,7 +142,13 @@ def _parameter(writer: Writer, argument: CArgument, emitter) -> None:
     suffix = ", " + ", ".join(annotations) if annotations else ""
     writer.line(f"{argument.name} : {python_type_of(argument)}{suffix}")
     with writer.indent():
-        _description(writer, argument.doc, emitter, argument.mode_default)
+        # on a writer of its own, whose render drops a trailing blank: a mode's description
+        # ends where its table was, and the contract's sentence would have stood after a
+        # blank line, a paragraph of its own, where a string's follows its text directly
+        description = Writer()
+        _description(description, argument.doc, emitter, argument.mode_default)
+        if description:
+            writer.block(description.render())
         for note in string_input_notes(argument):
             writer.line(note)
 
