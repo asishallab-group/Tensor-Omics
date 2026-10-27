@@ -344,7 +344,7 @@ The parts a source author does not need, and a generator maintainer does:
   optional arrays never: `build_residual_histograms` read past a 1x1 `neighbor_mask`, an input
   sized `n_selected_<x>` was compared with nothing, and `omics_field_RAP_projection` read a field
   without its target. A message names the array, the axis, where the value came from and the
-  declared shape: `'w' has 1 along axis 0, but 'x' implies n == 3; 'w' has shape (n)`.
+  declared shape: `'w' has 1 along axis 0, but 'x' implies n == 3; 'w' is declared with shape (n)`.
 - **An input axis the declaration computes is given to C and compared there** (#221 A-shape). Only
   Fortran can evaluate `expr(sum(reps_per_tissue), n_genes)` or `velocity(max(0_int32,
   n_timepoints - 1), ...)`, so C is given the axis's actual extent as an argument right after the
@@ -357,9 +357,12 @@ The parts a source author does not need, and a generator maintainer does:
   read past, as the null checks keep a null one from being dereferenced. An array whose shape
   travels in a shape argument and whose declaration counts it too (`arr(n_strings)` beside
   `arr_shape`) gets the same comparison of `product(arr_shape)`, no argument added: a C caller's
-  inconsistent count had the callee write past the view. On main that is three axes in three
-  symbols (`calc_tiss_avg_c`, `compute_acceleration_from_velocity[_trajectory]_c`) and the ten
-  serde helpers' counts. Docs keep showing the declared extents (`CArgument.declared_extents`), a
+  inconsistent count had the callee write past the view. Which arrays get which is the rule's to
+  decide, not a list: on main at #221 it came to three axes in three symbols (`calc_tiss_avg_c`,
+  `compute_acceleration_from_velocity[_trajectory]_c`) and the ten serde helpers' counts. The
+  binding passes the declared shape of every array the C wrapper compares to `check_err_code`
+  (`error_arguments.shapes_of`), so the error says what the array must be: `Array size mismatch
+  (argument 'expr'); 'expr' is declared with shape (sum(reps_per_tissue), n_genes)`. Docs keep showing the declared extents (`CArgument.declared_extents`), a
   module constant by its name.
 - **A function is published as a subroutine, its result right before `ierr`** (#221 B1). Both
   Fortran tiers of a function implementation are subroutines taking the result as an

@@ -693,14 +693,13 @@ class FortranCEmitter:
 
 
 def _shape_comparisons(wrapper: CWrapper):
-    """What `_shape_checks` compares: (array, what C says it holds, what the callee needs)."""
-    for argument in wrapper:
-        if argument.origin is Origin.EXTENT and argument.checked_against is not None:
-            yield wrapper.argument(argument.sizes), argument.name, argument.checked_against
-        elif argument.shape_arg is not None and argument.source is not None:
-            declared = list(argument.source.dimension.extents)
-            if declared and all(extent not in (":", "*") for extent in declared):
-                yield argument, f"product({argument.shape_arg})", _product(declared)
+    """What `_shape_checks` compares (`CWrapper.size_checks`): (array, what C says it holds,
+    what the callee needs)."""
+    for check in wrapper.size_checks:
+        if check.extent is not None:
+            yield check.array, check.extent.name, check.extent.checked_against
+        else:
+            yield check.array, f"product({check.array.shape_arg})", _product(check.declared)
 
 
 def _position_of(argument: CArgument, wrapper: CWrapper) -> int:

@@ -241,7 +241,7 @@ class TestEveryInputAxisIsCompared:
         """)
 
         assert out[:3] == ["ToxArgumentError", None, "points"]
-        assert "has shape (FX_N_AXES, n_points)" in out[3]
+        assert "is declared with shape (FX_N_AXES, n_points)" in out[3]
 
     def test_an_optional_array_is_compared_when_given(self, built):
         out = run_python(built, _PY_REFUSED + """
@@ -274,8 +274,10 @@ class TestEveryInputAxisIsCompared:
                               tox.error_handling.ERR_SIZE_MISMATCH]))
         """)
 
-        name, code, argument, _ = out[0]
+        name, code, argument, message = out[0]
         assert (name, code, argument) == ("ToxInputError", out[2], "x")
+        # a code carries no text: the binding adds what the declaration says x must be
+        assert message.endswith("(argument 'x'); 'x' is declared with shape (n + 1)")
         assert out[1] == 108.0
 
     def test_an_axis_reading_another_array_s_contents(self, built):
@@ -285,6 +287,7 @@ class TestEveryInputAxisIsCompared:
         """)
 
         assert out[0][:3] == ["ToxInputError", 206, "values"]
+        assert out[0][3].endswith("'values' is declared with shape (sum(group_sizes))")
         assert out[1] == [3.0, 4.0]
 
     def test_an_optional_axis_the_declaration_computes(self, built):
@@ -322,6 +325,14 @@ class TestEveryInputAxisIsCompared:
             "tox_input_error", "206", "x",
             "2", "2", "2", "6", "7", "108", "3", "4", "2", "5",
         ]
+
+    def test_r_states_the_declared_shape_of_a_size_mismatch(self, built):
+        out = run_r(built, """
+            cat(tryCatch(grouped_sums(c(2L, 2L), c(1, 2)),
+                         tox_input_error = function(e) conditionMessage(e)), "\\n")
+        """)
+
+        assert " ".join(out).endswith("'values' is declared with shape (sum(group_sizes))")
 
     def test_a_null_array_an_extent_reads_is_reported_not_dereferenced(self, built):
         # the C wrapper used to declare `values(sum(group_sizes))`, evaluated on entry -- before

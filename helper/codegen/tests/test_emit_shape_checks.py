@@ -107,8 +107,8 @@ class TestBothBindingsWriteIt:
 
         assert "if x.shape[1] != 2:" in text
         assert "if w is not None and w.shape[0] != n:" in text
-        assert "but its declared shape fixes it at {2}; 'x' has shape (n, 2)" in text
-        assert "but 'x' implies n == {n}; 'w' has shape (n)" in text
+        assert "but its declared shape fixes it at {2}; 'x' is declared with shape (n, 2)" in text
+        assert "but 'x' implies n == {n}; 'w' is declared with shape (n)" in text
 
     def test_r(self, wrapper):
         text = RWrapperEmitter().function(wrapper)

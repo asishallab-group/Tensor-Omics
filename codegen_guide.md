@@ -379,7 +379,7 @@ constant (`fields(n_dims, 2, n_fields)`) is compared by Python and R, an optiona
 is given. An axis computed from other arguments (`expr(sum(reps_per_tissue), n_genes)`,
 `velocity(max(0_int32, n_timepoints - 1))`) only Fortran can evaluate: C is given its actual
 extent, which Python and R pass for you, and the C wrapper compares it with your declaration,
-reporting `ERR_SIZE_MISMATCH`. Such an expression may read only arguments the C wrapper holds as
+reporting `ERR_SIZE_MISMATCH` with your declared shape in the message. Such an expression may read only arguments the C wrapper holds as
 they are -- not an optional, not an `intent(out)`, not a string, a mode or a default `logical`,
 and not an array whose own extent is computed too (Section 8). The documentation shows the
 extents as you declared them. A Fortran caller of `foo` is not checked: its arrays are

@@ -11,13 +11,13 @@ user can get wrong is caught here, in their language, with their argument names.
 
 from __future__ import annotations
 
-from .error_arguments import sources_of
+from .error_arguments import shapes_of, sources_of
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
 from .doc_literals import render as _render
 from .doc_roxygen import render_roxygen
-from .shape_checks import Position, axes_of, declared_shape, reason, shape_checks
+from .shape_checks import Position, declared_shape, extent_provider, reason, shape_checks
 
 
 class RWrapperEmitter:
@@ -123,18 +123,11 @@ class RWrapperEmitter:
         argument = wrapper.argument(consumer_arg)
         roles = argument.source.roles if argument and argument.source else None
         if roles is not None and roles.is_extent:
-            for owner in roles.extent_of:
-                c_owner = wrapper.argument(owner.name)
-                if c_owner is not None and c_owner.is_temporary:
-                    # a work array the wrapper allocates: not in scope, and sized *from*
-                    # this extent rather than the other way round
-                    continue
-                if c_owner is not None and c_owner.intent.is_input and not c_owner.optional:
-                    axes = axes_of(consumer_arg, c_owner)
-                    if axes:
-                        # the first axis is where the value is read from; any others are
-                        # what `_check_shapes` then verifies against it
-                        return self._extent_expression(c_owner, axes[0])
+            # the input it is read off, as everywhere (`shape_checks.extent_provider`); the
+            # other inputs carrying it are what `_check_shapes` verifies against it
+            position = extent_provider(argument, wrapper)
+            if position is not None:
+                return self._position(position)
         if roles is not None and roles.is_mask_count:
             return f"sum({roles.mask_count_of.name})"
         return consumer_arg
@@ -330,10 +323,17 @@ class RWrapperEmitter:
         if any(sources):
             rendered = ", ".join(f'"{s}"' if s else "NA_character_" for s in sources)
             writer.line(f".sources <- c({rendered})")
-        if any(sources_of(wrapper.procedure)):
-            writer.line(".status <- check_err_code(.result$ierr, .arguments, .sources)")
-        else:
-            writer.line(".status <- check_err_code(.result$ierr, .arguments)")
+        # and the declared shape of an array the C wrapper compares, which its error states
+        shapes = shapes_of(wrapper, "r")
+        if any(shapes):
+            rendered = ", ".join(f'"{s}"' if s else "NA_character_" for s in shapes)
+            writer.line(f".shapes <- c({rendered})")
+        tables = [".arguments"]
+        if any(sources):
+            tables.append(".sources")
+        if any(shapes):
+            tables.append("shapes = .shapes")
+        writer.line(f".status <- check_err_code(.result$ierr, {', '.join(tables)})")
         writer.blank()
 
     def _return(self, writer: Writer, wrapper: CWrapper) -> None:

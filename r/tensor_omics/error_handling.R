@@ -197,7 +197,7 @@ ERR_UNKNOWN <- 9999L
 .tox_shape_error <- function(argument, dimension, actual, reason, expected, shape) {
     where <- if (is.na(dimension)) "elements" else sprintf("along dimension %d", dimension)
     .tox_argument_error(
-        sprintf("'%s' has %d %s, but %s%d; '%s' has shape (%s)",
+        sprintf("'%s' has %d %s, but %s%d; '%s' is declared with shape (%s)",
         argument, actual, where, reason, expected, argument, shape),
         "tox_shape_error", argument
     )
@@ -212,10 +212,14 @@ ERR_UNKNOWN <- 9999L
 #'   caller's own.
 #' @param arguments the wrapped procedure's argument names, in order, so the
 #'   message can name the offending one
+#' @param shapes positionally alongside `arguments`: the declared shape of an array
+#'   whose size the C wrapper compares, which the message of ERR_SIZE_MISMATCH
+#'   then states. NA elsewhere.
 #' @return invisibly, the name of the status code if the call reported one;
 #'   status codes are outcomes, not failures, and never raise
 #' @keywords internal
-check_err_code <- function(ierr, arguments = character(), sources = character()) {
+check_err_code <- function(ierr, arguments = character(), sources = character(),
+                                    shapes = character()) {
     code <- ierr %% ARG_POS_FACTOR
     if (code == 0L) return(invisible(NULL))
 
@@ -241,6 +245,10 @@ check_err_code <- function(ierr, arguments = character(), sources = character())
             } else {
                 message <- sprintf("%s (argument '%s')", message, argument)
             }
+            shape <- if (arg_pos <= length(shapes)) shapes[[arg_pos]] else NA_character_
+            if (!is.na(shape) && code == 206L)
+                # what the array must be, which no code can carry
+                message <- sprintf("%s; '%s' is declared with shape (%s)", message, arguments[[arg_pos]], shape)
         } else {
             message <- sprintf("%s (argument %d)", message, arg_pos)
         }

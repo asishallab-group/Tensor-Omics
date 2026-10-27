@@ -261,6 +261,55 @@ class TestAParseThatFailed:
         assert result.files == []
 
 
+def _planted(tmp_path, declarations: str):
+    """A one-procedure export, `fx_p`, whose dummies are `declarations` (each with its doc)."""
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "fx_planted.F90").write_text(
+        "#include <src/macros.h>\n"
+        "!> summary: a module\n"
+        "module fx_planted\n"
+        "    use, intrinsic :: iso_fortran_env, only: int32, real64\n"
+        "    M_IMPLICIT_NONE\n"
+        "contains\n"
+        "    !> M_EXPORT_C\n"
+        "    !| summary: p\n"
+        "    !| author: A\n"
+        "    subroutine fx_p(n, label, x, ierr)\n"
+        "        integer(int32), intent(in) :: n\n"
+        "            !! a count\n"
+        "        character(len=*), intent(in) :: label\n"
+        "            !! a label\n"
+        f"{declarations}"
+        "        integer(int32), intent(out) :: ierr\n"
+        "            !! Error code\n"
+        "    end subroutine fx_p\n"
+        "end module fx_planted\n"
+    )
+    return generate(Paths(root=REPO_ROOT, src_dir=src))
+
+
+class TestTheExtentsTheBindingsComputeAreChecked:
+    """`generate` runs `check_binding_extents`, not only the unit that tests it (#221 B11)."""
+
+    def test_an_output_outside_the_grammar_is_refused(self, tmp_path):
+        result = _planted(tmp_path, "        real(real64), intent(out) :: x(mod(n, 3) + 1)\n"
+                                    "            !! sized by what Python and C compute apart\n")
+
+        assert not result.ok and result.files == []
+        assert any("'x' of 'fx_p' is sized by 'mod(n,3)+1', which Python and R cannot compute"
+                   in error.message for error in result.diagnostics.errors)
+
+    def test_a_computed_input_axis_the_c_wrapper_cannot_check_is_refused_once(self, tmp_path):
+        # `c_abi` refuses it; `check_binding_extents` used to restate it as ungrammatical
+        result = _planted(tmp_path, "        real(real64), intent(in) :: x(len(label))\n"
+                                    "            !! sized by a string the C wrapper converts\n")
+
+        about_x = [e.message for e in result.diagnostics.errors if "'x' of 'fx_p'" in e.message]
+        assert len(about_x) == 1, about_x
+        assert "which its C wrapper cannot check" in about_x[0]
+
+
 class TestDeterminism:
     """The same sources must produce the same bytes, every run.
 

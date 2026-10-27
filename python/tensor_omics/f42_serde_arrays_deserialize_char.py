@@ -31,6 +31,8 @@ _lib.deserialize_char_helper_c.argtypes = (
 _DESERIALIZE_CHAR_HELPER_ARGUMENTS = ("arr", "n_strings", "strlen", "arr_shape", "filename", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _DESERIALIZE_CHAR_HELPER_ARGUMENT_SOURCES = (None, "arr", None, "arr", None, None,)
+#: For an array the C wrapper compares with its declaration, that shape
+_DESERIALIZE_CHAR_HELPER_ARGUMENT_SHAPES = ("n_strings", None, None, None, None, None,)
 
 def deserialize_char_helper(
         filename,
@@ -95,6 +97,6 @@ def deserialize_char_helper(
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _DESERIALIZE_CHAR_HELPER_ARGUMENTS, _DESERIALIZE_CHAR_HELPER_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DESERIALIZE_CHAR_HELPER_ARGUMENTS, _DESERIALIZE_CHAR_HELPER_ARGUMENT_SOURCES, shapes=_DESERIALIZE_CHAR_HELPER_ARGUMENT_SHAPES)
 
     return _np.asarray([_s.decode().rstrip(' ') for _s in arr], dtype=str).reshape(tuple(arr_shape), order='F')

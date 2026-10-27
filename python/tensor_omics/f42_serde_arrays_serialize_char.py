@@ -31,6 +31,8 @@ _lib.serialize_char_helper_c.argtypes = (
 _SERIALIZE_CHAR_HELPER_ARGUMENTS = ("arr", "n_strings", "arr_shape", "filename", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _SERIALIZE_CHAR_HELPER_ARGUMENT_SOURCES = (None, "arr", "arr", None, None,)
+#: For an array the C wrapper compares with its declaration, that shape
+_SERIALIZE_CHAR_HELPER_ARGUMENT_SHAPES = ("n_strings", None, None, None, None,)
 
 def serialize_char_helper(
         arr,
@@ -92,6 +94,6 @@ def serialize_char_helper(
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _SERIALIZE_CHAR_HELPER_ARGUMENTS, _SERIALIZE_CHAR_HELPER_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _SERIALIZE_CHAR_HELPER_ARGUMENTS, _SERIALIZE_CHAR_HELPER_ARGUMENT_SOURCES, shapes=_SERIALIZE_CHAR_HELPER_ARGUMENT_SHAPES)
 
     return None

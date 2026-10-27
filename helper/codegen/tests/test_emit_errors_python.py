@@ -126,6 +126,39 @@ class TestArgumentPositions:
         assert "(argument" not in str(excinfo.value)
 
 
+@pytest.fixture(scope="module")
+def sized(tmp_path_factory):
+    """An error module whose catalogue has ERR_SIZE_MISMATCH, imported."""
+    bag = DiagnosticBag()
+    source = b.module("tox_errors", parameters=(
+        code("ERR_INVALID_INPUT", 201, "invalid input arguments"),
+        code("ERR_SIZE_MISMATCH", 206, "Array size mismatch"),
+    ))
+    path = tmp_path_factory.mktemp("sized") / "error_handling.py"
+    path.write_text(PythonErrorEmitter(ErrorCatalogue.from_module(source, bag)).module())
+    spec = importlib.util.spec_from_file_location("error_handling_sized", path)
+    emitted = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(emitted)
+    return emitted
+
+
+class TestASizeMismatchStatesTheDeclaredShape:
+    """The C wrapper's ERR_SIZE_MISMATCH carries no text; the binding knows the declaration (#221)."""
+
+    def test_the_shape_follows_the_argument(self, sized):
+        with pytest.raises(sized.ToxInputError) as caught:
+            sized.check_err_code(10000 * 2 + 206, ("n", "x"), shapes=(None, "n + 1"))
+
+        assert str(caught.value) == (
+            "Array size mismatch (argument 'x'); 'x' is declared with shape (n + 1)")
+
+    def test_another_code_at_that_argument_is_left_alone(self, sized):
+        with pytest.raises(sized.ToxInputError) as caught:
+            sized.check_err_code(10000 * 2 + 201, ("n", "x"), shapes=(None, "n + 1"))
+
+        assert str(caught.value) == "invalid input arguments (argument 'x')"
+
+
 class TestExceptionHierarchy:
     @pytest.mark.parametrize(
         "code, expected",

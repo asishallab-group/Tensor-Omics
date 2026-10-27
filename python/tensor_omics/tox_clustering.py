@@ -143,7 +143,7 @@ def cluster_factor_trajectories_k_means(
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if centroids.shape[0] != n_factors:
-        raise _ToxArgumentError(f"'centroids' has {centroids.shape[0]} along axis 0, but 'trajectories' implies n_factors == {n_factors}; 'centroids' has shape (n_factors, n_clusters)", argument="centroids")
+        raise _ToxArgumentError(f"'centroids' has {centroids.shape[0]} along axis 0, but 'trajectories' implies n_factors == {n_factors}; 'centroids' is declared with shape (n_factors, n_clusters)", argument="centroids")
 
     # outputs and work arrays, which the caller never sees
     labels = _np.empty((n_samples * n_timepoints,), dtype=_np.int32, order='C')
@@ -246,7 +246,7 @@ def k_means_clustering(
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if centroids.shape[0] != n_dims:
-        raise _ToxArgumentError(f"'centroids' has {centroids.shape[0]} along axis 0, but 'data_points' implies n_dims == {n_dims}; 'centroids' has shape (n_dims, n_clusters)", argument="centroids")
+        raise _ToxArgumentError(f"'centroids' has {centroids.shape[0]} along axis 0, but 'data_points' implies n_dims == {n_dims}; 'centroids' is declared with shape (n_dims, n_clusters)", argument="centroids")
 
     # outputs and work arrays, which the caller never sees
     labels = _np.empty((n_points,), dtype=_np.int32, order='C')
@@ -347,7 +347,7 @@ def linkage_clustering(
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if distances.shape[1] != n_points:
-        raise _ToxArgumentError(f"'distances' has {distances.shape[1]} along axis 1, but 'distances' implies n_points == {n_points}; 'distances' has shape (n_points, n_points)", argument="distances")
+        raise _ToxArgumentError(f"'distances' has {distances.shape[1]} along axis 1, but 'distances' implies n_points == {n_points}; 'distances' is declared with shape (n_points, n_points)", argument="distances")
 
     # outputs and work arrays, which the caller never sees
     merge_i = _np.empty((n_points - 1,), dtype=_np.int32, order='C')

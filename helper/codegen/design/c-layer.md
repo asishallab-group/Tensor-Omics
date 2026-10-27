@@ -162,9 +162,12 @@ the array they are handed before the call (`language-layers.md`). For an axis th
 1. **C is given the actual extent** of that axis, as an argument right after the array
    (`n_expr_elements_dim_1`, the assumed-shape extent's name and origin), which Python and the R
    shim read off the array exactly as they read an assumed-shape one. That is the whole C ABI
-   change: three arguments in three symbols on main (`calc_tiss_avg_c`,
-   `compute_acceleration_from_velocity_c`, `compute_acceleration_from_velocity_trajectory_c`). A
-   direct C caller passes the extent of the buffer it has; no header is published, so a caller
+   change, and the rule decides its size: every non-`tmp_` input axis declared by an expression
+   over arguments gets one. On main at #221 that came to three arguments in three symbols
+   (`calc_tiss_avg_c`, `compute_acceleration_from_velocity_c`,
+   `compute_acceleration_from_velocity_trajectory_c`) -- a count, not a limit: a branch declaring
+   another such axis gets another (#182's `centroids(n_factors*n_timepoints, ...)`). A direct
+   C caller passes the extent of the buffer it has; no header is published, so a caller
    written against the old prototype still links and must be updated by hand.
 2. **The wrapper declares the array with it**, and counts it in `M_CHECK_ARRAY_NON_NULL`. The
    declared expression in a `bind(C)` dummy's declaration is evaluated on entry: `sum(reps_per_tissue)`
@@ -174,7 +177,10 @@ the array they are handed before the call (`language-layers.md`). For an axis th
 3. **After every null check, it compares** the passed extent with the declaration, evaluated in
    Fortran, and reports `ERR_SIZE_MISMATCH` at the array's position. An array the expression reads
    has been null-checked by then, or is empty, and reading an empty one reads nothing. An optional
-   array is compared only when present: C passes 0 for an absent one's extent.
+   array is compared only when present: C passes 0 for an absent one's extent. A code carries no
+   text, so Python and R complete the message with the declared shape, which they hand
+   `check_err_code` beside the argument names (`CWrapper.size_checks` decides for both sides
+   which arrays): `'expr' is declared with shape (sum(reps_per_tissue), n_genes)`.
 4. **Not under `NO_INPUT_VALIDATION`.** That directive drops checks of *values* for a caller who
    knows its data; this one keeps a short buffer from being read past, which no knowledge of the
    values makes safe -- the same reason the null checks stay.

@@ -236,7 +236,7 @@ _EXCEPTIONS = {
 _STATUSES = {
 }
 
-def check_err_code(ierr, arguments=(), sources=()):
+def check_err_code(ierr, arguments=(), sources=(), shapes=()):
     """Raise if `ierr` reports an error.
 
     Parameters
@@ -252,6 +252,10 @@ def check_err_code(ierr, arguments=(), sources=()):
         passed, where the Fortran one was derived from it. An extent read off
         an array names that array here, so the message can blame something the
         caller wrote. None where the Fortran argument is the caller's own.
+    shapes : sequence of str or None, optional
+        Positionally alongside `arguments`: the declared shape of an array
+        whose size the C wrapper compares with its declaration, which the
+        message of ERR_SIZE_MISMATCH then states. None elsewhere.
 
     Returns
     -------
@@ -279,6 +283,7 @@ def check_err_code(ierr, arguments=(), sources=()):
         if arg_pos <= len(arguments):
             argument = arguments[arg_pos - 1]
             source = sources[arg_pos - 1] if arg_pos <= len(sources) else None
+            shape = shapes[arg_pos - 1] if arg_pos <= len(shapes) else None
             if source:
                 # the caller's word first, then the Fortran argument it
                 # was derived from, which is what the signature calls it
@@ -286,6 +291,9 @@ def check_err_code(ierr, arguments=(), sources=()):
                 argument = source
             else:
                 message = f"{message} (argument '{argument}')"
+            if shape and code == 206:
+                # what the array must be, which no code can carry
+                message = f"{message}; '{arguments[arg_pos - 1]}' is declared with shape ({shape})"
         else:
             message = f"{message} (argument {arg_pos})"
 

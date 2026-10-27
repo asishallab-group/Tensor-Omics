@@ -147,17 +147,17 @@ def gjct_permutation_test(
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if neighborhood_residuals_S2.shape[1] != n_neighbors:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighborhood_residuals_S2' has shape (n_reps_S2, n_neighbors, n_points)", argument="neighborhood_residuals_S2")
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighborhood_residuals_S2' is declared with shape (n_reps_S2, n_neighbors, n_points)", argument="neighborhood_residuals_S2")
     if neighborhood_residuals_S2.shape[2] != n_points:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighborhood_residuals_S2' has shape (n_reps_S2, n_neighbors, n_points)", argument="neighborhood_residuals_S2")
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighborhood_residuals_S2' is declared with shape (n_reps_S2, n_neighbors, n_points)", argument="neighborhood_residuals_S2")
     if neighbor_mask_S1 is not None and neighbor_mask_S1.shape[0] != n_neighbors:
-        raise _ToxArgumentError(f"'neighbor_mask_S1' has {neighbor_mask_S1.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighbor_mask_S1' has shape (n_neighbors, n_points)", argument="neighbor_mask_S1")
+        raise _ToxArgumentError(f"'neighbor_mask_S1' has {neighbor_mask_S1.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighbor_mask_S1' is declared with shape (n_neighbors, n_points)", argument="neighbor_mask_S1")
     if neighbor_mask_S1 is not None and neighbor_mask_S1.shape[1] != n_points:
-        raise _ToxArgumentError(f"'neighbor_mask_S1' has {neighbor_mask_S1.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighbor_mask_S1' has shape (n_neighbors, n_points)", argument="neighbor_mask_S1")
+        raise _ToxArgumentError(f"'neighbor_mask_S1' has {neighbor_mask_S1.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighbor_mask_S1' is declared with shape (n_neighbors, n_points)", argument="neighbor_mask_S1")
     if neighbor_mask_S2 is not None and neighbor_mask_S2.shape[0] != n_neighbors:
-        raise _ToxArgumentError(f"'neighbor_mask_S2' has {neighbor_mask_S2.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighbor_mask_S2' has shape (n_neighbors, n_points)", argument="neighbor_mask_S2")
+        raise _ToxArgumentError(f"'neighbor_mask_S2' has {neighbor_mask_S2.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighbor_mask_S2' is declared with shape (n_neighbors, n_points)", argument="neighbor_mask_S2")
     if neighbor_mask_S2 is not None and neighbor_mask_S2.shape[1] != n_points:
-        raise _ToxArgumentError(f"'neighbor_mask_S2' has {neighbor_mask_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighbor_mask_S2' has shape (n_neighbors, n_points)", argument="neighbor_mask_S2")
+        raise _ToxArgumentError(f"'neighbor_mask_S2' has {neighbor_mask_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighbor_mask_S2' is declared with shape (n_neighbors, n_points)", argument="neighbor_mask_S2")
 
     # outputs and work arrays, which the caller never sees
     jsd_null = _np.empty((n_permutations,), dtype=_np.float64, order='C')

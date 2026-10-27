@@ -181,7 +181,8 @@ calc_tiss_avg <- function(reps_per_tissue, expr) {
     .result <- .Call("calc_tiss_avg_call", reps_per_tissue, expr)
     .arguments <- c("n_genes", "n_tissues", "reps_per_tissue", "expr", "tissue_averages", "ierr")
     .sources <- c("expr", "reps_per_tissue", NA_character_, NA_character_, NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
+    .shapes <- c(NA_character_, NA_character_, NA_character_, "sum(reps_per_tissue), n_genes", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources, shapes = .shapes)
 
     .result$tissue_averages
 }

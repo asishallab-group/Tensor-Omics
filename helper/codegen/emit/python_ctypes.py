@@ -32,7 +32,7 @@ from ..names import (
     PYTHON_THIRD_PARTY_IMPORTS,
 )
 from ..render import Writer
-from .error_arguments import sources_of
+from .error_arguments import shapes_of, sources_of
 from .doc_literals import render as _render
 from .doc_numpydoc import _description, render_docstring
 from .shape_checks import Position, declared_shape, extent_provider, reason, shape_checks
@@ -351,6 +351,15 @@ class PythonEmitter:
             writer.line("#: For a derived argument, the one the caller passed it in")
             writer.line(
                 f"_{wrapper.stripped_name.upper()}_ARGUMENT_SOURCES = "
+                f"({rendered}{',' if rendered else ''})"
+            )
+        # and the declared shape of an array the C wrapper compares, which its error states
+        shapes = shapes_of(wrapper, "python")
+        if any(shapes):
+            rendered = ", ".join(f'"{s}"' if s else "None" for s in shapes)
+            writer.line("#: For an array the C wrapper compares with its declaration, that shape")
+            writer.line(
+                f"_{wrapper.stripped_name.upper()}_ARGUMENT_SHAPES = "
                 f"({rendered}{',' if rendered else ''})"
             )
         return writer.render()
@@ -904,7 +913,7 @@ class PythonEmitter:
             with lines.indent():
                 lines.line(_refusal(
                     f'f"\'{array.name}\' has {{{actual}}} {where}, but {reason(expected)}'
-                    f'{{{value}}}; \'{array.name}\' has shape ({shape})"', array.name))
+                    f'{{{value}}}; \'{array.name}\' is declared with shape ({shape})"', array.name))
         if lines:
             writer.line("# Fortran cannot check that an array has the shape it is declared with; this can")
             writer.extend(lines)
@@ -986,12 +995,13 @@ class PythonEmitter:
 
     def _check_error(self, writer: Writer, wrapper: CWrapper) -> None:
         error = wrapper.error_argument
-        arguments = f"_{wrapper.stripped_name.upper()}_ARGUMENTS"
+        prefix = f"_{wrapper.stripped_name.upper()}"
+        tables = [f"{prefix}_ARGUMENTS"]
         if any(sources_of(wrapper.procedure)):
-            sources = f"_{wrapper.stripped_name.upper()}_ARGUMENT_SOURCES"
-            writer.line(f"{PYTHON_CHECK_ERR_CODE}({error.name}.value, {arguments}, {sources})")
-        else:
-            writer.line(f"{PYTHON_CHECK_ERR_CODE}({error.name}.value, {arguments})")
+            tables.append(f"{prefix}_ARGUMENT_SOURCES")
+        if any(shapes_of(wrapper, "python")):
+            tables.append(f"shapes={prefix}_ARGUMENT_SHAPES")
+        writer.line(f"{PYTHON_CHECK_ERR_CODE}({error.name}.value, {', '.join(tables)})")
         writer.blank()
 
     def _freeze_outputs(self, writer: Writer, wrapper: CWrapper) -> None:

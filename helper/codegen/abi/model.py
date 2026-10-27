@@ -142,6 +142,22 @@ class CArgument:
 
 
 @dataclass(frozen=True)
+class SizeCheck:
+    """A comparison the C wrapper makes before the call, reporting ERR_SIZE_MISMATCH (#221).
+
+    One place says which arrays the C wrapper compares, so the wrapper that compares them and the
+    bindings that explain the error (`CWrapper.size_checks`) cannot disagree.
+    """
+
+    array: CArgument
+    #: the extent C passed for an axis the declaration computes, compared with its expression;
+    #: None for a shaped array, whose element count `product(<x>_shape)` is compared
+    extent: CArgument | None
+    #: the declared extents of a shaped array, which its element count must be the product of
+    declared: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class SizeConstant:
     """A module constant an extent or a character length names (`x(N_AXES, n)`)."""
 
@@ -201,6 +217,24 @@ class CWrapper:
             for argument in self.arguments
         )
         return replace(self, arguments=arguments)
+
+    @property
+    def size_checks(self) -> tuple[SizeCheck, ...]:
+        """What the C wrapper compares with the callee's declaration, in argument order.
+
+        An axis the declaration computes, whose actual extent C passes (`checked_against`); and
+        an array whose shape travels in a shape argument while its declaration counts it too
+        (`arr(n_strings)` beside `arr_shape`), whose view holds `product(arr_shape)` elements.
+        """
+        checks = []
+        for argument in self.arguments:
+            if argument.origin is Origin.EXTENT and argument.checked_against is not None:
+                checks.append(SizeCheck(self.argument(argument.sizes), argument))
+            elif argument.shape_arg is not None and argument.source is not None:
+                declared = tuple(argument.source.dimension.extents)
+                if declared and all(extent not in (":", "*") for extent in declared):
+                    checks.append(SizeCheck(argument, None, declared))
+        return tuple(checks)
 
     @property
     def module_name(self) -> str:

@@ -200,6 +200,9 @@ else.
   that order and index it.
 - Pass the *source* of each derived argument alongside, so the message blames something the
   caller actually wrote: `(argument 'vec1', via 'n_elements')`.
+- Pass the declared *shape* of each array the C wrapper compares (`error_arguments.shapes_of`),
+  so its `ERR_SIZE_MISMATCH` says what the array must be: `'expr' is declared with shape
+  (sum(reps_per_tissue), n_genes)`.
 - `ERR_*` codes raise; `STAT_*` codes are outcomes and never do.
 - Generate a per-language error module from the catalogue (`errors_python.py`, `errors_r.py` are
   the templates): a decode function, the messages taken from the Fortran documentation, and one

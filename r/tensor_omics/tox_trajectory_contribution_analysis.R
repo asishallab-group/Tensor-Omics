@@ -204,7 +204,8 @@ compute_acceleration_from_velocity_trajectory <- function(velocity, n_timepoints
     n_timepoints <- .tox_as_integer_scalar(n_timepoints, "n_timepoints")
     .result <- .Call("compute_acceleration_from_velocity_trajectory_call", velocity, n_timepoints)
     .arguments <- c("velocity", "acceleration", "n_timepoints", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .shapes <- c("max(0, n_timepoints - 1)", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, shapes = .shapes)
 
     .result$acceleration
 }
@@ -242,7 +243,8 @@ compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
     .result <- .Call("compute_acceleration_from_velocity_call", velocity, n_timepoints)
     .arguments <- c("velocity", "acceleration", "n_factors", "n_samples", "n_timepoints", "ierr")
     .sources <- c(NA_character_, NA_character_, "velocity", "velocity", NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
+    .shapes <- c("max(0, n_timepoints - 1), n_factors, n_samples", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources, shapes = .shapes)
 
     .result$acceleration
 }

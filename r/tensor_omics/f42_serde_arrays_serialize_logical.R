@@ -15,7 +15,8 @@ serialize_logical_helper <- function(arr, filename) {
     .result <- .Call("serialize_logical_helper_call", arr, filename)
     .arguments <- c("arr", "n_elements", "arr_shape", "filename", "ierr")
     .sources <- c(NA_character_, "arr", "arr", NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
+    .shapes <- c("n_elements", NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources, shapes = .shapes)
 
     invisible(NULL)
 }

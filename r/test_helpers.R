@@ -125,7 +125,7 @@ assert_error <- function(expr, msg = "Expected an error", code = NULL) {
 
   if (is.null(code)) {
     if (!is.na(actual))
-      stop(msg, ": expected an error that is not a tensor-omics error, but got ",
+      stop(msg, ": expected an error that carries no tensor-omics code, but got ",
            .tox_code_label(actual), ": ", conditionMessage(err), call. = FALSE)
   } else if (is.na(actual) || actual != as.integer(code)) {
     got <- if (is.na(actual)) sprintf("<%s>", paste(class(err), collapse = ", "))

@@ -138,6 +138,8 @@ _lib.compute_acceleration_from_velocity_trajectory_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_ACCELERATION_FROM_VELOCITY_TRAJECTORY_ARGUMENTS = ("velocity", "acceleration", "n_timepoints", "ierr",)
+#: For an array the C wrapper compares with its declaration, that shape
+_COMPUTE_ACCELERATION_FROM_VELOCITY_TRAJECTORY_ARGUMENT_SHAPES = ("max(0, n_timepoints - 1)", None, None, None,)
 
 _lib.compute_velocity_trajectories_c.restype = None
 _lib.compute_velocity_trajectories_c.argtypes = (
@@ -169,6 +171,8 @@ _lib.compute_acceleration_from_velocity_c.argtypes = (
 _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENTS = ("velocity", "acceleration", "n_factors", "n_samples", "n_timepoints", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENT_SOURCES = (None, None, "velocity", "velocity", None, None,)
+#: For an array the C wrapper compares with its declaration, that shape
+_COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENT_SHAPES = ("max(0, n_timepoints - 1), n_factors, n_samples", None, None, None, None, None,)
 
 _lib.compute_velocity_acceleration_contributions_c.restype = None
 _lib.compute_velocity_acceleration_contributions_c.argtypes = (
@@ -365,9 +369,9 @@ def compute_p_values(
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if local_contributions_perm_test.shape[0] != n_timepoints:
-        raise _ToxArgumentError(f"'local_contributions_perm_test' has {local_contributions_perm_test.shape[0]} along axis 0, but 'local_contributions_observed' implies n_timepoints == {n_timepoints}; 'local_contributions_perm_test' has shape (n_timepoints, n_permutations)", argument="local_contributions_perm_test")
+        raise _ToxArgumentError(f"'local_contributions_perm_test' has {local_contributions_perm_test.shape[0]} along axis 0, but 'local_contributions_observed' implies n_timepoints == {n_timepoints}; 'local_contributions_perm_test' is declared with shape (n_timepoints, n_permutations)", argument="local_contributions_perm_test")
     if total_contributions_perm_test.shape[0] != n_permutations:
-        raise _ToxArgumentError(f"'total_contributions_perm_test' has {total_contributions_perm_test.shape[0]} along axis 0, but 'local_contributions_perm_test' implies n_permutations == {n_permutations}; 'total_contributions_perm_test' has shape (n_permutations)", argument="total_contributions_perm_test")
+        raise _ToxArgumentError(f"'total_contributions_perm_test' has {total_contributions_perm_test.shape[0]} along axis 0, but 'local_contributions_perm_test' implies n_permutations == {n_permutations}; 'total_contributions_perm_test' is declared with shape (n_permutations)", argument="total_contributions_perm_test")
 
     # outputs and work arrays, which the caller never sees
     local_p_values = _np.empty((n_timepoints,), dtype=_np.float64, order='C')
@@ -455,7 +459,7 @@ def compute_contributions(
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if dependent.shape[0] != n_dims:
-        raise _ToxArgumentError(f"'dependent' has {dependent.shape[0]} along axis 0, but 'factor' implies n_dims == {n_dims}; 'dependent' has shape (n_dims)", argument="dependent")
+        raise _ToxArgumentError(f"'dependent' has {dependent.shape[0]} along axis 0, but 'factor' implies n_dims == {n_dims}; 'dependent' is declared with shape (n_dims)", argument="dependent")
 
     # outputs and work arrays, which the caller never sees
     local_contributions = _np.empty((n_dims,), dtype=_np.float64, order='C')
@@ -646,7 +650,7 @@ def compute_baselines_factor_dependent(
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if dependent.shape[0] != n_timepoints:
-        raise _ToxArgumentError(f"'dependent' has {dependent.shape[0]} along axis 0, but 'factor' implies n_timepoints == {n_timepoints}; 'dependent' has shape (n_timepoints)", argument="dependent")
+        raise _ToxArgumentError(f"'dependent' has {dependent.shape[0]} along axis 0, but 'factor' implies n_timepoints == {n_timepoints}; 'dependent' is declared with shape (n_timepoints)", argument="dependent")
 
     # outputs and work arrays, which the caller never sees
     factor_baseline = _ctypes.c_double(0)
@@ -783,7 +787,7 @@ def compute_acceleration_from_velocity_trajectory(
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _COMPUTE_ACCELERATION_FROM_VELOCITY_TRAJECTORY_ARGUMENTS)
+    _check_err_code(ierr.value, _COMPUTE_ACCELERATION_FROM_VELOCITY_TRAJECTORY_ARGUMENTS, shapes=_COMPUTE_ACCELERATION_FROM_VELOCITY_TRAJECTORY_ARGUMENT_SHAPES)
 
     # a result is a value: modify a copy, not this
     acceleration.flags.writeable = False
@@ -911,7 +915,7 @@ def compute_acceleration_from_velocity(
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENTS, _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENTS, _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENT_SOURCES, shapes=_COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENT_SHAPES)
 
     # a result is a value: modify a copy, not this
     acceleration.flags.writeable = False

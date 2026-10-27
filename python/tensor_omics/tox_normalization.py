@@ -129,6 +129,8 @@ _lib.calc_tiss_avg_c.argtypes = (
 _CALC_TISS_AVG_ARGUMENTS = ("n_genes", "n_tissues", "reps_per_tissue", "expr", "tissue_averages", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _CALC_TISS_AVG_ARGUMENT_SOURCES = ("expr", "reps_per_tissue", None, None, None, None,)
+#: For an array the C wrapper compares with its declaration, that shape
+_CALC_TISS_AVG_ARGUMENT_SHAPES = (None, None, None, "sum(reps_per_tissue), n_genes", None, None,)
 
 _lib.calc_fchange_c.restype = None
 _lib.calc_fchange_c.argtypes = (
@@ -644,7 +646,7 @@ def calc_tiss_avg(
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _CALC_TISS_AVG_ARGUMENTS, _CALC_TISS_AVG_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CALC_TISS_AVG_ARGUMENTS, _CALC_TISS_AVG_ARGUMENT_SOURCES, shapes=_CALC_TISS_AVG_ARGUMENT_SHAPES)
 
     # a result is a value: modify a copy, not this
     tissue_averages.flags.writeable = False
@@ -723,7 +725,7 @@ def calc_fchange(
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if condition_tissues.shape[0] != n_pairs:
-        raise _ToxArgumentError(f"'condition_tissues' has {condition_tissues.shape[0]} along axis 0, but 'control_tissues' implies n_pairs == {n_pairs}; 'condition_tissues' has shape (n_pairs)", argument="condition_tissues")
+        raise _ToxArgumentError(f"'condition_tissues' has {condition_tissues.shape[0]} along axis 0, but 'control_tissues' implies n_pairs == {n_pairs}; 'condition_tissues' is declared with shape (n_pairs)", argument="condition_tissues")
 
     # outputs and work arrays, which the caller never sees
     fold_changes = _np.empty((n_pairs, n_genes,), dtype=_np.float64, order='F')

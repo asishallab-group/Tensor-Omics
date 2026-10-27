@@ -113,6 +113,12 @@ def build_wrapper(procedure: Procedure, diagnostics: DiagnosticBag,
     return _Builder(procedure, diagnostics, conventions, evaluator).build()
 
 
+def reads_a_dummy(extent: str, procedure: Procedure) -> bool:
+    """Whether an extent names a dummy of `procedure` anywhere in it, a bare name included."""
+    dummies = {dummy.name.lower() for dummy in procedure.arguments}
+    return any(identifier.lower() in dummies for identifier in _IDENTIFIER_RE.findall(extent))
+
+
 def c_symbol_name(procedure: Procedure, conventions: Conventions = CONVENTIONS) -> str:
     """The exported symbol for `procedure`: what the bindings call it, plus `_c`."""
     return f"{stripped_name(procedure, conventions)}{conventions.c_suffix}"
@@ -389,10 +395,9 @@ class _Builder:
         extent naming no dummy -- a literal, a module constant -- is a value the binding checks
         exactly. Everything else needs Fortran to evaluate it: `sum(reps_per_tissue)`, `n + 1`.
         """
-        dummies = self._dummies()
-        if extent.lower() in dummies:
+        if extent.lower() in self._dummies():
             return False
-        return any(identifier.lower() in dummies for identifier in _IDENTIFIER_RE.findall(extent))
+        return reads_a_dummy(extent, self.procedure)
 
     def _can_check(self, argument: Argument, extent: str) -> bool:
         """Whether the C wrapper can evaluate `extent` once its pointers are checked; else refused.

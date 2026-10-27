@@ -220,15 +220,15 @@ after it — one place, one set of condition classes.
 **A refusal of the binding's own carries no tox code, and is an input error all the same**
 (#221). A wrong shape, type or value is found before anything is called, so there is no code to
 report, and main's convention is to report none: Python's `assert_error` without a code and R's
-mean exactly that. But the caller made the same mistake as one the Fortran reports as
-`ERR_DIM_MISMATCH`, and had to catch the two apart -- a `ValueError` in one case, a
-`ToxInputError` in the other. So Python raises `ToxArgumentError(ToxInputError, TypeError,
+mean exactly that. But the caller made the same mistake as one the library reports itself --
+the C wrapper's `ERR_SIZE_MISMATCH` for an axis only Fortran can evaluate (`c-layer.md`) -- and
+had to catch the two apart: a `ValueError` in one case, a `ToxInputError` in the other. So Python raises `ToxArgumentError(ToxInputError, TypeError,
 ValueError)` with `code` None: an `except ToxInputError` catches both, and an `except ValueError`
 written against the old refusal (the numpy idiom) still works. R's `tox_type_error`,
 `tox_shape_error` and `tox_na_error` gained `tox_input_error` between themselves and `tox_error`,
 with `code` NA, which R's `assert_error` already reads as "no tox code".
 
-*Rejected:* giving the refusal a code (`ERR_DIM_MISMATCH` for a shape). It would claim the
+*Rejected:* giving the refusal a code (`ERR_SIZE_MISMATCH` for a shape). It would claim the
 library reported something it was never asked, and turn six Python tests that assert "no tox
 code" into failures for no gain.
 
@@ -253,7 +253,7 @@ the rule leaves out (`extent_provider`), so they cannot drift. An axis the decla
 (`c-layer.md`). The message names the arrays and shows the declared shape:
 
 ```
-ToxArgumentError: 'weights' has 3 along axis 0, but 'matrix' implies n_cols == 2; 'weights' has shape (n_cols)
+ToxArgumentError: 'weights' has 3 along axis 0, but 'matrix' implies n_cols == 2; 'weights' is declared with shape (n_cols)
 ```
 
 This is the single most valuable thing the generated layer does that a hand-written

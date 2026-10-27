@@ -369,8 +369,11 @@ def binding_computed_extents(wrapper):
     An input array's axes are read off it, and compared: with an argument, which needs nothing
     computed, or with a constant (`fields(n, 2, m)`, `x(N_AXES)`), which is evaluated here too.
     An axis the declaration computes from arguments is not among them: C is given its extent
-    and the C wrapper compares it (`CArgument.checked_against`), so it names that.
+    and the C wrapper compares it (`CArgument.checked_against`), so it names that -- or `c_abi`
+    has refused it already, and a second diagnostic would only restate the first.
     """
+    from .c_abi import reads_a_dummy
+
     for argument in wrapper:
         if argument.is_error:
             continue
@@ -386,7 +389,7 @@ def binding_computed_extents(wrapper):
                 and argument.conversion is not Conversion.MODE):
             axes = argument.dimension.extents[1 if character else 0:]
             for extent in axes:
-                if wrapper.argument(extent) is None:
+                if wrapper.argument(extent) is None and not reads_a_dummy(extent, wrapper.procedure):
                     yield argument, extent
 
 

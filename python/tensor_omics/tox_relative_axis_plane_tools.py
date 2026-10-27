@@ -197,9 +197,9 @@ def omics_vector_RAP_projection(
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if vecs_selection_mask.shape[0] != n_vecs:
-        raise _ToxArgumentError(f"'vecs_selection_mask' has {vecs_selection_mask.shape[0]} along axis 0, but 'vecs' implies n_vecs == {n_vecs}; 'vecs_selection_mask' has shape (n_vecs)", argument="vecs_selection_mask")
+        raise _ToxArgumentError(f"'vecs_selection_mask' has {vecs_selection_mask.shape[0]} along axis 0, but 'vecs' implies n_vecs == {n_vecs}; 'vecs_selection_mask' is declared with shape (n_vecs)", argument="vecs_selection_mask")
     if axes_selection_mask.shape[0] != n_axes:
-        raise _ToxArgumentError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but 'vecs' implies n_axes == {n_axes}; 'axes_selection_mask' has shape (n_axes)", argument="axes_selection_mask")
+        raise _ToxArgumentError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but 'vecs' implies n_axes == {n_axes}; 'axes_selection_mask' is declared with shape (n_axes)", argument="axes_selection_mask")
 
     # outputs and work arrays, which the caller never sees
     projections = _np.empty((n_selected_axes, n_selected_vecs,), dtype=_np.float64, order='F')
@@ -287,11 +287,11 @@ def omics_field_RAP_projection(
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if fields.shape[1] != 2:
-        raise _ToxArgumentError(f"'fields' has {fields.shape[1]} along axis 1, but its declared shape fixes it at {2}; 'fields' has shape (n_axes, 2, n_fields)", argument="fields")
+        raise _ToxArgumentError(f"'fields' has {fields.shape[1]} along axis 1, but its declared shape fixes it at {2}; 'fields' is declared with shape (n_axes, 2, n_fields)", argument="fields")
     if fields_selection_mask.shape[0] != n_fields:
-        raise _ToxArgumentError(f"'fields_selection_mask' has {fields_selection_mask.shape[0]} along axis 0, but 'fields' implies n_fields == {n_fields}; 'fields_selection_mask' has shape (n_fields)", argument="fields_selection_mask")
+        raise _ToxArgumentError(f"'fields_selection_mask' has {fields_selection_mask.shape[0]} along axis 0, but 'fields' implies n_fields == {n_fields}; 'fields_selection_mask' is declared with shape (n_fields)", argument="fields_selection_mask")
     if axes_selection_mask.shape[0] != n_axes:
-        raise _ToxArgumentError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but 'fields' implies n_axes == {n_axes}; 'axes_selection_mask' has shape (n_axes)", argument="axes_selection_mask")
+        raise _ToxArgumentError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but 'fields' implies n_axes == {n_axes}; 'axes_selection_mask' is declared with shape (n_axes)", argument="axes_selection_mask")
 
     # outputs and work arrays, which the caller never sees
     projections = _np.empty((n_selected_axes, n_selected_fields,), dtype=_np.float64, order='F')
@@ -383,9 +383,9 @@ def clock_hand_angle_between_vectors(
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if v2.shape[0] != n_dims:
-        raise _ToxArgumentError(f"'v2' has {v2.shape[0]} along axis 0, but 'v1' implies n_dims == {n_dims}; 'v2' has shape (n_dims)", argument="v2")
+        raise _ToxArgumentError(f"'v2' has {v2.shape[0]} along axis 0, but 'v1' implies n_dims == {n_dims}; 'v2' is declared with shape (n_dims)", argument="v2")
     if orientation_reference.shape[0] != n_dims:
-        raise _ToxArgumentError(f"'orientation_reference' has {orientation_reference.shape[0]} along axis 0, but 'v1' implies n_dims == {n_dims}; 'orientation_reference' has shape (n_dims)", argument="orientation_reference")
+        raise _ToxArgumentError(f"'orientation_reference' has {orientation_reference.shape[0]} along axis 0, but 'v1' implies n_dims == {n_dims}; 'orientation_reference' is declared with shape (n_dims)", argument="orientation_reference")
 
     # outputs and work arrays, which the caller never sees
     signed_angle = _ctypes.c_double(0)
@@ -475,11 +475,11 @@ def clock_hand_angles_for_shift_vectors(
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if fields.shape[1] != 2:
-        raise _ToxArgumentError(f"'fields' has {fields.shape[1]} along axis 1, but its declared shape fixes it at {2}; 'fields' has shape (n_dims, 2, n_fields)", argument="fields")
+        raise _ToxArgumentError(f"'fields' has {fields.shape[1]} along axis 1, but its declared shape fixes it at {2}; 'fields' is declared with shape (n_dims, 2, n_fields)", argument="fields")
     if fields_selection_mask.shape[0] != n_fields:
-        raise _ToxArgumentError(f"'fields_selection_mask' has {fields_selection_mask.shape[0]} along axis 0, but 'fields' implies n_fields == {n_fields}; 'fields_selection_mask' has shape (n_fields)", argument="fields_selection_mask")
+        raise _ToxArgumentError(f"'fields_selection_mask' has {fields_selection_mask.shape[0]} along axis 0, but 'fields' implies n_fields == {n_fields}; 'fields_selection_mask' is declared with shape (n_fields)", argument="fields_selection_mask")
     if orientation_reference.shape[0] != n_dims:
-        raise _ToxArgumentError(f"'orientation_reference' has {orientation_reference.shape[0]} along axis 0, but 'fields' implies n_dims == {n_dims}; 'orientation_reference' has shape (n_dims)", argument="orientation_reference")
+        raise _ToxArgumentError(f"'orientation_reference' has {orientation_reference.shape[0]} along axis 0, but 'fields' implies n_dims == {n_dims}; 'orientation_reference' is declared with shape (n_dims)", argument="orientation_reference")
 
     # outputs and work arrays, which the caller never sees
     signed_angles = _np.empty((n_selected_fields,), dtype=_np.float64, order='C')

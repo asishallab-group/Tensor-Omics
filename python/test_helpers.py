@@ -107,7 +107,7 @@ def assert_error(func, msg, code=None):
     except ToxError as error:
         if code is None and error.code is not None:
             raise AssertionError(
-                f"{msg}: expected an error that is not a tensor-omics error, but got "
+                f"{msg}: expected an error that carries no tensor-omics code, but got "
                 f"{_code_label(error.code)}: {error}") from None
         if error.code != code:
             raise AssertionError(

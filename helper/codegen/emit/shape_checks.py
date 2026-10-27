@@ -70,7 +70,12 @@ def binding_axes(argument: CArgument) -> list[str]:
 
 
 def declared_shape(argument: CArgument) -> str:
-    """The shape the author declared, axis by axis, for a message."""
+    """The shape the author declared, axis by axis, for a message.
+
+    A shaped array is assumed size to C (`*`); what it is declared with is its source's.
+    """
+    if argument.shape_arg is not None and argument.source is not None:
+        return ", ".join(argument.source.dimension.extents)
     shown = list(argument.shown_extents)
     if argument.type.is_character and shown:
         shown = shown[1:]

@@ -36,6 +36,10 @@ BASE_EXCEPTION = "ToxError"
 #: ValueError` -- the numpy idiom -- keeps catching them.
 ARGUMENT_EXCEPTION = "ToxArgumentError"
 
+#: The code the C wrapper reports for an array that does not hold what its declaration computes
+#: (#221). Its message is completed with the declared shape the binding passes along.
+SIZE_MISMATCH = "ERR_SIZE_MISMATCH"
+
 
 class PythonErrorEmitter:
     def __init__(self, catalogue: ErrorCatalogue):
@@ -162,7 +166,7 @@ class PythonErrorEmitter:
         writer.blank()
 
     def _check(self, writer: Writer) -> None:
-        writer.line("def check_err_code(ierr, arguments=(), sources=()):")
+        writer.line("def check_err_code(ierr, arguments=(), sources=(), shapes=()):")
         with writer.indent():
             writer.block(
                 '"""Raise if `ierr` reports an error.\n'
@@ -180,6 +184,10 @@ class PythonErrorEmitter:
                 "    passed, where the Fortran one was derived from it. An extent read off\n"
                 "    an array names that array here, so the message can blame something the\n"
                 "    caller wrote. None where the Fortran argument is the caller's own.\n"
+                "shapes : sequence of str or None, optional\n"
+                "    Positionally alongside `arguments`: the declared shape of an array\n"
+                "    whose size the C wrapper compares with its declaration, which the\n"
+                f"    message of {SIZE_MISMATCH} then states. None elsewhere.\n"
                 "\n"
                 "Returns\n"
                 "-------\n"
@@ -212,6 +220,8 @@ class PythonErrorEmitter:
                 with writer.indent():
                     writer.line("argument = arguments[arg_pos - 1]")
                     writer.line("source = sources[arg_pos - 1] if arg_pos <= len(sources) else None")
+                    if self.catalogue.code(SIZE_MISMATCH) is not None:
+                        writer.line("shape = shapes[arg_pos - 1] if arg_pos <= len(shapes) else None")
                     writer.line("if source:")
                     with writer.indent():
                         writer.line("# the caller's word first, then the Fortran argument it")
@@ -223,6 +233,13 @@ class PythonErrorEmitter:
                     writer.line("else:")
                     with writer.indent():
                         writer.line("message = f\"{message} (argument '{argument}')\"")
+                    size_mismatch = self.catalogue.code(SIZE_MISMATCH)
+                    if size_mismatch is not None:
+                        writer.line(f"if shape and code == {size_mismatch.value}:")
+                        with writer.indent():
+                            writer.line("# what the array must be, which no code can carry")
+                            writer.line('message = f"{message}; \'{arguments[arg_pos - 1]}\' is '
+                                        'declared with shape ({shape})"')
                 writer.line("else:")
                 with writer.indent():
                     writer.line('message = f"{message} (argument {arg_pos})"')

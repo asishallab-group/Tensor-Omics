@@ -103,7 +103,7 @@ def build_kd_index(
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if dimension_order.shape[0] != n_dimensions:
-        raise _ToxArgumentError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but 'points' implies n_dimensions == {n_dimensions}; 'dimension_order' has shape (n_dimensions)", argument="dimension_order")
+        raise _ToxArgumentError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but 'points' implies n_dimensions == {n_dimensions}; 'dimension_order' is declared with shape (n_dimensions)", argument="dimension_order")
 
     # outputs and work arrays, which the caller never sees
     kd_indices = _np.empty((n_points,), dtype=_np.int32, order='C')
@@ -183,7 +183,7 @@ def build_spherical_kd(
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if dimension_order.shape[0] != n_dimensions:
-        raise _ToxArgumentError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but 'points' implies n_dimensions == {n_dimensions}; 'dimension_order' has shape (n_dimensions)", argument="dimension_order")
+        raise _ToxArgumentError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but 'points' implies n_dimensions == {n_dimensions}; 'dimension_order' is declared with shape (n_dimensions)", argument="dimension_order")
 
     # outputs and work arrays, which the caller never sees
     kd_indices = _np.empty((n_points,), dtype=_np.int32, order='C')

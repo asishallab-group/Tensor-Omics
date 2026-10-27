@@ -166,13 +166,13 @@ def loess_fit_plain(
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if y.shape[0] != n:
-        raise _ToxArgumentError(f"'y' has {y.shape[0]} along axis 0, but 'x' implies n == {n}; 'y' has shape (n)", argument="y")
+        raise _ToxArgumentError(f"'y' has {y.shape[0]} along axis 0, but 'x' implies n == {n}; 'y' is declared with shape (n)", argument="y")
     if weights.shape[0] != n:
-        raise _ToxArgumentError(f"'weights' has {weights.shape[0]} along axis 0, but 'x' implies n == {n}; 'weights' has shape (n)", argument="weights")
+        raise _ToxArgumentError(f"'weights' has {weights.shape[0]} along axis 0, but 'x' implies n == {n}; 'weights' is declared with shape (n)", argument="weights")
     if eval_points.shape[0] != n:
-        raise _ToxArgumentError(f"'eval_points' has {eval_points.shape[0]} along axis 0, but 'x' implies n == {n}; 'eval_points' has shape (n, 1)", argument="eval_points")
+        raise _ToxArgumentError(f"'eval_points' has {eval_points.shape[0]} along axis 0, but 'x' implies n == {n}; 'eval_points' is declared with shape (n, 1)", argument="eval_points")
     if eval_points.shape[1] != 1:
-        raise _ToxArgumentError(f"'eval_points' has {eval_points.shape[1]} along axis 1, but its declared shape fixes it at {1}; 'eval_points' has shape (n, 1)", argument="eval_points")
+        raise _ToxArgumentError(f"'eval_points' has {eval_points.shape[1]} along axis 1, but its declared shape fixes it at {1}; 'eval_points' is declared with shape (n, 1)", argument="eval_points")
 
     # outputs and work arrays, which the caller never sees
     fitted_values = _np.empty((n,), dtype=_np.float64, order='C')
@@ -304,13 +304,13 @@ def loess_fit_robust(
 
     # Fortran cannot check that an array has the shape it is declared with; this can
     if y.shape[0] != n:
-        raise _ToxArgumentError(f"'y' has {y.shape[0]} along axis 0, but 'x' implies n == {n}; 'y' has shape (n)", argument="y")
+        raise _ToxArgumentError(f"'y' has {y.shape[0]} along axis 0, but 'x' implies n == {n}; 'y' is declared with shape (n)", argument="y")
     if weights.shape[0] != n:
-        raise _ToxArgumentError(f"'weights' has {weights.shape[0]} along axis 0, but 'x' implies n == {n}; 'weights' has shape (n)", argument="weights")
+        raise _ToxArgumentError(f"'weights' has {weights.shape[0]} along axis 0, but 'x' implies n == {n}; 'weights' is declared with shape (n)", argument="weights")
     if eval_points.shape[0] != n:
-        raise _ToxArgumentError(f"'eval_points' has {eval_points.shape[0]} along axis 0, but 'x' implies n == {n}; 'eval_points' has shape (n, 1)", argument="eval_points")
+        raise _ToxArgumentError(f"'eval_points' has {eval_points.shape[0]} along axis 0, but 'x' implies n == {n}; 'eval_points' is declared with shape (n, 1)", argument="eval_points")
     if eval_points.shape[1] != 1:
-        raise _ToxArgumentError(f"'eval_points' has {eval_points.shape[1]} along axis 1, but its declared shape fixes it at {1}; 'eval_points' has shape (n, 1)", argument="eval_points")
+        raise _ToxArgumentError(f"'eval_points' has {eval_points.shape[1]} along axis 1, but its declared shape fixes it at {1}; 'eval_points' is declared with shape (n, 1)", argument="eval_points")
 
     # outputs and work arrays, which the caller never sees
     fitted_values = _np.empty((n,), dtype=_np.float64, order='C')

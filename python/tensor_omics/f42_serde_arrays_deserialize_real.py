@@ -30,6 +30,8 @@ _lib.deserialize_real_helper_c.argtypes = (
 _DESERIALIZE_REAL_HELPER_ARGUMENTS = ("arr", "n_elements", "arr_shape", "filename", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _DESERIALIZE_REAL_HELPER_ARGUMENT_SOURCES = (None, "arr", "arr", None, None,)
+#: For an array the C wrapper compares with its declaration, that shape
+_DESERIALIZE_REAL_HELPER_ARGUMENT_SHAPES = ("n_elements", None, None, None, None,)
 
 def deserialize_real_helper(
         filename,
@@ -92,7 +94,7 @@ def deserialize_real_helper(
         _ctypes.byref(ierr),
     )
 
-    _check_err_code(ierr.value, _DESERIALIZE_REAL_HELPER_ARGUMENTS, _DESERIALIZE_REAL_HELPER_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DESERIALIZE_REAL_HELPER_ARGUMENTS, _DESERIALIZE_REAL_HELPER_ARGUMENT_SOURCES, shapes=_DESERIALIZE_REAL_HELPER_ARGUMENT_SHAPES)
 
     # a result is a value: modify a copy, not this
     arr.flags.writeable = False
