@@ -158,7 +158,7 @@ def generate_and_write(
         return result
 
     if clean:
-        _clean(targets, paths, conventions)
+        _clean(targets, paths)
     for file in result.files:
         file.write()
     return result
@@ -333,8 +333,7 @@ def _catalogue(project, arg_pos_factor: int, diagnostics: DiagnosticBag,
     )
 
 
-def _clean(targets: tuple[str, ...], paths: Paths,
-           conventions: Conventions = CONVENTIONS) -> None:
+def _clean(targets: tuple[str, ...], paths: Paths) -> None:
     directories = []
     globs = []
     files = []
@@ -348,9 +347,8 @@ def _clean(targets: tuple[str, ...], paths: Paths,
         # hand-written DESCRIPTION or NAMESPACE alongside them is left alone
         globs.append((paths.resolve(paths.r_out_dir), "*.R"))
     if "fortran" in targets:
-        # one file per impl, rather than the whole directory: the same list the Ford
-        # frontend excludes, so the two cannot drift apart
-        files += generated_wrapper_paths(paths, conventions)
+        # file by file rather than the whole directory, which holds the binding trees too
+        files += generated_wrapper_paths(paths)
     for directory in directories:
         if directory.is_dir():
             shutil.rmtree(directory)

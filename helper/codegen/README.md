@@ -172,10 +172,15 @@ Three things worth knowing:
   that stops being exported leaves no stale wrapper. In the R *package* directory only the
   generated `*.R` are removed — a hand-written `DESCRIPTION` or `NAMESPACE` next to them is
   left alone. The wrapper modules are the one target cleaned file by file rather than by
-  directory, because they share `src/generated` with the binding trees; the list comes from
-  the sources (`synthesize.generated_wrapper_paths`), so a wrapper whose implementation has
-  been *deleted* is not named by it and survives on disk. Harmlessly: Ford excludes
-  `generated_dir` as a directory, so nothing stale is ever parsed back in.
+  directory, because they share `src/generated` with the binding trees: every `.F90` under
+  `generated_dir` outside them, read off the disk (`synthesize.generated_wrapper_paths`).
+  The list used to come from the implementations that exist, so the wrapper of a *deleted*
+  one survived — and fpm compiles all of `src/generated`, so that orphan, still `use`-ing the
+  module that went with it, broke every build after, regenerated or not (#221). Reading the
+  disk is safe because nothing hand-written lives under `generated_dir`; a missing source tree
+  (a mistyped `--src`) owns nothing. The snippets target is not cleaned at all: `snippets/`
+  holds the hand-written `toxdev_snippets.json` beside the generated files, each of which is
+  rewritten whole.
 - **`--library`** (default `build/libtensor_omics.so`) is not an output path; it is where the
   *generated Python loader* will look for the compiled shared library at runtime. Override it
   for an installed or relocated build, or set `TENSOR_OMICS_LIBRARY` at run time.
@@ -435,8 +440,8 @@ wherever it is written — under `src/tox`, under `src/f42`, anywhere — which 
 dropping the fixed directory they used to be scoped to:
 
 - a module **not in a file named after it** — the *module* name is what synthesis triggers on
-  and what the generated module is called; the *file* name is what its path is mirrored from,
-  and what the cleaner reads without parsing anything. Let the two disagree and `module tox_x`
+  and what the generated module is called; the *file* name is what its path is mirrored from.
+  Let the two disagree and `module tox_x`
   is written into some unrelated file — or into none, since a module named `<x>_impl` in a
   file that is not an `_impl` file has no mirrored path at all and the emitter raises rather
   than guessing a directory

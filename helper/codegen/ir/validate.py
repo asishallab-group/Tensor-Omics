@@ -417,10 +417,9 @@ def _check_module_is_named_for_its_file(module: Module, diagnostics: DiagnosticB
     """An implementation module lives in a file named after it.
 
     Two independent things derive from that name and they have to agree. Synthesis triggers
-    on the *module* name and writes `tox_x.F90`; the cleaner and the Ford exclusion scan
-    *file* names, without parsing, to know what the generator owns. Let the two diverge and
-    the generator writes a wrapper that nothing cleans and nothing excludes -- so the next
-    run parses its own output and defines the module twice.
+    on the *module* name and names the generated module after it; the wrapper's *path* is
+    mirrored from the *file* name. Let the two diverge and `module tox_x` is written into a
+    file named for something else -- or, in a file that is not an `_impl` file, nowhere.
 
     Skipped where there is no file to check: a hand-built project in a unit test.
     """

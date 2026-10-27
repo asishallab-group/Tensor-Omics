@@ -72,29 +72,31 @@ def generated_path_for(
     return out / relative.parent / f"{source.stem[: -len(suffix)]}.F90"
 
 
-def generated_wrapper_paths(
-    paths: Paths, conventions: Conventions = CONVENTIONS
-) -> list[Path]:
-    """Every file under `generated_dir` this generator owns, one per implementation module.
+def generated_wrapper_paths(paths: Paths) -> list[Path]:
+    """Every wrapper module on disk under `generated_dir`: what the fortran target cleans.
 
-    Derived from the source tree so the Ford frontend (which excludes the generated tree from
-    the parse) and the cleaner (which removes these before rewriting) agree on the set --
-    without either of them having to parse anything.
+    Read off the disk, not off the implementations that exist now. Derived from those, the set
+    missed the wrapper of an implementation that had been deleted, and fpm compiles all of
+    `src/generated`: the orphan, still `use`-ing the module that went with it, broke every
+    build after, regenerated or not (#221 B21). Reading the disk is safe by the rule `Paths`
+    states -- nothing hand-written lives under `generated_dir` -- and the fortran target owns
+    every `.F90` there outside the binding trees, which the c and r targets clean as theirs.
+    So `--target fortran` leaves the C wrappers and the R shims alone.
 
-    Read off file names, while synthesis triggers on module names. The two agree because a
-    Fortran file here is named for the module it holds, which `validate` checks for every
-    implementation module rather than leaving to assumption: were they to disagree, the
-    cleaner would delete one path and the emitter write another.
+    A missing source tree owns nothing, as it did when the set was derived from it: a mistyped
+    `--src` must not take every wrapper with it.
     """
     src = paths.resolve(paths.src_dir)
-    if not src.is_dir():
+    out = paths.resolve(paths.generated_dir)
+    if not src.is_dir() or not out.is_dir():
         return []
-    generated = [
+    # resolved, as in `generated_path_for`: two spellings of one directory must compare equal
+    bindings = {paths.resolve(d).resolve() for d in (paths.c_binding_dir, paths.r_binding_dir)}
+    return [
         path
-        for source in sorted(src.rglob("*.[Ff]90"))
-        if (path := generated_path_for(source, paths, conventions)) is not None
+        for path in sorted(out.rglob("*.F90"))
+        if bindings.isdisjoint(path.resolve().parents)
     ]
-    return generated
 
 
 # -- what the allocating wrapper takes over from the caller ----------------------

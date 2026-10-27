@@ -26,7 +26,7 @@ from codegen.diagnostics import DiagnosticBag
 from codegen.emit.errors_python import PythonErrorEmitter
 from codegen.emit.errors_r import RErrorEmitter
 from codegen.frontend.ford_frontend import FordFrontend
-from codegen.generate import generate
+from codegen.generate import _clean, generate
 from codegen.ir.errors import ErrorCatalogue
 
 from conftest import REPO_ROOT
@@ -48,16 +48,20 @@ FORTRAN_FLAGS = ["-cpp", "-I.", "-std=f2018", "-ffree-line-length-none", "-fPIC"
 DEPENDENCY_FLAGS = [flag for flag in FORTRAN_FLAGS if flag != "-std=f2018"]
 
 
-def _generate(out: Path) -> None:
+def _generate(out: Path, impl_dir: Path = REPO_ROOT / FIXTURE_IMPL) -> None:
+    """Generate every target from `impl_dir` into `out`, cleaning first as a real run does."""
     paths = Paths(
-        root=REPO_ROOT, src_dir=REPO_ROOT / FIXTURE_IMPL, generated_dir=out / "fortran",
+        root=REPO_ROOT, src_dir=impl_dir, generated_dir=out / "fortran",
         c_binding_dir=out / "c", r_binding_dir=out / "shim",
         python_out_dir=out / "py" / "fx_impl", r_out_dir=out / "r",
     )
-    result = generate(paths=paths, targets=("fortran", "c", "python", "r"),
-                      library="build/libtensor_omics.so")
+    targets = ("fortran", "c", "python", "r")
+    result = generate(paths=paths, targets=targets, library="build/libtensor_omics.so")
     unexpected = [d for d in result.diagnostics if _NO_ERROR_MODULE not in d.message]
     assert unexpected == [], "\n".join(d.render() for d in unexpected)
+    # `generate_and_write` would clean and write, but writes nothing here: the missing
+    # tox_errors is an error, and its stand-in is written below
+    _clean(targets, paths)
     for file in result.files:
         file.write()
 
@@ -81,11 +85,11 @@ def _compile_fortran(source: Path, out: Path, flags=FORTRAN_FLAGS) -> str:
     return str(obj)
 
 
-def _build(out: Path) -> Path:
+def _build(out: Path, impl_dir: Path = REPO_ROOT / FIXTURE_IMPL) -> Path:
     (out / "obj").mkdir()
     dependencies = [REPO_ROOT / d for d in DEPENDENCIES]
     objects = [_compile_fortran(source, out, DEPENDENCY_FLAGS) for source in dependencies]
-    sources = sorted((REPO_ROOT / FIXTURE_IMPL).glob("*_impl.F90"))
+    sources = sorted(impl_dir.glob("*_impl.F90"))
     sources += sorted((out / "fortran").rglob("*.F90"))   # the wrappers before their C wrappers
     sources += sorted((out / "c").glob("*.F90"))
     objects += [_compile_fortran(source, out) for source in sources]
@@ -231,3 +235,50 @@ class TestAnOptionalModeWithoutADefault:
 
         assert out == ["2", "8", "0.5", "2"]
 
+
+#: Where `_generate` writes the Fortran wrappers, the C wrappers, the R shims, Python and R
+_TARGET_DIRS = ("fortran", "c", "shim", "py", "r")
+
+
+@pytest.fixture(scope="module")
+def regenerated(tmp_path_factory):
+    """The fixture implementations generated, one of them deleted, and generated again."""
+    impl_dir = tmp_path_factory.mktemp("impl")
+    for source in (REPO_ROOT / FIXTURE_IMPL).glob("*_impl.F90"):
+        shutil.copy(source, impl_dir)
+    out = tmp_path_factory.mktemp("e2e_deleted")
+    (out / "r").mkdir()
+    (out / "r" / "DESCRIPTION").write_text("Package: hand-written\n")
+    _generate(out, impl_dir)
+    assert (out / "fortran" / "fx_modes.F90").is_file()   # the premise: it was generated
+
+    (impl_dir / "fx_modes_impl.F90").unlink()
+    _generate(out, impl_dir)
+    return out, impl_dir
+
+
+class TestADeletedImplementationLeavesNothingBehind:
+    """#221 B21: regenerating after deleting an implementation removes everything it made.
+
+    The fortran target cleaned only the wrappers of the implementations that still existed, so
+    a deleted one's wrapper stayed in `src/generated` -- where fpm compiles everything -- and
+    broke every build after with "Unable to find source for module dependency".
+    """
+
+    def test_no_file_of_it_remains_in_any_target(self, regenerated):
+        out, _ = regenerated
+
+        generated = [p for target in _TARGET_DIRS for p in (out / target).rglob("*") if p.is_file()]
+        left = [p.relative_to(out).as_posix() for p in generated
+                if "fx_modes" in p.name or "fx_scale_by_method" in p.read_text()]
+        assert generated and left == []
+
+    def test_a_hand_written_file_beside_the_r_wrappers_stays(self, regenerated):
+        out, _ = regenerated
+
+        assert (out / "r" / "DESCRIPTION").read_text() == "Package: hand-written\n"
+
+    def test_the_library_still_builds(self, regenerated):
+        out, impl_dir = regenerated
+
+        assert _build(out, impl_dir).is_file()
