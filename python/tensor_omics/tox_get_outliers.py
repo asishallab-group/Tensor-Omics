@@ -142,6 +142,7 @@ def compute_family_scaling(
         Mode for LOESS fitting
         The default value is `'robust'`.
 
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     n_iters : int, optional, default 3
         Number of iterations for robust LOESS fitting
         The default value is `3`.

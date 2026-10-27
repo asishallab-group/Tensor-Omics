@@ -241,6 +241,19 @@ class TestTheShimRefusesAsRDoes:
         fields = re.findall(r"(\w+) = ", raised)
         assert tuple(fields) == CONDITION_FIELDS
 
+    def test_every_function_the_header_defines_is_in_the_names_table(self):
+        # the table is what validate refuses an argument by, so it must be exactly the header's
+        defined = set(re.findall(r"^static inline [\w ]+?\**\s*\b(tox_\w+)\(", self.header(), re.M))
+        assert defined and defined == set(names.R_SHIM_HELPERS)
+
+    def test_an_argument_named_like_one_would_hide_it_in_the_shim(self):
+        # the premise of refusing it: the shim's parameter list carries the argument's name
+        text = CCallEmitter().function(wrapper_of(b.procedure(
+            "p", b.integer("tox_int_in", Intent.IN, "(n)", doc="x"), b.integer("n", Intent.IN, doc="n"),
+            b.ierr())))
+        assert "SEXP tox_int_in" in text and "tox_int_in(tox_int_in," in text
+        assert names.language_word("tox_int_in") == "a function of the R binding's C shim"
+
     def test_a_string_returned_to_r_is_marked_utf8(self):
         assert "Rf_mkCharLenCE(p, m, CE_UTF8)" in self.header()
 
@@ -291,6 +304,11 @@ class TestTheDocsStateTheStringRules:
         python = PythonEmitter().function(numbers())
         r = RWrapperEmitter().function(numbers())
         assert python.count(TRAILING_BLANKS) == 2 and r.count(TRAILING_BLANKS) == 2
+
+    def test_a_mode_says_its_trailing_blanks_are_dropped_too(self, real_binding):
+        wrapper = next(w for m in real_binding for w in m if w.stripped_name == "linkage_clustering")
+        assert TRAILING_BLANKS in PythonEmitter().function(wrapper)
+        assert TRAILING_BLANKS in RWrapperEmitter().function(wrapper)
 
     def test_a_declared_length_is_stated(self):
         python = PythonEmitter().function(numbers())
@@ -386,4 +404,6 @@ class TestTheEngine:
     def test_a_mode_lists_the_modes(self, contract):
         c, np = contract
         assert c.mode("Ward", "x", ("ward", "single")) == b"ward"
+        assert c.mode("ward  ", "x", ("ward", "single")) == b"ward"
+        refuses(lambda: c.mode(" ward", "x", ("ward", "single")), "not ' ward'")
         refuses(lambda: c.mode("wardx", "x", ("ward", "single")), "one of 'ward', 'single', not 'wardx'")

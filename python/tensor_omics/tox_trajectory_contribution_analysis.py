@@ -222,6 +222,7 @@ def perform_permutation_test(
         The minimum valid value is `1`.
         The maximum valid value is `n_samples`.
     baseline_mode : str, one of 'baseline_raw' | 'baseline_mean' | 'baseline_min'
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     n_permutations : int
         number of permutations to perform
     random_seed : int, optional
@@ -402,6 +403,7 @@ def compute_contributions(
     dependent : np.ndarray[np.float64] of shape (n_dims,)
         Dependent variable time series, length n_timepoints
     baseline_mode : str, one of 'baseline_raw' | 'baseline_mean' | 'baseline_min'
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -485,6 +487,7 @@ def compute_all_contributions(
         The minimum valid value is `1`.
         The maximum valid value is `n_factors`.
     baseline_mode : str, one of 'baseline_raw' | 'baseline_mean' | 'baseline_min'
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -569,6 +572,7 @@ def compute_baselines_factor_dependent(
     dependent : np.ndarray[np.float64] of shape (n_timepoints,)
         Dependent variable time series, length n_timepoints
     baseline_mode : str, one of 'baseline_raw' | 'baseline_mean' | 'baseline_min'
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -879,6 +883,7 @@ def compute_velocity_acceleration_contributions(
     trajectories : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints,), column-major (order='F')
         input position trajectories
     baseline_mode : str, one of 'baseline_raw' | 'baseline_mean' | 'baseline_min'
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------

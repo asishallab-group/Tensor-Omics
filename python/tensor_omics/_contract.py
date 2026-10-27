@@ -222,11 +222,13 @@ def mode(value, argument, choices):
     """A mode: a str that is one of `choices`, case aside; as the lower-case UTF-8 bytes.
 
     Matched whole: a value is never cut to the width C is handed, so a longer one cannot pass
-    as the mode it starts with.
+    as the mode it starts with. Trailing blanks are dropped first, as for every string: to
+    Fortran `'ward '` is `'ward'`. A leading blank is part of the value, and refused.
     """
     listed = ", ".join(f"'{choice}'" for choice in choices)
     if not isinstance(value, str):
         _refuse(f"'{argument}' must be one of {listed}, not {type(value).__name__}", argument)
-    if value.lower() not in choices:
+    matched = value.rstrip(" ").lower()
+    if matched not in choices:
         _refuse(f"'{argument}' must be one of {listed}, not {value!r}", argument)
-    return value.lower().encode()
+    return matched.encode()

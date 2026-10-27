@@ -289,6 +289,9 @@ DISTANCES = np.asfortranarray([[0.0, 1.0, 2.0], [1.0, 0.0, 1.0], [2.0, 1.0, 0.0]
 def test_a_mode_matches_whole_with_the_case_rule_kept():
     assert linkage_clustering(DISTANCES.copy(order="F"), "ward")["heights"].size == 2
     assert linkage_clustering(DISTANCES.copy(order="F"), "WARD")["heights"].size == 2
+    # trailing blanks are Fortran semantics, as for every string; a leading one is part of it
+    assert linkage_clustering(DISTANCES.copy(order="F"), "ward  ")["heights"].size == 2
+    refused(lambda: linkage_clustering(DISTANCES.copy(order="F"), " ward"), "method", "not ' ward'")
 
 
 def test_a_mode_is_never_truncated_and_the_message_lists_the_modes():

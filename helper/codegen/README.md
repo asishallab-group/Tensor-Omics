@@ -343,7 +343,7 @@ The parts a source author does not need, and a generator maintainer does:
   any integer or float, and nothing parses a string, counts a datetime or reads a factor's codes.
   A string is a `str` (or an `os.PathLike`) or one R string, valid Unicode without a NUL, at most
   its declared length; an array of strings is a sequence of them (an R factor by its labels); a
-  mode matches whole, never cut to the buffer; a rank is the declared one, nothing is flattened
+  mode matches whole after its trailing blanks, never cut to the buffer; a rank is the declared one, nothing is flattened
   (an R 1-D array and table are vectors, a numeric data.frame a matrix). Python's is one generated
   module every wrapper calls, `tensor_omics/_contract.py` (`emit.python_contract`), free for an
   input of the Fortran type. R checks kind, rank and a single value in `tox_validate.R`; every
@@ -461,8 +461,9 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
 - an **argument named like a word a binding language reserves** — Python's hard keywords and
   builtins (a frozen list, not read from the running interpreter), R's reserved words
   (case-sensitively: `NA` is refused, `na` is a name), and C's keywords as R's `gcc -std=gnu2x`
-  takes them (`asm` included); or named like a procedure the wrapper names (its own name, its C
-  symbol, a `DM_OUTPUT_FROM` producer). Not refused: Fortran keywords (Fortran has none
+  takes them (`asm` included), and the functions the R shim's header defines (`tox_int_in`,
+  `tox_char_in`, ... -- `names.R_SHIM_HELPERS`, which a shim parameter would hide); or named like
+  a procedure the wrapper names (its own name, its C symbol, a `DM_OUTPUT_FROM` producer). Not refused: Fortran keywords (Fortran has none
   reserved, and main publishes `value`) and R function names (an argument cannot shadow a call in
   R, and main publishes `mode`, `vector`, `array`, `expression`, `factor`, `points`, `weights`)
 - a **procedure named like a Python keyword or builtin, or an R reserved word** — it is a Python

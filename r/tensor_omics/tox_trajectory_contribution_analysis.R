@@ -15,7 +15,7 @@
 #' @param sample_idx a integer scalar. index of sample to compute the permutation contributions for
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_samples`.
-#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min"
+#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min". Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param n_permutations a integer scalar. number of permutations to perform
 #' @param random_seed a integer scalar. Seed to use for random number generation.
 #' @return a named list with elements:
@@ -86,7 +86,7 @@ compute_p_values <- function(local_contributions_observed, total_contribution_ob
 #'
 #' @param factor a numeric vector. Factor time series, length n_timepoints
 #' @param dependent a numeric vector. Dependent variable time series, length n_timepoints
-#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min"
+#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min". Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{local_contributions}{a numeric vector. Per-element contributions}
 #'   \item{total_contribution}{a numeric scalar. Total contribution (`sum(local_contributions)`)}
@@ -121,7 +121,7 @@ compute_contributions <- function(factor, dependent, baseline_mode) {
 #' @param dependent_indices a integer vector. indices of dependents to compute the contributions for
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_factors`.
-#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min"
+#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min". Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{local_contributions}{a numeric array of rank 4. Per-timepoint contributions per sample-dependent-factor combination}
 #'   \item{total_contributions}{a numeric array of rank 3. Total contribution (`sum(local_contributions)`) per sample-dependent-factor combination}
@@ -149,7 +149,7 @@ compute_all_contributions <- function(trajectories, factor_indices, dependent_in
 #'
 #' @param factor a numeric vector. Factor time series, length n_timepoints
 #' @param dependent a numeric vector. Dependent variable time series, length n_timepoints
-#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min"
+#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min". Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{factor_baseline}{a numeric scalar. Computed baseline for factor}
 #'   \item{dependent_baseline}{a numeric scalar. Computed baseline for dependent variable}
@@ -266,7 +266,7 @@ compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
 #' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. input position trajectories
-#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min"
+#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min". Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{contrib_velocity}{a numeric array of rank 3. output velocity contributions}
 #'   \item{velocity_contribution_series}{a numeric array of rank 4. output velocity contribution series}

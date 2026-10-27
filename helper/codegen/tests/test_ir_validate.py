@@ -1644,6 +1644,10 @@ class TestPublishedNames:
             ("default", "a C keyword"), ("register", "a C keyword"), ("long", "a C keyword"),
             ("len", "a Python builtin"), ("input", "a Python builtin"),
             ("type", "a Python builtin"), ("asm", "a C keyword"),
+            # a shim parameter of the name would hide the header's function: no library build
+            ("tox_int_in", "a function of the R binding's C shim"),
+            ("tox_char_in", "a function of the R binding's C shim"),
+            ("tox_prod", "a function of the R binding's C shim"),
         ],
     )
     def test_a_word_a_binding_language_reserves_is_refused(self, bag, name, word):

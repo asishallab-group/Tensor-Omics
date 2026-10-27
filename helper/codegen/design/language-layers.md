@@ -93,7 +93,7 @@ is the 0-d case of the same rule.
 | `logical` | bools; any number whose every value is exactly 0 or 1 (12 Python call sites pass 0/1 integers, and `c(1, 0, 1)` is R's own literal for a mask) | any other number, NaN/NA/None, strings, objects |
 | a string | a Python `str`, or an `os.PathLike` whose path is a `str`; an R character vector of length 1, not NA | bytes, None, a sequence, a number; length other than 1; NA; a NUL, a lone surrogate, invalid UTF-8 |
 | an array of strings | a list, tuple, ndarray or Series of `str`; an R character vector, or a factor (its labels) | a bare `str`; a set or dict, which has no order; any element that is not a `str`; NA, a NUL, a surrogate, invalid UTF-8; a value longer than a declared length |
-| a mode | a valid string matching one of the modes whole (case aside, as before) | anything else; the message lists the modes |
+| a mode | a valid string matching one of the modes whole (case aside, as before), after its trailing blanks are dropped like any string's (`'ward '` is `ward`) | anything else, a leading blank included; the message lists the modes |
 | rank | numpy `ndim` == the declared rank; R `length(dim(x))`, where a plain vector, a 1-D array and a table are rank 1, and an all-numeric data.frame is a matrix (as a DataFrame is in Python) | any other rank: nothing is flattened |
 
 **Trailing blanks are Fortran semantics, accepted and documented** (FES, 2026-10-26). A string
@@ -500,7 +500,11 @@ R function.
 The names the generated code binds itself are a different problem, and are designed out where the
 language lets them be. Everything the R shim's C and a generated Python module bind beside the
 arguments starts with `_` (`_v_<name>`, `_nprot`, `_np`, `_check_err_code`, `_error`); no Fortran
-name can, so no argument can meet one. A Fortran wrapper's own locals cannot start with `_`, so
+name can, so no argument can meet one. The functions the shim's header defines (`tox_int_in`,
+`tox_char_in`, ...) cannot be underscored -- a leading `_` at file scope is reserved to C's
+implementation -- so they are listed (`names.R_SHIM_HELPERS`, held to the emitted header by a
+test) and an argument of one of their names is refused: as a shim parameter it would hide the
+helper, and the library would not build. A Fortran wrapper's own locals cannot start with `_`, so
 they stay `<name>_f`, `<name>_mode_f`, `<name>_mode_p`, `<name>_address`, `<name>_value` and
 `handled` (and the C wrapper module's `empty_view_anchor`), and an argument is refused where the
 wrapper emits the same name -- read off the wrapper as emitted, together with what it calls,

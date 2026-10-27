@@ -19,12 +19,14 @@ TRAILING_BLANKS = "Trailing blanks are not part of the value, as in Fortran: the
 def string_input_notes(argument: CArgument) -> list[str]:
     """The contract's sentences for a string the caller passes; none for anything else.
 
-    A mode is left out: its values are listed, and a blank is in none of them.
+    A mode gets the blanks sentence too -- `'ward '` selects `ward` -- but no length: its values
+    are listed, and one longer than them is not a mode.
     """
-    if (not argument.type.is_character or argument.conversion is Conversion.MODE
-            or not argument.intent.is_input):
+    if not argument.type.is_character or not argument.intent.is_input:
         return []
     notes = [TRAILING_BLANKS]
+    if argument.conversion is Conversion.MODE:
+        return notes
     length = argument.source.type.length if argument.source else None
     if length is not None and not length.is_assumed:
         unit = "byte" if str(length) == "1" else "bytes"

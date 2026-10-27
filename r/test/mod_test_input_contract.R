@@ -240,6 +240,9 @@ DISTANCES <- matrix(c(0, 1, 2, 1, 0, 1, 2, 1, 0), 3)
 test_a_mode_matches_whole_with_the_case_rule_kept <- function() {
   assert_true(length(linkage_clustering(DISTANCES, "ward")$heights) == 2L)
   assert_true(length(linkage_clustering(DISTANCES, "WARD")$heights) == 2L)
+  # trailing blanks are Fortran semantics, as for every string; a leading one is part of it
+  assert_true(length(linkage_clustering(DISTANCES, "ward  ")$heights) == 2L)
+  refused(linkage_clustering(DISTANCES, " ward"), "method", "not \" ward\"")
 }
 
 test_a_mode_is_never_truncated_and_the_message_lists_the_modes <- function() {

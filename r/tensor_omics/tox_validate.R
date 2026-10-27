@@ -210,9 +210,10 @@
   x
 }
 
+# Trailing blanks are dropped first, as for every string: to Fortran "ward " is "ward"
 .tox_as_mode <- function(x, name, choices) {
   if (!is.character(x) || length(x) != 1L) .tox_type_error(name, "a single string", x)
-  x <- tolower(x)
+  x <- tolower(sub(" +$", "", x))
   if (!x %in% choices)
     .tox_argument_error(
       sprintf("'%s' must be one of %s, not \"%s\"",

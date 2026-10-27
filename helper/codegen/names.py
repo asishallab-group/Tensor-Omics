@@ -11,8 +11,10 @@ generated Python module bind beside the arguments starts with `_`, which no Fort
 so nothing an author writes can meet one. A Fortran wrapper cannot do that -- a Fortran name
 cannot start with `_` either -- so its locals keep the `<argument><suffix>` form built here, and
 `emit.name_clashes` refuses an argument only where the wrapper actually declares, calls, imports
-or uses as a kind the same name. The emitters build every name from this module, and
-`tests/test_names.py` reads the generated code back to hold them to it.
+or uses as a kind the same name. The functions the R shim's header defines cannot be underscored
+either -- a leading `_` at file scope is reserved to the C implementation -- so they are listed
+here (`R_SHIM_HELPERS`) and refused as an argument's name. The emitters build every name from
+this module, and `tests/test_names.py` reads the generated code back to hold them to it.
 
 What is deliberately *not* refused:
 
@@ -94,6 +96,21 @@ C_KEYWORDS = frozenset({
 })
 
 
+#: The functions the R shim's header, `tox_marshal.h`, defines at file scope. Every published
+#: argument is a parameter of a shim function, and a parameter named like one of these hides it in
+#: that function, which then does not compile -- and the shims are compiled into the one library.
+#: A prefix cannot keep them apart from a Fortran name: every C identifier that may be used at file
+#: scope starts with a letter, as a Fortran name does. So an argument of one of these names is
+#: refused (`language_word`). `tests/test_input_contract.py` holds this list to the header the
+#: emitter writes, both ways.
+R_SHIM_HELPERS = frozenset({
+    "tox_bool_alloc", "tox_bool_in", "tox_bool_out", "tox_char_alloc", "tox_char_in",
+    "tox_char_out", "tox_imax", "tox_imin", "tox_int_copy", "tox_int_in", "tox_max_strlen",
+    "tox_prod", "tox_refuse", "tox_refuse_element", "tox_refuse_na", "tox_refuse_type",
+    "tox_shape_of", "tox_show", "tox_sum_true", "tox_utf8", "tox_utf8_length", "tox_utf8_valid",
+})
+
+
 def language_word(name: str, languages=("Python", "R", "C")) -> str | None:
     """What makes `name` unusable where it is published, or None.
 
@@ -108,6 +125,8 @@ def language_word(name: str, languages=("Python", "R", "C")) -> str | None:
         return "an R reserved word"
     if "C" in languages and name in C_KEYWORDS:
         return "a C keyword"
+    if "C" in languages and name in R_SHIM_HELPERS:
+        return "a function of the R binding's C shim"
     if "Python" in languages and name in PYTHON_BUILTINS:
         return "a Python builtin"
     return None
