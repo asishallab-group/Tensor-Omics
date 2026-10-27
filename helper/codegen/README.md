@@ -468,6 +468,15 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
   the call; a size the caller chooses sizes the result directly
 - a **module constant sizing an argument that the generator cannot evaluate to an integer** — Python and R
   allocate and pad with its value, so the generator has to know it
+- an **extent the bindings compute outside the grammar they compute in** -- the extents of an
+  output or a work array and the length of a string, which Python and R allocate and pad by
+  before the call (`abi.extents.check_binding_extents`, on what reaches the languages). The
+  grammar is the part of Fortran that means the same in Python and C: names, module constants,
+  integer literals, `+ - * /`, parentheses, `max`, `min`, `size`. Two regex translators used to
+  pass anything else through unchanged (#221 B11), and `/` floors in Python where Fortran
+  truncates, so `(n - 10)/3` sized a buffer one element short. Refused too: such an extent reading
+  an output or an optional argument, which has no value yet, or a name that is neither an
+  argument nor a module constant. The note points at `DM_OUTPUT_FROM`
 
 An implementation module is checked separately, because its procedures are read rather than
 exported and so are reached by none of the above. These rules follow the `_impl` suffix

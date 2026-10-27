@@ -219,8 +219,9 @@ else.
 - Render the host's own docstring dialect from the parsed `Doc` — numpydoc and roxygen2 are the
   two instances (`doc_numpydoc.py`, `doc_roxygen.py`).
 - Render **literals** per language: `0.7_real64` → `0.7`, `.true.` → `True` / `TRUE`
-  (`doc_literals.py`). A Fortran kind suffix in a doc is noise everywhere else — and in an
-  *extent expression* it is a syntax error, so the same stripping applies there.
+  (`doc_literals.py`). A Fortran kind suffix in a doc is noise everywhere else. An *extent* you
+  compute is not documentation: parse it with `abi/extents.py` and write it from the tree
+  (`to_python`, `to_c` are the templates), which also gets Fortran's truncating `/` right.
 - Resolve Ford links to **what the reader can call in your language** (`doc_links.py`): a link to
   an implementation becomes the binding that wraps it, a link to a mode parameter becomes
   the mode string.

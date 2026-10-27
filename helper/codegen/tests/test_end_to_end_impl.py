@@ -175,6 +175,26 @@ class TestConstantSizes:
         assert out == ["3", "fx"]
 
 
+class TestAnExtentTheBindingsCompute:
+    """#221 B11: `(n - 10)/3 + 5` is 3 for n = 3 in Fortran, which truncates -7/3 to -2.
+
+    Python's `//` floors it to -3, and an output allocated with that is one element short: the
+    Fortran then writes past it. The shim's C truncates as Fortran does.
+    """
+
+    def test_python_truncates_toward_zero(self, built):
+        out = run_python(built, """
+            print(json.dumps([list(map(int, tox.truncated_count(n))) for n in (3, 13)]))
+        """)
+
+        assert out == [[1, 2, 3], [1, 2, 3, 4, 5, 6]]
+
+    def test_r_truncates_toward_zero(self, built):
+        out = run_r(built, "cat(length(truncated_count(3L)), length(truncated_count(13L)))")
+
+        assert out == ["3", "6"]
+
+
 class TestTheRestOfTheFixture:
     def test_an_assumed_shape_input_and_an_impure_elemental_in_python(self, built):
         out = run_python(built, """

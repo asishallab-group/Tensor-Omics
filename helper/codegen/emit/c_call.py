@@ -23,8 +23,8 @@ view of it -- so the padding byte is part of the value, and blanks are what Fort
 from __future__ import annotations
 
 import hashlib
-import re
 
+from ..abi import extents
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..names import (
@@ -89,27 +89,21 @@ def _weak_pragmas() -> list[str]:
     lines += [f"#pragma weak {symbol}" for symbol in _WEAK_R_SYMBOLS]
     return lines
 
-#: A Fortran numeric literal's kind suffix -- `0_int32`. C has no such thing.
-_FORTRAN_KIND_SUFFIX = re.compile(r"\b(\d+(?:\.\d+)?)_[A-Za-z]\w*")
-#: `size(arr)` / `size(arr, dim)` -- an extent stated in terms of another argument.
-_FORTRAN_SIZE = re.compile(r"\bsize\s*\(\s*([A-Za-z_]\w*)\s*(?:,\s*(\d+)\s*)?\)")
-#: `max`/`min` become the integer helpers in `tox_marshal.h`.
-_FORTRAN_MINMAX = re.compile(r"\b(max|min)\s*\(")
+def c_extent(extent: str, name=lambda n: n, owner_rank=lambda array: 2) -> str:
+    """A Fortran extent expression as C, through the one grammar the bindings evaluate.
 
+    `name` writes an identifier (a by-value scalar is read from its `_v_` local), and
+    `owner_rank` gives an array's rank as R sees it, which decides how `size(a, k)` is read:
+    a vector carries no `dim`, so its only extent is its length. `generate` has refused every
+    extent a binding computes that lies outside the grammar (`abi.extents`).
+    """
+    def size(array: str, dimension: int | None) -> str:
+        if dimension is None or owner_rank(array) <= 1:
+            return f"(int) Rf_length({array})"
+        # Fortran dimensions are 1-based, and a matrix carries its extents in `dim`
+        return f"INTEGER(Rf_getAttrib({array}, R_DimSymbol))[{dimension - 1}]"
 
-def _size_as_c(match: re.Match) -> str:
-    array, dim = match.group(1), match.group(2)
-    if dim is None:
-        return f"(int) Rf_length({array})"
-    # Fortran dimensions are 1-based, and a matrix carries its extents in `dim`
-    return f"INTEGER(Rf_getAttrib({array}, R_DimSymbol))[{int(dim) - 1}]"
-
-
-def c_extent(extent: str) -> str:
-    """A Fortran extent expression as C (kind suffixes, `size(...)`, and `max`/`min`)."""
-    extent = _FORTRAN_KIND_SUFFIX.sub(r"\1", extent)
-    extent = _FORTRAN_SIZE.sub(_size_as_c, extent)
-    return _FORTRAN_MINMAX.sub(r"tox_i\1(", extent)
+    return extents.to_c(extent, name, size)
 
 
 #: iso_c_binding kind -> the C type it interoperates as, for the extern declaration.
@@ -275,6 +269,7 @@ class CCallEmitter:
         # scalars pulled into `_v_<name>` locals; extent expressions naming one must read the
         # local, not the SEXP parameter. Held for the duration of emitting this function.
         self._scalar_names = self._scalar_local_names(wrapper)
+        self._wrapper = wrapper
         params = ", ".join(f"SEXP {a.name}" for a in self._inputs(wrapper))
         if not params:
             params = "void"
@@ -447,11 +442,26 @@ class CCallEmitter:
         return [a for a in self._inputs(wrapper) if a.name in names]
 
     def _extent(self, expr: str) -> str:
-        """A Fortran extent as C, with any by-value scalar name read from its `_v_` local."""
-        out = c_extent(expr)
-        for name in self._scalar_names:
-            out = re.sub(rf"\b{re.escape(name)}\b", shim_local(name, SCALAR_VALUE), out)
-        return out
+        """A Fortran extent as C, with any by-value scalar name read from its `_v_` local.
+
+        An assumed size (`*`) has no value to write; an array declared so is sized by the shape
+        that travels beside it, which is what every caller of this reads instead.
+        """
+        if expr == "*":
+            return expr
+
+        def name(identifier: str) -> str:
+            if identifier in self._scalar_names:
+                return shim_local(identifier, SCALAR_VALUE)
+            return identifier
+
+        def owner_rank(array: str) -> int:
+            owner = self._wrapper.argument(array)
+            if owner is None:
+                return 2
+            return owner.rank - 1 if owner.type.is_character else owner.rank
+
+        return c_extent(expr, name, owner_rank)
 
     def _extract_scalars(self, writer: Writer, wrapper: CWrapper) -> None:
         """Pull a by-value scalar out of its length-1 SEXP into a C local to point at."""

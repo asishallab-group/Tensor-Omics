@@ -363,7 +363,15 @@ and the binding reads its shape.
 An extent may also be a module constant (`points(N_AXES, n_points)`, `character(len=MAX_LEN)`):
 the Fortran and C wrappers import it, and Python and R use its value, so it must be an integer
 constant the generator can evaluate. Or it may be `:` for an assumed-shape dummy, which is validated with
-the size of the array it is given. Every axis starts at 1: `x(1:n)` is accepted as `x(n)`, and
+the size of the array it is given.
+
+Python and R allocate every output and work array, and pad every string, **before** the call, so
+they compute those extents and lengths themselves. Such an extent has to mean the same number in
+Fortran, Python and C, which holds for argument names, module constants, integer literals (a kind
+suffix included, `0_int32`), `+ - * /`, parentheses, `max`, `min` and `size(a)` / `size(a, k)` --
+integer `/` truncating toward zero, as Fortran's does. Anything else (`mod`, `**`, `nint`, a real)
+is refused, as is an extent reading an output or an optional argument; obtain such a size from a
+recommend routine with `DM_OUTPUT_FROM` (Section 5.9). Every axis starts at 1: `x(1:n)` is accepted as `x(n)`, and
 any other lower bound is refused (Section 8). Spell a dummy in whatever case you like where you
 use it — `integer :: N` may size `x(n)` — but the declaration's spelling is the published name.
 
@@ -1299,6 +1307,7 @@ source and carries a note saying what to write instead.
 | an axis with a lower bound other than 1 (`x(0:n)`, `x(0:)`) | every layer sizes an axis from its extent alone; declare `x(n + 1)` and shift the index inside the implementation. `x(1:n)` is accepted as `x(n)` |
 | a `DM_DEFAULT` that is not a constant the compiler would accept, or that does not fit its argument's kind | Python and R pass the evaluated value, so it has to be the one a Fortran caller gets (Section 5.5) |
 | a module constant in an extent or a length that the generator cannot evaluate to an integer (`size(NAMES)` is one, though it is an integer) | Python and R allocate and pad with its value (Section 4) |
+| an extent of an output or a work array, or a string's length, outside the grammar the bindings compute in (`mod(n, 2)`, `n**2`, `nint(x)`, a real), or one reading an output, an optional argument or anything but an argument and a module constant | Python and R compute it before the call, and would get another number than Fortran or none at all; use `DM_OUTPUT_FROM` (Section 4) |
 | a `tmp_` argument that is `intent(in)` | a work array is an output or an in-out |
 | an **optional output** (`intent(out), optional`, and not a `tmp_`) | no binding can honour it — Python would return a dict whose keys vary per call, R a list of varying length. Express it as an optional input *flag* plus a `tmp_` work array, the way `loess_fit_plain_impl` does with `compute_influence`: the work stays skippable and the return type stays fixed |
 | `DM_DEFAULT` **and** `DM_REQUIRED_IF_MODE` on a mode that does *not* split | with a runtime mode the argument is always passed on, so "required in that mode" says nothing. On a split mode (Section 5.11) the pair is meaningful and accepted |

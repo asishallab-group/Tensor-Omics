@@ -305,6 +305,27 @@ rule is documented instead -- write `_real64`, and the two readings agree.
 
 ---
 
+## Decision: an extent the binding computes is parsed once, in a grammar every layer agrees on
+
+Python and the R shim allocate outputs and work arrays, and pad strings, before the call, so they
+evaluate the Fortran extent themselves (`n_points - 1`, `max(0_int32, n_timepoints - 1)`,
+`size(gene_to_fam)`). Two regex translators did it, one per language, and each passed through
+what it did not recognise (#221 B11): `/` reached Python as float division, `mod` and `**` reached
+the shim's C, which did not compile, and the shims are bundled into the library.
+
+`abi/extents.py` parses an extent into a tree, and each binding writes it out from that tree. The
+grammar is what means the same number in Fortran, Python and C -- names, module constants, integer
+literals with or without a kind, `+ - * /`, parentheses, `max`, `min`, `size(a[, k])` -- and
+anything else is refused before emission (`check_binding_extents`), pointing at `DM_OUTPUT_FROM`.
+Integer `/` is the one operator that needs writing out: Fortran and C truncate toward zero,
+Python's `//` floors, so `-7/2` is -3 against -4. Python gets the exact
+`(a // b if (a >= 0) == (b > 0) else -(-a // b))`, never `int(a / b)`, which goes through a float.
+
+*Rejected:* refusing `/` along with `mod`, which the first design proposed. Writing it out is one
+line, and a size that halves is common enough to want. *Rejected:* a generated "extent oracle"
+procedure per wrapper, which would let Fortran compute every size: a second call and a new symbol
+per procedure, for a grammar no output on main leaves.
+
 ## Decision: R keeps a hand-generated wrapper over the C `.Call`
 
 A raw `.Call` entry is not a usable R function. The R wrapper over it buys three things:

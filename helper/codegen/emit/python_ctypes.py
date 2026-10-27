@@ -15,8 +15,7 @@ What the generated function does, and why:
 
 from __future__ import annotations
 
-import re
-
+from ..abi import extents
 from ..abi.c_abi import stripped_name
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
@@ -36,33 +35,13 @@ from ..render import Writer
 from .error_arguments import sources_of
 from .doc_numpydoc import _description, render_docstring
 
-#: A Fortran numeric literal's kind suffix -- `0_int32`, `2.0_real64`. Python has no such
-#: thing, so an extent expression carried over verbatim (`max(0_int32, n - 1)`) is a syntax
-#: error until the suffix is dropped. A kind can only follow a literal (an identifier cannot
-#: start with a digit), so this never touches a real name.
-_FORTRAN_KIND_SUFFIX = re.compile(r"\b(\d+(?:\.\d+)?)_[A-Za-z]\w*")
-
-#: `size(arr)` or `size(arr, dim)` -- Fortran's way of writing an extent in terms of
-#: another argument, which numpy spells as an attribute rather than a call.
-_FORTRAN_SIZE = re.compile(r"\bsize\s*\(\s*([A-Za-z_]\w*)\s*(?:,\s*(\d+)\s*)?\)")
-
-
-def _size_as_numpy(match: re.Match) -> str:
-    array, dim = match.group(1), match.group(2)
-    if dim is None:
-        # no dim: the total number of elements, whatever the rank
-        return f"{array}.size"
-    # Fortran dimensions are 1-based, numpy axes 0-based
-    return f"{array}.shape[{int(dim) - 1}]"
-
-
 def _python_extent(extent: str) -> str:
-    """A Fortran extent expression as Python.
+    """A Fortran extent expression as Python, through the one grammar the bindings evaluate.
 
-    `max`/`min` are built-ins already. What needs translating is the numeric kind suffix,
-    which Python has no notion of, and `size(...)`, which numpy spells as an attribute.
+    `generate` has refused every extent a binding computes that lies outside it
+    (`abi.extents.check_binding_extents`), so this cannot fail on one that is emitted.
     """
-    return _FORTRAN_SIZE.sub(_size_as_numpy, _FORTRAN_KIND_SUFFIX.sub(r"\1", extent))
+    return extents.to_python(extent)
 
 #: Fortran base type -> the ctypes scalar C sees, by its name in `ctypes`
 CTYPES = {
@@ -141,7 +120,7 @@ def _character_dtype(argument: CArgument) -> str:
     extent = character_length(argument)
     if extent.isdigit():
         return f'"S{extent}"'
-    return 'f"S{' + extent + '}"'
+    return 'f"S{' + _python_extent(extent) + '}"'
 
 
 def character_length(argument: CArgument) -> str:
@@ -160,7 +139,7 @@ def _pad_width(argument: CArgument) -> str | None:
     length = argument.source.type.length if argument.source else None
     if length is not None and length.is_assumed and argument.intent.is_input:
         return None
-    return character_length(argument)
+    return _python_extent(character_length(argument))
 
 
 def character_rank(argument: CArgument) -> int:

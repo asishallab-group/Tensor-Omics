@@ -13,6 +13,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from .abi.c_abi import build_project
+from .abi.extents import check_binding_extents
 from .abi.model import CBinding
 from .config import CONVENTIONS, Conventions, Paths
 from .diagnostics import DiagnosticBag
@@ -108,6 +109,10 @@ def generate(
     # only be checked once the model they are emitted from is known to be sound.
     if not diagnostics.errors:
         check_wrapper_names(binding, synthesis, parsed.macros, diagnostics, conventions)
+    # The extents Python and R compute themselves, on what reaches them: an expert tier only
+    # Fortran and C publish computes none there
+    published = _published_to_the_languages(binding, synthesis)
+    check_binding_extents(published, diagnostics)
 
     # Every emitter below assumes what validation and the ABI build have just checked: that
     # an argument has an intent, that its type maps to C, that a DM_OUTPUT_FROM resolved.
@@ -128,7 +133,6 @@ def generate(
         files += _c_files(binding, paths)
     if any(target in targets for target in ("python", "r", "snippets")):
         catalogue = _catalogue(project, parsed.arg_pos_factor, diagnostics, conventions)
-        published = _published_to_the_languages(binding, synthesis)
         if "python" in targets:
             files += _python_files(published, catalogue, paths, library, synthesis)
         if "r" in targets:

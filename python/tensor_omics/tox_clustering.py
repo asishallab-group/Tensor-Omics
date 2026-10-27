@@ -146,7 +146,7 @@ def cluster_factor_trajectories_k_means(
         raise _ToxArgumentError(f"'centroids' has {centroids.shape[0]} along axis 0, but 'trajectories' implies n_factors == {n_factors}", argument="centroids")
 
     # outputs and work arrays, which the caller never sees
-    labels = _np.empty((n_samples*n_timepoints,), dtype=_np.int32, order='C')
+    labels = _np.empty((n_samples * n_timepoints,), dtype=_np.int32, order='C')
     label_counts = _np.empty((n_clusters,), dtype=_np.int32, order='C')
     ierr = _ctypes.c_int(0)
 

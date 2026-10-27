@@ -25,7 +25,7 @@ SEXP cluster_factor_trajectories_k_means_call(SEXP trajectories, SEXP centroids,
     SEXP _out_centroids = PROTECT(Rf_duplicate(centroids)); _nprot++;
 
     // outputs and work space
-    SEXP labels = PROTECT(Rf_allocVector(INTSXP, (n_samples*n_timepoints))); _nprot++;
+    SEXP labels = PROTECT(Rf_allocVector(INTSXP, (n_samples * n_timepoints))); _nprot++;
     SEXP label_counts = PROTECT(Rf_allocVector(INTSXP, n_clusters)); _nprot++;
     int ierr = 0;
 
