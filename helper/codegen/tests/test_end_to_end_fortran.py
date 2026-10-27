@@ -41,10 +41,11 @@ DEPENDENCY_FLAGS = [flag for flag in WRAPPER_FLAGS if flag != "-std=f2018"]
 
 #: Every module the wrapper `use`s, in dependency order. The real sources, not stubs: a stub
 #: could not show that `sort_array_heapsort` resolves for the array and the *allocatable*
-#: permutation the wrapper hands it. Three files, 0.35s.
+#: permutation the wrapper hands it.
 DEPENDENCIES = (
     "src/f42/f42_safeguard.F90",         # first: tox_errors names c_bool and depends on it
     "src/f42/tox_errors.F90",
+    "src/f42/tox_conversions.F90",       # c_char_as_view, for a C wrapper's mode string
     "src/f42/utils/f42_math_impl.F90",   # f42_sort uses clamp
     "src/f42/utils/f42_sort_impl.F90",   # init_perm, sort_array_heapsort
 )

@@ -22,7 +22,7 @@ import re
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..config import CONVENTIONS, Conventions
 from ..ir.types import Intent
-from ..names import CONVERTED, MODE_VALUE
+from ..names import CONVERTED, MODE_POINTER, MODE_VALUE
 from ..render import Writer
 from .doc_ford import render_doc
 from .doc_literals import render_mode_default
@@ -32,10 +32,12 @@ from .doc_literals import render_mode_default
 #: match, and that never collides with a real argument name.
 _EXTENT_IDENTIFIER_RE = re.compile(r"[A-Za-z_]\w*")
 
-#: Suffix of the local a converted argument is passed to the callee as, and of the local
-#: holding a mode string's integer parameter; `names` is where every generated name is kept
+#: Suffix of the local a converted argument is passed to the callee as, of the local
+#: holding a mode string's integer parameter, and of the pointer a nullable mode is passed as;
+#: `names` is where every generated name is kept
 CONVERTED_SUFFIX = CONVERTED
 MODE_SUFFIX = MODE_VALUE
+MODE_POINTER_SUFFIX = MODE_POINTER
 
 
 def _product(extents) -> str:
@@ -258,6 +260,12 @@ class FortranCEmitter:
                 # together are legal on a bind(C) dummy and cost the ABI nothing; without
                 # the target both gfortran and ifx reject the c_loc outright.
                 attributes.append("target")
+            elif argument.conversion is Conversion.MODE:
+                # A mode is read through `c_char_as_view`, whose dummy is a TARGET and whose
+                # result points into it. Given an actual that is not one, that pointer is
+                # undefined once the function returns (F2018 15.5.2.4) -- nothing rejects it,
+                # the `select case` just reads it.
+                attributes.append("target")
         else:
             # c_loc needs a target, for the null check and for the pointer view.
             attributes.append("target")
@@ -271,7 +279,15 @@ class FortranCEmitter:
     def _local_declarations(self, argument: CArgument) -> list[str]:
         source = argument.source
         if argument.conversion is Conversion.MODE:
-            return [f"integer(int32) :: {argument.name}{MODE_SUFFIX}"]
+            value = f"{argument.name}{MODE_SUFFIX}"
+            if not argument.optional:
+                return [f"integer(int32) :: {value}"]
+            # A nullable mode -- optional, no default -- must reach the callee absent when C
+            # passed null, and an integer local is always present. So the callee is handed a
+            # pointer to it instead, which stays disassociated, and so absent, unless the mode
+            # was given: the string view's idiom (`_remap_local`), with the value as target.
+            return [f"integer(int32), target :: {value}",
+                    f"integer(int32), pointer :: {argument.name}{MODE_POINTER_SUFFIX}"]
 
         # A logical work array whose size the *caller* chooses is allocatable, and is
         # allocated through `M_ALLOCATE`. An automatic array is the obvious spelling and was
@@ -478,7 +494,19 @@ class FortranCEmitter:
                 else:
                     writer.line(f"{name}{CONVERTED_SUFFIX} = {source_expression}")
             case Conversion.MODE:
-                writer.block(self._mode_in(argument, error))
+                if not argument.optional:
+                    writer.block(self._mode_in(argument, error))
+                else:
+                    # C passed null -> absent -> the pointer stays disassociated, and the
+                    # view of the string, which is what would read through null, is never
+                    # taken. Nullified as a statement, not an initialiser (implicit SAVE).
+                    pointer = f"{name}{MODE_POINTER_SUFFIX}"
+                    writer.line(f"nullify({pointer})")
+                    writer.line(f"if (present({name})) then")
+                    with writer.indent():
+                        writer.block(self._mode_in(argument, error))
+                        writer.line(f"{pointer} => {name}{MODE_SUFFIX}")
+                    writer.line("end if")
         return writer.render()
 
     def _mode_in(self, argument: CArgument, error: str) -> str:
@@ -543,7 +571,8 @@ class FortranCEmitter:
 
     def _actual(self, argument: CArgument) -> str:
         if argument.conversion is Conversion.MODE:
-            return f"{argument.name}{MODE_SUFFIX}"
+            suffix = MODE_POINTER_SUFFIX if argument.optional else MODE_SUFFIX
+            return f"{argument.name}{suffix}"
         if argument.needs_conversion:
             return f"{argument.name}{CONVERTED_SUFFIX}"
         if argument.shape_arg is not None:

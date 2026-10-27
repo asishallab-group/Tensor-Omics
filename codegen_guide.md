@@ -732,6 +732,9 @@ if (present(mode)) then
 end if
 ```
 
+A mode may also be optional **without** a default (Section 5.5). Omitted from Python or R, it
+reaches your implementation absent, so test `present(mode)` before you read it.
+
 Do **not** bound a mode with `DM_MIN`/`DM_MAX`: the accepted set need not be contiguous, and a
 hand-written range goes stale the moment a mode is added — silently admitting the new value
 everywhere it was not updated. The table is the source of truth, and the generator already reads

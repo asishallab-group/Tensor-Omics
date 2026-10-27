@@ -557,6 +557,11 @@ the compiler or a run rejected the first attempt.
   [`design/c-layer.md`](design/c-layer.md).
 - **Nullable optionals** cross as `bind(C)` `OPTIONAL` (interoperable since F2018), a plain
   pointer that is absent when C passes null — no descriptor, no branch.
+- **A nullable mode** (optional, no `DM_DEFAULT`) is the one optional that is converted, so it
+  cannot be handed straight on: the callee gets a pointer to the mode's integer, nullified and
+  associated only when the string was given. The wrapper used to view the string unguarded,
+  which segfaulted Python and R when the mode was omitted, and to pass its integer local,
+  which is always present (#221).
 - **`DM_RESULT_SIZE_IS` counts along the last axis**, at any rank: Python slices
   `[..., :n]`, R takes `utils::head(x, n)` for a vector and `x[, seq_len(n), drop = FALSE]`,
   with one leading comma per further axis, for an array. `head()` on a matrix took rows, the

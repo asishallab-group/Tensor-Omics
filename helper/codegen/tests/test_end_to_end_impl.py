@@ -83,7 +83,7 @@ def _compile_fortran(source: Path, out: Path, flags=FORTRAN_FLAGS) -> str:
 
 def _build(out: Path) -> Path:
     (out / "obj").mkdir()
-    dependencies = [REPO_ROOT / d for d in DEPENDENCIES] + [REPO_ROOT / "src/f42/tox_conversions.F90"]
+    dependencies = [REPO_ROOT / d for d in DEPENDENCIES]
     objects = [_compile_fortran(source, out, DEPENDENCY_FLAGS) for source in dependencies]
     sources = sorted((REPO_ROOT / FIXTURE_IMPL).glob("*_impl.F90"))
     sources += sorted((out / "fortran").rglob("*.F90"))   # the wrappers before their C wrappers
@@ -199,3 +199,35 @@ class TestAPrologueBesideAnOwnIerr:
 
     def test_r_clips_at_the_level_the_prologue_derives(self, built):
         assert run_r(built, "cat(fx_clip(c(1, 2, 4), 0.5))") == ["1", "2", "2"]
+
+
+class TestAnOptionalModeWithoutADefault:
+    """#221 B10: an optional mode with no default, omitted, is absent to the implementation.
+
+    The C wrapper took `c_char_as_view` of the null pointer it was handed, which killed Python
+    with SIGSEGV and R with "caught segfault" -- and had it survived, it would have passed its
+    local integer on, so the implementation would have seen the mode as present.
+    """
+
+    def test_python_omits_it(self, built):
+        out = run_python(built, "print(json.dumps(list(tox.fx_scale_by_method([1.0, 4.0]))))")
+
+        assert out == [1.0, 4.0]
+
+    def test_python_passes_it(self, built):
+        out = run_python(built, """
+            print(json.dumps([list(tox.fx_scale_by_method([1.0, 4.0], method)) for method in
+                              ("double", "halve")]))
+        """)
+
+        assert out == [[2.0, 8.0], [0.5, 2.0]]
+
+    def test_r_omits_it(self, built):
+        assert run_r(built, "cat(fx_scale_by_method(c(1, 4)))") == ["1", "4"]
+
+    def test_r_passes_it(self, built):
+        out = run_r(built, 'cat(fx_scale_by_method(c(1, 4), "double"), '
+                           'fx_scale_by_method(c(1, 4), "halve"))')
+
+        assert out == ["2", "8", "0.5", "2"]
+

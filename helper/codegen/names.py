@@ -178,6 +178,9 @@ def shim_local(argument: str, tag: str) -> str:
 CONVERTED = "_f"
 #: Fortran C wrapper: the integer parameter a mode string names
 MODE_VALUE = "_mode_f"
+#: Fortran C wrapper: a nullable mode as the callee is handed it -- a pointer to the
+#: `MODE_VALUE` local, left disassociated, and so absent, when C passed null
+MODE_POINTER = "_mode_p"
 #: Fortran wrapper: an omitted optional's default, materialised for a recommend routine
 DEFAULT_VALUE = "_value"
 #: Fortran wrapper: the flag a prologue sets, which is the prologue's contract and so a

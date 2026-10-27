@@ -418,6 +418,22 @@ absent optional dummy -- the same rule the unallocated allocatable used. It must
 which is both thread-unsafe and formally impossible on an automatic-length object, and both
 compilers accept the spelling silently.
 
+**A nullable mode is passed as a pointer to its integer, by the same rule.** A mode is the one
+optional the wrapper converts, so it cannot be handed straight on as above: the callee takes
+the integer the string names, and an integer local is always present. The wrapper declares the
+integer `target` and a pointer to it, `nullify`s the pointer, and only under `present(...)`
+views the string, maps it and associates the pointer; the callee is handed the pointer, which is
+absent when it stayed disassociated. The string dummy is `optional, target`, because
+`c_char_as_view`'s result points into its TARGET dummy and would be undefined on return
+otherwise (F2018 15.5.2.4). Before (#221), the view was taken unguarded -- a null dereference
+that killed Python and R when the mode was omitted -- and the local integer was passed, so the
+callee would have seen the mode present all the same. A mode with a `DM_DEFAULT` is not
+nullable and keeps the plain local.
+
+*Rejected:* an `allocatable` integer, the nullable logical's idiom, which is absent while
+unallocated. It costs an allocation that can fail, for four bytes, where the pointer costs
+nothing and cannot fail.
+
 **Zero-size buffers are fine, and were probed rather than guarded.** `M_CHECK_ARRAY_NON_NULL`
 lets an empty array through unchecked, so the remap is the first place the wrapper takes an
 unguarded `c_loc` -- and `read_tox_data_into` on a partial archive really does reach it with

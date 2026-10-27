@@ -38,7 +38,7 @@ SOURCES = {
 }
 
 #: The suffixes of a Fortran wrapper's locals
-FORTRAN_SUFFIXES = (names.CONVERTED, names.MODE_VALUE, names.DEFAULT_VALUE)
+FORTRAN_SUFFIXES = (names.CONVERTED, names.MODE_VALUE, names.MODE_POINTER, names.DEFAULT_VALUE)
 
 
 @pytest.fixture(scope="module", params=sorted(SOURCES))

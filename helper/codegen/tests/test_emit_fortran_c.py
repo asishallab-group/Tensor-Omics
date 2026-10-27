@@ -488,6 +488,57 @@ class TestModes:
         assert "mode = mode_mode_f,&" in emit(self._mode_procedure(), bag, emitter)
 
 
+class TestANullableMode:
+    """#221 B10: an optional mode with no default, which C may pass as null.
+
+    The wrapper took `c_char_as_view` of it unguarded -- a segfault when omitted -- and passed
+    its integer local on, so the callee would have seen the mode present all the same.
+    """
+
+    def _procedure(self):
+        doc = [
+            "| Mode | Value |",
+            "|------|-------|",
+            "| mean it | [[fx_basics(module):MODE_MEAN(variable)]] |",
+            "| median it | [[fx_basics(module):MODE_MEDIAN(variable)]] |",
+        ]
+        mode = b.integer("mode", Intent.IN, optional=True, doc=doc)
+        return b.procedure("p", mode, b.ierr())
+
+    def test_it_is_optional_and_a_target_for_the_view(self, bag, emitter):
+        text = emit(self._procedure(), bag, emitter)
+
+        assert ("character(len=1, kind=c_char), dimension(6), intent(in), optional, target "
+                ":: mode") in text
+
+    def test_the_callee_is_handed_a_pointer_to_the_integer(self, bag, emitter):
+        text = emit(self._procedure(), bag, emitter)
+
+        assert "integer(int32), target :: mode_mode_f" in text
+        assert "integer(int32), pointer :: mode_mode_p" in text
+        assert "mode = mode_mode_p,&" in text
+
+    def test_the_string_is_read_only_when_present(self, bag, emitter):
+        text = emit(self._procedure(), bag, emitter)
+
+        nullify = text.index("nullify(mode_mode_p)")
+        present = text.index("if (present(mode)) then")
+        view = text.index("c_char_as_view(mode)")
+        associate = text.index("mode_mode_p => mode_mode_f")
+        assert nullify < present < view < associate < text.index("end if", associate)
+
+    def test_a_mode_with_a_default_is_not_touched(self, bag, emitter):
+        # a default makes the mode required in C (#131), so the plain local stays
+        from codegen.ir.directives import Default, Directives
+
+        procedure = self._procedure()
+        procedure.arguments[0].directives = Directives(default=Default("MODE_MEAN"))
+        text = emit(procedure, bag, emitter)
+
+        assert "mode_mode_p" not in text
+        assert "mode = mode_mode_f,&" in text
+
+
 class TestConstantExtents:
     """A module constant sizing an argument is imported, like a mode's values (#221, B13)."""
 
