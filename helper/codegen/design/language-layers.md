@@ -377,9 +377,10 @@ The names the generated code binds itself are a different problem, and are desig
 language lets them be. Everything the R shim's C and a generated Python module bind beside the
 arguments starts with `_` (`_v_<name>`, `_nprot`, `_np`, `_check_err_code`, `_error`); no Fortran
 name can, so no argument can meet one. A Fortran wrapper's own locals cannot start with `_`, so
-they stay `<name>_f`, `<name>_mode_f`, `<name>_mode_p`, `<name>_value` and `handled`, and an argument is refused
-where the wrapper emits the same name -- read off the wrapper as emitted, together with what it
-calls, imports and uses as a kind (`emit/name_clashes.py`).
+they stay `<name>_f`, `<name>_mode_f`, `<name>_mode_p`, `<name>_address`, `<name>_value` and
+`handled` (and the C wrapper module's `empty_view_anchor`), and an argument is refused where the
+wrapper emits the same name -- read off the wrapper as emitted, together with what it calls,
+imports, uses as a kind and finds declared in its module (`emit/name_clashes.py`).
 
 **Rejected -- renaming instead.** The published name is the API, and a binding that quietly calls
 an argument `lambda_` is one more thing a reader of the Fortran cannot predict.
