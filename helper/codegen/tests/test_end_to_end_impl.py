@@ -214,26 +214,34 @@ class TestAnOptionalModeWithoutADefault:
     """
 
     def test_python_omits_it(self, built):
-        out = run_python(built, "print(json.dumps(list(tox.fx_scale_by_method([1.0, 4.0]))))")
+        out = run_python(built, """
+            result = tox.fx_scale_by_method([1.0, 4.0])
+            print(json.dumps([list(result["scaled"]), int(result["method_given"])]))
+        """)
 
-        assert out == [1.0, 4.0]
+        assert out == [[1.0, 4.0], 0]
 
     def test_python_passes_it(self, built):
         out = run_python(built, """
-            print(json.dumps([list(tox.fx_scale_by_method([1.0, 4.0], method)) for method in
-                              ("double", "halve")]))
+            results = [tox.fx_scale_by_method([1.0, 4.0], method) for method in ("double", "halve")]
+            print(json.dumps([[list(r["scaled"]), int(r["method_given"])] for r in results]))
         """)
 
-        assert out == [[2.0, 8.0], [0.5, 2.0]]
+        assert out == [[[2.0, 8.0], 1], [[0.5, 2.0], 1]]
 
     def test_r_omits_it(self, built):
-        assert run_r(built, "cat(fx_scale_by_method(c(1, 4)))") == ["1", "4"]
+        out = run_r(built, "r <- fx_scale_by_method(c(1, 4)); cat(r$scaled, r$method_given)")
+
+        assert out == ["1", "4", "0"]
 
     def test_r_passes_it(self, built):
-        out = run_r(built, 'cat(fx_scale_by_method(c(1, 4), "double"), '
-                           'fx_scale_by_method(c(1, 4), "halve"))')
+        out = run_r(built, """
+            for (method in c("double", "halve")) {
+                r <- fx_scale_by_method(c(1, 4), method); cat(r$scaled, r$method_given, "")
+            }
+        """)
 
-        assert out == ["2", "8", "0.5", "2"]
+        assert out == ["2", "8", "1", "0.5", "2", "1"]
 
 
 #: Where `_generate` writes the Fortran wrappers, the C wrappers, the R shims, Python and R
