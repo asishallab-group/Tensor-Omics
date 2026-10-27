@@ -1,0 +1,115 @@
+\section{Detection of Differential Gene Expression with the Empirical Noise Model}\label{sec:noise_de}
+
+    \paragraph{Status: work in progress.} The methods in this section are implemented on the branch \texttt{145-empirical-noise-model} of Tensor Omics and are being evaluated against edgeR, limma and DESeq2. Defaults and parameter values are subject to change.
+
+    \subsection{Goal}
+
+        Section~\ref{sec:noise_distances} asks whether the distance between two genes is explainable by replicate noise. Here the question is the classical one of differential expression: does the expression of a gene differ between two conditions, a \emph{case} and a \emph{control} group? The noise is again estimated empirically from genes with similar expression (Section~\ref{ssec:knn_noise_sampling}); no parametric count distribution is assumed. The assumption is that genes with similar group means have exchangeable within-group residuals.
+
+        Section~\ref{ssec:noise_de_1d} describes the test for one condition contrast (one axis, 1-D). Section~\ref{ssec:noise_de_md} extends it to several independent axes, e.g.\ the same contrast measured in several tissues (multi-dimensional, MD).
+
+    \subsection{One Axis (1-D)}\label{ssec:noise_de_1d}
+
+        \subsubsection{Notation and observed statistic}
+
+            For gene $g$, let $x^{+}_{g,i}$, $i = 1,\ldots,n^{+}$, be the case replicates and $x^{-}_{g,i}$, $i = 1,\ldots,n^{-}$, the control replicates (normalized expression, e.g.\ TPM or library-size normalized counts). By default, the model works on the log scale,
+            \[
+                y^{\pm}_{g,i} = \log_2\!\left(x^{\pm}_{g,i} + 1\right),
+            \]
+            and centres each group on the mean of its log values, $\bar{y}^{\pm}_{g} = \frac{1}{n^{\pm}} \sum_i y^{\pm}_{g,i}$ (the Fr\'echet mean in log space; by Jensen's inequality it differs from $\log_2$ of the linear mean). A linear variant ($y = x$) is available. The observed statistic is the difference of the group centres,
+            \[
+                \hat\beta_g = \bar{y}^{+}_{g} - \bar{y}^{-}_{g}.
+            \]
+            Optionally, the median of $\hat\beta_g$ over all genes is subtracted (composition centring). This assumes that the median gene is unchanged; it must not be combined with a normalization that has already corrected for composition. The model also reports an effect size that is never centred, $\log_2(\bar{x}^{+}_{g} + 1) - \log_2(\bar{x}^{-}_{g} + 1)$ on the linear group means $\bar{x}^{\pm}_{g}$.
+
+        \subsubsection{Residuals}
+
+            The residuals of gene $g$ in group $\pm$ are
+            \[
+                \varepsilon^{\pm}_{g,i} = \sqrt{\frac{n^{\pm}}{n^{\pm} - 1}}\;\left(y^{\pm}_{g,i} - \bar{y}^{\pm}_{g}\right),
+            \]
+            where the factor $\sqrt{n/(n-1)}$ (Bessel correction) makes their variance an unbiased estimate of the replicate variance. Each group needs at least two replicates.
+
+        \subsubsection{Neighbourhood: genes with similar mean and similar noise (default)}\label{sssec:noise_de_vband}
+
+            The null of gene $g$ is built from the residuals of neighbour genes, separately for each group: the case pool from genes whose case mean is close to $\bar{x}^{+}_{g}$, the control pool from genes whose control mean is close to $\bar{x}^{-}_{g}$. Candidates are visited in order of increasing distance in linear mean, as in Section~\ref{ssec:knn_noise_sampling}.
+
+            Matching on the mean alone treats genes with the same mean but different noise levels as equivalent. The pool is then a mixture: too wide for quiet genes (lost power) and too narrow for noisy ones (false positives). By default, a candidate is therefore accepted only if its noise level is also similar to that of the target gene:
+
+            \begin{enumerate}
+                \item For every gene, compute the pooled within-group variance of the log values,
+                      \[
+                          s^2_g = \frac{\sum_i \left(y^{+}_{g,i} - \bar{y}^{+}_{g}\right)^2 + \sum_i \left(y^{-}_{g,i} - \bar{y}^{-}_{g}\right)^2}{d}, \qquad d = n^{+} + n^{-} - 2,
+                      \]
+                      its logarithm $l_g = \ln s^2_g$, and the mean expression $m_g = \log_2(\bar{x}_g + 1)$ over all samples of the gene.
+                \item Fit a robust LOESS trend $S(m)$ of $l_g$ on $m_g$ (span 0.3, degree 1, bisquare reweighting) and take the deviation from the trend as the matching variable,
+                      \[
+                          u_g = l_g - S(m_g).
+                      \]
+                      The trend captures the mean--variance relation, which carries no gene-specific information; $u_g$ is the gene-specific noise level.
+                \item Accept a candidate $j$ only if it lies in a two-sided band around the target,
+                      \[
+                          |u_j - u_g| \le \tau_{\mathrm{var}}, \qquad \tau_{\mathrm{var}} = c\,\sqrt{\psi_1(d/2)},
+                      \]
+                      where $\psi_1$ is the trigamma function, so that $\sqrt{\psi_1(d/2)}$ is the sampling standard deviation of a log variance with $d$ degrees of freedom, and $c$ is a band constant (current default 1.5).
+                \item Collect the residuals of the first $k$ accepted genes (current default $k = 50$, counted in genes). At most $20k$ candidates are examined, so the neighbourhood cannot drift arbitrarily far in mean; the band is never relaxed. A gene with fewer than 10 accepted neighbours is not tested.
+            \end{enumerate}
+
+            The target gene passes its own band and is part of its own pool. The noise level selects \emph{which} genes enter the pools; it does not enter the null itself. The selection uses one $u_g$ for both groups (an equal-variance assumption in the selection only); the null keeps separate pools and scaling per group. A plain mean-matched neighbourhood (adaptive $k$ as in Section~\ref{ssec:knn_noise_sampling}, without the band) remains available.
+
+        \subsubsection{Null distribution and p-value}
+
+            The observed statistic is a difference of means over $n^{\pm}$ replicates, while one residual is at the scale of a single observation. Each pool is therefore scaled by $1/\sqrt{n}$ of its own group, and the null consists of all pairwise differences of one scaled case residual and one scaled control residual:
+            \[
+                \beta^{0} = \frac{\varepsilon^{+}}{\sqrt{n^{+}}} - \frac{\varepsilon^{-}}{\sqrt{n^{-}}}, \qquad \varepsilon^{+} \in \mathcal{E}^{+}_{g},\; \varepsilon^{-} \in \mathcal{E}^{-}_{g}.
+            \]
+            The two-sided p-value counts these $N = |\mathcal{E}^{+}_{g}|\,|\mathcal{E}^{-}_{g}|$ pairs exactly (sorted pool and binary search, no sampling):
+            \[
+                p_g = \frac{1 + \#\left\{\left|\beta^{0}\right| \ge \left|\hat\beta_g\right|\right\}}{N + 1}.
+            \]
+            The scaling corrects the variance of the null, not its shape: the distribution of a mean is closer to normal than that of a single residual. Multiple testing is corrected over the tested genes, e.g.\ with Benjamini--Hochberg.
+
+        \subsubsection{In development: shrinkage of the noise level}
+
+            With few replicates, $u_g$ is a noisy estimate of the gene's noise level. A variant under evaluation replaces it by a moderated estimate in the style of limma: the log variances are bias-corrected, the prior degrees of freedom $d_0$ are estimated from their scatter around the LOESS trend (moment matching with the trigamma function), each $s^2_g$ is shrunk on the variance scale towards the trend, $\tilde{s}^2_g = (d_0 s^2_0 + d\, s^2_g)/(d_0 + d)$, and the band is applied to $\log(\tilde{s}^2_g / s^2_0)$ with half-width $c\,w\,\sqrt{\psi_1(d/2)}$, $w = d/(d + d_0)$. If the genes show no noise differences beyond sampling error ($d_0 = \infty$), every candidate is accepted and the method reduces to the plain neighbourhood with fixed $k$. Only the selection is shrunk; the null stays empirical. Whether this variant or the unshrunk band of Section~\ref{sssec:noise_de_vband} becomes the default is still open.
+
+    \subsection{Several Axes (Multi-Dimensional)}\label{ssec:noise_de_md}
+
+        \subsubsection{Setting and assumption}
+
+            A gene is now measured on $d$ axes $a = 1,\ldots,d$ (e.g.\ tissues), each with its own case and control groups of sizes $n^{+}_a$ and $n^{-}_a$. The question is whether the gene responds anywhere, i.e.\ whether its whole vector of effects is larger than noise. The axes are treated as \emph{independent}: no sample, individual or batch may appear on more than one axis. This is a property of the study design and is checked through the sample identifiers, which cannot detect a shared individual under different identifiers.
+
+        \subsubsection{Statistic}
+
+            Per axis, $\hat\beta_{g,a}$ is the 1-D statistic of Section~\ref{ssec:noise_de_1d}, computed from that axis' replicates. Two norms are reported:
+            \[
+                D_g = \sqrt{\sum_{a} \hat\beta_{g,a}^2}, \qquad
+                D_{\mathrm{std},g} = \sqrt{\sum_{a} \frac{\hat\beta_{g,a}^2}{\mathrm{Var}_{\mathrm{null}}(g,a)}}.
+            \]
+            $D_g$ is the effect size (in $\log_2$ units on the log scale); $D_{\mathrm{std},g}$ is the test statistic and drives the p-value. Weighting by the null variance keeps a noisy axis from dominating. With independent axes the null covariance is diagonal, so $D_{\mathrm{std}}$ is the full Mahalanobis distance. The direction of the effect vector is not tested; a test of direction requires an angle-based noise model and is not part of this method.
+
+        \subsubsection{Null distribution}
+
+            Residuals and neighbourhoods are built per axis and per group exactly as in 1-D, each in that axis' own mean space; there is no joint neighbour search in $d$ dimensions, so a gene high in one tissue and low in another finds suitable neighbours on each axis. The current implementation uses the mean-matched adaptive neighbourhood of Section~\ref{ssec:knn_noise_sampling}; the variance band of Section~\ref{sssec:noise_de_vband} is not yet available on several axes. A gene is not tested if any axis has fewer than 10 residuals in a pool.
+
+            Each pool is scaled by $1/\sqrt{n}$ of its own group and axis, which gives the null variance per axis in closed form,
+            \[
+                \mathrm{Var}_{\mathrm{null}}(g,a) = \frac{\mathrm{Var}\!\left(\mathcal{E}^{+}_{g,a}\right)}{n^{+}_a} + \frac{\mathrm{Var}\!\left(\mathcal{E}^{-}_{g,a}\right)}{n^{-}_a}.
+            \]
+            One null draw takes one scaled case and one scaled control residual per axis,
+            \[
+                v_a = \frac{\varepsilon^{+}_{a}}{\sqrt{n^{+}_a}} - \frac{\varepsilon^{-}_{a}}{\sqrt{n^{-}_a}}, \qquad
+                D^{2}_{\mathrm{std},0} = \sum_a \frac{v_a^2}{\mathrm{Var}_{\mathrm{null}}(g,a)}.
+            \]
+            Because the axes are independent, the joint null is the product of the per-axis nulls.
+
+        \subsubsection{p-value}
+
+            \[
+                p_g = \frac{1 + \#\left\{D^{2}_{\mathrm{std},0} \ge D^{2}_{\mathrm{std},g}\right\}}{M + 1}.
+            \]
+            The binary-search count of the 1-D model does not generalize to several axes, and the product space grows quickly. The model therefore enumerates all combinations only while their number is small (in practice $d = 1$, where it reproduces the mean-matched 1-D model exactly), and otherwise samples $M$ draws (current default $M = 20{,}000$), by default with a deterministic stride through each pool instead of random numbers. The smallest attainable p-value is then $1/(M+1)$; $M$ is chosen with respect to the number of genes under multiple-testing correction, not the number of axes.
+
+        \subsubsection{Open questions}
+
+            Matching is per axis on the mean, so a noise level shared by a gene across axes is not captured and could make p-values anti-conservative, the more so with more axes. Calibration on real and simulated data, the influence of $k$ and of the normalization, and the behaviour at low counts and few replicates are being evaluated.

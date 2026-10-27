@@ -1,4 +1,4 @@
-\section{Empirical Noise-Based Significance of Distances}
+\section{Empirical Noise-Based Significance of Distances}\label{sec:noise_distances}
 
     \subsection{Goal and Motivation}
 
@@ -36,7 +36,7 @@
 
         This scatterplot encodes how biological replicate variability depends on mean expression level for \emph{that axis} (tissue).
 
-    \subsection{Local k-Nearest-Neighbor Noise Sampling}
+    \subsection{Local k-Nearest-Neighbor Noise Sampling}\label{ssec:knn_noise_sampling}
 
         For a given gene $g$ and axis $a$, we estimate noise at its mean expression level using adaptive k-nearest-neighbor (kNN) binning in mean-expression space. The search is one-dimensional: Tensor Omics sorts the gene means of the axis once and finds the closest mean by binary search, then grows the neighbourhood outward in sorted order.
 

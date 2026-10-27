@@ -1,3 +1,6 @@
 [submodule "experiments/Noise_Model_Test"]
 	path = experiments/Noise_Model_Test
 	url = https://github.com/schroederaaron/empirical-noise-model-testing.git
+[submodule "experiments/md-noise-model-evaluation"]
+	path = experiments/md-noise-model-evaluation
+	url = https://github.com/schroederaaron/md-noise-model-evaluation

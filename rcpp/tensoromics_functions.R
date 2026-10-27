@@ -3617,7 +3617,7 @@ compute_scaled_distance_quantile <- function(distribution, c_const) {
 #'   analogue of what TMM does for counts. \strong{Must be 0 whenever the R side has
 #'   already normalised}, or the data are centred twice. `delta_hat` is reported
 #'   either way.
-#' @param norm_method Integer normalization method (0 = linear, non-zero = log2).
+#' @param norm_method Integer normalization method: 1 = log2 (default), 0 = linear.
 #' @param k_start Integer starting neighborhood size.
 #' @param k_step Integer adaptive increment.
 #' @param k_max Integer maximum neighborhood size.
@@ -3646,7 +3646,7 @@ tox_compute_noise_pvalues_pipeline <- function(
     control_replicates,
     valid_genes_own = NULL,
     beta_centre = 0L,
-    norm_method = 0L,
+    norm_method = 1L,
     k_start = 100L,
     k_step = 100L,
     k_max = 1000L,
@@ -3692,7 +3692,7 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
     control_replicates,
     valid_genes_own = NULL,
     beta_centre = 0L,
-    norm_method = 0L,
+    norm_method = 1L,
     k_start = 100L,
     k_step = 100L,
     k_max = 1000L,
@@ -3754,7 +3754,7 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
 #' @param valid_genes_own Integer vector (1 = test this gene); \code{NULL} tests all.
 #' @param beta_centre 0 / 1, median centring of the observed statistic (as in the
 #'   other scalar models).
-#' @param norm_method 0 = linear, non-zero = log2 (statistic and null only).
+#' @param norm_method 1 = log2 (default), 0 = linear (statistic and null only).
 #' @param k Fixed number of neighbour GENES per pool (notes: 50).
 #' @param c_tau Band constant; \code{NULL} takes the notes' primary value, 1.5 for
 #'   \code{"band"} and 1.0 for \code{"shrunk"}.
@@ -3779,7 +3779,7 @@ tox_compute_noise_pvalues_pipeline_variance <- function(
     variance_mode = c("band", "shrunk"),
     valid_genes_own = NULL,
     beta_centre = 0L,
-    norm_method = 0L,
+    norm_method = 1L,
     k = 50L,
     c_tau = NULL,
     loess_span = 0.3,
