@@ -142,7 +142,7 @@ Two consequences follow, and both are enforced:
 - **An implementation module lives in a file named after it**
   (`validate._check_module_is_named_for_its_file`). Two independent derivations meet here: the
   wrapper's *contents* come from the module name, which synthesis reads, while its *path*
-  comes from the file name, which the cleaner scans without parsing anything. Let the two
+  is mirrored from the file name. Let the two
   disagree and the generator emits `module tox_a` into a file called `tox_b.F90` — legal
   Fortran, no error anywhere, and a tree in which nothing can be found by the name it has.
 
@@ -506,12 +506,15 @@ byte of generated output — the C bindings are keyed by module name into a flat
 
 **Rejected — deleting `src/generated` wholesale in `clean`, now that it is generated-only.**
 `clean` runs per target, and the generated tree holds three targets' output; the Fortran
-target removes exactly the files it is about to write, one per implementation module, derived
-from the source tree by the same mirror that places them. An `rmtree` of the root would make
-`--target fortran` delete the C and R bindings it was not asked about.
+target removes every wrapper module it finds on disk under `generated_dir` -- every `.F90`
+outside the C and R binding trees (`synthesize.generated_wrapper_paths`). It used to remove
+only the files it was about to write, derived from the source tree by the mirror that places
+them, which missed the wrapper of a deleted implementation: fpm compiles all of
+`src/generated`, and that orphan broke every build after (#221). An `rmtree` of the root would
+make `--target fortran` delete the C and R bindings it was not asked about.
 
 **Ford excludes the generated tree by directory, not by file name.** It used to name the files
-— the same derived list `clean` uses — which is one fact with one definition and looks
+— the same derived list `clean` then used — which is one fact with one definition and looks
 strictly better. It is not, for two reasons the layer-free mirror created. Ford matches a bare
 exclude as `**/<name>`, so once an f42 implementation generates `f42_stats.F90`, excluding
 that name would also drop the hand-written `src/f42/utils/f42_stats.F90` from the parse, and
@@ -591,7 +594,9 @@ if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mo
 
 The generator parsed the table, so it knows the accepted set exactly. An optional mode is
 guarded by `present()`: absent means "use the documented default", which is one of the accepted
-values by construction, and reading an absent optional to discover that is not a Fortran program.
+values by construction, or -- for an optional mode with no default -- "the implementation
+decides", which it learns from `present()` itself. Reading an absent optional to discover
+either is not a Fortran program.
 
 A chain of `/=` rather than `all(x /= [...])`, so the check costs a few integer comparisons and
 no temporary array.

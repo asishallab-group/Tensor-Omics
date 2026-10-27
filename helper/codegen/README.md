@@ -164,9 +164,10 @@ Three things worth knowing:
   about `tox` or `f42`, which is what lets any layer acquire implementations without the
   generator learning a second case — and what makes `_impl` a suffix reserved across the whole
   of `src/`, since a module so named acquires wrappers wherever it sits.
-  `synthesize.generated_path_for` is the single place that decides it: the emitter and the
-  cleaner both go through it, and the Ford frontend excludes the whole `generated_dir` they
-  write into — rather than three literals kept in step by hand, which is how one of them comes
+  `synthesize.generated_path_for` is the single place that decides it, and the emitter goes
+  through it. The cleaner and the Ford frontend need no path at all: the cleaner removes every
+  wrapper module under `generated_dir` that it finds on disk, and Ford excludes `generated_dir`
+  as a whole — rather than three literals kept in step by hand, which is how one of them comes
   to write, delete and exclude three different paths.
 - **Each target directory is cleaned before writing** (unless `--no-clean`), so a procedure
   that stops being exported leaves no stale wrapper. In the R *package* directory only the
