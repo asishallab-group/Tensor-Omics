@@ -21,10 +21,14 @@ def python_type_of(argument: CArgument) -> str:
         options = " | ".join(f"'{v.string}'" for v in argument.mode.values)
         return f"str, one of {options}"
 
+    # as declared: a module constant by its name, an axis C is given the extent of by the
+    # expression it must equal, never by the name of what C is given (#221)
+    extents = argument.shown_extents
+
     if argument.type.is_character:
         # The length is a C extent, not a numpy axis
         rank = argument.rank - 1
-        return "str" if rank <= 0 else f"sequence of str, of length {argument.dimension.extents[1]}"
+        return "str" if rank <= 0 else f"sequence of str, of length {extents[1]}"
 
     scalar = {
         BaseType.INTEGER: "int",
@@ -38,7 +42,7 @@ def python_type_of(argument: CArgument) -> str:
 
     from .python_ctypes import dtype_label
 
-    shape = ", ".join(argument.dimension.extents)
+    shape = ", ".join(extents)
     order = ", column-major (order='F')" if argument.rank > 1 else ""
     return _render(f"np.ndarray[{dtype_label(argument)}] of shape ({shape},){order}", "python")
 

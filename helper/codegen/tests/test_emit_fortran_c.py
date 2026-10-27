@@ -827,3 +827,73 @@ def _errors_imported(text: str) -> str:
         if line.strip().startswith("use tox_errors, only:"):
             return line
     return ""
+
+
+class TestTheShapeCheck:
+    """The C wrapper compares what C says an array holds with what its declaration needs (#221)."""
+
+    def grouped(self, optional=False):
+        return b.procedure(
+            "p",
+            b.integer("n_groups", Intent.IN, doc="groups"),
+            b.integer("sizes", Intent.IN, "(n_groups)", doc="per group"),
+            b.real("values", Intent.IN, "(sum(sizes))", doc="the values", optional=optional),
+            b.real("sums", Intent.OUT, "(n_groups)", doc="per group"),
+            b.ierr(),
+        )
+
+    def test_the_array_is_declared_with_the_extent_c_passes(self, bag, emitter):
+        # a declaration `values(sum(sizes))` dereferences `sizes` on entry, before its null
+        # check could run (attack-shape F3): a null `sizes` crashed the caller
+        text = emit(self.grouped(), bag, emitter)
+
+        assert "dimension(n_values_elements), intent(in), target :: values" in text
+        assert "M_CHECK_ARRAY_NON_NULL(values, n_values_elements)" in text
+        assert "sum(sizes)), intent" not in text
+
+    def test_the_comparison_follows_every_null_check_and_names_the_array(self, bag, emitter):
+        text = emit(self.grouped(), bag, emitter)
+        body = text[text.index("M_CHECK_IERR_NON_NULL"):]
+
+        check = body.index("if (n_values_elements /= sum(sizes)) then")
+        assert check > body.rindex("M_CHECK_ARRAY_NON_NULL")
+        assert check < body.index("call p(")
+        # `values` is the third dummy of `p`
+        assert "call set_err(ierr, ERR_SIZE_MISMATCH, 3_int32)" in body[check:]
+
+    def test_it_is_never_compiled_out_by_no_input_validation(self, bag, emitter):
+        # A5.5: a short buffer read past is a crash, not a bad value; the guard compiles out
+        # checks of values, never this
+        module = b.module("m", self.grouped())
+        text = emit_module(module, bag, emitter)
+
+        # the C layer has no such guard at all: the check sits only inside NO_C_BINDING's
+        assert "if (n_values_elements /= sum(sizes)) then" in text
+        assert "NO_INPUT_VALIDATION" not in text
+
+    def test_an_optional_array_is_compared_only_when_present(self, bag, emitter):
+        text = emit(self.grouped(optional=True), bag, emitter)
+
+        assert re.search(
+            r"if \(present\(values\)\) then\s+if \(n_values_elements /= sum\(sizes\)\) then",
+            text)
+
+    def test_the_module_imports_the_code_only_where_a_wrapper_compares(self, bag, emitter):
+        assert "ERR_SIZE_MISMATCH" in _errors_imported(emit_module(b.module("m", self.grouped()),
+                                                                   bag, emitter))
+        assert "ERR_SIZE_MISMATCH" not in emit_module(b.module("m2", normalize()), bag, emitter)
+
+    def test_a_shaped_array_is_counted_against_its_declaration(self, bag, emitter):
+        # `arr(n_strings)` beside `arr_shape`: the view holds product(arr_shape) strings, and a C
+        # caller whose count disagrees had the callee write past it (#221 WP4 review N3)
+        procedure = b.procedure(
+            "p",
+            b.integer("n_strings", Intent.IN, doc="count"),
+            b.character("arr", Intent.OUT, "(n_strings)", length="8", doc="read"),
+            b.integer("arr_shape", Intent.IN, "(:)", doc="its shape"),
+            b.ierr(),
+        )
+        text = emit(procedure, bag, emitter)
+
+        assert "if (product(arr_shape) /= n_strings) then" in text
+        assert "call set_err(ierr, ERR_SIZE_MISMATCH, 2_int32)" in text

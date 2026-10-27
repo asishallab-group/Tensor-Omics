@@ -259,9 +259,9 @@ def bst_range_query_expert(
     # what the inputs already say, rather than asking for it again
     n_values = values.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if values_perm.shape[0] != n_values:
-        raise _ToxArgumentError(f"'values_perm' has {values_perm.shape[0]} along axis 0, but 'values' implies n_values == {n_values}", argument="values_perm")
+        raise _ToxArgumentError(f"'values_perm' has {values_perm.shape[0]} along axis 0, but 'values' implies n_values == {n_values}; 'values_perm' has shape (n_values)", argument="values_perm")
 
     # outputs and work arrays, which the caller never sees
     output_indices = _np.empty((n_values,), dtype=_np.int32, order='C')

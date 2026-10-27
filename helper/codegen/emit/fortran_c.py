@@ -153,6 +153,8 @@ class FortranCEmitter:
             errors.append("ERR_EMPTY_INPUT")  # the M_CHECK_CHARACTER_*VIEW macros name it
         if any(a.conversion is Conversion.MODE for w in module for a in w):
             errors.append("ERR_INVALID_INPUT")
+        if any(any(True for _ in _shape_comparisons(w)) for w in module):
+            errors.append("ERR_SIZE_MISMATCH")
         # Only a converted argument ever reaches `_allocate_local` in the body, so asking it
         # about the others answered a question the wrapper never puts -- and left
         # `ERR_ALLOC_FAIL` imported by modules that allocate nothing.
@@ -384,6 +386,38 @@ class FortranCEmitter:
                 writer.line(
                     f"M_CHECK_ARRAY_NON_NULL({argument.name}, {self._size_of(argument)})"
                 )
+        self._shape_checks(writer, wrapper)
+
+    def _shape_checks(self, writer: Writer, wrapper: CWrapper) -> None:
+        """Compare what C says an array holds with what the callee's declaration needs.
+
+        Two cases, both a buffer the callee would read or write past (#221 A-shape):
+
+        - an input axis the declaration computes (`expr(sum(reps_per_tissue), n_genes)`), whose
+          actual extent C passes (`CArgument.checked_against`), and
+        - an array whose shape travels in a shape argument while the declaration counts it too
+          (`arr(n_strings)` beside `arr_shape`): the view holds `product(arr_shape)` strings.
+
+        After every null check, since an expression may read an array (`sum` reads
+        `reps_per_tissue`) -- one that `M_CHECK_ARRAY_NON_NULL` let through as empty is
+        zero-size, and reading it reads nothing. Never under `NO_INPUT_VALIDATION`: like the null
+        checks, this keeps a binding's short buffer from being read past, which no caller's
+        knowledge of its own values makes safe. An absent optional is not compared: C passes 0
+        for its extent. The order is the arguments', which no check depends on, `c_abi` refusing
+        an expression reading an array whose own extent is computed.
+        """
+        error = wrapper.error_argument.name
+        for argument, actual, expected in _shape_comparisons(wrapper):
+            position = _position_of(argument, wrapper)
+            lines = [f"if ({actual} /= {expected}) then",
+                     f"    call set_err({error}, ERR_SIZE_MISMATCH, {position}_int32)",
+                     "    return",
+                     "end if"]
+            if argument.optional:
+                lines = [f"if (present({argument.name})) then",
+                         *(f"    {line}" for line in lines),
+                         "end if"]
+            writer.block("\n".join(lines))
 
     def _size_of(self, argument: CArgument) -> str:
         """The element count that guards `c_loc` of an array."""
@@ -656,6 +690,25 @@ class FortranCEmitter:
         if argument.optional:
             return f"if (present({name})) {assignment}"
         return assignment
+
+
+def _shape_comparisons(wrapper: CWrapper):
+    """What `_shape_checks` compares: (array, what C says it holds, what the callee needs)."""
+    for argument in wrapper:
+        if argument.origin is Origin.EXTENT and argument.checked_against is not None:
+            yield wrapper.argument(argument.sizes), argument.name, argument.checked_against
+        elif argument.shape_arg is not None and argument.source is not None:
+            declared = list(argument.source.dimension.extents)
+            if declared and all(extent not in (":", "*") for extent in declared):
+                yield argument, f"product({argument.shape_arg})", _product(declared)
+
+
+def _position_of(argument: CArgument, wrapper: CWrapper) -> int:
+    """The argument's position among the wrapped procedure's dummies, as `ierr` packs it."""
+    for index, dummy in enumerate(wrapper.procedure.arguments, start=1):
+        if dummy.name.lower() == argument.name.lower():
+            return index
+    raise ValueError(f"'{argument.name}' is no dummy of '{wrapper.procedure.name}'")
 
 
 def _is_declared_extent(argument: CArgument, wrapper: CWrapper) -> bool:

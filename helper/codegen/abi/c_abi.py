@@ -272,13 +272,28 @@ class _Builder:
             extra = self._extent_argument(argument, axis)
             extents[axis] = extra.name
             extras.append(extra)
+        # what a reader is shown: an assumed-shape axis by the extent C is given, any other as
+        # the author wrote it, which the axes passed below do not change
+        declared = list(extents)
 
         shape_arg = argument.roles.shape_arg if argument.roles else None
         if shape_arg is not None:
             # The shape travels separately, so the array itself is assumed size and the
             # synthesised extents are unnecessary
             extents = ["*"]
+            declared = ["*"]
             extras = []
+        elif self._reads_its_own_extents(argument, is_result):
+            for axis, extent in enumerate(extents):
+                if not self._is_computed_extent(extent):
+                    continue
+                if not self._can_check(argument, extent):
+                    continue
+                # C is given the actual extent of an axis the declaration computes, declares
+                # the array with it and compares the two (`CArgument.checked_against`)
+                extra = self._extent_argument(argument, axis, checked_against=extent)
+                extents[axis] = extra.name
+                extras.append(extra)
 
         conversion = Conversion.NONE
         mode = argument.roles.mode if argument.roles else None
@@ -295,12 +310,14 @@ class _Builder:
                 length=CharacterLength.parse("1"),
             )
             extents.insert(0, length)
+            declared.insert(0, length)
             conversion = Conversion.MODE
         elif argument.type.is_character:
             length, strlen = self._character_length(argument)
             if strlen is not None:
                 extras.insert(0, strlen)
             extents.insert(0, length)
+            declared.insert(0, length)
             conversion = Conversion.CHARACTER
         elif argument.type.is_logical and not argument.type.is_c_bool:
             conversion = Conversion.LOGICAL
@@ -322,25 +339,101 @@ class _Builder:
             size_extents=size_extents,
             default=self._default_of(argument),
             has_default=argument.directives.has_default,
+            declared_extents=tuple(declared),
         )
 
         # The synthesised arguments follow the one they belong to, so the C signature
         # reads in the same order as the Fortran declaration.
         return [c_argument, *extras]
 
-    def _extent_argument(self, argument: Argument, axis: int) -> CArgument:
+    def _extent_argument(self, argument: Argument, axis: int,
+                         checked_against: str | None = None) -> CArgument:
         name = self._unique(extent_argument_name(argument.name, axis, argument.rank), argument)
         ordinal = f"{axis + 1}. dimension of" if argument.rank > 1 else "number of elements in"
+        doc = f"{ordinal} `{argument.name}`"
+        if checked_against is not None:
+            doc += f", which must be `{checked_against}`"
         return CArgument(
             name=name,
             type=FortranType(BaseType.INTEGER, kind="c_int"),
             dimension=Dimension(),
             intent=Intent.IN,
             origin=Origin.EXTENT,
-            doc=Doc.parse([f"{ordinal} `{argument.name}`"]),
+            doc=Doc.parse([doc]),
             sizes=argument.name,
             axis=axis,
+            checked_against=checked_against,
         )
+
+    # -- the extents C is given and the C wrapper checks (#221 A-shape) --------------------------
+
+    def _reads_its_own_extents(self, argument: Argument, is_result: bool) -> bool:
+        """Whether an argument's extents are read off what the caller passes, not computed.
+
+        An input array, then: an output or a work array is allocated *from* its extents, by the
+        caller or the binding, so there is nothing to compare them with. Only Python and R read
+        the shape of what they are handed; C hands a pointer, and the C wrapper compares what it
+        is told about an axis the declaration computes.
+        """
+        roles = argument.roles
+        return (not is_result and argument.is_array and argument.intent is not None
+                and argument.intent.is_input and not (roles and roles.is_temporary))
+
+    def _dummies(self) -> dict[str, Argument]:
+        return {dummy.name.lower(): dummy for dummy in self.procedure.arguments}
+
+    def _is_computed_extent(self, extent: str) -> bool:
+        """Whether an extent is computed from other dummies, rather than named or constant.
+
+        A bare dummy name is read off the arrays by the binding and compared there, and an
+        extent naming no dummy -- a literal, a module constant -- is a value the binding checks
+        exactly. Everything else needs Fortran to evaluate it: `sum(reps_per_tissue)`, `n + 1`.
+        """
+        dummies = self._dummies()
+        if extent.lower() in dummies:
+            return False
+        return any(identifier.lower() in dummies for identifier in _IDENTIFIER_RE.findall(extent))
+
+    def _can_check(self, argument: Argument, extent: str) -> bool:
+        """Whether the C wrapper can evaluate `extent` once its pointers are checked; else refused.
+
+        The check runs after every null check, so what it reads is safe to read -- unless it reads
+        what has no defined value at all: an optional, which may be absent, or an `intent(out)`
+        dummy, which is the procedure's to set. A dummy the C wrapper converts (a string, a mode,
+        a default-kind logical) is not, under its name there, the value the declaration means.
+        And an array whose own extent is computed would have to be checked first, an order this
+        does not attempt: none of these occur on main, so they are refused instead.
+        """
+        dummies = self._dummies()
+        for identifier in sorted({i.lower() for i in _IDENTIFIER_RE.findall(extent)}):
+            dummy = dummies.get(identifier)
+            if dummy is None or dummy.type is None:
+                continue
+            problem = None
+            if dummy.optional:
+                problem = f"it reads the optional '{dummy.name}', which may be absent"
+            elif dummy.intent is Intent.OUT:
+                problem = f"it reads '{dummy.name}', which is an output"
+            elif (dummy.type.is_character or (dummy.roles and dummy.roles.is_mode)
+                  or (dummy.type.is_logical and not dummy.type.is_c_bool)):
+                problem = (f"it reads '{dummy.name}', which the C wrapper converts and so does "
+                           f"not hold under that name")
+            elif dummy.is_array and any(self._is_computed_extent(e) for e in dummy.dimension):
+                problem = (f"it reads '{dummy.name}', whose own extent is computed too, so "
+                           f"one check would have to wait for the other")
+            if problem is not None:
+                self.diagnostics.error(
+                    f"'{argument.name}' of '{self.procedure.name}' is sized by '{extent}', "
+                    f"which its C wrapper cannot check: {problem}",
+                    entity=argument,
+                    note=(
+                        "C is given the actual extent of an input axis the declaration "
+                        "computes, and the C wrapper compares it with the declaration before "
+                        "the call; size the axis by an argument instead"
+                    ),
+                )
+                return False
+        return True
 
     def _character_length(self, argument: Argument):
         """The leading extent carrying a character's length, and its argument if invented.

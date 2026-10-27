@@ -12,9 +12,9 @@ void compute_contributions_c(const double*, const double*, const int*, const cha
 void compute_all_contributions_c(const double*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, const char*, double*, double*, int*);
 void compute_baselines_factor_dependent_c(const int*, const double*, const double*, const char*, double*, double*, int*);
 void compute_velocity_trajectory_c(const double*, double*, const int*, int*);
-void compute_acceleration_from_velocity_trajectory_c(const double*, double*, const int*, int*);
+void compute_acceleration_from_velocity_trajectory_c(const double*, const int*, double*, const int*, int*);
 void compute_velocity_trajectories_c(const double*, double*, const int*, const int*, const int*, int*);
-void compute_acceleration_from_velocity_c(const double*, double*, const int*, const int*, const int*, int*);
+void compute_acceleration_from_velocity_c(const double*, const int*, double*, const int*, const int*, const int*, int*);
 void compute_velocity_acceleration_contributions_c(const double*, const int*, const int*, const int*, const char*, double*, double*, double*, double*, int*);
 
 SEXP perform_permutation_test_call(SEXP trajectories, SEXP factor_idx, SEXP dependent_idx, SEXP sample_idx, SEXP baseline_mode, SEXP n_permutations, SEXP random_seed) {
@@ -263,6 +263,9 @@ SEXP compute_velocity_trajectory_call(SEXP trajectory) {
 
 SEXP compute_acceleration_from_velocity_trajectory_call(SEXP velocity, SEXP n_timepoints) {
     int _nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_velocity_elements = (int) Rf_length(velocity);
+
     // scalar inputs, pulled from their length-1 vectors
     int _v_n_timepoints = Rf_asInteger(n_timepoints);
 
@@ -272,6 +275,7 @@ SEXP compute_acceleration_from_velocity_trajectory_call(SEXP velocity, SEXP n_ti
 
     compute_acceleration_from_velocity_trajectory_c(
         REAL(velocity),
+        &n_velocity_elements,
         REAL(acceleration),
         &_v_n_timepoints,
         &ierr
@@ -323,6 +327,7 @@ SEXP compute_velocity_trajectories_call(SEXP trajectories) {
 SEXP compute_acceleration_from_velocity_call(SEXP velocity, SEXP n_timepoints) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
+    int n_velocity_elements_dim_1 = INTEGER(Rf_getAttrib(velocity, R_DimSymbol))[0];
     int n_factors = INTEGER(Rf_getAttrib(velocity, R_DimSymbol))[1];
     int n_samples = INTEGER(Rf_getAttrib(velocity, R_DimSymbol))[2];
 
@@ -336,6 +341,7 @@ SEXP compute_acceleration_from_velocity_call(SEXP velocity, SEXP n_timepoints) {
 
     compute_acceleration_from_velocity_c(
         REAL(velocity),
+        &n_velocity_elements_dim_1,
         REAL(acceleration),
         &n_factors,
         &n_samples,

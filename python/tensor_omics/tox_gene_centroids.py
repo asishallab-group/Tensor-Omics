@@ -208,11 +208,11 @@ def group_centroid_orthologs(
     n_axes = expression_vectors.shape[0]
     n_genes = expression_vectors.shape[1]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if gene_to_family.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'gene_to_family' has {gene_to_family.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}", argument="gene_to_family")
+        raise _ToxArgumentError(f"'gene_to_family' has {gene_to_family.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}; 'gene_to_family' has shape (n_genes)", argument="gene_to_family")
     if ortholog_set.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'ortholog_set' has {ortholog_set.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}", argument="ortholog_set")
+        raise _ToxArgumentError(f"'ortholog_set' has {ortholog_set.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}; 'ortholog_set' has shape (n_genes)", argument="ortholog_set")
 
     # outputs and work arrays, which the caller never sees
     centroid_matrix = _np.empty((n_axes, n_families,), dtype=_np.float64, order='F')
@@ -292,9 +292,9 @@ def group_centroid_all(
     n_axes = expression_vectors.shape[0]
     n_genes = expression_vectors.shape[1]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if gene_to_family.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'gene_to_family' has {gene_to_family.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}", argument="gene_to_family")
+        raise _ToxArgumentError(f"'gene_to_family' has {gene_to_family.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}; 'gene_to_family' has shape (n_genes)", argument="gene_to_family")
 
     # outputs and work arrays, which the caller never sees
     centroid_matrix = _np.empty((n_axes, n_families,), dtype=_np.float64, order='F')

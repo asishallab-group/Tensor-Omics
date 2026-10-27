@@ -100,9 +100,9 @@ def euclidean_distance(
     # what the inputs already say, rather than asking for it again
     n_elements = vec1.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if vec2.shape[0] != n_elements:
-        raise _ToxArgumentError(f"'vec2' has {vec2.shape[0]} along axis 0, but 'vec1' implies n_elements == {n_elements}", argument="vec2")
+        raise _ToxArgumentError(f"'vec2' has {vec2.shape[0]} along axis 0, but 'vec1' implies n_elements == {n_elements}; 'vec2' has shape (n_elements)", argument="vec2")
 
     # outputs and work arrays, which the caller never sees
     result = _ctypes.c_double(0)
@@ -185,11 +185,11 @@ def distance_to_centroid(
     n_families = centroids.shape[1]
     n_tissues = genes.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
-    if gene_to_fam.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'genes' implies n_genes == {n_genes}", argument="gene_to_fam")
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if centroids.shape[0] != n_tissues:
-        raise _ToxArgumentError(f"'centroids' has {centroids.shape[0]} along axis 0, but 'genes' implies n_tissues == {n_tissues}", argument="centroids")
+        raise _ToxArgumentError(f"'centroids' has {centroids.shape[0]} along axis 0, but 'genes' implies n_tissues == {n_tissues}; 'centroids' has shape (n_tissues, n_families)", argument="centroids")
+    if gene_to_fam.shape[0] != n_genes:
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'genes' implies n_genes == {n_genes}; 'gene_to_fam' has shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
     distances = _np.empty((n_genes,), dtype=_np.float64, order='C')

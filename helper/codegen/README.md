@@ -334,6 +334,33 @@ The parts a source author does not need, and a generator maintainer does:
   `tox_input_error` (`.tox_argument_error`), `code` NA. They used to be a bare `ValueError` /
   `TypeError` and a plain `tox_error`, so the same wrong shape needed a different handler when
   the binding caught it than when the Fortran did. Each docstring's `Raises` names it.
+- **Every input axis is compared before the call, by one rule** (#221 A-shape,
+  `emit.shape_checks`): an axis that names an extent is compared with that extent's value, except
+  the axis the value was read from, and an axis the declaration fixes at a constant (`fields(n, 2,
+  m)`, `points(N_AXES, n)`) with the constant. The value is read off the first input that must be
+  passed (`shape_checks.extent_provider`, which Python's derivation uses too, so the axis left out
+  is the one read), counted from a mask, computed by a producer, or passed by the caller; an
+  optional array is compared when given. Before, only an extent two inputs shared was compared, and
+  optional arrays never: `build_residual_histograms` read past a 1x1 `neighbor_mask`, an input
+  sized `n_selected_<x>` was compared with nothing, and `omics_field_RAP_projection` read a field
+  without its target. A message names the array, the axis, where the value came from and the
+  declared shape: `'w' has 1 along axis 0, but 'x' implies n == 3; 'w' has shape (n)`.
+- **An input axis the declaration computes is given to C and compared there** (#221 A-shape). Only
+  Fortran can evaluate `expr(sum(reps_per_tissue), n_genes)` or `velocity(max(0_int32,
+  n_timepoints - 1), ...)`, so C is given the axis's actual extent as an argument right after the
+  array (`n_expr_elements_dim_1`, `CArgument.checked_against`), which Python and the R shim read
+  off the array like an assumed-shape extent. The C wrapper declares the array with it and
+  null-checks with it -- the declaration `sum(reps_per_tissue)` dereferenced `reps_per_tissue`
+  before its own null check, so a null one crashed the caller -- and, after every null check,
+  compares it with the declaration: `ERR_SIZE_MISMATCH` at the array's position. Not under
+  `NO_INPUT_VALIDATION`, which drops checks of values; this one keeps a short buffer from being
+  read past, as the null checks keep a null one from being dereferenced. An array whose shape
+  travels in a shape argument and whose declaration counts it too (`arr(n_strings)` beside
+  `arr_shape`) gets the same comparison of `product(arr_shape)`, no argument added: a C caller's
+  inconsistent count had the callee write past the view. On main that is three axes in three
+  symbols (`calc_tiss_avg_c`, `compute_acceleration_from_velocity[_trajectory]_c`) and the ten
+  serde helpers' counts. Docs keep showing the declared extents (`CArgument.declared_extents`), a
+  module constant by its name.
 - **A function is published as a subroutine, its result right before `ierr`** (#221 B1). Both
   Fortran tiers of a function implementation are subroutines taking the result as an
   `intent(out)` argument of the result's own name, before the implementation's own `ierr` where
@@ -468,9 +495,16 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
   the call; a size the caller chooses sizes the result directly
 - a **module constant sizing an argument that the generator cannot evaluate to an integer** — Python and R
   allocate and pad with its value, so the generator has to know it
+- an **input axis computed from arguments that the C wrapper cannot evaluate** (`c_abi._can_check`):
+  one reading an optional (absent, it has no value), an `intent(out)` dummy (the procedure's to
+  set), a dummy the C wrapper converts (a string, a mode, a default-kind logical: under its name
+  there it is not the value the declaration means), or an array whose own extent is computed (the
+  two checks would have to be ordered; nothing on main needs it). C is given such an axis's extent
+  and the C wrapper compares it with the declaration, see above
 - an **extent the bindings compute outside the grammar they compute in** -- the extents of an
-  output or a work array and the length of a string, which Python and R allocate and pad by
-  before the call (`abi.extents.check_binding_extents`, on what reaches the languages). The
+  output or a work array, the length of a string, and an input's constant axis, which Python and R
+  allocate, pad or compare by before the call (`abi.extents.check_binding_extents`, on what
+  reaches the languages). The
   grammar is the part of Fortran that means the same in Python and C: names, module constants,
   integer literals, `+ - * /`, parentheses, `max`, `min`, `size`. Two regex translators used to
   pass anything else through unchanged (#221 B11), and `/` floors in Python where Fortran
@@ -633,8 +667,8 @@ the compiler or a run rejected the first attempt.
   is `logical(c_bool)` the wrapper copies nothing — it hands the caller's buffer straight to
   the implementation. Declare yours the same way; a default-kind `logical` dummy would put the
   elementwise copy back.
-- **Shape cross-checks** the binding language makes but Fortran cannot: two arguments
-  sharing an extent must agree, or a wrong answer / segfault results.
+- **Shape checks** the binding language makes but Fortran cannot: every input axis against what
+  it must be, or a wrong answer / an over-read results (see "every input axis is compared" above).
 - **Argument-named errors**: `ierr` encodes the offending argument's position, so an error
   names it (`invalid input arguments (argument 'n_dims')`).
 - **`M_IMPLICIT_NONE`** (`implicit none (type, external)`) in generated modules, so a typo

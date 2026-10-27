@@ -202,13 +202,13 @@ def detect_neofunctionalization(
     n_axes = ancestors.shape[0]
     n_genes = genes.shape[1]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if genes.shape[0] != n_axes:
-        raise _ToxArgumentError(f"'genes' has {genes.shape[0]} along axis 0, but 'ancestors' implies n_axes == {n_axes}", argument="genes")
-    if thresholds.shape[0] != n_axes:
-        raise _ToxArgumentError(f"'thresholds' has {thresholds.shape[0]} along axis 0, but 'ancestors' implies n_axes == {n_axes}", argument="thresholds")
+        raise _ToxArgumentError(f"'genes' has {genes.shape[0]} along axis 0, but 'ancestors' implies n_axes == {n_axes}; 'genes' has shape (n_axes, n_genes)", argument="genes")
     if gene_to_fam.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'genes' implies n_genes == {n_genes}", argument="gene_to_fam")
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'genes' implies n_genes == {n_genes}; 'gene_to_fam' has shape (n_genes)", argument="gene_to_fam")
+    if thresholds.shape[0] != n_axes:
+        raise _ToxArgumentError(f"'thresholds' has {thresholds.shape[0]} along axis 0, but 'ancestors' implies n_axes == {n_axes}; 'thresholds' has shape (n_axes)", argument="thresholds")
 
     # outputs and work arrays, which the caller never sees
     neofunc = _np.empty((n_genes, n_axes,), dtype=_np.bool_, order='F')
@@ -327,9 +327,9 @@ def detect_dosage_effect(
     max_subset_size = _calc_work_arr_paralog_subsets_size_result["max_subset_size"]
     n_paralog_subsets = _calc_work_arr_paralog_subsets_size_result["work_array_size"]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if genes.shape[0] != n_dims:
-        raise _ToxArgumentError(f"'genes' has {genes.shape[0]} along axis 0, but 'ancestor' implies n_dims == {n_dims}", argument="genes")
+        raise _ToxArgumentError(f"'genes' has {genes.shape[0]} along axis 0, but 'ancestor' implies n_dims == {n_dims}; 'genes' has shape (n_dims, n_genes)", argument="genes")
 
     # outputs and work arrays, which the caller never sees
     n_results = _ctypes.c_int(0)
@@ -470,13 +470,13 @@ def detect_subfunctionalization(
     max_subset_size = _calc_work_arr_paralog_subsets_size_result["max_subset_size"]
     n_paralog_subsets = _calc_work_arr_paralog_subsets_size_result["work_array_size"]
 
-    # Fortran cannot check that shared extents agree; this can
-    if paralog_norms.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'paralog_norms' has {paralog_norms.shape[0]} along axis 0, but 'genes' implies n_genes == {n_genes}", argument="paralog_norms")
-    if sorted_paralog_norms_perm.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'sorted_paralog_norms_perm' has {sorted_paralog_norms_perm.shape[0]} along axis 0, but 'genes' implies n_genes == {n_genes}", argument="sorted_paralog_norms_perm")
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if genes.shape[0] != n_dims:
-        raise _ToxArgumentError(f"'genes' has {genes.shape[0]} along axis 0, but 'ancestor' implies n_dims == {n_dims}", argument="genes")
+        raise _ToxArgumentError(f"'genes' has {genes.shape[0]} along axis 0, but 'ancestor' implies n_dims == {n_dims}; 'genes' has shape (n_dims, n_genes)", argument="genes")
+    if paralog_norms.shape[0] != n_genes:
+        raise _ToxArgumentError(f"'paralog_norms' has {paralog_norms.shape[0]} along axis 0, but 'genes' implies n_genes == {n_genes}; 'paralog_norms' has shape (n_genes)", argument="paralog_norms")
+    if sorted_paralog_norms_perm.shape[0] != n_genes:
+        raise _ToxArgumentError(f"'sorted_paralog_norms_perm' has {sorted_paralog_norms_perm.shape[0]} along axis 0, but 'genes' implies n_genes == {n_genes}; 'sorted_paralog_norms_perm' has shape (n_genes)", argument="sorted_paralog_norms_perm")
 
     # outputs and work arrays, which the caller never sees
     n_results = _ctypes.c_int(0)
@@ -577,9 +577,9 @@ def filter_paralogs_by_pattern_dosage_effect(
     # what the inputs already say, rather than asking for it again
     n_genes = gene_angles.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if gene_to_fam.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'gene_angles' implies n_genes == {n_genes}", argument="gene_to_fam")
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'gene_angles' implies n_genes == {n_genes}; 'gene_to_fam' has shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
     masks = _np.empty((n_mask_chunks, n_families,), dtype=_np.int32, order='F')
@@ -670,9 +670,9 @@ def filter_paralogs_by_pattern_subfunctionalization(
     # what the inputs already say, rather than asking for it again
     n_genes = gene_angles.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if gene_to_fam.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'gene_angles' implies n_genes == {n_genes}", argument="gene_to_fam")
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'gene_angles' implies n_genes == {n_genes}; 'gene_to_fam' has shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
     masks = _np.empty((n_mask_chunks, n_families,), dtype=_np.int32, order='F')

@@ -112,11 +112,11 @@ def compute_tissue_versatility(
     n_selected_vectors = int(vectors_selection_mask.sum())
     n_selected_axes = int(axes_selection_mask.sum())
 
-    # Fortran cannot check that shared extents agree; this can
-    if axes_selection_mask.shape[0] != n_axes:
-        raise _ToxArgumentError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but 'expression_vectors' implies n_axes == {n_axes}", argument="axes_selection_mask")
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if vectors_selection_mask.shape[0] != n_vectors:
-        raise _ToxArgumentError(f"'vectors_selection_mask' has {vectors_selection_mask.shape[0]} along axis 0, but 'expression_vectors' implies n_vectors == {n_vectors}", argument="vectors_selection_mask")
+        raise _ToxArgumentError(f"'vectors_selection_mask' has {vectors_selection_mask.shape[0]} along axis 0, but 'expression_vectors' implies n_vectors == {n_vectors}; 'vectors_selection_mask' has shape (n_vectors)", argument="vectors_selection_mask")
+    if axes_selection_mask.shape[0] != n_axes:
+        raise _ToxArgumentError(f"'axes_selection_mask' has {axes_selection_mask.shape[0]} along axis 0, but 'expression_vectors' implies n_axes == {n_axes}; 'axes_selection_mask' has shape (n_axes)", argument="axes_selection_mask")
 
     # outputs and work arrays, which the caller never sees
     tissue_versatilities = _np.empty((n_selected_vectors,), dtype=_np.float64, order='C')

@@ -212,9 +212,9 @@ def loess_smooth_2d(
     n_target = x_query.shape[0]
     n_used = indices_used.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if y_ref.shape[0] != n_total:
-        raise _ToxArgumentError(f"'y_ref' has {y_ref.shape[0]} along axis 0, but 'x_ref' implies n_total == {n_total}", argument="y_ref")
+        raise _ToxArgumentError(f"'y_ref' has {y_ref.shape[0]} along axis 0, but 'x_ref' implies n_total == {n_total}; 'y_ref' has shape (n_total)", argument="y_ref")
 
     # outputs and work arrays, which the caller never sees
     y_out = _np.empty((n_target,), dtype=_np.float64, order='C')
@@ -387,9 +387,9 @@ def compute_edf_expert(
     # what the inputs already say, rather than asking for it again
     n_values = values.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if values_perm.shape[0] != n_values:
-        raise _ToxArgumentError(f"'values_perm' has {values_perm.shape[0]} along axis 0, but 'values' implies n_values == {n_values}", argument="values_perm")
+        raise _ToxArgumentError(f"'values_perm' has {values_perm.shape[0]} along axis 0, but 'values' implies n_values == {n_values}; 'values_perm' has shape (n_values)", argument="values_perm")
 
     # outputs and work arrays, which the caller never sees
     unique_values = _np.empty((n_values,), dtype=_np.float64, order='C')
@@ -563,9 +563,9 @@ def calc_quantile_expert(
     # what the inputs already say, rather than asking for it again
     n_array = array.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if array_perm.shape[0] != n_array:
-        raise _ToxArgumentError(f"'array_perm' has {array_perm.shape[0]} along axis 0, but 'array' implies n_array == {n_array}", argument="array_perm")
+        raise _ToxArgumentError(f"'array_perm' has {array_perm.shape[0]} along axis 0, but 'array' implies n_array == {n_array}; 'array_perm' has shape (n_array)", argument="array_perm")
 
     # outputs and work arrays, which the caller never sees
     value = _ctypes.c_double(0)
@@ -657,9 +657,9 @@ def compute_scaled_distance_tail_probability(
     # what the inputs already say, rather than asking for it again
     n_genes = rdi.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if sorted_rdi.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'sorted_rdi' has {sorted_rdi.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}", argument="sorted_rdi")
+        raise _ToxArgumentError(f"'sorted_rdi' has {sorted_rdi.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}; 'sorted_rdi' has shape (n_genes)", argument="sorted_rdi")
 
     # outputs and work arrays, which the caller never sees
     tail_probability = _np.empty((n_genes,), dtype=_np.float64, order='C')
@@ -765,11 +765,11 @@ def compute_scaled_distance_tail_probability_expert(
     # what the inputs already say, rather than asking for it again
     n_genes = rdi.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if sorted_rdi.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'sorted_rdi' has {sorted_rdi.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}", argument="sorted_rdi")
+        raise _ToxArgumentError(f"'sorted_rdi' has {sorted_rdi.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}; 'sorted_rdi' has shape (n_genes)", argument="sorted_rdi")
     if sorted_rdi_perm.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'sorted_rdi_perm' has {sorted_rdi_perm.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}", argument="sorted_rdi_perm")
+        raise _ToxArgumentError(f"'sorted_rdi_perm' has {sorted_rdi_perm.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}; 'sorted_rdi_perm' has shape (n_genes)", argument="sorted_rdi_perm")
 
     # outputs and work arrays, which the caller never sees
     tail_probability = _np.empty((n_genes,), dtype=_np.float64, order='C')

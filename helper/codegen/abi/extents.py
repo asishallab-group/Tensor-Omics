@@ -365,8 +365,11 @@ def binding_computed_extents(wrapper):
 
     What they allocate before the call -- an output, a work array -- they size by all of its
     extents, and a string by its length, input strings included, which are padded to it. An
-    array whose shape travels in a shape argument is sized by that argument's product instead,
-    and an input array's own extents are read off it, never computed.
+    array whose shape travels in a shape argument is sized by that argument's product instead.
+    An input array's axes are read off it, and compared: with an argument, which needs nothing
+    computed, or with a constant (`fields(n, 2, m)`, `x(N_AXES)`), which is evaluated here too.
+    An axis the declaration computes from arguments is not among them: C is given its extent
+    and the C wrapper compares it (`CArgument.checked_against`), so it names that.
     """
     for argument in wrapper:
         if argument.is_error:
@@ -376,8 +379,15 @@ def binding_computed_extents(wrapper):
         if allocated and argument.is_array and argument.shape_arg is None:
             for extent in argument.dimension.extents:
                 yield argument, extent
-        elif character and (allocated or argument.intent.is_input):
+            continue
+        if character and (allocated or argument.intent.is_input):
             yield argument, argument.dimension.extents[0]
+        if (argument.is_array and argument.intent.is_input and argument.shape_arg is None
+                and argument.conversion is not Conversion.MODE):
+            axes = argument.dimension.extents[1 if character else 0:]
+            for extent in axes:
+                if wrapper.argument(extent) is None:
+                    yield argument, extent
 
 
 def check_binding_extents(binding, diagnostics) -> None:

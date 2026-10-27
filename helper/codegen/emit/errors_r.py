@@ -161,15 +161,23 @@ class RErrorEmitter:
         writer.line("}")
         writer.blank()
 
-        writer.line("#' @keywords internal")
-        writer.line(".tox_shape_error <- function(argument, actual, other, expected) {")
+        writer.block(
+            "#' Signal an input whose shape is not the one it is declared with\n"
+            "#'\n"
+            "#' @param dimension the 1-based dimension compared, or NA for the element count\n"
+            "#' @param reason why it must have `expected`, up to the value itself\n"
+            "#' @param shape the declared shape, for the reader\n"
+            "#' @keywords internal"
+        )
+        writer.line(".tox_shape_error <- function(argument, dimension, actual, reason, expected, shape) {")
         with writer.indent():
+            writer.line('where <- if (is.na(dimension)) "elements" else sprintf("along dimension %d", dimension)')
             writer.line(".tox_argument_error(")
             with writer.indent():
                 writer.line(
-                    'sprintf("\'%s\' has extent %d, but \'%s\' implies it should be %d",'
+                    'sprintf("\'%s\' has %d %s, but %s%d; \'%s\' has shape (%s)",'
                 )
-                writer.line("argument, actual, other, expected),")
+                writer.line("argument, actual, where, reason, expected, argument, shape),")
                 writer.line('"tox_shape_error", argument')
             writer.line(")")
         writer.line("}")

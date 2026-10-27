@@ -195,6 +195,151 @@ class TestAnExtentTheBindingsCompute:
         assert out == ["3", "6"]
 
 
+#: A refusal by the binding, as Python reports it: its class, whether it carries no code, the
+#: argument, and the message
+_PY_REFUSED = """
+            def refused(call):
+                try:
+                    call()
+                except tox.error_handling.ToxInputError as error:
+                    return [type(error).__name__, error.code, error.argument, str(error)]
+                return None
+"""  # indented as the bodies below are, which `run_python` dedents together with it
+
+#: The same for R: the first class, the code (NA for the binding's own) and the argument
+_R_REFUSED = """
+            refused <- function(expr) {
+              e <- tryCatch({ expr; NULL }, tox_input_error = function(e) e)
+              if (is.null(e)) return(cat("none\\n"))
+              cat(class(e)[1], if (is.na(e$code)) "NA" else e$code, e$argument, "\\n")
+            }
+"""
+
+
+class TestEveryInputAxisIsCompared:
+    """#221 A-shape: an input axis that is wrong is refused before Fortran reads past it.
+
+    On main each of these was garbage: Fortran's explicit-shape dummies take an address, and an
+    axis that is not a bare extent shared with another input was compared with nothing.
+    """
+
+    def test_a_constant_axis_in_python(self, built):
+        out = run_python(built, _PY_REFUSED + """
+            print(json.dumps([refused(lambda: tox.pair_sums(np.ones((3, 1)))),
+                              list(tox.pair_sums(np.ones((3, 2))))]))
+        """)
+
+        name, code, argument, message = out[0]
+        assert (name, code, argument) == ("ToxArgumentError", None, "pairs")
+        assert "along axis 1, but its declared shape fixes it at 2" in message
+        assert out[1] == [2.0, 2.0, 2.0]
+
+    def test_a_module_constant_axis_in_python(self, built):
+        # WP1 review round 2: `axis_sums(points(FX_N_AXES, n))` with a 3-row points over-read
+        out = run_python(built, _PY_REFUSED + """
+            print(json.dumps(refused(lambda: tox.axis_sums(np.ones((3, 2))))))
+        """)
+
+        assert out[:3] == ["ToxArgumentError", None, "points"]
+        assert "has shape (FX_N_AXES, n_points)" in out[3]
+
+    def test_an_optional_array_is_compared_when_given(self, built):
+        out = run_python(built, _PY_REFUSED + """
+            print(json.dumps([refused(lambda: tox.weighted_total([1.0, 2.0, 3.0], weights=[1.0])),
+                              tox.weighted_total([1.0, 2.0, 3.0]),
+                              tox.weighted_total([1.0, 2.0, 3.0], weights=[1.0, 0.0, 2.0])]))
+        """)
+
+        assert out[0][:3] == ["ToxArgumentError", None, "weights"]
+        assert "'values' implies n == 3" in out[0][3]
+        assert out[1:] == [6.0, 7.0]
+
+    def test_an_input_sized_by_a_mask_count(self, built):
+        out = run_python(built, _PY_REFUSED + """
+            mask = [True, False, True]
+            print(json.dumps([refused(lambda: tox.selected_total([1.0, 2.0, 3.0], mask, [1.0, 1.0, 1.0])),
+                              tox.selected_total([1.0, 2.0, 3.0], mask, [1.0, 2.0])]))
+        """)
+
+        assert out[0][:3] == ["ToxArgumentError", None, "weights"]
+        assert "'values_mask' implies n_selected_values == 2" in out[0][3]
+        assert out[1] == 7.0
+
+    def test_an_axis_the_declaration_computes_is_compared_in_c(self, built):
+        # C is given the actual extent and compares it with `n + 1`: ERR_SIZE_MISMATCH, naming x
+        out = run_python(built, _PY_REFUSED + """
+            x = np.array([1.0, 2.0, 3.0, 99.0])
+            print(json.dumps([refused(lambda: tox.shifted_sum([1.0, 1.0, 1.0], x[:3])),
+                              tox.shifted_sum([1.0, 1.0, 1.0], x),
+                              tox.error_handling.ERR_SIZE_MISMATCH]))
+        """)
+
+        name, code, argument, _ = out[0]
+        assert (name, code, argument) == ("ToxInputError", out[2], "x")
+        assert out[1] == 108.0
+
+    def test_an_axis_reading_another_array_s_contents(self, built):
+        out = run_python(built, _PY_REFUSED + """
+            print(json.dumps([refused(lambda: tox.grouped_sums([2, 2], [1.0, 2.0])),
+                              list(tox.grouped_sums([2, 1], [1.0, 2.0, 4.0]))]))
+        """)
+
+        assert out[0][:3] == ["ToxInputError", 206, "values"]
+        assert out[1] == [3.0, 4.0]
+
+    def test_an_optional_axis_the_declaration_computes(self, built):
+        out = run_python(built, _PY_REFUSED + """
+            print(json.dumps([tox.optional_shift([1.0, 1.0]),
+                              tox.optional_shift([1.0, 1.0], x=[1.0, 1.0, 1.0]),
+                              refused(lambda: tox.optional_shift([1.0, 1.0], x=[1.0, 1.0]))]))
+        """)
+
+        assert out[:2] == [2.0, 5.0]
+        assert out[2][:3] == ["ToxInputError", 206, "x"]
+
+    def test_r_refuses_each_the_same_way(self, built):
+        out = run_r(built, _R_REFUSED + """
+            refused(pair_sums(matrix(1, 3, 1)))
+            refused(axis_sums(matrix(1, 3, 2)))
+            refused(weighted_total(c(1, 2, 3), weights = 1))
+            refused(selected_total(c(1, 2, 3), c(TRUE, FALSE, TRUE), c(1, 1, 1)))
+            refused(shifted_sum(c(1, 1, 1), c(1, 2, 3)))
+            refused(grouped_sums(c(2L, 2L), c(1, 2)))
+            refused(optional_shift(c(1, 1), x = c(1, 1)))
+            cat(pair_sums(matrix(1, 3, 2)), weighted_total(c(1, 2, 3)),
+                selected_total(c(1, 2, 3), c(TRUE, FALSE, TRUE), c(1, 2)),
+                shifted_sum(c(1, 1, 1), c(1, 2, 3, 99)), grouped_sums(c(2L, 1L), c(1, 2, 4)),
+                optional_shift(c(1, 1)), optional_shift(c(1, 1), x = c(1, 1, 1)), "\\n")
+        """)
+
+        assert out == [
+            "tox_shape_error", "NA", "pairs",
+            "tox_shape_error", "NA", "points",
+            "tox_shape_error", "NA", "weights",
+            "tox_shape_error", "NA", "weights",
+            "tox_input_error", "206", "x",
+            "tox_input_error", "206", "values",
+            "tox_input_error", "206", "x",
+            "2", "2", "2", "6", "7", "108", "3", "4", "2", "5",
+        ]
+
+    def test_a_null_array_an_extent_reads_is_reported_not_dereferenced(self, built):
+        # the C wrapper used to declare `values(sum(group_sizes))`, evaluated on entry -- before
+        # the null check of `group_sizes` (attack-shape F3): now ERR_POINTER_NULL comes back
+        out = run_python(built, """
+            import ctypes
+            lib = ctypes.CDLL(str(tox.library.load_library()._name))
+            n, n_values, ierr = ctypes.c_int(2), ctypes.c_int(2), ctypes.c_int(0)
+            values = (ctypes.c_double * 2)(1.0, 2.0)
+            sums = (ctypes.c_double * 2)()
+            lib.grouped_sums_c(ctypes.byref(n), None, values, ctypes.byref(n_values), sums,
+                               ctypes.byref(ierr))
+            print(json.dumps([ierr.value, tox.error_handling.ERR_POINTER_NULL]))
+        """)
+
+        assert out[0] == out[1]
+
+
 class TestTheRestOfTheFixture:
     def test_an_assumed_shape_input_and_an_impure_elemental_in_python(self, built):
         out = run_python(built, """

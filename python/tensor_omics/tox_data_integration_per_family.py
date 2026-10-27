@@ -221,19 +221,19 @@ def fjct_compute_jsd(
     n_neighbors = neighborhood_residuals_S1.shape[1]
     n_points = neighborhood_residuals_S1.shape[2]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if neighborhood_residuals_S2.shape[1] != n_neighbors:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}", argument="neighborhood_residuals_S2")
-    if neighborhood_genes_S1.shape[0] != n_neighbors:
-        raise _ToxArgumentError(f"'neighborhood_genes_S1' has {neighborhood_genes_S1.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}", argument="neighborhood_genes_S1")
-    if neighborhood_genes_S2.shape[0] != n_neighbors:
-        raise _ToxArgumentError(f"'neighborhood_genes_S2' has {neighborhood_genes_S2.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}", argument="neighborhood_genes_S2")
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighborhood_residuals_S2' has shape (n_reps_S2, n_neighbors, n_points)", argument="neighborhood_residuals_S2")
     if neighborhood_residuals_S2.shape[2] != n_points:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but 'neighborhood_residuals_S1' implies n_points == {n_points}", argument="neighborhood_residuals_S2")
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighborhood_residuals_S2' has shape (n_reps_S2, n_neighbors, n_points)", argument="neighborhood_residuals_S2")
+    if neighborhood_genes_S1.shape[0] != n_neighbors:
+        raise _ToxArgumentError(f"'neighborhood_genes_S1' has {neighborhood_genes_S1.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighborhood_genes_S1' has shape (n_neighbors, n_points)", argument="neighborhood_genes_S1")
     if neighborhood_genes_S1.shape[1] != n_points:
-        raise _ToxArgumentError(f"'neighborhood_genes_S1' has {neighborhood_genes_S1.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}", argument="neighborhood_genes_S1")
+        raise _ToxArgumentError(f"'neighborhood_genes_S1' has {neighborhood_genes_S1.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighborhood_genes_S1' has shape (n_neighbors, n_points)", argument="neighborhood_genes_S1")
+    if neighborhood_genes_S2.shape[0] != n_neighbors:
+        raise _ToxArgumentError(f"'neighborhood_genes_S2' has {neighborhood_genes_S2.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighborhood_genes_S2' has shape (n_neighbors, n_points)", argument="neighborhood_genes_S2")
     if neighborhood_genes_S2.shape[1] != n_points:
-        raise _ToxArgumentError(f"'neighborhood_genes_S2' has {neighborhood_genes_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}", argument="neighborhood_genes_S2")
+        raise _ToxArgumentError(f"'neighborhood_genes_S2' has {neighborhood_genes_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighborhood_genes_S2' has shape (n_neighbors, n_points)", argument="neighborhood_genes_S2")
 
     # outputs and work arrays, which the caller never sees
     js_divergences = _np.empty((n_points,), dtype=_np.float64, order='C')
@@ -392,19 +392,19 @@ def fjct_compute_masked_jsd(
     n_neighbors = neighborhood_residuals_S1.shape[1]
     n_points = neighborhood_residuals_S1.shape[2]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if neighborhood_residuals_S2.shape[1] != n_neighbors:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}", argument="neighborhood_residuals_S2")
-    if neighbor_mask_S1.shape[0] != n_neighbors:
-        raise _ToxArgumentError(f"'neighbor_mask_S1' has {neighbor_mask_S1.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}", argument="neighbor_mask_S1")
-    if neighbor_mask_S2.shape[0] != n_neighbors:
-        raise _ToxArgumentError(f"'neighbor_mask_S2' has {neighbor_mask_S2.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}", argument="neighbor_mask_S2")
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighborhood_residuals_S2' has shape (n_reps_S2, n_neighbors, n_points)", argument="neighborhood_residuals_S2")
     if neighborhood_residuals_S2.shape[2] != n_points:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but 'neighborhood_residuals_S1' implies n_points == {n_points}", argument="neighborhood_residuals_S2")
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighborhood_residuals_S2' has shape (n_reps_S2, n_neighbors, n_points)", argument="neighborhood_residuals_S2")
+    if neighbor_mask_S1.shape[0] != n_neighbors:
+        raise _ToxArgumentError(f"'neighbor_mask_S1' has {neighbor_mask_S1.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighbor_mask_S1' has shape (n_neighbors, n_points)", argument="neighbor_mask_S1")
     if neighbor_mask_S1.shape[1] != n_points:
-        raise _ToxArgumentError(f"'neighbor_mask_S1' has {neighbor_mask_S1.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}", argument="neighbor_mask_S1")
+        raise _ToxArgumentError(f"'neighbor_mask_S1' has {neighbor_mask_S1.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighbor_mask_S1' has shape (n_neighbors, n_points)", argument="neighbor_mask_S1")
+    if neighbor_mask_S2.shape[0] != n_neighbors:
+        raise _ToxArgumentError(f"'neighbor_mask_S2' has {neighbor_mask_S2.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighbor_mask_S2' has shape (n_neighbors, n_points)", argument="neighbor_mask_S2")
     if neighbor_mask_S2.shape[1] != n_points:
-        raise _ToxArgumentError(f"'neighbor_mask_S2' has {neighbor_mask_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}", argument="neighbor_mask_S2")
+        raise _ToxArgumentError(f"'neighbor_mask_S2' has {neighbor_mask_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighbor_mask_S2' has shape (n_neighbors, n_points)", argument="neighbor_mask_S2")
 
     # outputs and work arrays, which the caller never sees
     js_divergences = _np.empty((n_points,), dtype=_np.float64, order='C')
@@ -524,9 +524,9 @@ def fjct_compute_contribution_scores(
     # what the inputs already say, rather than asking for it again
     k_families = global_js_divergences.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if total_included_n_reps_per_f.shape[0] != k_families:
-        raise _ToxArgumentError(f"'total_included_n_reps_per_f' has {total_included_n_reps_per_f.shape[0]} along axis 0, but 'global_js_divergences' implies k_families == {k_families}", argument="total_included_n_reps_per_f")
+        raise _ToxArgumentError(f"'total_included_n_reps_per_f' has {total_included_n_reps_per_f.shape[0]} along axis 0, but 'global_js_divergences' implies k_families == {k_families}; 'total_included_n_reps_per_f' has shape (k_families)", argument="total_included_n_reps_per_f")
 
     # outputs and work arrays, which the caller never sees
     support_weights = _np.empty((k_families,), dtype=_np.float64, order='C')

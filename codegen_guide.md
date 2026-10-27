@@ -371,7 +371,19 @@ Fortran, Python and C, which holds for argument names, module constants, integer
 suffix included, `0_int32`), `+ - * /`, parentheses, `max`, `min` and `size(a)` / `size(a, k)` --
 integer `/` truncating toward zero, as Fortran's does. Anything else (`mod`, `**`, `nint`, a real)
 is refused, as is an extent reading an output or an optional argument; obtain such a size from a
-recommend routine with `DM_OUTPUT_FROM` (Section 5.9). Every axis starts at 1: `x(1:n)` is accepted as `x(n)`, and
+recommend routine with `DM_OUTPUT_FROM` (Section 5.9).
+
+Every axis of an input is checked before the call, whatever its form, so a caller's short array is
+refused rather than read past. An extent named by an argument (`weights(n_cols)`) or fixed at a
+constant (`fields(n_dims, 2, n_fields)`) is compared by Python and R, an optional array's when it
+is given. An axis computed from other arguments (`expr(sum(reps_per_tissue), n_genes)`,
+`velocity(max(0_int32, n_timepoints - 1))`) only Fortran can evaluate: C is given its actual
+extent, which Python and R pass for you, and the C wrapper compares it with your declaration,
+reporting `ERR_SIZE_MISMATCH`. Such an expression may read only arguments the C wrapper holds as
+they are -- not an optional, not an `intent(out)`, not a string, a mode or a default `logical`,
+and not an array whose own extent is computed too (Section 8). The documentation shows the
+extents as you declared them. A Fortran caller of `foo` is not checked: its arrays are
+explicit-shape, so it passes an address and stays responsible for the extents itself. Every axis starts at 1: `x(1:n)` is accepted as `x(n)`, and
 any other lower bound is refused (Section 8). Spell a dummy in whatever case you like where you
 use it — `integer :: N` may size `x(n)` — but the declaration's spelling is the published name.
 
@@ -1307,6 +1319,7 @@ source and carries a note saying what to write instead.
 | an axis with a lower bound other than 1 (`x(0:n)`, `x(0:)`) | every layer sizes an axis from its extent alone; declare `x(n + 1)` and shift the index inside the implementation. `x(1:n)` is accepted as `x(n)` |
 | a `DM_DEFAULT` that is not a constant the compiler would accept, or that does not fit its argument's kind | Python and R pass the evaluated value, so it has to be the one a Fortran caller gets (Section 5.5) |
 | a module constant in an extent or a length that the generator cannot evaluate to an integer (`size(NAMES)` is one, though it is an integer) | Python and R allocate and pad with its value (Section 4) |
+| an input axis computed from arguments that reads an optional, an `intent(out)`, a string, a mode, a default `logical`, or an array whose own extent is computed (`x(size(a))` beside `a(n + 1)`) | C is given the axis's extent and the C wrapper compares it with the declaration before the call, which it cannot evaluate from those (Section 4) |
 | an extent of an output or a work array, or a string's length, outside the grammar the bindings compute in (`mod(n, 2)`, `n**2`, `nint(x)`, a real), or one reading an output, an optional argument or anything but an argument and a module constant | Python and R compute it before the call, and would get another number than Fortran or none at all; use `DM_OUTPUT_FROM` (Section 4) |
 | a `tmp_` argument that is `intent(in)` | a work array is an output or an in-out |
 | an **optional output** (`intent(out), optional`, and not a `tmp_`) | no binding can honour it — Python would return a dict whose keys vary per call, R a list of varying length. Express it as an optional input *flag* plus a `tmp_` work array, the way `loess_fit_plain_impl` does with `compute_influence`: the work stays skippable and the return type stays fixed |

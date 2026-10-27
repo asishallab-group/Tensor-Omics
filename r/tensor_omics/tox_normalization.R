@@ -211,7 +211,7 @@ calc_fchange <- function(control_tissues, condition_tissues, expr) {
     condition_tissues <- .tox_as_integer_vector(condition_tissues, "condition_tissues")
     expr <- .tox_as_double_matrix(expr, "expr")
     if (length(condition_tissues) != length(control_tissues))
-        .tox_shape_error("condition_tissues", length(condition_tissues), "control_tissues", length(control_tissues))
+        .tox_shape_error("condition_tissues", 1L, length(condition_tissues), "'control_tissues' implies n_pairs == ", length(control_tissues), "n_pairs")
 
     .result <- .Call("calc_fchange_call", control_tissues, condition_tissues, expr)
     .arguments <- c("n_genes", "n_tissues", "n_pairs", "control_tissues", "condition_tissues", "expr", "fold_changes", "ierr")

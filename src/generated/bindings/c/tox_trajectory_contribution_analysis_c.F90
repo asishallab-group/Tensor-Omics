@@ -13,7 +13,7 @@ module tox_trajectory_contribution_analysis_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_int, c_loc
     use tox_conversions, only: c_char_as_view
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH
     M_IMPLICIT_NONE
     private
 
@@ -695,15 +695,18 @@ contains
     !> summary: C-wrapper for [[tox_trajectory_contribution_analysis(module):compute_acceleration_from_velocity_trajectory(subroutine)]]
     subroutine compute_acceleration_from_velocity_trajectory_c(&
             velocity,&
+            n_velocity_elements,&
             acceleration,&
             n_timepoints,&
             ierr&
         ) bind(C, name="compute_acceleration_from_velocity_trajectory_c")
         use tox_trajectory_contribution_analysis, only: compute_acceleration_from_velocity_trajectory
 
+        integer(c_int), intent(in), target :: n_velocity_elements
+            !! number of elements in `velocity`, which must be `max(0_int32, n_timepoints - 1)`
         integer(c_int), intent(in), target :: n_timepoints
             !! number of timepoints
-        real(c_double), dimension(max(0_int32, n_timepoints - 1)), intent(in), target :: velocity
+        real(c_double), dimension(n_velocity_elements), intent(in), target :: velocity
             !! velocity trajectory
         real(c_double), dimension(max(0_int32, n_timepoints - 2)), intent(out), target :: acceleration
             !! acceleration trajectory
@@ -712,9 +715,14 @@ contains
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
+        M_CHECK_NON_NULL(n_velocity_elements)
         M_CHECK_NON_NULL(n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(velocity, (max(0_int32, n_timepoints - 1)))
+        M_CHECK_ARRAY_NON_NULL(velocity, n_velocity_elements)
         M_CHECK_ARRAY_NON_NULL(acceleration, (max(0_int32, n_timepoints - 2)))
+        if (n_velocity_elements /= max(0_int32, n_timepoints - 1)) then
+            call set_err(ierr, ERR_SIZE_MISMATCH, 1_int32)
+            return
+        end if
 
         call compute_acceleration_from_velocity_trajectory(&
             velocity = velocity,&
@@ -769,6 +777,7 @@ contains
     !> summary: C-wrapper for [[tox_trajectory_contribution_analysis(module):compute_acceleration_from_velocity(subroutine)]]
     subroutine compute_acceleration_from_velocity_c(&
             velocity,&
+            n_velocity_elements_dim_1,&
             acceleration,&
             n_factors,&
             n_samples,&
@@ -777,13 +786,15 @@ contains
         ) bind(C, name="compute_acceleration_from_velocity_c")
         use tox_trajectory_contribution_analysis, only: compute_acceleration_from_velocity
 
+        integer(c_int), intent(in), target :: n_velocity_elements_dim_1
+            !! 1. dimension of `velocity`, which must be `max(0_int32, n_timepoints - 1)`
         integer(c_int), intent(in), target :: n_factors
             !! number of factors
         integer(c_int), intent(in), target :: n_samples
             !! number of samples
         integer(c_int), intent(in), target :: n_timepoints
             !! number of timepoints
-        real(c_double), dimension(max(0_int32, n_timepoints - 1), n_factors, n_samples), intent(in), target :: velocity
+        real(c_double), dimension(n_velocity_elements_dim_1, n_factors, n_samples), intent(in), target :: velocity
             !! input velocity trajectories
         real(c_double), dimension(max(0_int32, n_timepoints - 2), n_factors, n_samples), intent(out), target :: acceleration
             !! output acceleration trajectories
@@ -792,11 +803,16 @@ contains
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
+        M_CHECK_NON_NULL(n_velocity_elements_dim_1)
         M_CHECK_NON_NULL(n_factors)
         M_CHECK_NON_NULL(n_samples)
         M_CHECK_NON_NULL(n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(velocity, (max(0_int32, n_timepoints - 1)) * n_factors * n_samples)
+        M_CHECK_ARRAY_NON_NULL(velocity, n_velocity_elements_dim_1 * n_factors * n_samples)
         M_CHECK_ARRAY_NON_NULL(acceleration, (max(0_int32, n_timepoints - 2)) * n_factors * n_samples)
+        if (n_velocity_elements_dim_1 /= max(0_int32, n_timepoints - 1)) then
+            call set_err(ierr, ERR_SIZE_MISMATCH, 1_int32)
+            return
+        end if
 
         call compute_acceleration_from_velocity(&
             velocity = velocity,&

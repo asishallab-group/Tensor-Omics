@@ -33,7 +33,9 @@ from ..names import (
 )
 from ..render import Writer
 from .error_arguments import sources_of
+from .doc_literals import render as _render
 from .doc_numpydoc import _description, render_docstring
+from .shape_checks import Position, declared_shape, extent_provider, reason, shape_checks
 
 def _python_extent(extent: str) -> str:
     """A Fortran extent expression as Python, through the one grammar the bindings evaluate.
@@ -855,21 +857,13 @@ class PythonEmitter:
         Only an input's shape may be read: an output array is allocated *from* this
         extent, so it does not exist yet when the extent is settled. When an extent is
         named by both (e.g. `reps_per_tissue(n_tissues)` and the output
-        `log_transformed_expr(n_tissues, n_genes)`) the input is the one to read.
+        `log_transformed_expr(n_tissues, n_genes)`) the input is the one to read. Which input
+        is `shape_checks.extent_provider`'s to say, so that the axis it is read from is the one
+        `_check_shapes` leaves out.
         """
-        for owner in argument.source.roles.extent_of:
-            c_owner = wrapper.argument(owner.name)
-            if c_owner is None or not c_owner.intent.is_input or c_owner.optional:
-                continue
-            if c_owner.shape_arg is not None:
-                # its extents travel separately, so the only thing an extent of it can
-                # mean is how many elements there are altogether
-                return f"{owner.name}.size"
-            axes = self._axes_of(argument.name, c_owner)
-            if axes:
-                # the first is where the value is read from; the others are what
-                # `_check_shapes` then verifies against it
-                return f"{owner.name}.shape[{axes[0]}]"
+        position = extent_provider(argument, wrapper)
+        if position is not None:
+            return self._position(position)
         # an output sized by a shape argument: the count is the product of that shape
         for owner in argument.source.roles.extent_of:
             c_owner = wrapper.argument(owner.name)
@@ -878,59 +872,41 @@ class PythonEmitter:
         return ""
 
     @staticmethod
-    def _axes_of(extent: str, owner: CArgument) -> list[int]:
-        """Which numpy axes of `owner` carry `extent`.
-
-        A character's length is a C extent but not a numpy axis: the strings are a numpy
-        array of one dimension fewer.
-        """
-        extents = list(owner.dimension.extents)
-        if owner.type.is_character and extents:
-            extents = extents[1:]
-        # every axis, not the first: `distances(n_points, n_points)` claims to know
-        # `n_points` twice, and checking only axis 0 lets a non-square array through to a
-        # Fortran view that reads (and, when intent(inout), writes) past the buffer.
-        return [index for index, name in enumerate(extents) if name == extent]
+    def _position(position: Position) -> str:
+        """An axis of an input as Python reads it, or its element count."""
+        name = position.array.name
+        if position.axis is None:
+            # its extents travel separately, so the only thing an extent of it can mean is
+            # how many elements there are altogether
+            return f"{name}.size"
+        return f"{name}.shape[{position.axis}]"
 
     def _check_shapes(self, writer: Writer, wrapper: CWrapper) -> None:
-        """Cross-check every extent that more than one input claims to know.
+        """Compare every input axis with what it must be (`emit.shape_checks`).
 
         This is the check Fortran cannot make. `expr(n_genes, n_tissues)` and
         `weights(n_tissues)` agree by declaration, and nothing verifies it: a caller
-        passing mismatched arrays gets a wrong answer or a segfault.
+        passing mismatched arrays gets a wrong answer, or Fortran reads past the buffer.
         """
         lines = Writer()
-        for argument in wrapper:
-            roles = argument.source.roles if argument.source else None
-            if roles is None or not roles.is_extent:
-                continue
-
-            owners = []
-            for owner in roles.extent_of:
-                c_owner = wrapper.argument(owner.name)
-                if c_owner is None or not c_owner.intent.is_input or c_owner.optional:
-                    continue
-                # a work array the wrapper allocates itself always agrees, and does not
-                # exist yet at this point in the generated function
-                if c_owner.is_temporary:
-                    continue
-                owners.extend(
-                    (owner, axis) for axis in self._axes_of(argument.name, c_owner)
-                )
-            if len(owners) < 2:
-                continue
-
-            first, _ = owners[0]
-            for owner, axis in owners[1:]:
-                actual = f"{owner.name}.shape[{axis}]"
-                lines.line(f"if {actual} != {argument.name}:")
-                with lines.indent():
-                    lines.line(_refusal(
-                        f'f"\'{owner.name}\' has {{{actual}}} along axis {axis}, but '
-                        f'\'{first.name}\' implies {argument.name} == '
-                        f'{{{argument.name}}}"', owner.name))
+        for check in shape_checks(wrapper):
+            array = check.position.array
+            actual = self._position(check.position)
+            expected = check.expected
+            value = str(expected.value) if expected.origin == "constant" else expected.extent
+            condition = f"{actual} != {value}"
+            if array.optional:
+                condition = f"{array.name} is not None and {condition}"
+            where = ("elements" if check.position.axis is None
+                     else f"along axis {check.position.axis}")
+            shape = _render(declared_shape(array), "python")
+            lines.line(f"if {condition}:")
+            with lines.indent():
+                lines.line(_refusal(
+                    f'f"\'{array.name}\' has {{{actual}}} {where}, but {reason(expected)}'
+                    f'{{{value}}}; \'{array.name}\' has shape ({shape})"', array.name))
         if lines:
-            writer.line("# Fortran cannot check that shared extents agree; this can")
+            writer.line("# Fortran cannot check that an array has the shape it is declared with; this can")
             writer.extend(lines)
             writer.blank()
 

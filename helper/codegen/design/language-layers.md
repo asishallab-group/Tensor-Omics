@@ -234,16 +234,26 @@ code" into failures for no gain.
 
 ---
 
-## Decision: shape cross-checks happen in the binding language — and in R that is R, not C
+## Decision: shape checks happen in the binding language — and in R that is R, not C
 
 `matrix(n_rows, n_cols)` and `weights(n_cols)` share an extent. They agree **by
 declaration only** — Fortran has no way to check that the actual arguments agree, and a
-mismatch surfaces as a wrong answer or a segfault.
+mismatch surfaces as a wrong answer or a read past the buffer.
 
-So the binding language checks it, naming both arguments:
+So the binding language checks it, by one rule (#221, `emit.shape_checks`): **every input axis
+that names an extent is compared with that extent's value, except the axis the value was read
+from, and an axis fixed at a constant with the constant.** The value is read off the first input
+that must be passed, counted from a mask, computed by a producer or passed by the caller; an
+optional array is compared when given. It used to be "two inputs sharing an extent agree", which
+left out an optional array (a 1x1 `neighbor_mask` read past), an input sized by a mask's count
+(compared with nothing) and a constant axis (`fields(n, 2, m)` read a field without its target).
+One module decides and both languages write it out, and Python reads an extent off the very axis
+the rule leaves out (`extent_provider`), so they cannot drift. An axis the declaration computes
+(`sum(reps_per_tissue)`) is not theirs: they pass its extent to C, and the C wrapper compares it
+(`c-layer.md`). The message names the arrays and shows the declared shape:
 
 ```
-ToxArgumentError: 'weights' has 3 along axis 0, but 'matrix' implies n_cols == 2
+ToxArgumentError: 'weights' has 3 along axis 0, but 'matrix' implies n_cols == 2; 'weights' has shape (n_cols)
 ```
 
 This is the single most valuable thing the generated layer does that a hand-written

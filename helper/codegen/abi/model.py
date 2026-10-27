@@ -82,10 +82,23 @@ class CArgument:
     #: Whether a default was documented, which `default is None` cannot say -- the
     #: default may legitimately be None-like
     has_default: bool = False
+    #: The extents as the author declared them, which the documentation shows: a module
+    #: constant by its name, an axis C is given the actual extent of (`checked_against`) by its
+    #: expression. `dimension` holds what C sees, and the binding languages see it with every
+    #: constant evaluated. Empty for an argument the C ABI invented.
+    declared_extents: tuple[str, ...] = ()
+    #: For an EXTENT passed for an input axis that the declaration computes (`sum(reps)`,
+    #: `n + 1`): that expression, which the C wrapper compares the passed extent with
+    checked_against: str | None = None
 
     @property
     def rank(self) -> int:
         return self.dimension.rank
+
+    @property
+    def shown_extents(self) -> tuple[str, ...]:
+        """The extents a reader is shown: as declared, or as C sees them where nothing was."""
+        return self.declared_extents or self.dimension.extents
 
     @property
     def is_scalar(self) -> bool:

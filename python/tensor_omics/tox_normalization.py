@@ -120,6 +120,7 @@ _lib.calc_tiss_avg_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_int),
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
     _ctypes.POINTER(_ctypes.c_int),
 )
@@ -627,6 +628,7 @@ def calc_tiss_avg(
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
     n_tissues = reps_per_tissue.shape[0]
+    n_expr_elements_dim_1 = expr.shape[0]
 
     # outputs and work arrays, which the caller never sees
     tissue_averages = _np.empty((n_tissues, n_genes,), dtype=_np.float64, order='F')
@@ -637,6 +639,7 @@ def calc_tiss_avg(
         _ctypes.byref(_ctypes.c_int(n_tissues)),
         reps_per_tissue,
         expr,
+        _ctypes.byref(_ctypes.c_int(n_expr_elements_dim_1)),
         tissue_averages,
         _ctypes.byref(ierr),
     )
@@ -718,9 +721,9 @@ def calc_fchange(
     n_tissues = expr.shape[0]
     n_pairs = control_tissues.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if condition_tissues.shape[0] != n_pairs:
-        raise _ToxArgumentError(f"'condition_tissues' has {condition_tissues.shape[0]} along axis 0, but 'control_tissues' implies n_pairs == {n_pairs}", argument="condition_tissues")
+        raise _ToxArgumentError(f"'condition_tissues' has {condition_tissues.shape[0]} along axis 0, but 'control_tissues' implies n_pairs == {n_pairs}; 'condition_tissues' has shape (n_pairs)", argument="condition_tissues")
 
     # outputs and work arrays, which the caller never sees
     fold_changes = _np.empty((n_pairs, n_genes,), dtype=_np.float64, order='F')

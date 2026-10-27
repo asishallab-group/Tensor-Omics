@@ -24,7 +24,7 @@ from tensor_omics import (
     compute_velocity_acceleration_contributions
 )
 from test_helpers import run_all_tests, assert_error
-from tensor_omics.error_handling import ERR_INVALID_INPUT, ERR_NAN_INF
+from tensor_omics.error_handling import ERR_INVALID_INPUT, ERR_NAN_INF, ERR_SIZE_MISMATCH
 
 
 # Constants
@@ -84,6 +84,10 @@ def test_tox_compute_acceleration_from_velocity():
 
     assert acceleration.shape == (n_timepoints - 2,) + velocity.shape[1:]
     assert np.allclose(acceleration, expected, atol=TOL)
+
+    # `velocity` has n_timepoints - 1 steps; 3 against 6 timepoints used to be read past (#221)
+    assert_error(lambda: compute_acceleration_from_velocity(velocity, 6),
+                 "too few velocity steps must be refused", ERR_SIZE_MISMATCH)
 
 
 def test_tox_compute_velocity_acceleration_contributions():
@@ -401,6 +405,10 @@ def test_tox_compute_acceleration_from_velocity_trajectory():
 
     # Dimensionality check
     assert_error(lambda: compute_acceleration_from_velocity_trajectory(velocity.reshape(1, -1), n_timepoints), "Expected ValueError for 2D input")
+
+    # `velocity` has n_timepoints - 1 steps; 3 against 6 timepoints used to be read past (#221)
+    assert_error(lambda: compute_acceleration_from_velocity_trajectory(velocity, 6),
+                 "too few velocity steps must be refused", ERR_SIZE_MISMATCH)
 
 
 if __name__ == "__main__":

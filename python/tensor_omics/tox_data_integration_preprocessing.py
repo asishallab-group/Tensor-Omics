@@ -233,9 +233,9 @@ def compute_residuals(
     n_genes = expr.shape[1]
     n_reps = expr.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if means.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'means' has {means.shape[0]} along axis 0, but 'expr' implies n_genes == {n_genes}", argument="means")
+        raise _ToxArgumentError(f"'means' has {means.shape[0]} along axis 0, but 'expr' implies n_genes == {n_genes}; 'means' has shape (n_genes)", argument="means")
 
     # outputs and work arrays, which the caller never sees
     resid = _np.empty((n_reps, n_genes,), dtype=_np.float64, order='F')
@@ -400,9 +400,9 @@ def pool_means_expert(
     # what the inputs already say, rather than asking for it again
     pool_size = pooled_means.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if pooled_means_perm.shape[0] != pool_size:
-        raise _ToxArgumentError(f"'pooled_means_perm' has {pooled_means_perm.shape[0]} along axis 0, but 'pooled_means' implies pool_size == {pool_size}", argument="pooled_means_perm")
+        raise _ToxArgumentError(f"'pooled_means_perm' has {pooled_means_perm.shape[0]} along axis 0, but 'pooled_means' implies pool_size == {pool_size}; 'pooled_means_perm' has shape (pool_size)", argument="pooled_means_perm")
 
     # outputs and work arrays, which the caller never sees
     n_pool = _ctypes.c_int(0)
@@ -595,9 +595,9 @@ def construct_neighborhoods(
     n_genes_S = mean_S.shape[0]
     n_reps_S = resid_S.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if resid_S.shape[1] != n_genes_S:
-        raise _ToxArgumentError(f"'resid_S' has {resid_S.shape[1]} along axis 1, but 'mean_S' implies n_genes_S == {n_genes_S}", argument="resid_S")
+        raise _ToxArgumentError(f"'resid_S' has {resid_S.shape[1]} along axis 1, but 'mean_S' implies n_genes_S == {n_genes_S}; 'resid_S' has shape (n_reps_S, n_genes_S)", argument="resid_S")
 
     # outputs and work arrays, which the caller never sees
     neighborhood_residuals = _np.empty((n_reps_S, n_neighbors, n_points,), dtype=_np.float64, order='F')

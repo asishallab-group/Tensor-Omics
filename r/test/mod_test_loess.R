@@ -109,4 +109,20 @@ test_invalid_inputs <- function() {
   assert_true(error_caught)
 }
 
+# `eval_points` is (n, 1); a zero-width one used to be read past (#221)
+test_eval_points_need_their_one_column <- function() {
+  n <- 20
+  x <- seq(1, 10, length.out = n)
+  for (width in c(0L, 2L)) {
+    assert_error(loess_fit_plain(x = x, y = 2 * x, weights = rep(1, n),
+                                 eval_points = matrix(1, n, width), span = 0.5, degree = 1L,
+                                 max_neighborhood_size = n),
+                 sprintf("eval_points of width %d must be refused", width))
+    assert_error(loess_fit_robust(x = x, y = 2 * x, weights = rep(1, n),
+                                  eval_points = matrix(1, n, width), span = 0.5, degree = 1L,
+                                  max_neighborhood_size = n),
+                 sprintf("eval_points of width %d must be refused", width))
+  }
+}
+
 run_all_tests()

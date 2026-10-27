@@ -151,6 +151,49 @@ before it may take `c_loc` of the arrays they size. `ir/validate.py` enforces it
 
 ---
 
+## Decision: an input axis the declaration computes is passed, and compared in the wrapper
+
+A `bind(C)` wrapper receives a pointer, and the callee's explicit-shape dummy trusts whatever
+extent it is declared with. For an axis named by an argument or a constant, Python and R compare
+the array they are handed before the call (`language-layers.md`). For an axis the declaration
+*computes* -- `expr(sum(reps_per_tissue), n_genes)`, `velocity(max(0_int32, n_timepoints - 1),
+...)` -- only Fortran knows the value, so (#221 A-shape):
+
+1. **C is given the actual extent** of that axis, as an argument right after the array
+   (`n_expr_elements_dim_1`, the assumed-shape extent's name and origin), which Python and the R
+   shim read off the array exactly as they read an assumed-shape one. That is the whole C ABI
+   change: three arguments in three symbols on main (`calc_tiss_avg_c`,
+   `compute_acceleration_from_velocity_c`, `compute_acceleration_from_velocity_trajectory_c`). A
+   direct C caller passes the extent of the buffer it has; no header is published, so a caller
+   written against the old prototype still links and must be updated by hand.
+2. **The wrapper declares the array with it**, and counts it in `M_CHECK_ARRAY_NON_NULL`. The
+   declared expression in a `bind(C)` dummy's declaration is evaluated on entry: `sum(reps_per_tissue)`
+   dereferenced `reps_per_tissue` before the null check of step 4 could run, and a null one
+   crashed the caller instead of returning `ERR_POINTER_NULL` (attack-shape F3). No expression
+   reading an array's contents may sit in a declaration or a null-check count.
+3. **After every null check, it compares** the passed extent with the declaration, evaluated in
+   Fortran, and reports `ERR_SIZE_MISMATCH` at the array's position. An array the expression reads
+   has been null-checked by then, or is empty, and reading an empty one reads nothing. An optional
+   array is compared only when present: C passes 0 for an absent one's extent.
+4. **Not under `NO_INPUT_VALIDATION`.** That directive drops checks of *values* for a caller who
+   knows its data; this one keeps a short buffer from being read past, which no knowledge of the
+   values makes safe -- the same reason the null checks stay.
+
+A shaped array (`arr(n_strings)` beside `arr_shape`, the serde helpers) gets the same comparison
+with no argument added: the wrapper views `product(arr_shape)` elements and the callee is declared
+with `n_strings`, so a C caller whose two disagreed had the callee write past the view.
+
+*Refused* (`c_abi._can_check`): an expression reading an optional, an `intent(out)` dummy, a dummy
+the wrapper converts (under its name in the wrapper it is the C buffer, not the declared value), or
+an array whose own extent is computed, whose check would have to come first. None occurs on main.
+
+*Rejected:* passing every input axis's extent to C (about 430 arguments on main), which repeats a
+bare-name extent that is already an argument. *Rejected:* assumed-shape `foo` tiers, which would
+protect Fortran callers too but needs this passed extent anyway, gives up sequence association and
+can copy a strided actual; FES decided (2026-10-26) that a Fortran caller of `foo` stays
+responsible for its extents. *Rejected:* a constant axis as a C argument too (`fields(n, 2, m)`):
+a C caller cannot get a literal wrong by passing a pointer, and the bindings compare it exactly.
+
 ## Decision: an argument position always numbers the Fortran dummy list
 
 `ierr` packs the position of the argument it blames. The C wrapper's argument list is *not*

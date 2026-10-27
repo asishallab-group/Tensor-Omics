@@ -203,9 +203,9 @@ def compute_family_scaling(
     # what the inputs already say, rather than asking for it again
     n_genes = distances.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if gene_to_fam.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'distances' implies n_genes == {n_genes}", argument="gene_to_fam")
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'distances' implies n_genes == {n_genes}; 'gene_to_fam' has shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
     dscale = _np.empty((n_families,), dtype=_np.float64, order='C')
@@ -326,9 +326,9 @@ def compute_rdi(
     n_genes = distances.shape[0]
     n_dscale_elements = dscale.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if gene_to_fam.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'distances' implies n_genes == {n_genes}", argument="gene_to_fam")
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'distances' implies n_genes == {n_genes}; 'gene_to_fam' has shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
     rdi = _np.empty((n_genes,), dtype=_np.float64, order='C')
@@ -443,11 +443,11 @@ def identify_outliers(
     # what the inputs already say, rather than asking for it again
     n_genes = rdi.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if sorted_rdi.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'sorted_rdi' has {sorted_rdi.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}", argument="sorted_rdi")
+        raise _ToxArgumentError(f"'sorted_rdi' has {sorted_rdi.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}; 'sorted_rdi' has shape (n_genes)", argument="sorted_rdi")
     if perm.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'perm' has {perm.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}", argument="perm")
+        raise _ToxArgumentError(f"'perm' has {perm.shape[0]} along axis 0, but 'rdi' implies n_genes == {n_genes}; 'perm' has shape (n_genes)", argument="perm")
 
     # outputs and work arrays, which the caller never sees
     is_outlier = _np.empty((n_genes,), dtype=_np.bool_, order='C')
@@ -566,9 +566,9 @@ def detect_outliers(
     # what the inputs already say, rather than asking for it again
     n_genes = distances.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if gene_to_fam.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'distances' implies n_genes == {n_genes}", argument="gene_to_fam")
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'distances' implies n_genes == {n_genes}; 'gene_to_fam' has shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
     is_outlier = _np.empty((n_genes,), dtype=_np.bool_, order='C')

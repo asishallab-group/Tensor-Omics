@@ -665,3 +665,87 @@ class TestSizeConstants:
         assert "sized by the module constant 'N_AXES', which the generator cannot evaluate" in (
             bag.errors[0].message
         )
+
+
+class TestAnAxisTheDeclarationComputes:
+    """C is given the actual extent of an input axis the declaration computes (#221 A-shape).
+
+    The C wrapper compares it with the declaration, since only Fortran can evaluate
+    `sum(reps_per_tissue)`; a bare name or a constant is the bindings' to check, with no new
+    argument, and an output is allocated from its extents rather than compared with them.
+    """
+
+    def _wrapper(self, bag, *arguments, name="p"):
+        procedure = b.procedure(name, *arguments, b.ierr())
+        return wrap(procedure, bag)
+
+    def test_an_expression_gets_an_extent_right_after_its_array(self, bag):
+        wrapper = self._wrapper(
+            bag, b.integer("n_tissues"), b.integer("n_genes"),
+            b.integer("reps", Intent.IN, "(n_tissues)"),
+            b.real("expr", Intent.IN, "(sum(reps), n_genes)"),
+        )
+
+        names = [a.name for a in wrapper]
+        assert names[names.index("expr") + 1] == "n_expr_elements_dim_1"
+        extent = wrapper.argument("n_expr_elements_dim_1")
+        assert (extent.origin, extent.sizes, extent.axis) == (Origin.EXTENT, "expr", 0)
+        assert extent.checked_against == "sum(reps)"
+        assert wrapper.argument("expr").dimension.extents == ("n_expr_elements_dim_1", "n_genes")
+        assert bag.errors == ()
+
+    def test_the_declared_shape_is_kept_for_the_documentation(self, bag):
+        wrapper = self._wrapper(bag, b.integer("n"), b.real("x", Intent.IN, "(n + 1)"))
+
+        assert wrapper.argument("x").declared_extents == ("n + 1",)
+        assert wrapper.argument("x").shown_extents == ("n + 1",)
+        assert wrapper.argument("n_x_elements").checked_against == "n + 1"
+
+    @pytest.mark.parametrize("dimension", ["(n)", "(n, 2)", "(N_AXES, n)", "(:)"])
+    def test_a_name_a_constant_or_an_assumed_shape_adds_nothing_checked(self, bag, dimension):
+        wrapper = self._wrapper(bag, b.integer("n"), b.real("x", Intent.IN, dimension))
+
+        assert not any(a.checked_against for a in wrapper)
+
+    def test_an_output_and_a_work_array_are_allocated_not_compared(self, bag):
+        wrapper = self._wrapper(
+            bag, b.integer("n"), b.real("x", Intent.IN, "(n)"),
+            b.real("y", Intent.OUT, "(n - 1)"), b.real("tmp_w", Intent.INOUT, "(n + 1)"),
+        )
+
+        assert not any(a.checked_against for a in wrapper)
+        assert wrapper.argument("y").dimension.extents == ("n - 1",)
+
+    def test_an_inout_array_is_an_input(self, bag):
+        wrapper = self._wrapper(bag, b.integer("n"), b.real("x", Intent.INOUT, "(2*n)"))
+
+        assert wrapper.argument("n_x_elements").checked_against == "2*n"
+
+    def test_a_string_array_counts_its_strings_on_the_axis_after_the_length(self, bag):
+        wrapper = self._wrapper(
+            bag, b.integer("n"), b.character("names", Intent.IN, "(n + 1)", length="4"))
+
+        assert wrapper.argument("names").dimension.extents == ("4", "n_names_elements")
+
+    @pytest.mark.parametrize("arguments, reason", [
+        ((b.integer("n", optional=True), b.real("y", Intent.IN, "(3)"),
+          b.real("x", Intent.IN, "(n + 1)")),
+         "it reads the optional 'n', which may be absent"),
+        ((b.integer("n", Intent.OUT), b.real("x", Intent.IN, "(n + 1)")),
+         "it reads 'n', which is an output"),
+        ((b.integer("n"), b.character("label", Intent.IN, length="*"),
+          b.real("x", Intent.IN, "(len(label))")),
+         "it reads 'label', which the C wrapper converts"),
+        ((b.integer("n"), b.real("a", Intent.IN, "(n + 1)"),
+          b.real("x", Intent.IN, "(size(a) + 1)")),
+         "it reads 'a', whose own extent is computed too"),
+    ])
+    def test_what_the_c_wrapper_cannot_evaluate_is_refused(self, bag, arguments, reason):
+        procedure = b.procedure("p", *arguments, b.ierr())
+        wrap(procedure, bag)
+
+        messages = [error.message for error in bag.errors]
+        assert any(
+            "'x' of 'p' is sized by" in message and "which its C wrapper cannot check" in message
+            and reason in message for message in messages
+        ), messages

@@ -26,7 +26,7 @@ cluster_factor_trajectories_k_means <- function(trajectories, centroids, max_ite
     centroids <- .tox_as_double_matrix(centroids, "centroids")
     max_iterations <- .tox_as_integer_scalar(max_iterations, "max_iterations")
     if (dim(centroids)[1] != dim(trajectories)[1])
-        .tox_shape_error("centroids", dim(centroids)[1], "trajectories", dim(trajectories)[1])
+        .tox_shape_error("centroids", 1L, dim(centroids)[1], "'trajectories' implies n_factors == ", dim(trajectories)[1], "n_factors, n_clusters")
 
     .result <- .Call("cluster_factor_trajectories_k_means_call", trajectories, centroids, max_iterations)
     .arguments <- c("n_clusters", "trajectories", "n_factors", "n_samples", "n_timepoints", "centroids", "labels", "label_counts", "max_iterations", "ierr")
@@ -71,7 +71,7 @@ k_means_clustering <- function(data_points, centroids, max_iterations = 300L) {
     centroids <- .tox_as_double_matrix(centroids, "centroids")
     max_iterations <- .tox_as_integer_scalar(max_iterations, "max_iterations")
     if (dim(centroids)[1] != dim(data_points)[1])
-        .tox_shape_error("centroids", dim(centroids)[1], "data_points", dim(data_points)[1])
+        .tox_shape_error("centroids", 1L, dim(centroids)[1], "'data_points' implies n_dims == ", dim(data_points)[1], "n_dims, n_clusters")
 
     .result <- .Call("k_means_clustering_call", data_points, centroids, max_iterations)
     .arguments <- c("n_clusters", "data_points", "n_points", "n_dims", "centroids", "labels", "label_counts", "max_iterations", "ierr")
@@ -123,7 +123,7 @@ linkage_clustering <- function(distances, method) {
     distances <- .tox_as_double_matrix(distances, "distances")
     method <- .tox_as_mode(method, "method", c("average", "weighted", "ward"))
     if (dim(distances)[2] != dim(distances)[1])
-        .tox_shape_error("distances", dim(distances)[2], "distances", dim(distances)[1])
+        .tox_shape_error("distances", 2L, dim(distances)[2], "'distances' implies n_points == ", dim(distances)[1], "n_points, n_points")
 
     .result <- .Call("linkage_clustering_call", distances, method)
     .arguments <- c("distances", "n_points", "merge_i", "merge_j", "heights", "cluster_sizes", "method", "ierr")

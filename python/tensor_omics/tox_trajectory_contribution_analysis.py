@@ -130,6 +130,7 @@ _COMPUTE_VELOCITY_TRAJECTORY_ARGUMENT_SOURCES = (None, None, "trajectory", None,
 _lib.compute_acceleration_from_velocity_trajectory_c.restype = None
 _lib.compute_acceleration_from_velocity_trajectory_c.argtypes = (
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
@@ -156,6 +157,7 @@ _COMPUTE_VELOCITY_TRAJECTORIES_ARGUMENT_SOURCES = (None, None, "trajectories", "
 _lib.compute_acceleration_from_velocity_c.restype = None
 _lib.compute_acceleration_from_velocity_c.argtypes = (
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
@@ -361,11 +363,11 @@ def compute_p_values(
     n_timepoints = local_contributions_observed.shape[0]
     n_permutations = local_contributions_perm_test.shape[1]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if local_contributions_perm_test.shape[0] != n_timepoints:
-        raise _ToxArgumentError(f"'local_contributions_perm_test' has {local_contributions_perm_test.shape[0]} along axis 0, but 'local_contributions_observed' implies n_timepoints == {n_timepoints}", argument="local_contributions_perm_test")
+        raise _ToxArgumentError(f"'local_contributions_perm_test' has {local_contributions_perm_test.shape[0]} along axis 0, but 'local_contributions_observed' implies n_timepoints == {n_timepoints}; 'local_contributions_perm_test' has shape (n_timepoints, n_permutations)", argument="local_contributions_perm_test")
     if total_contributions_perm_test.shape[0] != n_permutations:
-        raise _ToxArgumentError(f"'total_contributions_perm_test' has {total_contributions_perm_test.shape[0]} along axis 0, but 'local_contributions_perm_test' implies n_permutations == {n_permutations}", argument="total_contributions_perm_test")
+        raise _ToxArgumentError(f"'total_contributions_perm_test' has {total_contributions_perm_test.shape[0]} along axis 0, but 'local_contributions_perm_test' implies n_permutations == {n_permutations}; 'total_contributions_perm_test' has shape (n_permutations)", argument="total_contributions_perm_test")
 
     # outputs and work arrays, which the caller never sees
     local_p_values = _np.empty((n_timepoints,), dtype=_np.float64, order='C')
@@ -451,9 +453,9 @@ def compute_contributions(
     # what the inputs already say, rather than asking for it again
     n_dims = factor.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if dependent.shape[0] != n_dims:
-        raise _ToxArgumentError(f"'dependent' has {dependent.shape[0]} along axis 0, but 'factor' implies n_dims == {n_dims}", argument="dependent")
+        raise _ToxArgumentError(f"'dependent' has {dependent.shape[0]} along axis 0, but 'factor' implies n_dims == {n_dims}; 'dependent' has shape (n_dims)", argument="dependent")
 
     # outputs and work arrays, which the caller never sees
     local_contributions = _np.empty((n_dims,), dtype=_np.float64, order='C')
@@ -642,9 +644,9 @@ def compute_baselines_factor_dependent(
     # what the inputs already say, rather than asking for it again
     n_timepoints = factor.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if dependent.shape[0] != n_timepoints:
-        raise _ToxArgumentError(f"'dependent' has {dependent.shape[0]} along axis 0, but 'factor' implies n_timepoints == {n_timepoints}", argument="dependent")
+        raise _ToxArgumentError(f"'dependent' has {dependent.shape[0]} along axis 0, but 'factor' implies n_timepoints == {n_timepoints}; 'dependent' has shape (n_timepoints)", argument="dependent")
 
     # outputs and work arrays, which the caller never sees
     factor_baseline = _ctypes.c_double(0)
@@ -766,12 +768,16 @@ def compute_acceleration_from_velocity_trajectory(
     if velocity.ndim != 1:
         raise _ToxArgumentError(f"'velocity' must have 1 dimension, but has {velocity.ndim}", argument="velocity")
 
+    # what the inputs already say, rather than asking for it again
+    n_velocity_elements = velocity.shape[0]
+
     # outputs and work arrays, which the caller never sees
     acceleration = _np.empty((max(0, n_timepoints - 2),), dtype=_np.float64, order='C')
     ierr = _ctypes.c_int(0)
 
     _lib.compute_acceleration_from_velocity_trajectory_c(
         velocity,
+        _ctypes.byref(_ctypes.c_int(n_velocity_elements)),
         acceleration,
         _ctypes.byref(_ctypes.c_int(n_timepoints)),
         _ctypes.byref(ierr),
@@ -887,6 +893,7 @@ def compute_acceleration_from_velocity(
         raise _ToxArgumentError(f"'velocity' must have 3 dimensions, but has {velocity.ndim}", argument="velocity")
 
     # what the inputs already say, rather than asking for it again
+    n_velocity_elements_dim_1 = velocity.shape[0]
     n_factors = velocity.shape[1]
     n_samples = velocity.shape[2]
 
@@ -896,6 +903,7 @@ def compute_acceleration_from_velocity(
 
     _lib.compute_acceleration_from_velocity_c(
         velocity,
+        _ctypes.byref(_ctypes.c_int(n_velocity_elements_dim_1)),
         acceleration,
         _ctypes.byref(_ctypes.c_int(n_factors)),
         _ctypes.byref(_ctypes.c_int(n_samples)),

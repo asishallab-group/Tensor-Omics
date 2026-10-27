@@ -28,7 +28,7 @@ loess_smooth_2d <- function(x_ref, y_ref, indices_used, x_query, kernel_sigma, k
     kernel_sigma <- .tox_as_double_scalar(kernel_sigma, "kernel_sigma")
     kernel_cutoff <- .tox_as_double_scalar(kernel_cutoff, "kernel_cutoff")
     if (length(y_ref) != length(x_ref))
-        .tox_shape_error("y_ref", length(y_ref), "x_ref", length(x_ref))
+        .tox_shape_error("y_ref", 1L, length(y_ref), "'x_ref' implies n_total == ", length(x_ref), "n_total")
 
     .result <- .Call("loess_smooth_2d_call", x_ref, y_ref, indices_used, x_query, kernel_sigma, kernel_cutoff)
     .arguments <- c("n_total", "n_target", "x_ref", "y_ref", "indices_used", "n_used", "x_query", "kernel_sigma", "kernel_cutoff", "y_out", "ierr")
@@ -95,7 +95,7 @@ compute_edf_expert <- function(values, values_perm) {
     values <- .tox_as_double_vector(values, "values")
     values_perm <- .tox_as_integer_vector(values_perm, "values_perm")
     if (length(values_perm) != length(values))
-        .tox_shape_error("values_perm", length(values_perm), "values", length(values))
+        .tox_shape_error("values_perm", 1L, length(values_perm), "'values' implies n_values == ", length(values), "n_values")
 
     .result <- .Call("compute_edf_expert_call", values, values_perm)
     .arguments <- c("values", "n_values", "values_perm", "unique_values", "cdf_values", "n_unique", "ierr")
@@ -176,7 +176,7 @@ calc_quantile_expert <- function(array, array_perm, level, n_considered = 0L) {
     level <- .tox_as_double_scalar(level, "level")
     n_considered <- .tox_as_integer_scalar(n_considered, "n_considered")
     if (length(array_perm) != length(array))
-        .tox_shape_error("array_perm", length(array_perm), "array", length(array))
+        .tox_shape_error("array_perm", 1L, length(array_perm), "'array' implies n_array == ", length(array), "n_array")
 
     .result <- .Call("calc_quantile_expert_call", array, array_perm, level, n_considered)
     .arguments <- c("array", "n_array", "array_perm", "level", "value", "n_considered", "ierr")
@@ -221,7 +221,7 @@ compute_scaled_distance_tail_probability <- function(rdi, sorted_rdi, c_const) {
     sorted_rdi <- .tox_as_double_vector(sorted_rdi, "sorted_rdi")
     c_const <- .tox_as_double_scalar(c_const, "c_const")
     if (length(sorted_rdi) != length(rdi))
-        .tox_shape_error("sorted_rdi", length(sorted_rdi), "rdi", length(rdi))
+        .tox_shape_error("sorted_rdi", 1L, length(sorted_rdi), "'rdi' implies n_genes == ", length(rdi), "n_genes")
 
     .result <- .Call("compute_scaled_distance_tail_probability_call", rdi, sorted_rdi, c_const)
     .arguments <- c("n_genes", "rdi", "sorted_rdi", "tail_probability", "c_const", "ierr")
@@ -271,9 +271,9 @@ compute_scaled_distance_tail_probability_expert <- function(rdi, sorted_rdi, sor
     sorted_rdi_perm <- .tox_as_integer_vector(sorted_rdi_perm, "sorted_rdi_perm")
     c_const <- .tox_as_double_scalar(c_const, "c_const")
     if (length(sorted_rdi) != length(rdi))
-        .tox_shape_error("sorted_rdi", length(sorted_rdi), "rdi", length(rdi))
+        .tox_shape_error("sorted_rdi", 1L, length(sorted_rdi), "'rdi' implies n_genes == ", length(rdi), "n_genes")
     if (length(sorted_rdi_perm) != length(rdi))
-        .tox_shape_error("sorted_rdi_perm", length(sorted_rdi_perm), "rdi", length(rdi))
+        .tox_shape_error("sorted_rdi_perm", 1L, length(sorted_rdi_perm), "'rdi' implies n_genes == ", length(rdi), "n_genes")
 
     .result <- .Call("compute_scaled_distance_tail_probability_expert_call", rdi, sorted_rdi, sorted_rdi_perm, c_const)
     .arguments <- c("n_genes", "rdi", "sorted_rdi", "sorted_rdi_perm", "tail_probability", "c_const", "ierr")

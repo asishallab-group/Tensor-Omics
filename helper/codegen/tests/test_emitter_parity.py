@@ -377,16 +377,36 @@ class TestConstantSizesInBothBindings:
         return build_module(module, bag)
 
     def test_python_allocates_and_pads_with_the_values(self):
+        import ast
+
         text = PythonEmitter().module(self.module())
 
         assert "np.empty((2,)" in text
         assert ".ljust(8)" in text
-        assert "N_AXES" not in text and "MAX_LEN" not in text
+        # the code reads no such name; only what a reader is shown keeps it
+        read = {node.id for node in ast.walk(ast.parse(text)) if isinstance(node, ast.Name)}
+        assert not read & {"N_AXES", "MAX_LEN"}
+
+    def test_python_checks_the_constant_axis_against_its_value(self):
+        text = PythonEmitter().module(self.module())
+
+        assert "if points.shape[0] != 2:" in text
+
+    def test_the_documentation_shows_the_constant_by_name(self):
+        # what the author wrote, not the value it stands for (#221 WP1 review N5)
+        text = PythonEmitter().module(self.module())
+
+        assert "points : np.ndarray[np.float64] of shape (N_AXES, n,)" in text
 
     def test_the_r_wrapper_names_no_constant(self):
-        text = RWrapperEmitter().module(self.module())
+        import re
 
-        assert "N_AXES" not in text and "MAX_LEN" not in text
+        text = RWrapperEmitter().module(self.module())
+        code = re.sub(r'"[^"]*"', '""', "\n".join(
+            line for line in text.splitlines() if not line.lstrip().startswith("#")))
+
+        assert "N_AXES" not in code and "MAX_LEN" not in code
+        assert "if (dim(points)[1] != 2L)" in code
 
 
 class TestTheTargetsTrimTheSameAxis:

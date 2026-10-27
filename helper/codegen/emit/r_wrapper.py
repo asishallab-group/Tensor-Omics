@@ -15,7 +15,9 @@ from .error_arguments import sources_of
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
+from .doc_literals import render as _render
 from .doc_roxygen import render_roxygen
+from .shape_checks import Position, axes_of, declared_shape, reason, shape_checks
 
 
 class RWrapperEmitter:
@@ -128,7 +130,7 @@ class RWrapperEmitter:
                     # this extent rather than the other way round
                     continue
                 if c_owner is not None and c_owner.intent.is_input and not c_owner.optional:
-                    axes = self._axes_of(consumer_arg, c_owner)
+                    axes = axes_of(consumer_arg, c_owner)
                     if axes:
                         # the first axis is where the value is read from; any others are
                         # what `_check_shapes` then verifies against it
@@ -265,64 +267,54 @@ class RWrapperEmitter:
         return f".tox_as_{base}_array({value}, {name}, {argument.rank}L)"
 
     def _check_shapes(self, writer: Writer, wrapper: CWrapper) -> None:
-        """The cross-checks Fortran cannot make: shared extents must agree.
+        """Compare every input axis with what it must be, as Python does (`emit.shape_checks`).
 
-        The same idea as the Python emitter, raised as a `tox_shape_error` classed
-        condition rather than a `ValueError`.
+        Raised as a `tox_shape_error` classed condition rather than a `ToxArgumentError`. R has
+        no extent of its own in hand where the shim derives it, so the value read off the
+        providing array is written out here as that array's extent.
         """
         wrote = False
-        for argument in wrapper:
-            roles = argument.source.roles if argument.source else None
-            if roles is None or not roles.is_extent:
-                continue
-
-            owners = []
-            for owner in roles.extent_of:
-                c_owner = wrapper.argument(owner.name)
-                if c_owner is None or not c_owner.intent.is_input or c_owner.optional:
-                    continue
-                if c_owner.is_temporary:
-                    # a work array C allocates itself always agrees, and is not a
-                    # variable R has in scope
-                    continue
-                owners.extend(
-                    (c_owner, axis)
-                    for axis in self._axes_of(argument.name, c_owner)
+        for check in shape_checks(wrapper):
+            array = check.position.array
+            actual = self._position(check.position)
+            expected = self._expected(check.expected)
+            condition = f"{actual} != {expected}"
+            if array.optional:
+                condition = f"!is.null({array.name}) && {condition}"
+            dimension = "NA_integer_" if check.position.axis is None else f"{check.position.axis + 1}L"
+            shape = _render(declared_shape(array), "r")
+            writer.line(f"if ({condition})")
+            with writer.indent():
+                writer.line(
+                    f'.tox_shape_error("{array.name}", {dimension}, {actual}, '
+                    f'"{reason(check.expected)}", {expected}, "{shape}")'
                 )
-            if len(owners) < 2:
-                continue
-
-            first, first_axis = owners[0]
-            reference = self._extent_expression(first, first_axis)
-            for owner, axis in owners[1:]:
-                actual = self._extent_expression(owner, axis)
-                writer.line(f"if ({actual} != {reference})")
-                with writer.indent():
-                    writer.line(
-                        f'.tox_shape_error("{owner.name}", {actual}, "{first.name}", '
-                        f"{reference})"
-                    )
-                wrote = True
+            wrote = True
         if wrote:
             writer.blank()
+
+    def _expected(self, expected) -> str:
+        """The value a compared axis must have, as R computes it before the call."""
+        if expected.origin == "constant":
+            return f"{expected.value}L"
+        if expected.origin == "axis":
+            return self._position(expected.position)
+        if expected.origin == "mask":
+            return f"sum({expected.mask})"
+        # an argument the caller passed, or one the producer call above computed
+        return expected.extent
+
+    def _position(self, position: Position) -> str:
+        """An axis of an input as R reads it, or its element count."""
+        owner = position.array
+        if position.axis is None:
+            return f"length({owner.name})"
+        return self._extent_expression(owner, position.axis)
 
     def _extent_expression(self, owner: CArgument, axis: int) -> str:
         if owner.rank <= 1 or (owner.type.is_character and owner.rank == 2):
             return f"length({owner.name})"
         return f"dim({owner.name})[{axis + 1}]"
-
-    @staticmethod
-    def _axes_of(extent: str, owner: CArgument) -> list[int]:
-        """Which axes of `owner` carry `extent` -- all of them, not the first.
-
-        `distances(n_points, n_points)` claims to know `n_points` twice. Checking only
-        the first axis lets a non-square matrix through to a Fortran view that reads,
-        and for an intent(inout) argument writes, past the end of the buffer.
-        """
-        extents = list(owner.dimension.extents)
-        if owner.type.is_character and extents:
-            extents = extents[1:]
-        return [index for index, name in enumerate(extents) if name == extent]
 
     # -- call and return --------------------------------------------------------
 

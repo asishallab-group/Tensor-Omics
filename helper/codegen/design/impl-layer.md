@@ -839,7 +839,9 @@ decision (see [`c-layer.md`](c-layer.md)).
 
 The C layer's null checks are *not* under this directive. They prevent a segfault rather than
 reject a bad value, and a caller who has established that their inputs are good has established
-nothing about a binding language passing a null pointer.
+nothing about a binding language passing a null pointer. Nor is the C wrapper's shape check of an
+axis the declaration computes (`c-layer.md`), for the same reason: it keeps a short buffer from
+being read past.
 
 ### No allocation in an implementation module
 

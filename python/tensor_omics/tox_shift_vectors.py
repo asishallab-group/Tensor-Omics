@@ -101,11 +101,11 @@ def compute_shift_vector_field(
     n_genes = expression_vectors.shape[1]
     n_families = family_centroids.shape[1]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if family_centroids.shape[0] != n_tissues:
-        raise _ToxArgumentError(f"'family_centroids' has {family_centroids.shape[0]} along axis 0, but 'expression_vectors' implies n_tissues == {n_tissues}", argument="family_centroids")
+        raise _ToxArgumentError(f"'family_centroids' has {family_centroids.shape[0]} along axis 0, but 'expression_vectors' implies n_tissues == {n_tissues}; 'family_centroids' has shape (n_tissues, n_families)", argument="family_centroids")
     if gene_to_fam.shape[0] != n_genes:
-        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}", argument="gene_to_fam")
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'expression_vectors' implies n_genes == {n_genes}; 'gene_to_fam' has shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
     shift_vectors = _np.empty((n_tissues, 2, n_genes,), dtype=_np.float64, order='F')

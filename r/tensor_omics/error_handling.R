@@ -188,11 +188,17 @@ ERR_UNKNOWN <- 9999L
     )
 }
 
+#' Signal an input whose shape is not the one it is declared with
+#'
+#' @param dimension the 1-based dimension compared, or NA for the element count
+#' @param reason why it must have `expected`, up to the value itself
+#' @param shape the declared shape, for the reader
 #' @keywords internal
-.tox_shape_error <- function(argument, actual, other, expected) {
+.tox_shape_error <- function(argument, dimension, actual, reason, expected, shape) {
+    where <- if (is.na(dimension)) "elements" else sprintf("along dimension %d", dimension)
     .tox_argument_error(
-        sprintf("'%s' has extent %d, but '%s' implies it should be %d",
-        argument, actual, other, expected),
+        sprintf("'%s' has %d %s, but %s%d; '%s' has shape (%s)",
+        argument, actual, where, reason, expected, argument, shape),
         "tox_shape_error", argument
     )
 }

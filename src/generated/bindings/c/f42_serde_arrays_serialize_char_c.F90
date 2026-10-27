@@ -6,7 +6,7 @@
 module f42_serde_arrays_serialize_char_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_f_pointer, c_int, c_loc, c_ptr
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_EMPTY_INPUT
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_EMPTY_INPUT, ERR_SIZE_MISMATCH
     M_IMPLICIT_NONE
     private
 
@@ -58,6 +58,10 @@ contains
         M_CHECK_ARRAY_NON_NULL(arr_shape, n_arr_shape_elements)
         M_CHECK_ARRAY_NON_NULL(arr, product(arr_shape))
         M_CHECK_ARRAY_NON_NULL(filename, filename_strlen)
+        if (product(arr_shape) /= n_strings) then
+            call set_err(ierr, ERR_SIZE_MISMATCH, 1_int32)
+            return
+        end if
 
         M_CHECK_CHARACTER_ARRAY_VIEW(arr, arr_strlen, product(arr_shape))
         arr_address = c_loc(empty_view_anchor)

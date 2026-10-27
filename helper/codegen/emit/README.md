@@ -149,7 +149,7 @@ both *asked for* and *derived* is silently overwritten. There is a parity test f
 | **work arrays** (`tmp_`) | allocated by you, never returned, never asked for |
 | **`DM_OUTPUT_FROM(AUTO)`** | call the producer's **own generated wrapper**, not its C symbol — validation and error handling come free, and the value you pass is already prepared, so the producer's conversions are no-ops |
 | **the error code** | you allocate it, you decode it, the caller never sees it |
-| **cross-checks** | two arguments sharing an extent must agree; Fortran cannot check it, and a mismatch is a wrong answer or a segfault. Name **both** arguments in the message |
+| **shape checks** | every input axis against what it must be: `emit/shape_checks.py` decides which, by one rule, and you write the comparisons out -- the value read off another input (name **both** arguments), a mask's count, a variable or a constant; an optional array only when given. Fortran cannot check it, and a mismatch is a wrong answer or a read past the buffer. An axis the declaration computes arrives as a passed extent (`checked_against`): derive it off the array like any extent, and the C wrapper compares it |
 
 Two producer subtleties: match producer inputs to consumer arguments **by name** unless the
 argument's table renames them (the keyword is the *producer's* name, the value the consumer's);

@@ -249,9 +249,9 @@ def determine_shared_residual_range_expert(
     # what the inputs already say, rather than asking for it again
     pool_size = abs_residual_pool.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if abs_residual_pool_perm.shape[0] != pool_size:
-        raise _ToxArgumentError(f"'abs_residual_pool_perm' has {abs_residual_pool_perm.shape[0]} along axis 0, but 'abs_residual_pool' implies pool_size == {pool_size}", argument="abs_residual_pool_perm")
+        raise _ToxArgumentError(f"'abs_residual_pool_perm' has {abs_residual_pool_perm.shape[0]} along axis 0, but 'abs_residual_pool' implies pool_size == {pool_size}; 'abs_residual_pool_perm' has shape (pool_size)", argument="abs_residual_pool_perm")
 
     # outputs and work arrays, which the caller never sees
     shared_residual_range = _ctypes.c_double(0)
@@ -332,11 +332,11 @@ def determine_study_shared_residual_range(
     n_neighbors = neighborhood_residuals_S1.shape[1]
     n_points = neighborhood_residuals_S1.shape[2]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if neighborhood_residuals_S2.shape[1] != n_neighbors:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}", argument="neighborhood_residuals_S2")
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighborhood_residuals_S2' has shape (n_reps_S2, n_neighbors, n_points)", argument="neighborhood_residuals_S2")
     if neighborhood_residuals_S2.shape[2] != n_points:
-        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but 'neighborhood_residuals_S1' implies n_points == {n_points}", argument="neighborhood_residuals_S2")
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighborhood_residuals_S2' has shape (n_reps_S2, n_neighbors, n_points)", argument="neighborhood_residuals_S2")
 
     # outputs and work arrays, which the caller never sees
     shared_residual_range = _ctypes.c_double(0)
@@ -429,6 +429,12 @@ def build_residual_histograms(
     n_neighbors = neighborhood_residuals.shape[1]
     n_points = neighborhood_residuals.shape[2]
 
+    # Fortran cannot check that an array has the shape it is declared with; this can
+    if neighbor_mask is not None and neighbor_mask.shape[0] != n_neighbors:
+        raise _ToxArgumentError(f"'neighbor_mask' has {neighbor_mask.shape[0]} along axis 0, but 'neighborhood_residuals' implies n_neighbors == {n_neighbors}; 'neighbor_mask' has shape (n_neighbors, n_points)", argument="neighbor_mask")
+    if neighbor_mask is not None and neighbor_mask.shape[1] != n_points:
+        raise _ToxArgumentError(f"'neighbor_mask' has {neighbor_mask.shape[1]} along axis 1, but 'neighborhood_residuals' implies n_points == {n_points}; 'neighbor_mask' has shape (n_neighbors, n_points)", argument="neighbor_mask")
+
     # outputs and work arrays, which the caller never sees
     counts = _np.empty((n_points, n_bins,), dtype=_np.int32, order='F')
     pmf = _np.empty((n_points, n_bins,), dtype=_np.float64, order='F')
@@ -518,11 +524,11 @@ def compute_divergence_per_reference_point(
     n_points = pmf_S1.shape[0]
     n_bins = pmf_S1.shape[1]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if pmf_S2.shape[0] != n_points:
-        raise _ToxArgumentError(f"'pmf_S2' has {pmf_S2.shape[0]} along axis 0, but 'pmf_S1' implies n_points == {n_points}", argument="pmf_S2")
+        raise _ToxArgumentError(f"'pmf_S2' has {pmf_S2.shape[0]} along axis 0, but 'pmf_S1' implies n_points == {n_points}; 'pmf_S2' has shape (n_points, n_bins)", argument="pmf_S2")
     if pmf_S2.shape[1] != n_bins:
-        raise _ToxArgumentError(f"'pmf_S2' has {pmf_S2.shape[1]} along axis 1, but 'pmf_S1' implies n_bins == {n_bins}", argument="pmf_S2")
+        raise _ToxArgumentError(f"'pmf_S2' has {pmf_S2.shape[1]} along axis 1, but 'pmf_S1' implies n_bins == {n_bins}; 'pmf_S2' has shape (n_points, n_bins)", argument="pmf_S2")
 
     # outputs and work arrays, which the caller never sees
     js_divergences = _np.empty((n_points,), dtype=_np.float64, order='C')
@@ -612,11 +618,11 @@ def compute_weighted_global_divergence(
     # what the inputs already say, rather than asking for it again
     n_points = js_divergences.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if included_n_reps_S1.shape[0] != n_points:
-        raise _ToxArgumentError(f"'included_n_reps_S1' has {included_n_reps_S1.shape[0]} along axis 0, but 'js_divergences' implies n_points == {n_points}", argument="included_n_reps_S1")
+        raise _ToxArgumentError(f"'included_n_reps_S1' has {included_n_reps_S1.shape[0]} along axis 0, but 'js_divergences' implies n_points == {n_points}; 'included_n_reps_S1' has shape (n_points)", argument="included_n_reps_S1")
     if included_n_reps_S2.shape[0] != n_points:
-        raise _ToxArgumentError(f"'included_n_reps_S2' has {included_n_reps_S2.shape[0]} along axis 0, but 'js_divergences' implies n_points == {n_points}", argument="included_n_reps_S2")
+        raise _ToxArgumentError(f"'included_n_reps_S2' has {included_n_reps_S2.shape[0]} along axis 0, but 'js_divergences' implies n_points == {n_points}; 'included_n_reps_S2' has shape (n_points)", argument="included_n_reps_S2")
 
     # outputs and work arrays, which the caller never sees
     global_js_divergence = _ctypes.c_double(0)
