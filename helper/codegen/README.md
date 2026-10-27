@@ -416,8 +416,10 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
 - an **argument named like something its generated Fortran wrapper uses** — an intrinsic it
   calls (`count(mask, kind=int32)` beside an `n_selected_` count, `size(x, 1)` for an
   assumed-shape array), a name it imports (`set_err_once`, a validator, a kind), a kind it writes
-  (`3_int32`, `.true._c_bool`), or a local it declares (`handled` beside a prologue, `<x>_f` for a
-  converted `x`, `<x>_value` for a materialised default). Read off the wrappers as emitted, after
+  (`3_int32`, `.true._c_bool`), a local it declares (`handled` beside a prologue, `<x>_f` for a
+  converted `x`, `<x>_address` for an array of strings `x`, `<x>_value` for a materialised
+  default), or a variable of the module around it (`empty_view_anchor`, where an array of
+  strings is viewed). Read off the wrappers as emitted, after
   their macros are expanded (`emit/name_clashes.py`), so it is refused exactly where it collides:
   `count` stays a good argument of `mask_chunk_count`, which counts nothing. The R shim and Python
   have no such clash to refuse -- everything they bind beside the arguments starts with `_`
@@ -600,7 +602,14 @@ the compiler or a run rejected the first attempt.
 - **`intent(inout)`** is modified in place in Python but copied-and-returned in R, because R
   is copy-on-modify. The R side clones before Fortran touches the data.
 - **Characters** carry their length as a leading C extent, and the wrapper takes a zero-copy
-  `character(len=n)` pointer view of the caller's buffer rather than converting it. Buffers are
+  `character(len=n)` pointer view of the caller's buffer rather than converting it. An **array
+  of no strings** is viewed too, at the module's `character(1), target` anchor
+  (`names.EMPTY_VIEW_ANCHOR`) with shape `[0]`, since `c_loc` may not be given the zero-size
+  buffer itself: one `c_f_pointer` of an address chosen by `if`
+  (`M_CHECK_CHARACTER_ARRAY_VIEW`, `names.VIEW_ADDRESS`). It used to be refused as
+  `ERR_EMPTY_INPUT` before the procedure ran, so no binding could pass a data set with zero
+  families (#221). A zero width with strings to view stays refused, as does a single string of
+  zero width -- which only C can send, Python and R padding an empty string to one blank. Buffers are
   **blank**-filled, which is Fortran's own convention, so `trim` and comparison work on what the
   view yields and nothing has to scan for a NUL. Numeric outputs are left uninitialised
   (zeroing them is wasteful and dishonest — zeros look like results).

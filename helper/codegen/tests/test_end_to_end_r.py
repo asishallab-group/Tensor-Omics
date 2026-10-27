@@ -164,6 +164,14 @@ class TestResultsAreRight:
         out = run_r(built, 'cat(fx_count_positive(c(-1, 2, 3)))')
         assert int(out) == 2
 
+    def test_an_array_of_no_strings_goes_in_and_comes_back(self, built):
+        # #221 B3: the C wrapper refused it as ERR_EMPTY_INPUT before the procedure ran
+        out = run_r(built, """
+            cat(fx_count_matching(character(0), "a"), fx_optional_strings(extras = character(0)),
+                length(fx_labels(numeric(0))$labels), class(fx_labels(numeric(0))$labels))
+        """)
+        assert out.split() == ["0", "0", "0", "character"]
+
     def test_a_function_with_its_own_ierr_returns_its_result_and_raises_its_error(self, built):
         # #221 B1: its C wrapper takes the result before `ierr`, which the shim passes on
         out = run_r(built, """

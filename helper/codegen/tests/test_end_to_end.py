@@ -318,6 +318,43 @@ class TestModes:
             tox.fx_modes(np.array([1.0]), "nonsense", "ward")
 
 
+class TestAnArrayOfNoStrings:
+    """#221 B3: an array of strings may hold none. The C wrapper refused it as
+    ERR_EMPTY_INPUT before the procedure ran, so a data set with zero families could be
+    written from Fortran but not from Python or R."""
+
+    def test_an_input_reaches_the_procedure(self, tox):
+        assert tox.fx_count_matching([], "alpha") == 0
+        assert tox.fx_optional_strings(extras=[]) == 0
+
+    def test_an_output_comes_back_empty(self, tox, np):
+        assert tox.fx_labels(np.array([]))["labels"] == []
+
+    def test_c_still_refuses_a_zero_width_with_strings_to_view(self, tox):
+        # Python and R never send one -- they pad an empty string to one blank -- so only a C
+        # caller can, and it gets ERR_EMPTY_INPUT (202); zero strings of zero width are fine
+        import ctypes
+
+        library = ctypes.CDLL(os.environ["TENSOR_OMICS_LIBRARY"])
+        buffer = (ctypes.c_char * 1)()
+
+        def call(width, count, tag=None, tag_width=0):
+            n_given, ierr = ctypes.c_int(-1), ctypes.c_int(-1)
+            library.fx_optional_strings_c(
+                tag, ctypes.byref(ctypes.c_int(tag_width)),
+                buffer, ctypes.byref(ctypes.c_int(width)), ctypes.byref(ctypes.c_int(count)),
+                ctypes.byref(n_given), ctypes.byref(ierr),
+            )
+            return ierr.value, n_given.value
+
+        assert call(0, 2) == (202, -1)
+        assert call(-1, 0) == (0, 0)
+        assert call(0, 0) == (0, 0)
+        assert call(1, -1) == (202, -1)
+        # a single string of zero width is refused as before
+        assert call(0, 0, tag=buffer, tag_width=0) == (202, -1)
+
+
 class TestCharacters:
     def test_a_scalar_string_comes_back_decoded(self, tox, np):
         result = tox.fx_labels(np.array([1.0, -2.0, 3.0]))

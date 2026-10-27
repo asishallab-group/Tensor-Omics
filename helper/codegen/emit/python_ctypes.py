@@ -1134,8 +1134,11 @@ class PythonEmitter:
             # shape, so the caller gets the n-d array back rather than the flat buffer
             # and a shape they have to reapply themselves. Column-major, as Fortran wrote.
             if argument.type.is_character:
+                # `dtype=str`, or an array of no strings comes back as float64 -- what numpy
+                # makes of an empty list -- where one with strings is `<U...` (#221 B3)
                 decoded = f"[_s.decode().rstrip(' ') for _s in {argument.name}]"
-                return f"{_NP}.asarray({decoded}).reshape(tuple({argument.shape_arg}), order='F')"
+                return (f"{_NP}.asarray({decoded}, dtype=str)"
+                        f".reshape(tuple({argument.shape_arg}), order='F')")
             return f"{argument.name}.reshape(tuple({argument.shape_arg}), order='F')"
         if argument.type.is_character:
             # numpy hands back the bytes with any trailing nulls already dropped; Fortran

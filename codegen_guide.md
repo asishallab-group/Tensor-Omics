@@ -341,7 +341,7 @@ docs, and an `ierr` that raises a typed error naming the offending argument.
 | Explicit `intent` on every dummy | decides constness in C and R, and input/output/in-out everywhere |
 | Kinded numeric types (`real(real64)`, `integer(int32)`) | a default kind has no defensible C mapping |
 | **Only `integer(int32)`, `real(real64)`, `complex(real64)`, `logical(c_bool)` or a default `logical`** on an argument | R holds integers as int32 and numbers as real64, and the generated validators take only those kinds — an `int64` output would be written eight bytes per element into R's four-byte integers. A numeric kind is compared by value, so `c_int` and `c_double` are fine; a logical kind by name, so `logical(1)` is refused although it is `c_bool`'s value. `int64`, `int8`, `int16`, `real32`, `c_size_t` and `complex(real32)` are refused |
-| **An argument name every binding language accepts** | the name is a Python parameter, an R parameter, a C parameter of the R binding and a dummy of every generated wrapper. Refused: Python keywords (`lambda`, `from`) and builtins (`len`, `input`, `type`), R reserved words (`next`, `function`, `NA` — in that case), C keywords (`default`, `long`, `asm`). Fortran keywords and R function names are fine — `value`, `mode`, `vector`, `weights` all are. Nor may an argument share its procedure's name (`total` in `total_impl`), or a name its generated Fortran wrapper uses: `count` beside an `n_selected_` count (the wrapper calls `count(...)`), `size` beside an assumed-shape array, `handled` beside a prologue, `<x>_f` for a string `x`. Only where the wrapper really uses it — `count` is fine elsewhere, and `p_value` beside `p` is always fine. The list is `helper/codegen/names.py` |
+| **An argument name every binding language accepts** | the name is a Python parameter, an R parameter, a C parameter of the R binding and a dummy of every generated wrapper. Refused: Python keywords (`lambda`, `from`) and builtins (`len`, `input`, `type`), R reserved words (`next`, `function`, `NA` — in that case), C keywords (`default`, `long`, `asm`). Fortran keywords and R function names are fine — `value`, `mode`, `vector`, `weights` all are. Nor may an argument share its procedure's name (`total` in `total_impl`), or a name its generated Fortran wrapper uses: `count` beside an `n_selected_` count (the wrapper calls `count(...)`), `size` beside an assumed-shape array, `handled` beside a prologue, `<x>_f` for a string `x`, `<x>_address` and `empty_view_anchor` beside an array of strings `x`. Only where the wrapper really uses it — `count` is fine elsewhere, and `p_value` beside `p` is always fine. The list is `helper/codegen/names.py` |
 | **A procedure name both languages accept** | it is a Python and an R function of that name: no Python keyword or builtin (`sum`, `filter`), no R reserved word |
 | **`ierr`, where you declare one, last** | every published signature ends in it, which is where the generator adds it when you declare none |
 | **A `result(...)` clause on a function** | the result is published as an argument of its name (Section 5.16), and a result named after the function would share that name with the function the wrapper calls — no compiler accepts it |
@@ -1180,11 +1180,12 @@ What that means for you:
 - **Writing an output string?** Fill the whole width. Assigning a shorter value blank-pads
   automatically, which is what the caller decodes; leaving the tail untouched returns whatever
   the caller's buffer held.
-- **Through a binding, an empty string arrives as one blank, and an empty array of strings never
-  arrives at all.** The width is at least 1, so `""` reaches you as `' '` — `len_trim` is still 0
-  and `trim` still gives `''`. A zero-length array of strings has no buffer to view, so the
-  wrapper refuses it as empty input before your procedure runs, exactly as
-  `validate_dimension_size` would for any zero extent.
+- **Through a binding, an empty string arrives as one blank, and an empty array of strings
+  arrives empty.** The width is at least 1, so `""` reaches you as `' '` — `len_trim` is still 0
+  and `trim` still gives `''`. A zero-length array of strings (a data set with zero families)
+  reaches you as an array of size 0, as any other empty array does: whether that is an error is
+  yours to decide, with `validate_dimension_size` if it is. Only a C caller can send a string of
+  zero width, and the wrapper refuses it as empty input before your procedure runs.
 - **A value that genuinely ends in a blank will not round-trip.** That is the accepted price of
   the padding convention.
 

@@ -22,7 +22,7 @@ import re
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..config import CONVENTIONS, Conventions
 from ..ir.types import Intent
-from ..names import CONVERTED, MODE_POINTER, MODE_VALUE
+from ..names import CONVERTED, EMPTY_VIEW_ANCHOR, MODE_POINTER, MODE_VALUE, VIEW_ADDRESS
 from ..render import Writer
 from .doc_ford import render_doc
 from .doc_literals import render_mode_default
@@ -49,6 +49,26 @@ def _product(extents) -> str:
     """
     parts = [e if e.isidentifier() or e.isdigit() else f"({e})" for e in extents]
     return " * ".join(parts) if parts else "1"
+
+
+def _string_count(argument: CArgument) -> str | None:
+    """How many strings an array of strings holds, or None for anything else.
+
+    The C extents after the leading one, which is the width -- or, for a serialized array, the
+    product of the shape that travels beside it, the C extent being `*`.
+    """
+    if argument.conversion is not Conversion.CHARACTER:
+        return None
+    if argument.shape_arg is not None:
+        return f"product({argument.shape_arg})"
+    extents = list(argument.dimension.extents)[1:]
+    return _product(extents) if extents else None
+
+
+def _has_string_arrays(module: CWrapperModule) -> bool:
+    """Whether some wrapper views an array of strings, and so needs the empty view's anchor."""
+    return any(_string_count(argument) is not None for wrapper in module for argument in wrapper)
+
 
 class FortranCEmitter:
     def __init__(self, conventions: Conventions = CONVENTIONS,
@@ -77,6 +97,12 @@ class FortranCEmitter:
             # rather than in someone's build log.
             writer.line("M_IMPLICIT_NONE")
             writer.line("private")
+            if _has_string_arrays(module):
+                # what an array of no strings is viewed at: `c_loc` may not be given the
+                # zero-size buffer itself, and the callee needs an associated view all the
+                # same (`_remap_local`). Never written: the view has no element.
+                writer.blank()
+                writer.line(f"character(kind=c_char, len=1), target :: {EMPTY_VIEW_ANCHOR}")
             writer.blank()
             for wrapper in module:
                 writer.line(f"public :: {wrapper.name}")
@@ -105,6 +131,9 @@ class FortranCEmitter:
             # `M_IMPLICIT_NONE` is `implicit none (type, external)`, so an unimported
             # intrinsic is a compile error rather than a silent implicit external.
             kinds.add("c_f_pointer")
+        if _has_string_arrays(module):
+            # the address an array of strings is viewed at, and the anchor's kind
+            kinds |= {"c_ptr", "c_char"}
         kinds = sorted(kinds)
         for chunk in _chunks(kinds, 6):
             writer.line(f"use, intrinsic :: iso_c_binding, only: {', '.join(chunk)}")
@@ -121,7 +150,7 @@ class FortranCEmitter:
         errors = ["set_ok", "set_err"]
         errors.append("ERR_POINTER_NULL")
         if any(a.conversion is Conversion.CHARACTER for w in module for a in w):
-            errors.append("ERR_EMPTY_INPUT")  # M_CHECK_CHARACTER_VIEW names it
+            errors.append("ERR_EMPTY_INPUT")  # the M_CHECK_CHARACTER_*VIEW macros name it
         if any(a.conversion is Conversion.MODE for w in module for a in w):
             errors.append("ERR_INVALID_INPUT")
         # Only a converted argument ever reaches `_allocate_local` in the body, so asking it
@@ -332,7 +361,10 @@ class FortranCEmitter:
             base = f"character(len={argument.dimension.extents[0]}), pointer"
             if source.dimension:
                 base += f", dimension({deferred})"
-            return [f"{base} :: {argument.name}{CONVERTED_SUFFIX}"]
+            declarations = [f"{base} :: {argument.name}{CONVERTED_SUFFIX}"]
+            if _string_count(argument) is not None:
+                declarations.append(f"type(c_ptr) :: {argument.name}{VIEW_ADDRESS}")
+            return declarations
 
         return []
 
@@ -403,27 +435,39 @@ class FortranCEmitter:
         """
         name = argument.name
         local = f"{name}{CONVERTED_SUFFIX}"
-        if argument.shape_arg is not None:
-            # the C extent is `*`; how many strings there really are is the product of the
-            # shape that travels beside them
-            extents = [f"product({argument.shape_arg})"]
+        count = _string_count(argument)
+        if count is None:
+            # One string. `c_loc` may not be given a zero-size target, and the view is built
+            # before the call, so an empty buffer has to be refused here rather than left to
+            # the callee the way M_CHECK_ARRAY_NON_NULL leaves every other kind. Guarding the
+            # check without guarding this was the hole: the check skipped itself and the remap
+            # went ahead anyway.
+            lines = [f"M_CHECK_CHARACTER_VIEW({name}, {self._size_of(argument)})",
+                     f"call c_f_pointer(c_loc({name}), {local})"]
         else:
-            extents = list(argument.dimension.extents)[1:]
-        shape = f", [{', '.join(extents)}]" if extents else ""
-        remap = f"call c_f_pointer(c_loc({name}), {local}{shape})"
-        # `c_loc` may not be given a zero-size target, and the view is built before the call,
-        # so an empty buffer has to be refused here rather than left to the callee the way
-        # M_CHECK_ARRAY_NON_NULL leaves every other kind. Guarding the check without guarding
-        # this was the hole: the check skipped itself and the remap went ahead anyway.
-        guard = f"M_CHECK_CHARACTER_VIEW({name}, {self._size_of(argument)})"
+            # An array of strings may hold none (#221 B3): a data set with zero families. Its
+            # buffer is then zero-size, so the view is taken at the module's anchor instead --
+            # shape [0], so it has no element to read or write -- and the callee gets an
+            # associated, empty view to decide about, as every other kind of array is left to
+            # it. One `c_f_pointer` of an address chosen by `if`: two of them (one per branch)
+            # leave gfortran warning that the descriptor may be used uninitialised, and
+            # `merge(c_loc(...), c_loc(...), ...)` is an internal compiler error on ifx 2026.1
+            # and takes `c_loc` of the zero-size buffer regardless. What stays refused is a
+            # zero width with strings to view, and a negative count.
+            width = argument.dimension.extents[0]
+            address = f"{name}{VIEW_ADDRESS}"
+            lines = [f"M_CHECK_CHARACTER_ARRAY_VIEW({name}, {width}, {count})",
+                     f"{address} = c_loc({EMPTY_VIEW_ANCHOR})",
+                     f"if ({count} > 0) {address} = c_loc({name})",
+                     f"call c_f_pointer({address}, {local}, [{count}])"]
         if not argument.optional:
-            return f"{guard}\n{remap}"
+            return "\n".join(lines)
         # C passed null -> the argument is absent -> the local must be absent to the callee
         # too, which for a pointer means *disassociated* (F2018 15.5.2.12). An undefined
         # pointer is not a disassociated one, so it is nullified explicitly -- as a
         # statement, never as an initialiser, which would give the local an implicit SAVE.
         # Absent is not empty, so the guard sits inside the presence test.
-        body = "\n".join(f"    {line}" for line in (guard, remap))
+        body = "\n".join(f"    {line}" for line in lines)
         return f"nullify({local})\nif (present({name})) then\n{body}\nend if"
 
     def _allocate_local(self, argument: CArgument, wrapper: CWrapper) -> str:

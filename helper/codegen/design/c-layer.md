@@ -434,14 +434,35 @@ nullable and keeps the plain local.
 unallocated. It costs an allocation that can fail, for four bytes, where the pointer costs
 nothing and cannot fail.
 
-**Zero-size buffers are fine, and were probed rather than guarded.** `M_CHECK_ARRAY_NON_NULL`
-lets an empty array through unchecked, so the remap is the first place the wrapper takes an
-unguarded `c_loc` -- and `read_tox_data_into` on a partial archive really does reach it with
-`family_id_len == 0, n_family_ids == 0`, where R's `R_alloc(0, 1)` hands back NULL. Probed
-2026-08-14: `strlen=0, n=0` and `strlen=0, n=2`, both over a NULL buffer, give a well-behaved
-zero-size/zero-length view on gfortran 16.1 and ifx 2026.1 under `-fcheck=all` / `-check all`.
-A guard would not have helped anyway: a non-optional dummy cannot receive a disassociated
-pointer. This is the same class of formal-only objection as the `len>1` point above.
+**An array of no strings is viewed at an anchor (#221 B3, 2026-10-27).** `M_CHECK_ARRAY_NON_NULL`
+lets an empty array through unchecked, so the remap is the first place the wrapper takes `c_loc`
+-- and `c_loc` of a zero-size target is not allowed, while the callee still needs an associated
+view: a non-optional dummy cannot receive a disassociated pointer (gfortran: "Pointer actual
+argument is not associated", ifx segfaults). So an array of strings with no element is viewed at
+the C wrapper module's own `character(kind=c_char, len=1), target :: empty_view_anchor`, shape
+`[0]`, and the callee decides about an empty array as it does for every other kind. The form is
+one `c_f_pointer` of a `type(c_ptr)` chosen by `if`:
+
+```fortran
+M_CHECK_CHARACTER_ARRAY_VIEW(family_ids, family_ids_strlen, n_family_ids_elements)
+family_ids_address = c_loc(empty_view_anchor)
+if (n_family_ids_elements > 0) family_ids_address = c_loc(family_ids)
+call c_f_pointer(family_ids_address, family_ids_f, [n_family_ids_elements])
+```
+
+Probed (#221 attack-b, `b3/`) on gfortran 16.1 `-fcheck=all -Wall -Wextra -std=f2023` and ifx
+2026.1 `-check all -warn all -stand f23`: zero strings of width 5, 1 or 0 give an associated,
+contiguous view of size 0 with the right `len`, as an `intent(in)`, an `intent(out)` and an
+explicit-shape dummy, from Python and R through every string-array procedure on main. What stays
+refused is what has no address to view: a zero width with strings in it, a negative count, and a
+single string of zero width (`M_CHECK_CHARACTER_VIEW`) -- reachable from C only, since Python and
+R pad an empty string to one blank.
+
+*Rejected:* refusing the empty array as `ERR_EMPTY_INPUT`, which is what the wrapper did: a data
+set with zero families could be written from Fortran and from no binding. *Rejected:* two
+`c_f_pointer` calls, one per branch -- gfortran warns that the descriptor may be used
+uninitialised. *Rejected:* `merge(c_loc(a), c_loc(anchor), n > 0)` -- an internal compiler error
+on ifx 2026.1, and it takes `c_loc` of the zero-size buffer regardless.
 
 **A mode string is viewed up to its first NUL, so it accepts either convention.** A mode
 (`mode`, `method`) is a fixed-width `select case` lookup with no `strlen` argument, and the

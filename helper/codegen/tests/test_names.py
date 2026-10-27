@@ -38,7 +38,10 @@ SOURCES = {
 }
 
 #: The suffixes of a Fortran wrapper's locals
-FORTRAN_SUFFIXES = (names.CONVERTED, names.MODE_VALUE, names.MODE_POINTER, names.DEFAULT_VALUE)
+FORTRAN_SUFFIXES = (names.CONVERTED, names.MODE_VALUE, names.MODE_POINTER, names.VIEW_ADDRESS,
+                    names.DEFAULT_VALUE)
+#: What a Fortran C wrapper module declares beside its wrappers
+FORTRAN_C_MODULE_VARIABLES = (names.EMPTY_VIEW_ANCHOR,)
 
 
 @pytest.fixture(scope="module", params=sorted(SOURCES))
@@ -152,6 +155,10 @@ class TestTheRWrapper:
 _FORTRAN_DECLARATION = re.compile(r"^\s*(?!use\b|public\b|private\b)[^!\n]*::\s*(\w+)", re.M)
 
 
+#: A declaration in a module's specification part: what is not a `use` or an access list
+_MODULE_VARIABLE = re.compile(r"^(?![ \t]*(?:use|public|private)\b)[^!\n]*::\s*(\w+)", re.M)
+
+
 class TestTheFortranCWrapper:
     def test_every_local_is_an_argument_or_built_from_the_table(self, pipeline):
         _, binding = pipeline
@@ -162,6 +169,15 @@ class TestTheFortranCWrapper:
                 if name.lower() in {a.lower() for a in arguments}:
                     continue
                 assert _fortran_local(name, arguments), (wrapper.name, name)
+
+
+    def test_every_module_variable_is_from_the_table(self, pipeline):
+        _, binding = pipeline
+        emitter = FortranCEmitter()
+        for module in binding:
+            header = emitter.module(module).partition("contains")[0]
+            for name in _MODULE_VARIABLE.findall(header):
+                assert name in FORTRAN_C_MODULE_VARIABLES, (module.name, name)
 
 
 class TestTheFortranWrappers:

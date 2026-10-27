@@ -5,10 +5,12 @@
 !| Module for serializing character arrays into files
 module f42_serde_arrays_serialize_char_c
     use f42_safeguard
-    use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_f_pointer, c_int, c_loc
+    use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_f_pointer, c_int, c_loc, c_ptr
     use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_EMPTY_INPUT
     M_IMPLICIT_NONE
     private
+
+    character(kind=c_char, len=1), target :: empty_view_anchor
 
     public :: serialize_char_helper_c
 
@@ -44,6 +46,7 @@ contains
         integer(c_int), intent(out), target :: ierr
             !! Error code
         character(len=arr_strlen), pointer, dimension(:) :: arr_f
+        type(c_ptr) :: arr_address
         character(len=filename_strlen), pointer :: filename_f
 
         M_CHECK_IERR_NON_NULL
@@ -56,8 +59,10 @@ contains
         M_CHECK_ARRAY_NON_NULL(arr, product(arr_shape))
         M_CHECK_ARRAY_NON_NULL(filename, filename_strlen)
 
-        M_CHECK_CHARACTER_VIEW(arr, product(arr_shape))
-        call c_f_pointer(c_loc(arr), arr_f, [product(arr_shape)])
+        M_CHECK_CHARACTER_ARRAY_VIEW(arr, arr_strlen, product(arr_shape))
+        arr_address = c_loc(empty_view_anchor)
+        if (product(arr_shape) > 0) arr_address = c_loc(arr)
+        call c_f_pointer(arr_address, arr_f, [product(arr_shape)])
         M_CHECK_CHARACTER_VIEW(filename, filename_strlen)
         call c_f_pointer(c_loc(filename), filename_f)
 

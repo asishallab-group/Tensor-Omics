@@ -282,5 +282,70 @@ def test_non_standard_arrays():
             os.remove(temp_file)
 
 
+# ---- An array of no strings (#221 B3) ----
+def test_an_array_of_no_strings():
+    """Every procedure taking or returning an array of strings works with none of them.
+
+    The C wrapper used to refuse a zero-length string array as ERR_EMPTY_INPUT before the
+    procedure ran, so a data set with zero families or zero genes could be written from Fortran
+    but not from Python. An empty character array also came back as float64.
+    """
+    written = []
+
+    def scratch(name):
+        written.append(name)
+        return name
+
+    try:
+        validate_string_array_uniqueness([])
+
+        serialize_char_helper([], scratch("no_strings.test.bin"))
+        empty = deserialize_char_helper("no_strings.test.bin")
+        assert empty.shape == (0,) and empty.dtype.kind == "U", repr(empty)
+        serialize_char_helper(np.empty((0, 3), dtype="U4"), scratch("no_strings_2d.test.bin"))
+        empty = deserialize_char_helper("no_strings_2d.test.bin")
+        assert empty.shape == (0, 3) and empty.dtype.kind == "U", repr(empty)
+
+        create_zip_archive(scratch("no_strings.test.zip"), [], [])
+
+        # zero families
+        save_tox_data(
+            scratch("zero_families.test.zip"),
+            gene_ids=["g1", "g2"], gene_ids_file=scratch("zero_families_genes.test.bin"),
+            family_ids=[], family_ids_file=scratch("zero_families_ids.test.bin"),
+            gene_to_family=np.array([0, 0], dtype=np.int32),
+            gene_to_family_file=scratch("zero_families_g2f.test.bin"),
+        )
+        data = read_tox_data_into("zero_families.test.zip")
+        assert data["gene_ids"] == ["g1", "g2"] and data["family_ids"] == [], data
+        assert np.array_equal(data["gene_to_family"], [0, 0])
+
+        # zero genes
+        save_tox_data(scratch("zero_genes.test.zip"), gene_ids=[],
+                      gene_ids_file=scratch("zero_genes_ids.test.bin"))
+        data = read_tox_data_into("zero_genes.test.zip")
+        assert data["gene_ids"] == [] and data["family_ids"] == [], data
+
+        expression, shifts = np.ones((3, 2)), np.ones((6, 2))
+        validate_data_structure(2, 0, 3, ["g1", "g2"], [], np.array([0, 0], np.int32),
+                                expression, np.ones((3, 0)), shifts)
+        validate_all_data(2, 0, 3, ["g1", "g2"], [], np.array([0, 0], np.int32),
+                          expression, np.ones((3, 0)), shifts, check_shift_consistency=False)
+
+        with open(scratch("no_genes.test.tsv"), "w") as file:
+            file.write("id\tv1\n")
+        assert read_gene_ids_from_tsv_file("no_genes.test.tsv", 8, 0, 1, 1) == []
+        assert read_expression_vectors_tsv([], [], np.ones((1, 0)), 1, 1,
+                                           np.array([2], np.int32), 1) is None
+        with open(scratch("no_families.test.tsv"), "w") as file:
+            file.write("Orthogroup\tsp1\n")
+        families = read_orthofinder_file("no_families.test.tsv", [], 8, 0, 0)
+        assert families["family_ids"] == [] and families["gene_to_fam"].size == 0, families
+    finally:
+        for name in written:
+            if os.path.exists(name):
+                os.remove(name)
+
+
 if __name__ == "__main__":
     run_all_tests(globals().values())

@@ -11,10 +11,12 @@
 module tox_data_tools_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_f_pointer, c_int
-    use, intrinsic :: iso_c_binding, only: c_loc
+    use, intrinsic :: iso_c_binding, only: c_loc, c_ptr
     use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_EMPTY_INPUT
     M_IMPLICIT_NONE
     private
+
+    character(kind=c_char, len=1), target :: empty_view_anchor
 
     public :: read_expression_vectors_tsv_c
     public :: read_gene_ids_from_tsv_file_c
@@ -78,7 +80,9 @@ contains
         integer(c_int), intent(out), target :: ierr
             !! Error code
         character(len=file_list_strlen), pointer, dimension(:) :: file_list_f
+        type(c_ptr) :: file_list_address
         character(len=gene_ids_strlen), pointer, dimension(:) :: gene_ids_f
+        type(c_ptr) :: gene_ids_address
         character(len=1), pointer :: delimiter_f
 
         M_CHECK_IERR_NON_NULL
@@ -99,10 +103,14 @@ contains
         M_CHECK_ARRAY_NON_NULL(value_cols, n_value_cols_elements)
         M_CHECK_ARRAY_NON_NULL(delimiter, 1)
 
-        M_CHECK_CHARACTER_VIEW(file_list, file_list_strlen * n_file_list_elements)
-        call c_f_pointer(c_loc(file_list), file_list_f, [n_file_list_elements])
-        M_CHECK_CHARACTER_VIEW(gene_ids, gene_ids_strlen * n_gene_ids_elements)
-        call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
+        M_CHECK_CHARACTER_ARRAY_VIEW(file_list, file_list_strlen, n_file_list_elements)
+        file_list_address = c_loc(empty_view_anchor)
+        if (n_file_list_elements > 0) file_list_address = c_loc(file_list)
+        call c_f_pointer(file_list_address, file_list_f, [n_file_list_elements])
+        M_CHECK_CHARACTER_ARRAY_VIEW(gene_ids, gene_ids_strlen, n_gene_ids_elements)
+        gene_ids_address = c_loc(empty_view_anchor)
+        if (n_gene_ids_elements > 0) gene_ids_address = c_loc(gene_ids)
+        call c_f_pointer(gene_ids_address, gene_ids_f, [n_gene_ids_elements])
         M_CHECK_CHARACTER_VIEW(delimiter, 1)
         call c_f_pointer(c_loc(delimiter), delimiter_f)
 
@@ -150,6 +158,7 @@ contains
             !! Error code
         character(len=filename_strlen), pointer :: filename_f
         character(len=gene_ids_strlen), pointer, dimension(:) :: gene_ids_f
+        type(c_ptr) :: gene_ids_address
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -163,8 +172,10 @@ contains
 
         M_CHECK_CHARACTER_VIEW(filename, filename_strlen)
         call c_f_pointer(c_loc(filename), filename_f)
-        M_CHECK_CHARACTER_VIEW(gene_ids, gene_ids_strlen * n_gene_ids_elements)
-        call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
+        M_CHECK_CHARACTER_ARRAY_VIEW(gene_ids, gene_ids_strlen, n_gene_ids_elements)
+        gene_ids_address = c_loc(empty_view_anchor)
+        if (n_gene_ids_elements > 0) gene_ids_address = c_loc(gene_ids)
+        call c_f_pointer(gene_ids_address, gene_ids_f, [n_gene_ids_elements])
 
         call read_gene_ids_from_tsv_file(&
             filename = filename_f,&
@@ -215,7 +226,9 @@ contains
             !! Error code
         character(len=filename_strlen), pointer :: filename_f
         character(len=gene_ids_strlen), pointer, dimension(:) :: gene_ids_f
+        type(c_ptr) :: gene_ids_address
         character(len=family_ids_strlen), pointer, dimension(:) :: family_ids_f
+        type(c_ptr) :: family_ids_address
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -232,10 +245,14 @@ contains
 
         M_CHECK_CHARACTER_VIEW(filename, filename_strlen)
         call c_f_pointer(c_loc(filename), filename_f)
-        M_CHECK_CHARACTER_VIEW(gene_ids, gene_ids_strlen * n_gene_ids_elements)
-        call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
-        M_CHECK_CHARACTER_VIEW(family_ids, family_ids_strlen * n_family_ids_elements)
-        call c_f_pointer(c_loc(family_ids), family_ids_f, [n_family_ids_elements])
+        M_CHECK_CHARACTER_ARRAY_VIEW(gene_ids, gene_ids_strlen, n_gene_ids_elements)
+        gene_ids_address = c_loc(empty_view_anchor)
+        if (n_gene_ids_elements > 0) gene_ids_address = c_loc(gene_ids)
+        call c_f_pointer(gene_ids_address, gene_ids_f, [n_gene_ids_elements])
+        M_CHECK_CHARACTER_ARRAY_VIEW(family_ids, family_ids_strlen, n_family_ids_elements)
+        family_ids_address = c_loc(empty_view_anchor)
+        if (n_family_ids_elements > 0) family_ids_address = c_loc(family_ids)
+        call c_f_pointer(family_ids_address, family_ids_f, [n_family_ids_elements])
 
         call read_orthofinder_file(&
             filename = filename_f,&

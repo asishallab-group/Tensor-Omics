@@ -303,7 +303,7 @@ class TestCharacters:
         text = emit(procedure, bag, emitter)
 
         assert "character(len=names_strlen), pointer, dimension(:) :: names_f" in text
-        assert "call c_f_pointer(c_loc(names), names_f, [n_names_elements])" in text
+        assert "call c_f_pointer(names_address, names_f, [n_names_elements])" in text
 
     def test_a_separate_shape_gives_the_view_its_product(self, bag, emitter):
         procedure = b.procedure(
@@ -315,7 +315,8 @@ class TestCharacters:
 
         text = emit(procedure, bag, emitter)
 
-        assert "call c_f_pointer(c_loc(arr), arr_f, [product(arr_shape)])" in text
+        assert "if (product(arr_shape) > 0) arr_address = c_loc(arr)" in text
+        assert "call c_f_pointer(arr_address, arr_f, [product(arr_shape)])" in text
 
     def test_an_output_is_remapped_before_the_call_and_not_copied_after(self, bag, emitter):
         # the callee writes through the view, which *is* the caller's buffer, so there is
@@ -326,7 +327,7 @@ class TestCharacters:
 
         text = emit(procedure, bag, emitter)
 
-        assert text.index("call c_f_pointer(c_loc(labels)") < text.index("call p(&")
+        assert text.index("call c_f_pointer(labels_address") < text.index("call p(&")
         assert "string_as_c_char" not in text
 
     def test_nothing_is_allocated_and_no_helper_is_called(self, bag, emitter):
@@ -362,7 +363,8 @@ class TestCharacters:
         assert "call c_f_pointer(c_loc(tag), tag_f)" in text
         assert "nullify(extras_f)" in text
         assert "if (present(extras)) then" in text
-        assert "call c_f_pointer(c_loc(extras), extras_f, [n_extras_elements])" in text
+        assert "if (n_extras_elements > 0) extras_address = c_loc(extras)" in text
+        assert "call c_f_pointer(extras_address, extras_f, [n_extras_elements])" in text
         # never an initialiser: that would give an automatic-length local an implicit SAVE
         assert "=> null()" not in text
 
@@ -375,17 +377,49 @@ class TestCharacters:
         procedure = b.procedure(
             "p",
             b.character("name", Intent.IN, length="*"),
-            b.character("rows", Intent.IN, "(:)", length="*"),
             b.ierr(),
         )
 
         text = emit(procedure, bag, emitter)
 
-        # the byte count, so a zero-width string and an empty vector are both caught
+        # the width: a single string of none has no address to view
         assert "M_CHECK_CHARACTER_VIEW(name, name_strlen)" in text
-        assert "M_CHECK_CHARACTER_VIEW(rows, rows_strlen * n_rows_elements)" in text
         # and it precedes the c_loc it protects
         assert text.index("M_CHECK_CHARACTER_VIEW(name,") < text.index("c_loc(name)")
+
+    def test_an_array_of_no_strings_is_viewed_at_the_anchor(self, bag, emitter):
+        """#221 B3: an array of strings may hold none -- a data set with zero families -- and
+        used to be refused as ERR_EMPTY_INPUT before the procedure ran. Its buffer is zero-size,
+        so the view is taken at the module's anchor instead, by one `c_f_pointer` of an address
+        chosen by `if` (two branches leave gfortran warning about the descriptor, `merge` is an
+        ifx ICE). Refused stays a zero width with strings to view, and a negative count."""
+        procedure = b.procedure(
+            "p", b.character("rows", Intent.IN, "(:)", length="*"), b.ierr(),
+        )
+
+        text = emit(procedure, bag, emitter)
+
+        view = text[text.index("M_CHECK_CHARACTER_ARRAY_VIEW"):text.index("call p(&")]
+        assert [line.strip() for line in view.split("\n")[:4]] == [
+            "M_CHECK_CHARACTER_ARRAY_VIEW(rows, rows_strlen, n_rows_elements)",
+            "rows_address = c_loc(empty_view_anchor)",
+            "if (n_rows_elements > 0) rows_address = c_loc(rows)",
+            "call c_f_pointer(rows_address, rows_f, [n_rows_elements])",
+        ]
+        assert "type(c_ptr) :: rows_address" in text
+        assert text.count("c_f_pointer(") == 1 and "merge(" not in text
+        assert "M_CHECK_CHARACTER_VIEW(rows" not in text
+
+    def test_only_a_module_with_an_array_of_strings_declares_the_anchor(self, bag, emitter):
+        arrays = emit_module(b.module("fx_x", b.procedure(
+            "p", b.character("rows", Intent.IN, "(:)", length="*"), b.ierr())), bag, emitter)
+        scalars = emit_module(b.module("fx_y", b.procedure(
+            "q", b.character("name", Intent.IN, length="*"), b.ierr())), bag, emitter)
+
+        anchor = "character(kind=c_char, len=1), target :: empty_view_anchor"
+        assert anchor in arrays.partition("contains")[0]
+        assert "c_ptr" in arrays.partition("contains")[0]
+        assert "empty_view_anchor" not in scalars and "c_ptr" not in scalars
 
     def test_an_absent_optional_is_not_an_empty_one(self, bag, emitter):
         """An omitted optional arrives as a null pointer with width 0, which is exactly what
@@ -402,6 +436,17 @@ class TestCharacters:
         guard = text.index("M_CHECK_CHARACTER_VIEW(tag,")
         assert text.index("if (present(tag)) then") < guard
         assert guard < text.index("end if")
+
+    def test_an_absent_array_of_strings_is_not_an_empty_one(self, bag, emitter):
+        procedure = b.procedure(
+            "p", b.character("tags", Intent.IN, "(:)", length="*", optional=True), b.ierr(),
+        )
+
+        text = emit(procedure, bag, emitter)
+
+        present = text.index("if (present(tags)) then")
+        assert text.index("nullify(tags_f)") < present
+        assert present < text.index("M_CHECK_CHARACTER_ARRAY_VIEW(tags,") < text.index("end if")
 
 
     def test_c_f_pointer_is_imported(self, bag, emitter):
@@ -754,7 +799,7 @@ class TestImportsMatchTheBody:
         assert "allocate(" not in text
 
     def test_a_character_module_imports_the_empty_error(self):
-        # M_CHECK_CHARACTER_VIEW names ERR_EMPTY_INPUT, and only a character emits it
+        # the M_CHECK_CHARACTER_*VIEW macros name ERR_EMPTY_INPUT, and only a character emits one
         text = self.module_of(b.character("s", Intent.IN, length="*", doc="read in"))
 
         assert "ERR_EMPTY_INPUT" in _errors_imported(text)

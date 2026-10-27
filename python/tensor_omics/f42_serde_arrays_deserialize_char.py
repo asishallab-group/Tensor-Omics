@@ -94,4 +94,4 @@ def deserialize_char_helper(
 
     _check_err_code(ierr.value, _DESERIALIZE_CHAR_HELPER_ARGUMENTS, _DESERIALIZE_CHAR_HELPER_ARGUMENT_SOURCES)
 
-    return _np.asarray([_s.decode().rstrip(' ') for _s in arr]).reshape(tuple(arr_shape), order='F')
+    return _np.asarray([_s.decode().rstrip(' ') for _s in arr], dtype=str).reshape(tuple(arr_shape), order='F')

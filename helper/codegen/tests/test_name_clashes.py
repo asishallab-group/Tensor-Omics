@@ -122,6 +122,35 @@ class TestALocalTheWrapperDeclares:
             "called 'word_f'"
         ]
 
+    def test_an_array_of_strings_view_address_is_refused(self):
+        # #221 B3: an array of strings is viewed at an address chosen before the remap
+        found = errors(module("tox_demo", procedure(
+            "p", integer("n"), character("words", Intent.IN, "(n)", length="8"),
+            integer("words_address", Intent.OUT), ierr(),
+        )))
+        assert found == [
+            "argument 'words_address' is a name the generated C wrapper 'p_c' uses: it declares "
+            "a local called 'words_address'"
+        ]
+
+    def test_the_empty_view_anchor_is_refused(self):
+        # a module variable, so a dummy of that name would hide it in the wrapper
+        found = errors(module("tox_demo", procedure(
+            "p", integer("n"), character("words", Intent.IN, "(n)", length="8"),
+            integer("empty_view_anchor", Intent.OUT), ierr(),
+        )))
+        assert found == [
+            "argument 'empty_view_anchor' is a name the generated C wrapper 'p_c' uses: it "
+            "declares a module variable called 'empty_view_anchor'"
+        ]
+
+    def test_the_anchor_s_name_is_free_where_no_array_of_strings_is_viewed(self):
+        assert errors(module("tox_demo", procedure(
+            "p", character("word", Intent.IN, length="8"),
+            integer("empty_view_anchor", Intent.OUT), integer("word_address", Intent.OUT),
+            ierr(),
+        ))) == []
+
     @pytest.mark.parametrize(
         "base, name",
         [("y", "y_f"), ("p", "p_value"), ("window", "window_size"), ("x", "x_out"),

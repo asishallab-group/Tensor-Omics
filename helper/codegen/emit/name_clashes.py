@@ -14,9 +14,9 @@ argument of `mask_chunk_count`, whose C wrapper counts nothing, and main publish
 "Where it collides" is read off the wrapper as it is emitted, not off a second list of what
 each emitter might write: the wrappers are rendered, their macros expanded, and every dummy is
 looked for in the roles that make a clash -- called (`call d(`, or `d(` for a scalar), used as a
-kind (`3_d`, `kind=d`, `integer(d)`), imported (`use ..., only: d`), or declared a second
-time as a local. A role the emitters start writing is covered without anyone remembering to
-list it.
+kind (`3_d`, `kind=d`, `integer(d)`), imported (`use ..., only: d`), declared a second
+time as a local, or declared by the module around it (the empty string view's anchor). A role
+the emitters start writing is covered without anyone remembering to list it.
 """
 
 from __future__ import annotations
@@ -40,6 +40,10 @@ _SYNTAX = frozenset({
 _STRING_RE = re.compile(r'"[^"\n]*"|\'[^\'\n]*\'')
 _COMMENT_RE = re.compile(r"!.*")
 _USE_RE = re.compile(r"^\s*use\b[^\n]*?\bonly\s*:([^\n]*)", re.I | re.M)
+#: A declaration in the module's specification part, `public`/`private` lists aside
+_MODULE_VARIABLE_RE = re.compile(
+    r"^(?![ \t]*(?:use|public|private)\b)[^!\n]*::\s*(\w+)\s*$", re.I | re.M
+)
 _SUBROUTINE_RE = re.compile(r"\bsubroutine\s+(\w+)\s*\(.*?\bend\s+subroutine\s+\1\b", re.I | re.S)
 
 
@@ -111,13 +115,17 @@ def _imports(text: str) -> set[str]:
     return names
 
 
-def _role(name: str, is_scalar: bool, body: str, imported: set[str]) -> str | None:
+def _role(name: str, is_scalar: bool, body: str, imported: set[str],
+          module_variables: frozenset[str] | set[str] = frozenset()) -> str | None:
     """How the wrapper uses `name` other than as the dummy, or None."""
     d = re.escape(name)
     if re.search(rf"\bcall\s+{d}\s*\(", body, re.I):
         return f"calls '{name}'"
     if name.lower() in imported:
         return f"imports '{name}'"
+    if name.lower() in module_variables:
+        # a dummy hides it in the wrapper, which then takes the dummy's address instead
+        return f"declares a module variable called '{name}'"
     if (re.search(rf"(?:(?<!\w)\d+|\.)_{d}\b", body, re.I)
             or re.search(rf"\bkind\s*=\s*{d}\b", body, re.I)
             or re.search(rf"\b(?:integer|real|complex|logical)\s*\(\s*{d}\s*\)", body, re.I)):
@@ -132,10 +140,11 @@ def _role(name: str, is_scalar: bool, body: str, imported: set[str]) -> str | No
 def _check(dummies, body: str, header: str, where: str, procedure, diagnostics: DiagnosticBag,
            reported: set) -> None:
     imported = _imports(header) | _imports(body)
+    module_variables = {m.lower() for m in _MODULE_VARIABLE_RE.findall(header)}
     for name, is_scalar, entity in dummies:
         if name.lower() == procedure.name.lower():
             continue  # `validate` refuses an argument named like its own procedure
-        role = _role(name, is_scalar, body, imported)
+        role = _role(name, is_scalar, body, imported, module_variables)
         if role is None:
             continue
         location = getattr(entity, "location", None)

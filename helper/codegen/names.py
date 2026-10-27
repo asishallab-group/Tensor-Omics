@@ -181,11 +181,20 @@ MODE_VALUE = "_mode_f"
 #: Fortran C wrapper: a nullable mode as the callee is handed it -- a pointer to the
 #: `MODE_VALUE` local, left disassociated, and so absent, when C passed null
 MODE_POINTER = "_mode_p"
+#: Fortran C wrapper: the address an array of strings is viewed at -- the caller's buffer, or
+#: `EMPTY_VIEW_ANCHOR` when it holds no string
+VIEW_ADDRESS = "_address"
 #: Fortran wrapper: an omitted optional's default, materialised for a recommend routine
 DEFAULT_VALUE = "_value"
 #: Fortran wrapper: the flag a prologue sets, which is the prologue's contract and so a
 #: convention
 FORTRAN_HANDLED = CONVENTIONS.prologue_handled_arg
+
+
+#: Fortran C wrapper module: a `character(1), target` an array of strings with no element is
+#: viewed at, since `c_loc` may not be given the zero-size buffer itself. A module variable,
+#: so an argument of the same name would hide it in the wrapper (`emit.name_clashes`)
+EMPTY_VIEW_ANCHOR = "empty_view_anchor"
 
 
 def local_name(argument: str, suffix: str) -> str:
