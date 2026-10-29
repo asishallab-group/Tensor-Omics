@@ -23,9 +23,11 @@ This is deliberate. An all-in-one entry point that allocates its outputs inside 
 
 ### In every language
 
-**Errors come back in `ierr`,** the last argument of every procedure. `0` is success. Anything else is `10000*arg_pos + code`: the last four digits are the code, which names the failure (1xx input and output, 2xx invalid input, 3xx memory, 5xxx Fortran runtime, 9xxx internal), and the digits before them are `arg_pos`, the argument to blame, counted in the Fortran signature and `0` when no argument is at fault. Python turns it into an exception derived from `ToxError` (`ToxInputError`, `ToxIOError`, ...) and R into a condition of class `tox_error` (`tox_input_error`, ...), both naming the argument. An argument Python or R refuses before the call, for its shape, type or value, is an input error too but carries no code: Python's `ToxArgumentError` (also a `TypeError` and a `ValueError`) with `code` None, R's `tox_type_error`, `tox_shape_error` or `tox_na_error` with `code` NA.
+**Errors come back in `ierr`,** the last argument of every procedure. `0` is success. Anything else is `10000*arg_pos + code`: the last four digits are the code, which names the failure (1xx input and output, 2xx invalid input, 3xx memory, 5xxx Fortran runtime, 9xxx internal), and the digits before them are `arg_pos`, the argument to blame, counted in the Fortran signature and `0` when no argument is at fault. Python turns it into an exception derived from `ToxError` (`ToxInputError`, `ToxIOError`, ...) and R into a condition of class `tox_error` (`tox_input_error`, ...), both naming the argument. An argument Python or R refuses before the call, for its shape, type or value, is an input error too but carries no code: Python's `ToxArgumentError` (a `ToxInputError`, and also a `TypeError` and a `ValueError`) with `code` None, R's `tox_type_error`, `tox_shape_error` or `tox_na_error` (each a `tox_input_error`) with `code` NA. So `except ToxInputError` and `tryCatch(tox_input_error = ...)` catch every input error, the library's and the binding's alike. The codes are named: `ERR_*` for errors, `STAT_*` for outcomes that are not failures, such as an entry of a status array. Python exports them, every exception class, `ARG_POS_FACTOR` and `check_err_code` from the package itself (`from tensor_omics import ERR_DIVISION_BY_ZERO, ToxInputError`), and R loads them as globals.
 
-**Indices are 1-based,** as in Fortran: family indices and permutations alike. Where an index can be "none", its value is `0`, such as a gene that belongs to no family.
+**Indices are 1-based,** as in Fortran: family indices and permutations alike, in what you pass as much as in what comes back. Where an index can be "none", its value is `0`, such as a gene that belongs to no family.
+
+**Trailing blanks are not part of a string,** as in Fortran: `"genes.tsv  "` and `"genes.tsv"` are the same value. Python and R drop them from what you pass, mode arguments included (`"ward "` selects `ward`), and a string never comes back to them with trailing blanks; from C, trim them yourself (below). A leading blank is part of the value.
 
 **Results never contain NaN.** Where an output value is undefined, the documentation of that output names a sentinel outside the range the quantity can take, such as `-1` for a distance that was not measured. A NaN in a result is a bug; please report it. On input, NaN and infinite values are rejected unless an argument's documentation says they are permitted.
 
@@ -43,6 +45,21 @@ Link against `libtensor_omics.so`. No header is shipped; the prototypes follow f
 ### From Python and R
 
 Python finds the library through `TENSOR_OMICS_LIBRARY` or at `build/libtensor_omics.so`, and R loads it with `r/load_tensor_omics.R`. Neither asks for an extent that follows from the arrays you pass, nor for workspace sizes or string widths. An extent that only sizes an output, such as `n_families`, is still an argument. Python passes arrays to the library in column-major order, so a row-major NumPy array is copied first; pass `np.asfortranarray` data to avoid that for large inputs. Python results are read-only: `.copy()` one to modify it. An argument the procedure changes in place is changed in place in Python and returned as a new value in R.
+
+**What an argument accepts** is the same in Python and R, and follows from its Fortran type, which each procedure's documentation shows. A value is accepted only if it converts to that type and back unchanged. Nothing is rounded, truncated, wrapped around or parsed on the way, and a refusal names the argument.
+
+| Fortran type | Accepted | Refused |
+|---|---|---|
+| `integer(int32)` | Python and NumPy integers, and floats whose values are whole, as long as every value fits in 32 bits; R integers, and doubles with whole values (`2` is a double in R) | booleans and R logicals, fractions (`1.7`), NaN and NA, infinities, values out of range (`2**32 + 5`), strings, datetimes, complex numbers, R factors, Dates and `integer64` |
+| `real(real64)` | any Python or NumPy integer or float; R integers and doubles. NaN and infinite values only where the argument's documentation permits them | booleans and R logicals, strings (never parsed as numbers), complex numbers, datetimes, R Dates |
+| `logical` | booleans, R logicals, and numbers that are all exactly `0` or `1`, such as `c(1, 0, 1)` | any other number, NaN, NA, `None`, strings |
+| a string | a Python `str` or an `os.PathLike` path; an R character vector of length 1 | bytes, `None`, lists, numbers, NA, a NUL character, invalid UTF-8, and a value longer than a fixed declared length (never cut short) |
+| an array of strings | a list, tuple, NumPy array or pandas Series of `str`; an R character vector, or a factor (its labels) | a bare `str`, a set or dict (they have no order), any element that is not a string, NA, a NUL character, invalid UTF-8, an element longer than a fixed declared length |
+| a mode | one of the strings the documentation lists, matched whole, case ignored | anything else; the message lists the modes |
+
+Arrays must have the declared rank: nothing is flattened, so a matrix passed for a vector is refused. In R a plain vector, a 1-D array and a table count as vectors, and an all-numeric data.frame as a matrix. A NumPy masked array is accepted only with no masked elements. R strings in another encoding, such as latin1, reach the library as UTF-8, and strings come back to R marked UTF-8.
+
+Where a refusal has an obvious fix, the message names it: `.view(np.int32)` for a `uint32` bit-mask word of 2^31 or more, `.astype(str)` for a bytes array, `.filled()` for a masked array, `as.integer()` or `as.double()` for an R `integer64`.
 
 
 *Tensor Omics shows that geometry, when treated not as preprocessing but as the central instrument of analysis, can open entirely new ways to read complex biological and social data — simple, transparent, and surprisingly powerful.*
