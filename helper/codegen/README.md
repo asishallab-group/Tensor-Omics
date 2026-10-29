@@ -615,8 +615,11 @@ dropping the fixed directory they used to be scoped to:
 A `DM_PROLOGUE` is checked too, having had no analysis or validation at all before:
 
 - the named procedure must exist
-- it must declare a scalar `logical(c_bool), intent(out) :: handled` — the wrapper returns early on it
-  regardless, so without it that branch reads an undefined value
+- it must declare a scalar `logical, intent(out) :: handled` — the wrapper returns early on it
+  regardless, so without it that branch reads an undefined value. A default `logical`: the wrapper
+  declares its flag so (`emit/fortran_wrapper._prologue_local`) and passes it, and it never
+  crosses to C. The kind is not checked, so a `logical(c_bool)` one passes the generator and then
+  fails to compile ("Type mismatch in argument 'handled'")
 - a dummy naming an implementation argument is supplied from it; one naming nothing becomes an
   argument of `foo`, which is what the prologue derives *from*. A name **one edit** from an
   implementation argument is refused as a misspelling, since it would otherwise become a new

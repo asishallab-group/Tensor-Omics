@@ -346,7 +346,7 @@ docs, and an `ierr` that raises a typed error naming the offending argument.
 | **A procedure and module name the Python package does not already have** | `tensor_omics` binds every procedure at its top level beside everything its error module defines and its submodules, so none may be called like an error code (`err_ok`), an exception class (`toxinputerror`), `arg_pos_factor`, `check_err_code`, the submodules `library` and `error_handling`, or a module (a procedure named like its own module). Compared ignoring case, as Fortran compares names |
 | **`ierr`, where you declare one, last** | every published signature ends in it, which is where the generator adds it when you declare none |
 | **A `result(...)` clause on a function** | the result is published as an argument of its name (Section 5.16), and a result named after the function would share that name with the function the wrapper calls — no compiler accepts it |
-| **`logical(c_bool)` for every logical that occupies storage** | one byte rather than four, and the kind the bindings already use, so a mask crosses without being copied — the wrapper used to declare an automatic array of default `logical` and convert elementwise both ways. A `logical, parameter` and a `logical function` result are the exceptions: no storage, nothing to save. Note a literal needs the kind too — `.true._c_bool`, because argument association does not convert kinds, though plain assignment does |
+| **`logical(c_bool)` for every logical that occupies storage** | one byte rather than four, and the kind the bindings already use, so a mask crosses without being copied — the wrapper used to declare an automatic array of default `logical` and convert elementwise both ways. A `logical, parameter` and a `logical function` result are the exceptions: no storage, nothing to save. So is a prologue's `handled`, which the wrapper declares as a default `logical` (Section 5.13). Note a literal needs the kind too — `.true._c_bool`, because argument association does not convert kinds, though plain assignment does |
 | `!> summary: ...` on the procedure | becomes the docstring in Python and R |
 | **A `!>` block on the module, written as API prose** | it is carried verbatim onto the generated module, so it is the Python module docstring and the Ford page for the published API. Say what the family is for and name its entry points; do *not* describe the implementation, and do not explain what the generator will do with it (Section 7) |
 | An author tag (`AUTHOR_*` from [`authors.h`](authors.h)) | attribution, rendered into the Ford docs |
@@ -862,9 +862,13 @@ implementation working from different numbers.
 ```
 ```fortran
 pure subroutine prepare_ranking(z_scores, n_genes, tmp_valid_perm, threshold, handled, ierr)
-    logical(c_bool), intent(out) :: handled
+    logical, intent(out) :: handled
         !! `.true.` when the data was degenerate and the outputs already hold the answer
 ```
+
+`handled` is a **default** `logical`, not the `logical(c_bool)` of an argument that crosses to C:
+it never does, and the wrapper declares its flag as a default `logical` and passes that, so a
+`logical(c_bool)` one does not compile ("Type mismatch in argument 'handled'").
 
 **What the prologue writes and the implementation only reads never reaches a caller.** An argument
 that is `intent(out)` on the prologue and `intent(in)` on the implementation is dropped from
@@ -900,7 +904,7 @@ three lines and no directive. That is where LOESS's degenerate-input check lives
 **What is refused**, all of it silent before:
 
 - a `DM_PROLOGUE` naming a procedure that does not exist
-- a prologue with no `handled`, or one that is not a scalar `logical(c_bool), intent(out)` — the wrapper
+- a prologue with no `handled`, or one that is not a scalar `logical, intent(out)` — the wrapper
   returns early on it regardless, so without it that branch reads an undefined value
 - a dummy that is one edit from an implementation argument — a misspelling, not a new argument
 - a dummy that is the mode argument, or one scoped to a mode, of an implementation that splits per
@@ -1361,7 +1365,7 @@ source and carries a note saying what to write instead.
 | an `allocatable` local **or dummy** anywhere in an **implementation module** | the generated `foo` owns the memory, not the implementation (Sections 4 and 5.7) |
 | a `use` in an **implementation module** that names neither another `_impl` module nor a whitelisted one | the bound on what it may reach is what makes the allocation rule hold across modules, and what keeps it below the wrappers rather than beside them (Section 4) |
 | a `DM_PROLOGUE` naming a procedure that does not exist | the wrapper would be generated with no prologue at all (Section 5.13) |
-| a prologue with no `handled`, or one that is not a scalar `logical(c_bool), intent(out)` | the wrapper returns early on it regardless, so the branch would read an undefined value (Section 5.13) |
+| a prologue with no `handled`, or one that is not a scalar `logical, intent(out)` | the wrapper returns early on it regardless, so the branch would read an undefined value (Section 5.13); declare it a default `logical`, as the wrapper's flag is |
 | a prologue dummy one edit from an implementation argument | a misspelling would otherwise become a new argument, and the two would be different values (Section 5.13) |
 | a prologue dummy that some mode's wrapper does not have | the prologue runs in all of them (Section 5.13) |
 | a prologue on an implementation with nothing to take over and no arguments of its own | only one wrapper is generated, and it has no prologue for this to run in (Section 5.13) |
