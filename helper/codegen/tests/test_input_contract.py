@@ -536,6 +536,27 @@ class TestTheEngine:
         refuses(lambda: c.reals([[2**64]], "x", ndim=1), "must have 1 dimension")
         refuses(lambda: c.reals([2**64, True], "x", ndim=1), "dtype object")  # a bool is no number
 
+    def test_a_list_s_integers_are_checked_before_numpy_rounds_them(self, contract):
+        # numpy makes [2**53 + 1, 0.5] float64 [2**53, 0.5] before any check sees it (#221 WP8
+        # fix 2, review S1, FES's "a"): its integers are checked as they were given
+        c, np = contract
+        for listed, where, shown in (([2**53 + 1, 0.5], "element 0", "9007199254740993"),
+                                     ((0.5, -2**53 - 1), "element 1", "-9007199254740993"),
+                                     ([2**64 - 1, -1], "element 0", "18446744073709551615"),
+                                     ([0, np.int64(2**53 + 1), 1.5], "element 1", "9007199254740993"),
+                                     ([float("nan"), 2**53 + 1], "element 1", "9007199254740993")):
+            refuses(lambda: c.reals(listed, "x", ndim=1), f"{where} is {shown}, which it would round to")
+        refuses(lambda: c.reals([[0.5], [2**53 + 1]], "x", ndim=2), r"element \(1, 0\) is 9007199254740993")
+        refuses(lambda: c.reals([[2**53 + 1], [0]], "x", ndim=2), r"element \(0, 0\) is 9007199254740993")
+        # exact ones keep working, a large float is not an integer, and an ndarray is as before
+        assert c.reals([2**53, 0.5, 2**60, -2**63], "x", ndim=1).tolist() == [2**53, 0.5, 2**60, -2**63]
+        assert c.reals([1e20, 0.5], "x", ndim=1).tolist() == [1e20, 0.5]
+        assert c.reals(np.array([2**53 + 1, 0.5]), "x", ndim=1)[0] == 2**53
+        # an integer target names the integer as given, not as numpy rounded it
+        refuses(lambda: c.integers([2**53 + 1, 1.0], "x", ndim=1), "element 0 is 9007199254740993$")
+        refuses(lambda: c.integers((1.0, 2**31), "x", ndim=1), "element 1 is 2147483648$")
+        assert c.integers([3, 1.0, -2**31], "x", ndim=1).tolist() == [3, 1, -2**31]
+
     def test_a_single_complex_is_a_number_whose_parts_float64_holds(self, contract):
         c, np = contract
         for value, expected in ((3 - 4j, 3 - 4j), (3.0, 3 + 0j), (np.complex64(1 + 2j), 1 + 2j),
@@ -546,8 +567,11 @@ class TestTheEngine:
                              ([1j], "single value"), (2**53 + 1, "9007199254740993")):
             refuses(lambda: c.complex_number(bad, "x"), pattern)
         if np.finfo(np.longdouble).nmant > 52:
-            inexact = np.clongdouble(np.longdouble(1) + np.finfo(np.longdouble).eps)
-            refuses(lambda: c.complex_number(inexact, "x"), "that a float64 holds exactly")
+            inexact = np.longdouble(1) + np.finfo(np.longdouble).eps
+            refuses(lambda: c.complex_number(np.clongdouble(inexact), "x"),
+                    "that a float64 holds exactly, but its real part is 1.0000")
+            refuses(lambda: c.complex_number(2 + np.clongdouble(1j) * inexact, "x"),
+                    "but its imaginary part is 1.0000")
 
     def test_a_scalar_is_the_0d_case(self, contract):
         c, np = contract

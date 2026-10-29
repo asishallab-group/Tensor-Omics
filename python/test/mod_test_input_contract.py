@@ -155,6 +155,14 @@ def test_real_accepts_an_integer_only_where_float64_holds_it_exactly():
     refused(lambda: euclidean_distance([2**64 + 1, 0], [0, 0]), "vec1",
             "element 0 is 18446744073709551617, which it would round to")
     refused(lambda: calc_quantile([1.0, 2.0], -2**63 - 1), "level", "it is -9223372036854775809")
+    # a list numpy would make floats of: its integers checked as given (WP8 fix 2, S1)
+    refused(lambda: euclidean_distance([big + 1, 0.5], [0, 0]), "vec1",
+            "element 0 is 9007199254740993, which it would round to")
+    refused(lambda: euclidean_distance([2**64 - 1, -1], [0, 0]), "vec1", "element 0 is 18446744073709551615")
+    refused(lambda: centroid(expr=[[1.0, 2.0, 3.0, big + 1]]), "expression_vectors",
+            r"element \(0, 3\) is 9007199254740993")
+    refused(lambda: centroid([big + 1, 1.0, 1.0, 1.0]), "gene_to_family", "element 0 is 9007199254740993")
+    assert euclidean_distance([big, 0.5], [0, 0]) == np.hypot(float(big), 0.5)
     if np.finfo(np.longdouble).nmant > 52:  # an 80- or 128-bit long double
         inexact = np.longdouble(1) + np.finfo(np.longdouble).eps
         refused(lambda: euclidean_distance(np.array([inexact, 0]), [0, 0]), "vec1", "element 0 is 1.0000")

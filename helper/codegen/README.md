@@ -342,7 +342,8 @@ The parts a source author does not need, and a generator maintainer does:
   an integer takes whole floats in range, a logical takes numbers that are 0 or 1, a real takes
   any integer or float that float64 holds exactly (`2**53 + 1` is refused, a 64-bit integer is
   compared only beyond 2^53 and never cast back from past its range, a Python int too large for
-  numpy by its own arithmetic), and nothing parses a string, counts a datetime or reads a factor's
+  numpy by its own arithmetic, the integers of a list numpy would make floats of as they were
+  given), and nothing parses a string, counts a datetime or reads a factor's
   codes.
   A string is a `str` (or an `os.PathLike`) or one R string, valid Unicode without a NUL, at most
   its declared length; an array of strings is a sequence of them (an R factor by its labels); a

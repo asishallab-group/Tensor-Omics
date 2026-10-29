@@ -38,6 +38,7 @@ and back gives exactly the same value, a real's too. A refusal raises __ARGUMENT
 naming the argument.
 """
 
+import itertools
 import os
 
 import numpy as np
@@ -123,6 +124,36 @@ def _first(array, differs):
     return index, _where(array, index)
 
 
+def _listed_integers(value, array, bound):
+    """The integers of a list or tuple that numpy made floats of, as (index, int) pairs.
+
+    numpy decides a list's dtype first, so one integer beside a float turns them all into
+    floats: `[2**53 + 1, 0.5]` is float64 `[2**53, 0.5]` before any check sees it, and no check
+    of the array can tell the rounding from a value given that way (FES 2026-10-29). These are
+    what the targets' integer rules check instead, and only when the array holds a value at or
+    past `bound` -- an integer within it cannot have been rounded into or out of the rule -- which
+    two reductions say: a list of ordinary numbers costs no walk. Nothing for an ndarray, whose
+    dtype says what it is, nor for a list numpy kept as integers.
+    """
+    if not isinstance(value, (list, tuple)) or array.dtype.kind != "f" or array.size == 0:
+        return ()
+    # strictly within: an integer past 2**53 can round to 2**53 itself. fmin and fmax pass over
+    # a NaN, which no integer is
+    if -bound < np.fmin.reduce(array, axis=None) and np.fmax.reduce(array, axis=None) < bound:
+        return ()
+    items = value
+    if array.ndim > 1:  # numpy took the nesting as the shape, in C order
+        for _ in range(array.ndim - 1):
+            items = itertools.chain.from_iterable(items)
+        items = list(items)
+    if not any(issubclass(kind, (int, np.integer)) and not issubclass(kind, (bool, np.bool_))
+               for kind in set(map(type, items))):
+        return ()
+    return [(tuple(int(i) for i in np.unravel_index(position, array.shape)), int(item))
+            for position, item in enumerate(items)
+            if isinstance(item, (int, np.integer)) and not isinstance(item, (bool, np.bool_))]
+
+
 def _round_trip(array, argument, dtype, order, wanted):
     """`array` as `dtype`, accepted only if converting it back gives every value unchanged."""
     if array.dtype == dtype:
@@ -147,6 +178,12 @@ def integers(value, argument, ndim=None, order="C"):
     wanted = _INTEGERS[ndim == 0]
     _number_kind(value, array, argument, wanted)
     _rank(array, argument, ndim)
+    # an integer of a list numpy made floats of, as it was given rather than as numpy rounded it
+    low, high = np.iinfo(np.int32).min, np.iinfo(np.int32).max
+    for index, item in _listed_integers(value, array, high):
+        if not low <= item <= high:
+            _refuse(f"'{argument}' must be {wanted}, but {_where(array, index)} is {item!r}",
+                    argument)
     return _round_trip(array, argument, np.int32, order, wanted)
 
 
@@ -162,8 +199,10 @@ def _refuse_inexact(argument, wanted, where, shown, rounded):
             f"(`.astype(np.float64)`, `float()`) where that rounding is acceptable", argument)
 
 
-def _exact_in_float64(array, converted, argument, wanted):
+def _exact_in_float64(array, converted, argument, wanted, part=None):
     """Refuse a value `converted`, its float64, does not hold exactly.
+
+    `part` names which part of a single complex `array` is, for the refusal to say.
 
     Compared in `array`'s own type, converted back: compared as floats, numpy would round the
     original the same way and find nothing. A NaN or an infinity of a wider float is the same
@@ -186,10 +225,19 @@ def _exact_in_float64(array, converted, argument, wanted):
         differs = (converted.astype(array.dtype) != array) & ~np.isnan(array)
     if differs.any():
         index, where = _first(array, differs)
+        if part is not None:
+            where = f"its {part} part"
         # a long double has no Python number to show it by, but its str is its decimal digits
         item = array[index].item()
         shown = repr(item) if isinstance(item, int) else str(array[index])
         _refuse_inexact(argument, wanted, where, shown, converted[index].item())
+
+
+def _shown_int(item):
+    """A Python int as a refusal shows it: past a few hundred digits a number says nothing, and
+    str() of one past 4300 digits raises."""
+    bits = item.bit_length()
+    return repr(item) if bits <= 256 else f"an int of {bits} bits"
 
 
 def _holds_python_integers(array):
@@ -214,10 +262,7 @@ def _python_integers(array, argument, wanted, order):
         except OverflowError:  # past float64's range
             rounded = float("inf") if item > 0 else float("-inf")
         if rounded in (float("inf"), float("-inf")) or int(rounded) != item:
-            # past a few hundred digits a number says nothing, and str() of one past 4300 raises
-            bits = item.bit_length()
-            shown = repr(item) if bits <= 256 else f"an int of {bits} bits"
-            _refuse_inexact(argument, wanted, _where(array, index), shown, rounded)
+            _refuse_inexact(argument, wanted, _where(array, index), _shown_int(item), rounded)
         converted[index] = rounded
     return converted
 
@@ -237,6 +282,11 @@ def reals(value, argument, ndim=None, order="C"):
         return _python_integers(array, argument, wanted, order)
     _number_kind(value, array, argument, wanted)
     _rank(array, argument, ndim)
+    # an integer of a list numpy made floats of: rounded already, so checked as it was given
+    for index, item in _listed_integers(value, array, _EXACT_IN_FLOAT64):
+        if not -_EXACT_IN_FLOAT64 <= item <= _EXACT_IN_FLOAT64 and int(array[index]) != item:
+            _refuse_inexact(argument, wanted, _where(array, index), _shown_int(item),
+                            array[index].item())
     kind, size = array.dtype.kind, array.dtype.itemsize
     if not ((kind in "iu" and size > 4) or (kind == "f" and size > 8)):
         return np.asarray(array, dtype=np.float64, order=order)
@@ -264,8 +314,8 @@ def complex_number(value, argument):
     # a complex long double: each part by the real rule
     with np.errstate(over="ignore"):
         converted = array.astype(np.complex128)
-    _exact_in_float64(array.real, converted.real, argument, "a number")
-    _exact_in_float64(array.imag, converted.imag, argument, "a number")
+    _exact_in_float64(array.real, converted.real, argument, "a number", part="real")
+    _exact_in_float64(array.imag, converted.imag, argument, "a number", part="imaginary")
     return complex(converted.item())
 
 
