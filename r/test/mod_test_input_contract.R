@@ -163,12 +163,22 @@ test_a_string_refuses_a_vector_na_numbers_and_a_factor <- function() {
   refused(serialize_char_helper("x", factor(scratch("fac.bin"))), "filename", "not factor")
 }
 
+# A string of these bytes, unmarked in every locale. A "\xff" literal is not: a latin1 session's
+# parser marks it latin1, and a latin1 string is translated, which is right but not this test.
+unmarked_bytes <- function(...) rawToChar(as.raw(c(...)))
+
 test_a_string_that_is_not_utf8_is_refused <- function() {
-  refused(serialize_char_helper("x", "f\xffg.bin"), "filename", "element 1 is not valid UTF-8")
+  invalid <- unmarked_bytes(0x66, 0xff, 0x67, 0x2e, 0x62, 0x69, 0x6e)  # "f\xffg.bin"
+  refused(serialize_char_helper("x", invalid), "filename", "element 1 is not valid UTF-8")
+  # and the same bytes marked UTF-8, which they are not
+  Encoding(invalid) <- "UTF-8"
+  refused(serialize_char_helper("x", invalid), "filename", "element 1 is not valid UTF-8")
   # an encoded surrogate is not well-formed UTF-8 either
-  refused(validate_string_array_uniqueness(c("a", "\xed\xa0\x80")), "str_arr", "element 2 is not valid UTF-8")
+  refused(validate_string_array_uniqueness(c("a", unmarked_bytes(0xed, 0xa0, 0x80))), "str_arr",
+          "element 2 is not valid UTF-8")
   # an overlong form, a code point past U+10FFFF, a truncated sequence
-  for (bad in c("\xc0\xaf", "\xf4\x90\x80\x80", "\xe2\x82"))
+  for (bad in list(unmarked_bytes(0xc0, 0xaf), unmarked_bytes(0xf4, 0x90, 0x80, 0x80),
+                   unmarked_bytes(0xe2, 0x82)))
     refused(validate_string_array_uniqueness(c(bad, "b")), "str_arr", "element 1 is not valid UTF-8")
   # and what is well-formed passes, up to four bytes
   assert_true(is.null(validate_string_array_uniqueness(c("\u00e9", "\u20ac", "\U0001F600"))))
