@@ -340,7 +340,9 @@ The parts a source author does not need, and a generator maintainer does:
   allowlist on numpy's `dtype.kind`, R's `is.numeric` / `is.logical` / `is.character`, never
   `typeof` -- then a conversion accepted only if converting back gives exactly the same values:
   an integer takes whole floats in range, a logical takes numbers that are 0 or 1, a real takes
-  any integer or float, and nothing parses a string, counts a datetime or reads a factor's codes.
+  any integer or float that float64 holds exactly (`2**53 + 1` is refused, a 64-bit integer is
+  compared only beyond 2^53), and nothing parses a string, counts a datetime or reads a factor's
+  codes.
   A string is a `str` (or an `os.PathLike`) or one R string, valid Unicode without a NUL, at most
   its declared length; an array of strings is a sequence of them (an R factor by its labels); a
   mode matches whole after its trailing blanks, never cut to the buffer; a rank is the declared one, nothing is flattened
@@ -642,12 +644,13 @@ A `DM_PROLOGUE` is checked too, having had no analysis or validation at all befo
 At run time, the bindings refuse what the input contract does not accept, before anything is
 called and naming the argument (`ToxArgumentError` / a `tox_input_error`, no code; the table is in
 `design/language-layers.md`): a bool for a number, a fraction, NaN or out-of-range value for an
-integer, any number but 0 and 1 for a logical, a string, object, datetime or complex for a
-number, an R factor, Date or `integer64` for a number, a masked array with masked elements, a
-non-`str` for a string, a bare `str` for an array of strings, a NUL, a lone surrogate or invalid
-UTF-8 (in R, an unmarked string whose bytes are not UTF-8 in any locale, one marked "bytes", and a
-latin1 one holding a byte with no character), an NA, a string longer than its declared length, an unknown or over-long mode, and any
-other rank. A refusal that has a fix names it: `.view(np.int32)` for a uint32 bit-mask word,
+integer, an integer or a long double float64 would round for a real (`2**53 + 1`), any number but
+0 and 1 for a logical, a string, object, datetime or complex for a number, an R factor, Date or
+`integer64` for a number, a masked array with masked elements, a non-`str` for a string, a bare
+`str` for an array of strings, a NUL, a lone surrogate or invalid UTF-8 (in R, an unmarked string
+whose bytes are not UTF-8 in any locale, one marked "bytes", and a latin1 one holding a byte with
+no character), an NA, a string longer than its declared length, an unknown or over-long mode, and
+any other rank. A refusal that has a fix names it: `.view(np.int32)` for a uint32 bit-mask word,
 `.astype(str)` for bytes, `as.integer()` for an `integer64`, `.filled()` for a masked array.
 
 ### Documentation that names something

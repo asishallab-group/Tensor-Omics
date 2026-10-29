@@ -76,8 +76,8 @@ truncated `1.7` to 1 and wrapped `2**32 + 5` to 5 (past `DM_MAX`, which then saw
 counted a `datetime64` in days since 1970; `str()` turned `None`, a list or bytes into a file
 name; R's `as.integer` truncated as well, and a matrix passed for a vector was flattened.
 
-**The rule.** For every target that is not a real: look at the input's own **kind** first, then
-accept it only if converting it to the Fortran type and back gives **exactly** the same values.
+**The rule.** For every target: look at the input's own **kind** first, then accept it only if
+converting it to the Fortran type and back gives **exactly** the same values.
 The kind is an allowlist, checked before anything converts: numpy's `dtype.kind` in Python
 (`i`, `u`, `f` for a number, `b` too for a logical; never `O`, `U`, `S`, `M`, `m`, `c`), and
 `is.numeric` / `is.logical` / `is.character` in R -- never `typeof`, which calls a factor an
@@ -86,10 +86,22 @@ comparison that catches a fraction, a NaN, an infinity and an out-of-range value
 compares after the range is known, so the cast is never the thing that decides. A single value
 is the 0-d case of the same rule.
 
+**A real is no exception** (FES 2026-10-29). The first form left reals out, on the view that
+every number converts to the nearest float64; but a Python or numpy integer above 2^53 does not
+convert *exactly*, so `euclidean_distance([2**53 + 1, 0], [0, 0])` returned 2^53, and
+`np.uint64(2**64 - 1)` and a long double were rounded as silently. The round trip costs nothing
+where it cannot fail: a float64 is not converted at all, and every float up to float64 and every
+integer up to 32 bits widens exactly, so only a 64-bit integer -- two reductions say that it lies
+within 2^53, and only beyond that is it converted back and compared, in its own type -- and a
+float wider than float64 are checked. R needs no counterpart: its integer is 32 bits, its double
+is real64, and an `integer64` is refused already. Measured at 1e7 elements (#221 WP8): the int64
+check costs under 10% over the conversion it rides on, and the full comparison, when a value
+lies beyond 2^53, about 2.7 times the conversion.
+
 | Fortran | Accepted | Refused, naming the argument |
 |---|---|---|
 | `integer(int32)` | Python and numpy integers, 0-d arrays; floats whose every value is whole and in range; R integer, and double with whole values (`2` is a double in R: 96 calls in the suites pass one); `-0.0` as 0 | a bool or R logical; a fraction, NaN/NA, an infinity, out of range; strings, objects, datetimes, complex; an R factor, Date, `integer64`; a masked array with masked elements |
-| `real(real64)` | Python and numpy integers and floats; R integer and double; NaN/Inf as `DM_ALLOW_NAN` says | a bool or R logical; strings (never parsed), complex, datetimes, objects; an R Date; a masked array with masked elements |
+| `real(real64)` | Python and numpy integers and floats that float64 holds exactly: every float up to float64, every integer up to 32 bits, a 64-bit one within 2^53 or exact beyond it (`2**63`), a long double only if exact; R integer and double; NaN/Inf as `DM_ALLOW_NAN` says | a bool or R logical; an integer or a long double float64 would round (`2**53 + 1`); strings (never parsed), complex, datetimes, objects; an R Date; a masked array with masked elements |
 | `logical` | bools; any number whose every value is exactly 0 or 1 (12 Python call sites pass 0/1 integers, and `c(1, 0, 1)` is R's own literal for a mask) | any other number, NaN/NA/None, strings, objects |
 | a string | a Python `str`, or an `os.PathLike` whose path is a `str`; an R character vector of length 1, not NA, marked UTF-8 or latin1, or unmarked with UTF-8 bytes | bytes, None, a sequence, a number; length other than 1; NA; a NUL, a lone surrogate, invalid UTF-8; an R string marked "bytes", or latin1 with a byte that is no character |
 | an array of strings | a list, tuple, ndarray or Series of `str`; an R character vector, or a factor (its labels) | a bare `str`; a set or dict, which has no order; any element that is not a `str`; NA, a NUL, a surrogate, invalid UTF-8; a value longer than a declared length |

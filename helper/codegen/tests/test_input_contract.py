@@ -439,6 +439,27 @@ class TestTheEngine:
             refuses(lambda: c.integers(value, "x", ndim=1), "must be an array of whole numbers")
             refuses(lambda: c.reals(value, "x", ndim=1), "must be an array of numbers")
 
+    def test_a_real_takes_only_what_float64_holds_exactly(self, contract):
+        # #221 WP8: 2**53 + 1 reached Fortran as 2**53, and a long double was rounded
+        c, np = contract
+        for exact in (2**53, -2**53, 2**53 + 2, 2**63, 2**62 + 2**10, 7):
+            assert c.real(exact, "x") == exact
+        assert c.reals(np.uint64([2**64 - 2**11, 0]), "x", ndim=1)[0] == 2**64 - 2**11
+        assert c.reals(np.float32([0.1, 1e30]), "x", ndim=1).tolist() == [float(np.float32(0.1)), float(np.float32(1e30))]
+        assert c.reals(np.int32([2**31 - 1]), "x", ndim=1).tolist() == [2**31 - 1]
+        assert c.reals(np.longdouble([0.5, np.nan, np.inf]), "x", ndim=1)[0] == 0.5
+        assert c.reals(np.array([], dtype=np.int64), "x", ndim=1).size == 0
+        refuses(lambda: c.real(2**53 + 1, "x"), "a number that a float64 holds exactly, but it is "
+                "9007199254740993, which it would round to 9007199254740992.0")
+        refuses(lambda: c.real(np.int64(-2**53 - 1), "x"), "it is -9007199254740993")
+        refuses(lambda: c.reals(np.int64([0, 2**63 - 1]), "x", ndim=1), "element 1 is 9223372036854775807")
+        refuses(lambda: c.reals(np.uint64([2**64 - 1]), "x", ndim=1), "element 0 is 18446744073709551615")
+        refuses(lambda: c.reals([[0, 0], [0, 2**53 + 1]], "x", ndim=2), r"element \(1, 1\) is")
+        if np.finfo(np.longdouble).nmant > 52:  # an 80- or 128-bit long double
+            inexact = np.longdouble(1) + np.finfo(np.longdouble).eps
+            refuses(lambda: c.reals(np.array([1, inexact]), "x", ndim=1), "element 1 is 1.0000")
+            refuses(lambda: c.real(np.longdouble(2) ** 1100, "x"), "which it would round to inf")
+
     def test_a_scalar_is_the_0d_case(self, contract):
         c, np = contract
         assert c.real(np.array(2.5), "x") == 2.5 and isinstance(c.real(1, "x"), float)

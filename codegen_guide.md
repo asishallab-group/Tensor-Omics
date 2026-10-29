@@ -1315,8 +1315,9 @@ And what a binding accepts for each of your arguments is one table, the same in 
 (`helper/codegen/design/language-layers.md`, "what an argument accepts"), so you need not guard
 against it: an `integer(int32)` gets only whole numbers in range (a whole float or an R double is
 fine, `1.7` or `2**32 + 5` is refused, never truncated or wrapped), a logical only booleans or the
-numbers 0 and 1, a real only numbers, and no argument a bool, a string parsed as a number, a
-datetime or an NA. A wrong rank is refused, never flattened.
+numbers 0 and 1, a real only numbers it holds exactly (`2**53 + 1` is refused, not rounded), and
+no argument a bool, a string parsed as a number, a datetime or an NA. A wrong rank is refused,
+never flattened.
 
 ---
 

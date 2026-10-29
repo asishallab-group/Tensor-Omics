@@ -5,8 +5,8 @@ binding follows the same table.
 
 Every check looks at the input's own kind first -- an allowlist on numpy's dtype kind,
 before anything converts it -- and accepts a value only if converting it to the Fortran type
-and back gives exactly the same value. A refusal raises ToxArgumentError naming the
-argument.
+and back gives exactly the same value, a real's too. A refusal raises ToxArgumentError
+naming the argument.
 """
 
 import os
@@ -26,6 +26,9 @@ _INTEGERS = ("an array of whole numbers in the range of np.int32",
 _REALS = ("an array of numbers", "a number")
 _LOGICALS = ("an array of booleans, or of the numbers 0 and 1",
              "a boolean, or the number 0 or 1")
+
+#: Every integer of at most this magnitude is a float64 exactly: its 53-bit significand holds it
+_EXACT_IN_FLOAT64 = 2 ** 53
 
 
 def _refuse(message, argument):
@@ -76,6 +79,14 @@ def _number_kind(value, array, argument, wanted, logical=False):
     _refuse(f"'{argument}' must be {wanted}, not {_described(value, array)}{hint}", argument)
 
 
+def _first(array, differs):
+    """The first element `differs` marks, as (its index, the words a refusal names it by)."""
+    if array.ndim == 0:
+        return (), "it"
+    index = tuple(int(i) for i in np.argwhere(differs)[0])
+    return index, f"element {index[0] if array.ndim == 1 else index}"
+
+
 def _round_trip(array, argument, dtype, order, wanted):
     """`array` as `dtype`, accepted only if converting it back gives every value unchanged."""
     if array.dtype == dtype:
@@ -85,11 +96,7 @@ def _round_trip(array, argument, dtype, order, wanted):
     with np.errstate(invalid="ignore", over="ignore"):
         converted = array.astype(dtype, order=order)
     if not np.array_equal(converted, array):
-        if array.ndim == 0:
-            index, where = (), "it"
-        else:
-            index = tuple(int(i) for i in np.argwhere(converted != array)[0])
-            where = f"element {index[0] if array.ndim == 1 else index}"
+        index, where = _first(array, converted != array)
         item = array[index].item()
         hint = ""
         if array.dtype == np.uint32 and dtype == np.int32:
@@ -112,12 +119,54 @@ def integer(value, argument):
     return int(integers(value, argument, ndim=0))
 
 
+def _exact_in_float64(array, converted, argument, wanted):
+    """Refuse a value `converted`, its float64, does not hold exactly.
+
+    Compared in `array`'s own type, converted back: compared as floats, numpy would round the
+    original the same way and find nothing. A NaN or an infinity of a wider float is the same
+    in float64; a value past float64's range becomes an infinity, and so differs.
+    """
+    if array.size == 0:
+        return
+    if array.dtype.kind in "iu" and (array.min() >= -_EXACT_IN_FLOAT64
+                                     and array.max() <= _EXACT_IN_FLOAT64):
+        return  # two reductions say it for the common case, without a temporary
+    # a value float64 rounds to 2**63 or 2**64 is out of the integer's range, and casts back
+    # to something arbitrary, which then differs from it
+    with np.errstate(invalid="ignore", over="ignore"):
+        differs = converted.astype(array.dtype) != array
+    if array.dtype.kind == "f":
+        differs &= ~np.isnan(array)
+    if differs.any():
+        index, where = _first(array, differs)
+        # a long double has no Python number to show it by, but its str is its decimal digits
+        item = array[index].item()
+        shown = repr(item) if isinstance(item, int) else str(array[index])
+        _refuse(f"'{argument}' must be {wanted} that a float64 holds exactly, but {where} is "
+                f"{shown}, which it would round to {converted[index].item()!r}; convert it "
+                f"first (`.astype(np.float64)`, `float()`) where that rounding is acceptable",
+                argument)
+
+
 def reals(value, argument, ndim=None, order="C"):
-    """A real(real64) input: any integers or floats, as the nearest float64."""
+    """A real(real64) input: integers and floats that float64 holds exactly.
+
+    Every float up to float64 and every integer up to 32 bits widens exactly, so it is not
+    compared at all, and a float64 is not even converted. A 64-bit integer is compared unless it
+    lies within 2**53, and a float wider than float64 (np.longdouble) always is.
+    """
     array = _as_array(value, argument)
-    _number_kind(value, array, argument, _REALS[ndim == 0])
+    wanted = _REALS[ndim == 0]
+    _number_kind(value, array, argument, wanted)
     _rank(array, argument, ndim)
-    return np.asarray(array, dtype=np.float64, order=order)
+    kind, size = array.dtype.kind, array.dtype.itemsize
+    if not ((kind in "iu" and size > 4) or (kind == "f" and size > 8)):
+        return np.asarray(array, dtype=np.float64, order=order)
+    # a long double past float64's range becomes an infinity, which the comparison refuses
+    with np.errstate(over="ignore"):
+        converted = np.asarray(array, dtype=np.float64, order=order)
+    _exact_in_float64(array, converted, argument, wanted)
+    return converted
 
 
 def real(value, argument):

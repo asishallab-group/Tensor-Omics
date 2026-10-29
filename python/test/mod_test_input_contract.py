@@ -131,6 +131,27 @@ def test_real_accepts_ints_floats_and_their_numpy_kinds():
     assert np.isclose(calc_quantile([1.0, 2.0, 3.0], 1), 3.0)
 
 
+def test_real_accepts_an_integer_only_where_float64_holds_it_exactly():
+    # 2**53 + 1 reached Fortran as 2**53, and a long double was rounded (#221 WP8)
+    big = 2**53
+    assert euclidean_distance([big, 0], [0, 0]) == big
+    assert euclidean_distance(np.int64([big, 0]), [0, 0]) == big
+    assert euclidean_distance(np.uint64([2**63, 0]), [0, 0]) == 2**63
+    assert calc_quantile([1.0, 2.0, 3.0], np.int64(1)) == 3.0
+    for inexact in ([big + 1, 0], np.int64([big + 1, 0]), np.uint64([big + 1, 0])):
+        refused(lambda: euclidean_distance(inexact, [0, 0]), "vec1",
+                "that a float64 holds exactly, but element 0 is 9007199254740993, "
+                r"which it would round to 9007199254740992\.0")
+    refused(lambda: euclidean_distance(np.uint64([2**64 - 1, 0]), [0, 0]), "vec1",
+            "element 0 is 18446744073709551615")
+    for level in (big + 1, np.int64(big + 1), np.uint64(big + 1)):
+        refused(lambda: calc_quantile([1.0, 2.0], level), "level", "it is 9007199254740993")
+    if np.finfo(np.longdouble).nmant > 52:  # an 80- or 128-bit long double
+        inexact = np.longdouble(1) + np.finfo(np.longdouble).eps
+        refused(lambda: euclidean_distance(np.array([inexact, 0]), [0, 0]), "vec1", "element 0 is 1.0000")
+        assert euclidean_distance(np.longdouble([3, 4]), [0, 0]) == 5.0
+
+
 def test_real_leaves_nan_to_the_procedure():
     # DM_ALLOW_NAN decides, so the binding passes NaN on and the Fortran refuses it with a code
     error = None
