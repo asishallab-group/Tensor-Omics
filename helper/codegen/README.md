@@ -341,7 +341,8 @@ The parts a source author does not need, and a generator maintainer does:
   `typeof` -- then a conversion accepted only if converting back gives exactly the same values:
   an integer takes whole floats in range, a logical takes numbers that are 0 or 1, a real takes
   any integer or float that float64 holds exactly (`2**53 + 1` is refused, a 64-bit integer is
-  compared only beyond 2^53), and nothing parses a string, counts a datetime or reads a factor's
+  compared only beyond 2^53 and never cast back from past its range, a Python int too large for
+  numpy by its own arithmetic), and nothing parses a string, counts a datetime or reads a factor's
   codes.
   A string is a `str` (or an `os.PathLike`) or one R string, valid Unicode without a NUL, at most
   its declared length; an array of strings is a sequence of them (an R factor by its labels); a
@@ -358,11 +359,13 @@ The parts a source author does not need, and a generator maintainer does:
   R makes up for what it cannot convert (`<e9>`) never reaches Fortran. A returned string is
   marked UTF-8. Trailing blanks are Fortran semantics,
   accepted and dropped, and every generated string parameter says so (`emit.doc_contract`).
-- **A single complex output is two doubles wide in Python** (#221 WP8). `ctypes` has no complex
-  type, and the box was the real part's `c_double`: Fortran wrote 16 bytes into 8, and the caller
-  got the real part. The box is `(c_double * 2)()`, passed as the `c_double*` the argtype names,
-  and comes back as `complex(z[0], z[1])` (`python_ctypes._is_complex_box`). An array is numpy's
-  `complex128`, and C and R had it right already.
+- **A single complex is two doubles wide in Python** (#221 WP8). `ctypes` has no complex type,
+  and the box was the real part's `c_double`: Fortran wrote 16 bytes into 8 for an output and
+  read 16 from it for an input. The box is `(c_double * 2)`, passed as the `c_double*` the argtype
+  names (`python_ctypes._is_complex_box`): allocated for an output; for an input and an
+  `intent(inout)`, filled from the value `_contract.complex_number` accepted (a real number by the
+  real rule, a complex one whose parts float64 holds); an output and an inout one come back as
+  `complex(z[0], z[1])`. An array is numpy's `complex128`, and C and R had it right already.
 - **Every input axis is compared before the call, by one rule** (#221 A-shape,
   `emit.shape_checks`): an axis that names an extent is compared with that extent's value, except
   the axis the value was read from, and an axis the declaration fixes at a constant (`fields(n, 2,
@@ -645,14 +648,15 @@ A `DM_PROLOGUE` is checked too, having had no analysis or validation at all befo
 At run time, the bindings refuse what the input contract does not accept, before anything is
 called and naming the argument (`ToxArgumentError` / a `tox_input_error`, no code; the table is in
 `design/language-layers.md`): a bool for a number, a fraction, NaN or out-of-range value for an
-integer, an integer or a long double float64 would round for a real (`2**53 + 1`), any number but
-0 and 1 for a logical, a string, object, datetime or complex for a number, an R factor, Date or
-`integer64` for a number, a masked array with masked elements, a non-`str` for a string, a bare
-`str` for an array of strings, a NUL, a lone surrogate or invalid UTF-8 (in R, an unmarked string
-whose bytes are not UTF-8 in any locale, one marked "bytes", and a latin1 one holding a byte with
-no character), an NA, a string longer than its declared length, an unknown or over-long mode, and
-any other rank. A refusal that has a fix names it: `.view(np.int32)` for a uint32 bit-mask word,
-`.astype(str)` for bytes, `as.integer()` for an `integer64`, `.filled()` for a masked array.
+integer, an integer or a long double float64 would round for a real (`2**53 + 1`), a bool, a
+string or an object for a single complex in Python, any number but 0 and 1 for a logical, a
+string, object, datetime or complex for a number, an R factor, Date or `integer64` for a number, a
+masked array with masked elements, a non-`str` for a string, a bare `str` for an array of strings,
+a NUL, a lone surrogate or invalid UTF-8 (in R, an unmarked string whose bytes are not UTF-8 in
+any locale, one marked "bytes", and a latin1 one holding a byte with no character), an NA, a
+string longer than its declared length, an unknown or over-long mode, and any other rank. A
+refusal that has a fix names it: `.view(np.int32)` for a uint32 bit-mask word, `.astype(str)` for
+bytes, `as.integer()` for an `integer64`, `.filled()` for a masked array.
 
 ### Documentation that names something
 

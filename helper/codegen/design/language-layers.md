@@ -94,9 +94,19 @@ where it cannot fail: a float64 is not converted at all, and every float up to f
 integer up to 32 bits widens exactly, so only a 64-bit integer -- two reductions say that it lies
 within 2^53, and only beyond that is it converted back and compared, in its own type -- and a
 float wider than float64 are checked. R needs no counterpart: its integer is 32 bits, its double
-is real64, and an `integer64` is refused already. Measured at 1e7 elements (#221 WP8): the int64
-check costs under 10% over the conversion it rides on, and the full comparison, when a value
-lies beyond 2^53, about 2.7 times the conversion.
+is real64, and an `integer64` is refused already. The int64 check within 2^53 is a min and a max
+pass with no temporary; measured at 1e7 elements on a loaded machine, that was 8-30% over the
+conversion it rides on, and the full comparison, when a value lies beyond 2^53, 1.8 to 2.9 times
+the conversion (#221 WP8).
+
+**Casting back never leaves the integer's range** (WP8 review M1). A float64 at or past 2^63
+(int64) or 2^64 (uint64) was rounded up out of the range, and casting it back is undefined: x86
+wraps it, so it differed and was refused, but aarch64 saturates it to the very value it came from
+(`np.int64(2**63 - 1)`), which then compared equal and was accepted rounded. So those are refused
+first, and only what lies within the range is cast back; the check needs no `errstate`, and a
+test runs it with every cast error raising. A Python int too large for any NumPy integer
+(`2**64`), which numpy holds only as an object, takes the same rule by Python's exact integer
+arithmetic, `int(float(x)) == x`, rather than being refused as no number.
 
 | Fortran | Accepted | Refused, naming the argument |
 |---|---|---|
@@ -106,7 +116,7 @@ lies beyond 2^53, about 2.7 times the conversion.
 | a string | a Python `str`, or an `os.PathLike` whose path is a `str`; an R character vector of length 1, not NA, marked UTF-8 or latin1, or unmarked with UTF-8 bytes | bytes, None, a sequence, a number; length other than 1; NA; a NUL, a lone surrogate, invalid UTF-8; an R string marked "bytes", or latin1 with a byte that is no character |
 | an array of strings | a list, tuple, ndarray or Series of `str`; an R character vector, or a factor (its labels) | a bare `str`; a set or dict, which has no order; any element that is not a `str`; NA, a NUL, a surrogate, invalid UTF-8; a value longer than a declared length |
 | a mode | a valid string matching one of the modes whole (case aside, as before), after its trailing blanks are dropped like any string's (`'ward '` is `ward`) | anything else, a leading blank included; the message lists the modes |
-| `complex(real64)` | Python: an array numpy converts to `complex128` -- outside the round trip, as numpy converts it; R: a complex or numeric vector. A single output comes back as a Python `complex` and an R complex | R: anything that is not a number |
+| `complex(real64)` | Python: a single value is any number, complex or real, whose parts float64 holds exactly (the real rule); an array is what numpy converts to `complex128` -- outside the round trip, as numpy converts it; R: a complex or numeric vector. A single output or `intent(inout)` value comes back as a Python `complex` and an R complex | Python, a single value: a bool, a string, an object, an inexact part; R: anything that is not a number |
 | rank | numpy `ndim` == the declared rank; R `length(dim(x))`, where a plain vector, a 1-D array and a table are rank 1, and an all-numeric data.frame is a matrix (as a DataFrame is in Python) | any other rank: nothing is flattened |
 
 **Trailing blanks are Fortran semantics, accepted and documented** (FES, 2026-10-26). A string
@@ -136,12 +146,17 @@ in UTF-8 by default on Windows since 4.2, as on macOS and the Linux distribution
 
 **A complex value is two doubles to C, and a box for one has to be two wide** (#221 WP8). An
 array of them is numpy's `complex128` and R's complex vector, both the 16-byte layout Fortran
-has. A single complex *output* is a box Python allocates, and `ctypes` has no complex type: the
-box was the real part's `c_double`, so Fortran wrote 16 bytes into 8 and the caller got the real
-part back. Python now passes `(c_double * 2)()` and returns `complex(z[0], z[1])`; C and R were
-right already (`Rf_ScalarComplex`). The row above keeps numpy's own conversion for complex
-inputs, which the round trip does not cover; Python cannot yet pass a single complex *input*
-or `intent(inout)` value (it boxes it in one `c_double` too), which nothing on main has.
+has. A single complex is a box Python makes, and `ctypes` has no complex type: the box was the
+real part's `c_double`. For an output, Fortran wrote 16 bytes into 8 and the caller got the real
+part back; for an input, a complex raised a bare `TypeError` and a float's imaginary part was read
+from whatever lay past the box; an `intent(inout)` value was passed as the caller's own object, a
+`TypeError` too. Now every single complex is a `(c_double * 2)` box: allocated for an output,
+filled from the value for an input (`None` for an omitted optional) and for an `intent(inout)`,
+whose box is returned, as `complex(z[0], z[1])`. An input is checked first by the contract
+(`_contract.complex_number`): a real number by the real rule, a complex one whose parts float64
+holds, refused by name otherwise. C and R were right already (`Rf_ScalarComplex`). A complex
+*array* keeps numpy's own conversion, which the round trip does not cover; nothing on main has
+one as an input but the serde helpers.
 
 Some refusals say what to do instead: a uint32 bit-mask word of 2^31 or more passes as
 `.view(np.int32)`; a bytes array decodes with `.astype(str)`; an `integer64` converts with
@@ -150,7 +165,8 @@ Some refusals say what to do instead: a uint32 bit-mask word of 2^31 or more pas
 Edges that are documented rather than fixed: a Python list `[True, 0, 3]` is an int64 array
 before any check sees the bool in it; `-2**31` is an int32 to Python but `NA_integer_` to R,
 which refuses it; a `Decimal` or `Fraction` is an object, and so refused for a real it used to
-reach through `__float__`, as is a Python int too large for int64; a double above 2^53 is whole
+reach through `__float__` (a Python int too large for int64 is an object too, which an integer
+refuses as out of range and a real takes by the exact rule); a double above 2^53 is whole
 by construction, so neither language can tell that a typed value was rounded before it arrived.
 
 **Where each check runs.** Python's whole contract is one generated module,

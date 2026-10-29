@@ -8,6 +8,7 @@ the shim's refusals are the R wrapper's own conditions, and the Python engine's 
 directly on the generated module.
 """
 
+import contextlib
 import importlib
 import re
 import sys
@@ -344,8 +345,8 @@ class TestTheDocsStateTheStringRules:
 
 # -- Python: a complex output is two doubles ----------------------------------------------------
 
-class TestAComplexOutputIsTwoDoubles:
-    """#221 WP8: a `c_double` box held half of the 16 bytes Fortran writes into it."""
+class TestASingleComplexIsTwoDoubles:
+    """#221 WP8: a `c_double` box held half of the 16 bytes Fortran writes into it or reads."""
 
     def text(self):
         return PythonEmitter().function(wrapper_of(b.procedure(
@@ -366,6 +367,34 @@ class TestAComplexOutputIsTwoDoubles:
         text = self.text()
         assert f"zs = {names.PYTHON_NUMPY}.empty((n,), dtype={names.PYTHON_NUMPY}.complex128" in text
         assert '"zs": zs,' in text
+
+    def inputs(self):
+        return PythonEmitter().function(wrapper_of(b.procedure(
+            "p",
+            b.complex_("a", Intent.IN, doc="one complex number"),
+            b.complex_("o", Intent.IN, optional=True, doc="maybe one"),
+            b.complex_("t", Intent.INOUT, doc="changed in place"),
+            b.complex_("zs", Intent.IN, "(2)", doc="two complex numbers"),
+            b.ierr(),
+        )))
+
+    def test_an_input_is_checked_by_the_contract_and_boxed_at_the_call(self):
+        text = self.inputs()
+        box = f"({names.PYTHON_CTYPES}.c_double * 2)"
+        assert f'a = {names.PYTHON_CONTRACT}.complex_number(a, "a")' in text
+        assert f"        {box}(a.real, a.imag),\n" in text
+        assert f'o = {names.PYTHON_CONTRACT}.complex_number(o, "o")' in text
+        assert f"None if o is None else {box}(o.real, o.imag)," in text
+
+    def test_an_inout_one_is_boxed_from_its_value_and_returned(self):
+        text = self.inputs()
+        assert f'    t = {names.PYTHON_CONTRACT}.complex_number(t, "t")\n' \
+               f"    t = ({names.PYTHON_CTYPES}.c_double * 2)(t.real, t.imag)\n" in text
+        assert "        t,\n" in text and "return complex(t[0], t[1])" in text
+
+    def test_an_input_array_is_still_converted_as_numpy_converts_it(self):
+        assert f"zs = {names.PYTHON_NUMPY}.ascontiguousarray(zs, dtype={names.PYTHON_NUMPY}.complex128)" \
+            in self.inputs()
 
 
 # -- the Python engine, run on the generated module ----------------------------------------------
@@ -389,6 +418,19 @@ def contract(tmp_path_factory):
     finally:
         sys.path.remove(str(package.parent))
     return module, np
+
+
+class _NoErrstate(contextlib.ContextDecorator):
+    """`np.errstate` that changes nothing, so the global `np.seterr` decides"""
+
+    def __init__(self, **_):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
 
 
 def refuses(function, pattern):
@@ -459,6 +501,53 @@ class TestTheEngine:
             inexact = np.longdouble(1) + np.finfo(np.longdouble).eps
             refuses(lambda: c.reals(np.array([1, inexact]), "x", ndim=1), "element 1 is 1.0000")
             refuses(lambda: c.real(np.longdouble(2) ** 1100, "x"), "which it would round to inf")
+
+    def test_a_64_bit_integer_is_never_cast_back_out_of_its_range(self, contract, monkeypatch):
+        # #221 WP8 fix 1: casting 2.0**63 back to int64 is undefined -- x86 wraps it, aarch64
+        # saturates it to the very value it came from, which then compared equal. So no cast may
+        # leave the range at all: with every errstate made a no-op and an invalid cast raising,
+        # the boundary values are still decided, the same on every platform
+        c, np = contract
+        monkeypatch.setattr(np, "errstate", _NoErrstate)
+        old = np.seterr(all="raise")
+        try:
+            for inexact, shown in ((np.int64(2**63 - 1), "9223372036854775807"),
+                                   (np.uint64(2**64 - 1), "18446744073709551615"),
+                                   (np.uint64(2**64 - 2**10), "18446744073709550592"),
+                                   (np.int64(2**63 - 2**9), "9223372036854775296")):
+                refuses(lambda: c.real(inexact, "x"), f"it is {shown}, which it would round to")
+            refuses(lambda: c.reals(np.int64([2**53 + 1, 2**63 - 1]), "x", ndim=1), "element 0 is")
+            # the largest of each that a float64 holds, and the smallest int64
+            for exact in (np.int64(2**63 - 2**10), np.uint64(2**64 - 2**11), np.int64(-2**63),
+                          np.uint64(2**63)):
+                assert c.real(exact, "x") == int(exact)
+        finally:
+            np.seterr(**old)
+
+    def test_a_python_int_too_large_for_numpy_takes_the_same_rule(self, contract):
+        # numpy holds 2**64 only as an object, which was refused as "not a number" (#221 WP8 N2)
+        c, np = contract
+        assert c.real(2**64, "x") == 2.0**64 and c.real(-2**100, "x") == -2.0**100
+        assert c.reals([2**64, 2**70], "x", ndim=1).tolist() == [2.0**64, 2.0**70]
+        refuses(lambda: c.real(2**64 + 1, "x"), "it is 18446744073709551617, which it would round to")
+        refuses(lambda: c.real(-2**63 - 1, "x"), "it is -9223372036854775809")
+        refuses(lambda: c.reals([2**64, 2**65 + 1], "x", ndim=1), "element 1 is 36893488147419103233")
+        refuses(lambda: c.real(10**400, "x"), "it is an int of 1329 bits, which it would round to inf")
+        refuses(lambda: c.reals([[2**64]], "x", ndim=1), "must have 1 dimension")
+        refuses(lambda: c.reals([2**64, True], "x", ndim=1), "dtype object")  # a bool is no number
+
+    def test_a_single_complex_is_a_number_whose_parts_float64_holds(self, contract):
+        c, np = contract
+        for value, expected in ((3 - 4j, 3 - 4j), (3.0, 3 + 0j), (np.complex64(1 + 2j), 1 + 2j),
+                                (np.int64(7), 7 + 0j), (np.array(1j), 1j)):
+            assert c.complex_number(value, "x") == expected
+            assert type(c.complex_number(value, "x")) is complex
+        for bad, pattern in (("1", "str"), (True, "bool"), (None, "NoneType"), (b"1", "bytes"),
+                             ([1j], "single value"), (2**53 + 1, "9007199254740993")):
+            refuses(lambda: c.complex_number(bad, "x"), pattern)
+        if np.finfo(np.longdouble).nmant > 52:
+            inexact = np.clongdouble(np.longdouble(1) + np.finfo(np.longdouble).eps)
+            refuses(lambda: c.complex_number(inexact, "x"), "that a float64 holds exactly")
 
     def test_a_scalar_is_the_0d_case(self, contract):
         c, np = contract

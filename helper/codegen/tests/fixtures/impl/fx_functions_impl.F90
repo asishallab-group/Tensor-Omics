@@ -4,7 +4,8 @@
 !| author: A Developer
 !| A scalar, an array and a `logical(c_bool)` result, an `elemental` function, one with its own
 !| `ierr`, and one with a work array, so that both tiers carry the result; and a `complex(real64)`
-!| result, beside a subroutine with a `complex(real64)` output. Compiled and run by
+!| result, beside subroutines with a `complex(real64)` output, input, optional input and
+!| `intent(inout)` argument. Compiled and run by
 !| `test_end_to_end_fortran.py`, and through C, Python and R by `test_end_to_end_impl.py`.
 module fx_functions_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
@@ -15,6 +16,7 @@ module fx_functions_impl
 
     public :: fx_total_impl, fx_doubled_impl, fx_all_positive_impl, fx_halve_impl
     public :: fx_share_impl, fx_smallest_impl, fx_complex_impl, fx_make_complex_impl
+    public :: fx_parts_impl, fx_offset_impl, fx_twice_impl
 
 contains
 
@@ -132,5 +134,44 @@ contains
             !! `re + im i`
         z = cmplx(re, im, kind=real64)
     end subroutine fx_make_complex_impl
+
+    !> summary: The parts of a complex number
+    !| author: A Developer
+    !| An edge case: a `complex(real64)` scalar input, which is two doubles to C.
+    pure subroutine fx_parts_impl(z, re, im)
+        complex(real64), intent(in) :: z
+            !! the number
+        real(real64), intent(out) :: re
+            !! its real part
+        real(real64), intent(out) :: im
+            !! its imaginary part
+        re = real(z, kind=real64)
+        im = aimag(z)
+    end subroutine fx_parts_impl
+
+    !> summary: A complex number from its parts, plus an offset if one is given
+    !| author: A Developer
+    !| An edge case: an optional `complex(real64)` input, which C may pass as null.
+    pure subroutine fx_offset_impl(re, im, z, offset)
+        real(real64), intent(in) :: re
+            !! the real part
+        real(real64), intent(in) :: im
+            !! the imaginary part
+        complex(real64), intent(out) :: z
+            !! `re + im i`, plus `offset` if it is given
+        complex(real64), intent(in), optional :: offset
+            !! added to the number
+        z = cmplx(re, im, kind=real64)
+        if (present(offset)) z = z + offset
+    end subroutine fx_offset_impl
+
+    !> summary: Twice a complex number, in place
+    !| author: A Developer
+    !| An edge case: a `complex(real64)` scalar that is `intent(inout)`, returned by Python and R.
+    pure subroutine fx_twice_impl(z)
+        complex(real64), intent(inout) :: z
+            !! the number, doubled on return
+        z = 2.0_real64*z
+    end subroutine fx_twice_impl
 
 end module fx_functions_impl

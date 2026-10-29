@@ -146,6 +146,15 @@ def test_real_accepts_an_integer_only_where_float64_holds_it_exactly():
             "element 0 is 18446744073709551615")
     for level in (big + 1, np.int64(big + 1), np.uint64(big + 1)):
         refused(lambda: calc_quantile([1.0, 2.0], level), "level", "it is 9007199254740993")
+    # the boundaries, decided before anything is cast back out of range (WP8 fix 1, M1)
+    refused(lambda: euclidean_distance(np.int64([2**63 - 1, 0]), [0, 0]), "vec1",
+            "element 0 is 9223372036854775807")
+    assert euclidean_distance(np.int64([2**63 - 2**10, 0]), [0, 0]) == 2**63 - 2**10
+    # a Python int too large for any NumPy integer, by the same rule, not "not a number" (N2)
+    assert euclidean_distance([2**64, 0], [0, 0]) == 2.0**64
+    refused(lambda: euclidean_distance([2**64 + 1, 0], [0, 0]), "vec1",
+            "element 0 is 18446744073709551617, which it would round to")
+    refused(lambda: calc_quantile([1.0, 2.0], -2**63 - 1), "level", "it is -9223372036854775809")
     if np.finfo(np.longdouble).nmant > 52:  # an 80- or 128-bit long double
         inexact = np.longdouble(1) + np.finfo(np.longdouble).eps
         refused(lambda: euclidean_distance(np.array([inexact, 0]), [0, 0]), "vec1", "element 0 is 1.0000")

@@ -98,8 +98,8 @@ def check_package_names(binding, catalogue: ErrorCatalogue,
 
 
 #: Fortran base type -> the ctypes scalar C sees, by its name in `ctypes`. ctypes has no complex
-#: type, so a complex is its real part's: a complex output is a box of two of them
-#: (`_is_complex_box`), and an array of one is numpy's complex dtype (`DTYPES`).
+#: type, so a complex is its real part's: a single complex is a box of two of them
+#: (`_is_complex_box`), and an array of them is numpy's complex dtype (`DTYPES`).
 CTYPES = {
     ("integer", "c_int"): "c_int",
     ("integer", "c_int8_t"): "c_int8",
@@ -131,11 +131,13 @@ DTYPES = {
 
 
 #: Fortran base type -> the input contract's check of an array of it, and of a single one, with
-#: the dtype the check produces (`emit.python_contract`). Complex is not in the contract's table.
+#: the dtype the check produces (`emit.python_contract`). A complex array is converted as numpy
+#: converts it, so only a single complex has a check.
 _CONTRACT_CHECKS = {
     BaseType.INTEGER: ("integers", "integer", "int32"),
     BaseType.REAL: ("reals", "real", "float64"),
     BaseType.LOGICAL: ("logicals", "logical", "bool_"),
+    BaseType.COMPLEX: (None, "complex_number", "complex128"),
 }
 
 
@@ -152,6 +154,8 @@ def _contract_call(argument: CArgument) -> str | None:
     name = argument.name
     if argument.is_scalar:
         return f'{PYTHON_CONTRACT}.{check[1]}({name}, "{name}")'
+    if check[0] is None:
+        return None
     if argument.shape_arg is not None:
         return f'{PYTHON_CONTRACT}.{check[0]}({name}, "{name}", order="F")'
     order = ', order="F"' if argument.rank > 1 else ""
@@ -163,14 +167,15 @@ def ctype_of(argument: CArgument) -> str:
 
 
 def _is_complex_box(argument: CArgument) -> bool:
-    """A complex scalar output, which C is handed as a box of two doubles (#221 WP8).
+    """A single complex, which C is handed as a box of two doubles (#221 WP8).
 
-    Fortran writes a complex(real64) as two doubles, real part first, so the box is
-    `(c_double * 2)`, which ctypes passes as the `c_double*` the argtype names. A single
-    `c_double` lost the imaginary part, and Fortran wrote 8 bytes past it.
+    Fortran reads and writes a complex(real64) as two doubles, real part first, so the box is
+    `(c_double * 2)`, which ctypes passes as the `c_double*` the argtype names: allocated for an
+    output, filled from the value for an input or an `intent(inout)`. A single `c_double` lost
+    an output's imaginary part and let Fortran write 8 bytes past it, and an input's was read
+    from whatever lay past it.
     """
-    return (argument.is_scalar and argument.type.base is BaseType.COMPLEX
-            and argument.intent is Intent.OUT and not argument.optional)
+    return argument.is_scalar and argument.type.base is BaseType.COMPLEX
 
 
 def dtype_of(argument: CArgument) -> str:
@@ -628,7 +633,11 @@ class PythonEmitter:
                 # Fortran writes back through the pointer, so C needs a box to write
                 # into rather than a temporary made at the call. The new value is
                 # returned, Python having no way to rebind the caller's name.
-                body.line(f"{name} = {ctype_of(argument)}({checked})")
+                if _is_complex_box(argument):
+                    body.line(f"{name} = {checked}")
+                    body.line(f"{name} = ({ctype_of(argument)} * 2)({name}.real, {name}.imag)")
+                else:
+                    body.line(f"{name} = {ctype_of(argument)}({checked})")
             else:
                 body.line(f"{name} = {checked}")
             return self._guarded(argument, body)
@@ -1088,6 +1097,10 @@ class PythonEmitter:
         if argument.type.is_character:
             return name
         if argument.is_scalar:
+            if _is_complex_box(argument) and argument.intent is Intent.IN:
+                # an array, which ctypes passes as a pointer to its first double
+                box = f"({ctype_of(argument)} * 2)({name}.real, {name}.imag)"
+                return f"None if {name} is None else {box}" if argument.optional else box
             if argument.optional:
                 # None must survive to the nullable argtype
                 return (
@@ -1095,7 +1108,7 @@ class PythonEmitter:
                     f"else {_CTYPES}.byref({ctype_of(argument)}({name}))"
                 )
             if _is_complex_box(argument):
-                return name  # an array, which ctypes passes as a pointer to its first double
+                return name  # the box an output or an inout value already is
             if argument.intent.is_output:
                 return f"{_CTYPES}.byref({name})"
             return f"{_CTYPES}.byref({ctype_of(argument)}({name}))"

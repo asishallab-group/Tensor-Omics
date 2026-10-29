@@ -499,6 +499,52 @@ class TestFunctions:
             cat(class(z), format(z), class(w), format(w))
         """) == ["complex", "1-2i", "complex", "1-2i"]
 
+    def test_a_complex_input_crosses_whole_as_in_c_and_r(self, built):
+        # #221 WP8 fix 1: Python boxed a complex input in one c_double, so a complex raised a bare
+        # TypeError, and a float's imaginary part was read from whatever lay past the box; an
+        # intent(inout) one was passed as the caller's own object
+        out = run_python(built, """
+            print(json.dumps([
+                tox.fx_parts(3 - 4j), tox.fx_parts(3.0), tox.fx_parts(np.complex64(1 + 2j)),
+                repr(tox.fx_offset(1.0, -2.0)), repr(tox.fx_offset(1.0, -2.0, 1j)),
+                repr(tox.fx_offset(1.0, -2.0, offset=2)), repr(tox.fx_twice(3 - 4j)),
+                repr(tox.fx_twice(5)),
+            ]))
+        """)
+        assert out == [{"re": 3.0, "im": -4.0}, {"re": 3.0, "im": 0.0}, {"re": 1.0, "im": 2.0},
+                       "(1-2j)", "(1-1j)", "(3-2j)", "(6-8j)", "(10+0j)"]
+
+        # refused by name, as every contract refusal is
+        out = run_python(built, """
+            from fx_impl.error_handling import ToxArgumentError
+            caught = []
+            for call in (lambda: tox.fx_parts("3"), lambda: tox.fx_parts(True),
+                         lambda: tox.fx_parts(None), lambda: tox.fx_twice([1j]),
+                         lambda: tox.fx_offset(1.0, 2.0, "1j"), lambda: tox.fx_parts(2**53 + 1)):
+                try:
+                    call()
+                    caught.append(None)
+                except ToxArgumentError as error:
+                    caught.append(error.argument)
+            print(json.dumps(caught))
+        """)
+        assert out == ["z", "z", "z", "z", "offset", "z"]
+
+        # C by position, and R: the same numbers
+        out = run_python(built, """
+            import ctypes, os
+            library = ctypes.CDLL(os.environ["TENSOR_OMICS_LIBRARY"])
+            z, re, im, ierr = (ctypes.c_double * 2)(3.0, -4.0), ctypes.c_double(), ctypes.c_double(), ctypes.c_int(-1)
+            library.fx_parts_c(z, ctypes.byref(re), ctypes.byref(im), ctypes.byref(ierr))
+            library.fx_twice_c(z, ctypes.byref(ierr))
+            print(json.dumps([re.value, im.value, list(z), ierr.value]))
+        """)
+        assert out == [3.0, -4.0, [6.0, -8.0], 0]
+        assert run_r(built, """
+            p <- fx_parts(3-4i); cat(p$re, p$im, format(fx_offset(1, -2)), format(fx_offset(1, -2, 1i)),
+                                    format(fx_twice(3-4i)))
+        """) == ["3", "-4", "1-2i", "1-1i", "6-8i"]
+
 
 #: Where `_generate` writes the Fortran wrappers, the C wrappers, the R shims, Python and R
 _TARGET_DIRS = ("fortran", "c", "shim", "py", "r")

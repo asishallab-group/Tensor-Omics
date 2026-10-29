@@ -79,12 +79,19 @@ def _number_kind(value, array, argument, wanted, logical=False):
     _refuse(f"'{argument}' must be {wanted}, not {_described(value, array)}{hint}", argument)
 
 
+def _where(array, index):
+    """The words a refusal names the element at `index` by."""
+    if array.ndim == 0:
+        return "it"
+    return f"element {index[0] if array.ndim == 1 else index}"
+
+
 def _first(array, differs):
     """The first element `differs` marks, as (its index, the words a refusal names it by)."""
     if array.ndim == 0:
         return (), "it"
     index = tuple(int(i) for i in np.argwhere(differs)[0])
-    return index, f"element {index[0] if array.ndim == 1 else index}"
+    return index, _where(array, index)
 
 
 def _round_trip(array, argument, dtype, order, wanted):
@@ -119,6 +126,13 @@ def integer(value, argument):
     return int(integers(value, argument, ndim=0))
 
 
+def _refuse_inexact(argument, wanted, where, shown, rounded):
+    """Refuse a value float64 would round: `shown` is it, `rounded` what float64 makes of it."""
+    _refuse(f"'{argument}' must be {wanted} that a float64 holds exactly, but {where} is "
+            f"{shown}, which it would round to {rounded!r}; convert it first "
+            f"(`.astype(np.float64)`, `float()`) where that rounding is acceptable", argument)
+
+
 def _exact_in_float64(array, converted, argument, wanted):
     """Refuse a value `converted`, its float64, does not hold exactly.
 
@@ -128,24 +142,55 @@ def _exact_in_float64(array, converted, argument, wanted):
     """
     if array.size == 0:
         return
-    if array.dtype.kind in "iu" and (array.min() >= -_EXACT_IN_FLOAT64
-                                     and array.max() <= _EXACT_IN_FLOAT64):
-        return  # two reductions say it for the common case, without a temporary
-    # a value float64 rounds to 2**63 or 2**64 is out of the integer's range, and casts back
-    # to something arbitrary, which then differs from it
-    with np.errstate(invalid="ignore", over="ignore"):
-        differs = converted.astype(array.dtype) != array
-    if array.dtype.kind == "f":
-        differs &= ~np.isnan(array)
+    if array.dtype.kind in "iu":
+        if array.min() >= -_EXACT_IN_FLOAT64 and array.max() <= _EXACT_IN_FLOAT64:
+            return  # two reductions say it for the common case, without a temporary
+        # A float64 at or past 2**63 (int64) or 2**64 (uint64) is past the integer's range, so
+        # it was rounded up, and is decided here: casting it back is undefined, and the
+        # platforms disagree (x86 wraps it, aarch64 saturates it back to the very value it came
+        # from). Only what lies within the range is cast back. Nothing below 2**63 rounds down
+        # out of int64's range: -2**63 is a float64 exactly.
+        bits = 8 * array.dtype.itemsize - (array.dtype.kind == "i")
+        past = converted >= 2.0 ** bits
+        differs = past | (np.where(past, 0.0, converted).astype(array.dtype) != array)
+    else:
+        differs = (converted.astype(array.dtype) != array) & ~np.isnan(array)
     if differs.any():
         index, where = _first(array, differs)
         # a long double has no Python number to show it by, but its str is its decimal digits
         item = array[index].item()
         shown = repr(item) if isinstance(item, int) else str(array[index])
-        _refuse(f"'{argument}' must be {wanted} that a float64 holds exactly, but {where} is "
-                f"{shown}, which it would round to {converted[index].item()!r}; convert it "
-                f"first (`.astype(np.float64)`, `float()`) where that rounding is acceptable",
-                argument)
+        _refuse_inexact(argument, wanted, where, shown, converted[index].item())
+
+
+def _holds_python_integers(array):
+    """Whether `array` is objects that are all Python ints: what numpy makes of one too large for
+    any NumPy integer (`2**64`, `-2**63 - 1`)."""
+    return array.dtype.kind == "O" and array.size > 0 and all(
+        isinstance(item, int) and not isinstance(item, bool) for item in array.flat)
+
+
+def _python_integers(array, argument, wanted, order):
+    """Python ints too large for any NumPy integer, as float64.
+
+    The kind would refuse them as not numbers. They are, and the rule is the same: accepted
+    where float64 holds each exactly, which the int's own exact arithmetic says,
+    `int(float(x)) == x`.
+    """
+    converted = np.empty(array.shape, dtype=np.float64, order=order)
+    for index in np.ndindex(array.shape):
+        item = array[index]
+        try:
+            rounded = float(item)
+        except OverflowError:  # past float64's range
+            rounded = float("inf") if item > 0 else float("-inf")
+        if rounded in (float("inf"), float("-inf")) or int(rounded) != item:
+            # past a few hundred digits a number says nothing, and str() of one past 4300 raises
+            bits = item.bit_length()
+            shown = repr(item) if bits <= 256 else f"an int of {bits} bits"
+            _refuse_inexact(argument, wanted, _where(array, index), shown, rounded)
+        converted[index] = rounded
+    return converted
 
 
 def reals(value, argument, ndim=None, order="C"):
@@ -153,10 +198,14 @@ def reals(value, argument, ndim=None, order="C"):
 
     Every float up to float64 and every integer up to 32 bits widens exactly, so it is not
     compared at all, and a float64 is not even converted. A 64-bit integer is compared unless it
-    lies within 2**53, and a float wider than float64 (np.longdouble) always is.
+    lies within 2**53, and a float wider than float64 (np.longdouble) always is, as is a Python
+    int too large for any NumPy integer.
     """
     array = _as_array(value, argument)
     wanted = _REALS[ndim == 0]
+    if _holds_python_integers(array):
+        _rank(array, argument, ndim)
+        return _python_integers(array, argument, wanted, order)
     _number_kind(value, array, argument, wanted)
     _rank(array, argument, ndim)
     kind, size = array.dtype.kind, array.dtype.itemsize
@@ -172,6 +221,23 @@ def reals(value, argument, ndim=None, order="C"):
 def real(value, argument):
     """A scalar real(real64): the 0-d case of `reals`, as a Python float."""
     return float(reals(value, argument, ndim=0))
+
+
+def complex_number(value, argument):
+    """A scalar complex(real64): a real number by `real`'s rule, or a complex one whose parts
+    a float64 holds exactly; as a Python complex. A bool, a string or an object is refused."""
+    array = _as_array(value, argument)
+    if array.dtype.kind != "c":
+        return complex(real(value, argument))
+    _rank(array, argument, 0)
+    if array.dtype.itemsize <= 16:  # complex64 and complex128 widen exactly
+        return complex(array.item())
+    # a complex long double: each part by the real rule
+    with np.errstate(over="ignore"):
+        converted = array.astype(np.complex128)
+    _exact_in_float64(array.real, converted.real, argument, "a number")
+    _exact_in_float64(array.imag, converted.imag, argument, "a number")
+    return complex(converted.item())
 
 
 def logicals(value, argument, ndim=None, order="C"):
