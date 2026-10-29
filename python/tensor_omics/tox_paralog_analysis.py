@@ -124,6 +124,21 @@ _FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENTS = ("gene_angles", "th
 #: For a derived argument, the one the caller passed it in
 _FILTER_PARALOGS_BY_PATTERN_SUBFUNCTIONALIZATION_ARGUMENT_SOURCES = (None, None, "gene_angles", "masks", None, None, "masks", None,)
 
+_lib.calc_work_arr_paralog_subsets_size_c.restype = None
+_lib.calc_work_arr_paralog_subsets_size_c.argtypes = (
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENTS = ("max_subset_size", "n_genes", "work_array_size", "filtered_paralogs_mask", "n_mask_chunks", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENT_SOURCES = (None, None, None, None, "filtered_paralogs_mask", None,)
+
 def detect_neofunctionalization(
         ancestors,
         genes,
@@ -322,7 +337,6 @@ def detect_dosage_effect(
     n_mask_chunks = filtered_paralogs_mask.shape[0]
 
     # work out what other procedures must supply, per DM_OUTPUT_FROM
-    from .tox_paralog_analysis_impl import calc_work_arr_paralog_subsets_size
     _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_mask=filtered_paralogs_mask)
     max_subset_size = _calc_work_arr_paralog_subsets_size_result["max_subset_size"]
     n_paralog_subsets = _calc_work_arr_paralog_subsets_size_result["work_array_size"]
@@ -464,7 +478,6 @@ def detect_subfunctionalization(
     n_mask_chunks = filtered_paralogs_mask.shape[0]
 
     # work out what other procedures must supply, per DM_OUTPUT_FROM
-    from .tox_paralog_analysis_impl import calc_work_arr_paralog_subsets_size
     _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_mask=filtered_paralogs_mask)
     max_subset_size = _calc_work_arr_paralog_subsets_size_result["max_subset_size"]
     n_paralog_subsets = _calc_work_arr_paralog_subsets_size_result["work_array_size"]
@@ -698,3 +711,89 @@ def filter_paralogs_by_pattern_subfunctionalization(
     masks.flags.writeable = False
 
     return masks
+
+def calc_work_arr_paralog_subsets_size(
+        max_subset_size,
+        n_genes,
+        filtered_paralogs_mask,
+):
+    r"""Calculates the needed size for the paralog-subsets work array
+
+    The `detect_*` subroutines need a work array for the to be tested subsets.
+    In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
+    This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.
+
+    This subroutine calculates the needed size for the work array.
+
+    Parameters
+    ----------
+    max_subset_size : int
+        maximum size that a subset must not exceed. Zero is in range and means there is
+        nothing to size a work array for, which is reported back as a size of zero.
+        The minimum valid value is `0`.
+        If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
+
+        Also, size will be set to number of genes in `filtered_paralogs_mask` if larger.
+    n_genes : int
+        number of genes
+        The minimum valid value is `1`.
+        The maximum valid value is `n_mask_chunks * 32`.
+    filtered_paralogs_mask : np.ndarray[np.int32] of shape (n_mask_chunks,)
+        Output mask with all genes disabled that did not pass the filter
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        max_subset_size : int
+            maximum size that a subset must not exceed. Zero is in range and means there is
+            nothing to size a work array for, which is reported back as a size of zero.
+            The minimum valid value is `0`.
+            If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
+
+            Also, size will be set to number of genes in `filtered_paralogs_mask` if larger.
+        work_array_size : int
+            The calculated needed work array size in absolute worst case scenario. Look into source for details.
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_paralog_analysis::calc_work_arr_paralog_subsets_size`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    max_subset_size = ctypes.c_int(max_subset_size)
+    try:
+        filtered_paralogs_mask = np.ascontiguousarray(filtered_paralogs_mask, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'filtered_paralogs_mask' must be an array of np.int32: {error}") from None
+    if filtered_paralogs_mask.ndim != 1:
+        raise ValueError(f"'filtered_paralogs_mask' must have 1 dimension, but has {filtered_paralogs_mask.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_mask_chunks = filtered_paralogs_mask.shape[0]
+
+    # outputs and work arrays, which the caller never sees
+    work_array_size = ctypes.c_int(0)
+    ierr = ctypes.c_int(0)
+
+    _lib.calc_work_arr_paralog_subsets_size_c(
+        ctypes.byref(max_subset_size),
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(work_array_size),
+        filtered_paralogs_mask,
+        ctypes.byref(ctypes.c_int(n_mask_chunks)),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENTS, _CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENT_SOURCES)
+
+    return {
+        "max_subset_size": max_subset_size.value,
+        "work_array_size": work_array_size.value,
+    }

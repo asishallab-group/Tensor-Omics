@@ -101,7 +101,7 @@ contains
             !! maximum subset size of checked gene subsets. Too large a value is capped to the
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
-            !! [[tox_paralog_analysis_impl(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
+            !! [[tox_paralog_analysis_impl(module):calc_work_arr_paralog_subsets_size_impl(subroutine)]] first.
             !! Zero is in range and means there is no subset to check -- the sizing routine reports
             !! it whenever the filtered families hold a single gene each. It reports a work array
             !! of zero slots along with it, which this routine does not accept, so a caller that
@@ -109,7 +109,7 @@ contains
             !! DM_MIN(0_int32)
         integer(int32), intent(in) :: n_paralog_subsets
             !! number of gene subsets that can be stored in `work_arr_paralog_subsets`.
-            !! DM_OUTPUT_FROM(work_array_size, calc_work_arr_paralog_subsets_size, tox_paralog_analysis_impl, AUTO)
+            !! DM_OUTPUT_FROM(work_array_size, calc_work_arr_paralog_subsets_size, tox_paralog_analysis, AUTO)
         integer(int32), dimension(n_mask_chunks, n_paralog_subsets), intent(out) :: work_arr_paralog_subsets
             !! working array to hold bitmask encoded subsets for detection.
             !! @note
@@ -223,7 +223,7 @@ contains
             !! | Subfunctionalization |   [[tox_paralog_analysis_impl(module):MODE_SUBFUNC_PATTERN(variable)]]   |
             !!
         integer(int32), intent(in) :: n_paralog_subsets
-            !! number of gene subsets that can be stored in `work_arr_paralog_subsets`. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
+            !! number of gene subsets that can be stored in `work_arr_paralog_subsets`. ***USE `calc_work_arr_paralog_subsets_size_impl` TO DETERMINE THIS NUMBER***
         integer(int32), dimension(n_mask_chunks, n_paralog_subsets), intent(inout) :: work_arr_paralog_subsets
             !! working array to hold bitmask encoded subsets for detection; the results and active
             !! subsets already in it are kept
@@ -599,17 +599,18 @@ contains
         end select
     end subroutine filter_paralogs_by_pattern_impl
 
-    !> M_EXPORT_C
-    !| summary: Calculates the needed size for the paralog-subsets work array
+    !> summary: Calculates the needed size for the paralog-subsets work array
     !| AUTHOR_FRANZ_ERIC_SILL
     !| The `detect_*` subroutines need a work array for the to be tested subsets.
     !| In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
     !| This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.
     !|
     !| This subroutine calculates the needed size for the work array.
-    pure subroutine calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_mask, n_mask_chunks, ierr)
+    pure subroutine calc_work_arr_paralog_subsets_size_impl(max_subset_size, n_genes, work_array_size, filtered_paralogs_mask, n_mask_chunks)
         integer(int32), intent(in) :: n_genes
             !! number of genes
+            !! DM_MIN(1_int32)
+            !! DM_MAX(n_mask_chunks * 32)
         integer(int32), intent(in) :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes
         integer(int32), intent(inout) :: max_subset_size
@@ -625,23 +626,15 @@ contains
             !! The calculated needed work array size in absolute worst case scenario. Look into source for details.
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_mask
             !! Output mask with all genes disabled that did not pass the filter
-        integer(int32), intent(out) :: ierr
-            !! Error code
 
         integer(int32), parameter :: max_int32 = huge(0_int32)
         integer(int32) :: i_gene, subset_size, extensions_count, results, previous_results, n_genes_filtered
 
-        call set_ok(ierr)
 
         if (max_subset_size == 0) then
             work_array_size = 0
             return
         end if
-
-        call validate_dimension_size(n_mask_chunks, ierr)
-        call validate_in_range_int(n_genes, ierr, min=1_int32)
-        call validate_in_range_int(max_subset_size, ierr, min=1_int32)
-        if (is_err(ierr)) return
 
         n_genes_filtered = 0
         do concurrent (i_gene = 1:n_genes) shared(filtered_paralogs_mask) reduce(+:n_genes_filtered)
@@ -694,5 +687,5 @@ contains
         ! all subsets with last gene enabled are counted as a result.
         ! as the subset of size 1 with last gene is not a valid subset, remove it (can not be extended, thus also not part of initialization)
         work_array_size = work_array_size - 1
-    end subroutine calc_work_arr_paralog_subsets_size
+    end subroutine calc_work_arr_paralog_subsets_size_impl
 end module tox_paralog_analysis_impl

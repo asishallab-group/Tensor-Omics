@@ -157,8 +157,6 @@ from .tox_paralog_analysis import (
     detect_subfunctionalization,
     filter_paralogs_by_pattern_dosage_effect,
     filter_paralogs_by_pattern_subfunctionalization,
-)
-from .tox_paralog_analysis_impl import (
     calc_work_arr_paralog_subsets_size,
 )
 from .tox_relative_axis_plane_tools import (
