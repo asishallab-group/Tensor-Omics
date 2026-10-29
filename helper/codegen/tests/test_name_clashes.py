@@ -88,7 +88,7 @@ class TestALocalTheWrapperDeclares:
     def test_handled_beside_a_prologue_is_refused(self):
         guard = procedure(
             "guard", real("values", Intent.IN, "(n)"), integer("n"),
-            logical("handled", Intent.OUT, kind="c_bool"), ierr(), meta=IMPL,
+            logical("handled", Intent.OUT), ierr(), meta=IMPL,
         )
         crunch = procedure(
             "crunch_impl", real("values", Intent.IN, "(n)"), integer("n"),

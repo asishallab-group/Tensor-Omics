@@ -763,7 +763,8 @@ belongs instead: at the top of the implementation, where every caller gets it.
 an emitter has no author's line to point at. Every way of getting one wrong therefore passed --
 a name that resolved to nothing produced a wrapper with no prologue; a dummy that matched nothing
 was dropped from the keyword call; a prologue without `handled` left the wrapper branching on an
-undefined logical. All are errors now, in `ir/validate.py`.
+undefined logical, and one with a `logical(c_bool)` `handled` did not compile, the wrapper's own
+flag being a default logical. All are errors now, in `ir/validate.py`.
 
 **Rejected -- letting the presence of a prologue switch off the `<base>_perm` sorting.** More
 explicit on the face of it, but at the wrong granularity: a prologue is per-implementation and

@@ -868,7 +868,8 @@ pure subroutine prepare_ranking(z_scores, n_genes, tmp_valid_perm, threshold, ha
 
 `handled` is a **default** `logical`, not the `logical(c_bool)` of an argument that crosses to C:
 it never does, and the wrapper declares its flag as a default `logical` and passes that, so a
-`logical(c_bool)` one does not compile ("Type mismatch in argument 'handled'").
+`logical(c_bool)` one would not compile ("Type mismatch in argument 'handled'"). The generator
+refuses any other kind, naming the prologue and the argument.
 
 **What the prologue writes and the implementation only reads never reaches a caller.** An argument
 that is `intent(out)` on the prologue and `intent(in)` on the implementation is dropped from
@@ -905,7 +906,8 @@ three lines and no directive. That is where LOESS's degenerate-input check lives
 
 - a `DM_PROLOGUE` naming a procedure that does not exist
 - a prologue with no `handled`, or one that is not a scalar `logical, intent(out)` — the wrapper
-  returns early on it regardless, so without it that branch reads an undefined value
+  returns early on it regardless, so without it that branch reads an undefined value — or one of
+  another kind than the default `logical` the wrapper declares (`logical(c_bool)`)
 - a dummy that is one edit from an implementation argument — a misspelling, not a new argument
 - a dummy that is the mode argument, or one scoped to a mode, of an implementation that splits per
   mode (Section 5.11) — the wrappers for the other modes do not have it
@@ -1369,7 +1371,7 @@ source and carries a note saying what to write instead.
 | an `allocatable` local **or dummy** anywhere in an **implementation module** | the generated `foo` owns the memory, not the implementation (Sections 4 and 5.7) |
 | a `use` in an **implementation module** that names neither another `_impl` module nor a whitelisted one | the bound on what it may reach is what makes the allocation rule hold across modules, and what keeps it below the wrappers rather than beside them (Section 4) |
 | a `DM_PROLOGUE` naming a procedure that does not exist | the wrapper would be generated with no prologue at all (Section 5.13) |
-| a prologue with no `handled`, or one that is not a scalar `logical, intent(out)` | the wrapper returns early on it regardless, so the branch would read an undefined value (Section 5.13); declare it a default `logical`, as the wrapper's flag is |
+| a prologue with no `handled`, or one that is not a scalar `logical, intent(out)`, or one of another kind than the default `logical` | the wrapper returns early on it regardless, so the branch would read an undefined value (Section 5.13); and it passes its own default `logical` flag, which a `logical(c_bool)` dummy does not take |
 | a prologue dummy one edit from an implementation argument | a misspelling would otherwise become a new argument, and the two would be different values (Section 5.13) |
 | a prologue dummy that some mode's wrapper does not have | the prologue runs in all of them (Section 5.13) |
 | a prologue on an implementation with nothing to take over and no arguments of its own | only one wrapper is generated, and it has no prologue for this to run in (Section 5.13) |

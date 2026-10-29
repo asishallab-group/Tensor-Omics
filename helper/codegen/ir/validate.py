@@ -1323,6 +1323,10 @@ def _check_prologue_reports_handled(impl: Procedure, prologue: Procedure,
     The generated wrapper declares `handled` and branches on it unconditionally. A prologue
     that does not take it never assigns it, and the branch reads an undefined logical --
     which no compiler is obliged to reject and gfortran does not.
+
+    And it declares it a default `logical` (`fortran_wrapper._prologue_local`), which it passes
+    by keyword: argument association does not convert kinds, so a prologue's `logical(c_bool)`
+    passed the generator and failed to compile (#221 WP8).
     """
     name = conventions.prologue_handled_arg
     handled = prologue.argument(name)
@@ -1341,6 +1345,17 @@ def _check_prologue_reports_handled(impl: Procedure, prologue: Procedure,
         diagnostics.error(
             f"prologue argument '{name}' is not a scalar logical", handled,
             note="it is the flag the wrapper returns early on",
+        )
+    elif handled.type.kind is not None:
+        diagnostics.error(
+            f"prologue '{prologue.name}' declares '{name}' as {handled.type}, not as a default "
+            f"logical", handled,
+            note=(
+                f"the wrapper declares its flag `logical :: {name}` and passes it, and argument "
+                f"association does not convert kinds, so this would not compile (\"Type mismatch "
+                f"in argument '{name}'\"); declare `logical, intent(out) :: {name}`. It never "
+                f"crosses to C, so it needs no C kind"
+            ),
         )
     elif handled.intent is not Intent.OUT:
         diagnostics.error(

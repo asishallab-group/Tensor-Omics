@@ -629,8 +629,9 @@ A `DM_PROLOGUE` is checked too, having had no analysis or validation at all befo
 - it must declare a scalar `logical, intent(out) :: handled` — the wrapper returns early on it
   regardless, so without it that branch reads an undefined value. A default `logical`: the wrapper
   declares its flag so (`emit/fortran_wrapper._prologue_local`) and passes it, and it never
-  crosses to C. The kind is not checked, so a `logical(c_bool)` one passes the generator and then
-  fails to compile ("Type mismatch in argument 'handled'")
+  crosses to C. Any other kind is refused, naming the prologue and the argument: argument
+  association does not convert kinds, so a `logical(c_bool)` one passed the generator and then
+  failed to compile ("Type mismatch in argument 'handled'")
 - a dummy naming an implementation argument is supplied from it; one naming nothing becomes an
   argument of `foo`, which is what the prologue derives *from*. A name **one edit** from an
   implementation argument is refused as a misspelling, since it would otherwise become a new

@@ -753,6 +753,22 @@ class TestPrologue:
 
         assert "'handled' is not a scalar logical" in only_error(self.bag).message
 
+    @pytest.mark.parametrize("kind", ["c_bool", "4"])
+    def test_a_handled_of_another_kind_than_default_is_rejected(self, kind):
+        # the wrapper's flag is a default logical and argument association does not convert
+        # kinds, so a logical(c_bool) one passed here and failed to compile (#221 WP8)
+        self.checked(guard_arguments=self.guard(
+            b.integer("n", Intent.IN, doc="length"),
+            b.logical("handled", Intent.OUT, kind=kind, doc="dealt with"),
+            b.ierr(),
+        ))
+
+        error = only_error(self.bag)
+        assert error.message == (f"prologue 'guard' declares 'handled' as logical({kind}), "
+                                 f"not as a default logical")
+        assert error.context.entities[0] == ("argument", "handled")
+        assert "logical, intent(out) :: handled" in error.note
+
     def test_a_handled_the_prologue_reads_is_rejected(self):
         self.checked(guard_arguments=self.guard(
             b.integer("n", Intent.IN, doc="length"),
