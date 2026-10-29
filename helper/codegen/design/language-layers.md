@@ -91,7 +91,7 @@ is the 0-d case of the same rule.
 | `integer(int32)` | Python and numpy integers, 0-d arrays; floats whose every value is whole and in range; R integer, and double with whole values (`2` is a double in R: 96 calls in the suites pass one); `-0.0` as 0 | a bool or R logical; a fraction, NaN/NA, an infinity, out of range; strings, objects, datetimes, complex; an R factor, Date, `integer64`; a masked array with masked elements |
 | `real(real64)` | Python and numpy integers and floats; R integer and double; NaN/Inf as `DM_ALLOW_NAN` says | a bool or R logical; strings (never parsed), complex, datetimes, objects; an R Date; a masked array with masked elements |
 | `logical` | bools; any number whose every value is exactly 0 or 1 (12 Python call sites pass 0/1 integers, and `c(1, 0, 1)` is R's own literal for a mask) | any other number, NaN/NA/None, strings, objects |
-| a string | a Python `str`, or an `os.PathLike` whose path is a `str`; an R character vector of length 1, not NA | bytes, None, a sequence, a number; length other than 1; NA; a NUL, a lone surrogate, invalid UTF-8 |
+| a string | a Python `str`, or an `os.PathLike` whose path is a `str`; an R character vector of length 1, not NA, marked UTF-8 or latin1, or unmarked with UTF-8 bytes | bytes, None, a sequence, a number; length other than 1; NA; a NUL, a lone surrogate, invalid UTF-8; an R string marked "bytes", or latin1 with a byte that is no character |
 | an array of strings | a list, tuple, ndarray or Series of `str`; an R character vector, or a factor (its labels) | a bare `str`; a set or dict, which has no order; any element that is not a `str`; NA, a NUL, a surrogate, invalid UTF-8; a value longer than a declared length |
 | a mode | a valid string matching one of the modes whole (case aside, as before), after its trailing blanks are dropped like any string's (`'ward '` is `ward`) | anything else, a leading blank included; the message lists the modes |
 | rank | numpy `ndim` == the declared rank; R `length(dim(x))`, where a plain vector, a 1-D array and a table are rank 1, and an all-numeric data.frame is a matrix (as a DataFrame is in Python) | any other rank: nothing is flattened |
@@ -103,8 +103,23 @@ parameter says so (`emit.doc_contract`). A string longer than a *declared* lengt
 the buffer would cut it short, which turned `delimiter='::'` into `':'` and a mode
 `'weightedXYZ'` into `'weighted'`. A mode is therefore matched whole in the binding, which also
 lets the refusal name the argument and list the modes, where the C wrapper's named neither.
-Strings reach Fortran as UTF-8 in R too (a latin1 string is translated, so it equals its UTF-8
-twin), and come back marked UTF-8.
+Strings reach Fortran as UTF-8 in R too, and come back marked UTF-8.
+
+**An R string crosses by what R marks it as, never by the session's locale** (FES 2026-10-29).
+Marked UTF-8, it is passed as it stands; marked latin1, it is translated (so it equals its UTF-8
+twin); unmarked -- what `readLines` and `rawToChar` give -- it is passed as it stands if its
+bytes are well-formed UTF-8, in any locale. Everything else is refused by name: an unmarked
+string that is not UTF-8, one marked "bytes", which has no encoding, and a latin1 one holding a
+byte Windows-1252 (R's reading of latin1) leaves undefined. The first design translated every
+string the way `enc2utf8` does, and that is locale-dependent: in the C locale (`Rscript` under
+cron, a container with `LANG` unset) R takes every non-ASCII native byte for one it cannot
+convert and writes it out as escape text, so `"\u00e9t\u00e9"` read from a UTF-8 file reached
+Fortran as the ASCII `<c3><a9>t<c3><a9>` -- valid UTF-8, so nothing refused it -- where main had
+passed the bytes unchanged. *Rejected:* translating an unmarked string from the locale's charset
+and refusing it where that fails: in the C locale it would refuse every non-ASCII string read
+from a file, the commonest case, which main handled. *Consequence:* in a latin1 locale, an
+unmarked latin1 string is refused, with a hint to mark it (`Encoding(x) <- "latin1"`); R has run
+in UTF-8 by default on Windows since 4.2, as on macOS and the Linux distributions.
 
 Some refusals say what to do instead: a uint32 bit-mask word of 2^31 or more passes as
 `.view(np.int32)`; a bytes array decodes with `.astype(str)`; an `integer64` converts with

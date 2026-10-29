@@ -57,7 +57,7 @@ Python finds the library through `TENSOR_OMICS_LIBRARY` or at `build/libtensor_o
 | an array of strings | a list, tuple, NumPy array or pandas Series of `str`; an R character vector, or a factor (its labels) | a bare `str`, a set or dict (they have no order), any element that is not a string, NA, a NUL character, invalid UTF-8, an element longer than a fixed declared length |
 | a mode | one of the strings the documentation lists, matched whole, case ignored | anything else; the message lists the modes |
 
-Arrays must have the declared rank: nothing is flattened, so a matrix passed for a vector is refused. In R a plain vector, a 1-D array and a table count as vectors, and an all-numeric data.frame as a matrix. A NumPy masked array is accepted only with no masked elements. R strings in another encoding, such as latin1, reach the library as UTF-8, and strings come back to R marked UTF-8.
+Arrays must have the declared rank: nothing is flattened, so a matrix passed for a vector is refused. In R a plain vector, a 1-D array and a table count as vectors, and an all-numeric data.frame as a matrix. A NumPy masked array is accepted only with no masked elements. R strings marked latin1 reach the library translated to UTF-8, and strings come back to R marked UTF-8. An R string with no encoding mark, such as one `readLines` gives, is passed as it stands if its bytes are UTF-8, in any locale; otherwise, and for a string marked "bytes", it is refused: mark a latin1 one with `Encoding(x) <- "latin1"`.
 
 Where a refusal has an obvious fix, the message names it: `.view(np.int32)` for a `uint32` bit-mask word of 2^31 or more, `.astype(str)` for a bytes array, `.filled()` for a masked array, `as.integer()` or `as.double()` for an R `integer64`.
 

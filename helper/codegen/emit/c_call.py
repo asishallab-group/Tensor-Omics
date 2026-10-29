@@ -1010,21 +1010,47 @@ static inline int tox_utf8_valid(const unsigned char* s, size_t n) {
     return 1;
 }
 
-// The byte length of e as `text`, its translation: R's own count where nothing was
-// translated, which is what translating an ASCII or UTF-8 string does
-static inline size_t tox_utf8_length(SEXP e, const char* text) {
-    return text == CHAR(e) ? (size_t) LENGTH(e) : strlen(text);
-}
-
-// A string as the UTF-8 bytes Fortran is handed, whatever R marks it as: a latin1 string
-// is translated (enc2utf8 in C), a native one in a non-UTF-8 locale too. A "bytes" string
-// has no encoding to translate from, and is refused rather than passed on as it stands.
-static inline const char* tox_utf8(SEXP e, const char* argument, R_xlen_t i) {
-    if (Rf_getCharCE(e) == CE_BYTES)
-        tox_refuse(argument, "tox_type_error",
-                   "'%s' element %lld is marked as bytes, which has no encoding to read it in",
-                   argument, (long long) i + 1);
-    return Rf_translateCharUTF8(e);
+// A string as the UTF-8 bytes Fortran is handed, with their count in *length -- or NULL, and
+// *problem saying why it cannot cross. By what R marks it as, the same in every locale:
+// - ASCII, or marked UTF-8: as it stands, if it is well-formed;
+// - marked latin1: translated, as enc2utf8() translates it (R reads latin1 as Windows-1252),
+//   unless it holds one of the bytes that code page leaves undefined;
+// - unmarked (native): as it stands if its bytes are well-formed UTF-8, and refused otherwise.
+//   Never translated from the locale: in the C locale R takes every non-ASCII byte for one it
+//   cannot convert and writes it out as escape text, so the UTF-8 bytes c3 a9 of an e-acute
+//   reached Fortran as the eight characters "<c3><a9>";
+// - marked "bytes": it has no encoding to read it in.
+// So no escape text R makes up can reach Fortran in place of the caller's string.
+static inline const char* tox_utf8(SEXP e, size_t* length, const char** problem) {
+    const char* text = CHAR(e);
+    *length = (size_t) LENGTH(e);
+    *problem = NULL;
+    if (Rf_charIsASCII(e)) return text;  // and without a NUL: R cannot hold one
+    cetype_t encoding = Rf_getCharCE(e);
+    if (encoding == CE_BYTES) {
+        *problem = "is marked as bytes, which has no encoding to read it in";
+        return NULL;
+    }
+    if (encoding == CE_LATIN1) {
+        const char* translated = Rf_translateCharUTF8(e);
+        // every latin1 byte is one character, so a translation holding more characters than
+        // the string has bytes is one where R wrote an undefined byte out as "<81>"
+        size_t characters = 0;
+        for (const unsigned char* p = (const unsigned char*) translated; *p; ++p)
+            characters += (*p & 0xC0) != 0x80;
+        if (characters != *length) {
+            *problem = "is marked latin1, but holds a byte that is no character in it";
+            return NULL;
+        }
+        *length = strlen(translated);
+        return translated;
+    }
+    if (!tox_utf8_valid((const unsigned char*) text, *length)) {
+        *problem = "is not valid UTF-8 (a string in another encoding needs marking as one, "
+                   "such as Encoding(x) <- \"latin1\")";
+        return NULL;
+    }
+    return text;
 }
 
 // The width a character(len=n) array needs: the longest element, NA skipped. 0 for a
@@ -1037,8 +1063,8 @@ static inline const char* tox_utf8(SEXP e, const char* argument, R_xlen_t i) {
 // case to 1 would send width 1 beside a null pointer, and M_CHECK_ARRAY_NON_NULL would then
 // reject an optional the caller legitimately omitted.
 //
-// Measured in UTF-8 bytes, as tox_char_in copies it. An NA or a "bytes" string is skipped
-// here and refused there.
+// Measured in UTF-8 bytes, as tox_char_in copies it. An NA, and a string that cannot cross
+// as UTF-8, is skipped here and refused there.
 static inline int tox_max_strlen(SEXP x) {
     if (x == R_NilValue || TYPEOF(x) != STRSXP) return 0;
     int longest = 0, n = (int) XLENGTH(x);
@@ -1046,11 +1072,10 @@ static inline int tox_max_strlen(SEXP x) {
     for (int i = 0; i < n; ++i) {
         SEXP e = elements[i];
         if (e == NA_STRING) continue;
-        int m;
-        if (Rf_charIsASCII(e)) m = (int) LENGTH(e);
-        else if (Rf_getCharCE(e) == CE_BYTES) continue;
-        else m = (int) tox_utf8_length(e, Rf_translateCharUTF8(e));
-        if (m > longest) longest = m;
+        size_t length;
+        const char* problem;
+        if (tox_utf8(e, &length, &problem) == NULL) continue;
+        if ((int) length > longest) longest = (int) length;
     }
     return longest > 0 ? longest : 1;
 }
@@ -1076,19 +1101,11 @@ static inline char* tox_char_in(SEXP x, int len, const char* argument) {
     for (int i = 0; i < n; ++i) {
         SEXP e = elements[i];
         if (e == NA_STRING) tox_refuse_na(argument);
-        const char* text;
         size_t slen;
-        if (Rf_charIsASCII(e)) {
-            // valid UTF-8 already, and without a NUL: R cannot hold one
-            text = CHAR(e);
-            slen = (size_t) LENGTH(e);
-        } else {
-            text = tox_utf8(e, argument, i);
-            slen = tox_utf8_length(e, text);
-            if (!tox_utf8_valid((const unsigned char*) text, slen))
-                tox_refuse(argument, "tox_type_error",
-                           "'%s' element %d is not valid UTF-8", argument, i + 1);
-        }
+        const char* problem;
+        const char* text = tox_utf8(e, &slen, &problem);
+        if (text == NULL)
+            tox_refuse(argument, "tox_type_error", "'%s' element %d %s", argument, i + 1, problem);
         if (slen > (size_t) len)
             tox_refuse(argument, "tox_type_error",
                        "'%s' element %d is %d bytes long in UTF-8, but it is declared %d long, "

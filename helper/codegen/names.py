@@ -107,7 +107,7 @@ R_SHIM_HELPERS = frozenset({
     "tox_bool_alloc", "tox_bool_in", "tox_bool_out", "tox_char_alloc", "tox_char_in",
     "tox_char_out", "tox_imax", "tox_imin", "tox_int_copy", "tox_int_in", "tox_max_strlen",
     "tox_prod", "tox_refuse", "tox_refuse_element", "tox_refuse_na", "tox_refuse_type",
-    "tox_shape_of", "tox_show", "tox_sum_true", "tox_utf8", "tox_utf8_length", "tox_utf8_valid",
+    "tox_shape_of", "tox_show", "tox_sum_true", "tox_utf8", "tox_utf8_valid",
 })
 
 

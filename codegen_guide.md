@@ -1224,7 +1224,10 @@ What that means for you:
   reached a `len=1` dummy as `':'`. Declare `len=*` where the caller's string decides the length.
 - **What reaches you is valid UTF-8 without a NUL**, whatever the caller held: the bindings refuse
   a NUL, a lone surrogate and invalid UTF-8, and R translates a latin1 string before it crosses,
-  so `"\u00e9"` is one value whichever encoding R marked it with.
+  so `"\u00e9"` is one value whichever encoding R marked it with. An R string R has not marked
+  (what `readLines` gives) crosses as it stands if its bytes are UTF-8, in any locale, and is
+  refused otherwise -- it is never translated from the locale, which in the C locale wrote the
+  bytes out as escape text such as `<c3><a9>`.
 
 ### 6.8 Never export an implementation
 

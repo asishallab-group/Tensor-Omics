@@ -349,8 +349,12 @@ The parts a source author does not need, and a generator maintainer does:
   input of the Fortran type. R checks kind, rank and a single value in `tox_validate.R`; every
   element of an integer, logical or character array is checked by the C shim as it converts it
   (`tox_int_in`, `tox_bool_in`, `tox_char_in` in `tox_marshal.h`), which raises the R wrapper's own
-  condition from C (`tox_refuse`, from `emit.errors_r`'s classes). A latin1 string reaches Fortran
-  as UTF-8, and a returned string is marked UTF-8. Trailing blanks are Fortran semantics,
+  condition from C (`tox_refuse`, from `emit.errors_r`'s classes). An R string crosses by what R
+  marks it as, the same in every locale (`tox_utf8`): marked UTF-8 as it stands, marked latin1
+  translated to UTF-8, unmarked as it stands if its bytes are UTF-8; one marked "bytes", one that
+  is not well-formed and a latin1 byte with no character are refused by name, so the escape text
+  R makes up for what it cannot convert (`<e9>`) never reaches Fortran. A returned string is
+  marked UTF-8. Trailing blanks are Fortran semantics,
   accepted and dropped, and every generated string parameter says so (`emit.doc_contract`).
 - **Every input axis is compared before the call, by one rule** (#221 A-shape,
   `emit.shape_checks`): an axis that names an extent is compared with that extent's value, except
@@ -636,7 +640,8 @@ called and naming the argument (`ToxArgumentError` / a `tox_input_error`, no cod
 integer, any number but 0 and 1 for a logical, a string, object, datetime or complex for a
 number, an R factor, Date or `integer64` for a number, a masked array with masked elements, a
 non-`str` for a string, a bare `str` for an array of strings, a NUL, a lone surrogate or invalid
-UTF-8, an NA, a string longer than its declared length, an unknown or over-long mode, and any
+UTF-8 (in R, an unmarked string whose bytes are not UTF-8 in any locale, one marked "bytes", and a
+latin1 one holding a byte with no character), an NA, a string longer than its declared length, an unknown or over-long mode, and any
 other rank. A refusal that has a fix names it: `.view(np.int32)` for a uint32 bit-mask word,
 `.astype(str)` for bytes, `as.integer()` for an `integer64`, `.filled()` for a masked array.
 

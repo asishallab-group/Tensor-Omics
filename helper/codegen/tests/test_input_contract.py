@@ -261,8 +261,21 @@ class TestTheShimRefusesAsRDoes:
         header = self.header()
         body = header[header.index("static inline char* tox_char_in"):]
         body = body[:body.index("\n}\n")]
-        assert body.index("tox_utf8(") < body.index("tox_utf8_valid(") < body.index("memcpy(")
+        assert body.index("tox_utf8(") < body.index("tox_refuse(") < body.index("memcpy(")
         assert "a longer value would be cut short" in body
+
+    def test_only_a_latin1_string_is_translated_and_a_native_one_never(self):
+        # translating a native string in a non-UTF-8 locale wrote its bytes out as "<c3><a9>"
+        # escape text, which then passed as valid ASCII (#221 WP8); the run-time cases, in both
+        # locales, are r/test/mod_test_input_contract.R's
+        header = self.header()
+        body = header[header.index("static inline const char* tox_utf8("):]
+        body = body[:body.index("\n}\n")]
+        assert body.count("Rf_translateCharUTF8(") == 1
+        latin1 = body[body.index("CE_LATIN1"):]
+        assert latin1.index("Rf_translateCharUTF8(") < latin1.index("return translated")
+        assert body.rindex("tox_utf8_valid(") > body.index("return translated")
+        assert "Rf_translateCharUTF8(" not in header.replace(body, "")
 
 
 def _r_module_text():

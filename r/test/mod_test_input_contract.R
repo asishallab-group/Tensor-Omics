@@ -221,6 +221,49 @@ test_a_returned_string_is_marked_utf8 <- function() {
   assert_true(Encoding(back)[1] == "UTF-8", "marked UTF-8")
 }
 
+# What R marks a string as decides how it crosses, never the session's locale: in the C locale an
+# unmarked "été" was translated into the escape text "<c3><a9>t<c3><a9>", and that passed
+# (#221 WP8). Run in the C locale and in the session's own, a UTF-8 one wherever the suites run.
+in_each_locale <- function(check) {
+  original <- Sys.getlocale("LC_CTYPE")
+  on.exit(Sys.setlocale("LC_CTYPE", original))
+  for (locale in unique(c("C", original))) {
+    if (Sys.setlocale("LC_CTYPE", locale) == "") stop(sprintf("no locale %s", locale), call. = FALSE)
+    check(locale)
+  }
+}
+
+test_a_string_reaches_fortran_by_its_mark_in_any_locale <- function() {
+  unmarked <- rawToChar(as.raw(c(0xc3, 0xa9, 0x74, 0xc3, 0xa9)))  # UTF-8 bytes, as readLines gives them
+  marked <- unmarked
+  Encoding(marked) <- "UTF-8"
+  latin1 <- iconv(marked, "UTF-8", "latin1")
+  in_each_locale(function(locale) {
+    for (spelling in list(unmarked, marked, latin1)) {
+      serialize_char_helper(spelling, scratch("mark.bin"))
+      back <- deserialize_char_helper(scratch("mark.bin"))
+      assert_true(identical(charToRaw(back), charToRaw(marked)),
+                  sprintf("%s in %s: %s", Encoding(spelling), locale, paste(charToRaw(back), collapse = " ")))
+    }
+    # one string to Fortran, however it is spelled: duplicates
+    assert_error(validate_string_array_uniqueness(c(unmarked, marked, latin1)), locale, ERR_INVALID_INPUT)
+  })
+}
+
+test_a_string_that_cannot_cross_as_utf8_is_refused_in_any_locale <- function() {
+  native <- rawToChar(as.raw(c(0x66, 0xe9, 0x67)))                 # latin1 bytes, unmarked
+  bytes <- "é"
+  Encoding(bytes) <- "bytes"
+  undefined <- rawToChar(as.raw(c(0x61, 0x81)))                    # no character in Windows-1252
+  Encoding(undefined) <- "latin1"
+  in_each_locale(function(locale) {
+    refused(serialize_char_helper(native, scratch("native.bin")), "arr", "element 1 is not valid UTF-8")
+    refused(serialize_char_helper(bytes, scratch("bytes.bin")), "arr", "element 1 is marked as bytes")
+    refused(serialize_char_helper(undefined, scratch("undefined.bin")), "arr",
+            "element 1 is marked latin1, but holds a byte that is no character in it")
+  })
+}
+
 # =====================================================================================
 # trailing blanks: Fortran semantics, accepted and dropped
 # =====================================================================================

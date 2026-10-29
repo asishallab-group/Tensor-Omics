@@ -383,10 +383,15 @@ bytes. Fortran agrees: `character(len=n)` of kind `c_char` is n bytes.
 **The API declares that a string is UTF-8** (#221, the input contract in
 `language-layers.md`). R used to copy a string's bytes as they stood, so a latin1 `"\xe9"` and
 the UTF-8 `"\u00e9"` reached Fortran as two different strings, and marked what came back
-native/unknown, which is wrong outside a UTF-8 locale. Now `tox_char_in` translates every
-string to UTF-8 (`Rf_translateCharUTF8`, which is `enc2utf8` in C) and refuses one that is still
-not well-formed UTF-8, or is marked "bytes", and `tox_char_out` marks what it returns
-`CE_UTF8`. Python's `str` is Unicode already: it refuses a lone surrogate, which no encoding
+native/unknown, which is wrong outside a UTF-8 locale. Now `tox_char_in` takes every string
+through `tox_utf8`, which goes by what R marks it as and never by the locale: a string marked
+UTF-8, and an unmarked one, passes as it stands if it is well-formed UTF-8; a latin1 one is
+translated (`Rf_translateCharUTF8`, which is `enc2utf8` in C, and only for it); anything else is
+refused -- "bytes", and a latin1 byte Windows-1252 leaves undefined, which R would write out as
+`<81>` (caught by counting: every latin1 byte is one character). `tox_char_out` marks what it
+returns `CE_UTF8`. Translating an unmarked string too, as the first form did, is locale-dependent:
+in the C locale R writes every non-ASCII byte out as escape text (`<c3><a9>`), which is valid
+ASCII and so passed (`language-layers.md`). Python's `str` is Unicode already: it refuses a lone surrogate, which no encoding
 can carry, and a NUL, which R cannot hold at all. So what Fortran sees and builds is UTF-8 by
 contract, and marking it so is not an assertion about bytes it never checked.
 
