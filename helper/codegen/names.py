@@ -143,12 +143,20 @@ PYTHON_THIRD_PARTY_IMPORTS = (("numpy", "_np"),)
 #: `_` like everything here: no module generated from a Fortran one can have its name, and it
 #: stays out of the package's public surface.
 PYTHON_CONTRACT = "_contract"
+#: The package's error module, generated from `tox_errors` (`emit.errors_python`)
+PYTHON_ERROR_MODULE = "error_handling"
+#: The package's loader of the shared library
+PYTHON_LIBRARY_MODULE = "library"
+#: The submodules every package has beside the one per Fortran module: names a procedure
+#: re-exported at the package's top level would hide (`emit.python_ctypes.check_package_names`)
+PYTHON_PACKAGE_MODULES = (PYTHON_LIBRARY_MODULE, PYTHON_ERROR_MODULE, PYTHON_CONTRACT)
 #: What it imports from the package itself, as (module, ((name, bound name), ...))
 PYTHON_PACKAGE_IMPORTS = (
     (".", ((PYTHON_CONTRACT, PYTHON_CONTRACT),)),
-    (".error_handling", (("ToxArgumentError", "_ToxArgumentError"),
-                         ("check_err_code", "_check_err_code"))),
-    (".library", (("load_library", "_load_library"), ("nullable", "_nullable"))),
+    (f".{PYTHON_ERROR_MODULE}", (("ToxArgumentError", "_ToxArgumentError"),
+                                 ("check_err_code", "_check_err_code"))),
+    (f".{PYTHON_LIBRARY_MODULE}", (("load_library", "_load_library"),
+                                   ("nullable", "_nullable"))),
 )
 #: The names those are bound to, as the generated code spells them
 PYTHON_NUMPY = "_np"

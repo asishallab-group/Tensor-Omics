@@ -310,6 +310,21 @@ with `code` NA, which R's `assert_error` already reads as "no tox code".
 library reported something it was never asked, and turn six Python tests that assert "no tox
 code" into failures for no gain.
 
+**The package exports the error module whole** (#221 C, FES). `from tensor_omics import
+ERR_NAN_INF, ToxInputError` works, as do every `ERR_*` and `STAT_*` code, `ARG_POS_FACTOR`, every
+exception class and `check_err_code`, all listed in `__all__`: Python is where R already was, whose
+`error_handling.R` is sourced into the global environment. Before, a caller who wanted to compare
+a code or catch by class had to know the submodule (`tensor_omics.error_handling`), while the
+package itself offered `ToxError` and `check_err_code` alone. The names come from one helper,
+`errors_python.public_names`, that the error module is emitted from too, so #220's `STAT_*` codes
+follow with no edit. A name the top level would then bind twice -- a procedure or module called
+like one of these or like a submodule, ignoring case -- is a generator error
+(`python_ctypes.check_package_names`).
+
+*Rejected:* exporting them without listing them in `__all__`. They would be importable and still
+invisible to `import *`, documentation tools and linters: a half state. `import *` gains only
+`ERR_`, `STAT_` and `Tox` names, and `ARG_POS_FACTOR` and `check_err_code`, which is acceptable.
+
 ---
 
 ## Decision: shape checks happen in the binding language — and in R that is R, not C
@@ -509,6 +524,11 @@ they stay `<name>_f`, `<name>_mode_f`, `<name>_mode_p`, `<name>_address`, `<name
 `handled` (and the C wrapper module's `empty_view_anchor`), and an argument is refused where the
 wrapper emits the same name -- read off the wrapper as emitted, together with what it calls,
 imports, uses as a kind and finds declared in its module (`emit/name_clashes.py`).
+
+A procedure's or a module's name meets one more set of names at the Python package's top level:
+the error module's exports and the package's submodules, beside which `tensor_omics` binds it. A
+clash there is refused too, ignoring case (`python_ctypes.check_package_names`; the errors
+decision above).
 
 **Rejected -- renaming instead.** The published name is the API, and a binding that quietly calls
 an argument `lambda_` is one more thing a reader of the Fortran cannot predict.

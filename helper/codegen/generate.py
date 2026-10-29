@@ -25,13 +25,13 @@ from .emit.name_clashes import check_wrapper_names
 from .emit.doc_links import LinkResolver, build as build_links
 from .emit.doc_tiers import build as build_tiers
 from .emit.python_contract import contract_module
-from .emit.python_ctypes import PythonEmitter
+from .emit.python_ctypes import PythonEmitter, check_package_names
 from .emit.r_wrapper import RWrapperEmitter
 from .emit.c_call import CCallEmitter
 from .emit.vscode_snippets import SnippetEmitter
 from .frontend.ford_frontend import FordFrontend, ParsedProject
 from .ir.errors import ErrorCatalogue
-from .names import PYTHON_CONTRACT
+from .names import PYTHON_CONTRACT, PYTHON_ERROR_MODULE, PYTHON_LIBRARY_MODULE
 from .ir.roles import analyse_project
 from .ir.validate import validate_project
 from .synthesize import (
@@ -136,6 +136,8 @@ def generate(
     if any(target in targets for target in ("python", "r", "snippets")):
         catalogue = _catalogue(project, parsed.arg_pos_factor, diagnostics, conventions)
         if "python" in targets:
+            # what the package's top level binds is known only with the error table read
+            check_package_names(published, catalogue, diagnostics)
             files += _python_files(published, catalogue, paths, library, synthesis)
         if "r" in targets:
             files += _r_files(published, catalogue, paths, synthesis)
@@ -270,9 +272,9 @@ def _python_files(binding: CBinding, catalogue, paths: Paths, library: str,
     )
     out = paths.resolve(paths.python_out_dir)
     files = [
-        GeneratedFile(out / "library.py", emitter.library_module()),
-        GeneratedFile(out / "__init__.py", emitter.package_init(list(binding))),
-        GeneratedFile(out / "error_handling.py", PythonErrorEmitter(catalogue).module()),
+        GeneratedFile(out / f"{PYTHON_LIBRARY_MODULE}.py", emitter.library_module()),
+        GeneratedFile(out / "__init__.py", emitter.package_init(list(binding), catalogue)),
+        GeneratedFile(out / f"{PYTHON_ERROR_MODULE}.py", PythonErrorEmitter(catalogue).module()),
         GeneratedFile(out / f"{PYTHON_CONTRACT}.py", contract_module()),
     ]
     files += [

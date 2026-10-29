@@ -49,14 +49,6 @@ def _generate(out: Path) -> None:
     for module in binding:
         (out / f"{module.name}.F90").write_text(FortranCEmitter().module(module))
 
-    emitter = PythonEmitter(library="build/libfixtures.so")
-    package = out / "tensor_omics"
-    package.mkdir(exist_ok=True)
-    (package / "library.py").write_text(emitter.library_module())
-    (package / "__init__.py").write_text(emitter.package_init(list(binding)))
-    for module in binding:
-        (package / f"{module.stripped_name}.py").write_text(emitter.module(module))
-
     errors = DiagnosticBag()
     real = FordFrontend(Paths(root=REPO_ROOT, src_dir=Path("src/f42")), errors).parse()
     catalogue = ErrorCatalogue.from_module(
@@ -65,6 +57,14 @@ def _generate(out: Path) -> None:
         real.project.constant_values(),
         arg_pos_factor=real.arg_pos_factor,
     )
+
+    emitter = PythonEmitter(library="build/libfixtures.so")
+    package = out / "tensor_omics"
+    package.mkdir(exist_ok=True)
+    (package / "library.py").write_text(emitter.library_module())
+    (package / "__init__.py").write_text(emitter.package_init(list(binding), catalogue))
+    for module in binding:
+        (package / f"{module.stripped_name}.py").write_text(emitter.module(module))
     (package / "error_handling.py").write_text(PythonErrorEmitter(catalogue).module())
     (package / f"{PYTHON_CONTRACT}.py").write_text(contract_module())
 
@@ -136,6 +136,26 @@ class TestItRuns:
         # fx_cluster (the expert twin) gets n_work via DM_OUTPUT_FROM(AUTO): it calls
         # fx_work_size itself, so the caller never supplies the work size
         assert "fx_cluster_expert" in tox.__all__
+
+
+class TestTheErrorModuleAtTheTopLevel:
+    """#221 C: what `error_handling` defines is importable from the package itself."""
+
+    def test_the_codes_classes_factor_and_decoder_are_the_error_module_s(self, tox):
+        errors = tox.error_handling
+        for name in ("ERR_OK", "ERR_DIVISION_BY_ZERO", "ARG_POS_FACTOR", "ToxError",
+                     "ToxInputError", "ToxArgumentError", "check_err_code"):
+            assert getattr(tox, name) is getattr(errors, name)
+            assert name in tox.__all__
+
+    def test_a_failed_call_is_caught_by_the_top_level_class_and_code(self, tox):
+        with pytest.raises(tox.ToxInputError) as raised:
+            tox.fx_first_share([0.0, 0.0])
+        assert raised.value.code == tox.ERR_DIVISION_BY_ZERO
+
+    def test_a_binding_side_refusal_is_the_top_level_argument_error(self, tox):
+        with pytest.raises(tox.ToxArgumentError):
+            tox.fx_count_positive(["a"])
 
 
 class TestAutoOutputFrom:

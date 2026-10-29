@@ -13,7 +13,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import (
     normalize_variable_timeseries,
     normalize_single_trajectory,
-    normalize_all_trajectories
+    normalize_all_trajectories,
+    ARG_POS_FACTOR,
+    ERR_DIVISION_BY_ZERO,
+    ERR_OK,
+    ToxArgumentError,
 )
 from test_helpers import run_all_tests, assert_error
 from tensor_omics.error_handling import ERR_EMPTY_INPUT, ERR_NAN_INF
@@ -185,6 +189,25 @@ def test_normalize_all_trajectories():
     for j in range(trajectories.shape[1]):
         assert np.abs(np.min(result[1, j, :])) < TOL, f"Factor 1, Sample {j}: min should be 0"
         assert np.abs(np.max(result[1, j, :]) - 1.0) < TOL, f"Factor 1, Sample {j}: max should be 1"
+
+
+def test_the_status_decodes_with_the_names_the_package_exports():
+    """A status array holds tox codes; the package itself names them (#221)"""
+    trajectories = np.ones((3, 4, 5), dtype=np.float64) * 7.0
+    trajectories[1, :, :] = np.arange(5).reshape(1, 1, 5)  # only factor 1 varies
+
+    status = normalize_all_trajectories(trajectories)["status"]
+
+    codes = status % ARG_POS_FACTOR
+    assert np.all(codes[[0, 2], :] == ERR_DIVISION_BY_ZERO), "a constant factor cannot be scaled"
+    assert np.all(codes[1, :] == ERR_OK), "a varying factor normalizes"
+    # and so is the class of the binding's own refusals
+    try:
+        normalize_all_trajectories("not an array")
+    except ToxArgumentError:
+        pass
+    else:
+        raise AssertionError("a string for an array should be refused by the binding")
 
 
 def test_error_handling():

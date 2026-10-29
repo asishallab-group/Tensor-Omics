@@ -20,6 +20,8 @@ from __future__ import annotations
 from ..abi import extents
 from ..abi.c_abi import stripped_name
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
+from ..diagnostics import DiagnosticBag
+from ..ir.errors import ErrorCatalogue
 from ..ir.types import BaseType, Intent
 from ..names import (
     PYTHON_ARGUMENT_ERROR,
@@ -27,15 +29,18 @@ from ..names import (
     PYTHON_CHECK_ERR_CODE,
     PYTHON_CONTRACT,
     PYTHON_CTYPES as _CTYPES,
+    PYTHON_ERROR_MODULE,
     PYTHON_LOAD_LIBRARY,
     PYTHON_NULLABLE,
     PYTHON_NUMPY as _NP,
     PYTHON_PACKAGE_IMPORTS,
+    PYTHON_PACKAGE_MODULES,
     PYTHON_STDLIB_IMPORTS,
     PYTHON_THIRD_PARTY_IMPORTS,
 )
 from ..render import Writer
 from .error_arguments import shapes_of, sources_of
+from .errors_python import public_names
 from .doc_literals import render as _render
 from .doc_numpydoc import _description, render_docstring
 from .shape_checks import Position, declared_shape, extent_provider, reason, shape_checks
@@ -47,6 +52,50 @@ def _python_extent(extent: str) -> str:
     (`abi.extents.check_binding_extents`), so this cannot fail on one that is emitted.
     """
     return extents.to_python(extent)
+
+def check_package_names(binding, catalogue: ErrorCatalogue,
+                        diagnostics: DiagnosticBag) -> None:
+    """Refuse two things the package's top level would bind to one name.
+
+    `tensor_omics` re-exports every procedure beside everything the error module defines, and
+    a submodule is an attribute of the package too: a procedure called `check_err_code` or
+    `ERR_OK` would replace the error module's, one called `library` would hide the submodule
+    `tensor_omics.library` behind a function, and a Fortran module whose generated one is called
+    `error_handling` would overwrite the error module's file. Compared ignoring case, as Fortran
+    compares names, so `Check_Err_Code` cannot become a second spelling of the same name in
+    the Fortran and R layers it reaches as well. None of this happens on main: procedures
+    are snake_case, codes are `ERR_`/`STAT_`, classes are `Tox*`.
+    """
+    # (name, what it is, where it is declared), the procedures last, so a clash points at the
+    # Fortran an author renames: the procedure where there is one, else the module
+    published = [(name, f"'{name}' of the error module", None)
+                 for name in public_names(catalogue)]
+    published += [(name, f"the package's own submodule '{name}'", None)
+                  for name in PYTHON_PACKAGE_MODULES]
+    published += [(module.stripped_name, f"the module '{module.stripped_name}'", module.module)
+                  for module in binding]
+    published += [(wrapper.stripped_name,
+                   f"the procedure '{wrapper.stripped_name}' of '{module.stripped_name}'",
+                   wrapper.procedure)
+                  for module in binding for wrapper in module]
+
+    by_name: dict[str, list] = {}
+    for entry in published:
+        by_name.setdefault(entry[0].lower(), []).append(entry)
+    for entries in by_name.values():
+        if len(entries) < 2:
+            continue
+        located = [entity for _, _, entity in entries if entity is not None]
+        diagnostics.error(
+            " and ".join(what for _, what, _ in entries)
+            + " have the same name at the top level of the Python package",
+            entity=located[-1] if located else None,
+            note=(
+                "the package binds it once, so one hides the other; names are compared "
+                "ignoring case, as Fortran compares them -- rename the procedure or module"
+            ),
+        )
+
 
 #: Fortran base type -> the ctypes scalar C sees, by its name in `ctypes`
 CTYPES = {
@@ -278,8 +327,14 @@ class PythonEmitter:
             writer.line(")")
         return writer.render(trailing_newline=True)
 
-    def package_init(self, modules) -> str:
-        """The package's `__init__`, re-exporting every generated function."""
+    def package_init(self, modules, catalogue: ErrorCatalogue) -> str:
+        """The package's `__init__`: every generated function, and the whole error module.
+
+        The codes, the exception classes, `ARG_POS_FACTOR` and `check_err_code` come from the
+        one list the error module is emitted from (`errors_python.public_names`), so what
+        `from tensor_omics import ERR_NAN_INF` finds follows `tox_errors` with no edit here.
+        `check_package_names` has made sure none of them shares a name with a procedure.
+        """
         writer = Writer()
         writer.block(
             '"""Python binding to tensor-omics.\n'
@@ -288,10 +343,11 @@ class PythonEmitter:
             '"""'
         )
         writer.blank()
-        writer.line("from .error_handling import (")
+        errors = public_names(catalogue)
+        writer.line(f"from .{PYTHON_ERROR_MODULE} import (")
         with writer.indent():
-            writer.line("ToxError,")
-            writer.line("check_err_code,")
+            for name in errors:
+                writer.line(f"{name},")
         writer.line(")")
 
         exported = []
@@ -307,7 +363,7 @@ class PythonEmitter:
         writer.blank()
         writer.line("__all__ = [")
         with writer.indent():
-            for name in ["ToxError", "check_err_code", *sorted(exported)]:
+            for name in [*errors, *sorted(exported)]:
                 writer.line(f'"{name}",')
         writer.line("]")
         return writer.render(trailing_newline=True)

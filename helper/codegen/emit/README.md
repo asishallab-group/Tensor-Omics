@@ -214,6 +214,11 @@ else.
   error type **per group** (IO, input, memory, runtime, internal) rather than per code — thirty
   types nobody would name individually is not a usable API. Prefix them, so a host-language
   `except`/`tryCatch` on the base type cannot catch something unrelated.
+- Publish what the error module defines where the caller finds the functions: Python's package
+  re-exports every code, class, `ARG_POS_FACTOR` and `check_err_code` at its top level, from the
+  list the module itself is emitted from (`errors_python.public_names`), so a new code needs no
+  edit; R's error module is sourced into the global environment. A procedure named like one of
+  them is refused (`python_ctypes.check_package_names`), so your layer may rely on the names.
 - If you use a shim, raise from the **host**, not from C.
 - A refusal of your layer's **own** -- a wrong shape, type or value, found before the call --
   carries no tox code, because nothing reported one, and is an *input* error all the same, so one

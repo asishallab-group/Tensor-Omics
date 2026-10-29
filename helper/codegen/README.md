@@ -153,7 +153,7 @@ src/generated/bindings/c/<module>_c.F90        # Fortran C wrappers, one per mod
 src/generated/bindings/r/                      # R C .Call shims -- fpm compiles them into the .so
     tox_marshal.h  init.c  <module>.c
 python/tensor_omics/
-    __init__.py  library.py  error_handling.py
+    __init__.py  library.py  error_handling.py   # __init__: every procedure, code and exception class
     _contract.py                      # the input contract every wrapper checks by
     <module>.py                       # one per module
 r/tensor_omics/
@@ -421,6 +421,14 @@ The parts a source author does not need, and a generator maintainer does:
   the work arrays and computes the `DM_OUTPUT_FROM` sizes for both tiers, so the two would be
   the same call under a name promising control over it. Fortran and C keep both, because there
   the expert tier really does hand the buffers over.
+- **The package's top level is the whole Python API** (#221 C). `tensor_omics/__init__.py`
+  re-exports every procedure and everything the error module defines: each `ERR_*` and `STAT_*`
+  code, `ARG_POS_FACTOR`, every exception class (`ToxError`, one per group, `ToxArgumentError`)
+  and `check_err_code`, all listed in `__all__` -- where R has had them all along, as globals of
+  `error_handling.R`. Both the error module and the re-export are emitted from one list,
+  `emit/errors_python.public_names`, with the error table `generate` already reads, so a code
+  added to `tox_errors` is exported with no other edit, and `__init__` cannot name something the
+  module lacks. It used to export `ToxError` and `check_err_code` only, by a hard-coded pair.
 - **A serialized array is made assumed-size and sliced** to `product(<arg>_shape)` in the wrapper,
   which is why the shape argument may not be optional — the wrapper reads it before it may take
   `c_loc` of what it sizes. Python then accepts an array of any rank and flattens it in Fortran
@@ -469,6 +477,16 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
 - a **procedure named like a Python keyword or builtin, or an R reserved word** — it is a Python
   and an R function of that name. Its C symbols (`foo_c`, `foo_call`) carry a suffix, so C's
   keywords do not apply
+- a **procedure or module named like something else at the Python package's top level** -- an
+  export of the error module (`check_err_code`, `ERR_OK`, `ToxInputError`, `ARG_POS_FACTOR`), one
+  of the package's own submodules (`library`, `error_handling`, `_contract`), or a module, the
+  procedure's own included (`emit/python_ctypes.check_package_names`, run with the Python target).
+  The package binds each name once, so one would hide the other: a procedure `check_err_code`
+  would replace the decoder, one called `library` the submodule `tensor_omics.library`, and a
+  module `error_handling` would be written over the error module's file. Compared ignoring case,
+  as Fortran compares names, so a second spelling cannot reach the Fortran and R layers either.
+  None of it happens on main or the open branches (#221 C6): procedures are snake_case, codes
+  `ERR_`/`STAT_`, classes `Tox*`
 - an **argument named like something its generated Fortran wrapper uses** — an intrinsic it
   calls (`count(mask, kind=int32)` beside an `n_selected_` count, `size(x, 1)` for an
   assumed-shape array), a name it imports (`set_err_once`, a validator, a kind), a kind it writes

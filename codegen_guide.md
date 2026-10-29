@@ -343,6 +343,7 @@ docs, and an `ierr` that raises a typed error naming the offending argument.
 | **Only `integer(int32)`, `real(real64)`, `complex(real64)`, `logical(c_bool)` or a default `logical`** on an argument | R holds integers as int32 and numbers as real64, and the generated validators take only those kinds — an `int64` output would be written eight bytes per element into R's four-byte integers. A numeric kind is compared by value, so `c_int` and `c_double` are fine; a logical kind by name, so `logical(1)` is refused although it is `c_bool`'s value. `int64`, `int8`, `int16`, `real32`, `c_size_t` and `complex(real32)` are refused |
 | **An argument name every binding language accepts** | the name is a Python parameter, an R parameter, a C parameter of the R binding and a dummy of every generated wrapper. Refused: Python keywords (`lambda`, `from`) and builtins (`len`, `input`, `type`), R reserved words (`next`, `function`, `NA` — in that case), C keywords (`default`, `long`, `asm`), and the functions the R binding's C shim defines (`tox_int_in`, `tox_char_in`, ...). Fortran keywords and R function names are fine — `value`, `mode`, `vector`, `weights` all are. Nor may an argument share its procedure's name (`total` in `total_impl`), or a name its generated Fortran wrapper uses: `count` beside an `n_selected_` count (the wrapper calls `count(...)`), `size` beside an assumed-shape array, `handled` beside a prologue, `<x>_f` for a string `x`, `<x>_address` and `empty_view_anchor` beside an array of strings `x`. Only where the wrapper really uses it — `count` is fine elsewhere, and `p_value` beside `p` is always fine. The list is `helper/codegen/names.py` |
 | **A procedure name both languages accept** | it is a Python and an R function of that name: no Python keyword or builtin (`sum`, `filter`), no R reserved word |
+| **A procedure and module name the Python package does not already have** | `tensor_omics` binds every procedure at its top level beside everything its error module defines and its submodules, so none may be called like an error code (`err_ok`), an exception class (`toxinputerror`), `arg_pos_factor`, `check_err_code`, the submodules `library` and `error_handling`, or a module (a procedure named like its own module). Compared ignoring case, as Fortran compares names |
 | **`ierr`, where you declare one, last** | every published signature ends in it, which is where the generator adds it when you declare none |
 | **A `result(...)` clause on a function** | the result is published as an argument of its name (Section 5.16), and a result named after the function would share that name with the function the wrapper calls — no compiler accepts it |
 | **`logical(c_bool)` for every logical that occupies storage** | one byte rather than four, and the kind the bindings already use, so a mask crosses without being copied — the wrapper used to declare an automatic array of default `logical` and convert elementwise both ways. A `logical, parameter` and a `logical function` result are the exceptions: no storage, nothing to save. Note a literal needs the kind too — `.true._c_bool`, because argument association does not convert kinds, though plain assignment does |
@@ -1290,6 +1291,13 @@ invalid input arguments (argument 'vec1', via 'n_elements')
 
 You get that for free, from the extent/mask/shape roles — nothing to annotate.
 
+**Everything the error module defines is importable from the package itself**:
+`from tensor_omics import ERR_DIVISION_BY_ZERO, ToxInputError, ARG_POS_FACTOR` works, for every
+`ERR_*` and `STAT_*` code, every exception class (`ToxArgumentError` included), `ARG_POS_FACTOR`
+and `check_err_code`, all of them in `__all__`. The list is generated from `tox_errors`, so a code
+you add there is exported with nothing else to edit. R has always had them, as globals of
+`error_handling.R`.
+
 One thing worth knowing when you write a Python test or example against a procedure you
 authored: **an array a Python binding returns is read-only.** A result is a value, so
 modifying one in place raises, and `.copy()` is the way to a modifiable array. An
@@ -1358,6 +1366,7 @@ source and carries a note saying what to write instead.
 | a prologue dummy that some mode's wrapper does not have | the prologue runs in all of them (Section 5.13) |
 | a prologue on an implementation with nothing to take over and no arguments of its own | only one wrapper is generated, and it has no prologue for this to run in (Section 5.13) |
 | a prologue producing something the setup above it reads | the name resolves either way, so it would compile and compute rubbish (Section 5.13) |
+| a procedure or module named, ignoring case, like an export of the error module (`check_err_code`, `ERR_OK`, `ToxInputError`, `ARG_POS_FACTOR`), a submodule of the Python package (`library`, `error_handling`), or another module | `tensor_omics` binds all of them at its top level, so one would hide the other; a module called `error_handling` would overwrite the error module's file (Section 7) |
 | a Ford `[[...]]` link naming a module, or a name in it, that does not exist | it silently stops being a link in all four languages, and nothing downstream can tell (Section 7) |
 
 Warnings never stop generation; errors write nothing. A few things are warnings rather than
