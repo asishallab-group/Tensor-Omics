@@ -94,6 +94,7 @@ is the 0-d case of the same rule.
 | a string | a Python `str`, or an `os.PathLike` whose path is a `str`; an R character vector of length 1, not NA, marked UTF-8 or latin1, or unmarked with UTF-8 bytes | bytes, None, a sequence, a number; length other than 1; NA; a NUL, a lone surrogate, invalid UTF-8; an R string marked "bytes", or latin1 with a byte that is no character |
 | an array of strings | a list, tuple, ndarray or Series of `str`; an R character vector, or a factor (its labels) | a bare `str`; a set or dict, which has no order; any element that is not a `str`; NA, a NUL, a surrogate, invalid UTF-8; a value longer than a declared length |
 | a mode | a valid string matching one of the modes whole (case aside, as before), after its trailing blanks are dropped like any string's (`'ward '` is `ward`) | anything else, a leading blank included; the message lists the modes |
+| `complex(real64)` | Python: an array numpy converts to `complex128` -- outside the round trip, as numpy converts it; R: a complex or numeric vector. A single output comes back as a Python `complex` and an R complex | R: anything that is not a number |
 | rank | numpy `ndim` == the declared rank; R `length(dim(x))`, where a plain vector, a 1-D array and a table are rank 1, and an all-numeric data.frame is a matrix (as a DataFrame is in Python) | any other rank: nothing is flattened |
 
 **Trailing blanks are Fortran semantics, accepted and documented** (FES, 2026-10-26). A string
@@ -120,6 +121,15 @@ and refusing it where that fails: in the C locale it would refuse every non-ASCI
 from a file, the commonest case, which main handled. *Consequence:* in a latin1 locale, an
 unmarked latin1 string is refused, with a hint to mark it (`Encoding(x) <- "latin1"`); R has run
 in UTF-8 by default on Windows since 4.2, as on macOS and the Linux distributions.
+
+**A complex value is two doubles to C, and a box for one has to be two wide** (#221 WP8). An
+array of them is numpy's `complex128` and R's complex vector, both the 16-byte layout Fortran
+has. A single complex *output* is a box Python allocates, and `ctypes` has no complex type: the
+box was the real part's `c_double`, so Fortran wrote 16 bytes into 8 and the caller got the real
+part back. Python now passes `(c_double * 2)()` and returns `complex(z[0], z[1])`; C and R were
+right already (`Rf_ScalarComplex`). The row above keeps numpy's own conversion for complex
+inputs, which the round trip does not cover; Python cannot yet pass a single complex *input*
+or `intent(inout)` value (it boxes it in one `c_double` too), which nothing on main has.
 
 Some refusals say what to do instead: a uint32 bit-mask word of 2^31 or more passes as
 `.view(np.int32)`; a bytes array decodes with `.astype(str)`; an `integer64` converts with

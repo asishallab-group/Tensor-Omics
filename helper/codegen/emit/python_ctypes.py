@@ -97,7 +97,9 @@ def check_package_names(binding, catalogue: ErrorCatalogue,
         )
 
 
-#: Fortran base type -> the ctypes scalar C sees, by its name in `ctypes`
+#: Fortran base type -> the ctypes scalar C sees, by its name in `ctypes`. ctypes has no complex
+#: type, so a complex is its real part's: a complex output is a box of two of them
+#: (`_is_complex_box`), and an array of one is numpy's complex dtype (`DTYPES`).
 CTYPES = {
     ("integer", "c_int"): "c_int",
     ("integer", "c_int8_t"): "c_int8",
@@ -158,6 +160,17 @@ def _contract_call(argument: CArgument) -> str | None:
 
 def ctype_of(argument: CArgument) -> str:
     return f"{_CTYPES}.{CTYPES[(argument.type.base.value, argument.type.kind)]}"
+
+
+def _is_complex_box(argument: CArgument) -> bool:
+    """A complex scalar output, which C is handed as a box of two doubles (#221 WP8).
+
+    Fortran writes a complex(real64) as two doubles, real part first, so the box is
+    `(c_double * 2)`, which ctypes passes as the `c_double*` the argtype names. A single
+    `c_double` lost the imaginary part, and Fortran wrote 8 bytes past it.
+    """
+    return (argument.is_scalar and argument.type.base is BaseType.COMPLEX
+            and argument.intent is Intent.OUT and not argument.optional)
 
 
 def dtype_of(argument: CArgument) -> str:
@@ -1031,6 +1044,8 @@ class PythonEmitter:
         fills only part of an array, zeros look like results, while uninitialised memory
         looks like the garbage it is. On the error path nothing is returned at all.
         """
+        if _is_complex_box(argument):
+            return f"({ctype_of(argument)} * 2)()"
         if argument.is_scalar:
             return f"{ctype_of(argument)}(0)"
 
@@ -1079,6 +1094,8 @@ class PythonEmitter:
                     f"None if {name} is None "
                     f"else {_CTYPES}.byref({ctype_of(argument)}({name}))"
                 )
+            if _is_complex_box(argument):
+                return name  # an array, which ctypes passes as a pointer to its first double
             if argument.intent.is_output:
                 return f"{_CTYPES}.byref({name})"
             return f"{_CTYPES}.byref({ctype_of(argument)}({name}))"
@@ -1190,6 +1207,8 @@ class PythonEmitter:
             if character_rank(argument) == 0:
                 return f"{argument.name}[0].decode().rstrip(' ')"
             return f"[_s.decode().rstrip(' ') for _s in {argument.name}]"
+        if _is_complex_box(argument):
+            return f"complex({argument.name}[0], {argument.name}[1])"
         if argument.is_scalar:
             return f"{argument.name}.value"
         if roles is not None and roles.result_size_arg is not None:

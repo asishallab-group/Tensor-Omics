@@ -342,6 +342,32 @@ class TestTheDocsStateTheStringRules:
         assert "A factor is taken by its labels." in RWrapperEmitter().function(numbers())
 
 
+# -- Python: a complex output is two doubles ----------------------------------------------------
+
+class TestAComplexOutputIsTwoDoubles:
+    """#221 WP8: a `c_double` box held half of the 16 bytes Fortran writes into it."""
+
+    def text(self):
+        return PythonEmitter().function(wrapper_of(b.procedure(
+            "p",
+            b.integer("n", Intent.IN, doc="how many"),
+            b.complex_("z", Intent.OUT, doc="one complex number"),
+            b.complex_("zs", Intent.OUT, "(n)", doc="n complex numbers"),
+            b.ierr(),
+        )))
+
+    def test_a_scalar_is_boxed_in_two_doubles_passed_as_a_pointer_and_returned_as_complex(self):
+        text = self.text()
+        assert f"z = ({names.PYTHON_CTYPES}.c_double * 2)()" in text
+        assert "        z,\n" in text, "the box is passed as it is, which ctypes reads as c_double*"
+        assert '"z": complex(z[0], z[1]),' in text
+
+    def test_an_array_is_numpy_s_complex128_as_before(self):
+        text = self.text()
+        assert f"zs = {names.PYTHON_NUMPY}.empty((n,), dtype={names.PYTHON_NUMPY}.complex128" in text
+        assert '"zs": zs,' in text
+
+
 # -- the Python engine, run on the generated module ----------------------------------------------
 
 @pytest.fixture(scope="module")

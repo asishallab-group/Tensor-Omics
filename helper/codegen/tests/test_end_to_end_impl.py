@@ -473,6 +473,32 @@ class TestFunctions:
 
         assert out == [0.125, 0]
 
+    def test_a_complex_output_comes_back_whole_in_python_c_and_r(self, built):
+        # #221 WP8: Python boxed it in one c_double, so the imaginary part was lost and Fortran
+        # wrote 8 bytes past the box; C and R had it right already
+        out = run_python(built, """
+            z, w = tox.fx_complex(1.0, -2.0), tox.fx_make_complex(1.0, -2.0)
+            print(json.dumps([type(z).__name__, z.real, z.imag, type(w).__name__, w.real, w.imag]))
+        """)
+        assert out == ["complex", 1.0, -2.0, "complex", 1.0, -2.0]
+
+        # by position, as a C caller passes it: two doubles, real part first
+        out = run_python(built, """
+            import ctypes, os
+            library = ctypes.CDLL(os.environ["TENSOR_OMICS_LIBRARY"])
+            re, im = ctypes.c_double(1.0), ctypes.c_double(-2.0)
+            z, w, ierr = (ctypes.c_double * 2)(), (ctypes.c_double * 2)(), ctypes.c_int(-1)
+            library.fx_complex_c(ctypes.byref(re), ctypes.byref(im), z, ctypes.byref(ierr))
+            library.fx_make_complex_c(ctypes.byref(re), ctypes.byref(im), w, ctypes.byref(ierr))
+            print(json.dumps([list(z), list(w), ierr.value]))
+        """)
+        assert out == [[1.0, -2.0], [1.0, -2.0], 0]
+
+        assert run_r(built, """
+            z <- fx_complex(1, -2); w <- fx_make_complex(1, -2)
+            cat(class(z), format(z), class(w), format(w))
+        """) == ["complex", "1-2i", "complex", "1-2i"]
+
 
 #: Where `_generate` writes the Fortran wrappers, the C wrappers, the R shims, Python and R
 _TARGET_DIRS = ("fortran", "c", "shim", "py", "r")

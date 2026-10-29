@@ -356,6 +356,11 @@ The parts a source author does not need, and a generator maintainer does:
   R makes up for what it cannot convert (`<e9>`) never reaches Fortran. A returned string is
   marked UTF-8. Trailing blanks are Fortran semantics,
   accepted and dropped, and every generated string parameter says so (`emit.doc_contract`).
+- **A single complex output is two doubles wide in Python** (#221 WP8). `ctypes` has no complex
+  type, and the box was the real part's `c_double`: Fortran wrote 16 bytes into 8, and the caller
+  got the real part. The box is `(c_double * 2)()`, passed as the `c_double*` the argtype names,
+  and comes back as `complex(z[0], z[1])` (`python_ctypes._is_complex_box`). An array is numpy's
+  `complex128`, and C and R had it right already.
 - **Every input axis is compared before the call, by one rule** (#221 A-shape,
   `emit.shape_checks`): an axis that names an extent is compared with that extent's value, except
   the axis the value was read from, and an axis the declaration fixes at a constant (`fields(n, 2,

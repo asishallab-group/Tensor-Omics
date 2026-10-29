@@ -3,7 +3,8 @@
 !> summary: Implementation fixture for functions, whose result every tier publishes before `ierr`
 !| author: A Developer
 !| A scalar, an array and a `logical(c_bool)` result, an `elemental` function, one with its own
-!| `ierr`, and one with a work array, so that both tiers carry the result. Compiled and run by
+!| `ierr`, and one with a work array, so that both tiers carry the result; and a `complex(real64)`
+!| result, beside a subroutine with a `complex(real64)` output. Compiled and run by
 !| `test_end_to_end_fortran.py`, and through C, Python and R by `test_end_to_end_impl.py`.
 module fx_functions_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
@@ -13,7 +14,7 @@ module fx_functions_impl
     private
 
     public :: fx_total_impl, fx_doubled_impl, fx_all_positive_impl, fx_halve_impl
-    public :: fx_share_impl, fx_smallest_impl
+    public :: fx_share_impl, fx_smallest_impl, fx_complex_impl, fx_make_complex_impl
 
 contains
 
@@ -105,5 +106,31 @@ contains
         tmp_copy = values
         smallest = minval(tmp_copy)
     end function fx_smallest_impl
+
+    !> summary: A complex number from its parts
+    !| author: A Developer
+    !| An edge case: a `complex(real64)` result, which is two doubles to C.
+    pure function fx_complex_impl(re, im) result(z)
+        real(real64), intent(in) :: re
+            !! the real part
+        real(real64), intent(in) :: im
+            !! the imaginary part
+        complex(real64) :: z
+            !! `re + im i`
+        z = cmplx(re, im, kind=real64)
+    end function fx_complex_impl
+
+    !> summary: A complex number from its parts, as an output argument
+    !| author: A Developer
+    !| An edge case: a subroutine's `complex(real64)` scalar output, the twin of `fx_complex_impl`.
+    pure subroutine fx_make_complex_impl(re, im, z)
+        real(real64), intent(in) :: re
+            !! the real part
+        real(real64), intent(in) :: im
+            !! the imaginary part
+        complex(real64), intent(out) :: z
+            !! `re + im i`
+        z = cmplx(re, im, kind=real64)
+    end subroutine fx_make_complex_impl
 
 end module fx_functions_impl
