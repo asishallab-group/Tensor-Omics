@@ -29,6 +29,11 @@ function file_matches() {
   [[ -f "$2" && "$(<"$2")" =~ $1 ]]
 }
 
+# $1 without its trailing whitespace (instead of `sed 's/[[:space:]]*$//'`).
+function trim_trailing() {
+  printf '%s' "${1%"${1##*[![:space:]]}"}"
+}
+
 function init() {
   handle_args "$@"
   # --compiler beats global $TOX_COMPILER beats global $FC
@@ -53,6 +58,7 @@ function get_c_flags() {
   # switching one back reuses the objects without relinking -- check_build_state hashes these.
   # That is also why the R fallback adds NO_R_BINDING to $DIRECTIVES, not to the C flags alone.
   C_ONLY_FLAGS="-fPIC"
+  C_COMPILER=  # empty: fpm picks the C compiler that goes with $COMPILER
   if [[ "$DIRECTIVES" == *NO_R_BINDING* || "$DIRECTIVES" == *NO_C_BINDING* ]]; then
     :
   elif [[ -z $(command -v R) ]]; then
@@ -61,6 +67,14 @@ Install R to include it, or pass '$COLOR_LIGHT_GRAY--directive=NO_R_BINDING$COLO
     DIRECTIVES="$DIRECTIVES -DNO_R_BINDING"
   else
     C_ONLY_FLAGS="$C_ONLY_FLAGS $(R CMD config --cppflags)"
+    if [[ "$COMPILER" == "nvfortran" ]]; then
+      # R configures its headers for the C compiler R was built with -- Rconfig.h decides, for
+      # one, whether R_ext/Boolean.h declares an enum with a fixed base type, which nvc cannot
+      # parse. So the R shims, the only C sources, are compiled with R's own compiler.
+      declare -a r_cc=($(R CMD config CC))
+      C_COMPILER="${r_cc[0]}"
+      C_ONLY_FLAGS="${r_cc[*]:1} $C_ONLY_FLAGS"
+    fi
   fi
   C_FLAGS="$C_ONLY_FLAGS $DIRECTIVES"
 }
@@ -85,7 +99,7 @@ function build_state() {
     shopt -s globstar nullglob
     LC_ALL=C  # glob order independent of the locale
     printf '%s\n' "$(first_line "$("$COMPILER" --version 2>/dev/null)")"
-    printf '%s\n' "C_ONLY_FLAGS=$C_ONLY_FLAGS" "LINK_FLAGS=$LINK_FLAGS"
+    printf '%s\n' "C_ONLY_FLAGS=$C_ONLY_FLAGS" "C_COMPILER=$C_COMPILER" "LINK_FLAGS=$LINK_FLAGS"
     printf '%s\n' "--- fpm.toml" "$(<fpm.toml)"
     for header in *.h src/**/*.h; do
       [[ "$header" == src/generated/* ]] && continue
@@ -151,7 +165,7 @@ function utils_fpm() {
   elif [[ "$1" == "list" ]]; then
     prefix=(fpm build --list)
   fi
-  LD_LIBRARY_PATH="$libpath" "${prefix[@]}" --features "$FEATURES" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --c-flag "$C_FLAGS" --link-flag "$LINK_FLAGS" -- $ARGS
+  LD_LIBRARY_PATH="$libpath" "${prefix[@]}" --features "$FEATURES" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --c-flag "$C_FLAGS" ${C_COMPILER:+--c-compiler "$C_COMPILER"} --link-flag "$LINK_FLAGS" -- $ARGS
   exit_code=$?
   rm -f build/cache.toml  # can cause issues (when switching branches and external libs are missing), but doesn't affect compilation when missing
   (exit $exit_code)
@@ -198,6 +212,20 @@ Use '$COLOR_LIGHT_GRAY--override-flags$COLOR_CREAM' to define additional compile
 function get_flags_and_features() {
   # -Lexternal is where build.sh puts the loess archives it builds, so no override removes it
   LINK_FLAGS="-Lexternal"
+  if [[ "$COMPILER" == "nvfortran" ]]; then
+    # nvfortran links through whichever `ld` comes first on PATH, and a linker searches only its
+    # own default directories. When that is not the system linker nvfortran was configured
+    # against -- a Homebrew binutils, say -- it finds neither libc nor libgcc_s. The directories
+    # are read from nvfortran's own configuration, so this is right on any machine, and a no-op
+    # where the system linker is first anyway. (NVCOMPILER_LINKER is NVIDIA's own switch for the
+    # linker itself, for anyone who prefers to fix it in the environment.)
+    declare key value
+    while IFS='=' read -r key value; do  # -show prints `NAME   =value`, padded
+      case "$key" in
+        "DEFSTDOBJDIR "* | "GCCDIR "*) LINK_FLAGS="$LINK_FLAGS -L$(trim_trailing "$value")" ;;
+      esac
+    done < <(nvfortran -show 2>/dev/null)
+  fi
   if [[ "$TOX_OVERRIDE_LINK_FLAGS" ]]; then
     # The compiler's own feature -- what get_compiler put in $FEATURES -- carries nothing but
     # its link libraries, so replacing those means leaving it out. They cannot be passed via
