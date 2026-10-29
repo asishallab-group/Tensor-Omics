@@ -945,12 +945,6 @@ contains
         n_in_filtered = bit_mask_count(n_mask_chunks, masks(:, 1))
         call assert_equal_int(n_in_filtered, count(paralog_angles(:n_genes - 1) <= threshold), "test_filter_paralogs_by_pattern: wrong filtering for subfunctionalization")
         call assert_equal_int(bit_mask_count(n_mask_chunks, masks(:, 2)), 0_int32, "test_filter_paralogs_by_pattern: second family's gene should be inactive")
-
-        ! the _impl reports success itself; the generated wrappers set ierr before calling it
-        ierr = 12345_int32
-        call filter_paralogs_by_pattern_impl(MODE_DOSAGE_PATTERN, paralog_angles, threshold, n_genes, n_families, gene_to_fam, &
-                                             masks, n_mask_chunks, ierr)
-        call assert_err(ierr, ERR_OK, "test_filter_paralogs_by_pattern: the _impl must set ierr on success")
     end subroutine test_filter_paralogs_by_pattern
 
     !> Test the calc_work_arr_paralog_subsets_size function with various input configurations.

@@ -558,7 +558,7 @@ contains
         integer(int32), dimension(n_mask_chunks, n_families), intent(out) :: masks
             !! bit mask that will have the indices of genes kept by this pattern set to 1, else 0
         integer(int32), intent(out) :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -579,10 +579,8 @@ contains
             n_families = n_families,&
             gene_to_fam = gene_to_fam,&
             masks = masks,&
-            n_mask_chunks = n_mask_chunks,&
-            ierr = ierr&
+            n_mask_chunks = n_mask_chunks&
         )
-        call clear_err_arg_pos(ierr)
     end subroutine filter_paralogs_by_pattern_dosage_effect
 
     !> summary: Validates its inputs, then calls [[tox_paralog_analysis_impl(module):filter_paralogs_by_pattern_impl]].
@@ -619,7 +617,7 @@ contains
         integer(int32), dimension(n_mask_chunks, n_families), intent(out) :: masks
             !! bit mask that will have the indices of genes kept by this pattern set to 1, else 0
         integer(int32), intent(out) :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -640,10 +638,8 @@ contains
             n_families = n_families,&
             gene_to_fam = gene_to_fam,&
             masks = masks,&
-            n_mask_chunks = n_mask_chunks,&
-            ierr = ierr&
+            n_mask_chunks = n_mask_chunks&
         )
-        call clear_err_arg_pos(ierr)
     end subroutine filter_paralogs_by_pattern_subfunctionalization
 
     !> summary: Validates its inputs, then calls [[tox_paralog_analysis_impl(module):calc_work_arr_paralog_subsets_size_impl]].

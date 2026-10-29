@@ -538,7 +538,7 @@ contains
     !> summary: Prefilters the genes for a pattern, so genes that cannot match it are not tried as subset extensions
     !| AUTHOR_FRANZ_ERIC_SILL
     !| This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.
-    pure subroutine filter_paralogs_by_pattern_impl(pattern_mode, gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
+    pure subroutine filter_paralogs_by_pattern_impl(pattern_mode, gene_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks)
         integer(int32), intent(in) :: n_genes
             !! number of genes
         integer(int32), intent(in) :: n_families
@@ -568,12 +568,9 @@ contains
             !! filter threshold
         integer(int32), dimension(n_mask_chunks, n_families), intent(out) :: masks
             !! bit mask that will have the indices of genes kept by this pattern set to 1, else 0
-        integer(int32), intent(out) :: ierr
-            !! Error code
 
         integer(int32) :: i_gene, family_idx
 
-        call set_ok(ierr)
         masks = 0_int32
 
         select case (pattern_mode)
@@ -593,9 +590,6 @@ contains
                     call bit_mask_set(n_mask_chunks, masks(:, family_idx), i_gene)
                 end if
             end do
-        case default
-            call set_err(ierr, ERR_INVALID_INPUT, arg_pos=1_int32)
-            return
         end select
     end subroutine filter_paralogs_by_pattern_impl
 

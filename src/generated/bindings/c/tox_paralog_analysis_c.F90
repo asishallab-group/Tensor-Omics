@@ -548,7 +548,7 @@ contains
         integer(c_int), dimension(n_mask_chunks, n_families), intent(out), target :: masks
             !! bit mask that will have the indices of genes kept by this pattern set to 1, else 0
         integer(c_int), intent(out), target :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -608,7 +608,7 @@ contains
         integer(c_int), dimension(n_mask_chunks, n_families), intent(out), target :: masks
             !! bit mask that will have the indices of genes kept by this pattern set to 1, else 0
         integer(c_int), intent(out), target :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
