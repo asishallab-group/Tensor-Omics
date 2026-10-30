@@ -23,7 +23,9 @@ from ..config import CONVENTIONS, Conventions, Paths
 from ..diagnostics import DiagnosticBag, SourceLocation
 from ..ir.directives import DirectiveError, DirectiveParser, Directives
 from ..ir.doc import Doc, DocParseError
-from ..ir.entities import Argument, Declaration, Meta, Module, Parameter, Procedure, Project
+from ..ir.entities import (
+    Argument, Declaration, MacroUse, Meta, Module, Parameter, Procedure, Project,
+)
 from ..ir.types import (
     BaseType,
     CharacterLength,
@@ -249,13 +251,13 @@ class FordFrontend:
         location = self.index.module(path, name)
         doc, _ = self._documentation(ford_module.doc_list, location)
         self._check_no_private_export(ford_module, path)
+        procedures = [
+            self._procedure(routine, path) for routine in self._module_routines(ford_module)
+        ]
 
         return Module(
             name=name,
-            procedures=[
-                self._procedure(routine, path)
-                for routine in self._module_routines(ford_module)
-            ],
+            procedures=procedures,
             parameters=[
                 self._parameter(variable, path)
                 for variable in ford_module.variables
@@ -266,7 +268,42 @@ class FordFrontend:
             meta=self._meta(ford_module),
             location=location,
             uses=self._uses_of(ford_module),
+            macro_uses=self._omp_macro_uses(path, name, procedures),
         )
+
+    def _omp_macro_uses(self, path: Path, module: str, procedures) -> list[MacroUse]:
+        """Where the module's source writes `M_OMP_PURE` and `!M_OMP_PARALLEL(`.
+
+        Ford cannot say: it reads the preprocessed text, where the one is already `pure` and the
+        other a plain comment. So they are found in the file the author edits, within the
+        module's own lines, and each is put in the innermost procedure whose lines hold it --
+        of those the module publishes, which are the only ones that can be a root.
+        """
+        source = self.index.file(path)
+        if source is None:
+            return []
+        span = source.module_span(module)
+        spans = [
+            (found, procedure.name)
+            for procedure in procedures
+            if (found := source.procedure_span(procedure.name)) is not None
+        ]
+
+        def holder(line: int) -> str | None:
+            holding = [(start, name) for (start, end), name in spans if start <= line <= end]
+            return max(holding)[1] if holding else None
+
+        found = [
+            (self.conventions.omp_pure_macro, line)
+            for line in source.macro_lines(self.conventions.omp_pure_macro, span)
+        ] + [
+            (self.conventions.omp_parallel_macro, line)
+            for line in source.comment_macro_lines(self.conventions.omp_parallel_macro, span)
+        ]
+        return [
+            MacroUse(macro, self.index.at(path, line), holder(line))
+            for macro, line in sorted(found, key=lambda use: use[1])
+        ]
 
     def _check_no_private_export(self, ford_module, path: Path) -> None:
         """An `M_EXPORT_C` on a private procedure is an error, not a silent no-op.
@@ -389,6 +426,7 @@ class FordFrontend:
             allocatable_locals=self._allocatable_locals(ford_procedure),
             uses=self._uses_of(ford_procedure),
             is_pure=self._is_pure(ford_procedure),
+            statement_prefix=self.index.procedure_prefix(path, name),
         )
 
     @staticmethod

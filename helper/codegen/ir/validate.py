@@ -449,6 +449,7 @@ def validate_module(module: Module, diagnostics: DiagnosticBag,
         diagnostics.warn("module has no documentation", entity=module)
     if module.name.lower().endswith(conventions.impl_suffix):
         validate_impl_module(module, diagnostics, conventions)
+    _check_omp_macros(module, diagnostics, conventions)
     for procedure in module.exported_procedures:
         validate_procedure(procedure, diagnostics, conventions)
 
@@ -481,6 +482,7 @@ def validate_impl_module(module: Module, diagnostics: DiagnosticBag,
             _check_function_result(procedure, diagnostics, conventions)
         _check_taken_over_is_not_an_output(procedure, diagnostics, conventions)
         _check_prologue(procedure, diagnostics, conventions)
+        _check_omp_threads(procedure, diagnostics, conventions)
 
 
 def _check_module_is_named_for_its_file(module: Module, diagnostics: DiagnosticBag) -> None:
@@ -690,6 +692,253 @@ def _check_taken_over_is_not_an_output(impl: Procedure, diagnostics: DiagnosticB
         )
 
 
+# -- OpenMP roots ------------------------------------------------------------------
+#
+# A root is an implementation that takes `n_omp_threads` and holds the parallel loop. Its
+# wrappers check that the count is at least 1, document it with the generator's text, size the
+# per-thread work arrays with it and carry `M_OMP_PURE` where they would carry `pure`. All of
+# that is the wrappers', so everything below keeps the argument and the two macros where the
+# wrappers can do it -- elsewhere each would compile, run serially, and fail only under
+# `--openmp`, or never.
+
+
+def is_omp_root(procedure: Procedure, conventions: Conventions = CONVENTIONS) -> bool:
+    """An implementation in an implementation module that takes `n_omp_threads`."""
+    module = procedure.module
+    suffix = conventions.impl_suffix
+    return (
+        module is not None
+        and module.name.lower().endswith(suffix)
+        and procedure.name.lower().endswith(suffix)
+        and procedure.argument(conventions.omp_threads_arg) is not None
+    )
+
+
+def _omp_note(conventions: Conventions) -> str:
+    return (
+        f"'{conventions.omp_threads_arg}' belongs to an OpenMP root: an implementation "
+        f"declared {conventions.omp_pure_macro}, whose wrappers check it is at least 1, "
+        "document it and size the per-thread work arrays with it"
+    )
+
+
+def _check_omp_threads(impl: Procedure, diagnostics: DiagnosticBag,
+                       conventions: Conventions) -> None:
+    """What a root's `n_omp_threads` must be, and how the root is declared.
+
+    Its declaration (a required, scalar `integer(int32)`, `intent(in)`), where it may size
+    something (the last extent of a `tmp_` array, as the bare name), that its documentation and
+    range are the generator's, and the root's purity. The function result of an
+    implementation is checked here too: it would be published as an `intent(out)` argument.
+    """
+    name = conventions.omp_threads_arg
+    result = impl.result
+    if result is not None and conventions.is_omp_threads_arg(result.name):
+        diagnostics.error(
+            f"result of '{impl.name}' is named '{result.name}'",
+            entity=result,
+            note=(
+                f"a function result is published as an output, and '{name}' is an input the "
+                f"caller sets. {_omp_note(conventions)}; name the result for what it is"
+            ),
+        )
+    argument = impl.argument(name)
+    if argument is None:
+        return
+    _check_omp_threads_declaration(argument, diagnostics, conventions)
+    _check_omp_threads_documentation(argument, diagnostics, conventions)
+    _check_omp_threads_extents(impl, diagnostics, conventions)
+    _check_omp_root_purity(impl, diagnostics, conventions)
+
+
+def _check_omp_threads_declaration(argument: Argument, diagnostics: DiagnosticBag,
+                                   conventions: Conventions) -> None:
+    """A required, scalar `integer(int32)`, `intent(in)`: a count the caller always passes.
+
+    Required, because it sizes the per-thread work arrays and an optional cannot be an extent;
+    scalar and `int32`, because `M_OMP_N_THREADS` stands in for it as `1_int32`; and read only,
+    because the wrappers check it before the call and the allocating one passes a value of its
+    own in its place.
+    """
+    problems = []
+    if argument.optional:
+        problems.append("optional")
+    if argument.is_array:
+        problems.append(f"an array of rank {argument.rank}")
+    if argument.type.base is not BaseType.INTEGER or _kind_value(argument.type.kind) != 4:
+        problems.append(f"{argument.type}")
+    if argument.intent is not Intent.IN:
+        problems.append(f"intent({_intent(argument)})")
+    if not problems:
+        return
+    diagnostics.error(
+        f"'{argument.name}' is {', '.join(problems)}",
+        entity=argument,
+        note=(
+            f"declare it `integer(int32), intent(in) :: {conventions.omp_threads_arg}`: a count "
+            "the caller always passes, which sizes the per-thread work arrays and which the "
+            f"allocating wrapper replaces by {conventions.omp_n_threads_macro}(...), one without "
+            "OpenMP"
+        ),
+    )
+
+
+def _check_omp_threads_documentation(argument: Argument, diagnostics: DiagnosticBag,
+                                     conventions: Conventions) -> None:
+    """No documentation and no directive of the author's: both are the generator's.
+
+    The wrappers publish one text for it, the same for every root and every language, and the
+    minimum 1 that every build needs (`synthesize.omp_threads_published`). A text or a range of
+    the author's would be replaced, so it is refused rather than dropped without a word.
+    """
+    if argument.directives:
+        macros = ", ".join(argument.directives.macro_names)
+        diagnostics.error(
+            f"'{argument.name}' carries {macros}",
+            entity=argument,
+            note=(
+                "the generator documents it and checks that it is at least 1 in every wrapper; "
+                "a range of your own would contradict that, so drop the directive"
+            ),
+        )
+    elif argument.doc:
+        diagnostics.error(
+            f"'{argument.name}' has documentation of its own",
+            entity=argument,
+            note=(
+                "the generator writes the documentation of every root's "
+                f"'{conventions.omp_threads_arg}', one text in all four languages; drop the "
+                "'!!' lines"
+            ),
+        )
+
+
+def _check_omp_threads_extents(impl: Procedure, diagnostics: DiagnosticBag,
+                               conventions: Conventions) -> None:
+    """`n_omp_threads` sizes only the thread axis of a work array: a `tmp_` array's last extent.
+
+    The allocating wrapper allocates that axis with `M_OMP_N_THREADS(n_omp_threads)`, which is
+    one without OpenMP, and hands the implementation the same value -- so anything else it
+    sized would be one size in the wrapper and another for the caller, or another per build.
+    Read off every extent and length, not off the extent roles: those record an extent only
+    where it *is* the bare name, so `2*n_omp_threads` would pass unseen.
+    """
+    name = conventions.omp_threads_arg.lower()
+    arguments = list(impl.arguments) + ([impl.result] if impl.result is not None else [])
+    for argument in arguments:
+        extents = list(argument.dimension.extents)
+        for index, extent in enumerate(extents):
+            if name not in {i.lower() for i in _IDENTIFIER_RE.findall(extent)}:
+                continue
+            last = index == len(extents) - 1
+            if (argument.name.lower().startswith(conventions.temporary_prefix) and last
+                    and conventions.is_omp_threads_arg(extent.strip())):
+                continue
+            _refuse_omp_threads_size(argument, f"extent '{extent}'", diagnostics, conventions)
+        length = argument.type.length if argument.type is not None else None
+        if length is not None and length.expr is not None and name in {
+            i.lower() for i in _IDENTIFIER_RE.findall(length.expr)
+        }:
+            _refuse_omp_threads_size(argument, f"length '{length.expr}'", diagnostics,
+                                     conventions)
+
+
+def _refuse_omp_threads_size(argument: Argument, what: str, diagnostics: DiagnosticBag,
+                             conventions: Conventions) -> None:
+    prefix = conventions.temporary_prefix
+    diagnostics.error(
+        f"'{conventions.omp_threads_arg}' is used in the {what} of '{argument.name}'",
+        entity=argument,
+        note=(
+            f"it may only be the last extent of a per-thread work array, as the bare name: "
+            f"`{prefix}work(n, {conventions.omp_threads_arg})`. The allocating wrapper "
+            f"allocates that axis with {conventions.omp_n_threads_macro}(...), one column "
+            "without OpenMP, so anything else it sized would differ between the wrapper and "
+            "the caller"
+        ),
+    )
+
+
+def _check_omp_root_purity(impl: Procedure, diagnostics: DiagnosticBag,
+                           conventions: Conventions) -> None:
+    """A root is declared `M_OMP_PURE`, or impure: never plain `pure`.
+
+    An OpenMP directive is not allowed in a pure procedure, so a `pure` root compiles without
+    OpenMP and fails with it. Read from the unpreprocessed statement
+    (`Procedure.statement_prefix`): after the preprocessor `M_OMP_PURE` is `pure`, which is
+    exactly what has to be told apart. `elemental` is pure unless `impure` says otherwise.
+    A statement the frontend could not find is an error rather than a pass, since then nothing
+    says the root is not plain `pure`.
+    """
+    macro = conventions.omp_pure_macro
+    prefix = impl.statement_prefix
+    if prefix is None:
+        diagnostics.error(
+            f"the statement of '{impl.name}' could not be read",
+            entity=impl,
+            note=(
+                f"an OpenMP root is declared {macro} or impure, which is read from the source; "
+                f"write `{macro} subroutine {impl.name}(` on one line"
+            ),
+        )
+        return
+    words = prefix.split()
+    lowered = {word.lower() for word in words}
+    if "pure" in lowered:
+        reason = "is declared pure"
+    elif "elemental" in lowered and "impure" not in lowered and macro not in words:
+        reason = "is elemental, which is pure"
+    else:
+        return
+    diagnostics.error(
+        f"OpenMP root '{impl.name}' {reason}",
+        entity=impl,
+        note=(
+            f"an OpenMP directive is not allowed in a pure procedure, so it compiles only "
+            f"without OpenMP. Declare it {macro} (pure without OpenMP, impure with it), or "
+            "impure"
+        ),
+    )
+
+
+def _check_omp_macros(module: Module, diagnostics: DiagnosticBag,
+                      conventions: Conventions) -> None:
+    """`M_OMP_PURE` and `!M_OMP_PARALLEL(` are written only in an OpenMP root.
+
+    `M_OMP_PURE` as the prefix of a root's own statement, `!M_OMP_PARALLEL(` anywhere inside
+    one. Every module is checked, not only implementation modules: elsewhere either would
+    build without OpenMP and fail, or race, only with it -- `M_OMP_PURE` gives a wrapper a
+    plain `pure` it cannot keep, and a parallel loop outside a root has no `n_omp_threads` to
+    bound it and no work arrays sized for its threads.
+    """
+    for use in module.macro_uses:
+        procedure = module.procedure(use.procedure) if use.procedure else None
+        root = procedure if procedure is not None and is_omp_root(procedure, conventions) else None
+        if use.macro == conventions.omp_pure_macro:
+            # on the root's own statement, which is where `procedure.location` points
+            if root is not None and use.location.line == root.location.line:
+                continue
+            written = use.macro
+        elif root is not None:
+            continue
+        else:
+            written = f"!{use.macro}(...)"
+        where = "outside every procedure" if use.procedure is None else (
+            f"in '{use.procedure}'" if root is None else f"in the body of '{use.procedure}'"
+        )
+        diagnostics.error(
+            f"{written} is written {where}, and only an OpenMP root may carry it",
+            entity=procedure if procedure is not None else module,
+            location=use.location,
+            note=(
+                f"only an implementation that takes '{conventions.omp_threads_arg}' holds a "
+                f"parallel loop: it is declared {conventions.omp_pure_macro} and writes its "
+                f"loop as !{conventions.omp_parallel_macro}(...). Anywhere else the macro "
+                "builds without OpenMP and fails, or races, only with it"
+            ),
+        )
+
+
 def _what(argument: Argument) -> str:
     """How a diagnostic names it: a function's result is published as an argument, but the
     author wrote a result."""
@@ -793,6 +1042,7 @@ class _Validator:
         self._check_result_size(argument)
         self._check_lower_bounds(argument)
         self._check_error_argument(argument)
+        self._check_omp_threads_belongs_to_an_implementation(argument)
 
     def _check_name(self, argument: Argument) -> None:
         """A published name every binding language takes, and no procedure the wrapper names.
@@ -1235,6 +1485,30 @@ class _Validator:
                 ),
             )
 
+    def _check_omp_threads_belongs_to_an_implementation(self, argument: Argument) -> None:
+        """`n_omp_threads` is an implementation's, and its generated wrappers'.
+
+        A hand-written export gets none of what makes the argument safe: no wrapper checks that
+        it is at least 1, documents it or carries `M_OMP_PURE`, and a `DM_OUTPUT_FROM` producer
+        would hand its consumer's wrapper a plain `pure` that fails under OpenMP. A wrapper is
+        recognised by the implementation it was synthesised from. An exported implementation is
+        refused as such (`_check_impl_is_not_exported`), not a second time here.
+        """
+        if self.procedure.implementation is not None or is_omp_root(self.procedure,
+                                                                    self.conventions):
+            return
+        if not self.conventions.is_omp_threads_arg(argument.name):
+            return
+        self.error(
+            f"{_what(argument)} '{argument.name}' of '{self.procedure.name}', which is not an "
+            "implementation",
+            argument,
+            note=(
+                f"{_omp_note(self.conventions)}. Write the procedure as an implementation, or "
+                "name the argument for what it is"
+            ),
+        )
+
     def _check_error_argument(self, argument: Argument) -> None:
         if argument.name.lower() != self.conventions.error_arg:
             return
@@ -1280,10 +1554,29 @@ def _check_prologue(impl: Procedure, diagnostics: DiagnosticBag,
         return
 
     _check_prologue_reports_handled(impl, prologue, diagnostics, conventions)
+    _check_prologue_takes_no_omp_threads(prologue, diagnostics, conventions)
     _check_prologue_runs_somewhere(impl, prologue, diagnostics, conventions)
     _check_prologue_arguments_resolve(impl, prologue, diagnostics, conventions)
     _check_prologue_writes_what_it_may(impl, prologue, diagnostics, conventions)
     _check_prologue_outputs_are_not_read_first(impl, prologue, diagnostics, conventions)
+
+
+def _check_prologue_takes_no_omp_threads(prologue: Procedure, diagnostics: DiagnosticBag,
+                                         conventions: Conventions) -> None:
+    """A prologue runs before the implementation and holds no parallel loop of its own.
+
+    Only the root does (one parallel region per call stack), and only the root's wrappers
+    check, document and size with `n_omp_threads`. A prologue handed it would get the caller's
+    value where the root gets `M_OMP_N_THREADS(...)`, one without OpenMP.
+    """
+    dummy = prologue.argument(conventions.omp_threads_arg)
+    if dummy is None:
+        return
+    diagnostics.error(
+        f"prologue '{prologue.name}' takes '{dummy.name}'",
+        entity=dummy,
+        note=f"{_omp_note(conventions)}; a prologue does no parallel work, so drop the argument",
+    )
 
 
 def _check_prologue_runs_somewhere(impl: Procedure, prologue: Procedure,

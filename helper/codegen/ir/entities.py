@@ -162,6 +162,8 @@ class Procedure(Entity):
         allocatable_locals: Sequence[str] = (),
         uses: Sequence[str] = (),
         is_pure: bool = False,
+        statement_prefix: str | None = "",
+        implementation: Procedure | None = None,
     ):
         self.name = name
         self.arguments = tuple(arguments)
@@ -182,6 +184,17 @@ class Procedure(Entity):
         #: to get it. Defaults to False: assuming purity that is not there would be a
         #: compile error in generated code, while missing it only costs the caller.
         self.is_pure = is_pure
+        #: what the procedure statement says before `subroutine`/`function`, as written in the
+        #: *unpreprocessed* source: `M_OMP_PURE`, `pure`, `impure elemental`, or "" for none.
+        #: `is_pure` cannot tell `M_OMP_PURE` from `pure` -- Ford reads the source after the
+        #: preprocessor, which turns the one into the other -- and an OpenMP root has to be the
+        #: first and must not be the second (`validate._check_omp_root_purity`). None where the
+        #: frontend could not find the statement on one line; "" too for a procedure built by hand.
+        self.statement_prefix = statement_prefix
+        #: the implementation a generated wrapper was synthesised from; None for a procedure
+        #: read from source. What tells a wrapper apart from a hand-written export, which looks
+        #: the same to every rule that is not about where an argument may come from.
+        self.implementation = implementation
         #: names of the local variables declared `allocatable`. The body itself is never
         #: read, so this is how the generator sees that a procedure allocates: `M_ALLOCATE`
         #: needs an allocatable to allocate into, and an implementation may not have one
@@ -226,6 +239,23 @@ class Procedure(Entity):
 
     def __iter__(self) -> Iterator[Argument]:
         return iter(self.arguments)
+
+
+@dataclass(frozen=True)
+class MacroUse:
+    """A macro written in a module's unpreprocessed source, which the IR cannot see otherwise.
+
+    Ford parses the preprocessed text, where `M_OMP_PURE` is already `pure` and
+    `!M_OMP_PARALLEL(...)` a plain comment, so the frontend finds them in the file the author
+    edits and records where they are. `validate._check_omp_macros` then holds them to the one
+    place they belong.
+    """
+
+    macro: str
+    location: SourceLocation
+    #: the procedure whose lines hold it, innermost, of the ones the module publishes; None
+    #: outside all of them (between procedures, or in a private one, which Ford does not list)
+    procedure: str | None = None
 
 
 @dataclass
@@ -281,6 +311,7 @@ class Module(Entity):
         location: SourceLocation = SourceLocation(),
         uses: Sequence[str] = (),
         declarations: Sequence[Declaration] = (),
+        macro_uses: Sequence[MacroUse] = (),
     ):
         self.name = name
         self.procedures = tuple(procedures)
@@ -293,6 +324,8 @@ class Module(Entity):
         #: the modules this one `use`s, sorted; a module that only re-exports its children
         #: has these and no procedures of its own
         self.uses = tuple(uses)
+        #: the OpenMP macros written in its source, where the parse cannot see them
+        self.macro_uses = tuple(macro_uses)
         self.parent: Project | None = None
 
         self._adopt(self.procedures)

@@ -45,6 +45,17 @@ class Conventions:
     #: The macro giving the thread count an allocating wrapper sizes the per-thread work arrays
     #: with: the caller's count with OpenMP, one without.
     omp_n_threads_macro: str = "M_OMP_N_THREADS"
+    #: The macro a root writes its parallel loop with, as the comment line
+    #: `!M_OMP_PARALLEL(CONDITION) <clauses>`. Defined once, outside the `#ifdef`, so the
+    #: frontend does not require it; the generator only looks for where it is written
+    #: (`validate._check_omp_macros`).
+    omp_parallel_macro: str = "M_OMP_PARALLEL"
+    #: The argument an OpenMP root takes: the most threads its parallel loop may use, and the
+    #: last extent of its per-thread work arrays. Only an implementation may take it; its
+    #: wrappers check that it is at least 1, document it and carry `omp_pure_macro`
+    #: (`validate`, `synthesize.published_arguments`). `M_OMP_PARALLEL`'s body names it too,
+    #: so it is spelled in `src/macros.h` as well as here.
+    omp_threads_arg: str = "n_omp_threads"
 
     #: Suffix of the allocating half of a *hand-written* procedure pair -- the shape the
     #: framework used before any wrapper was generated (`compute_edf` / `compute_edf_alloc`).
@@ -136,6 +147,10 @@ class Conventions:
 
     #: Name of the error argument every C wrapper carries, synthesised when absent
     error_arg: str = "ierr"
+
+    def is_omp_threads_arg(self, name: str) -> bool:
+        """Whether `name` is the OpenMP thread-count argument, compared as Fortran compares."""
+        return name.lower() == self.omp_threads_arg.lower()
 
     def mode_alias_of(self, name: str) -> str | None:
         """Return the mode alias `name` uses, or None if it is not a mode argument.

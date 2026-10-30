@@ -25,6 +25,7 @@ from pathlib import Path
 
 from .config import CONVENTIONS, Conventions, Paths
 from .diagnostics import DiagnosticBag
+from .ir.directives import Directives, Minimum
 from .ir.doc import Doc
 from .ir.entities import Argument, Meta, Module, Procedure, Project
 from .ir.roles import analyse
@@ -33,6 +34,26 @@ from .ir.validate import function_result_problems
 
 #: Documentation for the `ierr` a wrapper carries when the implementation declares none
 _ERROR_DOC = "Error code; zero on success, non-zero on failure."
+
+#: The smallest `n_omp_threads` any build accepts. Below it the parallel loop's `num_threads`
+#: is not a valid count, and through `foo_expert` the work arrays have no column to write.
+_OMP_THREADS_MINIMUM = "1_int32"
+
+#: Documentation for `n_omp_threads`, which the generator writes in place of the author's.
+#: Unlike `_ERROR_DOC` it is not a default: it is the one text every root publishes, the same in
+#: Fortran, C, Python and R, so an author's own would only be a copy that drifts -- `validate`
+#: refuses one. The last line is what `DM_MIN(1_int32)` expands to, which is the minimum the
+#: wrappers check (`_OMP_THREADS_MINIMUM`); `test_omp_roots` holds it to `src/macros.h`.
+_OMP_THREADS_DOC = (
+    "The most threads the parallel loop may use (OpenMP): it caps the team size.",
+    "It also sizes the per-thread work arrays, where there are any, as their last extent: the "
+    "plain entry point allocates that many columns, one in a build without OpenMP, and the "
+    "expert one takes arrays with that many.",
+    "It must be at least 1 in every build; a build without OpenMP otherwise ignores it.",
+    "Pass 1 when you parallelize around this call yourself, or call it in a forked worker "
+    "process.",
+    f"The minimum valid value is `{_OMP_THREADS_MINIMUM}`.",
+)
 
 
 def generated_path_for(
@@ -137,8 +158,15 @@ def published_arguments(impl: Procedure, conventions: Conventions = CONVENTIONS)
     own `ierr` where it declares one, else last, which is where the wrapper's `ierr` is then
     appended -- so the published signature ends in `..., result, ierr` either way, as an
     exported function's C wrapper does (`abi.c_abi`).
+
+    `n_omp_threads` is published with the generator's documentation and its minimum
+    (`omp_threads_published`), so every wrapper documents and checks it the same way.
     """
-    arguments = list(impl.arguments)
+    arguments = [
+        omp_threads_published(argument) if conventions.is_omp_threads_arg(argument.name)
+        else argument
+        for argument in impl.arguments
+    ]
     result = published_result(impl, conventions)
     if result is None:
         return arguments
@@ -148,6 +176,31 @@ def published_arguments(impl: Procedure, conventions: Conventions = CONVENTIONS)
         len(arguments),
     )
     return arguments[:error] + [result] + arguments[error:]
+
+
+def omp_threads_published(argument: Argument) -> Argument:
+    """An implementation's `n_omp_threads`, as its wrappers publish it.
+
+    The documentation is the generator's (`_OMP_THREADS_DOC`), and the minimum is injected as the
+    `DM_MIN(1_int32)` an author would have written, so both tiers emit the same
+    `validate_in_range_int` as for any bounded integer -- inside `NO_INPUT_VALIDATION`, like
+    every check of a value the caller knows (FES, 2026-10-30). The author writes neither:
+    `validate` refuses either, so nothing they wrote is dropped here.
+    """
+    published = Argument(
+        argument.name,
+        argument.type,
+        dimension=argument.dimension,
+        intent=argument.intent,
+        optional=argument.optional,
+        doc=Doc.parse(list(_OMP_THREADS_DOC)),
+        directives=Directives(minimum=Minimum(_OMP_THREADS_MINIMUM)),
+        attributes=argument.attributes,
+        location=argument.location,
+        is_result=argument.is_result,
+    )
+    published.parent = argument.parent
+    return published
 
 
 # -- what the allocating wrapper takes over from the caller ----------------------
@@ -712,6 +765,7 @@ def _wrapper(
         meta=meta,
         location=impl.location,
         conventions=conventions,
+        implementation=impl,
     )
 
 
