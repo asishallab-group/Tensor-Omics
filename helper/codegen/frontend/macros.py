@@ -24,16 +24,24 @@ from pathlib import Path
 
 from pcpp import Preprocessor
 
-from ..config import CONVENTIONS
+from ..config import CONVENTIONS, Conventions
 from ..ir.directives import DirectivePatterns
 
 
 class MacroTable:
     """The macros defined by a header, with expansion of arbitrary snippets."""
 
-    def __init__(self, header: Path, include_paths: tuple[Path, ...] = ()):
+    def __init__(
+        self,
+        header: Path,
+        include_paths: tuple[Path, ...] = (),
+        defines: tuple[str, ...] = (),
+    ):
         self.header = Path(header)
         self.include_paths = tuple(include_paths)
+        #: Macros defined before the header is read, as `NAME` or `NAME value` -- what a
+        #: compiler flag would define, so the header's `#ifdef`s take that branch
+        self.defines = tuple(defines)
 
     @cached_property
     def _plain(self) -> Preprocessor:
@@ -48,6 +56,8 @@ class MacroTable:
         preprocessor = Preprocessor()
         for path in self.include_paths:
             preprocessor.add_path(str(path))
+        for definition in self.defines:
+            preprocessor.define(definition)
 
         text = self.header.read_text()
         preprocessor.parse(text, str(self.header))
@@ -160,6 +170,29 @@ def error_arg_pos_factor(macros: MacroTable) -> int:
         raise MissingMacroError(
             f"{ERR_ARG_POS_FACTOR_MACRO} is '{expanded}', which is not an integer"
         ) from None
+
+
+#: The macro the compiler defines when it compiles with OpenMP, and the one switch the
+#: sources key on
+OPENMP_SWITCH = "_OPENMP"
+
+
+def require_omp_macros(macros: MacroTable, conventions: Conventions = CONVENTIONS) -> None:
+    """Refuse a header that lacks an OpenMP macro the generator relies on.
+
+    The header defines them differently with and without OpenMP, so both branches are
+    checked: pcpp, like the generator and Ford, reads the header without `_OPENMP`, and a
+    macro missing only from the other branch would surface as nothing more than a compile
+    error in an OpenMP build.
+    """
+    names = (conventions.omp_pure_macro, conventions.omp_n_threads_macro)
+    with_openmp = MacroTable(macros.header, macros.include_paths, defines=(OPENMP_SWITCH,))
+    for table, branch in ((macros, "without"), (with_openmp, "with")):
+        missing = [name for name in names if name not in table]
+        if missing:
+            raise MissingMacroError(
+                f"{macros.header} does not define {', '.join(missing)} {branch} {OPENMP_SWITCH}"
+            )
 
 
 @dataclass(frozen=True)

@@ -274,6 +274,13 @@ The parts a source author does not need, and a generator maintainer does:
   marker and what the generator looks for therefore cannot disagree — change the macro and both
   the sources and the generator follow. Only tagged procedures are wrapped; everything else is
   held to none of the rules.
+- **The OpenMP macros `M_OMP_PURE` and `M_OMP_N_THREADS` are known by name only**
+  (`Conventions.omp_pure_macro`, `Conventions.omp_n_threads_macro`), because their bodies
+  depend on the build: `src/macros.h` defines them in both branches of an `#ifdef _OPENMP`,
+  and pcpp reads only the branch without OpenMP. So the frontend reads the header a second
+  time with `_OPENMP` defined and raises `MissingMacroError` when either branch lacks one of
+  them (`frontend.require_omp_macros`) — a definition missing from the OpenMP branch would
+  otherwise surface only as a compile error in an `--openmp` build.
 - **The plain name goes to the entry point a caller should reach for first**, which is why the
   suffix is never the author's to choose (`synthesize._wrappers_for`). Where the implementation
   has something to take over — a `tmp_` work array, a `<base>_perm` permutation, a

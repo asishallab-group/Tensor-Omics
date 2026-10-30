@@ -36,6 +36,15 @@ class Conventions:
     #: The doc macro an author writes to mark a procedure for export. The category above is
     #: read from it, so this is the name the diagnostics quote back.
     export_marker: str = "M_EXPORT_C"
+    #: The macro an OpenMP root procedure is declared with where `pure` would be: `pure`
+    #: without OpenMP, `impure` with it, as an OpenMP directive is not allowed in a pure
+    #: procedure. Like the one below, it has to be defined in both branches of the header's
+    #: `#ifdef _OPENMP`, and the frontend refuses a header without it
+    #: (`frontend.require_omp_macros`).
+    omp_pure_macro: str = "M_OMP_PURE"
+    #: The macro giving the thread count an allocating wrapper sizes the per-thread work arrays
+    #: with: the caller's count with OpenMP, one without.
+    omp_n_threads_macro: str = "M_OMP_N_THREADS"
 
     #: Suffix of the allocating half of a *hand-written* procedure pair -- the shape the
     #: framework used before any wrapper was generated (`compute_edf` / `compute_edf_alloc`).

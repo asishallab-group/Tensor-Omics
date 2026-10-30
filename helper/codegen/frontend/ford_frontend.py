@@ -37,6 +37,7 @@ from .macros import (
     build_directive_patterns,
     error_arg_pos_factor,
     export_category,
+    require_omp_macros,
 )
 from .source_index import SourceIndex
 
@@ -108,6 +109,7 @@ class FordFrontend:
             paths.resolve(paths.macros_header), include_paths=(paths.root,)
         )
         self.directives = DirectiveParser(build_directive_patterns(self.macros))
+        require_omp_macros(self.macros, conventions)
         # the export category comes from M_EXPORT_C, so the marker and what the generator
         # recognises cannot drift; the passed conventions supply everything else
         self.conventions = replace(
