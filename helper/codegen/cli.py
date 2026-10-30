@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 from .config import Paths
-from .generate import generate, generate_and_write
+from .generate import files_to_remove, generate, generate_and_write
 
 #: the generated Fortran wrappers of the implementations (src/generated/tox)
 SOURCE_TARGETS = ("fortran",)
@@ -46,7 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--check", action="store_true",
         help="report problems without writing anything, and exit non-zero if any files "
-             "would change",
+             "would change or be removed",
     )
     parser.add_argument(
         "--no-clean", action="store_true",
@@ -86,10 +86,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check:
         changed = _changed(result)
+        removed = files_to_remove(result, targets, paths)
         if changed:
             print(f"{len(changed)} file(s) would change:", file=sys.stderr)
             for path in changed:
                 print(f"  {path}", file=sys.stderr)
+        if removed:
+            print(f"{len(removed)} file(s) would be removed:", file=sys.stderr)
+            for path in removed:
+                print(f"  {path}", file=sys.stderr)
+        if changed or removed:
             return 1
         print("up to date.", file=sys.stderr)
         return 0

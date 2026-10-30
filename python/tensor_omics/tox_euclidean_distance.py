@@ -9,23 +9,24 @@ relative-distance index are built on.
 Python binding, generated from tox_euclidean_distance. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.euclidean_distance_c.restype = None
 _lib.euclidean_distance_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -35,14 +36,14 @@ _EUCLIDEAN_DISTANCE_ARGUMENT_SOURCES = (None, None, "vec1", None, None,)
 
 _lib.distance_to_centroid_c.restype = None
 _lib.distance_to_centroid_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -72,6 +73,9 @@ def euclidean_distance(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -80,42 +84,30 @@ def euclidean_distance(
     Generated from the Fortran procedure `tox_euclidean_distance::euclidean_distance`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        vec1 = np.ascontiguousarray(vec1, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'vec1' must be an array of np.float64: {error}") from None
-    if vec1.ndim != 1:
-        raise ValueError(f"'vec1' must have 1 dimension, but has {vec1.ndim}")
-    try:
-        vec2 = np.ascontiguousarray(vec2, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'vec2' must be an array of np.float64: {error}") from None
-    if vec2.ndim != 1:
-        raise ValueError(f"'vec2' must have 1 dimension, but has {vec2.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    vec1 = _contract.reals(vec1, "vec1", ndim=1)
+    vec2 = _contract.reals(vec2, "vec2", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_elements = vec1.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if vec2.shape[0] != n_elements:
-        raise ValueError(f"'vec2' has {vec2.shape[0]} along axis 0, but "
-            f"'vec1' implies n_elements == {n_elements}"
-        )
+        raise _ToxArgumentError(f"'vec2' has {vec2.shape[0]} along axis 0, but 'vec1' implies n_elements == {n_elements}; 'vec2' is declared with shape (n_elements)", argument="vec2")
 
     # outputs and work arrays, which the caller never sees
-    result = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    result = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.euclidean_distance_c(
         vec1,
         vec2,
-        ctypes.byref(ctypes.c_int(n_elements)),
-        ctypes.byref(result),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_elements)),
+        _ctypes.byref(result),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _EUCLIDEAN_DISTANCE_ARGUMENTS, _EUCLIDEAN_DISTANCE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _EUCLIDEAN_DISTANCE_ARGUMENTS, _EUCLIDEAN_DISTANCE_ARGUMENT_SOURCES)
 
     return result.value
 
@@ -148,6 +140,9 @@ def distance_to_centroid(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -156,57 +151,38 @@ def distance_to_centroid(
     Generated from the Fortran procedure `tox_euclidean_distance::distance_to_centroid`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        genes = np.asfortranarray(genes, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'genes' must be an array of np.float64: {error}") from None
-    if genes.ndim != 2:
-        raise ValueError(f"'genes' must have 2 dimensions, but has {genes.ndim}")
-    try:
-        centroids = np.asfortranarray(centroids, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'centroids' must be an array of np.float64: {error}") from None
-    if centroids.ndim != 2:
-        raise ValueError(f"'centroids' must have 2 dimensions, but has {centroids.ndim}")
-    try:
-        gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
-    if gene_to_fam.ndim != 1:
-        raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    genes = _contract.reals(genes, "genes", ndim=2, order="F")
+    centroids = _contract.reals(centroids, "centroids", ndim=2, order="F")
+    gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_genes = genes.shape[1]
     n_families = centroids.shape[1]
     n_tissues = genes.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
-    if gene_to_fam.shape[0] != n_genes:
-        raise ValueError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but "
-            f"'genes' implies n_genes == {n_genes}"
-        )
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if centroids.shape[0] != n_tissues:
-        raise ValueError(f"'centroids' has {centroids.shape[0]} along axis 0, but "
-            f"'genes' implies n_tissues == {n_tissues}"
-        )
+        raise _ToxArgumentError(f"'centroids' has {centroids.shape[0]} along axis 0, but 'genes' implies n_tissues == {n_tissues}; 'centroids' is declared with shape (n_tissues, n_families)", argument="centroids")
+    if gene_to_fam.shape[0] != n_genes:
+        raise _ToxArgumentError(f"'gene_to_fam' has {gene_to_fam.shape[0]} along axis 0, but 'genes' implies n_genes == {n_genes}; 'gene_to_fam' is declared with shape (n_genes)", argument="gene_to_fam")
 
     # outputs and work arrays, which the caller never sees
-    distances = np.empty((n_genes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    distances = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.distance_to_centroid_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_families)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_families)),
         genes,
         centroids,
         gene_to_fam,
         distances,
-        ctypes.byref(ctypes.c_int(n_tissues)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_tissues)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DISTANCE_TO_CENTROID_ARGUMENTS, _DISTANCE_TO_CENTROID_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DISTANCE_TO_CENTROID_ARGUMENTS, _DISTANCE_TO_CENTROID_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     distances.flags.writeable = False

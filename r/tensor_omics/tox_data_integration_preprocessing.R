@@ -36,7 +36,7 @@ compute_residuals <- function(expr, means) {
     expr <- .tox_as_double_matrix(expr, "expr")
     means <- .tox_as_double_vector(means, "means")
     if (length(means) != dim(expr)[2])
-        .tox_shape_error("means", length(means), "expr", dim(expr)[2])
+        .tox_shape_error("means", 1L, length(means), "'expr' implies n_genes == ", dim(expr)[2], "n_genes")
 
     .result <- .Call("compute_residuals_call", expr, means)
     .arguments <- c("n_genes", "n_reps", "expr", "means", "resid", "ierr")
@@ -102,7 +102,7 @@ pool_means_expert <- function(pooled_means, pooled_means_perm, n_points) {
     pooled_means_perm <- .tox_as_integer_vector(pooled_means_perm, "pooled_means_perm")
     n_points <- .tox_as_integer_scalar(n_points, "n_points")
     if (length(pooled_means_perm) != length(pooled_means))
-        .tox_shape_error("pooled_means_perm", length(pooled_means_perm), "pooled_means", length(pooled_means))
+        .tox_shape_error("pooled_means_perm", 1L, length(pooled_means_perm), "'pooled_means' implies pool_size == ", length(pooled_means), "pool_size")
 
     .result <- .Call("pool_means_expert_call", pooled_means, pooled_means_perm, n_points)
     .arguments <- c("pooled_means", "pooled_means_perm", "pool_size", "n_points", "n_pool", "x_star", "ierr")
@@ -174,7 +174,7 @@ construct_neighborhoods <- function(x_star, mean_S, resid_S, n_neighbors) {
     resid_S <- .tox_as_double_matrix(resid_S, "resid_S")
     n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
     if (dim(resid_S)[2] != length(mean_S))
-        .tox_shape_error("resid_S", dim(resid_S)[2], "mean_S", length(mean_S))
+        .tox_shape_error("resid_S", 2L, dim(resid_S)[2], "'mean_S' implies n_genes_S == ", length(mean_S), "n_reps_S, n_genes_S")
 
     .result <- .Call("construct_neighborhoods_call", x_star, mean_S, resid_S, n_neighbors)
     .arguments <- c("n_points", "x_star", "n_genes_S", "mean_S", "n_reps_S", "resid_S", "neighborhood_residuals", "neighborhood_indices", "n_neighbors", "ierr")

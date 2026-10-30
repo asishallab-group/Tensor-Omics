@@ -29,6 +29,7 @@ from .ir.doc import Doc
 from .ir.entities import Argument, Meta, Module, Procedure, Project
 from .ir.roles import analyse
 from .ir.types import BaseType, FortranType, Intent
+from .ir.validate import function_result_problems
 
 #: Documentation for the `ierr` a wrapper carries when the implementation declares none
 _ERROR_DOC = "Error code; zero on success, non-zero on failure."
@@ -72,29 +73,81 @@ def generated_path_for(
     return out / relative.parent / f"{source.stem[: -len(suffix)]}.F90"
 
 
-def generated_wrapper_paths(
-    paths: Paths, conventions: Conventions = CONVENTIONS
-) -> list[Path]:
-    """Every file under `generated_dir` this generator owns, one per implementation module.
+def generated_wrapper_paths(paths: Paths) -> list[Path]:
+    """Every wrapper module on disk under `generated_dir`: what the fortran target cleans.
 
-    Derived from the source tree so the Ford frontend (which excludes the generated tree from
-    the parse) and the cleaner (which removes these before rewriting) agree on the set --
-    without either of them having to parse anything.
+    Read off the disk, not off the implementations that exist now. Derived from those, the set
+    missed the wrapper of an implementation that had been deleted, and fpm compiles all of
+    `src/generated`: the orphan, still `use`-ing the module that went with it, broke every
+    build after, regenerated or not (#221 B21). Reading the disk is safe by the rule `Paths`
+    states -- nothing hand-written lives under `generated_dir` -- and the fortran target owns
+    every `.F90` there outside the binding trees, which the c and r targets clean as theirs.
+    So `--target fortran` leaves the C wrappers and the R shims alone.
 
-    Read off file names, while synthesis triggers on module names. The two agree because a
-    Fortran file here is named for the module it holds, which `validate` checks for every
-    implementation module rather than leaving to assumption: were they to disagree, the
-    cleaner would delete one path and the emitter write another.
+    A missing source tree owns nothing, as it did when the set was derived from it: a mistyped
+    `--src` must not take every wrapper with it.
     """
     src = paths.resolve(paths.src_dir)
-    if not src.is_dir():
+    out = paths.resolve(paths.generated_dir)
+    if not src.is_dir() or not out.is_dir():
         return []
-    generated = [
+    # resolved, as in `generated_path_for`: two spellings of one directory must compare equal
+    bindings = {paths.resolve(d).resolve() for d in (paths.c_binding_dir, paths.r_binding_dir)}
+    return [
         path
-        for source in sorted(src.rglob("*.[Ff]90"))
-        if (path := generated_path_for(source, paths, conventions)) is not None
+        for path in sorted(out.rglob("*.F90"))
+        if bindings.isdisjoint(path.resolve().parents)
     ]
-    return generated
+
+
+# -- what the wrappers publish ---------------------------------------------------
+
+
+def published_result(impl: Procedure, conventions: Conventions = CONVENTIONS) -> Argument | None:
+    """An implementation function's result, as its wrappers publish it, or None.
+
+    Both tiers are subroutines, so the result becomes one of their `intent(out)` arguments,
+    named and documented as the author declared it, and the wrapper assigns the call to it
+    (`total = foo_impl(...)`). It is an ordinary argument from here on -- validated, bound and
+    returned like any output -- which is why the copy no longer says it is a result: the
+    wrapper has none. None for a subroutine, and for a result the wrappers cannot carry under
+    its name (`validate.function_result_problems`, which says why).
+    """
+    result = impl.result
+    if result is None or function_result_problems(impl, conventions):
+        return None
+    published = Argument(
+        result.name,
+        result.type,
+        dimension=result.dimension,
+        intent=Intent.OUT,
+        doc=result.doc,
+        directives=result.directives,
+        attributes=result.attributes,
+        location=result.location,
+    )
+    published.parent = impl
+    return published
+
+
+def published_arguments(impl: Procedure, conventions: Conventions = CONVENTIONS) -> list[Argument]:
+    """The implementation's arguments as its wrappers start from: a function's result included.
+
+    The result goes right before `ierr` (#221 B1, FES's decision): before the implementation's
+    own `ierr` where it declares one, else last, which is where the wrapper's `ierr` is then
+    appended -- so the published signature ends in `..., result, ierr` either way, as an
+    exported function's C wrapper does (`abi.c_abi`).
+    """
+    arguments = list(impl.arguments)
+    result = published_result(impl, conventions)
+    if result is None:
+        return arguments
+    error = next(
+        (index for index, argument in enumerate(arguments)
+         if argument.name.lower() == conventions.error_arg.lower()),
+        len(arguments),
+    )
+    return arguments[:error] + [result] + arguments[error:]
 
 
 # -- what the allocating wrapper takes over from the caller ----------------------
@@ -493,7 +546,7 @@ def _variants(
     One entry for an ordinary impl; one per mode value for a mode-split impl.
     """
     if mode_argument is None:
-        return [(_base_name(impl, conventions), list(impl.arguments), None)]
+        return [(_base_name(impl, conventions), published_arguments(impl, conventions), None)]
     return [
         (
             value.procedure_name,
@@ -514,7 +567,7 @@ def _mode_kept_arguments(
     mode is dropped; everything else is carried through.
     """
     kept: list[Argument] = []
-    for argument in impl.arguments:
+    for argument in published_arguments(impl, conventions):
         if argument is mode_argument:
             continue
         required = argument.directives.required_if_mode
@@ -628,9 +681,18 @@ def _wrappers_for(
         return validating, None
 
     # the prologue's own arguments go after the implementation's, before `ierr`: they are
-    # the allocating tier's own vocabulary, not part of what the implementation asked for
-    kept = [a for a in arguments if a not in taken]
-    alloc_arguments = [a.with_name(a.name) for a in kept] + extra
+    # the allocating tier's own vocabulary, not part of what the implementation asked for.
+    # Before the implementation's own `ierr` too, where it has one, and before a function's
+    # result, which is published right before `ierr`, so the signature still ends in both.
+    kept = [a.with_name(a.name) for a in arguments if a not in taken]
+    ending = {conventions.error_arg.lower()}
+    if impl.result is not None:
+        ending.add(impl.result.name.lower())
+    error = next(
+        (index for index, a in enumerate(kept) if a.name.lower() in ending),
+        len(kept),
+    )
+    alloc_arguments = kept[:error] + extra + kept[error:]
     _append_error(alloc_arguments, impl, conventions)
     return validating, _wrapper(base, alloc_arguments, impl, conventions)
 

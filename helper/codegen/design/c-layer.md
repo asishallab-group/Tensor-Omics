@@ -151,6 +151,55 @@ before it may take `c_loc` of the arrays they size. `ir/validate.py` enforces it
 
 ---
 
+## Decision: an input axis the declaration computes is passed, and compared in the wrapper
+
+A `bind(C)` wrapper receives a pointer, and the callee's explicit-shape dummy trusts whatever
+extent it is declared with. For an axis named by an argument or a constant, Python and R compare
+the array they are handed before the call (`language-layers.md`). For an axis the declaration
+*computes* -- `expr(sum(reps_per_tissue), n_genes)`, `velocity(max(0_int32, n_timepoints - 1),
+...)` -- only Fortran knows the value, so (#221 A-shape):
+
+1. **C is given the actual extent** of that axis, as an argument right after the array
+   (`n_expr_elements_dim_1`, the assumed-shape extent's name and origin), which Python and the R
+   shim read off the array exactly as they read an assumed-shape one. That is the whole C ABI
+   change, and the rule decides its size: every non-`tmp_` input axis declared by an expression
+   over arguments gets one. On main at #221 that came to three arguments in three symbols
+   (`calc_tiss_avg_c`, `compute_acceleration_from_velocity_c`,
+   `compute_acceleration_from_velocity_trajectory_c`) -- a count, not a limit: a branch declaring
+   another such axis gets another (#182's `centroids(n_factors*n_timepoints, ...)`). A direct
+   C caller passes the extent of the buffer it has; no header is published, so a caller
+   written against the old prototype still links and must be updated by hand.
+2. **The wrapper declares the array with it**, and counts it in `M_CHECK_ARRAY_NON_NULL`. The
+   declared expression in a `bind(C)` dummy's declaration is evaluated on entry: `sum(reps_per_tissue)`
+   dereferenced `reps_per_tissue` before the null check of step 4 could run, and a null one
+   crashed the caller instead of returning `ERR_POINTER_NULL` (attack-shape F3). No expression
+   reading an array's contents may sit in a declaration or a null-check count.
+3. **After every null check, it compares** the passed extent with the declaration, evaluated in
+   Fortran, and reports `ERR_SIZE_MISMATCH` at the array's position. An array the expression reads
+   has been null-checked by then, or is empty, and reading an empty one reads nothing. An optional
+   array is compared only when present: C passes 0 for an absent one's extent. A code carries no
+   text, so Python and R complete the message with the declared shape, which they hand
+   `check_err_code` beside the argument names (`CWrapper.size_checks` decides for both sides
+   which arrays): `'expr' is declared with shape (sum(reps_per_tissue), n_genes)`.
+4. **Not under `NO_INPUT_VALIDATION`.** That directive drops checks of *values* for a caller who
+   knows its data; this one keeps a short buffer from being read past, which no knowledge of the
+   values makes safe -- the same reason the null checks stay.
+
+A shaped array (`arr(n_strings)` beside `arr_shape`, the serde helpers) gets the same comparison
+with no argument added: the wrapper views `product(arr_shape)` elements and the callee is declared
+with `n_strings`, so a C caller whose two disagreed had the callee write past the view.
+
+*Refused* (`c_abi._can_check`): an expression reading an optional, an `intent(out)` dummy, a dummy
+the wrapper converts (under its name in the wrapper it is the C buffer, not the declared value), or
+an array whose own extent is computed, whose check would have to come first. None occurs on main.
+
+*Rejected:* passing every input axis's extent to C (about 430 arguments on main), which repeats a
+bare-name extent that is already an argument. *Rejected:* assumed-shape `foo` tiers, which would
+protect Fortran callers too but needs this passed extent anyway, gives up sequence association and
+can copy a strided actual; FES decided (2026-10-26) that a Fortran caller of `foo` stays
+responsible for its extents. *Rejected:* a constant axis as a C argument too (`fields(n, 2, m)`):
+a C caller cannot get a literal wrong by passing a pointer, and the bindings compare it exactly.
+
 ## Decision: an argument position always numbers the Fortran dummy list
 
 `ierr` packs the position of the argument it blames. The C wrapper's argument list is *not*
@@ -320,24 +369,31 @@ FITS headers, `sockaddr_un.sun_path`, and NumPy's own `S`/`U` dtypes are all exa
 
 ## Decision: a string crosses as a fixed-length pointer view, blank-padded, and is never converted
 
-### Multibyte characters: the width is right, the encoding flag is not
+### Multibyte characters: the width is right, and the encoding is UTF-8 both ways
 
 Checked 2026-08-14, because a fixed-width format truncates the moment the width is measured in
 different units from the payload.
 
 **It is not.** Both bindings measure bytes, which is the same unit the buffer is filled in, so a
-UTF-8 string is never truncated by the sizing. R's `tox_max_strlen` uses `LENGTH()` on a
-`CHARSXP`, which is the byte length and not the character count (`nchar()` would have been the
-bug). Python builds the buffer with `.encode()` — UTF-8 bytes — into a NumPy `S` dtype whose
-`itemsize` is likewise bytes. Fortran agrees: `character(len=n)` of kind `c_char` is n bytes.
+UTF-8 string is never truncated by the sizing. R's `tox_max_strlen` measures the UTF-8 bytes of
+each `CHARSXP`, not the character count (`nchar()` would have been the bug). Python builds the
+buffer with `.encode()` — UTF-8 bytes — into a NumPy `S` dtype whose `itemsize` is likewise
+bytes. Fortran agrees: `character(len=n)` of kind `c_char` is n bytes.
 
-**What is lost is the encoding flag, not the content.** `tox_char_out` rebuilds R strings with
-`Rf_mkCharLen`, which marks the result native/unknown. A UTF-8 string handed in comes back
-byte-identical but with its `Encoding()` reset, which is harmless in a UTF-8 locale and wrong
-outside one. `Rf_mkCharLenCE(p, m, CE_UTF8)` is the fix, and it needs a decision rather than a
-patch: the shim would be asserting an encoding for bytes Fortran may have built itself, so the
-honest version marks UTF-8 only where the input was UTF-8, or the API declares that it always
-is.
+**The API declares that a string is UTF-8** (#221, the input contract in
+`language-layers.md`). R used to copy a string's bytes as they stood, so a latin1 `"\xe9"` and
+the UTF-8 `"\u00e9"` reached Fortran as two different strings, and marked what came back
+native/unknown, which is wrong outside a UTF-8 locale. Now `tox_char_in` takes every string
+through `tox_utf8`, which goes by what R marks it as and never by the locale: a string marked
+UTF-8, and an unmarked one, passes as it stands if it is well-formed UTF-8; a latin1 one is
+translated (`Rf_translateCharUTF8`, which is `enc2utf8` in C, and only for it); anything else is
+refused -- "bytes", and a latin1 byte Windows-1252 leaves undefined, which R would write out as
+`<81>` (caught by counting: every latin1 byte is one character). `tox_char_out` marks what it
+returns `CE_UTF8`. Translating an unmarked string too, as the first form did, is locale-dependent:
+in the C locale R writes every non-ASCII byte out as escape text (`<c3><a9>`), which is valid
+ASCII and so passed (`language-layers.md`). Python's `str` is Unicode already: it refuses a lone surrogate, which no encoding
+can carry, and a NUL, which R cannot hold at all. So what Fortran sees and builds is UTF-8 by
+contract, and marking it so is not an assertion about bytes it never checked.
 
 **For the pointer view specifically, blank padding is safe.** No UTF-8 continuation byte is
 `0x20` — they are all `0x80`-`0xBF` — so `trim` and `len_trim` cannot split a character, and
@@ -418,14 +474,51 @@ absent optional dummy -- the same rule the unallocated allocatable used. It must
 which is both thread-unsafe and formally impossible on an automatic-length object, and both
 compilers accept the spelling silently.
 
-**Zero-size buffers are fine, and were probed rather than guarded.** `M_CHECK_ARRAY_NON_NULL`
-lets an empty array through unchecked, so the remap is the first place the wrapper takes an
-unguarded `c_loc` -- and `read_tox_data_into` on a partial archive really does reach it with
-`family_id_len == 0, n_family_ids == 0`, where R's `R_alloc(0, 1)` hands back NULL. Probed
-2026-08-14: `strlen=0, n=0` and `strlen=0, n=2`, both over a NULL buffer, give a well-behaved
-zero-size/zero-length view on gfortran 16.1 and ifx 2026.1 under `-fcheck=all` / `-check all`.
-A guard would not have helped anyway: a non-optional dummy cannot receive a disassociated
-pointer. This is the same class of formal-only objection as the `len>1` point above.
+**A nullable mode is passed as a pointer to its integer, by the same rule.** A mode is the one
+optional the wrapper converts, so it cannot be handed straight on as above: the callee takes
+the integer the string names, and an integer local is always present. The wrapper declares the
+integer `target` and a pointer to it, `nullify`s the pointer, and only under `present(...)`
+views the string, maps it and associates the pointer; the callee is handed the pointer, which is
+absent when it stayed disassociated. The string dummy is `optional, target`, because
+`c_char_as_view`'s result points into its TARGET dummy and would be undefined on return
+otherwise (F2018 15.5.2.4). Before (#221), the view was taken unguarded -- a null dereference
+that killed Python and R when the mode was omitted -- and the local integer was passed, so the
+callee would have seen the mode present all the same. A mode with a `DM_DEFAULT` is not
+nullable and keeps the plain local.
+
+*Rejected:* an `allocatable` integer, the nullable logical's idiom, which is absent while
+unallocated. It costs an allocation that can fail, for four bytes, where the pointer costs
+nothing and cannot fail.
+
+**An array of no strings is viewed at an anchor (#221 B3, 2026-10-27).** `M_CHECK_ARRAY_NON_NULL`
+lets an empty array through unchecked, so the remap is the first place the wrapper takes `c_loc`
+-- and `c_loc` of a zero-size target is not allowed, while the callee still needs an associated
+view: a non-optional dummy cannot receive a disassociated pointer (gfortran: "Pointer actual
+argument is not associated", ifx segfaults). So an array of strings with no element is viewed at
+the C wrapper module's own `character(kind=c_char, len=1), target :: empty_view_anchor`, shape
+`[0]`, and the callee decides about an empty array as it does for every other kind. The form is
+one `c_f_pointer` of a `type(c_ptr)` chosen by `if`:
+
+```fortran
+M_CHECK_CHARACTER_ARRAY_VIEW(family_ids, family_ids_strlen, n_family_ids_elements)
+family_ids_address = c_loc(empty_view_anchor)
+if (n_family_ids_elements > 0) family_ids_address = c_loc(family_ids)
+call c_f_pointer(family_ids_address, family_ids_f, [n_family_ids_elements])
+```
+
+Probed (#221 attack-b, `b3/`) on gfortran 16.1 `-fcheck=all -Wall -Wextra -std=f2023` and ifx
+2026.1 `-check all -warn all -stand f23`: zero strings of width 5, 1 or 0 give an associated,
+contiguous view of size 0 with the right `len`, as an `intent(in)`, an `intent(out)` and an
+explicit-shape dummy, from Python and R through every string-array procedure on main. What stays
+refused is what has no address to view: a zero width with strings in it, a negative count, and a
+single string of zero width (`M_CHECK_CHARACTER_VIEW`) -- reachable from C only, since Python and
+R pad an empty string to one blank.
+
+*Rejected:* refusing the empty array as `ERR_EMPTY_INPUT`, which is what the wrapper did: a data
+set with zero families could be written from Fortran and from no binding. *Rejected:* two
+`c_f_pointer` calls, one per branch -- gfortran warns that the descriptor may be used
+uninitialised. *Rejected:* `merge(c_loc(a), c_loc(anchor), n > 0)` -- an internal compiler error
+on ifx 2026.1, and it takes `c_loc` of the zero-size buffer regardless.
 
 **A mode string is viewed up to its first NUL, so it accepts either convention.** A mode
 (`mode`, `method`) is a fixed-width `select case` lookup with no `strlen` argument, and the
@@ -514,12 +607,45 @@ not standard Fortran — `gfortran -std=f2018` rejects `dimension(n)` above `int
 So anything named in someone's extents is hoisted; everything else keeps the author's
 order.
 
+An extent that names no argument is a module constant (`points(N_AXES, n)`), and the wrapper,
+which redeclares every argument but imports only the procedure it calls, imports it from the
+module that defines it, beside the mode parameters (`CWrapper.size_constants`, #221 B13).
+The binding languages read the same model with every such constant replaced by its evaluated
+value (`CWrapper.with_constant_sizes_evaluated`): C and Python have no name for it, and the
+value is what the Fortran wrapper's own declaration means anyway.
+
 ---
 
 ## Decision: a function is exposed as a subroutine
 
 C receives the result as an `intent(out)` argument, placed **before** the error code, so
-that adding a result to a subroutine does not move `ierr` for existing callers.
+that adding a result to a subroutine does not move `ierr` for existing callers -- before the
+function's *own* `ierr` too, where it declares one (`_Builder.build`). That case used to get its
+result appended after it (`hw_ownierr_c(n, x, ierr, total)`), the one published signature that
+did not end in `ierr`, and the order check every C wrapper is held to
+(`_Builder._check_error_is_last`, beside `validate`'s check of the Fortran order) exempted it
+until #221's B1 moved the result. A function implementation's Fortran tiers take the result at
+the same place (`synthesize.published_arguments`), so every layer agrees: `..., result, ierr`.
+
+The result needs a `result(...)` clause (`validate.function_result_problems`). Named after the
+function, it would be a dummy of the wrapper that `use`s the function by that name -- which
+neither compiler accepts, and which the stripped name cannot avoid either, being the wrapper's
+own. *Rejected:* naming the argument after the function where there is no clause (#221's first
+design), for exactly that reason.
+
+---
+
+## Decision: only the kinds R can hold
+
+`KIND_MAP` knows the C counterpart of `int8`, `int64`, `real32`, `c_size_t` and the rest, and the
+C layer could pass any of them. The bindings cannot: R holds an integer as int32 and a number as
+real64, its shim takes `INTEGER()` / `REAL()` storage whatever the Fortran kind, and the generated
+validators exist for int32 and real64 only. So `validate` refuses every other kind on an exported
+argument (`SUPPORTED_KIND_VALUES`: a numeric kind compared by value so `c_int` and `c_double`
+pass, a logical kind by name), rather than `KIND_MAP` losing entries: what C could carry and what
+the bindings can are two different questions, and the refusal says which one failed. A kind both
+would refuse (`real(4)`, which `KIND_MAP` does not spell) gets the binding's error alone: the C ABI
+stays quiet about what `validate.bindings_cannot_carry` already refuses.
 
 ---
 

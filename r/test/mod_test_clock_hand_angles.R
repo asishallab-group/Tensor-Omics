@@ -283,4 +283,11 @@ test_mathematical_properties <- function() {
   assert_equal_numeric(angle_12, -angle_21, TOL, "Anti-commutativity of signed angles")
 }
 
+# `fields` is (n_dims, 2, n_fields); a middle extent of 1 used to be read past (#221)
+test_shift_vectors_refuse_fields_without_two_points <- function() {
+  fields <- array(1, dim = c(2L, 1L, 3L))
+  assert_error(clock_hand_angles_for_shift_vectors(fields, rep(TRUE, 3), ccw_reference(fields[, 1, 1])),
+               "a field without its target must be refused")
+}
+
 run_all_tests()

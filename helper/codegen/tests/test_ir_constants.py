@@ -77,6 +77,21 @@ class TestLogicalLiterals:
         assert evaluate(".false.") is False
 
 
+class TestKindedLogicalLiterals:
+    """The guide asks for `.true._c_bool`, so a default may be written that way (G-R7)."""
+
+    @pytest.mark.parametrize(
+        "expression, expected",
+        [(".true._c_bool", True), (".FALSE._C_BOOL", False), (".true._1", True)],
+    )
+    def test_the_kind_is_read_and_the_value_kept(self, evaluate, expression, expected):
+        assert evaluate(expression) is expected
+
+    def test_an_unknown_kind_is_rejected(self, evaluate):
+        with pytest.raises(ConstantError, match="unknown kind 'banana'"):
+            evaluate(".true._banana")
+
+
 class TestCharacterLiterals:
     @pytest.mark.parametrize(
         "expression, expected",
@@ -153,7 +168,7 @@ class TestIntrinsics:
         with pytest.raises(ConstantError, match="mod by zero"):
             evaluate("mod(1, 0)")
 
-    def test_a_kind_argument_is_ignored(self, evaluate):
+    def test_a_kind_argument_is_accepted(self, evaluate):
         assert evaluate("int(3.9, int32)") == 3
         assert evaluate("real(3, real64)") == 3.0
 
@@ -311,6 +326,9 @@ class TestTokenize:
     def test_a_logical_is_one_token(self):
         assert [token.kind for token in tokenize(".true.")] == ["logical"]
 
+    def test_a_kinded_logical_is_one_token(self):
+        assert [token.text for token in tokenize(".true._c_bool")] == [".true._c_bool"]
+
 
 class TestRealWorldDefaults:
     """The DM_DEFAULT values actually used in the codebase."""
@@ -357,3 +375,148 @@ class TestMathIntrinsics:
         # not track, so they are deliberately left out and must be reported, not guessed
         with pytest.raises(ConstantError, match="not an intrinsic"):
             evaluate("huge(1_int32)")
+
+
+class TestFortranArithmetic:
+    """The value is the one a Fortran caller gets, not Python's (issue #221, B9)."""
+
+    @pytest.mark.parametrize(
+        "expression, expected",
+        [
+            ("nint(2.5)", 3),
+            ("nint(-2.5)", -3),
+            ("nint(2.4999)", 2),
+            # floor(x + 0.5) would round this up: the addition itself rounds to 1.0
+            ("nint(0.49999999999999994)", 0),
+            ("nint(-0.49999999999999994)", 0),
+        ],
+    )
+    def test_nint_rounds_half_away_from_zero(self, evaluate, expression, expected):
+        result = evaluate(expression)
+
+        assert result == expected
+        assert isinstance(result, int)
+
+    def test_anint_rounds_half_away_from_zero_and_stays_real(self, evaluate):
+        assert evaluate("anint(2.5)") == 3.0
+        assert evaluate("anint(-2.5)") == -3.0
+        assert isinstance(evaluate("anint(2.5)"), float)
+
+    @pytest.mark.parametrize(
+        "expression, expected",
+        [("2**-1", 0), ("(-2)**-1", 0), ("1**-2", 1), ("(-1)**-1", -1), ("(-1)**-2", 1)],
+    )
+    def test_an_integer_to_a_negative_power_is_an_integer(self, evaluate, expression, expected):
+        result = evaluate(expression)
+
+        assert result == expected
+        assert isinstance(result, int)
+
+    def test_zero_to_a_negative_power_is_refused(self, evaluate):
+        with pytest.raises(ConstantError, match="zero raised to a negative power"):
+            evaluate("0**-1")
+
+    def test_a_real_to_a_negative_power_stays_real(self, evaluate):
+        assert evaluate("2.0**-1") == 0.5
+
+    def test_integer_division_is_exact(self, evaluate):
+        # int(a / b) goes through a float, which has no 9007199254740993
+        assert evaluate("9007199254740993_int64 / 1") == 9007199254740993
+        assert evaluate("-9007199254740993_int64 / 2") == -4503599627370496
+        assert evaluate("mod(9007199254740993_int64, 2)") == 1
+
+    def test_a_real_mod_is_exact(self, evaluate):
+        assert evaluate("mod(7.5, 2.0)") == 1.5
+        assert evaluate("mod(-7.5, 2.0)") == -1.5
+
+    @pytest.mark.parametrize(
+        "expression",
+        ["2147483648", "2147483647 + 1", "-2147483647 - 2", "2**31", "2**63", "46341 * 46341",
+         "int(3.0e10)", "nint(1.0e10)", "abs(-2147483647 - 1)"],
+    )
+    def test_overflowing_the_default_integer_kind_is_refused(self, evaluate, expression):
+        with pytest.raises(ConstantError, match="overflows an integer of kind 4"):
+            evaluate(expression)
+
+    def test_the_kind_s_own_range_is_allowed(self, evaluate):
+        assert evaluate("-2147483647 - 1") == -2147483648
+        assert evaluate("2147483647") == 2147483647
+
+    @pytest.mark.parametrize(
+        "expression, expected",
+        [("2_int64**62", 2**62), ("2147483647_int64 + 1", 2**31),
+         ("2147483647 + 1_int64", 2**31), ("int(3.0e10, int64)", 30000000000),
+         ("nint(1.0e10, int64)", 10000000000)],
+    )
+    def test_a_wider_kind_holds_more(self, evaluate, expression, expected):
+        assert evaluate(expression) == expected
+
+    def test_overflowing_int64_is_refused(self, evaluate):
+        with pytest.raises(ConstantError, match="overflows an integer of kind 8"):
+            evaluate("2_int64**63")
+
+    def test_a_huge_power_is_refused_without_being_computed(self, evaluate):
+        with pytest.raises(ConstantError, match="overflows every integer kind"):
+            evaluate("2_int64**100000000000_int64")
+
+    def test_a_parameter_s_kind_carries_into_the_expression(self):
+        from codegen.ir.constants import Integer
+
+        evaluate = ConstantEvaluator(constants={"BIG": Integer(2**40, 8)}).evaluate
+
+        assert evaluate("BIG * 2") == 2**41
+
+    def test_a_negative_real_to_a_real_power_is_refused_not_complex(self, evaluate):
+        with pytest.raises(ConstantError, match="negative real raised to a real power"):
+            evaluate("(-8.0)**(1.0/3.0)")
+
+    def test_a_negative_real_to_an_integer_power_is_fine(self, evaluate):
+        assert evaluate("(-2.0)**3") == -8.0
+
+    @pytest.mark.parametrize("expression", ["1.0e400", "1.0e308 * 10.0"])
+    def test_a_real_overflow_is_refused(self, evaluate, expression):
+        with pytest.raises(ConstantError, match="overflows a real"):
+            evaluate(expression)
+
+    def test_the_result_is_a_plain_int(self, evaluate):
+        # the kind is the evaluator's business; what it hands out is an ordinary int
+        assert type(evaluate("2 + 3")) is int
+
+
+class TestSignPrecedence:
+    """A sign binds below `**` and `*`, as in Fortran (review M1 of #221's WP1).
+
+    Every expected value is what gfortran 16.1 and ifx 2026.1 give for the same expression
+    as a `parameter`. `(-a)**b` used to be computed, so `DM_DEFAULT(-2.0_real64**2)` reached
+    Python and R as +4.
+    """
+
+    @pytest.mark.parametrize(
+        "expression, expected",
+        [
+            ("-2**2", -4),
+            ("- 3**2 + 1", -8),
+            ("-1**2", -1),
+            ("-2**3**2", -512),
+            ("-2*3", -6),
+            ("+2**2", 4),
+            ("-2.0_real64**2", -4.0),
+            # the gfortran/ifx extension: a sign straight after an operator signs the
+            # operand that follows, its `**` included
+            ("2*-3**2", -18),
+            ("1 - -2**2", 5),
+            ("2.0_real64**-2**2", 0.0625),
+            ("2**-1", 0),
+        ],
+    )
+    def test_a_sign_applies_to_the_whole_power(self, evaluate, expression, expected):
+        result = evaluate(expression)
+
+        assert result == pytest.approx(expected)
+        assert type(result) is type(expected)
+
+    def test_a_negated_real_power_is_not_a_negative_base(self, evaluate):
+        # -(2.0**0.5), which Fortran computes; only (-2.0)**0.5 has no real value
+        assert evaluate("-2.0_real64**0.5") == pytest.approx(-math.sqrt(2.0))
+        with pytest.raises(ConstantError, match="negative real raised to a real power"):
+            evaluate("(-2.0_real64)**0.5")

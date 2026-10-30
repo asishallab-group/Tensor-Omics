@@ -24,6 +24,7 @@
 #'   The maximum valid value is `2`.
 #' @param mode a string, one of "plain", "robust". Mode for LOESS fitting
 #'   The default value is `"robust"`.
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param n_iters a integer scalar. Number of iterations for robust LOESS fitting
 #'   The default value is `3`.
 #' @return a named list with elements:
@@ -47,7 +48,7 @@ compute_family_scaling <- function(n_families, distances, gene_to_fam, span = 0.
     mode <- .tox_as_mode(mode, "mode", c("plain", "robust"))
     n_iters <- .tox_as_integer_scalar(n_iters, "n_iters")
     if (length(gene_to_fam) != length(distances))
-        .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
+        .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'distances' implies n_genes == ", length(distances), "n_genes")
 
     .result <- .Call("compute_family_scaling_call", n_families, distances, gene_to_fam, span, degree, mode, n_iters)
     .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "dscale", "loess_x", "loess_y", "indices_used", "span", "degree", "mode", "n_iters", "low_sd_cutoff", "excluded_low_sd", "ierr")
@@ -88,7 +89,7 @@ compute_rdi <- function(distances, gene_to_fam, dscale) {
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
     dscale <- .tox_as_double_vector(dscale, "dscale")
     if (length(gene_to_fam) != length(distances))
-        .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
+        .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'distances' implies n_genes == ", length(distances), "n_genes")
 
     .result <- .Call("compute_rdi_call", distances, gene_to_fam, dscale)
     .arguments <- c("n_genes", "distances", "gene_to_fam", "dscale", "rdi", "sorted_rdi", "perm", "ierr")
@@ -135,9 +136,9 @@ identify_outliers <- function(rdi, sorted_rdi, perm, quantile_level = 0.95) {
     perm <- .tox_as_integer_vector(perm, "perm")
     quantile_level <- .tox_as_double_scalar(quantile_level, "quantile_level")
     if (length(sorted_rdi) != length(rdi))
-        .tox_shape_error("sorted_rdi", length(sorted_rdi), "rdi", length(rdi))
+        .tox_shape_error("sorted_rdi", 1L, length(sorted_rdi), "'rdi' implies n_genes == ", length(rdi), "n_genes")
     if (length(perm) != length(rdi))
-        .tox_shape_error("perm", length(perm), "rdi", length(rdi))
+        .tox_shape_error("perm", 1L, length(perm), "'rdi' implies n_genes == ", length(rdi), "n_genes")
 
     .result <- .Call("identify_outliers_call", rdi, sorted_rdi, perm, quantile_level)
     .arguments <- c("n_genes", "rdi", "sorted_rdi", "perm", "is_outlier", "threshold", "tail_probability", "quantile_level", "ierr")
@@ -190,7 +191,7 @@ detect_outliers <- function(n_families, distances, gene_to_fam, quantile_level =
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
     quantile_level <- .tox_as_double_scalar(quantile_level, "quantile_level")
     if (length(gene_to_fam) != length(distances))
-        .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
+        .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'distances' implies n_genes == ", length(distances), "n_genes")
 
     .result <- .Call("detect_outliers_call", n_families, distances, gene_to_fam, quantile_level)
     .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "is_outlier", "loess_x", "loess_y", "loess_n", "tail_probability", "quantile_level", "ierr")

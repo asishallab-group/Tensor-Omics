@@ -5,32 +5,35 @@ Module for deserializing character arrays from files
 Python binding, generated from f42_serde_arrays_deserialize_char. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.deserialize_char_helper_c.restype = None
 _lib.deserialize_char_helper_c.argtypes = (
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
 _DESERIALIZE_CHAR_HELPER_ARGUMENTS = ("arr", "n_strings", "strlen", "arr_shape", "filename", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _DESERIALIZE_CHAR_HELPER_ARGUMENT_SOURCES = (None, "arr", None, "arr", None, None,)
+#: For an array the C wrapper compares with its declaration, that shape
+_DESERIALIZE_CHAR_HELPER_ARGUMENT_SHAPES = ("n_strings", None, None, None, None, None,)
 
 def deserialize_char_helper(
         filename,
@@ -41,6 +44,7 @@ def deserialize_char_helper(
     ----------
     filename : str
         Name of the file
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -49,6 +53,9 @@ def deserialize_char_helper(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -60,8 +67,8 @@ def deserialize_char_helper(
     # kept before conversion, for the producers called below
     _filename_raw = filename
 
-    # accept anything array-like, converting only when C needs it
-    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
+    # check every input by the input contract, converting only when C needs it
+    filename = _np.array([_contract.string(filename, "filename").ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     filename_strlen = filename.itemsize
@@ -74,24 +81,24 @@ def deserialize_char_helper(
     arr_shape = _get_array_metadata_result["dims_out"]
 
     # what the inputs already say, rather than asking for it again
-    n_strings = int(np.prod(arr_shape))
+    n_strings = int(_np.prod(arr_shape))
     n_arr_shape_elements = arr_shape.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    arr = np.zeros((int(np.prod(arr_shape)),), dtype=f"S{strlen}")
-    ierr = ctypes.c_int(0)
+    arr = _np.zeros((int(_np.prod(arr_shape)),), dtype=f"S{strlen}")
+    ierr = _ctypes.c_int(0)
 
     _lib.deserialize_char_helper_c(
         arr,
-        ctypes.byref(ctypes.c_int(n_strings)),
-        ctypes.byref(ctypes.c_int(strlen)),
+        _ctypes.byref(_ctypes.c_int(n_strings)),
+        _ctypes.byref(_ctypes.c_int(strlen)),
         arr_shape,
-        ctypes.byref(ctypes.c_int(n_arr_shape_elements)),
+        _ctypes.byref(_ctypes.c_int(n_arr_shape_elements)),
         filename,
-        ctypes.byref(ctypes.c_int(filename_strlen)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(filename_strlen)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DESERIALIZE_CHAR_HELPER_ARGUMENTS, _DESERIALIZE_CHAR_HELPER_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DESERIALIZE_CHAR_HELPER_ARGUMENTS, _DESERIALIZE_CHAR_HELPER_ARGUMENT_SOURCES, shapes=_DESERIALIZE_CHAR_HELPER_ARGUMENT_SHAPES)
 
-    return np.asarray([_s.decode().rstrip(' ') for _s in arr]).reshape(tuple(arr_shape), order='F')
+    return _np.asarray([_s.decode().rstrip(' ') for _s in arr], dtype=str).reshape(tuple(arr_shape), order='F')

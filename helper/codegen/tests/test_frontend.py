@@ -521,6 +521,52 @@ class TestUnexpandedMacros:
         assert len(bag.warnings) == 2
 
 
+class TestPrivateExports:
+    """#221 B20: an `M_EXPORT_C` on a private procedure did nothing at all, silently."""
+
+    def source(self, tmp_path, visibility):
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "fx_hidden.F90").write_text(
+            "#include <src/macros.h>\n"
+            "!> a module\n"
+            "module fx_hidden\n"
+            "    use, intrinsic :: iso_fortran_env, only: int32\n"
+            "    implicit none\n"
+            "    private\n"
+            f"    {visibility}\n"
+            "contains\n"
+            "    !> M_EXPORT_C\n"
+            "    !| summary: p\n"
+            "    !| author: A\n"
+            "    subroutine fx_p(n, ierr)\n"
+            "        integer(int32), intent(in) :: n\n"
+            "            !! a count\n"
+            "        integer(int32), intent(out) :: ierr\n"
+            "            !! Error code\n"
+            "        ierr = n * 0\n"
+            "    end subroutine fx_p\n"
+            "end module fx_hidden\n"
+        )
+        return src
+
+    def test_a_private_export_is_an_error(self, tmp_path):
+        parsed, bag = parse(src_dir=self.source(tmp_path, "! fx_p stays private"))
+
+        assert parsed.project.module("fx_hidden").exported_procedures == ()
+        error = bag.errors[0]
+        assert len(bag.errors) == 1
+        assert error.message == "'fx_p' in module 'fx_hidden' is marked M_EXPORT_C but is private"
+        assert error.location.line == 12
+        assert "make it public" in error.note
+
+    def test_a_public_export_is_not(self, tmp_path):
+        parsed, bag = parse(src_dir=self.source(tmp_path, "public :: fx_p"))
+
+        assert bag.errors == ()
+        assert [p.name for p in parsed.project.module("fx_hidden").exported_procedures] == ["fx_p"]
+
+
 def _module_with(tmp_path, doc_line):
     """A minimal exported procedure carrying `doc_line` on its argument."""
     src = tmp_path / "src"
@@ -743,3 +789,100 @@ class TestFordGivingUpOnAFile:
         )
 
         assert "Preprocessing" not in errors[0]
+
+
+class TestDeclarationForms:
+    """Declarations Fortran reads one way and a naive reading another (issue #221)."""
+
+    def parse_procedure(self, tmp_path, header, declarations, attributes="pure "):
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "fx_forms.F90").write_text(
+            "#include <src/macros.h>\n"
+            "\n"
+            "!> summary: declaration forms\n"
+            "module fx_forms\n"
+            "    use, intrinsic :: iso_fortran_env, only: real64, int32\n"
+            "    implicit none\n"
+            "contains\n"
+            "    !> M_EXPORT_C\n"
+            "    !| summary: p\n"
+            "    !| author: A\n"
+            f"    {attributes}subroutine fx_p({header})\n"
+            f"{declarations}"
+            "    end subroutine fx_p\n"
+            "end module fx_forms\n"
+        )
+        parsed, bag = parse(src_dir=src)
+        assert bag.errors == (), bag.render()
+        return parsed.project.procedure("fx_forms", "fx_p")
+
+    def test_an_entity_s_own_array_spec_overrides_the_dimension_attribute(self, tmp_path):
+        procedure = self.parse_procedure(tmp_path, "n, m, a, b", (
+            "        integer(int32), intent(in) :: n, m\n"
+            "        real(real64), dimension(n), intent(in) :: a, b(m)\n"
+        ))
+
+        assert procedure.argument("a").dimension.extents == ("n",)
+        assert procedure.argument("b").dimension.extents == ("m",)
+
+    @pytest.mark.parametrize(
+        "declared, extents",
+        [("x(1:n)", ("n",)), ("x(1_int32:n)", ("n",)), ("x(1:)", (":",)),
+         ("x(0:n)", ("0:n",)), ("x(n, 1:2)", ("n", "2"))],
+    )
+    def test_a_lower_bound_of_1_is_dropped_and_any_other_kept(self, tmp_path, declared, extents):
+        procedure = self.parse_procedure(tmp_path, "n, x", (
+            "        integer(int32), intent(in) :: n\n"
+            f"        real(real64), intent(in) :: {declared}\n"
+        ))
+
+        assert procedure.argument("x").dimension.extents == extents
+
+    @pytest.mark.parametrize(
+        "attributes, is_pure",
+        [("pure ", True), ("elemental ", True), ("impure elemental ", False),
+         ("elemental impure ", False), ("", False)],
+    )
+    def test_impure_elemental_is_not_pure(self, tmp_path, attributes, is_pure):
+        procedure = self.parse_procedure(tmp_path, "x", (
+            "        real(real64), intent(inout) :: x\n"
+        ), attributes=attributes)
+
+        assert procedure.is_pure is is_pure
+
+    def test_every_reference_takes_the_declared_spelling(self, tmp_path):
+        procedure = self.parse_procedure(tmp_path, "N_Values, values, label, k, picked", (
+            "        integer(int32), intent(in) :: N_Values\n"
+            "        real(real64), dimension(n_values), intent(in) :: values\n"
+            "        character(len=N_VALUES), intent(in) :: label\n"
+            "        integer(int32), intent(in) :: k\n"
+            "            !! DM_MAX(n_values)\n"
+            "        real(real64), dimension(N_VALUES), intent(out) :: picked\n"
+            "            !! DM_RESULT_SIZE_IS(K)\n"
+        ))
+
+        assert procedure.argument("values").dimension.extents == ("N_Values",)
+        assert procedure.argument("picked").dimension.extents == ("N_Values",)
+        assert procedure.argument("label").type.length.expr == "N_Values"
+        assert procedure.argument("k").directives.maximum.expression == "N_Values"
+        assert procedure.argument("picked").directives.result_size_is.argument == "k"
+
+    def test_the_declared_names_themselves_are_kept(self, tmp_path):
+        # the published API, mixed case included (`neighbor_mask_S1` on main)
+        procedure = self.parse_procedure(tmp_path, "N_Values, values", (
+            "        integer(int32), intent(in) :: N_Values\n"
+            "        real(real64), dimension(n_values), intent(in) :: values\n"
+        ))
+
+        assert [a.name for a in procedure.arguments] == ["N_Values", "values"]
+
+    def test_a_kind_suffix_and_a_constant_are_left_alone(self, tmp_path):
+        # `_n` after a digit is a kind, not the dummy `n`; an unknown name is not a dummy
+        procedure = self.parse_procedure(tmp_path, "N, x", (
+            "        integer(int32), intent(in) :: N\n"
+            "        real(real64), intent(in) :: x(max(0_int32, n - 1), n_fixed)\n"
+        ))
+
+        # Ford hands the extents over without blanks
+        assert procedure.argument("x").dimension.extents == ("max(0_int32,N-1)", "n_fixed")

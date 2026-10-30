@@ -22,6 +22,7 @@ import re
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..config import CONVENTIONS, Conventions
 from ..ir.types import Intent
+from ..names import CONVERTED, EMPTY_VIEW_ANCHOR, MODE_POINTER, MODE_VALUE, VIEW_ADDRESS
 from ..render import Writer
 from .doc_ford import render_doc
 from .doc_literals import render_mode_default
@@ -31,10 +32,12 @@ from .doc_literals import render_mode_default
 #: match, and that never collides with a real argument name.
 _EXTENT_IDENTIFIER_RE = re.compile(r"[A-Za-z_]\w*")
 
-#: Suffix of the local a converted argument is passed to the callee as
-CONVERTED_SUFFIX = "_f"
-#: Suffix of the local holding a mode string's integer parameter
-MODE_SUFFIX = "_mode_f"
+#: Suffix of the local a converted argument is passed to the callee as, of the local
+#: holding a mode string's integer parameter, and of the pointer a nullable mode is passed as;
+#: `names` is where every generated name is kept
+CONVERTED_SUFFIX = CONVERTED
+MODE_SUFFIX = MODE_VALUE
+MODE_POINTER_SUFFIX = MODE_POINTER
 
 
 def _product(extents) -> str:
@@ -46,6 +49,26 @@ def _product(extents) -> str:
     """
     parts = [e if e.isidentifier() or e.isdigit() else f"({e})" for e in extents]
     return " * ".join(parts) if parts else "1"
+
+
+def _string_count(argument: CArgument) -> str | None:
+    """How many strings an array of strings holds, or None for anything else.
+
+    The C extents after the leading one, which is the width -- or, for a serialized array, the
+    product of the shape that travels beside it, the C extent being `*`.
+    """
+    if argument.conversion is not Conversion.CHARACTER:
+        return None
+    if argument.shape_arg is not None:
+        return f"product({argument.shape_arg})"
+    extents = list(argument.dimension.extents)[1:]
+    return _product(extents) if extents else None
+
+
+def _has_string_arrays(module: CWrapperModule) -> bool:
+    """Whether some wrapper views an array of strings, and so needs the empty view's anchor."""
+    return any(_string_count(argument) is not None for wrapper in module for argument in wrapper)
+
 
 class FortranCEmitter:
     def __init__(self, conventions: Conventions = CONVENTIONS,
@@ -74,6 +97,12 @@ class FortranCEmitter:
             # rather than in someone's build log.
             writer.line("M_IMPLICIT_NONE")
             writer.line("private")
+            if _has_string_arrays(module):
+                # what an array of no strings is viewed at: `c_loc` may not be given the
+                # zero-size buffer itself, and the callee needs an associated view all the
+                # same (`_remap_local`). Never written: the view has no element.
+                writer.blank()
+                writer.line(f"character(kind=c_char, len=1), target :: {EMPTY_VIEW_ANCHOR}")
             writer.blank()
             for wrapper in module:
                 writer.line(f"public :: {wrapper.name}")
@@ -102,6 +131,9 @@ class FortranCEmitter:
             # `M_IMPLICIT_NONE` is `implicit none (type, external)`, so an unimported
             # intrinsic is a compile error rather than a silent implicit external.
             kinds.add("c_f_pointer")
+        if _has_string_arrays(module):
+            # the address an array of strings is viewed at, and the anchor's kind
+            kinds |= {"c_ptr", "c_char"}
         kinds = sorted(kinds)
         for chunk in _chunks(kinds, 6):
             writer.line(f"use, intrinsic :: iso_c_binding, only: {', '.join(chunk)}")
@@ -118,9 +150,11 @@ class FortranCEmitter:
         errors = ["set_ok", "set_err"]
         errors.append("ERR_POINTER_NULL")
         if any(a.conversion is Conversion.CHARACTER for w in module for a in w):
-            errors.append("ERR_EMPTY_INPUT")  # M_CHECK_CHARACTER_VIEW names it
+            errors.append("ERR_EMPTY_INPUT")  # the M_CHECK_CHARACTER_*VIEW macros name it
         if any(a.conversion is Conversion.MODE for w in module for a in w):
             errors.append("ERR_INVALID_INPUT")
+        if any(any(True for _ in _shape_comparisons(w)) for w in module):
+            errors.append("ERR_SIZE_MISMATCH")
         # Only a converted argument ever reaches `_allocate_local` in the body, so asking it
         # about the others answered a question the wrapper never puts -- and left
         # `ERR_ALLOC_FAIL` imported by modules that allocate nothing.
@@ -149,7 +183,7 @@ class FortranCEmitter:
 
         with writer.indent():
             writer.line(f"use {wrapper.module_name}, only: {procedure.name}")
-            self._mode_uses(writer, wrapper)
+            self._parameter_uses(writer, wrapper)
             writer.blank()
             self._declarations(writer, wrapper)
             self._locals(writer, wrapper)
@@ -163,13 +197,16 @@ class FortranCEmitter:
         writer.line(f"end subroutine {wrapper.name}")
         return writer.render()
 
-    def _mode_uses(self, writer: Writer, wrapper: CWrapper) -> None:
+    def _parameter_uses(self, writer: Writer, wrapper: CWrapper) -> None:
+        """The module parameters the wrapper names: mode values, and constant extents."""
         by_module: dict[str, set[str]] = {}
         for argument in wrapper:
             if argument.mode is None:
                 continue
             for value in argument.mode.values:
                 by_module.setdefault(value.module, set()).add(value.parameter)
+        for constant in wrapper.size_constants:
+            by_module.setdefault(constant.module, set()).add(constant.name)
         for module_name in sorted(by_module):
             names = ", ".join(sorted(by_module[module_name]))
             writer.line(f"use {module_name}, only: {names}")
@@ -254,6 +291,12 @@ class FortranCEmitter:
                 # together are legal on a bind(C) dummy and cost the ABI nothing; without
                 # the target both gfortran and ifx reject the c_loc outright.
                 attributes.append("target")
+            elif argument.conversion is Conversion.MODE:
+                # A mode is read through `c_char_as_view`, whose dummy is a TARGET and whose
+                # result points into it. Given an actual that is not one, that pointer is
+                # undefined once the function returns (F2018 15.5.2.4) -- nothing rejects it,
+                # the `select case` just reads it.
+                attributes.append("target")
         else:
             # c_loc needs a target, for the null check and for the pointer view.
             attributes.append("target")
@@ -267,7 +310,15 @@ class FortranCEmitter:
     def _local_declarations(self, argument: CArgument) -> list[str]:
         source = argument.source
         if argument.conversion is Conversion.MODE:
-            return [f"integer(int32) :: {argument.name}{MODE_SUFFIX}"]
+            value = f"{argument.name}{MODE_SUFFIX}"
+            if not argument.optional:
+                return [f"integer(int32) :: {value}"]
+            # A nullable mode -- optional, no default -- must reach the callee absent when C
+            # passed null, and an integer local is always present. So the callee is handed a
+            # pointer to it instead, which stays disassociated, and so absent, unless the mode
+            # was given: the string view's idiom (`_remap_local`), with the value as target.
+            return [f"integer(int32), target :: {value}",
+                    f"integer(int32), pointer :: {argument.name}{MODE_POINTER_SUFFIX}"]
 
         # A logical work array whose size the *caller* chooses is allocatable, and is
         # allocated through `M_ALLOCATE`. An automatic array is the obvious spelling and was
@@ -312,7 +363,10 @@ class FortranCEmitter:
             base = f"character(len={argument.dimension.extents[0]}), pointer"
             if source.dimension:
                 base += f", dimension({deferred})"
-            return [f"{base} :: {argument.name}{CONVERTED_SUFFIX}"]
+            declarations = [f"{base} :: {argument.name}{CONVERTED_SUFFIX}"]
+            if _string_count(argument) is not None:
+                declarations.append(f"type(c_ptr) :: {argument.name}{VIEW_ADDRESS}")
+            return declarations
 
         return []
 
@@ -332,6 +386,38 @@ class FortranCEmitter:
                 writer.line(
                     f"M_CHECK_ARRAY_NON_NULL({argument.name}, {self._size_of(argument)})"
                 )
+        self._shape_checks(writer, wrapper)
+
+    def _shape_checks(self, writer: Writer, wrapper: CWrapper) -> None:
+        """Compare what C says an array holds with what the callee's declaration needs.
+
+        Two cases, both a buffer the callee would read or write past (#221 A-shape):
+
+        - an input axis the declaration computes (`expr(sum(reps_per_tissue), n_genes)`), whose
+          actual extent C passes (`CArgument.checked_against`), and
+        - an array whose shape travels in a shape argument while the declaration counts it too
+          (`arr(n_strings)` beside `arr_shape`): the view holds `product(arr_shape)` strings.
+
+        After every null check, since an expression may read an array (`sum` reads
+        `reps_per_tissue`) -- one that `M_CHECK_ARRAY_NON_NULL` let through as empty is
+        zero-size, and reading it reads nothing. Never under `NO_INPUT_VALIDATION`: like the null
+        checks, this keeps a binding's short buffer from being read past, which no caller's
+        knowledge of its own values makes safe. An absent optional is not compared: C passes 0
+        for its extent. The order is the arguments', which no check depends on, `c_abi` refusing
+        an expression reading an array whose own extent is computed.
+        """
+        error = wrapper.error_argument.name
+        for argument, actual, expected in _shape_comparisons(wrapper):
+            position = _position_of(argument, wrapper)
+            lines = [f"if ({actual} /= {expected}) then",
+                     f"    call set_err({error}, ERR_SIZE_MISMATCH, {position}_int32)",
+                     "    return",
+                     "end if"]
+            if argument.optional:
+                lines = [f"if (present({argument.name})) then",
+                         *(f"    {line}" for line in lines),
+                         "end if"]
+            writer.block("\n".join(lines))
 
     def _size_of(self, argument: CArgument) -> str:
         """The element count that guards `c_loc` of an array."""
@@ -383,27 +469,39 @@ class FortranCEmitter:
         """
         name = argument.name
         local = f"{name}{CONVERTED_SUFFIX}"
-        if argument.shape_arg is not None:
-            # the C extent is `*`; how many strings there really are is the product of the
-            # shape that travels beside them
-            extents = [f"product({argument.shape_arg})"]
+        count = _string_count(argument)
+        if count is None:
+            # One string. `c_loc` may not be given a zero-size target, and the view is built
+            # before the call, so an empty buffer has to be refused here rather than left to
+            # the callee the way M_CHECK_ARRAY_NON_NULL leaves every other kind. Guarding the
+            # check without guarding this was the hole: the check skipped itself and the remap
+            # went ahead anyway.
+            lines = [f"M_CHECK_CHARACTER_VIEW({name}, {self._size_of(argument)})",
+                     f"call c_f_pointer(c_loc({name}), {local})"]
         else:
-            extents = list(argument.dimension.extents)[1:]
-        shape = f", [{', '.join(extents)}]" if extents else ""
-        remap = f"call c_f_pointer(c_loc({name}), {local}{shape})"
-        # `c_loc` may not be given a zero-size target, and the view is built before the call,
-        # so an empty buffer has to be refused here rather than left to the callee the way
-        # M_CHECK_ARRAY_NON_NULL leaves every other kind. Guarding the check without guarding
-        # this was the hole: the check skipped itself and the remap went ahead anyway.
-        guard = f"M_CHECK_CHARACTER_VIEW({name}, {self._size_of(argument)})"
+            # An array of strings may hold none (#221 B3): a data set with zero families. Its
+            # buffer is then zero-size, so the view is taken at the module's anchor instead --
+            # shape [0], so it has no element to read or write -- and the callee gets an
+            # associated, empty view to decide about, as every other kind of array is left to
+            # it. One `c_f_pointer` of an address chosen by `if`: two of them (one per branch)
+            # leave gfortran warning that the descriptor may be used uninitialised, and
+            # `merge(c_loc(...), c_loc(...), ...)` is an internal compiler error on ifx 2026.1
+            # and takes `c_loc` of the zero-size buffer regardless. What stays refused is a
+            # zero width with strings to view, and a negative count.
+            width = argument.dimension.extents[0]
+            address = f"{name}{VIEW_ADDRESS}"
+            lines = [f"M_CHECK_CHARACTER_ARRAY_VIEW({name}, {width}, {count})",
+                     f"{address} = c_loc({EMPTY_VIEW_ANCHOR})",
+                     f"if ({count} > 0) {address} = c_loc({name})",
+                     f"call c_f_pointer({address}, {local}, [{count}])"]
         if not argument.optional:
-            return f"{guard}\n{remap}"
+            return "\n".join(lines)
         # C passed null -> the argument is absent -> the local must be absent to the callee
         # too, which for a pointer means *disassociated* (F2018 15.5.2.12). An undefined
         # pointer is not a disassociated one, so it is nullified explicitly -- as a
         # statement, never as an initialiser, which would give the local an implicit SAVE.
         # Absent is not empty, so the guard sits inside the presence test.
-        body = "\n".join(f"    {line}" for line in (guard, remap))
+        body = "\n".join(f"    {line}" for line in lines)
         return f"nullify({local})\nif (present({name})) then\n{body}\nend if"
 
     def _allocate_local(self, argument: CArgument, wrapper: CWrapper) -> str:
@@ -474,7 +572,19 @@ class FortranCEmitter:
                 else:
                     writer.line(f"{name}{CONVERTED_SUFFIX} = {source_expression}")
             case Conversion.MODE:
-                writer.block(self._mode_in(argument, error))
+                if not argument.optional:
+                    writer.block(self._mode_in(argument, error))
+                else:
+                    # C passed null -> absent -> the pointer stays disassociated, and the
+                    # view of the string, which is what would read through null, is never
+                    # taken. Nullified as a statement, not an initialiser (implicit SAVE).
+                    pointer = f"{name}{MODE_POINTER_SUFFIX}"
+                    writer.line(f"nullify({pointer})")
+                    writer.line(f"if (present({name})) then")
+                    with writer.indent():
+                        writer.block(self._mode_in(argument, error))
+                        writer.line(f"{pointer} => {name}{MODE_SUFFIX}")
+                    writer.line("end if")
         return writer.render()
 
     def _mode_in(self, argument: CArgument, error: str) -> str:
@@ -539,7 +649,8 @@ class FortranCEmitter:
 
     def _actual(self, argument: CArgument) -> str:
         if argument.conversion is Conversion.MODE:
-            return f"{argument.name}{MODE_SUFFIX}"
+            suffix = MODE_POINTER_SUFFIX if argument.optional else MODE_SUFFIX
+            return f"{argument.name}{suffix}"
         if argument.needs_conversion:
             return f"{argument.name}{CONVERTED_SUFFIX}"
         if argument.shape_arg is not None:
@@ -579,6 +690,24 @@ class FortranCEmitter:
         if argument.optional:
             return f"if (present({name})) {assignment}"
         return assignment
+
+
+def _shape_comparisons(wrapper: CWrapper):
+    """What `_shape_checks` compares (`CWrapper.size_checks`): (array, what C says it holds,
+    what the callee needs)."""
+    for check in wrapper.size_checks:
+        if check.extent is not None:
+            yield check.array, check.extent.name, check.extent.checked_against
+        else:
+            yield check.array, f"product({check.array.shape_arg})", _product(check.declared)
+
+
+def _position_of(argument: CArgument, wrapper: CWrapper) -> int:
+    """The argument's position among the wrapped procedure's dummies, as `ierr` packs it."""
+    for index, dummy in enumerate(wrapper.procedure.arguments, start=1):
+        if dummy.name.lower() == argument.name.lower():
+            return index
+    raise ValueError(f"'{argument.name}' is no dummy of '{wrapper.procedure.name}'")
 
 
 def _is_declared_extent(argument: CArgument, wrapper: CWrapper) -> bool:

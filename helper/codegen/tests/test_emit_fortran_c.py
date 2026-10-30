@@ -303,7 +303,7 @@ class TestCharacters:
         text = emit(procedure, bag, emitter)
 
         assert "character(len=names_strlen), pointer, dimension(:) :: names_f" in text
-        assert "call c_f_pointer(c_loc(names), names_f, [n_names_elements])" in text
+        assert "call c_f_pointer(names_address, names_f, [n_names_elements])" in text
 
     def test_a_separate_shape_gives_the_view_its_product(self, bag, emitter):
         procedure = b.procedure(
@@ -315,7 +315,8 @@ class TestCharacters:
 
         text = emit(procedure, bag, emitter)
 
-        assert "call c_f_pointer(c_loc(arr), arr_f, [product(arr_shape)])" in text
+        assert "if (product(arr_shape) > 0) arr_address = c_loc(arr)" in text
+        assert "call c_f_pointer(arr_address, arr_f, [product(arr_shape)])" in text
 
     def test_an_output_is_remapped_before_the_call_and_not_copied_after(self, bag, emitter):
         # the callee writes through the view, which *is* the caller's buffer, so there is
@@ -326,7 +327,7 @@ class TestCharacters:
 
         text = emit(procedure, bag, emitter)
 
-        assert text.index("call c_f_pointer(c_loc(labels)") < text.index("call p(&")
+        assert text.index("call c_f_pointer(labels_address") < text.index("call p(&")
         assert "string_as_c_char" not in text
 
     def test_nothing_is_allocated_and_no_helper_is_called(self, bag, emitter):
@@ -362,7 +363,8 @@ class TestCharacters:
         assert "call c_f_pointer(c_loc(tag), tag_f)" in text
         assert "nullify(extras_f)" in text
         assert "if (present(extras)) then" in text
-        assert "call c_f_pointer(c_loc(extras), extras_f, [n_extras_elements])" in text
+        assert "if (n_extras_elements > 0) extras_address = c_loc(extras)" in text
+        assert "call c_f_pointer(extras_address, extras_f, [n_extras_elements])" in text
         # never an initialiser: that would give an automatic-length local an implicit SAVE
         assert "=> null()" not in text
 
@@ -375,17 +377,49 @@ class TestCharacters:
         procedure = b.procedure(
             "p",
             b.character("name", Intent.IN, length="*"),
-            b.character("rows", Intent.IN, "(:)", length="*"),
             b.ierr(),
         )
 
         text = emit(procedure, bag, emitter)
 
-        # the byte count, so a zero-width string and an empty vector are both caught
+        # the width: a single string of none has no address to view
         assert "M_CHECK_CHARACTER_VIEW(name, name_strlen)" in text
-        assert "M_CHECK_CHARACTER_VIEW(rows, rows_strlen * n_rows_elements)" in text
         # and it precedes the c_loc it protects
         assert text.index("M_CHECK_CHARACTER_VIEW(name,") < text.index("c_loc(name)")
+
+    def test_an_array_of_no_strings_is_viewed_at_the_anchor(self, bag, emitter):
+        """#221 B3: an array of strings may hold none -- a data set with zero families -- and
+        used to be refused as ERR_EMPTY_INPUT before the procedure ran. Its buffer is zero-size,
+        so the view is taken at the module's anchor instead, by one `c_f_pointer` of an address
+        chosen by `if` (two branches leave gfortran warning about the descriptor, `merge` is an
+        ifx ICE). Refused stays a zero width with strings to view, and a negative count."""
+        procedure = b.procedure(
+            "p", b.character("rows", Intent.IN, "(:)", length="*"), b.ierr(),
+        )
+
+        text = emit(procedure, bag, emitter)
+
+        view = text[text.index("M_CHECK_CHARACTER_ARRAY_VIEW"):text.index("call p(&")]
+        assert [line.strip() for line in view.split("\n")[:4]] == [
+            "M_CHECK_CHARACTER_ARRAY_VIEW(rows, rows_strlen, n_rows_elements)",
+            "rows_address = c_loc(empty_view_anchor)",
+            "if (n_rows_elements > 0) rows_address = c_loc(rows)",
+            "call c_f_pointer(rows_address, rows_f, [n_rows_elements])",
+        ]
+        assert "type(c_ptr) :: rows_address" in text
+        assert text.count("c_f_pointer(") == 1 and "merge(" not in text
+        assert "M_CHECK_CHARACTER_VIEW(rows" not in text
+
+    def test_only_a_module_with_an_array_of_strings_declares_the_anchor(self, bag, emitter):
+        arrays = emit_module(b.module("fx_x", b.procedure(
+            "p", b.character("rows", Intent.IN, "(:)", length="*"), b.ierr())), bag, emitter)
+        scalars = emit_module(b.module("fx_y", b.procedure(
+            "q", b.character("name", Intent.IN, length="*"), b.ierr())), bag, emitter)
+
+        anchor = "character(kind=c_char, len=1), target :: empty_view_anchor"
+        assert anchor in arrays.partition("contains")[0]
+        assert "c_ptr" in arrays.partition("contains")[0]
+        assert "empty_view_anchor" not in scalars and "c_ptr" not in scalars
 
     def test_an_absent_optional_is_not_an_empty_one(self, bag, emitter):
         """An omitted optional arrives as a null pointer with width 0, which is exactly what
@@ -402,6 +436,17 @@ class TestCharacters:
         guard = text.index("M_CHECK_CHARACTER_VIEW(tag,")
         assert text.index("if (present(tag)) then") < guard
         assert guard < text.index("end if")
+
+    def test_an_absent_array_of_strings_is_not_an_empty_one(self, bag, emitter):
+        procedure = b.procedure(
+            "p", b.character("tags", Intent.IN, "(:)", length="*", optional=True), b.ierr(),
+        )
+
+        text = emit(procedure, bag, emitter)
+
+        present = text.index("if (present(tags)) then")
+        assert text.index("nullify(tags_f)") < present
+        assert present < text.index("M_CHECK_CHARACTER_ARRAY_VIEW(tags,") < text.index("end if")
 
 
     def test_c_f_pointer_is_imported(self, bag, emitter):
@@ -486,6 +531,89 @@ class TestModes:
 
     def test_the_integer_is_what_gets_passed(self, bag, emitter):
         assert "mode = mode_mode_f,&" in emit(self._mode_procedure(), bag, emitter)
+
+
+class TestANullableMode:
+    """#221 B10: an optional mode with no default, which C may pass as null.
+
+    The wrapper took `c_char_as_view` of it unguarded -- a segfault when omitted -- and passed
+    its integer local on, so the callee would have seen the mode present all the same.
+    """
+
+    def _procedure(self):
+        doc = [
+            "| Mode | Value |",
+            "|------|-------|",
+            "| mean it | [[fx_basics(module):MODE_MEAN(variable)]] |",
+            "| median it | [[fx_basics(module):MODE_MEDIAN(variable)]] |",
+        ]
+        mode = b.integer("mode", Intent.IN, optional=True, doc=doc)
+        return b.procedure("p", mode, b.ierr())
+
+    def test_it_is_optional_and_a_target_for_the_view(self, bag, emitter):
+        text = emit(self._procedure(), bag, emitter)
+
+        assert ("character(len=1, kind=c_char), dimension(6), intent(in), optional, target "
+                ":: mode") in text
+
+    def test_the_callee_is_handed_a_pointer_to_the_integer(self, bag, emitter):
+        text = emit(self._procedure(), bag, emitter)
+
+        assert "integer(int32), target :: mode_mode_f" in text
+        assert "integer(int32), pointer :: mode_mode_p" in text
+        assert "mode = mode_mode_p,&" in text
+
+    def test_the_string_is_read_only_when_present(self, bag, emitter):
+        text = emit(self._procedure(), bag, emitter)
+
+        nullify = text.index("nullify(mode_mode_p)")
+        present = text.index("if (present(mode)) then")
+        view = text.index("c_char_as_view(mode)")
+        associate = text.index("mode_mode_p => mode_mode_f")
+        assert nullify < present < view < associate < text.index("end if", associate)
+
+    def test_a_mode_with_a_default_is_not_touched(self, bag, emitter):
+        # a default makes the mode required in C (#131), so the plain local stays
+        from codegen.ir.directives import Default, Directives
+
+        procedure = self._procedure()
+        procedure.arguments[0].directives = Directives(default=Default("MODE_MEAN"))
+        text = emit(procedure, bag, emitter)
+
+        assert "mode_mode_p" not in text
+        assert "mode = mode_mode_f,&" in text
+
+
+class TestConstantExtents:
+    """A module constant sizing an argument is imported, like a mode's values (#221, B13)."""
+
+    def _emitted(self, bag, emitter, *parameters):
+        module = b.module(
+            "m",
+            b.procedure(
+                "p",
+                b.integer("n", Intent.IN, doc="points"),
+                b.real("points", Intent.IN, "(N_AXES, n)", doc="the points"),
+                b.ierr(),
+            ),
+            parameters=parameters,
+        )
+        b.project(module)
+        analyse(module.procedure("p"), bag)
+        return emitter.wrapper(build_module(module, bag).wrappers[0])
+
+    def test_the_constant_is_imported_from_its_module(self, bag, emitter):
+        text = self._emitted(bag, emitter, b.parameter("N_AXES", "2"))
+
+        assert "real(c_double), dimension(N_AXES, n), intent(in), target :: points" in text
+        assert "use m, only: N_AXES" in text
+
+    def test_an_undefined_name_is_not_imported_from_anywhere(self, bag, emitter):
+        # nothing defines it, so there is nothing to import; the compiler says so
+        text = self._emitted(bag, emitter)
+
+        uses = [line.strip() for line in text.splitlines() if line.strip().startswith("use ")]
+        assert uses == ["use m, only: p"]
 
 
 class TestModule:
@@ -671,7 +799,7 @@ class TestImportsMatchTheBody:
         assert "allocate(" not in text
 
     def test_a_character_module_imports_the_empty_error(self):
-        # M_CHECK_CHARACTER_VIEW names ERR_EMPTY_INPUT, and only a character emits it
+        # the M_CHECK_CHARACTER_*VIEW macros name ERR_EMPTY_INPUT, and only a character emits one
         text = self.module_of(b.character("s", Intent.IN, length="*", doc="read in"))
 
         assert "ERR_EMPTY_INPUT" in _errors_imported(text)
@@ -699,3 +827,73 @@ def _errors_imported(text: str) -> str:
         if line.strip().startswith("use tox_errors, only:"):
             return line
     return ""
+
+
+class TestTheShapeCheck:
+    """The C wrapper compares what C says an array holds with what its declaration needs (#221)."""
+
+    def grouped(self, optional=False):
+        return b.procedure(
+            "p",
+            b.integer("n_groups", Intent.IN, doc="groups"),
+            b.integer("sizes", Intent.IN, "(n_groups)", doc="per group"),
+            b.real("values", Intent.IN, "(sum(sizes))", doc="the values", optional=optional),
+            b.real("sums", Intent.OUT, "(n_groups)", doc="per group"),
+            b.ierr(),
+        )
+
+    def test_the_array_is_declared_with_the_extent_c_passes(self, bag, emitter):
+        # a declaration `values(sum(sizes))` dereferences `sizes` on entry, before its null
+        # check could run (attack-shape F3): a null `sizes` crashed the caller
+        text = emit(self.grouped(), bag, emitter)
+
+        assert "dimension(n_values_elements), intent(in), target :: values" in text
+        assert "M_CHECK_ARRAY_NON_NULL(values, n_values_elements)" in text
+        assert "sum(sizes)), intent" not in text
+
+    def test_the_comparison_follows_every_null_check_and_names_the_array(self, bag, emitter):
+        text = emit(self.grouped(), bag, emitter)
+        body = text[text.index("M_CHECK_IERR_NON_NULL"):]
+
+        check = body.index("if (n_values_elements /= sum(sizes)) then")
+        assert check > body.rindex("M_CHECK_ARRAY_NON_NULL")
+        assert check < body.index("call p(")
+        # `values` is the third dummy of `p`
+        assert "call set_err(ierr, ERR_SIZE_MISMATCH, 3_int32)" in body[check:]
+
+    def test_it_is_never_compiled_out_by_no_input_validation(self, bag, emitter):
+        # A5.5: a short buffer read past is a crash, not a bad value; the guard compiles out
+        # checks of values, never this
+        module = b.module("m", self.grouped())
+        text = emit_module(module, bag, emitter)
+
+        # the C layer has no such guard at all: the check sits only inside NO_C_BINDING's
+        assert "if (n_values_elements /= sum(sizes)) then" in text
+        assert "NO_INPUT_VALIDATION" not in text
+
+    def test_an_optional_array_is_compared_only_when_present(self, bag, emitter):
+        text = emit(self.grouped(optional=True), bag, emitter)
+
+        assert re.search(
+            r"if \(present\(values\)\) then\s+if \(n_values_elements /= sum\(sizes\)\) then",
+            text)
+
+    def test_the_module_imports_the_code_only_where_a_wrapper_compares(self, bag, emitter):
+        assert "ERR_SIZE_MISMATCH" in _errors_imported(emit_module(b.module("m", self.grouped()),
+                                                                   bag, emitter))
+        assert "ERR_SIZE_MISMATCH" not in emit_module(b.module("m2", normalize()), bag, emitter)
+
+    def test_a_shaped_array_is_counted_against_its_declaration(self, bag, emitter):
+        # `arr(n_strings)` beside `arr_shape`: the view holds product(arr_shape) strings, and a C
+        # caller whose count disagrees had the callee write past it (#221 WP4 review N3)
+        procedure = b.procedure(
+            "p",
+            b.integer("n_strings", Intent.IN, doc="count"),
+            b.character("arr", Intent.OUT, "(n_strings)", length="8", doc="read"),
+            b.integer("arr_shape", Intent.IN, "(:)", doc="its shape"),
+            b.ierr(),
+        )
+        text = emit(procedure, bag, emitter)
+
+        assert "if (product(arr_shape) /= n_strings) then" in text
+        assert "call set_err(ierr, ERR_SIZE_MISMATCH, 2_int32)" in text

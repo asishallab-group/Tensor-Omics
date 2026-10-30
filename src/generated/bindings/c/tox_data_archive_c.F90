@@ -14,9 +14,12 @@
 module tox_data_archive_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_f_pointer, c_int, c_loc
+    use, intrinsic :: iso_c_binding, only: c_ptr
     use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_EMPTY_INPUT
     M_IMPLICIT_NONE
     private
+
+    character(kind=c_char, len=1), target :: empty_view_anchor
 
     public :: create_zip_archive_c
     public :: save_tox_data_c
@@ -59,7 +62,9 @@ contains
             !! Error code
         character(len=zip_filename_strlen), pointer :: zip_filename_f
         character(len=keys_strlen), pointer, dimension(:) :: keys_f
+        type(c_ptr) :: keys_address
         character(len=filenames_strlen), pointer, dimension(:) :: filenames_f
+        type(c_ptr) :: filenames_address
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -74,10 +79,14 @@ contains
 
         M_CHECK_CHARACTER_VIEW(zip_filename, zip_filename_strlen)
         call c_f_pointer(c_loc(zip_filename), zip_filename_f)
-        M_CHECK_CHARACTER_VIEW(keys, keys_strlen * n_keys_elements)
-        call c_f_pointer(c_loc(keys), keys_f, [n_keys_elements])
-        M_CHECK_CHARACTER_VIEW(filenames, filenames_strlen * n_filenames_elements)
-        call c_f_pointer(c_loc(filenames), filenames_f, [n_filenames_elements])
+        M_CHECK_CHARACTER_ARRAY_VIEW(keys, keys_strlen, n_keys_elements)
+        keys_address = c_loc(empty_view_anchor)
+        if (n_keys_elements > 0) keys_address = c_loc(keys)
+        call c_f_pointer(keys_address, keys_f, [n_keys_elements])
+        M_CHECK_CHARACTER_ARRAY_VIEW(filenames, filenames_strlen, n_filenames_elements)
+        filenames_address = c_loc(empty_view_anchor)
+        if (n_filenames_elements > 0) filenames_address = c_loc(filenames)
+        call c_f_pointer(filenames_address, filenames_f, [n_filenames_elements])
 
         call create_zip_archive(&
             zip_filename = zip_filename_f,&
@@ -190,10 +199,12 @@ contains
             !! Error code
         character(len=zip_filename_strlen), pointer :: zip_filename_f
         character(len=gene_ids_strlen), pointer, dimension(:) :: gene_ids_f
+        type(c_ptr) :: gene_ids_address
         character(len=gene_ids_file_strlen), pointer :: gene_ids_file_f
         character(len=expression_file_strlen), pointer :: expression_file_f
         character(len=gene_to_family_file_strlen), pointer :: gene_to_family_file_f
         character(len=family_ids_strlen), pointer, dimension(:) :: family_ids_f
+        type(c_ptr) :: family_ids_address
         character(len=family_ids_file_strlen), pointer :: family_ids_file_f
         character(len=family_centroids_file_strlen), pointer :: family_centroids_file_f
         character(len=shift_vectors_file_strlen), pointer :: shift_vectors_file_f
@@ -224,8 +235,10 @@ contains
         call c_f_pointer(c_loc(zip_filename), zip_filename_f)
         nullify(gene_ids_f)
         if (present(gene_ids)) then
-            M_CHECK_CHARACTER_VIEW(gene_ids, gene_ids_strlen * n_gene_ids_elements)
-            call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
+            M_CHECK_CHARACTER_ARRAY_VIEW(gene_ids, gene_ids_strlen, n_gene_ids_elements)
+            gene_ids_address = c_loc(empty_view_anchor)
+            if (n_gene_ids_elements > 0) gene_ids_address = c_loc(gene_ids)
+            call c_f_pointer(gene_ids_address, gene_ids_f, [n_gene_ids_elements])
         end if
         nullify(gene_ids_file_f)
         if (present(gene_ids_file)) then
@@ -244,8 +257,10 @@ contains
         end if
         nullify(family_ids_f)
         if (present(family_ids)) then
-            M_CHECK_CHARACTER_VIEW(family_ids, family_ids_strlen * n_family_ids_elements)
-            call c_f_pointer(c_loc(family_ids), family_ids_f, [n_family_ids_elements])
+            M_CHECK_CHARACTER_ARRAY_VIEW(family_ids, family_ids_strlen, n_family_ids_elements)
+            family_ids_address = c_loc(empty_view_anchor)
+            if (n_family_ids_elements > 0) family_ids_address = c_loc(family_ids)
+            call c_f_pointer(family_ids_address, family_ids_f, [n_family_ids_elements])
         end if
         nullify(family_ids_file_f)
         if (present(family_ids_file)) then
@@ -451,7 +466,9 @@ contains
             !! Error code
         character(len=zip_filename_strlen), pointer :: zip_filename_f
         character(len=gene_id_len), pointer, dimension(:) :: gene_ids_f
+        type(c_ptr) :: gene_ids_address
         character(len=family_id_len), pointer, dimension(:) :: family_ids_f
+        type(c_ptr) :: family_ids_address
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -477,10 +494,14 @@ contains
 
         M_CHECK_CHARACTER_VIEW(zip_filename, zip_filename_strlen)
         call c_f_pointer(c_loc(zip_filename), zip_filename_f)
-        M_CHECK_CHARACTER_VIEW(gene_ids, gene_id_len * n_gene_ids)
-        call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids])
-        M_CHECK_CHARACTER_VIEW(family_ids, family_id_len * n_family_ids)
-        call c_f_pointer(c_loc(family_ids), family_ids_f, [n_family_ids])
+        M_CHECK_CHARACTER_ARRAY_VIEW(gene_ids, gene_id_len, n_gene_ids)
+        gene_ids_address = c_loc(empty_view_anchor)
+        if (n_gene_ids > 0) gene_ids_address = c_loc(gene_ids)
+        call c_f_pointer(gene_ids_address, gene_ids_f, [n_gene_ids])
+        M_CHECK_CHARACTER_ARRAY_VIEW(family_ids, family_id_len, n_family_ids)
+        family_ids_address = c_loc(empty_view_anchor)
+        if (n_family_ids > 0) family_ids_address = c_loc(family_ids)
+        call c_f_pointer(family_ids_address, family_ids_f, [n_family_ids])
 
         call read_tox_data_into(&
             zip_filename = zip_filename_f,&

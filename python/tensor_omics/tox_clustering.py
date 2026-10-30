@@ -11,28 +11,29 @@ criterion asked for, so the same matrix can be re-clustered without recomputing 
 Python binding, generated from tox_clustering. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.cluster_factor_trajectories_k_means_c.restype = None
 _lib.cluster_factor_trajectories_k_means_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -42,15 +43,15 @@ _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENT_SOURCES = ("centroids", None, "tra
 
 _lib.k_means_clustering_c.restype = None
 _lib.k_means_clustering_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -60,14 +61,14 @@ _K_MEANS_CLUSTERING_ARGUMENT_SOURCES = ("centroids", None, "data_points", "data_
 
 _lib.linkage_clustering_c.restype = None
 _lib.linkage_clustering_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -110,6 +111,9 @@ def cluster_factor_trajectories_k_means(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -118,19 +122,15 @@ def cluster_factor_trajectories_k_means(
     Generated from the Fortran procedure `tox_clustering::cluster_factor_trajectories_k_means`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        trajectories = np.asfortranarray(trajectories, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'trajectories' must be an array of np.float64: {error}") from None
-    if trajectories.ndim != 3:
-        raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
-    if not isinstance(centroids, np.ndarray) or centroids.dtype != np.float64:
-        raise TypeError("'centroids' is modified in place, so it must already be a numpy array of {}".format(np.float64))
+    # check every input by the input contract, converting only when C needs it
+    trajectories = _contract.reals(trajectories, "trajectories", ndim=3, order="F")
+    if not isinstance(centroids, _np.ndarray) or centroids.dtype != _np.float64:
+        raise _ToxArgumentError("'centroids' is modified in place, so it must already be a numpy array of {}".format(_np.float64), argument="centroids")
     if centroids.ndim != 2:
-        raise ValueError(f"'centroids' must have 2 dimensions, but has {centroids.ndim}")
+        raise _ToxArgumentError(f"'centroids' must have 2 dimensions, but has {centroids.ndim}", argument="centroids")
     if not centroids.flags.f_contiguous:
-        raise ValueError("'centroids' is modified in place, so it must already be column-major (order='F')")
+        raise _ToxArgumentError("'centroids' is modified in place, so it must already be column-major (order='F')", argument="centroids")
+    max_iterations = _contract.integer(max_iterations, "max_iterations")
 
     # what the inputs already say, rather than asking for it again
     n_clusters = centroids.shape[1]
@@ -138,31 +138,29 @@ def cluster_factor_trajectories_k_means(
     n_samples = trajectories.shape[1]
     n_timepoints = trajectories.shape[2]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if centroids.shape[0] != n_factors:
-        raise ValueError(f"'centroids' has {centroids.shape[0]} along axis 0, but "
-            f"'trajectories' implies n_factors == {n_factors}"
-        )
+        raise _ToxArgumentError(f"'centroids' has {centroids.shape[0]} along axis 0, but 'trajectories' implies n_factors == {n_factors}; 'centroids' is declared with shape (n_factors, n_clusters)", argument="centroids")
 
     # outputs and work arrays, which the caller never sees
-    labels = np.empty((n_samples*n_timepoints,), dtype=np.int32, order='C')
-    label_counts = np.empty((n_clusters,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    labels = _np.empty((n_samples * n_timepoints,), dtype=_np.int32, order='C')
+    label_counts = _np.empty((n_clusters,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.cluster_factor_trajectories_k_means_c(
-        ctypes.byref(ctypes.c_int(n_clusters)),
+        _ctypes.byref(_ctypes.c_int(n_clusters)),
         trajectories,
-        ctypes.byref(ctypes.c_int(n_factors)),
-        ctypes.byref(ctypes.c_int(n_samples)),
-        ctypes.byref(ctypes.c_int(n_timepoints)),
+        _ctypes.byref(_ctypes.c_int(n_factors)),
+        _ctypes.byref(_ctypes.c_int(n_samples)),
+        _ctypes.byref(_ctypes.c_int(n_timepoints)),
         centroids,
         labels,
         label_counts,
-        ctypes.byref(ctypes.c_int(max_iterations)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(max_iterations)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENTS, _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENTS, _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     labels.flags.writeable = False
@@ -213,6 +211,9 @@ def k_means_clustering(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -221,49 +222,43 @@ def k_means_clustering(
     Generated from the Fortran procedure `tox_clustering::k_means_clustering`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        data_points = np.asfortranarray(data_points, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'data_points' must be an array of np.float64: {error}") from None
-    if data_points.ndim != 2:
-        raise ValueError(f"'data_points' must have 2 dimensions, but has {data_points.ndim}")
-    if not isinstance(centroids, np.ndarray) or centroids.dtype != np.float64:
-        raise TypeError("'centroids' is modified in place, so it must already be a numpy array of {}".format(np.float64))
+    # check every input by the input contract, converting only when C needs it
+    data_points = _contract.reals(data_points, "data_points", ndim=2, order="F")
+    if not isinstance(centroids, _np.ndarray) or centroids.dtype != _np.float64:
+        raise _ToxArgumentError("'centroids' is modified in place, so it must already be a numpy array of {}".format(_np.float64), argument="centroids")
     if centroids.ndim != 2:
-        raise ValueError(f"'centroids' must have 2 dimensions, but has {centroids.ndim}")
+        raise _ToxArgumentError(f"'centroids' must have 2 dimensions, but has {centroids.ndim}", argument="centroids")
     if not centroids.flags.f_contiguous:
-        raise ValueError("'centroids' is modified in place, so it must already be column-major (order='F')")
+        raise _ToxArgumentError("'centroids' is modified in place, so it must already be column-major (order='F')", argument="centroids")
+    max_iterations = _contract.integer(max_iterations, "max_iterations")
 
     # what the inputs already say, rather than asking for it again
     n_clusters = centroids.shape[1]
     n_points = data_points.shape[1]
     n_dims = data_points.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if centroids.shape[0] != n_dims:
-        raise ValueError(f"'centroids' has {centroids.shape[0]} along axis 0, but "
-            f"'data_points' implies n_dims == {n_dims}"
-        )
+        raise _ToxArgumentError(f"'centroids' has {centroids.shape[0]} along axis 0, but 'data_points' implies n_dims == {n_dims}; 'centroids' is declared with shape (n_dims, n_clusters)", argument="centroids")
 
     # outputs and work arrays, which the caller never sees
-    labels = np.empty((n_points,), dtype=np.int32, order='C')
-    label_counts = np.empty((n_clusters,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    labels = _np.empty((n_points,), dtype=_np.int32, order='C')
+    label_counts = _np.empty((n_clusters,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.k_means_clustering_c(
-        ctypes.byref(ctypes.c_int(n_clusters)),
+        _ctypes.byref(_ctypes.c_int(n_clusters)),
         data_points,
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_int(n_dims)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_dims)),
         centroids,
         labels,
         label_counts,
-        ctypes.byref(ctypes.c_int(max_iterations)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(max_iterations)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _K_MEANS_CLUSTERING_ARGUMENTS, _K_MEANS_CLUSTERING_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _K_MEANS_CLUSTERING_ARGUMENTS, _K_MEANS_CLUSTERING_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     labels.flags.writeable = False
@@ -299,6 +294,7 @@ def linkage_clustering(
         used algorithm
         The minimum valid value is `0`.
         The maximum valid value is `2`.
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -320,6 +316,9 @@ def linkage_clustering(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -328,43 +327,41 @@ def linkage_clustering(
     Generated from the Fortran procedure `tox_clustering::linkage_clustering`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    if not isinstance(distances, np.ndarray) or distances.dtype != np.float64:
-        raise TypeError("'distances' is modified in place, so it must already be a numpy array of {}".format(np.float64))
+    # check every input by the input contract, converting only when C needs it
+    if not isinstance(distances, _np.ndarray) or distances.dtype != _np.float64:
+        raise _ToxArgumentError("'distances' is modified in place, so it must already be a numpy array of {}".format(_np.float64), argument="distances")
     if distances.ndim != 2:
-        raise ValueError(f"'distances' must have 2 dimensions, but has {distances.ndim}")
+        raise _ToxArgumentError(f"'distances' must have 2 dimensions, but has {distances.ndim}", argument="distances")
     if not distances.flags.f_contiguous:
-        raise ValueError("'distances' is modified in place, so it must already be column-major (order='F')")
-    method = np.array([str(method).lower().encode().ljust(8)], dtype="S8")
+        raise _ToxArgumentError("'distances' is modified in place, so it must already be column-major (order='F')", argument="distances")
+    method = _np.array([_contract.mode(method, "method", ("average", "weighted", "ward",)).ljust(8)], dtype="S8")
 
     # what the inputs already say, rather than asking for it again
     n_points = distances.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if distances.shape[1] != n_points:
-        raise ValueError(f"'distances' has {distances.shape[1]} along axis 1, but "
-            f"'distances' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'distances' has {distances.shape[1]} along axis 1, but 'distances' implies n_points == {n_points}; 'distances' is declared with shape (n_points, n_points)", argument="distances")
 
     # outputs and work arrays, which the caller never sees
-    merge_i = np.empty((n_points - 1,), dtype=np.int32, order='C')
-    merge_j = np.empty((n_points - 1,), dtype=np.int32, order='C')
-    heights = np.empty((n_points - 1,), dtype=np.float64, order='C')
-    cluster_sizes = np.empty((n_points - 1,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    merge_i = _np.empty((n_points - 1,), dtype=_np.int32, order='C')
+    merge_j = _np.empty((n_points - 1,), dtype=_np.int32, order='C')
+    heights = _np.empty((n_points - 1,), dtype=_np.float64, order='C')
+    cluster_sizes = _np.empty((n_points - 1,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.linkage_clustering_c(
         distances,
-        ctypes.byref(ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
         merge_i,
         merge_j,
         heights,
         cluster_sizes,
         method,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _LINKAGE_CLUSTERING_ARGUMENTS, _LINKAGE_CLUSTERING_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _LINKAGE_CLUSTERING_ARGUMENTS, _LINKAGE_CLUSTERING_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     merge_i.flags.writeable = False

@@ -9,24 +9,25 @@ index array rather than as linked nodes.
 Python binding, generated from f42_kd_tree. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.build_kd_index_c.restype = None
 _lib.build_kd_index_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -36,12 +37,12 @@ _BUILD_KD_INDEX_ARGUMENT_SOURCES = (None, "points", "points", None, None, None,)
 
 _lib.build_spherical_kd_c.restype = None
 _lib.build_spherical_kd_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -72,6 +73,9 @@ def build_kd_index(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -80,44 +84,32 @@ def build_kd_index(
     Generated from the Fortran procedure `f42_kd_tree::build_kd_index`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        points = np.asfortranarray(points, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'points' must be an array of np.float64: {error}") from None
-    if points.ndim != 2:
-        raise ValueError(f"'points' must have 2 dimensions, but has {points.ndim}")
-    try:
-        dimension_order = np.ascontiguousarray(dimension_order, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'dimension_order' must be an array of np.int32: {error}") from None
-    if dimension_order.ndim != 1:
-        raise ValueError(f"'dimension_order' must have 1 dimension, but has {dimension_order.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    points = _contract.reals(points, "points", ndim=2, order="F")
+    dimension_order = _contract.integers(dimension_order, "dimension_order", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_dimensions = points.shape[0]
     n_points = points.shape[1]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if dimension_order.shape[0] != n_dimensions:
-        raise ValueError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but "
-            f"'points' implies n_dimensions == {n_dimensions}"
-        )
+        raise _ToxArgumentError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but 'points' implies n_dimensions == {n_dimensions}; 'dimension_order' is declared with shape (n_dimensions)", argument="dimension_order")
 
     # outputs and work arrays, which the caller never sees
-    kd_indices = np.empty((n_points,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    kd_indices = _np.empty((n_points,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.build_kd_index_c(
         points,
-        ctypes.byref(ctypes.c_int(n_dimensions)),
-        ctypes.byref(ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_dimensions)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
         kd_indices,
         dimension_order,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BUILD_KD_INDEX_ARGUMENTS, _BUILD_KD_INDEX_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BUILD_KD_INDEX_ARGUMENTS, _BUILD_KD_INDEX_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     kd_indices.flags.writeable = False
@@ -151,6 +143,9 @@ def build_spherical_kd(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -159,44 +154,32 @@ def build_spherical_kd(
     Generated from the Fortran procedure `f42_kd_tree::build_spherical_kd`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        points = np.asfortranarray(points, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'points' must be an array of np.float64: {error}") from None
-    if points.ndim != 2:
-        raise ValueError(f"'points' must have 2 dimensions, but has {points.ndim}")
-    try:
-        dimension_order = np.ascontiguousarray(dimension_order, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'dimension_order' must be an array of np.int32: {error}") from None
-    if dimension_order.ndim != 1:
-        raise ValueError(f"'dimension_order' must have 1 dimension, but has {dimension_order.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    points = _contract.reals(points, "points", ndim=2, order="F")
+    dimension_order = _contract.integers(dimension_order, "dimension_order", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_dimensions = points.shape[0]
     n_points = points.shape[1]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if dimension_order.shape[0] != n_dimensions:
-        raise ValueError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but "
-            f"'points' implies n_dimensions == {n_dimensions}"
-        )
+        raise _ToxArgumentError(f"'dimension_order' has {dimension_order.shape[0]} along axis 0, but 'points' implies n_dimensions == {n_dimensions}; 'dimension_order' is declared with shape (n_dimensions)", argument="dimension_order")
 
     # outputs and work arrays, which the caller never sees
-    kd_indices = np.empty((n_points,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    kd_indices = _np.empty((n_points,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.build_spherical_kd_c(
         points,
-        ctypes.byref(ctypes.c_int(n_dimensions)),
-        ctypes.byref(ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_dimensions)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
         kd_indices,
         dimension_order,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BUILD_SPHERICAL_KD_ARGUMENTS, _BUILD_SPHERICAL_KD_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BUILD_SPHERICAL_KD_ARGUMENTS, _BUILD_SPHERICAL_KD_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     kd_indices.flags.writeable = False

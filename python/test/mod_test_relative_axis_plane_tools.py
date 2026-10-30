@@ -5,7 +5,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from tensor_omics import omics_vector_RAP_projection, omics_field_RAP_projection
-from test_helpers import run_all_tests
+from test_helpers import run_all_tests, assert_error
 
 
 def test_omics_vector_RAP_projection_call():
@@ -45,6 +45,15 @@ def test_omics_field_RAP_projection_call():
     for i_vec in range(projections.shape[1]):
         col = projections[:, i_vec]
         assert np.isclose(col.sum(), 0), f"{i_vec}. column not correct: Sum is {col.sum()}, should be zero"
+
+
+def test_omics_field_RAP_projection_refuses_fields_without_two_points():
+    """`fields` is (n_axes, 2, n_fields); a middle axis of 1 used to be read past (#221)."""
+    fields = np.asfortranarray(np.random.rand(3, 1, 2))
+    mask = np.ones(2, dtype=bool)
+
+    assert_error(lambda: omics_field_RAP_projection(fields, mask, np.ones(3, dtype=bool)),
+                 "a field without its target must be refused")
 
 
 if __name__ == "__main__":

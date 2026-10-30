@@ -255,6 +255,12 @@ test_compute_acceleration_from_velocity <- function() {
   assert_true(all(is.finite(acceleration)))
   assert_true(all(abs(acceleration - expected_acceleration) < TOL))
 
+  # `velocity` has n_timepoints - 1 steps; 3 against 6 timepoints used to be read past (#221)
+  assert_error(compute_acceleration_from_velocity(velocity, 6L),
+               "too few velocity steps must be refused", code = ERR_SIZE_MISMATCH)
+  assert_error(compute_acceleration_from_velocity_trajectory(c(1, 2, 3), 6L),
+               "too few velocity steps must be refused", code = ERR_SIZE_MISMATCH)
+
 }
 
 # =====================================================

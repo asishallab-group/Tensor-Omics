@@ -246,6 +246,7 @@ class FordFrontend:
 
         location = self.index.module(path, name)
         doc, _ = self._documentation(ford_module.doc_list, location)
+        self._check_no_private_export(ford_module, path)
 
         return Module(
             name=name,
@@ -264,6 +265,34 @@ class FordFrontend:
             location=location,
             uses=self._uses_of(ford_module),
         )
+
+    def _check_no_private_export(self, ford_module, path: Path) -> None:
+        """An `M_EXPORT_C` on a private procedure is an error, not a silent no-op.
+
+        Ford leaves a private procedure out of a module's routines, so nothing downstream ever
+        sees it, and the marker its author wrote to publish it did nothing at all -- no
+        wrapper, no binding, and no word about it. Ford still knows the procedure (its
+        `all_procs` holds every one, public or not), which is the only place it can be seen.
+        """
+        category = self.conventions.c_binding_category.lower()
+        for procedure in (getattr(ford_module, "all_procs", {}) or {}).values():
+            if getattr(procedure, "parent", None) is not ford_module:
+                continue  # reached through a `use`, or from a parent module
+            if getattr(procedure, "permission", "public") != "private":
+                continue
+            meta = getattr(procedure, "meta", None)
+            if _plain_text(getattr(meta, "category", None)).strip().lower() != category:
+                continue
+            self.diagnostics.error(
+                f"'{procedure.name}' in module '{ford_module.name}' is marked "
+                f"{self.conventions.export_marker} but is private",
+                location=self.index.procedure(path, procedure.name),
+                note=(
+                    "a private procedure is not part of the module's interface, so there is "
+                    "nothing to publish and the marker would do nothing at all; make it "
+                    f"public, or drop the {self.conventions.export_marker}"
+                ),
+            )
 
     def _declarations(self, ford_module, path: Path):
         """The public generic interfaces and derived types, by name and documentation.
@@ -342,6 +371,7 @@ class FordFrontend:
             result = self._argument(retvar, path, name, is_result=True)
             # A function result is an output by definition; Fortran does not say so
             result.intent = Intent.OUT
+        _use_declared_spellings([*arguments, *([result] if result is not None else [])])
 
         doc, directives = self._documentation(ford_procedure.doc_list, location)
 
@@ -361,11 +391,18 @@ class FordFrontend:
 
     @staticmethod
     def _is_pure(ford_procedure) -> bool:
-        """Whether the procedure is `pure`. `elemental` implies it, and Ford lists both."""
+        """Whether the procedure is `pure`.
+
+        `elemental` implies it unless the procedure is also `impure` (F2008), which Ford
+        lists beside it. Taking `elemental` alone for purity gave an `impure elemental`
+        implementation a `pure` wrapper, which does not compile.
+        """
         attributes = {
             attribute.strip().lower()
             for attribute in (getattr(ford_procedure, "attribs", ()) or ())
         }
+        if "impure" in attributes:
+            return False
         return bool(attributes & {"pure", "elemental"})
 
     @staticmethod
@@ -480,13 +517,24 @@ class FordFrontend:
         """Read the extents.
 
         Ford puts `dimension(n)` in the attribute list and leaves `.dimension` empty when
-        the attribute form is used, so the attribute has to win.
+        the attribute form is used, and fills `.dimension` from the entity's own array-spec
+        when there is one. Fortran lets the entity's array-spec override the attribute
+        (F2018 8.2), and Ford keeps listing the attribute on every entity of the statement:
+        in `dimension(n) :: a, b(m)`, `b` has extent `m` and still carries `dimension(n)`.
+        So the entity's own spec wins, and the attribute is read only for an entity that has
+        none. The reverse sized `b` by `n` in every layer.
+
+        A lower bound of 1 is dropped (`x(1:n)` is `x(n)`), so every emitter sees the one
+        spelling it handles; any other lower bound is kept, for `validate` to refuse.
         """
+        own = (getattr(variable, "dimension", "") or "").strip()
+        if own:
+            return _without_unit_lower_bounds(Dimension.parse(own))
         for attribute in getattr(variable, "attribs", ()) or ():
             extents = _dimension_attribute(attribute)
             if extents is not None:
-                return Dimension.parse(extents)
-        return Dimension.parse(getattr(variable, "dimension", "") or "")
+                return _without_unit_lower_bounds(Dimension.parse(extents))
+        return Dimension()
 
     @staticmethod
     def _attributes(variable) -> tuple[str, ...]:
@@ -611,6 +659,77 @@ def _dimension_attribute(attribute: str) -> str | None:
             if depth == 0:
                 return attribute[start : index + 1]
     return None
+
+
+#: A lower bound of 1, the default, written out: `1:` or `1_int32:` before an extent
+_UNIT_LOWER_BOUND_RE = re.compile(r"\A\s*1(?:_\w+)?\s*:")
+
+
+def _without_unit_lower_bounds(dimension: Dimension) -> Dimension:
+    """`x(1:n)` as `x(n)`, and `x(1:)` as `x(:)`: the same array, in the spelling emitted."""
+    return dimension.with_extents(
+        _UNIT_LOWER_BOUND_RE.sub("", extent) or ":" for extent in dimension.extents
+    )
+
+
+#: An identifier in an expression, or a dotted operator (`.and.`) to step over. A name that
+#: follows a word character is a kind suffix (`0_int32`) or part of a literal, not a name.
+_SPELLING_RE = re.compile(r"(?P<operator>\.[A-Za-z]+\.)|(?<!\w)(?P<name>[A-Za-z]\w*)")
+
+
+def _use_declared_spellings(arguments) -> None:
+    """Spell every reference to a dummy the way the dummy is declared.
+
+    Fortran is case-insensitive, so `integer :: N` sizes `x(n)`. The binding languages are
+    not: Python and the R shim print the declared name in some places and the extent's
+    spelling in others, and `N` and `n` are then two variables, one of them never defined.
+    Rewriting each reference once, here, is what lets every emitter compare names exactly.
+    The declared names themselves are never changed: they are the published API, mixed
+    case included (`neighbor_mask_S1`).
+
+    Covers the places an argument is named from another one: extents, character lengths,
+    and the directives naming an argument (`DM_RESULT_SIZE_IS`, `DM_REQUIRED_IF_MODE`) or
+    an expression over them (`DM_MIN`, `DM_MAX`, `DM_SENTINEL`).
+    """
+    spellings = {argument.name.lower(): argument.name for argument in arguments}
+
+    def respell(expression: str) -> str:
+        def one(match: re.Match) -> str:
+            name = match.group("name")
+            if name is None:
+                return match.group(0)
+            return spellings.get(name.lower(), name)
+
+        return _SPELLING_RE.sub(one, expression)
+
+    for argument in arguments:
+        argument.dimension = argument.dimension.with_extents(
+            respell(extent) for extent in argument.dimension.extents
+        )
+        length = argument.type.length if argument.type is not None else None
+        if length is not None and length.expr is not None:
+            argument.type = replace(
+                argument.type, length=CharacterLength(length.kind, respell(length.expr))
+            )
+        argument.directives = _respelled_directives(argument.directives, respell)
+
+
+def _respelled_directives(directives: Directives, respell) -> Directives:
+    changes = {}
+    if directives.result_size_is is not None:
+        changes["result_size_is"] = replace(
+            directives.result_size_is, argument=respell(directives.result_size_is.argument)
+        )
+    if directives.required_if_mode is not None:
+        changes["required_if_mode"] = replace(
+            directives.required_if_mode,
+            mode_arg=respell(directives.required_if_mode.mode_arg),
+        )
+    for field_name in ("minimum", "maximum", "sentinel"):
+        bound = getattr(directives, field_name)
+        if bound is not None:
+            changes[field_name] = replace(bound, expression=respell(bound.expression))
+    return replace(directives, **changes) if changes else directives
 
 
 def _clean_doc(doc_list) -> list[str]:

@@ -93,7 +93,8 @@ def assert_error(func, msg, code=None):
     ToxError.code is already bare, and a packed value here is rejected as a mistake.
 
     Omit `code` to demand an error that carries no tox code at all: the binding's own
-    ValueError or TypeError, raised before the library is ever called.
+    ToxArgumentError (a ValueError and a TypeError too), raised before the library is ever
+    called.
     """
     if code is not None and code >= ARG_POS_FACTOR:
         raise AssertionError(
@@ -104,9 +105,9 @@ def assert_error(func, msg, code=None):
     # ToxError subclasses RuntimeError, so this clause has to come first or the code check
     # below is dead
     except ToxError as error:
-        if code is None:
+        if code is None and error.code is not None:
             raise AssertionError(
-                f"{msg}: expected an error that is not a tensor-omics error, but got "
+                f"{msg}: expected an error that carries no tensor-omics code, but got "
                 f"{_code_label(error.code)}: {error}") from None
         if error.code != code:
             raise AssertionError(

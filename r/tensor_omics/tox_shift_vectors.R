@@ -20,9 +20,9 @@ compute_shift_vector_field <- function(expression_vectors, family_centroids, gen
     family_centroids <- .tox_as_double_matrix(family_centroids, "family_centroids")
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
     if (dim(family_centroids)[1] != dim(expression_vectors)[1])
-        .tox_shape_error("family_centroids", dim(family_centroids)[1], "expression_vectors", dim(expression_vectors)[1])
+        .tox_shape_error("family_centroids", 1L, dim(family_centroids)[1], "'expression_vectors' implies n_tissues == ", dim(expression_vectors)[1], "n_tissues, n_families")
     if (length(gene_to_fam) != dim(expression_vectors)[2])
-        .tox_shape_error("gene_to_fam", length(gene_to_fam), "expression_vectors", dim(expression_vectors)[2])
+        .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'expression_vectors' implies n_genes == ", dim(expression_vectors)[2], "n_genes")
 
     .result <- .Call("compute_shift_vector_field_call", expression_vectors, family_centroids, gene_to_fam)
     .arguments <- c("n_tissues", "n_genes", "n_families", "expression_vectors", "family_centroids", "gene_to_fam", "shift_vectors", "ierr")

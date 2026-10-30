@@ -1,18 +1,21 @@
 """Emitting the C half of the R binding.
 
-The split with R is the same one the former Rcpp layer used and is documented in
-`design/language-layers.md`: **R decides and raises, C marshals and calls.** By the time a
-value reaches C it has been checked and coerced in R, so nothing here validates -- it
-converts what Fortran cannot take from R directly (R's int-based logicals, its strings) and
-hands everything to the `extern "C"` Fortran wrapper.
+The split with R is documented in `design/language-layers.md`: **R checks what an argument
+is, C checks every element while it converts it, and both raise the same conditions.** By
+the time a value reaches C, R has checked its kind and rank, coerced a double, and checked a
+single value in full; C converts what Fortran cannot take from R directly (R's int-based
+logicals, its strings, an integer array that arrives as doubles), checking each element in
+the pass it makes anyway, and hands everything to the `extern "C"` Fortran wrapper. A
+refusal is raised from C as the classed condition R raises itself (`tox_refuse`).
 
 Each generated function is a `.Call` entry `<name>_call`, registered in `init.c`. It is
 internal: the user-facing `<name>` is the R wrapper on top of it, which calls
 `.Call("<name>_call", ...)` and decodes the returned list of every output plus `ierr`.
 
-Only R's C API is used -- no Rcpp, no cpp11. The two conversions C cannot avoid (logical
-arrays, strings) go through `tox_marshal.h`, whose buffers come from `R_alloc` and so are
-freed automatically when the call returns; there is nothing to leak on an error longjmp.
+Only R's C API is used -- no Rcpp, no cpp11. The conversions C cannot avoid (logical and
+integer arrays, strings) go through `tox_marshal.h`, whose buffers come from `R_alloc` and so
+are freed automatically when the call returns; there is nothing to leak on an error longjmp,
+which a refusal is.
 
 Strings cross fixed-width, column-major and **blank**-padded, in both directions. The
 Fortran wrapper does not convert that buffer -- it takes a `character(len=strlen)` pointer
@@ -23,11 +26,24 @@ view of it -- so the padding byte is part of the value, and blanks are what Fort
 from __future__ import annotations
 
 import hashlib
-import re
 
+from ..abi import extents
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
+from ..names import (
+    BUFFER,
+    C_LOOP_INDEX,
+    C_PROTECT_COUNT,
+    DIM,
+    INOUT_COPY,
+    OPTIONAL_DIM_ATTRIBUTE,
+    OPTIONAL_POINTER,
+    OPTIONAL_SIZE,
+    SCALAR_VALUE,
+    shim_local,
+)
 from ..render import Writer
+from .errors_r import ARGUMENT_CONDITION_CLASSES, CONDITION_FIELDS, NA_MESSAGE
 
 #: The R shared object this binding is registered into.
 #:
@@ -56,16 +72,20 @@ _GUARD_CLOSE = "#endif  // R binding"
 #: symbol (a build regression) still fails loudly at load. R binds them to its real
 #: definitions at dyn.load. The `test_ctypes_loads_the_r_bundled_library` end-to-end test
 #: guards this list: if the emitter starts using an R symbol not here, that load fails.
-#: (NA_STRING is R_NaString; PROTECT/UNPROTECT are Rf_protect/Rf_unprotect; CHAR is R_CHAR.)
+#: (NA_STRING is R_NaString; NA_INTEGER and NA_LOGICAL are R_NaInt; ISNA is R_IsNA;
+#: PROTECT/UNPROTECT are Rf_protect/Rf_unprotect; CHAR is R_CHAR.)
 _WEAK_R_SYMBOLS = (
-    "COMPLEX", "INTEGER", "LENGTH", "LOGICAL", "REAL", "STRING_ELT", "TYPEOF", "XLENGTH",
-    "SET_STRING_ELT", "SET_VECTOR_ELT",
-    "R_CHAR", "R_alloc", "R_DimSymbol", "R_NamesSymbol", "R_NilValue", "R_NaString",
+    "COMPLEX", "INTEGER", "INTEGER_NO_NA", "LENGTH", "LOGICAL", "REAL", "STRING_ELT", "TYPEOF",
+    "XLENGTH", "SET_STRING_ELT", "SET_VECTOR_ELT",
+    "R_BaseEnv", "R_CHAR", "STRING_PTR_RO", "R_ClassSymbol", "R_IsNA", "R_NaInt", "R_NegInf", "R_PosInf",
+    "R_alloc", "R_DimSymbol", "R_NamesSymbol", "R_NilValue", "R_NaString",
     "R_registerRoutines", "R_useDynamicSymbols",
-    "Rf_allocVector", "Rf_asInteger", "Rf_asLogical", "Rf_asReal", "Rf_coerceVector",
-    "Rf_duplicate", "Rf_getAttrib", "Rf_length", "Rf_mkChar", "Rf_mkCharLen",
-    "Rf_protect", "Rf_setAttrib", "Rf_unprotect",
+    "Rf_allocVector", "Rf_asInteger", "Rf_charIsASCII", "Rf_asLogical", "Rf_asReal", "Rf_coerceVector",
+    "Rf_duplicate", "Rf_eval", "Rf_getAttrib", "Rf_getCharCE", "Rf_install", "Rf_lang2",
+    "Rf_length", "Rf_mkChar", "Rf_mkCharLen", "Rf_mkCharLenCE", "Rf_mkString",
+    "Rf_protect", "Rf_setAttrib", "Rf_translateCharUTF8", "Rf_type2char", "Rf_unprotect",
     "Rf_ScalarComplex", "Rf_ScalarInteger", "Rf_ScalarLogical", "Rf_ScalarReal",
+    "Rf_ScalarString",
 )
 
 
@@ -77,27 +97,21 @@ def _weak_pragmas() -> list[str]:
     lines += [f"#pragma weak {symbol}" for symbol in _WEAK_R_SYMBOLS]
     return lines
 
-#: A Fortran numeric literal's kind suffix -- `0_int32`. C has no such thing.
-_FORTRAN_KIND_SUFFIX = re.compile(r"\b(\d+(?:\.\d+)?)_[A-Za-z]\w*")
-#: `size(arr)` / `size(arr, dim)` -- an extent stated in terms of another argument.
-_FORTRAN_SIZE = re.compile(r"\bsize\s*\(\s*([A-Za-z_]\w*)\s*(?:,\s*(\d+)\s*)?\)")
-#: `max`/`min` become the integer helpers in `tox_marshal.h`.
-_FORTRAN_MINMAX = re.compile(r"\b(max|min)\s*\(")
+def c_extent(extent: str, name=lambda n: n, owner_rank=lambda array: 2) -> str:
+    """A Fortran extent expression as C, through the one grammar the bindings evaluate.
 
+    `name` writes an identifier (a by-value scalar is read from its `_v_` local), and
+    `owner_rank` gives an array's rank as R sees it, which decides how `size(a, k)` is read:
+    a vector carries no `dim`, so its only extent is its length. `generate` has refused every
+    extent a binding computes that lies outside the grammar (`abi.extents`).
+    """
+    def size(array: str, dimension: int | None) -> str:
+        if dimension is None or owner_rank(array) <= 1:
+            return f"(int) Rf_length({array})"
+        # Fortran dimensions are 1-based, and a matrix carries its extents in `dim`
+        return f"INTEGER(Rf_getAttrib({array}, R_DimSymbol))[{dimension - 1}]"
 
-def _size_as_c(match: re.Match) -> str:
-    array, dim = match.group(1), match.group(2)
-    if dim is None:
-        return f"(int) Rf_length({array})"
-    # Fortran dimensions are 1-based, and a matrix carries its extents in `dim`
-    return f"INTEGER(Rf_getAttrib({array}, R_DimSymbol))[{int(dim) - 1}]"
-
-
-def c_extent(extent: str) -> str:
-    """A Fortran extent expression as C (kind suffixes, `size(...)`, and `max`/`min`)."""
-    extent = _FORTRAN_KIND_SUFFIX.sub(r"\1", extent)
-    extent = _FORTRAN_SIZE.sub(_size_as_c, extent)
-    return _FORTRAN_MINMAX.sub(r"tox_i\1(", extent)
+    return extents.to_c(extent, name, size)
 
 
 #: iso_c_binding kind -> the C type it interoperates as, for the extern declaration.
@@ -155,8 +169,28 @@ def _r_marshals(argument: CArgument) -> bool:
     buffer as it stands -- but R never can: its logical vector is `LGLSXP`, an array of
     4-byte `int`, whatever kind the Fortran declares. The answers coincided only for as long
     as every logical was default-kind, and three sites had quietly keyed on the wrong one.
+    And an integer array the caller passed is handed over as R holds it, an integer or a
+    double vector (`_checks_integer_array`).
     """
-    return argument.type.is_logical or argument.needs_conversion
+    return argument.type.is_logical or argument.needs_conversion or _checks_integer_array(argument)
+
+
+def _checks_integer_array(argument: CArgument) -> bool:
+    """Whether this is an integer array the caller passed, which the shim checks as it converts.
+
+    The R wrapper hands it over unconverted (`tox_validate.R`): a double vector of whole
+    numbers is an integer array to the contract, and its elements are checked here, in the
+    one pass that converts them, rather than in R (`tox_int_in`). Not a single value, which R
+    checks and converts itself, since it uses it; not an output or a work array; and not what
+    the binding works out or a producer computes, which are integers already -- nor a shape,
+    which the shim uses as an R vector, as the dim of what it allocates.
+    """
+    if argument.type.base is not BaseType.INTEGER or argument.intent is not Intent.IN:
+        return False
+    if not argument.is_array or argument.is_temporary:
+        return False
+    roles = argument.source.roles if argument.source else None
+    return roles is None or not (roles.is_derived or roles.is_computed or roles.is_shape_arg)
 
 
 
@@ -167,8 +201,15 @@ class CCallEmitter:
 
     def marshal_header_content(self) -> str:
         # the pragmas go here (before the helpers, which use some of these symbols); the .c
-        # that includes this header sees them before its own uses too
-        return _MARSHAL_HEADER.replace("// __WEAK_PRAGMAS__", "\n".join(_weak_pragmas()))
+        # that includes this header sees them before its own uses too. The refusal's classes,
+        # fields and NA message are R's own (`emit.errors_r`), so the shim's refusals and the
+        # R wrapper's cannot drift apart.
+        quoted = lambda names: ", ".join(f'"{name}"' for name in names)
+        return (_MARSHAL_HEADER
+                .replace("// __WEAK_PRAGMAS__", "\n".join(_weak_pragmas()))
+                .replace("__ARGUMENT_CLASSES__", quoted(ARGUMENT_CONDITION_CLASSES))
+                .replace("__CONDITION_FIELDS__", quoted(CONDITION_FIELDS))
+                .replace("__NA_MESSAGE__", NA_MESSAGE))
 
     def header_stamp(self) -> str:
         """A comment naming the content hash of the marshal header this file includes.
@@ -190,6 +231,8 @@ class CCallEmitter:
     # -- module -----------------------------------------------------------------
 
     def module(self, module: CWrapperModule) -> str:
+        # a module constant in an extent is its value here: the shim's C cannot name it
+        module = module.with_constant_sizes_evaluated()
         writer = Writer()
         writer.line("// Generated. Do not edit.")
         writer.line(_GUARD_OPEN)
@@ -258,16 +301,17 @@ class CCallEmitter:
 
     def function(self, wrapper: CWrapper) -> str:
         writer = Writer()
-        # scalars pulled into <name>_v locals; extent expressions naming one must read the
+        # scalars pulled into `_v_<name>` locals; extent expressions naming one must read the
         # local, not the SEXP parameter. Held for the duration of emitting this function.
         self._scalar_names = self._scalar_local_names(wrapper)
+        self._wrapper = wrapper
         params = ", ".join(f"SEXP {a.name}" for a in self._inputs(wrapper))
         if not params:
             params = "void"
         writer.line(f"SEXP {wrapper.stripped_name}_call({params}) {{")
 
         with writer.indent():
-            writer.line("int nprot = 0;")
+            writer.line(f"int {C_PROTECT_COUNT} = 0;")
             self._materialize_optionals(writer, wrapper)
             self._derive(writer, wrapper)
             self._extract_scalars(writer, wrapper)
@@ -328,7 +372,7 @@ class CCallEmitter:
             if is_shape(argument):
                 # a shape is a fresh SEXP (the dim attribute or a length-1 vector); it must
                 # be protected while it sizes outputs and is set back as their dim
-                lines.line(f"SEXP {argument.name} = PROTECT({expression}); nprot++;")
+                lines.line(f"SEXP {argument.name} = PROTECT({expression}); {C_PROTECT_COUNT}++;")
             else:
                 lines.line(f"int {argument.name} = {expression};")
         if lines:
@@ -395,8 +439,8 @@ class CCallEmitter:
         """The size of `owner` along `axis`, as a C expression."""
         if owner.optional:
             if owner.rank > 1 and not owner.type.is_character:
-                return f"{owner.name}_dim[{axis}]"
-            return f"{owner.name}_size"
+                return f"{shim_local(owner.name, DIM)}[{axis}]"
+            return shim_local(owner.name, OPTIONAL_SIZE)
         if owner.rank <= 1 or (owner.type.is_character and owner.rank == 2):
             return f"(int) Rf_length({owner.name})"
         return f"INTEGER(Rf_getAttrib({owner.name}, R_DimSymbol))[{axis}]"
@@ -414,11 +458,11 @@ class CCallEmitter:
     # -- scalars ----------------------------------------------------------------
 
     def _scalar_local_names(self, wrapper: CWrapper) -> set[str]:
-        """Scalar inputs pulled into a `<name>_v` local before the call.
+        """Scalar inputs pulled into a `_v_<name>` local before the call.
 
         Exactly the by-value scalars among the `.Call` parameters (`_inputs`): a derived
         extent/strlen/shape-count is an `int <name>` local already, a scalar output or
-        `ierr` is a plain C local, an optional goes through `<name>_p`, a mode/character
+        `ierr` is a plain C local, an optional goes through `_p_<name>`, a mode/character
         goes through a buffer. Membership in `_inputs` is the reliable discriminator --
         `_is_derived` alone misses STRLEN and shape-count derivations.
         """
@@ -433,11 +477,26 @@ class CCallEmitter:
         return [a for a in self._inputs(wrapper) if a.name in names]
 
     def _extent(self, expr: str) -> str:
-        """A Fortran extent as C, with any by-value scalar name read from its `_v` local."""
-        out = c_extent(expr)
-        for name in self._scalar_names:
-            out = re.sub(rf"\b{re.escape(name)}\b", f"{name}_v", out)
-        return out
+        """A Fortran extent as C, with any by-value scalar name read from its `_v_` local.
+
+        An assumed size (`*`) has no value to write; an array declared so is sized by the shape
+        that travels beside it, which is what every caller of this reads instead.
+        """
+        if expr == "*":
+            return expr
+
+        def name(identifier: str) -> str:
+            if identifier in self._scalar_names:
+                return shim_local(identifier, SCALAR_VALUE)
+            return identifier
+
+        def owner_rank(array: str) -> int:
+            owner = self._wrapper.argument(array)
+            if owner is None:
+                return 2
+            return owner.rank - 1 if owner.type.is_character else owner.rank
+
+        return c_extent(expr, name, owner_rank)
 
     def _extract_scalars(self, writer: Writer, wrapper: CWrapper) -> None:
         """Pull a by-value scalar out of its length-1 SEXP into a C local to point at."""
@@ -451,7 +510,7 @@ class CCallEmitter:
 
     def _scalar_local(self, argument: CArgument) -> str:
         return (
-            f"{self._scalar_local_type(argument)} {argument.name}_v"
+            f"{self._scalar_local_type(argument)} {shim_local(argument.name, SCALAR_VALUE)}"
             f" = {self._scalar_value(argument)};"
         )
 
@@ -498,31 +557,37 @@ class CCallEmitter:
                 and _r_marshals(argument)
                 and not self._converts_via_buffer(argument)
             )
+            value = shim_local(name, SCALAR_VALUE)
+            pointer = shim_local(name, OPTIONAL_POINTER)
+            size = shim_local(name, OPTIONAL_SIZE)
+            dim = shim_local(name, DIM)
+            dim_attribute = shim_local(name, OPTIONAL_DIM_ATTRIBUTE)
+            i = C_LOOP_INDEX
             if converts_in_place:
                 local_type = self._scalar_local_type(argument)
-                lines.line(f"{local_type} {name}_v = 0;")
-                lines.line(f"const {local_type}* {name}_p = NULL;")
+                lines.line(f"{local_type} {value} = 0;")
+                lines.line(f"const {local_type}* {pointer} = NULL;")
             elif not _r_marshals(argument):
-                lines.line(f"const {ctype}* {name}_p = NULL;")
-            lines.line(f"int {name}_size = 0;")
+                lines.line(f"const {ctype}* {pointer} = NULL;")
+            lines.line(f"int {size} = 0;")
             if has_axes:
-                lines.line(f"int {name}_dim[{rank}]; "
-                           f"for (int i = 0; i < {rank}; ++i) {name}_dim[i] = 0;")
+                lines.line(f"int {dim}[{rank}]; "
+                           f"for (int {i} = 0; {i} < {rank}; ++{i}) {dim}[{i}] = 0;")
             lines.line(f"if ({name} != R_NilValue) {{")
             with lines.indent():
-                lines.line(f"{name}_size = (int) Rf_length({name});")
+                lines.line(f"{size} = (int) Rf_length({name});")
                 if converts_in_place:
-                    lines.line(f"{name}_v = {self._scalar_value(argument)};")
-                    lines.line(f"{name}_p = &{name}_v;")
+                    lines.line(f"{value} = {self._scalar_value(argument)};")
+                    lines.line(f"{pointer} = &{value};")
                 elif not _r_marshals(argument):
-                    lines.line(f"{name}_p = {self._c_pointer(argument, name)};")
+                    lines.line(f"{pointer} = {self._c_pointer(argument, name)};")
                 if has_axes:
-                    lines.line(f"SEXP {name}_d = Rf_getAttrib({name}, R_DimSymbol);")
-                    lines.line(f"if ({name}_d != R_NilValue) {{")
+                    lines.line(f"SEXP {dim_attribute} = Rf_getAttrib({name}, R_DimSymbol);")
+                    lines.line(f"if ({dim_attribute} != R_NilValue) {{")
                     with lines.indent():
                         lines.line(
-                            f"for (int i = 0; i < {rank} && i < (int) Rf_length({name}_d); ++i)"
-                            f" {name}_dim[i] = INTEGER({name}_d)[i];"
+                            f"for (int {i} = 0; {i} < {rank} && {i} < (int) Rf_length({dim_attribute}); ++{i})"
+                            f" {dim}[{i}] = INTEGER({dim_attribute})[{i}];"
                         )
                     lines.line("}")
             lines.line("}")
@@ -550,14 +615,21 @@ class CCallEmitter:
         )
 
     def _working_name(self, argument: CArgument) -> str:
-        return f"{argument.name}_out" if self._is_inout_copy(argument) else argument.name
+        if self._is_inout_copy(argument):
+            return shim_local(argument.name, INOUT_COPY)
+        return argument.name
 
     def _copy_inout(self, writer: Writer, wrapper: CWrapper) -> None:
         """A plain array modified in place is duplicated, so the caller's stays intact."""
         lines = Writer()
         for argument in wrapper:
             if self._is_inout_copy(argument):
-                lines.line(f"SEXP {argument.name}_out = PROTECT(Rf_duplicate({argument.name})); nprot++;")
+                copy = shim_local(argument.name, INOUT_COPY)
+                # an integer array arrives as R holds it, and is checked and made one here
+                duplicate = (f'tox_int_copy({argument.name}, "{argument.name}")'
+                             if argument.type.base is BaseType.INTEGER
+                             else f"Rf_duplicate({argument.name})")
+                lines.line(f"SEXP {copy} = PROTECT({duplicate}); {C_PROTECT_COUNT}++;")
         if lines:
             writer.line("// copy what is modified in place, so the caller's stays intact")
             writer.extend(lines)
@@ -575,11 +647,18 @@ class CCallEmitter:
             writer.blank()
 
     def _input_buffer(self, argument: CArgument) -> str:
+        """Convert one input for Fortran, checking each element as it goes (`tox_marshal.h`).
+
+        The argument's name travels along, so a refusal can say which one it was.
+        """
         name = argument.name
+        buffer = shim_local(name, BUFFER)
         if argument.type.is_logical:
-            return f"unsigned char* {name}_c = tox_bool_in({name});"
+            return f'unsigned char* {buffer} = tox_bool_in({name}, "{name}");'
+        if _checks_integer_array(argument):
+            return f'const int* {buffer} = tox_int_in({name}, "{name}");'
         length = self._extent(argument.dimension.extents[0])
-        return f"char* {name}_c = tox_char_in({name}, {length});"
+        return f'char* {buffer} = tox_char_in({name}, {length}, "{name}");'
 
     # -- allocating outputs and work space --------------------------------------
 
@@ -615,16 +694,17 @@ class CCallEmitter:
             size = _product(extents)
 
         if argument.type.is_logical:
-            return [f"unsigned char* {name}_c = tox_bool_alloc({size});"]
+            return [f"unsigned char* {shim_local(name, BUFFER)} = tox_bool_alloc({size});"]
         if argument.type.is_character:
             length = extents[0]
             count = size if argument.shape_arg is not None else _product(extents[1:])
-            return [f"char* {name}_c = tox_char_alloc({length}, {count});"]
+            return [f"char* {shim_local(name, BUFFER)} = tox_char_alloc({length}, {count});"]
         if argument.is_temporary:
             ctype = c_ctype(argument)
             return [f"{ctype}* {name} = ({ctype}*) R_alloc({size}, sizeof({ctype}));"]
         # a plain output: an R vector, protected, with a dim attribute if rank >= 2
-        out = [f"SEXP {name} = PROTECT(Rf_allocVector({R_SEXPTYPE[argument.type.base]}, {size})); nprot++;"]
+        sexptype = R_SEXPTYPE[argument.type.base]
+        out = [f"SEXP {name} = PROTECT(Rf_allocVector({sexptype}, {size})); {C_PROTECT_COUNT}++;"]
         dim = self._dim_lines(argument)
         return out + dim
 
@@ -637,10 +717,11 @@ class CCallEmitter:
         if len(extents) < 2:
             return []
         rank = len(extents)
-        assigns = " ".join(f"INTEGER({target}_dim)[{i}] = {e};" for i, e in enumerate(extents))
+        dim = shim_local(argument.name, DIM)
+        assigns = " ".join(f"INTEGER({dim})[{i}] = {e};" for i, e in enumerate(extents))
         return [
-            f"{{ SEXP {target}_dim = PROTECT(Rf_allocVector(INTSXP, {rank})); "
-            f"{assigns} Rf_setAttrib({target}, R_DimSymbol, {target}_dim); UNPROTECT(1); }}"
+            f"{{ SEXP {dim} = PROTECT(Rf_allocVector(INTSXP, {rank})); "
+            f"{assigns} Rf_setAttrib({target}, R_DimSymbol, {dim}); UNPROTECT(1); }}"
         ]
 
     def _r_extents(self, argument: CArgument) -> list[str]:
@@ -665,14 +746,14 @@ class CCallEmitter:
         name = argument.name
         if argument.optional:
             if self._converts_via_buffer(argument):
-                return f"{name} != R_NilValue ? {name}_c : NULL"
-            return f"{name}_p"
+                return f"{name} != R_NilValue ? {shim_local(name, BUFFER)} : NULL"
+            return shim_local(name, OPTIONAL_POINTER)
         if self._converts_via_buffer(argument):
-            return f"{name}_c"
+            return shim_local(name, BUFFER)
         if argument.is_scalar:
-            # a by-value scalar input lives in <name>_v; a derived extent, scalar output or
+            # a by-value scalar input lives in _v_<name>; a derived extent, scalar output or
             # ierr is a plain <name> local
-            ref = f"{name}_v" if name in self._scalar_names else name
+            ref = shim_local(name, SCALAR_VALUE) if name in self._scalar_names else name
             if argument.type.base is BaseType.COMPLEX:
                 const = "const " if argument.intent is Intent.IN else ""
                 return f"({const}double _Complex*) &{ref}"
@@ -702,12 +783,18 @@ class CCallEmitter:
             if argument.intent is Intent.IN or not self._converts_via_buffer(argument):
                 continue
             name = argument.name
+            buffer = shim_local(name, BUFFER)
             count = self._converted_count(argument)
             if argument.type.is_logical:
-                lines.line(f"SEXP {name} = PROTECT(tox_bool_out({name}_c, {count})); nprot++;")
+                lines.line(
+                    f"SEXP {name} = PROTECT(tox_bool_out({buffer}, {count})); {C_PROTECT_COUNT}++;"
+                )
             else:
                 length = self._extent(argument.dimension.extents[0])
-                lines.line(f"SEXP {name} = PROTECT(tox_char_out({name}_c, {length}, {count})); nprot++;")
+                lines.line(
+                    f"SEXP {name} = PROTECT(tox_char_out({buffer}, {length}, {count})); "
+                    f"{C_PROTECT_COUNT}++;"
+                )
             for line in self._dim_lines(argument):
                 lines.line(line)
         if lines:
@@ -730,23 +817,25 @@ class CCallEmitter:
         entries.append((error.name, f"Rf_ScalarInteger({error.name})"))
         n = len(entries)
 
-        writer.line(f"SEXP _out = PROTECT(Rf_allocVector(VECSXP, {n})); nprot++;")
+        writer.line(f"SEXP _out = PROTECT(Rf_allocVector(VECSXP, {n})); {C_PROTECT_COUNT}++;")
         for index, (_, value) in enumerate(entries):
             writer.line(f"SET_VECTOR_ELT(_out, {index}, {value});")
-        writer.line(f"SEXP _nms = PROTECT(Rf_allocVector(STRSXP, {n})); nprot++;")
+        writer.line(f"SEXP _nms = PROTECT(Rf_allocVector(STRSXP, {n})); {C_PROTECT_COUNT}++;")
         for index, (nm, _) in enumerate(entries):
             writer.line(f'SET_STRING_ELT(_nms, {index}, Rf_mkChar("{nm}"));')
         writer.line("Rf_setAttrib(_out, R_NamesSymbol, _nms);")
-        writer.line("UNPROTECT(nprot);")
+        writer.line(f"UNPROTECT({C_PROTECT_COUNT});")
         writer.line("return _out;")
 
     def _result_sexp(self, argument: CArgument) -> str:
         """The SEXP for one returned output, wrapping a scalar or naming an allocated one."""
         if argument.is_scalar:
             base = argument.type.base
-            # an inout scalar was pulled into <name>_v and written there; a pure output
+            # an inout scalar was pulled into _v_<name> and written there; a pure output
             # scalar is a plain <name> local
-            name = f"{argument.name}_v" if argument.name in self._scalar_names else argument.name
+            name = argument.name
+            if name in self._scalar_names:
+                name = shim_local(name, SCALAR_VALUE)
             if base is BaseType.LOGICAL:
                 return f"Rf_ScalarLogical({name} != 0)"
             if base is BaseType.REAL:
@@ -769,10 +858,16 @@ class CCallEmitter:
 _MARSHAL_HEADER = r'''// Generated. Do not edit.
 //
 // Marshalling helpers for the R binding. Pure C, R's C API only. These convert what
-// Fortran cannot take from R directly -- R's int-based logicals and its strings -- plus a
-// couple of small shape helpers. Transient buffers come from R_alloc and are freed when the
-// .Call returns, so there is nothing to free by hand and nothing to leak on an error
-// longjmp. The R layer has already validated and rejected NA, so these are straight copies.
+// Fortran cannot take from R directly -- R's int-based logicals, its strings, and an integer
+// array that arrives as doubles -- plus a couple of small shape helpers. Transient buffers
+// come from R_alloc and are freed when the .Call returns, so there is nothing to free by hand
+// and nothing to leak on an error longjmp.
+//
+// The conversions are where the input contract's element checks live (#221): the R wrapper
+// has checked each argument's kind and rank, and every element of an integer, logical or
+// character array is checked here, in the pass that converts it, which costs no extra pass.
+// A refusal is raised as the R wrapper raises its own: a classed condition naming the
+// argument (tox_refuse).
 //
 // Strings cross fixed-width, column-major and blank-padded, both ways: the Fortran wrapper
 // takes a character(len=strlen) pointer view of the buffer rather than converting it, so
@@ -782,12 +877,181 @@ _MARSHAL_HEADER = r'''// Generated. Do not edit.
 
 #include <R.h>
 #include <Rinternals.h>
+#include <limits.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <string.h>
 
 // __WEAK_PRAGMAS__
 
 static inline int tox_imax(int a, int b) { return a > b ? a : b; }
 static inline int tox_imin(int a, int b) { return a < b ? a : b; }
+
+// Refuse an argument: signal the condition the R wrapper's own refusals are
+// (.tox_argument_error in error_handling.R) -- class c(<condition>, __ARGUMENT_CLASSES__),
+// code NA, the argument named -- through base R's stop(), which needs nothing of the
+// environment the wrappers were sourced into. It does not return. On the refusal path only.
+static inline void tox_refuse(const char* argument, const char* condition, const char* format, ...) {
+    char message[512];
+    va_list values;
+    va_start(values, format);
+    vsnprintf(message, sizeof message, format, values);
+    va_end(values);
+    const char* fields[] = {__CONDITION_FIELDS__};
+    const char* classes[] = {condition, __ARGUMENT_CLASSES__};
+    int n_fields = (int) (sizeof fields / sizeof fields[0]);
+    int n_classes = (int) (sizeof classes / sizeof classes[0]);
+    SEXP refusal = PROTECT(Rf_allocVector(VECSXP, n_fields));
+    SET_VECTOR_ELT(refusal, 0, Rf_mkString(message));
+    SET_VECTOR_ELT(refusal, 1, R_NilValue);
+    SET_VECTOR_ELT(refusal, 2, Rf_ScalarInteger(NA_INTEGER));
+    SET_VECTOR_ELT(refusal, 3, Rf_ScalarString(NA_STRING));
+    SET_VECTOR_ELT(refusal, 4, Rf_mkString(argument));
+    SEXP names = PROTECT(Rf_allocVector(STRSXP, n_fields));
+    for (int i = 0; i < n_fields; ++i) SET_STRING_ELT(names, i, Rf_mkChar(fields[i]));
+    Rf_setAttrib(refusal, R_NamesSymbol, names);
+    SEXP class_ = PROTECT(Rf_allocVector(STRSXP, n_classes));
+    for (int i = 0; i < n_classes; ++i) SET_STRING_ELT(class_, i, Rf_mkChar(classes[i]));
+    Rf_setAttrib(refusal, R_ClassSymbol, class_);
+    SEXP call = PROTECT(Rf_lang2(Rf_install("stop"), refusal));
+    Rf_eval(call, R_BaseEnv);
+    UNPROTECT(4);
+}
+
+static inline void tox_refuse_na(const char* argument) {
+    tox_refuse(argument, "tox_na_error", "__NA_MESSAGE__", argument);
+}
+
+// A value as a refusal shows it: R's own spelling of NA, NaN and the infinities
+static inline void tox_show(char* text, size_t size, double value) {
+    if (ISNA(value)) snprintf(text, size, "NA");
+    else if (ISNAN(value)) snprintf(text, size, "NaN");
+    else if (value == R_PosInf) snprintf(text, size, "Inf");
+    else if (value == R_NegInf) snprintf(text, size, "-Inf");
+    else snprintf(text, size, "%.15g", value);
+}
+
+// An element of x that is not what `expected` says, 0-based i shown 1-based as R counts
+static inline void tox_refuse_element(const char* argument, const char* expected, R_xlen_t i,
+                                      double value) {
+    char shown[32];
+    tox_show(shown, sizeof shown, value);
+    tox_refuse(argument, "tox_type_error", "'%s' must hold %s, but element %lld is %s",
+               argument, expected, (long long) i + 1, shown);
+}
+
+// What the R wrapper guarantees, if something called the .Call entry directly instead
+static inline void tox_refuse_type(const char* argument, const char* expected, SEXP x) {
+    tox_refuse(argument, "tox_type_error", "'%s' must be %s, not an R %s",
+               argument, expected, Rf_type2char(TYPEOF(x)));
+}
+
+// An integer array the caller passed, as the int32 Fortran is handed: R's integer vector as
+// it stands, NA refused, or a double vector whose every element is a whole number in R's
+// integer range -- converted only after the range is checked, so the cast is always defined.
+// NULL for an absent (R_NilValue) optional. INTEGER_NO_NA answers at once for a sequence like
+// 1:n, which R knows holds no NA.
+static inline const int* tox_int_in(SEXP x, const char* argument) {
+    if (x == R_NilValue) return NULL;
+    R_xlen_t n = XLENGTH(x);
+    if (TYPEOF(x) == INTSXP) {
+        const int* values = INTEGER(x);
+        if (!INTEGER_NO_NA(x))
+            for (R_xlen_t i = 0; i < n; ++i)
+                if (values[i] == NA_INTEGER) tox_refuse_na(argument);
+        return values;
+    }
+    if (TYPEOF(x) != REALSXP) tox_refuse_type(argument, "an integer vector", x);
+    const double* values = REAL(x);
+    int* converted = (int*) R_alloc((size_t) (n > 0 ? n : 1), sizeof(int));
+    for (R_xlen_t i = 0; i < n; ++i) {
+        double value = values[i];
+        if (!(value >= -INT_MAX && value <= INT_MAX) || value != (double) (int) value) {
+            if (ISNA(value)) tox_refuse_na(argument);
+            tox_refuse_element(argument, "whole numbers in the integer range", i, value);
+        }
+        converted[i] = (int) value;
+    }
+    return converted;
+}
+
+// An integer array the callee modifies, as a fresh integer vector with x's attributes:
+// checked as tox_int_in checks it, then copied or converted
+static inline SEXP tox_int_copy(SEXP x, const char* argument) {
+    tox_int_in(x, argument);
+    return TYPEOF(x) == INTSXP ? Rf_duplicate(x) : Rf_coerceVector(x, INTSXP);
+}
+
+// Whether s holds n bytes of well-formed UTF-8: no overlong form, no surrogate, nothing
+// past U+10FFFF -- what R's validUTF8() accepts
+static inline int tox_utf8_valid(const unsigned char* s, size_t n) {
+    size_t i = 0;
+    while (i < n) {
+        unsigned char c = s[i];
+        size_t length;
+        unsigned char low = 0x80, high = 0xBF;
+        if (c < 0x80) { ++i; continue; }
+        else if (c >= 0xC2 && c <= 0xDF) length = 2;
+        else if (c >= 0xE0 && c <= 0xEF) {
+            length = 3;
+            if (c == 0xE0) low = 0xA0;
+            if (c == 0xED) high = 0x9F;
+        } else if (c >= 0xF0 && c <= 0xF4) {
+            length = 4;
+            if (c == 0xF0) low = 0x90;
+            if (c == 0xF4) high = 0x8F;
+        } else return 0;
+        if (i + length > n) return 0;
+        if (s[i + 1] < low || s[i + 1] > high) return 0;
+        for (size_t k = 2; k < length; ++k)
+            if (s[i + k] < 0x80 || s[i + k] > 0xBF) return 0;
+        i += length;
+    }
+    return 1;
+}
+
+// A string as the UTF-8 bytes Fortran is handed, with their count in *length -- or NULL, and
+// *problem saying why it cannot cross. By what R marks it as, the same in every locale:
+// - ASCII, or marked UTF-8: as it stands, if it is well-formed;
+// - marked latin1: translated, as enc2utf8() translates it (R reads latin1 as Windows-1252),
+//   unless it holds one of the bytes that code page leaves undefined;
+// - unmarked (native): as it stands if its bytes are well-formed UTF-8, and refused otherwise.
+//   Never translated from the locale: in the C locale R takes every non-ASCII byte for one it
+//   cannot convert and writes it out as escape text, so the UTF-8 bytes c3 a9 of an e-acute
+//   reached Fortran as the eight characters "<c3><a9>";
+// - marked "bytes": it has no encoding to read it in.
+// So no escape text R makes up can reach Fortran in place of the caller's string.
+static inline const char* tox_utf8(SEXP e, size_t* length, const char** problem) {
+    const char* text = CHAR(e);
+    *length = (size_t) LENGTH(e);
+    *problem = NULL;
+    if (Rf_charIsASCII(e)) return text;  // and without a NUL: R cannot hold one
+    cetype_t encoding = Rf_getCharCE(e);
+    if (encoding == CE_BYTES) {
+        *problem = "is marked as bytes, which has no encoding to read it in";
+        return NULL;
+    }
+    if (encoding == CE_LATIN1) {
+        const char* translated = Rf_translateCharUTF8(e);
+        // every latin1 byte is one character, so a translation holding more characters than
+        // the string has bytes is one where R wrote an undefined byte out as "<81>"
+        size_t characters = 0;
+        for (const unsigned char* p = (const unsigned char*) translated; *p; ++p)
+            characters += (*p & 0xC0) != 0x80;
+        if (characters != *length) {
+            *problem = "is marked latin1, but holds a byte that is no character in it";
+            return NULL;
+        }
+        *length = strlen(translated);
+        return translated;
+    }
+    if (!tox_utf8_valid((const unsigned char*) text, *length)) {
+        *problem = "is not valid UTF-8 (a string in another encoding needs marking as one, "
+                   "such as Encoding(x) <- \"latin1\")";
+        return NULL;
+    }
+    return text;
+}
 
 // The width a character(len=n) array needs: the longest element, NA skipped. 0 for a
 // non-character or absent (R_NilValue) argument, so an omitted optional reports no width.
@@ -798,14 +1062,20 @@ static inline int tox_imin(int a, int b) { return a < b ? a : b; }
 // a pointer view of. The floor is deliberately inside the present branch: raising the absent
 // case to 1 would send width 1 beside a null pointer, and M_CHECK_ARRAY_NON_NULL would then
 // reject an optional the caller legitimately omitted.
+//
+// Measured in UTF-8 bytes, as tox_char_in copies it. An NA, and a string that cannot cross
+// as UTF-8, is skipped here and refused there.
 static inline int tox_max_strlen(SEXP x) {
     if (x == R_NilValue || TYPEOF(x) != STRSXP) return 0;
     int longest = 0, n = (int) XLENGTH(x);
+    const SEXP* elements = STRING_PTR_RO(x);
     for (int i = 0; i < n; ++i) {
-        SEXP e = STRING_ELT(x, i);
+        SEXP e = elements[i];
         if (e == NA_STRING) continue;
-        int m = (int) LENGTH(e);
-        if (m > longest) longest = m;
+        size_t length;
+        const char* problem;
+        if (tox_utf8(e, &length, &problem) == NULL) continue;
+        if ((int) length > longest) longest = (int) length;
     }
     return longest > 0 ? longest : 1;
 }
@@ -814,19 +1084,34 @@ static inline int tox_max_strlen(SEXP x) {
 // char[len * n], column-major, each **blank**-padded. The Fortran wrapper does not convert
 // this buffer, it takes a `character(len=len)` pointer view of it -- so the padding byte
 // becomes part of the value, and blanks are the padding Fortran's own `trim`, `len_trim`
-// and string comparison understand. A NUL would survive into the string instead. Anything
-// longer than len is truncated.
-static inline char* tox_char_in(SEXP x, int len) {
+// and string comparison understand. A NUL would survive into the string instead.
+//
+// Every element is checked as it is copied: an NA, a string that is not well-formed UTF-8,
+// and one longer than len are refused, naming the argument. A longer one could only be cut
+// short, which turned `delimiter = "::"` into ":" (len is the longest element's length
+// wherever the caller's strings decide it, so this refuses only past a declared length).
+static inline char* tox_char_in(SEXP x, int len, const char* argument) {
     int n = (x == R_NilValue) ? 0 : (int) XLENGTH(x);
     size_t total = (size_t) len * (n > 0 ? n : 1);
     char* buf = (char*) R_alloc(total, 1);
     memset(buf, ' ', total);
+    if (n == 0) return buf;
+    if (TYPEOF(x) != STRSXP) tox_refuse_type(argument, "a character vector", x);
+    const SEXP* elements = STRING_PTR_RO(x);
     for (int i = 0; i < n; ++i) {
-        SEXP e = STRING_ELT(x, i);
-        if (e == NA_STRING) continue;
-        int slen = (int) LENGTH(e);
-        int m = slen < len ? slen : len;
-        memcpy(buf + (size_t) i * len, CHAR(e), (size_t) m);
+        SEXP e = elements[i];
+        if (e == NA_STRING) tox_refuse_na(argument);
+        size_t slen;
+        const char* problem;
+        const char* text = tox_utf8(e, &slen, &problem);
+        if (text == NULL)
+            tox_refuse(argument, "tox_type_error", "'%s' element %d %s", argument, i + 1, problem);
+        if (slen > (size_t) len)
+            tox_refuse(argument, "tox_type_error",
+                       "'%s' element %d is %d bytes long in UTF-8, but it is declared %d long, "
+                       "and a longer value would be cut short",
+                       argument, i + 1, (int) slen, len);
+        memcpy(buf + (size_t) i * len, text, slen);
     }
     return buf;
 }
@@ -858,19 +1143,57 @@ static inline SEXP tox_char_out(const char* buf, int len, int n) {
         const char* p = buf + (size_t) i * len;
         int m = len;
         while (m > 0 && p[m - 1] == ' ') --m;
-        SET_STRING_ELT(out, i, Rf_mkCharLen(p, m));
+        // UTF-8 is what crossed, both ways, so that is what the string is marked as: in a
+        // non-UTF-8 locale an unmarked one would be read in the native encoding instead
+        SET_STRING_ELT(out, i, Rf_mkCharLenCE(p, m, CE_UTF8));
     }
     UNPROTECT(1);
     return out;
 }
 
-// R logical is a 4-byte int (0/1); Fortran c_bool is one byte. Copy across.
-static inline unsigned char* tox_bool_in(SEXP x) {
-    int n = (x == R_NilValue) ? 0 : (int) XLENGTH(x);
-    unsigned char* buf = (unsigned char*) R_alloc(n > 0 ? n : 1, 1);
-    if (n > 0) {
-        const int* px = LOGICAL(x);
-        for (int i = 0; i < n; ++i) buf[i] = (px[i] == TRUE) ? 1 : 0;
+// R logical is a 4-byte int (0/1); Fortran c_bool is one byte. Copied across, and so is a
+// number whose every element is exactly 0 or 1 -- c(1, 0, 1) is R's own literal for a 0/1
+// mask -- while an NA, and any other number, is refused by name.
+static inline unsigned char* tox_bool_in(SEXP x, const char* argument) {
+    R_xlen_t n = (x == R_NilValue) ? 0 : XLENGTH(x);
+    unsigned char* buf = (unsigned char*) R_alloc((size_t) (n > 0 ? n : 1), 1);
+    if (n == 0) return buf;
+    static const char expected[] = "TRUE and FALSE, or the numbers 0 and 1";
+    switch (TYPEOF(x)) {
+    case LGLSXP: {
+        const int* values = LOGICAL(x);
+        for (R_xlen_t i = 0; i < n; ++i) {
+            if (values[i] == NA_LOGICAL) tox_refuse_na(argument);
+            buf[i] = values[i] != 0;
+        }
+        break;
+    }
+    case INTSXP: {
+        const int* values = INTEGER(x);
+        for (R_xlen_t i = 0; i < n; ++i) {
+            int value = values[i];
+            if (value != 0 && value != 1) {
+                if (value == NA_INTEGER) tox_refuse_na(argument);
+                tox_refuse_element(argument, expected, i, (double) value);
+            }
+            buf[i] = (unsigned char) value;
+        }
+        break;
+    }
+    case REALSXP: {
+        const double* values = REAL(x);
+        for (R_xlen_t i = 0; i < n; ++i) {
+            double value = values[i];
+            if (value != 0.0 && value != 1.0) {
+                if (ISNA(value)) tox_refuse_na(argument);
+                tox_refuse_element(argument, expected, i, value);
+            }
+            buf[i] = value != 0.0;
+        }
+        break;
+    }
+    default:
+        tox_refuse_type(argument, "a logical vector", x);
     }
     return buf;
 }
@@ -911,11 +1234,18 @@ static inline int tox_prod(SEXP shape) {
     return p;
 }
 
-// Count the TRUEs in a logical vector; NA has already been rejected in R.
+// Count the elements of a mask that are set: the TRUEs, or the 1s of a 0/1 number vector.
+// Counted before the mask is converted, so an element that is neither -- which tox_bool_in
+// refuses next -- counts as unset, as R's count of it does (r_wrapper._mask_count).
 static inline int tox_sum_true(SEXP x) {
     int n = (int) XLENGTH(x), total = 0;
-    const int* px = LOGICAL(x);
-    for (int i = 0; i < n; ++i) total += (px[i] == TRUE) ? 1 : 0;
+    if (TYPEOF(x) == REALSXP) {
+        const double* values = REAL(x);
+        for (int i = 0; i < n; ++i) total += values[i] == 1.0;
+    } else if (TYPEOF(x) == LGLSXP || TYPEOF(x) == INTSXP) {
+        const int* values = TYPEOF(x) == LGLSXP ? LOGICAL(x) : INTEGER(x);
+        for (int i = 0; i < n; ++i) total += values[i] == 1;
+    }
     return total;
 }
 

@@ -57,4 +57,10 @@ test_basic_calling <- function() {
   write.table(normalized_df, output_file, sep = "\t", row.names = FALSE, quote = FALSE)
 }
 
+# `expr` has sum(reps_per_tissue) rows: 4 here, and 2 used to be read past (#221)
+test_calc_tiss_avg_refuses_an_expr_shorter_than_its_replicates <- function() {
+  assert_error(calc_tiss_avg(c(2L, 2L), matrix(1, 2, 2)),
+               "a 2-row expr for 4 replicates must be refused", code = ERR_SIZE_MISMATCH)
+}
+
 run_all_tests()

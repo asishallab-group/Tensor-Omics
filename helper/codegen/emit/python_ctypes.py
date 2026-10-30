@@ -7,84 +7,175 @@ What the generated function does, and why:
 - It checks the shapes. Fortran cannot: `expr(n_genes, n_tissues)` and `weights(n_tissues)`
   share an extent, and a mismatch is only discovered as a wrong answer or a segfault.
   Python is where that has to be caught.
-- It avoids copying. `np.asarray` and friends copy only when the array is not already what
-  C needs. An `intent(inout)` array is never converted at all -- a copy would silently
-  discard the modification the caller asked for -- so it is checked and rejected instead.
+- It checks every input by the input contract (`emit.python_contract`): the input's own kind
+  first, then a conversion accepted only if converting back gives the same values. It
+  avoids copying: an input that already has the Fortran type is not converted at all. An
+  `intent(inout)` array is never converted -- a copy would silently discard the
+  modification the caller asked for -- so it is checked and rejected instead.
 - It returns results, not error codes. `ierr` is decoded by `check_err_code`, which raises.
 """
 
 from __future__ import annotations
 
-import re
-
+from ..abi import extents
 from ..abi.c_abi import stripped_name
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
+from ..diagnostics import DiagnosticBag
+from ..ir.errors import ErrorCatalogue
 from ..ir.types import BaseType, Intent
+from ..names import (
+    PYTHON_ARGUMENT_ERROR,
+    PYTHON_CAUGHT_ERROR,
+    PYTHON_CHECK_ERR_CODE,
+    PYTHON_CONTRACT,
+    PYTHON_CTYPES as _CTYPES,
+    PYTHON_ERROR_MODULE,
+    PYTHON_LOAD_LIBRARY,
+    PYTHON_NULLABLE,
+    PYTHON_NUMPY as _NP,
+    PYTHON_PACKAGE_IMPORTS,
+    PYTHON_PACKAGE_MODULES,
+    PYTHON_STDLIB_IMPORTS,
+    PYTHON_THIRD_PARTY_IMPORTS,
+)
 from ..render import Writer
-from .error_arguments import sources_of
+from .error_arguments import shapes_of, sources_of
+from .errors_python import public_names
+from .doc_literals import render as _render
 from .doc_numpydoc import _description, render_docstring
-
-#: A Fortran numeric literal's kind suffix -- `0_int32`, `2.0_real64`. Python has no such
-#: thing, so an extent expression carried over verbatim (`max(0_int32, n - 1)`) is a syntax
-#: error until the suffix is dropped. A kind can only follow a literal (an identifier cannot
-#: start with a digit), so this never touches a real name.
-_FORTRAN_KIND_SUFFIX = re.compile(r"\b(\d+(?:\.\d+)?)_[A-Za-z]\w*")
-
-#: `size(arr)` or `size(arr, dim)` -- Fortran's way of writing an extent in terms of
-#: another argument, which numpy spells as an attribute rather than a call.
-_FORTRAN_SIZE = re.compile(r"\bsize\s*\(\s*([A-Za-z_]\w*)\s*(?:,\s*(\d+)\s*)?\)")
-
-
-def _size_as_numpy(match: re.Match) -> str:
-    array, dim = match.group(1), match.group(2)
-    if dim is None:
-        # no dim: the total number of elements, whatever the rank
-        return f"{array}.size"
-    # Fortran dimensions are 1-based, numpy axes 0-based
-    return f"{array}.shape[{int(dim) - 1}]"
-
+from .shape_checks import Position, declared_shape, extent_provider, reason, shape_checks
 
 def _python_extent(extent: str) -> str:
-    """A Fortran extent expression as Python.
+    """A Fortran extent expression as Python, through the one grammar the bindings evaluate.
 
-    `max`/`min` are built-ins already. What needs translating is the numeric kind suffix,
-    which Python has no notion of, and `size(...)`, which numpy spells as an attribute.
+    `generate` has refused every extent a binding computes that lies outside it
+    (`abi.extents.check_binding_extents`), so this cannot fail on one that is emitted.
     """
-    return _FORTRAN_SIZE.sub(_size_as_numpy, _FORTRAN_KIND_SUFFIX.sub(r"\1", extent))
+    return extents.to_python(extent)
 
-#: Fortran base type -> the ctypes scalar C sees
+def check_package_names(binding, catalogue: ErrorCatalogue,
+                        diagnostics: DiagnosticBag) -> None:
+    """Refuse two things the package's top level would bind to one name.
+
+    `tensor_omics` re-exports every procedure beside everything the error module defines, and
+    a submodule is an attribute of the package too: a procedure called `check_err_code` or
+    `ERR_OK` would replace the error module's, one called `library` would hide the submodule
+    `tensor_omics.library` behind a function, and a Fortran module whose generated one is called
+    `error_handling` would overwrite the error module's file. Compared ignoring case, as Fortran
+    compares names, so `Check_Err_Code` cannot become a second spelling of the same name in
+    the Fortran and R layers it reaches as well. None of this happens on main: procedures
+    are snake_case, codes are `ERR_`/`STAT_`, classes are `Tox*`.
+    """
+    # (name, what it is, where it is declared), the procedures last, so a clash points at the
+    # Fortran an author renames: the procedure where there is one, else the module
+    published = [(name, f"'{name}' of the error module", None)
+                 for name in public_names(catalogue)]
+    published += [(name, f"the package's own submodule '{name}'", None)
+                  for name in PYTHON_PACKAGE_MODULES]
+    published += [(module.stripped_name, f"the module '{module.stripped_name}'", module.module)
+                  for module in binding]
+    published += [(wrapper.stripped_name,
+                   f"the procedure '{wrapper.stripped_name}' of '{module.stripped_name}'",
+                   wrapper.procedure)
+                  for module in binding for wrapper in module]
+
+    by_name: dict[str, list] = {}
+    for entry in published:
+        by_name.setdefault(entry[0].lower(), []).append(entry)
+    for entries in by_name.values():
+        if len(entries) < 2:
+            continue
+        located = [entity for _, _, entity in entries if entity is not None]
+        diagnostics.error(
+            " and ".join(what for _, what, _ in entries)
+            + " have the same name at the top level of the Python package",
+            entity=located[-1] if located else None,
+            note=(
+                "the package binds it once, so one hides the other; names are compared "
+                "ignoring case, as Fortran compares them -- rename the procedure or module"
+            ),
+        )
+
+
+#: Fortran base type -> the ctypes scalar C sees, by its name in `ctypes`. ctypes has no complex
+#: type, so a complex is its real part's: a single complex is a box of two of them
+#: (`_is_complex_box`), and an array of them is numpy's complex dtype (`DTYPES`).
 CTYPES = {
-    ("integer", "c_int"): "ctypes.c_int",
-    ("integer", "c_int8_t"): "ctypes.c_int8",
-    ("integer", "c_int16_t"): "ctypes.c_int16",
-    ("integer", "c_int32_t"): "ctypes.c_int32",
-    ("integer", "c_int64_t"): "ctypes.c_int64",
-    ("integer", "c_size_t"): "ctypes.c_size_t",
-    ("real", "c_float"): "ctypes.c_float",
-    ("real", "c_double"): "ctypes.c_double",
-    ("complex", "c_float_complex"): "ctypes.c_float",
-    ("complex", "c_double_complex"): "ctypes.c_double",
-    ("logical", "c_bool"): "ctypes.c_bool",
-    ("character", "c_char"): "ctypes.c_char",
+    ("integer", "c_int"): "c_int",
+    ("integer", "c_int8_t"): "c_int8",
+    ("integer", "c_int16_t"): "c_int16",
+    ("integer", "c_int32_t"): "c_int32",
+    ("integer", "c_int64_t"): "c_int64",
+    ("integer", "c_size_t"): "c_size_t",
+    ("real", "c_float"): "c_float",
+    ("real", "c_double"): "c_double",
+    ("complex", "c_float_complex"): "c_float",
+    ("complex", "c_double_complex"): "c_double",
+    ("logical", "c_bool"): "c_bool",
+    ("character", "c_char"): "c_char",
 }
 
-#: Fortran base type -> the numpy dtype of an array of it
+#: Fortran base type -> the numpy dtype of an array of it, by its name in `numpy`
 DTYPES = {
-    ("integer", "c_int"): "np.int32",
-    ("integer", "c_int8_t"): "np.int8",
-    ("integer", "c_int16_t"): "np.int16",
-    ("integer", "c_int32_t"): "np.int32",
-    ("integer", "c_int64_t"): "np.int64",
-    ("real", "c_float"): "np.float32",
-    ("real", "c_double"): "np.float64",
-    ("complex", "c_float_complex"): "np.complex64",
-    ("complex", "c_double_complex"): "np.complex128",
-    ("logical", "c_bool"): "np.bool_",
+    ("integer", "c_int"): "int32",
+    ("integer", "c_int8_t"): "int8",
+    ("integer", "c_int16_t"): "int16",
+    ("integer", "c_int32_t"): "int32",
+    ("integer", "c_int64_t"): "int64",
+    ("real", "c_float"): "float32",
+    ("real", "c_double"): "float64",
+    ("complex", "c_float_complex"): "complex64",
+    ("complex", "c_double_complex"): "complex128",
+    ("logical", "c_bool"): "bool_",
 }
+
+
+#: Fortran base type -> the input contract's check of an array of it, and of a single one, with
+#: the dtype the check produces (`emit.python_contract`). A complex array is converted as numpy
+#: converts it, so only a single complex has a check.
+_CONTRACT_CHECKS = {
+    BaseType.INTEGER: ("integers", "integer", "int32"),
+    BaseType.REAL: ("reals", "real", "float64"),
+    BaseType.LOGICAL: ("logicals", "logical", "bool_"),
+    BaseType.COMPLEX: (None, "complex_number", "complex128"),
+}
+
+
+def _contract_call(argument: CArgument) -> str | None:
+    """The call that checks and converts one number or logical input, or None if none does.
+
+    An array's rank is the declared one, and a rank-2-or-more array is made column-major; an
+    array whose shape travels separately takes any rank, flattened in Fortran order at the
+    call. A single value is the 0-d case and comes back as a Python scalar.
+    """
+    check = _CONTRACT_CHECKS.get(argument.type.base)
+    if check is None or DTYPES.get((argument.type.base.value, argument.type.kind)) != check[2]:
+        return None
+    name = argument.name
+    if argument.is_scalar:
+        return f'{PYTHON_CONTRACT}.{check[1]}({name}, "{name}")'
+    if check[0] is None:
+        return None
+    if argument.shape_arg is not None:
+        return f'{PYTHON_CONTRACT}.{check[0]}({name}, "{name}", order="F")'
+    order = ', order="F"' if argument.rank > 1 else ""
+    return f'{PYTHON_CONTRACT}.{check[0]}({name}, "{name}", ndim={argument.rank}{order})'
 
 
 def ctype_of(argument: CArgument) -> str:
-    return CTYPES[(argument.type.base.value, argument.type.kind)]
+    return f"{_CTYPES}.{CTYPES[(argument.type.base.value, argument.type.kind)]}"
+
+
+def _is_complex_box(argument: CArgument) -> bool:
+    """A single complex, which C is handed as a box of two doubles (#221 WP8).
+
+    Fortran reads and writes a complex(real64) as two doubles, real part first, so the box is
+    `(c_double * 2)`, which ctypes passes as the `c_double*` the argtype names: allocated for an
+    output, filled from the value for an input or an `intent(inout)`. A single `c_double` lost
+    an output's imaginary part and let Fortran write 8 bytes past it, and an input's was read
+    from whatever lay past it.
+    """
+    return argument.is_scalar and argument.type.base is BaseType.COMPLEX
 
 
 def dtype_of(argument: CArgument) -> str:
@@ -97,7 +188,18 @@ def dtype_of(argument: CArgument) -> str:
     """
     if argument.type.is_character:
         return _character_dtype(argument)
-    return DTYPES[(argument.type.base.value, argument.type.kind)]
+    return f"{_NP}.{DTYPES[(argument.type.base.value, argument.type.kind)]}"
+
+
+def dtype_label(argument: CArgument) -> str:
+    """The dtype as a reader writes it (`np.float64`), for documentation and messages.
+
+    The generated code binds numpy as `_np` (`names`), which a docstring has no business
+    showing.
+    """
+    if argument.type.is_character:
+        return _character_dtype(argument)
+    return f"np.{DTYPES[(argument.type.base.value, argument.type.kind)]}"
 
 
 def _character_dtype(argument: CArgument) -> str:
@@ -118,7 +220,7 @@ def _character_dtype(argument: CArgument) -> str:
     extent = character_length(argument)
     if extent.isdigit():
         return f'"S{extent}"'
-    return 'f"S{' + extent + '}"'
+    return 'f"S{' + _python_extent(extent) + '}"'
 
 
 def character_length(argument: CArgument) -> str:
@@ -137,7 +239,7 @@ def _pad_width(argument: CArgument) -> str | None:
     length = argument.source.type.length if argument.source else None
     if length is not None and length.is_assumed and argument.intent.is_input:
         return None
-    return character_length(argument)
+    return _python_extent(character_length(argument))
 
 
 def character_rank(argument: CArgument) -> int:
@@ -243,8 +345,14 @@ class PythonEmitter:
             writer.line(")")
         return writer.render(trailing_newline=True)
 
-    def package_init(self, modules) -> str:
-        """The package's `__init__`, re-exporting every generated function."""
+    def package_init(self, modules, catalogue: ErrorCatalogue) -> str:
+        """The package's `__init__`: every generated function, and the whole error module.
+
+        The codes, the exception classes, `ARG_POS_FACTOR` and `check_err_code` come from the
+        one list the error module is emitted from (`errors_python.public_names`), so what
+        `from tensor_omics import ERR_NAN_INF` finds follows `tox_errors` with no edit here.
+        `check_package_names` has made sure none of them shares a name with a procedure.
+        """
         writer = Writer()
         writer.block(
             '"""Python binding to tensor-omics.\n'
@@ -253,10 +361,11 @@ class PythonEmitter:
             '"""'
         )
         writer.blank()
-        writer.line("from .error_handling import (")
+        errors = public_names(catalogue)
+        writer.line(f"from .{PYTHON_ERROR_MODULE} import (")
         with writer.indent():
-            writer.line("ToxError,")
-            writer.line("check_err_code,")
+            for name in errors:
+                writer.line(f"{name},")
         writer.line(")")
 
         exported = []
@@ -272,7 +381,7 @@ class PythonEmitter:
         writer.blank()
         writer.line("__all__ = [")
         with writer.indent():
-            for name in ["ToxError", "check_err_code", *sorted(exported)]:
+            for name in [*errors, *sorted(exported)]:
                 writer.line(f'"{name}",')
         writer.line("]")
         return writer.render(trailing_newline=True)
@@ -280,6 +389,8 @@ class PythonEmitter:
     # -- module -----------------------------------------------------------------
 
     def module(self, module: CWrapperModule) -> str:
+        # a module constant in an extent is its value here: this language cannot name it
+        module = module.with_constant_sizes_evaluated()
         writer = Writer()
         # The module's whole documentation, not only its first line. A generated module is
         # the published API, so what the author wrote about the family is what a Python
@@ -301,15 +412,17 @@ class PythonEmitter:
         )
         writer.line('"""')
         writer.blank()
-        writer.line("import ctypes")
-        writer.line("import os")
+        # from the name table, every one bound to a name starting with `_`, which no argument
+        # can have (a Fortran name cannot start with one)
+        for group in (PYTHON_STDLIB_IMPORTS, PYTHON_THIRD_PARTY_IMPORTS):
+            for module_name, bound in group:
+                writer.line(f"import {module_name} as {bound}")
+            writer.blank()
+        for module_name, names in PYTHON_PACKAGE_IMPORTS:
+            imported = ", ".join(f"{name} as {bound}" for name, bound in names)
+            writer.line(f"from {module_name} import {imported}")
         writer.blank()
-        writer.line("import numpy as np")
-        writer.blank()
-        writer.line("from .error_handling import check_err_code")
-        writer.line("from .library import load_library, nullable")
-        writer.blank()
-        writer.line("_lib = load_library()")
+        writer.line(f"_lib = {PYTHON_LOAD_LIBRARY}()")
         writer.blank()
 
         for wrapper in module:
@@ -345,28 +458,37 @@ class PythonEmitter:
                 f"_{wrapper.stripped_name.upper()}_ARGUMENT_SOURCES = "
                 f"({rendered}{',' if rendered else ''})"
             )
+        # and the declared shape of an array the C wrapper compares, which its error states
+        shapes = shapes_of(wrapper, "python")
+        if any(shapes):
+            rendered = ", ".join(f'"{s}"' if s else "None" for s in shapes)
+            writer.line("#: For an array the C wrapper compares with its declaration, that shape")
+            writer.line(
+                f"_{wrapper.stripped_name.upper()}_ARGUMENT_SHAPES = "
+                f"({rendered}{',' if rendered else ''})"
+            )
         return writer.render()
 
     def _argtype(self, argument: CArgument) -> str:
         if argument.is_scalar:
-            argtype = f"ctypes.POINTER({ctype_of(argument)})"
+            argtype = f"{_CTYPES}.POINTER({ctype_of(argument)})"
         elif argument.type.is_character:
             # c_char_p is read-only bytes, so it cannot receive an output. Both
             # directions use a buffer instead. No dtype is stated: an S<len> item size
             # may only be known at call time, and the wrapper builds the buffer itself,
             # so there is nothing here for ctypes to catch.
-            argtype = f"np.ctypeslib.ndpointer(ndim={max(character_rank(argument), 1)})"
+            argtype = f"{_NP}.ctypeslib.ndpointer(ndim={max(character_rank(argument), 1)})"
         else:
             rank = argument.rank
             # Fortran is column-major; for rank 1 the two orders coincide
             flags = "'F_CONTIGUOUS'" if rank > 1 else "'C_CONTIGUOUS'"
             argtype = (
-                f"np.ctypeslib.ndpointer(dtype={dtype_of(argument)}, ndim={rank}, "
+                f"{_NP}.ctypeslib.ndpointer(dtype={dtype_of(argument)}, ndim={rank}, "
                 f"flags={flags})"
             )
         if argument.optional:
             # ctypes rejects None for a checked argtype, so absence needs to be allowed
-            argtype = f"nullable({argtype})"
+            argtype = f"{PYTHON_NULLABLE}({argtype})"
         return argtype
 
     # -- function ---------------------------------------------------------------
@@ -454,7 +576,7 @@ class PythonEmitter:
             if block:
                 lines.block(block)
         if lines:
-            writer.line("# accept anything array-like, converting only when C needs it")
+            writer.line("# check every input by the input contract, converting only when C needs it")
             writer.extend(lines)
             writer.blank()
 
@@ -470,8 +592,8 @@ class PythonEmitter:
             return body
         writer = Writer()
         writer.line(
-            f"{argument.shape_arg} = np.ascontiguousarray("
-            f"np.shape({argument.name}), dtype=np.int32)"
+            f"{argument.shape_arg} = {_NP}.ascontiguousarray("
+            f"{_NP}.shape({argument.name}), dtype={_NP}.int32)"
         )
         if body:
             writer.block(body)
@@ -483,14 +605,17 @@ class PythonEmitter:
 
         if argument.conversion is Conversion.MODE:
             # a mode is a character to C, so it goes through the same buffer as any
-            # string; only lower-cased first, since the C wrapper matches on the
-            # lower-case spelling of the parameter name. Blank-padded like every other
-            # string: the C wrapper matches the buffer with `select case`, and a Fortran
-            # character comparison blank-pads the shorter operand, so "iqr   " still
-            # selects `case ("iqr")`.
+            # string; matched whole against the modes first, and lower-cased, since the C
+            # wrapper matches on the lower-case spelling of the parameter name. Matched
+            # here, not left to C: the buffer is only as wide as the longest mode, so
+            # 'weightedXYZ' arrived as 'weighted', and C's refusal named no argument.
+            # Blank-padded like every other string: the C wrapper matches the buffer with
+            # `select case`, and a Fortran character comparison blank-pads the shorter
+            # operand, so "iqr   " still selects `case ("iqr")`.
             body = Writer()
+            choices = ", ".join(f'"{v.string}"' for v in argument.mode.values)
             body.line(
-                f"{name} = np.array([str({name}).lower().encode()"
+                f'{name} = {_NP}.array([{PYTHON_CONTRACT}.mode({name}, "{name}", ({choices},))'
                 f".ljust({character_length(argument)})], "
                 f"dtype={dtype_of(argument)})"
             )
@@ -499,51 +624,57 @@ class PythonEmitter:
         if argument.type.is_character:
             return self._guarded(argument, self._prepare_character(argument))
 
+        checked = _contract_call(argument)
         if argument.is_scalar:
+            if checked is None:
+                return ""
+            body = Writer()
             if argument.intent is Intent.INOUT and not argument.optional:
                 # Fortran writes back through the pointer, so C needs a box to write
                 # into rather than a temporary made at the call. The new value is
                 # returned, Python having no way to rebind the caller's name.
-                body = Writer()
-                body.line(f"{name} = {ctype_of(argument)}({name})")
-                return body.render()
-            return ""
+                if _is_complex_box(argument):
+                    body.line(f"{name} = {checked}")
+                    body.line(f"{name} = ({ctype_of(argument)} * 2)({name}.real, {name}.imag)")
+                else:
+                    body.line(f"{name} = {ctype_of(argument)}({checked})")
+            else:
+                body.line(f"{name} = {checked}")
+            return self._guarded(argument, body)
 
         body = Writer()
         if argument.intent is Intent.INOUT:
             # Converting would copy, and the caller would never see the modification
             body.line(
-                f"if not isinstance({name}, np.ndarray) or {name}.dtype != {dtype_of(argument)}:"
+                f"if not isinstance({name}, {_NP}.ndarray) or {name}.dtype != {dtype_of(argument)}:"
             )
             with body.indent():
-                body.line(
-                    f'raise TypeError("\'{name}\' is modified in place, so it must '
-                    f'already be a numpy array of {{}}".format({dtype_of(argument)}))'
-                )
+                body.line(_refusal(
+                    f'"\'{name}\' is modified in place, so it must '
+                    f'already be a numpy array of {{}}".format({dtype_of(argument)})', name))
             self._check_rank(argument, body)
             if argument.rank > 1:
                 body.line(f"if not {name}.flags.f_contiguous:")
                 with body.indent():
-                    body.line(
-                        f'raise ValueError("\'{name}\' is modified in place, so it must '
-                        f"already be column-major (order='F')\")"
-                    )
+                    body.line(_refusal(
+                        f'"\'{name}\' is modified in place, so it must '
+                        f"already be column-major (order='F')\"", name))
+        elif checked is not None:
+            body.line(f"{name} = {checked}")
         else:
             # numpy raises without saying which argument was wrong -- it cannot know --
             # so the name is put back on the way out
-            converter = ("np.asfortranarray"
+            converter = (f"{_NP}.asfortranarray"
                          if argument.rank > 1 or argument.shape_arg is not None
-                         else "np.ascontiguousarray")
+                         else f"{_NP}.ascontiguousarray")
             body.line("try:")
             with body.indent():
                 body.line(f"{name} = {converter}({name}, dtype={dtype_of(argument)})")
-            body.line("except (TypeError, ValueError) as error:")
+            body.line(f"except (TypeError, ValueError) as {PYTHON_CAUGHT_ERROR}:")
             with body.indent():
-                body.line(
-                    f'raise TypeError('
-                    f'f"\'{name}\' must be an array of {dtype_of(argument)}: {{error}}"'
-                    f") from None"
-                )
+                body.line(_refusal(
+                    f'f"\'{name}\' must be an array of {dtype_label(argument)}: '
+                    f'{{{PYTHON_CAUGHT_ERROR}}}"', name, from_none=True))
             self._check_rank(argument, body)
         return self._guarded(argument, body)
 
@@ -573,12 +704,9 @@ class PythonEmitter:
         name = argument.name
         body.line(f"if {name}.ndim != {rank}:")
         with body.indent():
-            body.line(
-                f'raise ValueError('
+            body.line(_refusal(
                 f'f"\'{name}\' must have {rank} dimension{"" if rank == 1 else "s"}, '
-                f'but has {{{name}.ndim}}"'
-                f")"
-            )
+                f'but has {{{name}.ndim}}"', name))
 
     def _prepare_character(self, argument: CArgument) -> Writer:
         """Encode strings into the blank-padded buffer C expects.
@@ -594,46 +722,39 @@ class PythonEmitter:
         """
         name = argument.name
         width = _pad_width(argument)
+        # the contract checks the strings and encodes them, refusing one longer than a fixed
+        # width rather than letting the buffer cut it short (`emit.python_contract`)
+        limit = f", {width}" if width is not None else ""
         body = Writer()
         if character_rank(argument) == 0:
             # Where numpy sizes the item, ljust(1) is the whole job: it is a no-op for
             # every non-empty string, and it stops an empty one becoming numpy's forced
             # single null byte.
             body.line(
-                f"{name} = np.array([str({name}).encode().ljust({width or 1})], "
+                f'{name} = {_NP}.array([{PYTHON_CONTRACT}.string({name}, "{name}"{limit})'
+                f".ljust({width or 1})], dtype={dtype_of(argument)})"
+            )
+            return body
+        any_rank = ", any_rank=True" if argument.shape_arg is not None else ""
+        encoded = f'{PYTHON_CONTRACT}.strings({name}, "{name}"{limit}{any_rank})'
+        if width is None:
+            # numpy sizes the item from the longest element, so the width is not known
+            # until every string is encoded. `default=0` covers an empty sequence and `or 1`
+            # an array of nothing but empty strings, either of which would otherwise ask
+            # numpy for a width of zero.
+            body.line(f"_{name}_bytes = {encoded}")
+            body.line(f"_{name}_width = max(map(len, _{name}_bytes), default=0) or 1")
+            body.line(
+                f"{name} = {_NP}.asarray("
+                f"[_b.ljust(_{name}_width) for _b in _{name}_bytes], "
                 f"dtype={dtype_of(argument)})"
             )
         else:
-            body.line("try:")
-            with body.indent():
-                items = (f"np.asarray({name}).ravel(order='F')"
-                         if argument.shape_arg is not None else name)
-                if width is None:
-                    # numpy sizes the item from the longest element, so the width is not
-                    # known until every string is encoded. `default=0` covers an empty
-                    # sequence and `or 1` an array of nothing but empty strings, either of
-                    # which would otherwise ask numpy for a width of zero.
-                    body.line(f"_{name}_bytes = [str(_s).encode() for _s in {items}]")
-                    body.line(f"_{name}_width = max(map(len, _{name}_bytes), default=0) or 1")
-                    body.line(
-                        f"{name} = np.asarray("
-                        f"[_b.ljust(_{name}_width) for _b in _{name}_bytes], "
-                        f"dtype={dtype_of(argument)})"
-                    )
-                else:
-                    body.line(
-                        f"{name} = np.asarray("
-                        f"[str(_s).encode().ljust({width}) for _s in {items}], "
-                        f"dtype={dtype_of(argument)})"
-                    )
-            body.line("except TypeError as error:")
-            with body.indent():
-                body.line(
-                    f'raise TypeError('
-                    f'f"\'{name}\' must be a sequence of strings: {{error}}"'
-                    f") from None"
-                )
-            self._check_rank(argument, body)
+            body.line(
+                f"{name} = {_NP}.asarray("
+                f"[_b.ljust({width}) for _b in {encoded}], "
+                f"dtype={dtype_of(argument)})"
+            )
         return body
 
     @staticmethod
@@ -858,88 +979,56 @@ class PythonEmitter:
         Only an input's shape may be read: an output array is allocated *from* this
         extent, so it does not exist yet when the extent is settled. When an extent is
         named by both (e.g. `reps_per_tissue(n_tissues)` and the output
-        `log_transformed_expr(n_tissues, n_genes)`) the input is the one to read.
+        `log_transformed_expr(n_tissues, n_genes)`) the input is the one to read. Which input
+        is `shape_checks.extent_provider`'s to say, so that the axis it is read from is the one
+        `_check_shapes` leaves out.
         """
-        for owner in argument.source.roles.extent_of:
-            c_owner = wrapper.argument(owner.name)
-            if c_owner is None or not c_owner.intent.is_input or c_owner.optional:
-                continue
-            if c_owner.shape_arg is not None:
-                # its extents travel separately, so the only thing an extent of it can
-                # mean is how many elements there are altogether
-                return f"{owner.name}.size"
-            axes = self._axes_of(argument.name, c_owner)
-            if axes:
-                # the first is where the value is read from; the others are what
-                # `_check_shapes` then verifies against it
-                return f"{owner.name}.shape[{axes[0]}]"
+        position = extent_provider(argument, wrapper)
+        if position is not None:
+            return self._position(position)
         # an output sized by a shape argument: the count is the product of that shape
         for owner in argument.source.roles.extent_of:
             c_owner = wrapper.argument(owner.name)
             if c_owner is not None and c_owner.shape_arg is not None:
-                return f"int(np.prod({c_owner.shape_arg}))"
+                return f"int({_NP}.prod({c_owner.shape_arg}))"
         return ""
 
     @staticmethod
-    def _axes_of(extent: str, owner: CArgument) -> list[int]:
-        """Which numpy axes of `owner` carry `extent`.
-
-        A character's length is a C extent but not a numpy axis: the strings are a numpy
-        array of one dimension fewer.
-        """
-        extents = list(owner.dimension.extents)
-        if owner.type.is_character and extents:
-            extents = extents[1:]
-        # every axis, not the first: `distances(n_points, n_points)` claims to know
-        # `n_points` twice, and checking only axis 0 lets a non-square array through to a
-        # Fortran view that reads (and, when intent(inout), writes) past the buffer.
-        return [index for index, name in enumerate(extents) if name == extent]
+    def _position(position: Position) -> str:
+        """An axis of an input as Python reads it, or its element count."""
+        name = position.array.name
+        if position.axis is None:
+            # its extents travel separately, so the only thing an extent of it can mean is
+            # how many elements there are altogether
+            return f"{name}.size"
+        return f"{name}.shape[{position.axis}]"
 
     def _check_shapes(self, writer: Writer, wrapper: CWrapper) -> None:
-        """Cross-check every extent that more than one input claims to know.
+        """Compare every input axis with what it must be (`emit.shape_checks`).
 
         This is the check Fortran cannot make. `expr(n_genes, n_tissues)` and
         `weights(n_tissues)` agree by declaration, and nothing verifies it: a caller
-        passing mismatched arrays gets a wrong answer or a segfault.
+        passing mismatched arrays gets a wrong answer, or Fortran reads past the buffer.
         """
         lines = Writer()
-        for argument in wrapper:
-            roles = argument.source.roles if argument.source else None
-            if roles is None or not roles.is_extent:
-                continue
-
-            owners = []
-            for owner in roles.extent_of:
-                c_owner = wrapper.argument(owner.name)
-                if c_owner is None or not c_owner.intent.is_input or c_owner.optional:
-                    continue
-                # a work array the wrapper allocates itself always agrees, and does not
-                # exist yet at this point in the generated function
-                if c_owner.is_temporary:
-                    continue
-                owners.extend(
-                    (owner, axis) for axis in self._axes_of(argument.name, c_owner)
-                )
-            if len(owners) < 2:
-                continue
-
-            first, _ = owners[0]
-            for owner, axis in owners[1:]:
-                actual = f"{owner.name}.shape[{axis}]"
-                lines.line(f"if {actual} != {argument.name}:")
-                with lines.indent():
-                    lines.line(
-                        f'raise ValueError('
-                        f'f"\'{owner.name}\' has {{{actual}}} along axis {axis}, but "'
-                    )
-                    with lines.indent():
-                        lines.line(
-                            f'f"\'{first.name}\' implies {argument.name} == '
-                            f'{{{argument.name}}}"'
-                        )
-                    lines.line(")")
+        for check in shape_checks(wrapper):
+            array = check.position.array
+            actual = self._position(check.position)
+            expected = check.expected
+            value = str(expected.value) if expected.origin == "constant" else expected.extent
+            condition = f"{actual} != {value}"
+            if array.optional:
+                condition = f"{array.name} is not None and {condition}"
+            where = ("elements" if check.position.axis is None
+                     else f"along axis {check.position.axis}")
+            shape = _render(declared_shape(array), "python")
+            lines.line(f"if {condition}:")
+            with lines.indent():
+                lines.line(_refusal(
+                    f'f"\'{array.name}\' has {{{actual}}} {where}, but {reason(expected)}'
+                    f'{{{value}}}; \'{array.name}\' is declared with shape ({shape})"', array.name))
         if lines:
-            writer.line("# Fortran cannot check that shared extents agree; this can")
+            writer.line("# Fortran cannot check that an array has the shape it is declared with; this can")
             writer.extend(lines)
             writer.blank()
 
@@ -964,16 +1053,18 @@ class PythonEmitter:
         fills only part of an array, zeros look like results, while uninitialised memory
         looks like the garbage it is. On the error path nothing is returned at all.
         """
+        if _is_complex_box(argument):
+            return f"({ctype_of(argument)} * 2)()"
         if argument.is_scalar:
             return f"{ctype_of(argument)}(0)"
 
         if argument.shape_arg is not None:
             # C sees one flat block, so the element count is the product of the extents
             # that travel beside it
-            count = f"int(np.prod({argument.shape_arg}))"
+            count = f"int({_NP}.prod({argument.shape_arg}))"
             if argument.type.is_character:
-                return f"np.zeros(({count},), dtype={dtype_of(argument)})"
-            return f"np.empty(({count},), dtype={dtype_of(argument)}, order='C')"
+                return f"{_NP}.zeros(({count},), dtype={dtype_of(argument)})"
+            return f"{_NP}.empty(({count},), dtype={dtype_of(argument)}, order='C')"
 
         if argument.type.is_character:
             # zeros, not empty, and this is the one case where it matters. Fortran writes
@@ -983,11 +1074,11 @@ class PythonEmitter:
             # rather than as garbage: numpy drops the trailing nulls of an `S` item.
             # Not `np.full(..., b" ")`, which fills each item with one blank and nulls.
             shape = ", ".join(_python_extent(e) for e in argument.dimension.extents[1:]) or "1"
-            return f"np.zeros(({shape},), dtype={dtype_of(argument)})"
+            return f"{_NP}.zeros(({shape},), dtype={dtype_of(argument)})"
 
         shape = ", ".join(_python_extent(e) for e in argument.dimension.extents)
         order = "'F'" if argument.rank > 1 else "'C'"
-        return f"np.empty(({shape},), dtype={dtype_of(argument)}, order={order})"
+        return f"{_NP}.empty(({shape},), dtype={dtype_of(argument)}, order={order})"
 
     def _call(self, writer: Writer, wrapper: CWrapper) -> None:
         writer.line(f"_lib.{wrapper.name}(")
@@ -1006,25 +1097,32 @@ class PythonEmitter:
         if argument.type.is_character:
             return name
         if argument.is_scalar:
+            if _is_complex_box(argument) and argument.intent is Intent.IN:
+                # an array, which ctypes passes as a pointer to its first double
+                box = f"({ctype_of(argument)} * 2)({name}.real, {name}.imag)"
+                return f"None if {name} is None else {box}" if argument.optional else box
             if argument.optional:
                 # None must survive to the nullable argtype
                 return (
                     f"None if {name} is None "
-                    f"else ctypes.byref({ctype_of(argument)}({name}))"
+                    f"else {_CTYPES}.byref({ctype_of(argument)}({name}))"
                 )
+            if _is_complex_box(argument):
+                return name  # the box an output or an inout value already is
             if argument.intent.is_output:
-                return f"ctypes.byref({name})"
-            return f"ctypes.byref({ctype_of(argument)}({name}))"
+                return f"{_CTYPES}.byref({name})"
+            return f"{_CTYPES}.byref({ctype_of(argument)}({name}))"
         return name
 
     def _check_error(self, writer: Writer, wrapper: CWrapper) -> None:
         error = wrapper.error_argument
-        arguments = f"_{wrapper.stripped_name.upper()}_ARGUMENTS"
+        prefix = f"_{wrapper.stripped_name.upper()}"
+        tables = [f"{prefix}_ARGUMENTS"]
         if any(sources_of(wrapper.procedure)):
-            sources = f"_{wrapper.stripped_name.upper()}_ARGUMENT_SOURCES"
-            writer.line(f"check_err_code({error.name}.value, {arguments}, {sources})")
-        else:
-            writer.line(f"check_err_code({error.name}.value, {arguments})")
+            tables.append(f"{prefix}_ARGUMENT_SOURCES")
+        if any(shapes_of(wrapper, "python")):
+            tables.append(f"shapes={prefix}_ARGUMENT_SHAPES")
+        writer.line(f"{PYTHON_CHECK_ERR_CODE}({error.name}.value, {', '.join(tables)})")
         writer.blank()
 
     def _freeze_outputs(self, writer: Writer, wrapper: CWrapper) -> None:
@@ -1108,8 +1206,11 @@ class PythonEmitter:
             # shape, so the caller gets the n-d array back rather than the flat buffer
             # and a shape they have to reapply themselves. Column-major, as Fortran wrote.
             if argument.type.is_character:
+                # `dtype=str`, or an array of no strings comes back as float64 -- what numpy
+                # makes of an empty list -- where one with strings is `<U...` (#221 B3)
                 decoded = f"[_s.decode().rstrip(' ') for _s in {argument.name}]"
-                return f"np.asarray({decoded}).reshape(tuple({argument.shape_arg}), order='F')"
+                return (f"{_NP}.asarray({decoded}, dtype=str)"
+                        f".reshape(tuple({argument.shape_arg}), order='F')")
             return f"{argument.name}.reshape(tuple({argument.shape_arg}), order='F')"
         if argument.type.is_character:
             # numpy hands back the bytes with any trailing nulls already dropped; Fortran
@@ -1119,12 +1220,25 @@ class PythonEmitter:
             if character_rank(argument) == 0:
                 return f"{argument.name}[0].decode().rstrip(' ')"
             return f"[_s.decode().rstrip(' ') for _s in {argument.name}]"
+        if _is_complex_box(argument):
+            return f"complex({argument.name}[0], {argument.name}[1])"
         if argument.is_scalar:
             return f"{argument.name}.value"
         if roles is not None and roles.result_size_arg is not None:
             # only the leading elements were filled
             return f"{argument.name}[..., :{roles.result_size_arg.name}.value]"
         return argument.name
+
+
+def _refusal(message: str, argument: str, from_none: bool = False) -> str:
+    """The statement refusing an argument: `message` is a Python expression giving the text.
+
+    Every refusal the binding makes itself raises `ToxArgumentError`, which carries no tox code
+    and is a `TypeError` and a `ValueError` as well (`emit.errors_python`), naming the argument
+    so `error.argument` says which one, as it does for an error the Fortran reports.
+    """
+    statement = f'raise {PYTHON_ARGUMENT_ERROR}({message}, argument="{argument}")'
+    return f"{statement} from None" if from_none else statement
 
 
 def python_literal(value) -> str:

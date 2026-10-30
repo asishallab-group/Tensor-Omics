@@ -14,7 +14,7 @@ from codegen import cli
 from codegen.config import CONVENTIONS, Paths
 from codegen.diagnostics import DiagnosticBag
 from codegen.frontend.ford_frontend import FordFrontend
-from codegen.generate import generate, generate_and_write
+from codegen.generate import GeneratedFile, Result, files_to_remove, generate, generate_and_write
 
 from conftest import REPO_ROOT
 
@@ -171,6 +171,25 @@ class TestCli:
 
         assert cli.main(common + ["--check"]) == 0
 
+    def test_check_reports_an_orphan(self, isolated_repo, capsys):
+        # #221: a committed orphan is the file a clean run deletes and a checkout built
+        # without regenerating compiles, so `--check` must not call that tree up to date
+        common = ["--root", str(isolated_repo), "--src", str(REAL_SRC), "--target", "python"]
+        assert cli.main(common) == 0
+        package = isolated_repo / "python" / "tensor_omics"
+        (package / "was_exported_once.py").write_text("# a module nothing generates any more")
+        (package / "__pycache__").mkdir(exist_ok=True)
+        (package / "__pycache__" / "cache.cpython-314.pyc").write_bytes(b"")
+        capsys.readouterr()
+
+        assert cli.main(common + ["--check", "--no-color"]) == 1
+
+        err = capsys.readouterr().err
+        assert "1 file(s) would be removed:" in err
+        assert "was_exported_once.py" in err
+        assert "__pycache__" not in err
+        assert "would change" not in err
+
     def test_a_run_that_errors_exits_non_zero(self, isolated_repo, capsys):
         # the fixtures lack tox_errors
         code = cli.main(["--root", str(isolated_repo), "--src", str(FIXTURE_SRC),
@@ -240,6 +259,55 @@ class TestAParseThatFailed:
         result = generate(Paths(root=REPO_ROOT, src_dir=self.source(tmp_path)))
 
         assert result.files == []
+
+
+def _planted(tmp_path, declarations: str):
+    """A one-procedure export, `fx_p`, whose dummies are `declarations` (each with its doc)."""
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "fx_planted.F90").write_text(
+        "#include <src/macros.h>\n"
+        "!> summary: a module\n"
+        "module fx_planted\n"
+        "    use, intrinsic :: iso_fortran_env, only: int32, real64\n"
+        "    M_IMPLICIT_NONE\n"
+        "contains\n"
+        "    !> M_EXPORT_C\n"
+        "    !| summary: p\n"
+        "    !| author: A\n"
+        "    subroutine fx_p(n, label, x, ierr)\n"
+        "        integer(int32), intent(in) :: n\n"
+        "            !! a count\n"
+        "        character(len=*), intent(in) :: label\n"
+        "            !! a label\n"
+        f"{declarations}"
+        "        integer(int32), intent(out) :: ierr\n"
+        "            !! Error code\n"
+        "    end subroutine fx_p\n"
+        "end module fx_planted\n"
+    )
+    return generate(Paths(root=REPO_ROOT, src_dir=src))
+
+
+class TestTheExtentsTheBindingsComputeAreChecked:
+    """`generate` runs `check_binding_extents`, not only the unit that tests it (#221 B11)."""
+
+    def test_an_output_outside_the_grammar_is_refused(self, tmp_path):
+        result = _planted(tmp_path, "        real(real64), intent(out) :: x(mod(n, 3) + 1)\n"
+                                    "            !! sized by what Python and C compute apart\n")
+
+        assert not result.ok and result.files == []
+        assert any("'x' of 'fx_p' is sized by 'mod(n,3)+1', which Python and R cannot compute"
+                   in error.message for error in result.diagnostics.errors)
+
+    def test_a_computed_input_axis_the_c_wrapper_cannot_check_is_refused_once(self, tmp_path):
+        # `c_abi` refuses it; `check_binding_extents` used to restate it as ungrammatical
+        result = _planted(tmp_path, "        real(real64), intent(in) :: x(len(label))\n"
+                                    "            !! sized by a string the C wrapper converts\n")
+
+        about_x = [e.message for e in result.diagnostics.errors if "'x' of 'fx_p'" in e.message]
+        assert len(about_x) == 1, about_x
+        assert "which its C wrapper cannot check" in about_x[0]
 
 
 class TestDeterminism:
@@ -462,3 +530,36 @@ class TestTheCLayerAllocatesNothingOnTheStack:
                 for line in text.splitlines()
                 if line.strip().startswith("allocate(")]
         assert bare == []
+
+
+class TestFilesToRemove:
+    """What `--check` reports as stale: files the clean deletes and the run does not write."""
+
+    def _tree(self, root, *files):
+        for file in files:
+            (root / file).parent.mkdir(parents=True, exist_ok=True)
+            (root / file).write_text("x")
+
+    def test_every_target_reports_what_it_would_delete(self, tmp_path):
+        written = ["src/generated/tox/tox_loess.F90", "src/generated/bindings/c/tox_loess_c.F90",
+                   "src/generated/bindings/r/tox_loess.c", "python/tensor_omics/tox_loess.py",
+                   "r/tensor_omics/tox_loess.R"]
+        orphans = ["src/generated/tox/tox_gone.F90", "src/generated/bindings/c/tox_gone_c.F90",
+                   "src/generated/bindings/r/tox_gone.c", "python/tensor_omics/tox_gone.py",
+                   "r/tensor_omics/tox_gone.R"]
+        kept = ["src/tox/tox_loess_impl.F90", "r/tensor_omics/DESCRIPTION",
+                "python/tensor_omics/__pycache__/tox_loess.cpython-314.pyc"]
+        self._tree(tmp_path, *written, *orphans, *kept)
+        result = Result(DiagnosticBag(), [GeneratedFile(tmp_path / f, "x") for f in written])
+
+        stale = files_to_remove(result, ("fortran", "c", "python", "r"), Paths(root=tmp_path))
+
+        assert [p.relative_to(tmp_path).as_posix() for p in stale] == sorted(orphans)
+
+    def test_only_the_targets_asked_for(self, tmp_path):
+        self._tree(tmp_path, "src/tox/tox_loess_impl.F90", "src/generated/tox/tox_gone.F90",
+                   "python/tensor_omics/tox_gone.py")
+
+        stale = files_to_remove(Result(DiagnosticBag()), ("python",), Paths(root=tmp_path))
+
+        assert stale == [tmp_path / "python/tensor_omics/tox_gone.py"]

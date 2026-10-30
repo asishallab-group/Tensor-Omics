@@ -35,3 +35,22 @@ def source_of(argument: Argument) -> str | None:
 def sources_of(procedure: Procedure) -> list[str | None]:
     """`source_of` for every argument, positionally, so an `arg_pos` indexes straight in."""
     return [source_of(argument) for argument in procedure.arguments]
+
+
+def shapes_of(wrapper, language: str) -> list[str | None]:
+    """The declared shape of each array the C wrapper compares, positionally, else None.
+
+    The C wrapper reports a computed axis that does not match its declaration as
+    `ERR_SIZE_MISMATCH` at the array's position (`CWrapper.size_checks`), and a code carries
+    no text. The binding knows the declaration, so the error can say what the array must be:
+    `expr` needs `sum(reps_per_tissue)` rows. Written the way `language` writes a literal.
+    """
+    from .doc_literals import render
+    from .shape_checks import declared_shape
+
+    checked = {check.array.name.lower(): check.array for check in wrapper.size_checks}
+    return [
+        render(declared_shape(checked[argument.name.lower()]), language)
+        if argument.name.lower() in checked else None
+        for argument in wrapper.procedure.arguments
+    ]

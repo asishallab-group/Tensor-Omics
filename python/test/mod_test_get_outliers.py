@@ -18,7 +18,6 @@ from tensor_omics import (
     detect_outliers as _detect_outliers,
 )
 from test_helpers import run_all_tests, assert_error
-from tensor_omics.error_handling import ERR_INVALID_INPUT
 
 # compute_rdi returns the sorted array and permutation that identify_outliers wants, so
 # the pipeline composes directly. Only the two shims below remain: one for calling
@@ -246,11 +245,12 @@ def test_compute_family_scaling_input_validation():
         "Expected an error for mismatched distances / gene_to_fam lengths",
     )
 
-    # an unknown mode string is not one of the tabulated values
+    # an unknown mode string is not one of the tabulated values: refused by the binding before
+    # the call, naming the argument and the modes, so with no tox code, as in R (#221 G-I1, G-I2)
     assert_error(
         lambda: compute_family_scaling(
             n_families, distances, gene_to_fam, span, degree, "not_a_mode", n_iters),
-        "Expected an error for an invalid mode string", ERR_INVALID_INPUT,
+        "Expected an error for an invalid mode string",
     )
 
 

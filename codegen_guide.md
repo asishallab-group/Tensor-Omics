@@ -52,6 +52,7 @@ Related reading, once this is not enough:
   - [5.13 Work the plain wrapper does beyond allocating](#513-work-the-plain-wrapper-does-beyond-allocating)
   - [5.14 A genuine runtime error](#514-a-genuine-runtime-error)
   - [5.15 A family too big for one file](#515-a-family-too-big-for-one-file)
+  - [5.16 A function](#516-a-function)
 
 **Part II — the export path** (IO, infrastructure, and everything else)
 
@@ -177,7 +178,8 @@ A wrapper is **`pure` exactly when everything it calls is** — the implementati
 `DM_OUTPUT_FROM` producers and the prologue. `tox_errors`' validators and `f42_sort`'s
 `init_perm` / `sort_array_heapsort` already are, and `allocate(..., stat=)` is permitted in a
 pure procedure, so the allocating tier is no less eligible than the expert one. You declare
-nothing: write `pure` on the implementation and the wrapper follows. That is what lets a
+nothing: write `pure` on the implementation and the wrapper follows. `elemental` counts as
+pure, `impure elemental` does not. That is what lets a
 caller reach a validated entry point from `do concurrent` instead of reaching past it.
 
 **The plain name always goes to the entry point a caller should reach for first**, and it is the
@@ -335,10 +337,16 @@ docs, and an `ierr` that raises a typed error naming the offending argument.
 | `#include <src/macros.h>` at the top of the file | a `DM_` that never expands is an error, as is a misspelt `M_`/`CM_`/`DM_` in any doc comment |
 | `M_IMPLICIT_NONE` in the module | `implicit none (type, external)` — a typo'd call is a compile error, not a link-time surprise |
 | `private` + an explicit `public ::` list | the implementation is API by way of its wrapper, not by accident |
-| **The module's own name as the file name** (`tox_x_impl` in `tox_x_impl.F90`) | two independent things read that name and must agree: generation triggers on the *module* name, while the cleaner and the Ford exclusion scan *file* names without parsing. Let them diverge and the generator writes a wrapper nothing cleans and nothing excludes — so the next run parses its own output and defines the module twice |
+| **The module's own name as the file name** (`tox_x_impl` in `tox_x_impl.F90`) | two independent things read that name and must agree: generation triggers on the *module* name, while the wrapper's path is mirrored from the *file* name. Let them diverge and `module tox_x` is written into a file named for something else — or, in a file that is not an `_impl` file, nowhere at all |
 | Explicit `intent` on every dummy | decides constness in C and R, and input/output/in-out everywhere |
 | Kinded numeric types (`real(real64)`, `integer(int32)`) | a default kind has no defensible C mapping |
-| **`logical(c_bool)` for every logical that occupies storage** | one byte rather than four, and the kind the bindings already use, so a mask crosses without being copied — the wrapper used to declare an automatic array of default `logical` and convert elementwise both ways. A `logical, parameter` and a `logical function` result are the exceptions: no storage, nothing to save. Note a literal needs the kind too — `.true._c_bool`, because argument association does not convert kinds, though plain assignment does |
+| **Only `integer(int32)`, `real(real64)`, `complex(real64)`, `logical(c_bool)` or a default `logical`** on an argument | R holds integers as int32 and numbers as real64, and the generated validators take only those kinds — an `int64` output would be written eight bytes per element into R's four-byte integers. A numeric kind is compared by value, so `c_int` and `c_double` are fine; a logical kind by name, so `logical(1)` is refused although it is `c_bool`'s value. `int64`, `int8`, `int16`, `real32`, `c_size_t` and `complex(real32)` are refused |
+| **An argument name every binding language accepts** | the name is a Python parameter, an R parameter, a C parameter of the R binding and a dummy of every generated wrapper. Refused: Python keywords (`lambda`, `from`) and builtins (`len`, `input`, `type`), R reserved words (`next`, `function`, `NA` — in that case), C keywords (`default`, `long`, `asm`), and the functions the R binding's C shim defines (`tox_int_in`, `tox_char_in`, ...). Fortran keywords and R function names are fine — `value`, `mode`, `vector`, `weights` all are. Nor may an argument share its procedure's name (`total` in `total_impl`), or a name its generated Fortran wrapper uses: `count` beside an `n_selected_` count (the wrapper calls `count(...)`), `size` beside an assumed-shape array, `handled` beside a prologue, `<x>_f` for a string `x`, `<x>_address` and `empty_view_anchor` beside an array of strings `x`. Only where the wrapper really uses it — `count` is fine elsewhere, and `p_value` beside `p` is always fine. The list is `helper/codegen/names.py` |
+| **A procedure name both languages accept** | it is a Python and an R function of that name: no Python keyword or builtin (`sum`, `filter`), no R reserved word |
+| **A procedure and module name the Python package does not already have** | `tensor_omics` binds every procedure at its top level beside everything its error module defines and its submodules, so none may be called like an error code (`err_ok`), an exception class (`toxinputerror`), `arg_pos_factor`, `check_err_code`, the submodules `library` and `error_handling`, or a module (a procedure named like its own module). Compared ignoring case, as Fortran compares names |
+| **`ierr`, where you declare one, last** | every published signature ends in it, which is where the generator adds it when you declare none |
+| **A `result(...)` clause on a function** | the result is published as an argument of its name (Section 5.16), and a result named after the function would share that name with the function the wrapper calls — no compiler accepts it |
+| **`logical(c_bool)` for every logical that occupies storage** | one byte rather than four, and the kind the bindings already use, so a mask crosses without being copied — the wrapper used to declare an automatic array of default `logical` and convert elementwise both ways. A `logical, parameter` and a `logical function` result are the exceptions: no storage, nothing to save. So is a prologue's `handled`, which the wrapper declares as a default `logical` (Section 5.13). Note a literal needs the kind too — `.true._c_bool`, because argument association does not convert kinds, though plain assignment does |
 | `!> summary: ...` on the procedure | becomes the docstring in Python and R |
 | **A `!>` block on the module, written as API prose** | it is carried verbatim onto the generated module, so it is the Python module docstring and the Ford page for the published API. Say what the family is for and name its entry points; do *not* describe the implementation, and do not explain what the generator will do with it (Section 7) |
 | An author tag (`AUTHOR_*` from [`authors.h`](authors.h)) | attribution, rendered into the Ford docs |
@@ -352,6 +360,33 @@ docs, and an `ierr` that raises a typed error naming the offending argument.
 Extents are recognised on sight: `n_tissues` in `expression_vectors(n_tissues, n_genes)` is an
 extent, is validated as one, and is never asked of a Python or R caller — they pass the array,
 and the binding reads its shape.
+
+An extent may also be a module constant (`points(N_AXES, n_points)`, `character(len=MAX_LEN)`):
+the Fortran and C wrappers import it, and Python and R use its value, so it must be an integer
+constant the generator can evaluate. Or it may be `:` for an assumed-shape dummy, which is validated with
+the size of the array it is given.
+
+Python and R allocate every output and work array, and pad every string, **before** the call, so
+they compute those extents and lengths themselves. Such an extent has to mean the same number in
+Fortran, Python and C, which holds for argument names, module constants, integer literals (a kind
+suffix included, `0_int32`), `+ - * /`, parentheses, `max`, `min` and `size(a)` / `size(a, k)` --
+integer `/` truncating toward zero, as Fortran's does. Anything else (`mod`, `**`, `nint`, a real)
+is refused, as is an extent reading an output or an optional argument; obtain such a size from a
+recommend routine with `DM_OUTPUT_FROM` (Section 5.9).
+
+Every axis of an input is checked before the call, whatever its form, so a caller's short array is
+refused rather than read past. An extent named by an argument (`weights(n_cols)`) or fixed at a
+constant (`fields(n_dims, 2, n_fields)`) is compared by Python and R, an optional array's when it
+is given. An axis computed from other arguments (`expr(sum(reps_per_tissue), n_genes)`,
+`velocity(max(0_int32, n_timepoints - 1))`) only Fortran can evaluate: C is given its actual
+extent, which Python and R pass for you, and the C wrapper compares it with your declaration,
+reporting `ERR_SIZE_MISMATCH` with your declared shape in the message. Such an expression may read only arguments the C wrapper holds as
+they are -- not an optional, not an `intent(out)`, not a string, a mode or a default `logical`,
+and not an array whose own extent is computed too (Section 8). The documentation shows the
+extents as you declared them. A Fortran caller of `foo` is not checked: its arrays are
+explicit-shape, so it passes an address and stays responsible for the extents itself. Every axis starts at 1: `x(1:n)` is accepted as `x(n)`, and
+any other lower bound is refused (Section 8). Spell a dummy in whatever case you like where you
+use it — `integer :: N` may size `x(n)` — but the declaration's spelling is the published name.
 
 ---
 
@@ -441,6 +476,15 @@ if (count(axes_selection_mask, kind=int32) /= n_selected_axes) &
 
 and Python/R callers who pass the mask alone — `n_selected_axes` is computed from it at the call.
 
+That makes both of them **inputs**: the mask and its count are `intent(in)`, and the mask is
+required. A mask the procedure fills, a count it reports, or a mask that may be omitted leaves
+nothing to count before the call, and is refused. To return a selection and its size, name the
+count something other than `n_selected_<arg>`.
+
+An extent is an input too: `intent(in)`, and readable off at least one array the caller must pass.
+One only optional arrays carry is refused — the bindings drop it from the signature and would then
+have nothing to read it off.
+
 ### 5.4 A distance matrix
 
 **When** a square real matrix holds pairwise distances.
@@ -477,6 +521,14 @@ M_DEFAULT_VAL(span, actual_span, CM_FAMILY_SPAN_DEFAULT)
 **You get** an optional that Python and R expose *with the real default in the signature and in
 the docs*, evaluated: `CM_FAMILY_SPAN_DEFAULT` reaches a Python caller as `0.7`.
 
+It is evaluated the way the compiler would, so a caller in any language gets the value a Fortran
+caller does: integers keep their kind and may not overflow it, `7 / 2` is 3 and `2**-1` is 0,
+`nint(2.5)` is 3, and a kinded literal such as `.true._c_bool` or `300_int64` is read with its
+kind. A sign binds below `**`, so `-2.0_real64**2` is -4. The value must fit the argument's
+kind — `DM_DEFAULT(3000000000_int64)` on an `integer(int32)` is refused rather than wrapped.
+The one exception is a real's kind: every real literal is read as real64, so write `_real64`.
+An unkinded `0.95` is the real32 0.949999988 to the compiler and 0.95 to Python and R.
+
 > **Never pass an optional dummy straight into a mandatory dummy of something you call.** That
 > is a null dereference when it is absent, and it is exactly how `loess_fit_robust_impl`
 > segfaulted. Resolve it with `M_DEFAULT_VAL` first and pass the local.
@@ -484,13 +536,18 @@ the docs*, evaluated: `CM_FAMILY_SPAN_DEFAULT` reaches a Python caller as `0.7`.
 An optional **without** a default is nullable: absent in Fortran, `None`/`NULL` from the
 language layers. An optional **with** one is always passed, which keeps the wrapper flat.
 
+A default is one value, so an **array** with a `DM_DEFAULT` is refused: an omitted array would
+arrive as one element. And an optional is an input: `intent(inout), optional` is refused, because
+no binding can return a value the caller may have omitted.
+
 ### 5.6 An output filled only partially
 
 **When** a result array is sized for the worst case but only its leading elements are filled —
 a selection whose size is not known until the work is done.
 
 **Write** `DM_RESULT_SIZE_IS(<argument>)` on the result, naming the `intent(out)` scalar integer
-your implementation sets to the number of elements it actually filled:
+your implementation sets to the number of elements it actually filled (an `intent(in)` one is
+refused: a size the caller chooses sizes the result directly, `results(k)`):
 
 ```fortran
 real(real64), dimension(n_genes), intent(out) :: results
@@ -512,6 +569,24 @@ utils::head(.result$results, .result$n_results)   # R
 
 The counting argument is dropped from the return, because the returned array already carries the
 answer; returning both would invite the caller to slice a second time.
+
+The trim always applies to the **last Fortran-declared extent** — the outermost dimension, the one
+the implementation fills last-varying. Rank 1 is the case above: `head()`/`[..., :n]` trims the
+whole (only) axis. At rank ≥ 2, only that last axis is truncated; every other axis is kept in
+full, because it is a fixed shape (e.g. "2 values per candidate"), not the partially-filled count.
+For an `intent(out) :: pairs(2, n_candidates)` truncated by `DM_RESULT_SIZE_IS(n_found)`:
+
+```python
+pairs[..., :n_found.value]                                   # Python -- rank-agnostic already
+```
+```r
+pairs[, seq_len(.result$n_found), drop = FALSE]               # R -- last axis, matrix stays a matrix
+```
+
+R has no rank-agnostic slicing trick, so the generator branches on the argument's rank: `head()`
+for rank 1, a bracket slice with one leading comma per extra dimension otherwise. `drop = FALSE`
+is required there, not cosmetic — without it, truncating a matrix down to a single remaining
+column would silently collapse the result to a bare vector, losing its matrix-ness.
 
 This is a **binding-level** trim: the generated Fortran wrapper passes both arguments through
 untouched, so a Fortran caller still receives the full buffer plus the count, which is what a
@@ -582,6 +657,11 @@ call init_perm(pooled_means_perm)
 call sort_array_heapsort(pooled_means, pooled_means_perm)
 ```
 
+The permutation is what the implementation is *handed*, so it is `intent(in)` (or `intent(inout)`).
+An `intent(out)` `<base>_perm` would be the implementation's result — an argsort — and `foo`, which
+builds the permutation itself, would throw it away; it is refused. Name such a result for what it
+is (`order`, `ranks`).
+
 `foo_expert` still takes it, because an expert caller may already have it sorted. A `<base>` that
 is not an argument means the wrapper cannot build the permutation, so the argument stays an
 ordinary one the caller supplies — and a `tmp_`-prefixed permutation is the implementation's own
@@ -634,6 +714,10 @@ M_ALLOCATE(tmp_int_workspace(int_workspace_size))
 — and, in the `foo_expert` binding, the size argument still exposed with its documentation
 pointing at the routine that computes it. One annotation, two consumers.
 
+The size argument is an input to the implementation, `intent(in)`: an `intent(out)` one would be
+the implementation's result, which `foo` computes with the producer itself and then throws away,
+so it is refused.
+
 The producer must be exported (`M_EXPORT_C`), so that a wrapper exists to call; recommend
 routines therefore live in the implementation module, public, tagged — they are not
 implementations themselves and the `_impl` rules of Section 4 leave them alone. Use `JUST_INFO`
@@ -660,9 +744,13 @@ integer(int32), intent(in), optional :: mode
 ```
 
 **You get** two things. Python and R callers pass a **string** — the parameter name without its
-prefix, lower-cased, so `MODE_PLAIN` is `"plain"` — which the C wrapper maps back to the
-integer, rejecting an unknown one before Fortran is entered. And the wrapper checks membership
-against exactly the values the table names:
+prefix, lower-cased, so `MODE_PLAIN` is `"plain"` — which both bindings match whole against the
+table's modes, after dropping trailing blanks as for every string (`"plain "` is `"plain"`, `" plain"`
+is refused), refusing any other with a message that lists them, and which the C wrapper maps
+back to the integer, rejecting an unknown one from a C caller before Fortran is entered. Matched
+whole because the C buffer is only as wide as the longest mode: `"plainest"` would otherwise
+arrive as `"plain"`. And the wrapper checks membership against exactly the values the table
+names:
 
 ```fortran
 if (present(mode)) then
@@ -670,6 +758,9 @@ if (present(mode)) then
         call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=11_int32)
 end if
 ```
+
+A mode may also be optional **without** a default (Section 5.5). Omitted from Python or R, it
+reaches your implementation absent, so test `present(mode)` before you read it.
 
 Do **not** bound a mode with `DM_MIN`/`DM_MAX`: the accepted set need not be contiguous, and a
 hand-written range goes stale the moment a mode is added — silently admitting the new value
@@ -757,7 +848,8 @@ foo         (values, n, result, quantile_level, ierr)           ← you supply t
 foo_expert  (values, n, threshold, tmp_scratch, result, ierr)   ← you supply the threshold
 ```
 
-The prologue's own arguments come after the implementation's and before `ierr`.
+The prologue's own arguments come after the implementation's and before `ierr` — before the
+implementation's own `ierr` too, where it declares one, so the signature still ends in it.
 
 A name that is *nearly* one the implementation has is refused as a misspelling — `n_gene` beside
 `n_genes` would otherwise become a new argument silently, leaving the prologue and the
@@ -770,9 +862,14 @@ implementation working from different numbers.
 ```
 ```fortran
 pure subroutine prepare_ranking(z_scores, n_genes, tmp_valid_perm, threshold, handled, ierr)
-    logical(c_bool), intent(out) :: handled
+    logical, intent(out) :: handled
         !! `.true.` when the data was degenerate and the outputs already hold the answer
 ```
+
+`handled` is a **default** `logical`, not the `logical(c_bool)` of an argument that crosses to C:
+it never does, and the wrapper declares its flag as a default `logical` and passes that, so a
+`logical(c_bool)` one would not compile ("Type mismatch in argument 'handled'"). The generator
+refuses any other kind, naming the prologue and the argument.
 
 **What the prologue writes and the implementation only reads never reaches a caller.** An argument
 that is `intent(out)` on the prologue and `intent(in)` on the implementation is dropped from
@@ -808,8 +905,9 @@ three lines and no directive. That is where LOESS's degenerate-input check lives
 **What is refused**, all of it silent before:
 
 - a `DM_PROLOGUE` naming a procedure that does not exist
-- a prologue with no `handled`, or one that is not a scalar `logical(c_bool), intent(out)` — the wrapper
-  returns early on it regardless, so without it that branch reads an undefined value
+- a prologue with no `handled`, or one that is not a scalar `logical, intent(out)` — the wrapper
+  returns early on it regardless, so without it that branch reads an undefined value — or one of
+  another kind than the default `logical` the wrapper declares (`logical(c_bool)`)
 - a dummy that is one edit from an implementation argument — a misspelling, not a new argument
 - a dummy that is the mode argument, or one scoped to a mode, of an implementation that splits per
   mode (Section 5.11) — the wrappers for the other modes do not have it
@@ -890,6 +988,46 @@ end module tox_data_integration
 Only children that actually generate something are re-exported, and a parent may gather another
 parent. **Do not use `submodule`s** — they force every signature to be written twice (once in
 the parent's `interface`, once in the implementation) for encapsulation this already provides.
+
+### 5.16 A function
+
+**When** the implementation computes one value and is naturally a function.
+
+**Write** it as one, with a `result(...)` clause and a `!!` on the result as on any argument:
+
+```fortran
+!> summary: The sum of the values
+!| AUTHOR_A_N_AUTHOR
+pure function values_sum_impl(n_values, values) result(total)
+    integer(int32), intent(in) :: n_values
+        !! number of values
+    real(real64), intent(in) :: values(n_values)
+        !! the values
+    real(real64) :: total
+        !! their sum
+    total = sum(values)
+end function values_sum_impl
+```
+
+**You get** subroutines, as for every implementation: the result becomes an `intent(out)` argument
+of every tier, **right before `ierr`** — `values_sum(n_values, values, total, ierr)` — and the
+wrapper assigns the call to it; Python and R return it as the value of `values_sum(values)`.
+Before your own `ierr` too, if you declare one (Section 5.14), and after a prologue's own
+arguments (Section 5.13), so the signature ends in `..., total, ierr` either way. Other
+implementations keep calling `values_sum_impl` as the function it is.
+
+The result is an output argument from here on, so everything about outputs applies: it is
+returned, documented, checked for kind and name. On top of that, refused: **no `result(...)`
+clause** (the result would be named after the function, which the wrapper calls by that name),
+a result named **`ierr`**, one with the **`tmp_`** prefix (a work array is never returned), and one
+of **assumed length** (`character(len=*)`); `allocatable`, `pointer` and `len=:` are refused as on
+any argument. Type the result on its own declaration line rather than in the prefix (`pure
+real(real64) function ...`): the `!!` needs a line to sit under, or the result is published
+undocumented, with a warning.
+
+An **`elemental`** function is wrapped like an elemental subroutine, with scalars. A function with
+an `intent(out)` argument — its own `ierr`, a `tmp_` work array — cannot be `pure`, so neither are
+its wrappers.
 
 ---
 
@@ -998,6 +1136,7 @@ Everything that is a *binding* rule rather than a wrapper rule, which is most of
 | `DM_OUTPUT_FROM(..., JUST_INFO)` | documentation pointing at where the value comes from |
 | `DM_RESULT_SIZE_IS` | as in Part I (Section 5.6): Python and R trim the result, Fortran callers still get the full buffer |
 | a mode table | Python and R still pass the mode as a *string*, and the C wrapper still rejects an unknown one |
+| a function | the C wrapper takes its result as an argument right before `ierr` — before your own `ierr` too — so it needs a `result(...)` clause (Section 5.16) |
 
 What is *not* available: the generated validation block, the plain wrapper's automatic allocation
 and sorting, the prologue hook, and the mode split. Those are things the generator writes into a
@@ -1072,13 +1211,25 @@ What that means for you:
 - **Writing an output string?** Fill the whole width. Assigning a shorter value blank-pads
   automatically, which is what the caller decodes; leaving the tail untouched returns whatever
   the caller's buffer held.
-- **Through a binding, an empty string arrives as one blank, and an empty array of strings never
-  arrives at all.** The width is at least 1, so `""` reaches you as `' '` — `len_trim` is still 0
-  and `trim` still gives `''`. A zero-length array of strings has no buffer to view, so the
-  wrapper refuses it as empty input before your procedure runs, exactly as
-  `validate_dimension_size` would for any zero extent.
-- **A value that genuinely ends in a blank will not round-trip.** That is the accepted price of
-  the padding convention.
+- **Through a binding, an empty string arrives as one blank, and an empty array of strings
+  arrives empty.** The width is at least 1, so `""` reaches you as `' '` — `len_trim` is still 0
+  and `trim` still gives `''`. A zero-length array of strings (a data set with zero families)
+  reaches you as an array of size 0, as any other empty array does: whether that is an error is
+  yours to decide, with `validate_dimension_size` if it is. Only a C caller can send a string of
+  zero width, and the wrapper refuses it as empty input before your procedure runs.
+- **Trailing blanks are not part of a value**, as in Fortran: `'TP53 '` and `'TP53'` are the
+  same gene id to your procedure, and a value that genuinely ends in a blank does not
+  round-trip. That is the library's semantics, like 1-based indexing, so the bindings accept such
+  a string and say so in every generated string parameter's documentation, rather than refuse it.
+- **A declared length is a limit.** For `character(len=8)` the bindings refuse a longer string
+  (in UTF-8 bytes) instead of cutting it short, which is what happened before: `delimiter='::'`
+  reached a `len=1` dummy as `':'`. Declare `len=*` where the caller's string decides the length.
+- **What reaches you is valid UTF-8 without a NUL**, whatever the caller held: the bindings refuse
+  a NUL, a lone surrogate and invalid UTF-8, and R translates a latin1 string before it crosses,
+  so `"\u00e9"` is one value whichever encoding R marked it with. An R string R has not marked
+  (what `readLines` gives) crosses as it stands if its bytes are UTF-8, in any locale, and is
+  refused otherwise -- it is never translated from the locale, which in the C locale wrote the
+  bytes out as escape text such as `<c3><a9>`.
 
 ### 6.8 Never export an implementation
 
@@ -1149,11 +1300,27 @@ invalid input arguments (argument 'vec1', via 'n_elements')
 
 You get that for free, from the extent/mask/shape roles — nothing to annotate.
 
+**Everything the error module defines is importable from the package itself**:
+`from tensor_omics import ERR_DIVISION_BY_ZERO, ToxInputError, ARG_POS_FACTOR` works, for every
+`ERR_*` and `STAT_*` code, every exception class (`ToxArgumentError` included), `ARG_POS_FACTOR`
+and `check_err_code`, all of them in `__all__`. The list is generated from `tox_errors`, so a code
+you add there is exported with nothing else to edit. R has always had them, as globals of
+`error_handling.R`.
+
 One thing worth knowing when you write a Python test or example against a procedure you
 authored: **an array a Python binding returns is read-only.** A result is a value, so
 modifying one in place raises, and `.copy()` is the way to a modifiable array. An
 `intent(inout)` argument is untouched by this — it is the caller's array and is still modified
 in place. R needs no equivalent, being copy-on-modify.
+
+And what a binding accepts for each of your arguments is one table, the same in Python and R
+(`helper/codegen/design/language-layers.md`, "what an argument accepts"), so you need not guard
+against it: an `integer(int32)` gets only whole numbers in range (a whole float or an R double is
+fine, `1.7` or `2**32 + 5` is refused, never truncated or wrapped), a logical only booleans or the
+numbers 0 and 1, a real only numbers it holds exactly (`2**53 + 1` is refused, not rounded, in a
+list beside floats too), and no argument a bool (one inside a Python list of numbers is converted
+as numpy converts it), a string parsed as a number, a datetime or an NA. A wrong rank is refused,
+never flattened.
 
 ---
 
@@ -1170,7 +1337,28 @@ source and carries a note saying what to write instead.
 | a derived type | not mapped |
 | a missing `intent` | constness and direction are undecidable |
 | a kind with no C mapping | an error, never a guess — a wrong guess compiles and lies |
+| a kind the bindings cannot carry: anything but `integer(int32)`, `real(real64)`, `complex(real64)`, `logical(c_bool)` and a default `logical` (numeric kinds compared by value, logicals by name) | R holds int32 and real64 only, and the validators take only those (Section 4) |
+| an argument named like a Python keyword or builtin, an R reserved word, a C keyword, a function of the R shim (`tox_int_in`), or like its procedure | a parse error in one binding language fails the whole package (Section 4) |
+| an argument named like something its generated Fortran wrapper calls, imports, uses as a kind or declares, there | the wrapper would not compile, and with it the library (Section 4) |
+| a procedure named like a Python keyword or builtin, or an R reserved word | it is a Python and an R function of that name (Section 4) |
+| an `ierr` that is not the last argument | every published signature ends in the error code (Section 4) |
+| a function without a `result(...)` clause | its result is published under the result's name, which would then be the function's (Section 5.16) |
+| a function result named `ierr`, with the `tmp_` prefix, or of assumed length (`len=*`) | the result is an output argument right before `ierr`, which a work array never is, and its length would come from a declaration no binding writes (Section 5.16) |
+| the same exported name in two modules, or twice in one, ignoring case | it is the C symbol and the name Python and R publish; two link as a duplicate symbol |
+| an `M_EXPORT_C` on a **private** procedure | it would publish nothing, silently |
+| an `intent(inout), optional` argument | no binding can return a value the caller may have omitted (Section 5.5) |
+| an `intent(inout)` character, or an `intent(inout)` logical array | both cross through a buffer the binding builds and cannot hand the change back; take it `intent(in)` and return a separate `intent(out)` |
+| a `DM_DEFAULT` on an array | a default is one value (Section 5.5) |
+| an extent that is not `intent(in)`, or that only optional arrays carry | the bindings read an extent off the arrays they are passed (Section 5.3) |
+| a mask and its `n_selected_` count that are not both `intent(in)`, or an optional mask with a count | the count is derived from the mask before the call (Section 5.3) |
+| a `DM_RESULT_SIZE_IS` naming an `intent(in)` count | the count is what the procedure reports back (Section 5.6) |
+| an `intent(out)` `<base>_perm` whose base is an argument, or an `intent(out)` `DM_OUTPUT_FROM(..., AUTO)` value | `foo` builds or computes it itself and would discard the result (Sections 5.8, 5.9) |
 | an optional shape or extent argument | the wrapper must read it before it may take `c_loc` of what it sizes |
+| an axis with a lower bound other than 1 (`x(0:n)`, `x(0:)`) | every layer sizes an axis from its extent alone; declare `x(n + 1)` and shift the index inside the implementation. `x(1:n)` is accepted as `x(n)` |
+| a `DM_DEFAULT` that is not a constant the compiler would accept, or that does not fit its argument's kind | Python and R pass the evaluated value, so it has to be the one a Fortran caller gets (Section 5.5) |
+| a module constant in an extent or a length that the generator cannot evaluate to an integer (`size(NAMES)` is one, though it is an integer) | Python and R allocate and pad with its value (Section 4) |
+| an input axis computed from arguments that reads an optional, an `intent(out)`, a string, a mode, a default `logical`, or an array whose own extent is computed (`x(size(a))` beside `a(n + 1)`) | C is given the axis's extent and the C wrapper compares it with the declaration before the call, which it cannot evaluate from those (Section 4) |
+| an extent of an output or a work array, or a string's length, outside the grammar the bindings compute in (`mod(n, 2)`, `n**2`, `nint(x)`, a real), or one reading an output, an optional argument or anything but an argument and a module constant | Python and R compute it before the call, and would get another number than Fortran or none at all; use `DM_OUTPUT_FROM` (Section 4) |
 | a `tmp_` argument that is `intent(in)` | a work array is an output or an in-out |
 | an **optional output** (`intent(out), optional`, and not a `tmp_`) | no binding can honour it — Python would return a dict whose keys vary per call, R a list of varying length. Express it as an optional input *flag* plus a `tmp_` work array, the way `loess_fit_plain_impl` does with `compute_influence`: the work stays skippable and the return type stays fixed |
 | `DM_DEFAULT` **and** `DM_REQUIRED_IF_MODE` on a mode that does *not* split | with a runtime mode the argument is always passed on, so "required in that mode" says nothing. On a split mode (Section 5.11) the pair is meaningful and accepted |
@@ -1179,23 +1367,24 @@ source and carries a note saying what to write instead.
 | a `DM_OUTPUT_FROM` producer input that is neither name-matched nor in the table | the generator will not guess what to pass |
 | a misspelt `M_`/`CM_`/`DM_` in any doc comment | an unexpanded macro is a silently wrong document |
 | an `M_EXPORT_C` on an **implementation** | its wrappers are the entry points; the export publishes an unvalidated twin beside them (Section 4) |
-| an implementation module in a file not named after it | generation reads the module name while the cleaner and the Ford exclusion read file names — the two would name different files, and the generator would parse its own output next run (Section 4) |
+| an implementation module in a file not named after it | generation reads the module name while the wrapper's path is mirrored from the file name — the module would be written into a file named for something else (Section 4) |
 | an implementation named `<something>_alloc_impl` or `<something>_expert_impl` | both suffixes belong to the wrappers: the first would generate a `foo_alloc` that reads as the allocating tier beside the generated `foo` that is one (Section 6.5), the second a second procedure called `foo_expert` (Section 4) |
 | an `allocatable` local **or dummy** anywhere in an **implementation module** | the generated `foo` owns the memory, not the implementation (Sections 4 and 5.7) |
 | a `use` in an **implementation module** that names neither another `_impl` module nor a whitelisted one | the bound on what it may reach is what makes the allocation rule hold across modules, and what keeps it below the wrappers rather than beside them (Section 4) |
 | a `DM_PROLOGUE` naming a procedure that does not exist | the wrapper would be generated with no prologue at all (Section 5.13) |
-| a prologue with no `handled`, or one that is not a scalar `logical(c_bool), intent(out)` | the wrapper returns early on it regardless, so the branch would read an undefined value (Section 5.13) |
+| a prologue with no `handled`, or one that is not a scalar `logical, intent(out)`, or one of another kind than the default `logical` | the wrapper returns early on it regardless, so the branch would read an undefined value (Section 5.13); and it passes its own default `logical` flag, which a `logical(c_bool)` dummy does not take |
 | a prologue dummy one edit from an implementation argument | a misspelling would otherwise become a new argument, and the two would be different values (Section 5.13) |
 | a prologue dummy that some mode's wrapper does not have | the prologue runs in all of them (Section 5.13) |
 | a prologue on an implementation with nothing to take over and no arguments of its own | only one wrapper is generated, and it has no prologue for this to run in (Section 5.13) |
 | a prologue producing something the setup above it reads | the name resolves either way, so it would compile and compute rubbish (Section 5.13) |
+| a procedure or module named, ignoring case, like an export of the error module (`check_err_code`, `ERR_OK`, `ToxInputError`, `ARG_POS_FACTOR`), a submodule of the Python package (`library`, `error_handling`), or another module | `tensor_omics` binds all of them at its top level, so one would hide the other; a module called `error_handling` would overwrite the error module's file (Section 7) |
 | a Ford `[[...]]` link naming a module, or a name in it, that does not exist | it silently stops being a link in all four languages, and nothing downstream can tell (Section 7) |
 
 Warnings never stop generation; errors write nothing. A few things are warnings rather than
 errors, and the house bar is **zero warnings**, so treat them as errors anyway:
 
-- a missing `summary:` or `author` meta tag, and an argument with no documentation — the API
-  would be generated undocumented
+- a missing `summary:` or `author` meta tag, and an argument or a function result with no
+  documentation — the API would be generated undocumented
 - a value table on an argument that is *not* named as a mode (`baseline` rather than
   `baseline_mode`) — the table is then documentation only, and the value crosses the binding as
   a bare integer instead of its name
@@ -1210,7 +1399,7 @@ errors, and the house bar is **zero warnings**, so treat them as errors anyway:
 ./build.sh --skip-code-generation   # compile the tree as it stands
 
 python helper/generate_code.py            # regenerate only
-python helper/generate_code.py --check    # write nothing; non-zero if the tree is stale
+python helper/generate_code.py --check    # write nothing; non-zero if a file would change or be removed
 python helper/generate_code.py --target python
 ```
 

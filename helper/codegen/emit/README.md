@@ -76,11 +76,15 @@ Which one you need depends on whether the host can hand a raw pointer to a C fun
 FFI and MATLAB's `loadlibrary` can, so they look like Python; a MEX file or a CPython C extension
 cannot avoid a shim, so they look like R.
 
-If you do need a shim, the split that made R work is: **the host language decides and raises; C
-marshals and calls.** The shim receives an opaque host object, so it cannot name the argument in
-an error message; the host can, for free, and can raise a typed error the caller can catch.
-Validating in C means calling back into the host runtime to construct that error — fragile and
-slow. See `../design/language-layers.md`, "validation lives in R, not in the C marshalling layer".
+If you do need a shim, the split that made R work is: **the host language checks what an argument
+is; the shim checks every element while it converts it; both raise the same typed error.** The
+host has the kind, the rank and a single value in hand for free, and uses some of them before the
+call. Every element of an array is cheapest to check in the loop that converts it anyway -- in R,
+an element check written in R cost more than the call it guarded. The shim cannot know an
+argument's name from the object it is handed, so the emitter passes it as a literal, and the shim
+builds the host's own error and raises it through the host's plain raise (R's base `stop()`),
+needing nothing of the package. See `../design/language-layers.md`, "R checks what an argument
+is, the C shim checks every element".
 
 ---
 
@@ -91,7 +95,7 @@ step needs what the one before it settles.
 
 ```
 1  parameters      which C arguments the caller actually supplies (Section 4.3)
-2  coerce inputs   type check + convert; raise naming the argument (Section 4.5)
+2  coerce inputs   the input contract: kind, rank, exact conversion; raise naming the argument (Section 4.5)
 3  producers       call DM_OUTPUT_FROM(AUTO) producers (Section 4.3)
 4  derive extents  from the arrays, shape arguments and masks you were given (Section 4.3)
 5  cross-check     arguments sharing an extent must agree (Section 4.3)
@@ -149,7 +153,7 @@ both *asked for* and *derived* is silently overwritten. There is a parity test f
 | **work arrays** (`tmp_`) | allocated by you, never returned, never asked for |
 | **`DM_OUTPUT_FROM(AUTO)`** | call the producer's **own generated wrapper**, not its C symbol — validation and error handling come free, and the value you pass is already prepared, so the producer's conversions are no-ops |
 | **the error code** | you allocate it, you decode it, the caller never sees it |
-| **cross-checks** | two arguments sharing an extent must agree; Fortran cannot check it, and a mismatch is a wrong answer or a segfault. Name **both** arguments in the message |
+| **shape checks** | every input axis against what it must be: `emit/shape_checks.py` decides which, by one rule, and you write the comparisons out -- the value read off another input (name **both** arguments), a mask's count, a variable or a constant; an optional array only when given. Fortran cannot check it, and a mismatch is a wrong answer or a read past the buffer. An axis the declaration computes arrives as a passed extent (`checked_against`): derive it off the array like any extent, and the C wrapper compares it |
 
 Two producer subtleties: match producer inputs to consumer arguments **by name** unless the
 argument's table renames them (the keyword is the *producer's* name, the value the consumer's);
@@ -173,8 +177,10 @@ other's outputs and a module-level import would be circular.
 | **logical** | `c_bool`, one byte | the host's boolean is probably an `int` (R) or an object (Python) — convert, and note the scan is free, so check for missing values while you are there |
 | **character in** | a `c_char` buffer with the length as the **leading extent** | encode, then **blank-pad every slot to the full width**. The item size *is* the string length, measured in **bytes** (so UTF-8 is never truncated by the sizing). Pad the encoded bytes, not the host's string |
 | **character out** | the same buffer | **blank-fill it** (Section 4.6), and strip trailing blanks — not NULs — on the way back |
-| **mode argument** | an integer, but the caller passes a **string** | lower-case the string and let the C wrapper map it; an unknown mode is rejected before Fortran is entered. The accepted set is in `.mode` |
-| **missing values** | nothing — Fortran has no `NA` | check where the check is free. R checks integers (`anyNA`, ALTREP-aware so `1:n` is O(1)), logicals and characters (converted anyway), never doubles (`NA_real_` is a NaN payload Fortran already catches). A host with a distinct missing marker needs the same table; one without needs none of it |
+| **mode argument** | an integer, but the caller passes a **string** | match it **whole** against `.mode` (case aside, trailing blanks dropped as for any string) and refuse anything else listing the modes, then lower-case it and let the C wrapper map it. Matching in the host is not optional: the buffer is only as wide as the longest mode, so an unmatched longer value would be cut down to a valid one |
+| **missing values** | nothing — Fortran has no `NA` | check where the check is free. R's shim checks integers (`INTEGER_NO_NA` first, ALTREP-aware so `1:n` is O(1)), logicals and characters while converting them, never doubles (`NA_real_` is a NaN payload Fortran already catches). A host with a distinct missing marker needs the same table; one without needs none of it |
+| **the input contract** | — | one table for every host (`../design/language-layers.md`, "what an argument accepts"): check the input's **kind** first by an allowlist, then accept only if converting to the Fortran type and back is exact; refuse a string that is not valid Unicode, holds a NUL or is longer than a declared length; never flatten a wrong rank. Write it once, in a module or file every wrapper calls (`_contract.py`, `tox_validate.R`), not per argument |
+| **complex** | `c_double_complex`: two doubles, real part first | an array is the host's complex array (numpy's `complex128`, R's complex vector). A single value needs a box **16 bytes** wide: `ctypes` has no complex type, so Python passes `(c_double * 2)` -- allocated for an output, filled from the checked value for an input or an `intent(inout)` -- and returns `complex(z[0], z[1])`. A one-`c_double` box lost an output's imaginary part and let Fortran write 8 bytes past it, and read an input's from past it (#221 WP8) |
 | **kinds with no mapping** | — | already an error upstream. Never guess a mapping: a wrong guess compiles and lies |
 
 ### 4.6 Outputs
@@ -183,8 +189,8 @@ other's outputs and a module-level import would be circular.
 |---|---|
 | **numeric output** | allocate **uninitialised** (`np.empty`). Fortran fills it; zeroing is an O(n) write of data about to be overwritten, and where Fortran fills only part, zeros *look like results* while garbage looks like garbage |
 | **character output** | allocate **blank-filled**. Fortran fills a character buffer only partially, and an uninitialised byte past the written data is read back *as part of a string*. Blanks rather than nulls because the Fortran side is now a `character(len=n)` pointer view of this very buffer, so what it writes and what it leaves are both read with Fortran's own convention: `trim`, `len_trim` and comparison all work on blanks. Nothing scans for a NUL any more, so a zero-filled buffer would come back with the padding attached to the string |
-| **result trimming** (`DM_RESULT_SIZE_IS`) | return only the first *n* elements, where *n* is the argument named |
-| **serialized array out** | reshape to the shape argument's contents before returning, column-major — the caller wants the n-d array, not a flat buffer plus homework |
+| **result trimming** (`DM_RESULT_SIZE_IS`) | return only the first *n* elements along the **last** axis, where *n* is the argument named: the first *n* columns of a matrix, every other axis whole |
+| **serialized array out** | reshape to the shape argument's contents before returning, column-major — the caller wants the n-d array, not a flat buffer plus homework. Give an array of strings its type explicitly (`dtype=str`): numpy makes an empty list float64, so an array of no strings came back as numbers |
 | **shape of the return** | Python returns a scalar for one output and a `dict` for several; R returns the value or a list. Follow the host |
 | **result mutability** | freeze it if the host can. Python sets `flags.writeable = False` on the allocated buffer after the call — O(1), and it propagates into the reshape and slice views the return builds, which then cannot be unfrozen at all. R has no counterpart and needs none: it is copy-on-modify, so a returned vector cannot be aliased. Freeze only what the wrapper allocated — never an `intent(inout)` array, which is the caller's — and say so in the docs with the host's escape hatch (`.copy()`) |
 | **`intent(inout)` in the return** | see Section 4.2 — it depends on whether you mutate |
@@ -200,27 +206,44 @@ else.
   that order and index it.
 - Pass the *source* of each derived argument alongside, so the message blames something the
   caller actually wrote: `(argument 'vec1', via 'n_elements')`.
+- Pass the declared *shape* of each array the C wrapper compares (`error_arguments.shapes_of`),
+  so its `ERR_SIZE_MISMATCH` says what the array must be: `'expr' is declared with shape
+  (sum(reps_per_tissue), n_genes)`.
 - `ERR_*` codes raise; `STAT_*` codes are outcomes and never do.
 - Generate a per-language error module from the catalogue (`errors_python.py`, `errors_r.py` are
   the templates): a decode function, the messages taken from the Fortran documentation, and one
   error type **per group** (IO, input, memory, runtime, internal) rather than per code — thirty
   types nobody would name individually is not a usable API. Prefix them, so a host-language
   `except`/`tryCatch` on the base type cannot catch something unrelated.
+- Publish what the error module defines where the caller finds the functions: Python's package
+  re-exports every code, class, `ARG_POS_FACTOR` and `check_err_code` at its top level, from the
+  list the module itself is emitted from (`errors_python.public_names`), so a new code needs no
+  edit; R's error module is sourced into the global environment. A procedure named like one of
+  them is refused (`python_ctypes.check_package_names`), so your layer may rely on the names.
 - If you use a shim, raise from the **host**, not from C.
+- A refusal of your layer's **own** -- a wrong shape, type or value, found before the call --
+  carries no tox code, because nothing reported one, and is an *input* error all the same, so one
+  handler catches it beside the Fortran's. Python raises `ToxArgumentError(ToxInputError,
+  TypeError, ValueError)` with `code` None, which also keeps an `except ValueError` working; R's
+  `tox_type_error`, `tox_shape_error` and `tox_na_error` inherit `tox_input_error`, `code` NA.
+  Give your host's equivalent the same two properties.
 
 ### 4.8 Documentation
 
 - Render the host's own docstring dialect from the parsed `Doc` — numpydoc and roxygen2 are the
   two instances (`doc_numpydoc.py`, `doc_roxygen.py`).
 - Render **literals** per language: `0.7_real64` → `0.7`, `.true.` → `True` / `TRUE`
-  (`doc_literals.py`). A Fortran kind suffix in a doc is noise everywhere else — and in an
-  *extent expression* it is a syntax error, so the same stripping applies there.
+  (`doc_literals.py`). A Fortran kind suffix in a doc is noise everywhere else. An *extent* you
+  compute is not documentation: parse it with `abi/extents.py` and write it from the tree
+  (`to_python`, `to_c` are the templates), which also gets Fortran's truncating `/` right.
 - Resolve Ford links to **what the reader can call in your language** (`doc_links.py`): a link to
   an implementation becomes the binding that wraps it, a link to a mode parameter becomes
   the mode string.
   Resolve parsed link spans, never by text substitution — a text pass over `[[...]]` mangles R's
   own `x[[i]]`.
-- Never rewrite author prose. If a sentence is wrong, it is wrong in the Fortran.
+- Never rewrite author prose. If a sentence is wrong, it is wrong in the Fortran. The one thing
+  the generator adds to an argument's description is the contract's, for a string the caller
+  passes: its trailing blanks are dropped, and a declared length is a limit (`doc_contract.py`).
 - State provenance: which Fortran procedure this came from, since its argument names are what
   errors report.
 
@@ -258,6 +281,7 @@ else.
 | `generate.py` | a `_<lang>_files()` builder, and its branch in `generate()` |
 | `generate.py` `_clean` | so a procedure that stops being exported leaves no stale wrapper |
 | `cli.py` | add the target to `C_BINDING_TARGETS` (and thus `ALL_TARGETS`) |
+| `names.py` | the host's reserved words, and every name your emitter binds beside the arguments (an import, a local), built from the table -- with a prefix no Fortran name can have (`_`, or R's `.`) wherever the host allows one, so no argument can meet it; extend `tests/test_names.py` to read your output back |
 | `emit/vscode_snippets.py` | a snippet flavour for the host, if you want editor support |
 | `.gitattributes` | mark the output tree `linguist-generated` |
 | `README.md`, `design/language-layers.md` | what the layer costs in this host, and every decision you took above |

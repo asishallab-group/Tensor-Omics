@@ -16,7 +16,7 @@ from tensor_omics import (
     loess_fit_plain,
     loess_fit_robust,
 )
-from test_helpers import run_all_tests
+from test_helpers import run_all_tests, assert_error
 
 
 def test_workspace_calculation():
@@ -99,6 +99,18 @@ def test_plain_and_robust_are_separate_entry_points():
 
     # the robust fit suppresses the outlier, so the two cannot agree
     assert not np.array_equal(yhat_plain, yhat_robust), "Plain and Robust results should not be identical"
+
+
+def test_eval_points_need_their_one_column():
+    """`eval_points` is (n, 1); a zero-width one used to be read past (#221)."""
+    n = 20
+    x = np.linspace(1, 10, n)
+    for width in (0, 2):
+        for fit in (loess_fit_plain, loess_fit_robust):
+            assert_error(lambda: fit(x=x, y=2.0 * x, weights=np.ones(n),
+                                     eval_points=np.ones((n, width), order="F"),
+                                     span=0.5, degree=1, max_neighborhood_size=n),
+                         f"{fit.__name__}: eval_points of width {width} must be refused")
 
 
 if __name__ == "__main__":

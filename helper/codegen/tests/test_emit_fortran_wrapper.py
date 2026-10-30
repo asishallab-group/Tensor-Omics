@@ -907,3 +907,116 @@ class TestAPrologueWithArgumentsOfItsOwn:
         alloc = self.body(self.built(), "crunch")
 
         assert "call validate_in_range_real(percentile, ierr" in alloc
+
+
+class TestExtentForms:
+    """Extents the wrapper has to reproduce, not paste (issue #221, B13)."""
+
+    def module_of(self, *arguments, parameters=()):
+        from builders import Meta, module, procedure, project
+
+        return project(
+            module(
+                "tox_demo_impl",
+                procedure(
+                    "measure_impl", *arguments,
+                    meta=Meta(summary="Measure", author="AUTHOR"),
+                ),
+                parameters=parameters,
+                path="src/tox/tox_demo_impl.F90",
+            )
+        )
+
+    def test_an_assumed_shape_input_is_validated_with_its_own_size(self):
+        from builders import real
+
+        text = emitted(self.module_of(
+            real("values", Intent.IN, "(:)", doc="the data"),
+            real("total", Intent.OUT, doc="their sum"),
+        ))
+
+        # `(:)` was pasted where the element count belongs, which is not Fortran
+        assert (
+            "call validate_all_in_range_real(values, (size(values, 1)), ierr, arg_pos=1_int32)"
+            in text
+        )
+
+    def test_every_assumed_shape_axis_is_counted(self):
+        from builders import integer, real
+
+        text = emitted(self.module_of(
+            integer("n", Intent.IN, doc="rows"),
+            real("grid", Intent.IN, "(n, :)", doc="the data"),
+            real("total", Intent.OUT, doc="their sum"),
+        ))
+
+        assert "validate_all_in_range_real(grid, n * (size(grid, 2)), ierr" in text
+
+    def test_a_module_constant_in_an_extent_is_imported(self):
+        from builders import integer, parameter, real
+
+        text = emitted(self.module_of(
+            integer("n", Intent.IN, doc="points"),
+            real("points", Intent.IN, "(N_AXES, n)", doc="the points"),
+            real("sums", Intent.OUT, "(N_AXES)", doc="per axis"),
+            parameters=(parameter("N_AXES", "2"),),
+        ))
+
+        # the wrapper redeclares `points(N_AXES, n)`; without the import it names nothing
+        assert "use tox_demo_impl, only: N_AXES, measure_impl" in text
+
+    def test_a_module_constant_in_a_character_length_is_imported(self):
+        from builders import character, parameter
+
+        text = emitted(self.module_of(
+            character("label", Intent.IN, length="MAX_LEN", doc="a label"),
+            parameters=(parameter("MAX_LEN", "8"),),
+        ))
+
+        assert "use tox_demo_impl, only: MAX_LEN, measure_impl" in text
+
+
+class TestAFunctionImplementation:
+    """#221 B1: a function is called for its value, into the argument its result became.
+
+    The wrapper used to `call` it, which does not compile, and dropped the result."""
+
+    def text(self, *arguments):
+        from builders import Meta, integer, module, procedure, project, real
+
+        return emitted(project(module(
+            "tox_demo_impl",
+            procedure(
+                "add_up_impl",
+                real("values", Intent.IN, "(n)", doc="the data"),
+                integer("n", Intent.IN, doc="length"),
+                *arguments,
+                result=real("total", Intent.OUT, doc="their sum", is_result=True),
+                meta=Meta(summary="Total", author="AUTHOR"),
+                is_pure=True,
+            ),
+        )))
+
+    def test_the_call_assigns_the_result(self):
+        text = self.text()
+
+        assert "total = add_up_impl(&" in text
+        assert "call add_up_impl(" not in text
+        # the result is not an actual: the function has no such dummy
+        assert "total = total\n" not in text and "total = total&" not in text
+
+    def test_the_result_is_declared_as_an_output_before_ierr(self):
+        text = self.text()
+
+        assert "real(real64), intent(out) :: total" in text
+        signature = text[text.index("pure subroutine add_up("):text.index(")\n")]
+        assert signature.split() == [
+            "pure", "subroutine", "add_up(&", "values,&", "n,&", "total,&", "ierr&",
+        ]
+
+    def test_both_tiers_assign_it(self):
+        from builders import real
+
+        text = self.text(real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"))
+
+        assert text.count("total = add_up_impl(&") == 2

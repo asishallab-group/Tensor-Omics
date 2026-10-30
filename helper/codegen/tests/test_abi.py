@@ -1,7 +1,8 @@
 import pytest
 
 from codegen.abi.c_abi import build_module, build_project, build_wrapper, stripped_name
-from codegen.abi.model import Conversion, Origin
+from codegen.abi.model import Conversion, Origin, SizeConstant
+from codegen.config import CONVENTIONS
 from codegen.diagnostics import DiagnosticBag
 from codegen.ir.entities import Meta
 from codegen.ir.roles import analyse
@@ -115,6 +116,49 @@ class TestErrorArgument:
         assert error.is_synthesised
         assert error.source is None
 
+    def test_an_ierr_in_the_middle_is_left_to_validate(self, bag):
+        # the C order follows the Fortran one, which `validate` reports; once is enough
+        wrap(b.procedure("p", b.ierr(), b.real("x", Intent.IN)), bag)
+
+        assert bag.errors == ()
+
+    def test_a_function_s_result_goes_before_its_own_ierr(self, bag):
+        # #221 B1: it was appended after it, `hw_ownierr_c(n, x, ierr, total)`
+        procedure = b.procedure(
+            "f", b.real("x", Intent.IN), b.ierr(),
+            result=b.real("total", Intent.OUT, is_result=True),
+        )
+
+        wrapper = wrap(procedure, bag)
+
+        assert [a.name for a in wrapper] == ["x", "total", "ierr"]
+        assert wrapper.argument("total").origin is Origin.RESULT
+        assert wrapper.argument("ierr").origin is Origin.ERROR
+        assert bag.errors == ()
+
+    def test_a_function_is_no_longer_exempt_from_the_order_check(self, bag):
+        # the exemption WP2 made for the shape above is gone with it
+        from codegen.abi.c_abi import _Builder
+
+        procedure = b.procedure("f", b.ierr(), result=b.real("total", Intent.OUT, is_result=True))
+        builder = _Builder(procedure, bag, CONVENTIONS)
+        error = builder._argument(procedure.argument("ierr"))[0]
+        total = builder._argument(procedure.result, is_result=True)[0]
+        builder._check_error_is_last([error, total])
+
+        assert [d.message for d in bag.errors] == ["the C wrapper of 'f' does not end in 'ierr'"]
+
+    def test_a_c_signature_not_ending_in_ierr_is_refused(self, bag):
+        # nothing builds one today; this is the guard on what an added argument would do
+        from codegen.abi.c_abi import _Builder
+
+        builder = _Builder(b.procedure("p", b.real("x", Intent.IN), b.ierr()), bag, CONVENTIONS)
+        error = builder._argument(builder.procedure.argument("ierr"))[0]
+        x = builder._argument(builder.procedure.argument("x"))[0]
+        builder._check_error_is_last([error, x])
+
+        assert [d.message for d in bag.errors] == ["the C wrapper of 'p' does not end in 'ierr'"]
+
     def test_error_argument_finds_it_either_way(self, bag):
         assert wrap(b.procedure("p", b.ierr()), bag).error_argument.name == "ierr"
         assert wrap(b.procedure("p", b.real("x")), bag).error_argument.name == "ierr"
@@ -166,10 +210,23 @@ class TestTypeMapping:
         assert str(wrapper.argument("z").type) == "complex(c_double_complex)"
 
     def test_an_unknown_kind_is_reported_rather_than_guessed(self, bag):
-        wrap(b.procedure("p", b.real("x", kind="real128")), bag)
+        wrap(b.procedure("p", b.real("x", kind="wp")), bag)
 
-        assert "kind 'real128', which has no known C counterpart" in bag.errors[0].message
+        assert "kind 'wp', which has no known C counterpart" in bag.errors[0].message
         assert "c_double" in bag.errors[0].note
+
+    @pytest.mark.parametrize("kind", ["real128", "4"])
+    def test_a_kind_validate_refuses_is_not_reported_twice(self, bag, kind):
+        # `real(4)`: validate says the bindings cannot carry it, and that is the one error
+        from codegen.ir.validate import validate_procedure
+
+        procedure = b.procedure("p", b.real("x", kind=kind))
+        validate_procedure(procedure, bag)
+        wrap(procedure, bag)
+
+        assert [d.message for d in bag.errors] == [
+            f"argument 'x' is real({kind}), which the bindings cannot carry"
+        ]
 
 
 class TestLogicals:
@@ -515,9 +572,180 @@ class TestDefaultsAndMappingsThatCannotBeBuilt:
         assert "which has no C mapping" in bag.errors[0].message
 
     def test_a_kind_with_no_c_counterpart_is_reported(self, bag):
-        procedure = b.procedure("p", b.real("x", Intent.IN, kind="real128"), b.ierr())
+        procedure = b.procedure("p", b.real("x", Intent.IN, kind="dp"), b.ierr())
         analyse(procedure, bag)
 
         build_wrapper(procedure, bag)
 
         assert "has no known C counterpart" in bag.errors[0].message
+
+
+class TestDefaultsAreFortranValues:
+    """The default the bindings pass is the value a Fortran caller gets (issue #221, B9)."""
+
+    def _default_of(self, bag, expression, kind="int32", base=b.integer):
+        from codegen.ir.directives import Default, Directives
+
+        procedure = b.procedure(
+            "p",
+            base("x", Intent.IN, kind=kind, directives=Directives(default=Default(expression)),
+                 optional=True),
+            b.ierr(),
+        )
+        return wrap(procedure, bag).argument("x").default
+
+    def test_nint_rounds_half_away_from_zero(self, bag):
+        assert self._default_of(bag, "nint(2.5_real64)") == 3
+
+    def test_a_kinded_logical_default_evaluates(self, bag):
+        assert self._default_of(bag, ".true._c_bool", kind="c_bool", base=b.logical) is True
+
+    def test_a_default_that_does_not_fit_the_argument_s_kind_is_reported(self, bag):
+        # ctypes.c_int(3000000000) would wrap it to a negative number
+        self._default_of(bag, "3000000000_int64")
+
+        assert "does not fit its kind, integer(int32)" in bag.errors[0].message
+        assert "'x'" in bag.errors[0].message
+
+    def test_a_default_that_fits_a_wide_kind_is_kept(self, bag):
+        assert self._default_of(bag, "3000000000_int64", kind="int64") == 3000000000
+        assert bag.errors == ()
+
+
+class TestSizeConstants:
+    """A module constant naming an extent is imported by the C wrapper (issue #221, B13)."""
+
+    def _wrapper(self, bag, *arguments):
+        module = b.module(
+            "m", b.procedure("p", *arguments, b.ierr()),
+            parameters=(b.parameter("N_AXES", "2"), b.parameter("MAX_LEN", "8")),
+        )
+        b.project(module)
+        return wrap_in_module(module, "p", bag)
+
+    def test_a_constant_extent_is_listed_with_its_module(self, bag):
+        wrapper = self._wrapper(
+            bag, b.integer("n"), b.real("points", Intent.IN, "(N_AXES, n)")
+        )
+
+        assert wrapper.size_constants == (SizeConstant("m", "N_AXES", 2),)
+
+    def test_a_constant_character_length_is_listed(self, bag):
+        wrapper = self._wrapper(bag, b.character("name", Intent.IN, length="MAX_LEN"))
+
+        assert wrapper.size_constants == (SizeConstant("m", "MAX_LEN", 8),)
+
+    def test_an_argument_extent_is_not_a_constant(self, bag):
+        wrapper = self._wrapper(bag, b.integer("n"), b.real("x", Intent.IN, "(n)"))
+
+        assert wrapper.size_constants == ()
+
+    def test_the_bindings_see_the_value_and_the_c_wrapper_the_name(self, bag):
+        # Python and the R shim cannot name a Fortran constant (review M2)
+        wrapper = self._wrapper(
+            bag, b.integer("n"), b.real("points", Intent.IN, "(N_AXES, n)"),
+            b.character("name", Intent.IN, length="max_len"),
+        )
+        evaluated = wrapper.with_constant_sizes_evaluated()
+
+        assert wrapper.argument("points").dimension.extents == ("N_AXES", "n")
+        assert evaluated.argument("points").dimension.extents == ("2", "n")
+        assert evaluated.argument("points").size_extents == ("2", "n")
+        assert evaluated.argument("name").dimension.extents == ("8",)
+
+    def test_a_constant_that_is_not_an_integer_is_reported(self, bag):
+        module = b.module(
+            "m", b.procedure("p", b.real("x", Intent.IN, "(N_AXES)"), b.ierr()),
+            parameters=(b.parameter("N_AXES", "some_function(1)"),),
+        )
+        b.project(module)
+
+        wrap_in_module(module, "p", bag)
+
+        assert "sized by the module constant 'N_AXES', which the generator cannot evaluate" in (
+            bag.errors[0].message
+        )
+
+
+class TestAnAxisTheDeclarationComputes:
+    """C is given the actual extent of an input axis the declaration computes (#221 A-shape).
+
+    The C wrapper compares it with the declaration, since only Fortran can evaluate
+    `sum(reps_per_tissue)`; a bare name or a constant is the bindings' to check, with no new
+    argument, and an output is allocated from its extents rather than compared with them.
+    """
+
+    def _wrapper(self, bag, *arguments, name="p"):
+        procedure = b.procedure(name, *arguments, b.ierr())
+        return wrap(procedure, bag)
+
+    def test_an_expression_gets_an_extent_right_after_its_array(self, bag):
+        wrapper = self._wrapper(
+            bag, b.integer("n_tissues"), b.integer("n_genes"),
+            b.integer("reps", Intent.IN, "(n_tissues)"),
+            b.real("expr", Intent.IN, "(sum(reps), n_genes)"),
+        )
+
+        names = [a.name for a in wrapper]
+        assert names[names.index("expr") + 1] == "n_expr_elements_dim_1"
+        extent = wrapper.argument("n_expr_elements_dim_1")
+        assert (extent.origin, extent.sizes, extent.axis) == (Origin.EXTENT, "expr", 0)
+        assert extent.checked_against == "sum(reps)"
+        assert wrapper.argument("expr").dimension.extents == ("n_expr_elements_dim_1", "n_genes")
+        assert bag.errors == ()
+
+    def test_the_declared_shape_is_kept_for_the_documentation(self, bag):
+        wrapper = self._wrapper(bag, b.integer("n"), b.real("x", Intent.IN, "(n + 1)"))
+
+        assert wrapper.argument("x").declared_extents == ("n + 1",)
+        assert wrapper.argument("x").shown_extents == ("n + 1",)
+        assert wrapper.argument("n_x_elements").checked_against == "n + 1"
+
+    @pytest.mark.parametrize("dimension", ["(n)", "(n, 2)", "(N_AXES, n)", "(:)"])
+    def test_a_name_a_constant_or_an_assumed_shape_adds_nothing_checked(self, bag, dimension):
+        wrapper = self._wrapper(bag, b.integer("n"), b.real("x", Intent.IN, dimension))
+
+        assert not any(a.checked_against for a in wrapper)
+
+    def test_an_output_and_a_work_array_are_allocated_not_compared(self, bag):
+        wrapper = self._wrapper(
+            bag, b.integer("n"), b.real("x", Intent.IN, "(n)"),
+            b.real("y", Intent.OUT, "(n - 1)"), b.real("tmp_w", Intent.INOUT, "(n + 1)"),
+        )
+
+        assert not any(a.checked_against for a in wrapper)
+        assert wrapper.argument("y").dimension.extents == ("n - 1",)
+
+    def test_an_inout_array_is_an_input(self, bag):
+        wrapper = self._wrapper(bag, b.integer("n"), b.real("x", Intent.INOUT, "(2*n)"))
+
+        assert wrapper.argument("n_x_elements").checked_against == "2*n"
+
+    def test_a_string_array_counts_its_strings_on_the_axis_after_the_length(self, bag):
+        wrapper = self._wrapper(
+            bag, b.integer("n"), b.character("names", Intent.IN, "(n + 1)", length="4"))
+
+        assert wrapper.argument("names").dimension.extents == ("4", "n_names_elements")
+
+    @pytest.mark.parametrize("arguments, reason", [
+        ((b.integer("n", optional=True), b.real("y", Intent.IN, "(3)"),
+          b.real("x", Intent.IN, "(n + 1)")),
+         "it reads the optional 'n', which may be absent"),
+        ((b.integer("n", Intent.OUT), b.real("x", Intent.IN, "(n + 1)")),
+         "it reads 'n', which is an output"),
+        ((b.integer("n"), b.character("label", Intent.IN, length="*"),
+          b.real("x", Intent.IN, "(len(label))")),
+         "it reads 'label', which the C wrapper converts"),
+        ((b.integer("n"), b.real("a", Intent.IN, "(n + 1)"),
+          b.real("x", Intent.IN, "(size(a) + 1)")),
+         "it reads 'a', whose own extent is computed too"),
+    ])
+    def test_what_the_c_wrapper_cannot_evaluate_is_refused(self, bag, arguments, reason):
+        procedure = b.procedure("p", *arguments, b.ierr())
+        wrap(procedure, bag)
+
+        messages = [error.message for error in bag.errors]
+        assert any(
+            "'x' of 'p' is sized by" in message and "which its C wrapper cannot check" in message
+            and reason in message for message in messages
+        ), messages

@@ -175,7 +175,7 @@ On Ubuntu/Debian, gfortran 15 is not available in the standard repositories. Use
 ./build.sh --max-performance
 ```
 
-**Debug build** — enables debug/checking flags (`-O0`, debug symbols, and runtime checks depending on compiler profile):
+**Debug build** — enables debug/checking flags for the Fortran (`-O0`, debug symbols, and runtime checks depending on compiler profile):
 
 ```bash
 ./build.sh --debug
@@ -192,9 +192,9 @@ FC=ifx ./build.sh --max-performance
 Beyond the profiles above, `build.sh` accepts several options (which `test_runner.sh` inherits):
 
 * `--compiler=<gfortran|ifx|nvfortran>` — compiler to use (defaults to `gfortran`). The `FC` environment variable is also honoured, with precedence `--compiler` > `$TOX_COMPILER` > `$FC`.
-* `--max-performance` — enable the `optimization` profile: `-O3` plus the per-compiler optimisation flags in `fpm.toml`. Without it, every build compiles at `-O0`, whatever the compiler.
+* `--max-performance` — enable the `optimization` profile: `-O3` plus the per-compiler optimisation flags in `fpm.toml`. Without it, every build compiles the Fortran at `-O0`, whatever the compiler. The R binding's C shims are always compiled at `-O2`: they check every element of an integer, logical or string array while converting it, and carry no arithmetic a level could change.
 * `--diagnostics` — enable diagnostic/debugging flags (helpful when debugging). Can be combined with `--max-performance`.
-* `--debug` — implies `--diagnostics` plus `-O0`, so gdb doesn't hit optimized-out variables or misleading source stepping. Conflicts with `--max-performance` (`-O3` wins over `-O0`), so combining them asks for confirmation unless `--yes` is set.
+* `--debug` — implies `--diagnostics` plus `-O0` for the Fortran, so gdb doesn't hit optimized-out variables or misleading source stepping. The R binding's C shims stay at `-O2`, without debug info, in every profile (see `--max-performance`). Conflicts with `--max-performance` (`-O3` wins over `-O0`), so combining them asks for confirmation unless `--yes` is set.
 * `--yes` — skip the confirmation prompt that `--debug --max-performance` would otherwise show.
 * `--override-flags="<flags>"` — replace the profile flags with your own, e.g. `--override-flags="-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"`. When set, `--max-performance` has no effect. This also drops the link libraries and `-fPIC` that the per-compiler features in `fpm.toml` provide; pass `-fPIC` here and the libraries with `--override-link-flags`, because fpm never passes these flags to the link of the shared library.
 * `--override-link-flags="<flags>"` — replace the compiler's link libraries from `fpm.toml` with your own. Independent of `--override-flags`; the two together give full control. `-Lexternal`, where the build puts the loess archives, is always kept. fpm writes these flags *before* the objects on the link line, which is fine for a shared library but drops a static archive's members before anything references them — so the loess archives need wrapping: `--override-link-flags="-Wl,--whole-archive -lloess-netlib -lloess-netlib-drotg -Wl,--no-whole-archive -lxxhash -lzip"` reproduces the default.
