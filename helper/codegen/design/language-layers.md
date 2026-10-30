@@ -115,17 +115,28 @@ became float64 rounded, and an array check cannot tell a rounded value from one 
 So for a Python list or tuple, nested too, that numpy made floats of, the Python and NumPy
 integers in it are checked by the target's own integer rule -- exact in float64 for a real, the
 int32 range for an integer, which then names the integer as given rather than as numpy rounded
-it -- and refused by name and element. It costs two reductions (`fmin`/`fmax`, past NaN): only a
-list holding a value at or past the rule's bound (2^53, or the int32 range) is walked, since an
-integer within it cannot have been rounded. Measured on 1e6-element lists under load: ints,
-floats, nested floats and ints with one float all within noise of before (37-66 ms); a list of
-floats past 2^53 holding no integer 67 against 39 ms; one holding an integer to refuse, 343 ms
-for the walk. An ndarray is unaffected: its dtype says what it holds.
+it -- and refused by name and element. Two reductions (`fmin`/`fmax`, past NaN) say whether the
+list holds a value at or past the rule's bound (2^53, or the int32 range), since an integer
+within it cannot have been rounded; only then does numpy find where (`flatnonzero`), and only
+those items are looked at, at C speed until one of them is an integer, which is then checked
+in Python. Measured on 1e6-element lists on a quiet machine (#221 WP8 fix 3): ints, floats,
+nested floats, and ints with one float below the bound (`0.5`) all within noise of before
+(27-45 ms); ints with one value past it (`1e20`, accepted; `3e9` for an int32, refused) 45 and
+50 ms; floats past 2^53 holding no integer 121 against 26 ms; a list whose every element is an
+integer past 2^53 beside a float (`[2**60] * n + [0.5]`) about 1.6 µs per element, since every
+one of them is checked. An ndarray is unaffected: its dtype says what it holds.
+
+Two lists are not covered, and are documented (FES 2026-10-30). A Python int too large for
+any NumPy integer beside a float, `[2**64, 0.5]`, is **refused**: numpy makes the list an array
+of objects, which is no number's kind -- refused, never rounded, although each value is exact.
+And a bool in a list of numbers for a real, `[True, 0.5]`, is converted as numpy converts it,
+to 1.0: numpy makes it a float before any check sees it, as `[True, 0, 3]` is an int64 array
+(the edges below), and catching it would walk every list.
 
 | Fortran | Accepted | Refused, naming the argument |
 |---|---|---|
 | `integer(int32)` | Python and numpy integers, 0-d arrays; floats whose every value is whole and in range; R integer, and double with whole values (`2` is a double in R: 96 calls in the suites pass one); `-0.0` as 0 | a bool or R logical; a fraction, NaN/NA, an infinity, out of range; strings, objects, datetimes, complex; an R factor, Date, `integer64`; a masked array with masked elements |
-| `real(real64)` | Python and numpy integers and floats that float64 holds exactly: every float up to float64, every integer up to 32 bits, a 64-bit one within 2^53 or exact beyond it (`2**63`), a long double only if exact, an integer in a list beside floats likewise; R integer and double; NaN/Inf as `DM_ALLOW_NAN` says | a bool or R logical; an integer or a long double float64 would round (`2**53 + 1`); strings (never parsed), complex, datetimes, objects; an R Date; a masked array with masked elements |
+| `real(real64)` | Python and numpy integers and floats that float64 holds exactly: every float up to float64, every integer up to 32 bits, a 64-bit one within 2^53 or exact beyond it (`2**63`), a long double only if exact, an integer in a list beside floats likewise (a bool in such a list is numpy's 1.0); R integer and double; NaN/Inf as `DM_ALLOW_NAN` says | a bool or R logical; an integer or a long double float64 would round (`2**53 + 1`, also `[2**53 + 1, 0.5]`); a Python int too large for NumPy beside a float (`[2**64, 0.5]`: numpy makes it objects); strings (never parsed), complex, datetimes, objects; an R Date; a masked array with masked elements |
 | `logical` | bools; any number whose every value is exactly 0 or 1 (12 Python call sites pass 0/1 integers, and `c(1, 0, 1)` is R's own literal for a mask) | any other number, NaN/NA/None, strings, objects |
 | a string | a Python `str`, or an `os.PathLike` whose path is a `str`; an R character vector of length 1, not NA, marked UTF-8 or latin1, or unmarked with UTF-8 bytes | bytes, None, a sequence, a number; length other than 1; NA; a NUL, a lone surrogate, invalid UTF-8; an R string marked "bytes", or latin1 with a byte that is no character |
 | an array of strings | a list, tuple, ndarray or Series of `str`; an R character vector, or a factor (its labels) | a bare `str`; a set or dict, which has no order; any element that is not a `str`; NA, a NUL, a surrogate, invalid UTF-8; a value longer than a declared length |

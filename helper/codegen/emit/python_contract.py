@@ -39,6 +39,7 @@ naming the argument.
 """
 
 import itertools
+import operator
 import os
 
 import numpy as np
@@ -130,10 +131,12 @@ def _listed_integers(value, array, bound):
     numpy decides a list's dtype first, so one integer beside a float turns them all into
     floats: `[2**53 + 1, 0.5]` is float64 `[2**53, 0.5]` before any check sees it, and no check
     of the array can tell the rounding from a value given that way (FES 2026-10-29). These are
-    what the targets' integer rules check instead, and only when the array holds a value at or
-    past `bound` -- an integer within it cannot have been rounded into or out of the rule -- which
-    two reductions say: a list of ordinary numbers costs no walk. Nothing for an ndarray, whose
-    dtype says what it is, nor for a list numpy kept as integers.
+    what the targets' integer rules check instead -- only where the array holds a value at or
+    past `bound`, since an integer within it cannot have been rounded into or out of the rule.
+    Two reductions say whether there is one, so a list of ordinary numbers costs no walk; numpy
+    finds where they are, and only those items are looked at, at C speed until one of them is an
+    integer. Nothing for an ndarray, whose dtype says what it is, nor for a list numpy kept as
+    integers.
     """
     if not isinstance(value, (list, tuple)) or array.dtype.kind != "f" or array.size == 0:
         return ()
@@ -141,17 +144,24 @@ def _listed_integers(value, array, bound):
     # a NaN, which no integer is
     if -bound < np.fmin.reduce(array, axis=None) and np.fmax.reduce(array, axis=None) < bound:
         return ()
+    positions = np.flatnonzero(np.abs(array) >= bound).tolist()  # C order, as numpy read it
+    if not positions:
+        return ()
     items = value
-    if array.ndim > 1:  # numpy took the nesting as the shape, in C order
+    if array.ndim > 1:  # numpy took the nesting as the shape
         for _ in range(array.ndim - 1):
             items = itertools.chain.from_iterable(items)
         items = list(items)
+    # itemgetter gives a tuple of them for two or more, and the item itself for one
+    picked = operator.itemgetter(*positions)(items) if len(positions) > 1 else (
+        items[positions[0]],)
     if not any(issubclass(kind, (int, np.integer)) and not issubclass(kind, (bool, np.bool_))
-               for kind in set(map(type, items))):
+               for kind in set(map(type, picked))):
         return ()
-    return [(tuple(int(i) for i in np.unravel_index(position, array.shape)), int(item))
-            for position, item in enumerate(items)
-            if isinstance(item, (int, np.integer)) and not isinstance(item, (bool, np.bool_))]
+    found = [(position, int(item)) for position, item in zip(positions, picked)
+             if isinstance(item, (int, np.integer)) and not isinstance(item, (bool, np.bool_))]
+    indices = zip(*np.unravel_index([position for position, _ in found], array.shape))
+    return [(tuple(int(i) for i in index), item) for index, (_, item) in zip(indices, found)]
 
 
 def _round_trip(array, argument, dtype, order, wanted):
