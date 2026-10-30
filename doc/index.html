@@ -98,14 +98,15 @@
 <p><strong>The calling language allocates the outputs.</strong> No procedure allocates an array and hands it back. In Fortran and C you pass the output arrays in. In Python and R the binding allocates them as NumPy arrays or R vectors before the call, and the library writes into that memory directly. Every result is therefore an ordinary object of your language: its garbage collector frees it, and there is nothing to release by hand. The only memory the library allocates itself is scratch space inside <code>foo</code>, and it is released before <code>foo</code> returns.</p>
 <p>This is deliberate. An all-in-one entry point that allocates its outputs inside the library and returns them would save the bindings a few lines. But memory the library allocated must also be freed by the library, so every language would need its own finaliser calling back into it, or a copy of each result into a native array. The cleanup would still be needed, only harder to get right and in more places.</p>
 <h3>In every language</h3>
-<p><strong>Errors come back in <code>ierr</code>,</strong> the last argument of every procedure. <code>0</code> is success. Anything else is <code>10000*arg_pos + code</code>: the last four digits are the code, which names the failure (1xx input and output, 2xx invalid input, 3xx memory, 5xxx Fortran runtime, 9xxx internal), and the digits before them are <code>arg_pos</code>, the argument to blame, counted in the Fortran signature and <code>0</code> when no argument is at fault. Python turns it into an exception derived from <code>ToxError</code> (<code>ToxInputError</code>, <code>ToxIOError</code>, ...) and R into a condition of class <code>tox_error</code> (<code>tox_input_error</code>, ...), both naming the argument.</p>
-<p><strong>Indices are 1-based,</strong> as in Fortran: family indices and permutations alike. Where an index can be "none", its value is <code>0</code>, such as a gene that belongs to no family.</p>
+<p><strong>Errors come back in <code>ierr</code>,</strong> the last argument of every procedure. <code>0</code> is success. Anything else is <code>10000*arg_pos + code</code>: the last four digits are the code, which names the failure (1xx input and output, 2xx invalid input, 3xx memory, 5xxx Fortran runtime, 9xxx internal), and the digits before them are <code>arg_pos</code>, the argument to blame, counted in the Fortran signature and <code>0</code> when no argument is at fault. Python turns it into an exception derived from <code>ToxError</code> (<code>ToxInputError</code>, <code>ToxIOError</code>, ...) and R into a condition of class <code>tox_error</code> (<code>tox_input_error</code>, ...), both naming the argument. An argument Python or R refuses before the call, for its shape, type or value, is an input error too but carries no code: Python's <code>ToxArgumentError</code> (a <code>ToxInputError</code>, and also a <code>TypeError</code> and a <code>ValueError</code>) with <code>code</code> None, R's <code>tox_type_error</code>, <code>tox_shape_error</code> or <code>tox_na_error</code> (each a <code>tox_input_error</code>) with <code>code</code> NA. So <code>except ToxInputError</code> and <code>tryCatch(tox_input_error = ...)</code> catch every input error, the library's and the binding's alike. The codes are named: <code>ERR_*</code> for errors, and <code>STAT_*</code> for outcomes that are not failures, where a procedure defines any. A status array holds one code per entry: <code>normalize_all_trajectories</code>' holds <code>ERR_*</code> codes. Python exports them, every exception class, <code>ARG_POS_FACTOR</code> and <code>check_err_code</code> from the package itself (<code>from tensor_omics import ERR_DIVISION_BY_ZERO, ToxInputError</code>), and R loads them as globals.</p>
+<p><strong>Indices are 1-based,</strong> as in Fortran: family indices and permutations alike, in what you pass as much as in what comes back. Where an index can be "none", its value is <code>0</code>, such as a gene that belongs to no family.</p>
+<p><strong>Trailing blanks are not part of a string,</strong> as in Fortran: <code>"genes.tsv  "</code> and <code>"genes.tsv"</code> are the same value. Python and R drop them from what you pass, mode arguments included (<code>"ward "</code> selects <code>ward</code>), and a string never comes back to them with trailing blanks; from C, trim them yourself (below). A leading blank is part of the value.</p>
 <p><strong>Results never contain NaN.</strong> Where an output value is undefined, the documentation of that output names a sentinel outside the range the quantity can take, such as <code>-1</code> for a distance that was not measured. A NaN in a result is a bug; please report it. On input, NaN and infinite values are rejected unless an argument's documentation says they are permitted.</p>
 <h3>From C</h3>
 <p>Link against <code>libtensor_omics.so</code>. No header is shipped; the prototypes follow from the <code>_c</code> modules on these pages.</p>
 <ul>
 <li>Every argument is passed by pointer. The types are <code>double</code>, <code>int</code> (32 bit), <code>bool</code> (<code>_Bool</code>) and <code>char</code>.</li>
-<li>Arrays are column-major, as in Fortran. Their extents are arguments: either named ones such as <code>n_genes</code>, or <code>n_&lt;name&gt;_elements</code> right after the array. Arrays that share an extent must agree on it; the C layer does not check that, Python and R do.</li>
+<li>Arrays are column-major, as in Fortran. Their extents are arguments: either named ones such as <code>n_genes</code>, or <code>n_&lt;name&gt;_elements</code> right after the array. Arrays that share an extent must agree on it; the C layer does not check that, Python and R do. Where the documentation declares an axis by an expression, such as <code>expr(sum(reps_per_tissue), n_genes)</code>, you pass that axis's actual extent as <code>n_expr_elements_dim_1</code> right after the array, and the C wrapper returns <code>ERR_SIZE_MISMATCH</code> unless it equals the expression.</li>
 <li>A string is a <code>char</code> buffer followed by its width, <code>&lt;name&gt;_strlen</code>. An array of strings is one column-major block of equally wide strings, followed by <code>&lt;name&gt;_strlen</code> and <code>n_&lt;name&gt;_elements</code>. <strong>Pad with blanks, do not terminate with NUL</strong>: <code>"genes.tsv"</code> in a <code>char[16]</code> passes a filename that ends in NULs. Fill an output buffer with blanks before the call and trim the trailing blanks from what comes back, so a value that itself ends in blanks does not survive the trip. Mode arguments (<code>mode</code>, <code>method</code>) are the exception and accept either convention.</li>
 <li>An optional argument without a default is absent when you pass <code>NULL</code>. An argument with a default is required in C, and its documentation states the default.</li>
 <li><code>foo_expert_c</code> takes the workspace sizes that <code>foo_c</code> computes for you. The documentation of each size names the routine that computes it.</li>
@@ -113,6 +114,55 @@
 </ul>
 <h3>From Python and R</h3>
 <p>Python finds the library through <code>TENSOR_OMICS_LIBRARY</code> or at <code>build/libtensor_omics.so</code>, and R loads it with <code>r/load_tensor_omics.R</code>. Neither asks for an extent that follows from the arrays you pass, nor for workspace sizes or string widths. An extent that only sizes an output, such as <code>n_families</code>, is still an argument. Python passes arrays to the library in column-major order, so a row-major NumPy array is copied first; pass <code>np.asfortranarray</code> data to avoid that for large inputs. Python results are read-only: <code>.copy()</code> one to modify it. An argument the procedure changes in place is changed in place in Python and returned as a new value in R.</p>
+<p><strong>What an argument accepts</strong> is the same in Python and R, and follows from its Fortran type, which each procedure's documentation shows. A value is accepted only if it converts to that type and back unchanged. Nothing is rounded, truncated, wrapped around or parsed on the way, and a refusal names the argument.</p>
+<table>
+<thead>
+<tr>
+<th>Fortran type</th>
+<th>Accepted</th>
+<th>Refused</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>integer(int32)</code></td>
+<td>Python and NumPy integers, and floats whose values are whole, as long as every value fits in a signed 32-bit integer; R integers, and doubles with whole values (<code>2</code> is a double in R)</td>
+<td>booleans and R logicals, fractions (<code>1.7</code>), NaN and NA, infinities, values out of range (<code>2**32 + 5</code>), strings, datetimes, complex numbers, R factors, Dates and <code>integer64</code></td>
+</tr>
+<tr>
+<td><code>real(real64)</code></td>
+<td>any Python or NumPy integer or float that a float64 holds exactly, which is every float up to float64, every integer up to <code>2**53</code> in magnitude, and larger ones such as <code>2**64</code> that it holds exactly. An integer in a list beside floats is checked the same way (<code>[2**53 + 1, 0.5]</code> is refused); one too large for a NumPy integer beside a float (<code>[2**64, 0.5]</code>) is refused, because NumPy makes the list an array of objects; and a boolean in a list of numbers is converted as NumPy converts it (<code>[True, 0.5]</code> is <code>[1.0, 0.5]</code>); R integers and doubles. NaN and infinite values only where the argument's documentation permits them</td>
+<td>booleans and R logicals, an integer or a long double a float64 would round (<code>2**53 + 1</code>; convert it yourself where the rounding is acceptable), strings (never parsed as numbers), complex numbers, datetimes, R Dates</td>
+</tr>
+<tr>
+<td><code>complex(real64)</code></td>
+<td>a single Python or NumPy number, complex or not, whose parts a float64 holds exactly; NumPy arrays of numbers, complex ones included, converted as NumPy converts them; R complex and numeric vectors. A single complex result comes back as a Python <code>complex</code> or an R complex</td>
+<td>booleans, strings and other objects, and in R anything that is not a number</td>
+</tr>
+<tr>
+<td><code>logical</code></td>
+<td>booleans, R logicals, and numbers that are all exactly <code>0</code> or <code>1</code>, such as <code>c(1, 0, 1)</code></td>
+<td>any other number, NaN, NA, <code>None</code>, strings</td>
+</tr>
+<tr>
+<td>a string</td>
+<td>a Python <code>str</code> or an <code>os.PathLike</code> path; an R character vector of length 1</td>
+<td>bytes, <code>None</code>, lists, numbers, NA, a NUL character, invalid UTF-8, and a value longer than a fixed declared length (never cut short)</td>
+</tr>
+<tr>
+<td>an array of strings</td>
+<td>a list, tuple, NumPy array or pandas Series of <code>str</code>; an R character vector, or a factor (its labels)</td>
+<td>a bare <code>str</code>, a set or dict (they have no order), any element that is not a string, NA, a NUL character, invalid UTF-8, an element longer than a fixed declared length</td>
+</tr>
+<tr>
+<td>a mode</td>
+<td>one of the strings the documentation lists, matched whole, case ignored</td>
+<td>anything else; the message lists the modes</td>
+</tr>
+</tbody>
+</table>
+<p>Arrays must have the declared rank: nothing is flattened, so a matrix passed for a vector is refused. In R a plain vector, a 1-D array and a table count as vectors, and an all-numeric data.frame as a matrix. A NumPy masked array is accepted only with no masked elements. R strings marked latin1 reach the library translated to UTF-8, and strings come back to R marked UTF-8. An R string with no encoding mark, such as one <code>readLines</code> gives, is passed as it stands if its bytes are UTF-8, in any locale; otherwise, and for a string marked "bytes", it is refused: mark a latin1 one with <code>Encoding(x) &lt;- "latin1"</code>.</p>
+<p>Where a refusal has an obvious fix, the message names it: <code>.view(np.int32)</code> for a <code>uint32</code> bit-mask word of 2^31 or more, <code>.astype(str)</code> for a bytes array, <code>.filled()</code> for a masked array, <code>as.integer()</code> or <code>as.double()</code> for an R <code>integer64</code>.</p>
 <p><em>Tensor Omics shows that geometry, when treated not as preprocessing but as the central instrument of analysis, can open entirely new ways to read complex biological and social data — simple, transparent, and surprisingly powerful.</em></p>
         </div>
       </div>
@@ -178,7 +228,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-10-26 09:16 +0000             </p>
+ on 2026-10-30 09:20 +0000             </p>
           </div>
         </div>
         <br>

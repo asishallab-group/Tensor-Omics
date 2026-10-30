@@ -174,10 +174,10 @@ distribution against which the observed value is compared.</p>
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
                   <li class="list-inline-item"><a href='tox_data_integration_stats_impl.html'>tox_data_integration_stats_impl</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
@@ -217,7 +217,7 @@ distribution against which the observed value is compared.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s1~14"></span>
+              <span class="anchor" id="variable-neighborhood_residuals_s1"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -233,7 +233,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s2~14"></span>
+              <span class="anchor" id="variable-neighborhood_residuals_s2"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -249,7 +249,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s1~15"></span>
+              <span class="anchor" id="variable-n_reps_s1"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -264,7 +264,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s2~15"></span>
+              <span class="anchor" id="variable-n_reps_s2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -279,7 +279,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_neighbors~21"></span>
+              <span class="anchor" id="variable-n_neighbors~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -294,7 +294,276 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~40"></span>
+              <span class="anchor" id="variable-n_points~20"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of reference points in the studies</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-global_jsd_observed"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>global_jsd_observed</strong></td>
+            <td>
+<p>Observed global JSD value for both studies</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_bins"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_bins</strong></td>
+            <td>
+<p>Number of equally sized histogram bins used for the studies</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-shared_residual_range"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>shared_residual_range</strong></td>
+            <td>
+<p>Computed residual range for both studies
+The minimum valid value is <code>0.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_permutations"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_permutations</strong></td>
+            <td>
+<p>Number of permutations to perform</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-jsd_null"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_permutations)
+            </td>
+            <td>::</td>
+            <td><strong>jsd_null</strong></td>
+            <td>
+<p>Vector of global divergence values obtained under the null hypothesis</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-p_value"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>p_value</strong></td>
+            <td>
+<p>Empirical p-value of the permutation test: <script type="math/tex"> \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations + 1} </script>
+</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-random_seed"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>random_seed</strong></td>
+            <td>
+<p>Seed to use for shuffling</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighbor_mask_s1"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(in),</td>
+              <td>optional,</td>            <td>
+              dimension(n_neighbors, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>neighbor_mask_S1</strong></td>
+            <td>
+<p>Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighbor_mask_s2"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(in),</td>
+              <td>optional,</td>            <td>
+              dimension(n_neighbors, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>neighbor_mask_S2</strong></td>
+            <td>
+<p>Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~31"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-gjct_permutation_test_expert"></span> <h3>public  subroutine <a href='../proc/gjct_permutation_test_expert.html'>gjct_permutation_test_expert</a>(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range, n_permutations, jsd_null, p_value, tmp_residuals_S1, tmp_residuals_S2, tmp_pool, tmp_pmf_S1, tmp_pmf_S2, tmp_counts, tmp_included_n_reps_S1, tmp_included_n_reps_S2, tmp_js_divergences, tmp_weights, random_seed, neighbor_mask_S1, neighbor_mask_S2, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/gjct_permutation_test_impl.html">gjct_permutation_test_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/gjct_permutation_test.html">gjct_permutation_test</a> does both.</p><a href="../proc/gjct_permutation_test_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighborhood_residuals_s1~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_reps_S1, n_neighbors, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>neighborhood_residuals_S1</strong></td>
+            <td>
+<p>Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighborhood_residuals_s2~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_reps_S2, n_neighbors, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>neighborhood_residuals_S2</strong></td>
+            <td>
+<p>Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_reps_s1~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_reps_S1</strong></td>
+            <td>
+<p>Number of replicates in study 1</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_reps_s2~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_reps_S2</strong></td>
+            <td>
+<p>Number of replicates in study 2</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_neighbors~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_neighbors</strong></td>
+            <td>
+<p>Number of neighbors in the studies</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~21"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -324,7 +593,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_bins~15"></span>
+              <span class="anchor" id="variable-n_bins~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -339,7 +608,7 @@ NaN is permitted for this value.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shared_residual_range~16"></span>
+              <span class="anchor" id="variable-shared_residual_range~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -355,7 +624,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_permutations~10"></span>
+              <span class="anchor" id="variable-n_permutations~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -401,276 +670,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-random_seed~7"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td>optional</td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>random_seed</strong></td>
-            <td>
-<p>Seed to use for shuffling</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-neighbor_mask_s1~8"></span>
-              logical(kind=c_bool),
-            </td>
-<td>intent(in),</td>
-              <td>optional,</td>            <td>
-              dimension(n_neighbors, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>neighbor_mask_S1</strong></td>
-            <td>
-<p>Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-neighbor_mask_s2~8"></span>
-              logical(kind=c_bool),
-            </td>
-<td>intent(in),</td>
-              <td>optional,</td>            <td>
-              dimension(n_neighbors, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>neighbor_mask_S2</strong></td>
-            <td>
-<p>Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~244"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code; zero on success, non-zero on failure.</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-gjct_permutation_test_expert"></span> <h3>public  subroutine <a href='../proc/gjct_permutation_test_expert.html'>gjct_permutation_test_expert</a>(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range, n_permutations, jsd_null, p_value, tmp_residuals_S1, tmp_residuals_S2, tmp_pool, tmp_pmf_S1, tmp_pmf_S2, tmp_counts, tmp_included_n_reps_S1, tmp_included_n_reps_S2, tmp_js_divergences, tmp_weights, random_seed, neighbor_mask_S1, neighbor_mask_S2, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Validates its inputs, then calls <a href="../proc/gjct_permutation_test_impl.html">gjct_permutation_test_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/gjct_permutation_test.html">gjct_permutation_test</a> does both.</p><a href="../proc/gjct_permutation_test_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s1~15"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_reps_S1, n_neighbors, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>neighborhood_residuals_S1</strong></td>
-            <td>
-<p>Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
-NaN is permitted for this value.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s2~15"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_reps_S2, n_neighbors, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>neighborhood_residuals_S2</strong></td>
-            <td>
-<p>Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
-NaN is permitted for this value.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_reps_s1~16"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_reps_S1</strong></td>
-            <td>
-<p>Number of replicates in study 1</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_reps_s2~16"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_reps_S2</strong></td>
-            <td>
-<p>Number of replicates in study 2</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_neighbors~22"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_neighbors</strong></td>
-            <td>
-<p>Number of neighbors in the studies</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_points~41"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_points</strong></td>
-            <td>
-<p>Number of reference points in the studies</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-global_jsd_observed~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>global_jsd_observed</strong></td>
-            <td>
-<p>Observed global JSD value for both studies</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_bins~16"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_bins</strong></td>
-            <td>
-<p>Number of equally sized histogram bins used for the studies</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-shared_residual_range~17"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>shared_residual_range</strong></td>
-            <td>
-<p>Computed residual range for both studies
-The minimum valid value is <code>0.0_real64</code>.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_permutations~11"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_permutations</strong></td>
-            <td>
-<p>Number of permutations to perform</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-jsd_null~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_permutations)
-            </td>
-            <td>::</td>
-            <td><strong>jsd_null</strong></td>
-            <td>
-<p>Vector of global divergence values obtained under the null hypothesis</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-p_value~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>p_value</strong></td>
-            <td>
-<p>Empirical p-value of the permutation test: <script type="math/tex"> \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations + 1} </script>
-</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_residuals_s1~3"></span>
+              <span class="anchor" id="variable-tmp_residuals_s1~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -685,7 +685,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_residuals_s2~3"></span>
+              <span class="anchor" id="variable-tmp_residuals_s2~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -700,7 +700,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_pool~3"></span>
+              <span class="anchor" id="variable-tmp_pool~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -715,7 +715,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_pmf_s1~7"></span>
+              <span class="anchor" id="variable-tmp_pmf_s1~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -730,7 +730,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_pmf_s2~7"></span>
+              <span class="anchor" id="variable-tmp_pmf_s2~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -745,7 +745,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_counts~12"></span>
+              <span class="anchor" id="variable-tmp_counts~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -760,7 +760,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_included_n_reps_s1~3"></span>
+              <span class="anchor" id="variable-tmp_included_n_reps_s1~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -775,7 +775,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_included_n_reps_s2~3"></span>
+              <span class="anchor" id="variable-tmp_included_n_reps_s2~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -790,7 +790,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_js_divergences~3"></span>
+              <span class="anchor" id="variable-tmp_js_divergences~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -805,7 +805,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_weights~5"></span>
+              <span class="anchor" id="variable-tmp_weights~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -820,7 +820,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-random_seed~8"></span>
+              <span class="anchor" id="variable-random_seed~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -835,7 +835,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighbor_mask_s1~9"></span>
+              <span class="anchor" id="variable-neighbor_mask_s1~2"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
@@ -850,7 +850,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighbor_mask_s2~9"></span>
+              <span class="anchor" id="variable-neighbor_mask_s2~2"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
@@ -865,7 +865,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~245"></span>
+              <span class="anchor" id="variable-ierr~32"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -908,7 +908,7 @@ The minimum valid value is <code>0.0_real64</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-10-26 09:16 +0000             </p>
+ on 2026-10-30 09:20 +0000             </p>
           </div>
         </div>
         <br>

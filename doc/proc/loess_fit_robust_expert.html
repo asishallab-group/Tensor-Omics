@@ -177,7 +177,7 @@ The robust fitting process iterates n_iters times, each iteration:
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~4"></span>
+              <span class="anchor" id="variable-n~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -192,7 +192,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x~4"></span>
+              <span class="anchor" id="variable-x~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -207,7 +207,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-y~4"></span>
+              <span class="anchor" id="variable-y~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -222,7 +222,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-weights~8"></span>
+              <span class="anchor" id="variable-weights~16"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -237,7 +237,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-eval_points~4"></span>
+              <span class="anchor" id="variable-eval_points~7"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -252,7 +252,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~4"></span>
+              <span class="anchor" id="variable-span~19"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -269,7 +269,7 @@ The maximum valid value is <code>1.0_real64</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~4"></span>
+              <span class="anchor" id="variable-degree~20"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -286,7 +286,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_neighborhood_size~5"></span>
+              <span class="anchor" id="variable-max_neighborhood_size~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -301,7 +301,7 @@ The maximum valid value is <code>2_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-compute_influence~4"></span>
+              <span class="anchor" id="variable-compute_influence~7"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
@@ -317,7 +317,7 @@ The default value is <code>.false.</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-save_factorization~5"></span>
+              <span class="anchor" id="variable-save_factorization~8"></span>
               logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
@@ -333,7 +333,7 @@ The default value is <code>.false.</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_iters~2"></span>
+              <span class="anchor" id="variable-n_iters~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -350,7 +350,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_int_workspace~4"></span>
+              <span class="anchor" id="variable-tmp_int_workspace~21"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -365,7 +365,7 @@ The default value is <code>3_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~5"></span>
+              <span class="anchor" id="variable-int_workspace_size~25"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -396,7 +396,7 @@ The minimum valid value is <code>10000_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_real_workspace~4"></span>
+              <span class="anchor" id="variable-tmp_real_workspace~21"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -411,7 +411,7 @@ The minimum valid value is <code>10000_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size~5"></span>
+              <span class="anchor" id="variable-real_workspace_size~25"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -442,7 +442,7 @@ The minimum valid value is <code>100000_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_hat_diag~4"></span>
+              <span class="anchor" id="variable-tmp_hat_diag~13"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -457,7 +457,7 @@ The minimum valid value is <code>100000_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_robust_weights~2"></span>
+              <span class="anchor" id="variable-tmp_robust_weights~18"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -472,7 +472,7 @@ The minimum valid value is <code>100000_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_combined_weights~2"></span>
+              <span class="anchor" id="variable-tmp_combined_weights~18"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -487,7 +487,7 @@ The minimum valid value is <code>100000_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_residuals~2"></span>
+              <span class="anchor" id="variable-tmp_residuals~18"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -502,7 +502,7 @@ The minimum valid value is <code>100000_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_permutation_indices~2"></span>
+              <span class="anchor" id="variable-tmp_permutation_indices~18"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -517,7 +517,7 @@ The minimum valid value is <code>100000_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-fitted_values~4"></span>
+              <span class="anchor" id="variable-fitted_values~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -532,7 +532,7 @@ The minimum valid value is <code>100000_int32</code>.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~34"></span>
+              <span class="anchor" id="variable-ierr~285"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -579,7 +579,7 @@ The minimum valid value is <code>100000_int32</code>.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-10-26 09:16 +0000             </p>
+ on 2026-10-30 09:20 +0000             </p>
           </div>
         </div>
         <br>
