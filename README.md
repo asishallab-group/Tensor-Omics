@@ -384,6 +384,8 @@ If `gdb` is not installed on your system, install it first. For command referenc
 * `--keep-files` — keep the temporary files the runner creates in the repo root (removed by default).
 * `--keep-<ext>` — the fine-grained variant of `--keep-files`, keeping only files of a given extension, e.g. `--keep-zip` or `--keep-txt`.
 
+The runners also tell the tests what the build is meant to be. `test_runner.sh` and `run_all_tests.sh` export `TOX_EXPECT_OPENMP`: `1` when given `--openmp`, `0` without it, overwriting any value set before. The OpenMP tests (`mod_test_openmp` in `test/`, `python/test/` and `r/test/`) then require `max_omp_threads()` to answer exactly the thread count they request (3), or exactly 1. The value comes from the option, not from what the build produced, so a build that lost or gained OpenMP on the way fails them. Run by hand without the variable, those tests accept either answer.
+
 ---
 
 ## Contribute

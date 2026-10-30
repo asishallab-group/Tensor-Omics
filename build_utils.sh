@@ -226,6 +226,18 @@ function get_flags_and_features() {
   FEATURES="${FEATURES#,}"  # the compiler's feature is absent under the overrides
 }
 
+# Tells the OpenMP tests (mod_test_openmp in test/, python/test/ and r/test/) what the build is
+# meant to be: TOX_EXPECT_OPENMP=1 with --openmp, 0 without. It is read from the option, not from
+# what the build produced, so a build that loses the openmp feature on the way fails those tests
+# instead of passing them as the serial build it turned into. Call it after handle_args.
+function export_expect_openmp() {
+  if [[ $TOX_OPENMP ]]; then
+    export TOX_EXPECT_OPENMP=1
+  else
+    export TOX_EXPECT_OPENMP=0
+  fi
+}
+
 # The profile's flags and features: --max-performance, --diagnostics / --debug, and the default.
 function get_profile_flags_and_features() {
   if [[ $TOX_MAX_PERFORMANCE ]]; then
