@@ -52,7 +52,7 @@ contains
         call validate_in_range_real(vector_norm, ierr)
         if (is_err(ierr)) return
 
-        do concurrent (i_dim = 1:n_dims) shared(vector, vector_norm)
+        do i_dim = 1, n_dims
             vector(i_dim) = vector(i_dim)/vector_norm
         end do
     end subroutine normalize_unit_length_impl
@@ -416,12 +416,12 @@ contains
         if (is_err(ierr)) return
 
         ! Step 3: apply normalization
-        do concurrent (i_valid = 1:n_valid) local(fitted_sd, gene_idx) shared(tmp_yhat_global, tmp_loess_y, tmp_indices_used, expr)
+        do i_valid = 1, n_valid
             fitted_sd = tmp_yhat_global(i_valid)
             if (is_close(fitted_sd, 0.0_real64)) fitted_sd = tmp_loess_y(i_valid)
 
             gene_idx = tmp_indices_used(i_valid)
-            do concurrent (i_tissue = 1:n_replicates) shared (expr, gene_idx, fitted_sd)
+            do i_tissue = 1, n_replicates
                 expr(i_tissue, gene_idx) = expr(i_tissue, gene_idx) / fitted_sd
             end do
         end do
@@ -462,16 +462,16 @@ contains
         real(real64) :: std_dev, temp_sum
 
         ! Loop over each gene
-        do concurrent (i_gene = 1:n_genes) local(temp_sum, std_dev) shared(n_replicates, expr)
+        do i_gene = 1, n_genes
             temp_sum = 0.0_real64
-            do concurrent (i_tissue = 1:n_replicates) shared(expr, i_gene) reduce(+:temp_sum)
+            do i_tissue = 1, n_replicates
                 temp_sum = temp_sum + expr(i_tissue, i_gene)**2
             end do
 
             std_dev = sqrt(temp_sum/real(n_replicates, kind=real64))
 
             if (.not. is_close(std_dev, 0.0_real64)) then
-                do concurrent (i_tissue = 1:n_replicates) shared(expr, i_gene, std_dev)
+                do i_tissue = 1, n_replicates
                     expr(i_tissue, i_gene) = expr(i_tissue, i_gene) / std_dev
                 end do
             end if
@@ -528,14 +528,14 @@ contains
         ! Initialize rank means
         rank_means = 0.0_real64
 
-        do concurrent (i_gene = 1:n_genes) shared(tmp_perm)
+        do i_gene = 1, n_genes
             tmp_perm(i_gene) = i_gene
         end do
 
         ! === First pass: accumulate values by rank across tissues ===
         do i_tissue = 1, n_replicates
             ! Prepare current column and initialize permutation
-            do concurrent (i_gene = 1:n_genes) shared(tmp_genes_row, i_tissue, tmp_perm)
+            do i_gene = 1, n_genes
                 tmp_genes_row(i_gene) = expr(i_tissue, i_gene)
             end do
 
@@ -549,20 +549,20 @@ contains
         end do
 
         ! Average the rank values
-        do concurrent (i_gene = 1:n_genes) shared(rank_means, n_replicates)
+        do i_gene = 1, n_genes
             rank_means(i_gene) = rank_means(i_gene) / real(n_replicates, real64)
         end do
 
         ! === Second pass: assign averaged values by rank ===
         do i_tissue = 1, n_replicates
             ! Prepare column and reset tmp_permutation
-            do concurrent (i_gene = 1:n_genes) shared(tmp_genes_row, i_tissue, tmp_perm)
+            do i_gene = 1, n_genes
                 tmp_genes_row(i_gene) = expr(i_tissue, i_gene)
             end do
 
             call sort_array_heapsort(tmp_genes_row, tmp_perm)
 
-            do concurrent (i_gene = 1:n_genes) shared(expr, tmp_perm, rank_means, i_tissue)
+            do i_gene = 1, n_genes
                 expr(i_tissue, tmp_perm(i_gene)) = rank_means(i_gene)
             end do
         end do
@@ -615,14 +615,14 @@ contains
 
         ! Validate every element up front (sequentially, as `ierr` is a shared scalar here) so that
         ! `log2(x + 1)` is only ever evaluated for `x + 1 > 0`, i.e. `x > -1`. With the inputs
-        ! guaranteed valid, the transformation itself can run as a race-free `do concurrent` calling
+        ! guaranteed valid, the transformation itself runs as a loop of independent iterations calling
         ! the non-validating `logx_helper` -- no per-iteration write to the shared `ierr` is needed.
         call validate_all_in_range_real(expr, n_genes*n_tissues, ierr, min=above(-1.0_real64))
         if (is_err(ierr)) return
 
         ! Apply the log2(x + 1) transformation to every element in the flattened input matrix
-        do concurrent(i_gene=1:n_genes) shared(expr, n_tissues)
-            do concurrent(i_group=1:n_tissues) local(expr_val) shared(expr, i_gene)
+        do i_gene = 1, n_genes
+            do i_group = 1, n_tissues
                 expr_val = expr(i_group, i_gene) + 1.0_real64
                 call logx_helper(expr_val, 2.0_real64, expr(i_group, i_gene))
             end do
@@ -675,13 +675,13 @@ contains
         integer(int32) :: start_idx, stop_idx
 
         ! === Loop over each group ===
-        do concurrent (i_gene = 1:n_genes) shared(n_tissues, reps_per_tissue, expr, tissue_averages)
+        do i_gene = 1, n_genes
             start_idx = 1
             do i_group = 1, n_tissues
                 stop_idx = start_idx + reps_per_tissue(i_group) - 1
 
                 sum_val = 0.0_real64
-                do concurrent (i_tissue = start_idx:stop_idx) shared(expr, i_gene) reduce(+:sum_val)
+                do i_tissue = start_idx, stop_idx
                     sum_val = sum_val + expr(i_tissue, i_gene)
                 end do
 
@@ -724,8 +724,8 @@ contains
         integer(int32) :: control_group, cond_group
 
         ! === Loop over each pair ===
-        do concurrent (i_gene = 1:n_genes) shared(n_pairs, control_tissues, condition_tissues, expr, fold_changes)
-            do concurrent (i_pair = 1:n_pairs) local(control_group, cond_group) shared(i_gene, control_tissues, condition_tissues, expr, fold_changes)
+        do i_gene = 1, n_genes
+            do i_pair = 1, n_pairs
                 control_group = control_tissues(i_pair)
                 cond_group = condition_tissues(i_pair)
                 fold_changes(i_pair, i_gene) = expr(cond_group, i_gene) - expr(control_group, i_gene)

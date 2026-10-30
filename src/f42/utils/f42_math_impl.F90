@@ -77,13 +77,13 @@ contains
         n_elements = size(vec, kind=int32)
         if (bessel) then
             squares_sum = 0.0_real64
-            do concurrent(i_element=1:n_elements) shared(vec, mean_val) reduce(+:squares_sum)
+            do i_element = 1, n_elements
                 squares_sum = squares_sum + (vec(i_element) - mean_val)**2
             end do
             std_dev = sqrt(squares_sum/real(n_elements - 1, kind=real64))
         else
             squares_sum = 0.0_real64
-            do concurrent(i_element=1:n_elements) shared(vec) reduce(+:squares_sum)
+            do i_element = 1, n_elements
                 squares_sum = squares_sum + vec(i_element)**2
             end do
             std_dev = sqrt(max(0.0_real64, squares_sum/real(n_elements, kind=real64) - mean_val**2))
@@ -145,7 +145,7 @@ contains
     !|
     !| For a caller that has already established those three facts about a whole array -- so the
     !| per-element check would only re-derive what is known -- and therefore wants the transform
-    !| in a `do concurrent` with no shared `ierr` to write.
+    !| in a loop of independent iterations with no shared `ierr` to write.
     pure subroutine logx_helper(val, base, exponent)
         real(real64), intent(in) :: val
             !! Value (`x` in \( b^y = x \)), must be `> 0`

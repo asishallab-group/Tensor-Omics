@@ -35,13 +35,12 @@ contains
         integer(int32) :: i_gene, i_rep, n_included
         real(real64) :: sum_val, expr_val
 
-        ! Use do concurrent for parallelization across genes
-        do concurrent(i_gene=1:n_genes) local(sum_val, n_included)
+        do i_gene = 1, n_genes
             sum_val = 0.0_real64
             n_included = 0
 
             ! Count valid (non-NaN) replicates and compute sum
-            do concurrent(i_rep=1:n_reps) local(expr_val) shared(expr) reduce(+:sum_val, n_included)
+            do i_rep = 1, n_reps
                 expr_val = expr(i_rep, i_gene)
                 if ((.not. ieee_is_nan(expr_val)) .and. ieee_is_finite(expr_val)) then
                     sum_val = sum_val + expr(i_rep, i_gene)
@@ -72,8 +71,8 @@ contains
 
         integer(int32) :: i_gene, i_rep
 
-        do concurrent(i_gene=1:n_genes)
-            do concurrent(i_rep=1:n_reps) shared(expr, resid, means, i_gene)
+        do i_gene = 1, n_genes
+            do i_rep = 1, n_reps
                 if ((.not. ieee_is_nan(expr(i_rep, i_gene))) .and. ieee_is_finite(expr(i_rep, i_gene))) then
                     resid(i_rep, i_gene) = expr(i_rep, i_gene) - means(i_gene)
                 else
@@ -121,7 +120,7 @@ contains
             x_star = M_NAN
         else
             ! Compute reference points as empirical quantiles using the permutation
-            do concurrent(i_point=1:n_points) local(quantile_level) shared(n_points, pooled_means, pooled_means_perm, n_pool, x_star)
+            do i_point = 1, n_points
                 ! Fraction in [0,1] as expected by calc_quantile_impl
                 quantile_level = real(i_point, real64)/real(n_points + 1, real64)
 
@@ -163,12 +162,12 @@ contains
 
         pool_size = n_genes_S1 + n_genes_S2
 
-        do concurrent(i_gene=1:n_genes_S1) shared(tmp_pooled_means, mean_S1)
+        do i_gene = 1, n_genes_S1
             tmp_pooled_means(i_gene) = mean_S1(i_gene)
             tmp_pooled_means_perm(i_gene) = i_gene
         end do
 
-        do concurrent(i_gene=1:n_genes_S2) local(pool_idx) shared(tmp_pooled_means, mean_S2)
+        do i_gene = 1, n_genes_S2
             pool_idx = n_genes_S1 + i_gene
             tmp_pooled_means(pool_idx) = mean_S2(i_gene)
             tmp_pooled_means_perm(pool_idx) = pool_idx
@@ -220,7 +219,7 @@ contains
         n_neighbors = min(n_neighbors, n_genes_S)
 
         ! Exclude genes with NaN mean, so those with all replicates NaN
-        do concurrent(i_gene=1:n_genes_S) shared(mean_S) reduce(+:n_neighbors)
+        do i_gene = 1, n_genes_S
             if (ieee_is_nan(mean_S(i_gene))) then
                 n_neighbors = n_neighbors - 1
             end if
@@ -272,7 +271,7 @@ contains
         do i_point = 1, n_points
 
             ! Calculate distances.
-            do concurrent(i_gene=1:n_genes_S) shared(tmp_distances, tmp_distances_perm, i_point, x_star, mean_S)
+            do i_gene = 1, n_genes_S
                 tmp_distances(i_gene) = abs(mean_S(i_gene) - x_star(i_point))
 
                 ! Initialize perm
@@ -286,7 +285,7 @@ contains
 
             ! Store the n_neighbors nearest neighbor indices
             ! tmp_distances_perm(1:n_neighbors) now contain indices of genes with smallest distances
-            do concurrent(i_gene=1:n_neighbors) local(gene_idx) shared(tmp_distances_perm, neighborhood_indices, neighborhood_residuals, resid_S)
+            do i_gene = 1, n_neighbors
                 gene_idx = tmp_distances_perm(i_gene)  ! Get the actual gene index from the permutation vector
 
                 neighborhood_indices(i_gene, i_point) = gene_idx

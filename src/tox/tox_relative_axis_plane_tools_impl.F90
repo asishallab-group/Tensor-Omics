@@ -125,17 +125,17 @@ contains
         ! onto that hyperplane is v - ((v . 1)/(1 . 1)) * 1, and since 1 . 1 = n_selected_axes and
         ! every component of the diagonal unit direction is equal, this reduces to subtracting the
         ! mean of v's coordinates ("diagonal_component") from each coordinate of v.
-        do concurrent (i_vec = 1:n_selected_vecs) local(diagonal_component) shared(n_selected_axes, selected_vecs)
+        do i_vec = 1, n_selected_vecs
 
             ! calculate diagonal component to be subtracted from vectors for projection
             diagonal_component = 0.0_real64
-            do concurrent (i_axis = 1:n_selected_axes) shared(selected_vecs, i_vec) reduce(+:diagonal_component)
+            do i_axis = 1, n_selected_axes
                 diagonal_component = diagonal_component + selected_vecs(i_axis, i_vec)
             end do
             diagonal_component = diagonal_component / n_selected_axes
 
             ! transform vector to its projection
-            do concurrent (i_axis = 1:n_selected_axes) shared(selected_vecs, i_vec, diagonal_component)
+            do i_axis = 1, n_selected_axes
                 selected_vecs(i_axis, i_vec) = selected_vecs(i_axis, i_vec) - diagonal_component
             end do
         end do
@@ -219,7 +219,7 @@ contains
         undefined_sign = .false.
 
         dot_product = 0.0_real64
-        do concurrent (i_dim = 1:n_dims) shared(v1, v2) reduce(+:dot_product)
+        do i_dim = 1, n_dims
             dot_product = dot_product + v1(i_dim)*v2(i_dim)
         end do
 
@@ -231,8 +231,7 @@ contains
         ! reference's component along it is what gives the rotation a sign
         along_rotation = 0.0_real64
         perpendicular = 0.0_real64
-        do concurrent (i_dim = 1:n_dims) shared(v1, v2, orientation_reference, dot_product) &
-            reduce(+:along_rotation, perpendicular)
+        do i_dim = 1, n_dims
             along_rotation = along_rotation &
                              + orientation_reference(i_dim)*(v2(i_dim) - dot_product*v1(i_dim))
             perpendicular = perpendicular + (v2(i_dim) - dot_product*v1(i_dim))**2
@@ -324,7 +323,7 @@ contains
         call set_ok(ierr)
 
         total_abs = 0.0_real64
-        do concurrent (i_axis = 1:n_axes) shared(vec) reduce(+:total_abs)
+        do i_axis = 1, n_axes
             total_abs = total_abs + abs(vec(i_axis))
         end do
 
@@ -334,7 +333,7 @@ contains
             return
         end if
 
-        do concurrent (i_axis = 1:n_axes) shared(contributions, vec, total_abs)
+        do i_axis = 1, n_axes
             contributions(i_axis) = abs(vec(i_axis))/total_abs
         end do
     end subroutine compute_relative_axis_contributions_impl
