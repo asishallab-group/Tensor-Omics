@@ -213,9 +213,21 @@ function get_flags_and_features() {
   if [[ "$TOX_OVERRIDE_FLAGS" ]]; then
     FLAGS="$TOX_OVERRIDE_FLAGS"
     FEATURES=
-    return
+  else
+    get_profile_flags_and_features
   fi
+  # After the overrides, which clear $FEATURES: the openmp feature carries nothing but fpm's
+  # OpenMP metapackage, so neither override replaces it. An -fopenmp in --override-flags is no
+  # substitute -- it defines _OPENMP, but fpm never hands --flag to the link of the shared
+  # library, which then lacks the OpenMP runtime.
+  if [[ $TOX_OPENMP ]]; then
+    FEATURES="$FEATURES,openmp"
+  fi
+  FEATURES="${FEATURES#,}"  # the compiler's feature is absent under the overrides
+}
 
+# The profile's flags and features: --max-performance, --diagnostics / --debug, and the default.
+function get_profile_flags_and_features() {
   if [[ $TOX_MAX_PERFORMANCE ]]; then
     FEATURES="$FEATURES,optimization"
     FLAGS="-O3"
@@ -243,7 +255,6 @@ function get_flags_and_features() {
     FEATURES="$FEATURES,diagnostics"
   fi
   FEATURES="$FEATURES,default"
-  FEATURES="${FEATURES#,}"  # the compiler's feature is absent under --override-link-flags
 }
 
 function handle_args() {

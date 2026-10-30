@@ -15,11 +15,16 @@ include-dir = ["."]
 [features]
 unknown-compiler.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
 gfortran.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
-ifx.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip", "iomp5"]
+ifx.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
+
+# OpenMP, off by default: `./build.sh --openmp`. fpm's OpenMP metapackage puts each compiler's own
+# flag (-fopenmp, -qopenmp, -mp) on the compile, the C compile and the link of the shared library;
+# the sources key on the `_OPENMP` that flag defines (see src/macros.h). A flag in a profile below
+# would reach the compile but not that link, which then lacks the runtime -- so none of them has one.
+openmp.dependencies.openmp = "*"
 
 optimization.ifx.flags = "-xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul"
-optimization.nvfortran.flags = "-Mconcur -fopenmp -stdpar=multicore"
-optimization.gfortran.flags = "-march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize"
+optimization.gfortran.flags = "-march=native -mtune=native -funroll-loops -ftree-vectorize"
 
 diagnostics.ifx.flags = "-g -traceback -check all -warn all -diag-enable=all -stand f23"
 diagnostics.gfortran.flags = "-g -fbacktrace -fcheck=all -Wall -Wextra -Warray-temporaries -Wrealloc-lhs-all -std=f2023 -pedantic"
