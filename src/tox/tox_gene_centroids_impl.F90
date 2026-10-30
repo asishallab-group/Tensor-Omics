@@ -50,12 +50,12 @@ contains
         centroid = 0.0_real64
         if (n_selected_genes == 0) return
 
-        do concurrent (i_selected_gene = 1:n_selected_genes) local(gene_idx) shared(gene_indices, centroid, expression_vectors)
+        do i_selected_gene = 1, n_selected_genes
             gene_idx = gene_indices(i_selected_gene)
             call add_vector(centroid, expression_vectors(:, gene_idx))
         end do
 
-        do concurrent (i_axis = 1:n_axes) shared(centroid, n_selected_genes)
+        do i_axis = 1, n_axes
             centroid(i_axis) = centroid(i_axis) / real(n_selected_genes, real64)
         end do
     end subroutine mean_vector_impl

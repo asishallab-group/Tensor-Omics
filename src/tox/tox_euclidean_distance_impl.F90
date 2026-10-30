@@ -30,7 +30,6 @@ contains
         real(real64) :: sum_squared_diff
 
         sum_squared_diff = 0.0_real64
-        ! GFORTRAN BUG: do concurrent (i_element = 1:n_elements) shared(vec1, vec2) reduce(+:sum_squared_diff)
         do i_element = 1, n_elements
             sum_squared_diff = sum_squared_diff + (vec1(i_element) - vec2(i_element))**2
         end do
@@ -62,7 +61,7 @@ contains
 
         integer(int32) :: i_gene, family_idx
 
-        do concurrent (i_gene = 1:n_genes) local(family_idx) shared(gene_to_fam, n_families, distances, genes, centroids, n_tissues)
+        do i_gene = 1, n_genes
             family_idx = gene_to_fam(i_gene)
             if (family_idx < 1 .or. family_idx > n_families) then
                 distances(i_gene) = CM_DISTANCE_SENTINEL  ! Error indicator

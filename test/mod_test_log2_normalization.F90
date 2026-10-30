@@ -285,8 +285,8 @@ contains
     end subroutine test_log2_empty_matrix
 
     !> Test that inputs at or below -1 (where log2(x+1) is undefined) are rejected.
-    !| Guards the up-front validation that lets the transformation loop run as a
-    !| race-free `do concurrent`: `x <= -1` means `x + 1 <= 0`, which must error
+    !| Guards the up-front validation that lets the transformation loop run with
+    !| independent iterations: `x <= -1` means `x + 1 <= 0`, which must error
     !| rather than silently produce a NaN/Inf.
     subroutine test_log2_below_minus_one_errors()
         integer(int32) :: n_genes, n_tissues, ierr

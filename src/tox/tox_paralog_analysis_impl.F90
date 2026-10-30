@@ -65,10 +65,10 @@ contains
 
         neofunc = .false.
 
-        do concurrent (i_gene = 1:n_genes) local(fam_idx) shared(gene_to_fam, n_axes, neofunc, ancestors, genes, thresholds)
+        do i_gene = 1, n_genes
             fam_idx = gene_to_fam(i_gene)
             if (fam_idx /= M_GENE_TO_FAM_SENTINEL) then
-                do concurrent (i_axis = 1:n_axes) shared(fam_idx, neofunc, i_gene, ancestors, genes, thresholds)
+                do i_axis = 1, n_axes
                     neofunc(i_gene, i_axis) = abs(ancestors(i_axis, fam_idx) - genes(i_axis, i_gene)) > thresholds(i_axis)
                 end do
             end if
@@ -664,7 +664,7 @@ contains
         if (is_err(ierr)) return
 
         n_genes_filtered = 0
-        do concurrent (i_gene = 1:n_genes) shared(filtered_paralogs_mask) reduce(+:n_genes_filtered)
+        do i_gene = 1, n_genes
             if (mask_check_state(filtered_paralogs_mask, i_gene)) then
                 n_genes_filtered = n_genes_filtered + 1
             end if

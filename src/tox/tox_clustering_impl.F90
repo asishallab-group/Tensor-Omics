@@ -149,13 +149,13 @@ contains
         centroids = 0.0_real64
         do i_point = 1, n_points
             label = labels(i_point)
-            do concurrent (i_dim = 1:n_dims) shared(centroids, label, data_points)
+            do i_dim = 1, n_dims
                 centroids(i_dim, label) = centroids(i_dim, label) + data_points(i_dim, i_point)
             end do
         end do
 
-        do concurrent (i_cluster = 1:n_clusters) shared(centroids, label_counts)
-            do concurrent (i_dim = 1:n_dims) shared(centroids, i_cluster, label_counts)
+        do i_cluster = 1, n_clusters
+            do i_dim = 1, n_dims
                 centroids(i_dim, i_cluster) = centroids(i_dim, i_cluster)/real(max(label_counts(i_cluster), 1_int32), real64)
             end do
         end do
@@ -191,7 +191,6 @@ contains
         ! calculate distance to each centroid and assign to closest
         do i_cluster = 1, n_clusters
             squared_dist_to_centroid = 0.0_real64
-            ! GFORTRAN BUG: do concurrent (i_dim = 1:n_dims) shared(data_points, i_point, i_cluster) reduce(+:squared_dist_to_centroid)
             do i_dim = 1, n_dims
                 squared_dist_to_centroid = squared_dist_to_centroid + (data_points(i_dim, i_point) - centroids(i_dim, i_cluster))**2
             end do
@@ -287,11 +286,11 @@ contains
 
         integer(int32) :: i_row, i_col
 
-        do concurrent (i_col = 1:n_points) shared(distances)
+        do i_col = 1, n_points
             ! recover self distance
             distances(i_col, i_col) = 0.0_real64
             ! recover triangle
-            do concurrent (i_row = i_col + 1:n_points) shared(distances, i_col)
+            do i_row = i_col + 1, n_points
                 distances(i_row, i_col) = distances(i_col, i_row)
             end do
         end do

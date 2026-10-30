@@ -48,7 +48,7 @@ contains
 
         integer(int32) :: i_perm
 
-        do concurrent(i_perm=1:size(perm, kind=int32)) shared(perm)
+        do i_perm = 1, size(perm, kind=int32)
             perm(i_perm) = i_perm
         end do
     end subroutine init_perm
