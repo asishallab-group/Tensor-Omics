@@ -34,3 +34,27 @@ jobs:
 
       # This is the commit of the PR branch head
       ref: ${{ github.event.pull_request.head.sha }}
+
+  # #218: the code uses no `do concurrent`. ifx threads every one once OpenMP is on, nested
+  # inside the parallel root loops, so a plain `do` is written instead. A statement starts a
+  # line (after an optional construct label) or follows a `;`; a comment does not count.
+  no_do_concurrent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Fail on a do concurrent statement in src/
+        run: |
+          pattern='^([^!]*;)?[[:space:]]*([[:alpha:]][[:alnum:]_]*[[:space:]]*:[[:space:]]*)?do([[:space:]]+[0-9]+)?[[:space:]]*,?[[:space:]]*concurrent([^[:alnum:]_]|$)'
+          status=0
+          matches=$(grep -rnIiE "$pattern" src) || status=$?
+          if [ "$status" -gt 1 ]; then exit "$status"; fi
+          if [ -n "$matches" ]; then
+            while IFS=: read -r file line statement; do
+              statement=${statement#"${statement%%[![:space:]]*}"}
+              echo "::error file=$file,line=$line::do concurrent is not used here (#218), write a plain do: $statement"
+            done <<< "$matches"
+            exit 1
+          fi
