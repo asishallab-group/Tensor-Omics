@@ -49,7 +49,8 @@ _OMP_THREADS_DOC = (
     "It also sizes the per-thread work arrays, where there are any, as their last extent: the "
     "plain entry point allocates that many columns, one in a build without OpenMP, and the "
     "expert one takes arrays with that many.",
-    "It must be at least 1 in every build; a build without OpenMP otherwise ignores it.",
+    "It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever "
+    "is passed.",
     "Pass 1 when you parallelize around this call yourself, or call it in a forked worker "
     "process.",
     f"The minimum valid value is `{_OMP_THREADS_MINIMUM}`.",

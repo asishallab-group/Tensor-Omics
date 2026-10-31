@@ -756,12 +756,8 @@ test of that needs enough work per iteration: with 64 trivial items under
 \texttt{n\_omp\_threads} is the caller's choice. It is at least 1 in every build, and the team never
 has more threads, whatever \texttt{OMP\_NUM\_THREADS} says. Through \texttt{foo}, a build without
 OpenMP uses one work-array column whatever is passed. A caller of \texttt{foo\_expert} allocates
-\texttt{n\_omp\_threads} columns itself. The build query \texttt{max\_omp\_threads()} of
-\texttt{f42\_openmp} answers the team size OpenMP picks by default (\texttt{OMP\_NUM\_THREADS}, else
-the runtime's choice; 1 in a serial build). It is not a limit, since \texttt{num\_threads} may ask
-for more, but passing \texttt{min(threads\_wanted, max\_omp\_threads())}, where
-\texttt{threads\_wanted} is the most threads the caller wants, follows \texttt{OMP\_NUM\_THREADS}
-and allocates a single column in a serial build. Pass 1:
+\texttt{n\_omp\_threads} columns itself; how to choose the count with the build query
+\texttt{max\_omp\_threads()} is on the API page. Pass 1:
 
 \begin{itemize}
   \item \textbf{when you parallelise around the call yourself}: the root would otherwise ask for a
@@ -772,8 +768,8 @@ and allocates a single column in a serial build. Pass 1:
         1 the \texttt{if} clause keeps the loop on the calling thread, and the child runs.
 \end{itemize}
 
-How a library user calls a root, from Fortran included, is the API page's
-(\texttt{concise\_project\_info.md}), the one place that documents it.
+Everything else about calling a root, from Fortran included, is documented once, on the API
+page (\texttt{concise\_project\_info.md}).
 
 % =============================================================================
 \section{Memory Model: No Copies, No Allocations in Cores}

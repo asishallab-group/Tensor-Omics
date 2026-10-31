@@ -1095,7 +1095,8 @@ the macros in a doc comment: it is preprocessed, so `M_OMP_PURE` would read `pur
 `foo` allocates the thread axis as `tmp_column(n_rows, M_OMP_N_THREADS(n_omp_threads))` and hands
 the implementation `M_OMP_N_THREADS(n_omp_threads)`: the caller's count with OpenMP, 1 without, so
 a serial build allocates one column whatever is asked. `foo_expert` passes the caller's count on,
-so **its caller sizes the thread axis** -- `max_omp_threads()` says how many threads a build has.
+so **its caller sizes the thread axis** -- `max_omp_threads()` gives OpenMP's default team size (1 in a
+serial build), not a limit.
 **C does not check the thread axis**: it null-checks the array, as it does every array whose
 extents are plain names, and the caller is responsible for its size. A root with no work arrays
 gets one wrapper, which passes the count on.
