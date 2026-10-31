@@ -68,6 +68,31 @@ Where a refusal has an obvious fix, the message names it: `.view(np.int32)` for 
 
 **A procedure whose loop can run on several threads takes `n_omp_threads`**, a required argument in every language and in every build. It is the most threads that loop uses, whatever `OMP_NUM_THREADS` says; pass `max_omp_threads()` to follow that variable instead. It must be at least 1 in every build, also without OpenMP, where the loop runs on one thread whatever you pass. It also sizes the procedure's per-thread work arrays, whose last axis has one column per thread: `foo` allocates them itself, with a single column in a build without OpenMP. `foo_expert`, in Fortran and C, takes arrays with `n_omp_threads` columns from you. Passing `min(threads_wanted, max_omp_threads())`, where `threads_wanted` is the most threads you want, follows `OMP_NUM_THREADS` and allocates a single column in a build without OpenMP.
 
+**These procedures take it**: [[group_centroid_all]] and [[group_centroid_orthologs]], whose loop runs over the families, and [[construct_neighborhoods]], over the reference points. Each loop shares its items between threads only from a size on where that pays: four families, two reference points. Below that it runs on the calling thread, as every other procedure does. With OpenMP, `group_centroid_all` called from each language:
+
+```fortran
+use f42_openmp, only: max_omp_threads
+use tox_gene_centroids, only: group_centroid_all
+call group_centroid_all(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, &
+                        max_omp_threads(), ierr)
+```
+
+```c
+int n_omp_threads, ierr;
+max_omp_threads_c(&n_omp_threads, &ierr);
+group_centroid_all_c(expression_vectors, &n_axes, &n_genes, gene_to_family, &n_families, centroid_matrix,
+                     &n_omp_threads, &ierr);
+```
+
+```python
+from tensor_omics import group_centroid_all, max_omp_threads
+centroid_matrix = group_centroid_all(expression_vectors, gene_to_family, n_families, max_omp_threads())
+```
+
+```r
+centroid_matrix <- group_centroid_all(expression_vectors, gene_to_family, n_families, max_omp_threads())
+```
+
 **Pass 1 when you parallelize around the call yourself**, so that each of your threads does not ask for a team of its own, **and in a forked worker process**: R's `parallel::mclapply`, or Python's `multiprocessing` with the `fork` start method (the default on Linux before Python 3.14). Once the library has run a parallel loop in the parent process, a forked child that starts one can hang; it does with gfortran's OpenMP runtime. With 1, the loop runs on the calling thread alone, and the child does not hang.
 
 **From a `pure` Fortran procedure, use `M_OMP_PURE`.** A procedure that takes `n_omp_threads` is `impure` in a build with OpenMP and `pure` without, so a `pure` procedure of yours that calls one compiles only without OpenMP. Declare yours `M_OMP_PURE` instead (from `#include <src/macros.h>`): it reads `pure` or `impure` to match. Compile your code with the library's OpenMP setting, because `M_OMP_PURE` follows your compile: without OpenMP against a library built with it, it reads `pure`, and the compiler refuses the call.
