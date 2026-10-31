@@ -408,6 +408,27 @@ class TestWhereItMayAppear:
             "prologue 'guard' takes 'n_omp_threads'"
         ]
 
+    def test_a_non_root_s_count_from_its_prologue_keeps_the_extent_rule(self):
+        # only a root's count is left to the root's own declaration rule
+        prologue = b.procedure(
+            "guard",
+            b.integer("n", Intent.IN, doc="rows"),
+            omp_threads(optional=True, doc="threads"),
+            b.real("weights", Intent.IN, "(n_omp_threads)", doc="per thread"),
+            b.logical("handled", Intent.OUT, doc="whether the call was dealt with"),
+            meta=Meta(summary="Guard", author="AUTHOR"),
+        )
+        plain = b.procedure(
+            "scale_impl", b.integer("n", Intent.IN, doc="rows"),
+            b.real("values", Intent.INOUT, "(n)", doc="the data"),
+            meta=IMPL_META, directives=Directives(prologue=Prologue("guard", "tox_demo_impl")),
+        )
+        found = errors(impl_module(prologue, plain))
+
+        assert "prologue 'guard' takes 'n_omp_threads'" in found
+        assert any(message.startswith("extent argument 'n_omp_threads' is optional")
+                   for message in found)
+
     def test_an_implementation_function_may_not_return_it(self):
         function = b.procedure(
             "count_impl", b.integer("n", Intent.IN, doc="rows"),
@@ -433,6 +454,7 @@ class TestItsDeclaration:
     @pytest.mark.parametrize("argument, problem", [
         (omp_threads(optional=True), "optional"),
         (omp_threads(intent=Intent.INOUT), "intent(inout)"),
+        (omp_threads(optional=True, intent=Intent.INOUT), "optional, intent(inout)"),
     ])
     def test_sizing_a_work_array_it_is_refused_once_with_the_declaration_to_write(
             self, argument, problem):
@@ -587,6 +609,21 @@ class TestWhereTheMacrosMayBeWritten:
             "'sum_helper' is private, so it cannot be one: move the loop into a root"
         )
 
+    @pytest.mark.parametrize("macro, fix", [
+        ("M_OMP_PURE", "; declare 'hidden_impl' `pure` (or impure) instead, or make it public, "
+                       "with an 'n_omp_threads' argument, if it holds the parallel loop"),
+        ("M_OMP_PARALLEL", "; 'hidden_impl' is private, and only an implementation the module "
+                           "publishes can be one: make it public, with an 'n_omp_threads' "
+                           "argument, or move the loop into a root"),
+    ])
+    def test_a_private_implementation_is_told_to_be_public(self, macro, fix):
+        # written as a root, but the IR holds only what the module publishes
+        uses = (MacroUse(macro, SourceLocation(None, 45), "hidden_impl"),)
+        source = impl_module(root(), macro_uses=uses)
+
+        assert len(errors(source)) == 1
+        assert notes(source)[0].endswith(fix)
+
     def test_m_omp_pure_in_the_body_of_a_root(self):
         uses = (MacroUse("M_OMP_PURE", SourceLocation(None, _STATEMENT_LINE + 3), "sums_impl"),)
         source = impl_module(macro_uses=uses)
@@ -594,7 +631,7 @@ class TestWhereTheMacrosMayBeWritten:
         assert errors(source) == [
             "M_OMP_PURE is written in the body of 'sums_impl', and only an OpenMP root may carry it"
         ]
-        assert notes(source)[0].endswith("declare it `pure` (or impure) instead")
+        assert notes(source)[0].endswith("write `pure` (or impure) in place of M_OMP_PURE")
 
     def test_outside_every_procedure(self):
         uses = (MacroUse("M_OMP_PARALLEL", SourceLocation(None, 3), None),)
@@ -605,7 +642,7 @@ class TestWhereTheMacrosMayBeWritten:
         ]
 
     @pytest.mark.parametrize("macro, written, fix", [
-        ("M_OMP_PURE", "M_OMP_PURE", "; declare it `pure` (or impure) instead"),
+        ("M_OMP_PURE", "M_OMP_PURE", "; declare 'hand_written' `pure` (or impure) instead"),
         ("M_OMP_PARALLEL", "!M_OMP_PARALLEL(...)", "; move the loop into a root"),
     ])
     def test_in_a_module_that_is_not_an_implementation_module(self, macro, written, fix):
@@ -663,9 +700,16 @@ class TestTheFrontend:
         assert (use.macro, use.procedure) == ("M_OMP_PURE", "fx_split_impl")
         assert use.location.line == misplaced.split_line
 
+    def test_a_loop_in_a_contained_procedure_is_its_host_s_despite_a_namesake(self, misplaced):
+        # the root's contained `helper` holds the loop; a private module `helper` after the root
+        # is another procedure, and the loop is not in it
+        use = misplaced.project.module("fx_shadow_impl").macro_uses[-1]
+
+        assert (use.macro, use.procedure) == ("M_OMP_PARALLEL", "fx_shadow_impl")
+
     def test_each_is_refused_once_where_it_is(self, misplaced):
         # the continued statement: one error, which says how to write it, and none that says
-        # its macro is outside every procedure
+        # its macro is outside every procedure; the root beside a namesake: none
         assert sorted(misplaced.errors) == [
             "!M_OMP_PARALLEL(...) is written in 'fx_helper', and only an OpenMP root may carry it",
             "the statement of 'fx_split_impl' could not be read",
@@ -734,11 +778,39 @@ _PRIVATE_HELPER = """
 """
 
 
+#: A private module procedure named as the procedure a root contains
+_NAMESAKE = """
+    pure subroutine helper(n, values, total)
+        integer(int32), intent(in) :: n
+        real(real64), intent(in) :: values(n)
+        real(real64), intent(out) :: total
+        total = sum(values)
+    end subroutine helper
+"""
+
+
+def _loop_in_a_contained_helper(source, root):
+    """`source` with the root's parallel loop moved into a procedure `helper` it contains."""
+    return source.replace(
+        "        !M_OMP_PARALLEL",
+        "        call helper()\n    contains\n        subroutine helper()\n        !M_OMP_PARALLEL",
+        1,
+    ).replace(
+        f"        end do\n    end subroutine {root}",
+        f"        end do\n        end subroutine helper\n    end subroutine {root}",
+        1,
+    )
+
+
 @pytest.fixture(scope="module")
 def misplaced(tmp_path_factory):
-    """Two modules, read by Ford and validated: a root beside a private helper holding a parallel
-    loop, and a root whose `M_OMP_PURE &` continues onto the next line."""
+    """Three modules, read by Ford and validated: a root beside a private helper holding a
+    parallel loop; a root whose `M_OMP_PURE &` continues onto the next line; and a root whose
+    contained `helper` holds the loop, beside a private module procedure `helper`."""
     src = tmp_path_factory.mktemp("misplaced")
+    (src / "fx_shadow_impl.F90").write_text(_loop_in_a_contained_helper(_ROOT_SOURCE.format(
+        module="fx_shadow_impl", name="fx_shadow_impl", prefix="M_OMP_PURE ", more=_NAMESAKE,
+    ), "fx_shadow_impl"))
     (src / "fx_helper_impl.F90").write_text(_ROOT_SOURCE.format(
         module="fx_helper_impl", name="fx_sums_impl", prefix="M_OMP_PURE ",
         more=_PRIVATE_HELPER,

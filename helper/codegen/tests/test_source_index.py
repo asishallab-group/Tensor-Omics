@@ -174,6 +174,43 @@ end module tox_roots_impl
         assert roots.module_span("tox_roots_impl") == (1, 18)
 
 
+class TestNamesakes:
+    """A procedure contained in another may share a module procedure's name."""
+
+    SOURCE = """\
+module tox_namesakes_impl
+contains
+    subroutine first()
+        call inner()
+    contains
+        pure subroutine inner()
+        end subroutine inner
+    end subroutine first
+    M_OMP_PURE subroutine inner(n)
+        integer, intent(in) :: n
+    end subroutine inner
+    subroutine second()
+    contains
+        subroutine only_contained()
+        end subroutine only_contained
+    end subroutine second
+end module tox_namesakes_impl
+"""
+
+    @pytest.fixture
+    def namesakes(self):
+        return SourceFile(Path("src/tox/tox_namesakes_impl.F90"), self.SOURCE)
+
+    def test_the_module_procedure_is_found_not_the_contained_one(self, namesakes):
+        assert namesakes.procedure_line("inner") == 9
+        assert namesakes.procedure_span("inner") == (9, 11)
+        assert namesakes.procedure_prefix("inner") == "M_OMP_PURE"
+        assert namesakes.argument_line("inner", "n") == 10
+
+    def test_a_name_only_a_contained_procedure_has_is_still_found(self, namesakes):
+        assert namesakes.procedure_line("only_contained") == 14
+
+
 class TestArguments:
     @pytest.mark.parametrize(
         "argument, declaration",

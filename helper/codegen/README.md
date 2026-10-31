@@ -663,9 +663,11 @@ rely on (`validate._check_omp_threads`):
 - its **`n_omp_threads` is a required, scalar `integer(int32)`, `intent(in)`** -- it sizes the
   per-thread work arrays, and the allocating wrapper passes `M_OMP_N_THREADS(...)`, a `1_int32`
   without OpenMP, in its place. An implementation function's result of that name is refused too:
-  it would be published as an output. Where it sizes a work array it is an extent as well, but the
-  extent rule leaves an optional or written one to this rule on a root's wrappers
-  (`_Validator._check_extent`), so the one error is the one that names the declaration to write
+  it would be published as an output. Where it sizes a work array it is an extent as well, but on
+  a root's wrappers the extent rule and the optional-and-`intent(inout)` rule leave an optional or
+  written one to this rule (`_Validator._is_a_roots_thread_count`), so the one error is the one
+  that names the declaration to write. Any other `n_omp_threads` -- a prologue's, an export's --
+  still gets them
 - it **sizes nothing but the last extent of a `tmp_` array, as the bare name**. The word is looked
   for in every extent and character length, because the extent roles record a bare name only, and
   `tmp_w(n, 2*n_omp_threads)` or `out(n_omp_threads + 1)` would size one thing in the wrapper and
@@ -682,11 +684,14 @@ And in **every module**, not only implementation modules (`validate._check_omp_m
 either builds without OpenMP and fails, or races, only with it -- the export path above, a helper,
 a hand-written module alike. Both are found in the unpreprocessed file within the module's lines
 and placed in the innermost module procedure that holds them, published or private, counted from
-the first line of its statement (`SourceFile.statement_start`). A private one is no root, so
-anything there is refused, but the error names it; and an `M_OMP_PURE &` above a root's
-`subroutine` is the root's, so the one error is that its statement could not be read. Each error
-says what to write instead: `pure` (or impure) for `M_OMP_PURE`, the loop moved into a root for
-`!M_OMP_PARALLEL(`, and on an implementation that is no root, an `n_omp_threads` that makes it one.
+the first line of its statement (`SourceFile.statement_start`). A module procedure's statement is
+the first of its name that no other procedure holds (`SourceFile.procedure_line`), since a
+contained procedure may share its name; what a contained procedure holds is its host's. A private
+one is no root, so anything there is refused, but the error names it; and an `M_OMP_PURE &` above a
+root's `subroutine` is the root's, so the one error is that its statement could not be read. Each
+error says what to write instead, naming the procedure: `pure` (or impure) for `M_OMP_PURE`, the
+loop moved into a root for `!M_OMP_PARALLEL(`; on an implementation that is no root, an
+`n_omp_threads` that makes it one; on a private implementation, to publish it with one.
 
 A `DM_PROLOGUE` is checked too, having had no analysis or validation at all before:
 

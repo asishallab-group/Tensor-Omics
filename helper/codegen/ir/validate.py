@@ -713,12 +713,14 @@ def is_omp_root(procedure: Procedure, conventions: Conventions = CONVENTIONS) ->
 def _is_implementation(procedure: Procedure, conventions: Conventions) -> bool:
     """An `_impl` procedure in an `_impl` module: what a root is, before its `n_omp_threads`."""
     module = procedure.module
+    return module is not None and _names_an_implementation(module.name, procedure.name,
+                                                           conventions)
+
+
+def _names_an_implementation(module: str, procedure: str, conventions: Conventions) -> bool:
+    """Whether `procedure` in `module` is named as an implementation, published or not."""
     suffix = conventions.impl_suffix
-    return (
-        module is not None
-        and module.name.lower().endswith(suffix)
-        and procedure.name.lower().endswith(suffix)
-    )
+    return module.lower().endswith(suffix) and procedure.lower().endswith(suffix)
 
 
 def _omp_note(conventions: Conventions) -> str:
@@ -941,7 +943,7 @@ def _check_omp_macros(module: Module, diagnostics: DiagnosticBag,
             f"{written} is written {where}, and only an OpenMP root may carry it",
             entity=procedure if procedure is not None else module,
             location=use.location,
-            note=_omp_macro_note(use, procedure, root, conventions),
+            note=_omp_macro_note(use, module, procedure, root, conventions),
         )
 
 
@@ -951,34 +953,48 @@ def _on_the_statement_of(root: Procedure, use: MacroUse) -> bool:
     return statement is not None and line is not None and line <= statement
 
 
-def _omp_macro_note(use: MacroUse, procedure: Procedure | None, root: Procedure | None,
-                    conventions: Conventions) -> str:
+def _omp_macro_note(use: MacroUse, module: Module, procedure: Procedure | None,
+                    root: Procedure | None, conventions: Conventions) -> str:
     """Why a misplaced OpenMP macro is refused, and what to write instead where it is."""
     threads = conventions.omp_threads_arg
     pure = conventions.omp_pure_macro
     a_root = f"an OpenMP root, an implementation that takes '{threads}'"
+    name = use.procedure
     # an implementation that is no root yet becomes one by taking the count
     becomes_a_root = root is None and procedure is not None and _is_implementation(
         procedure, conventions)
+    # one the IR does not hold is private; as an implementation it is a root only once published
+    private = name is not None and procedure is None
+    private_implementation = private and _names_an_implementation(module.name, name,
+                                                                  conventions)
     if use.macro == pure:
-        fix = "declare it `pure` (or impure) instead"
-        if becomes_a_root:
-            fix = (f"declare '{procedure.name}' `pure` (or impure) instead, or give it an "
-                   f"'{threads}' argument if it holds the parallel loop")
+        if name is None or root is not None:
+            # outside every procedure, or on a procedure contained in a root
+            fix = f"write `pure` (or impure) in place of {pure}"
+        else:
+            fix = f"declare '{name}' `pure` (or impure) instead"
+            if becomes_a_root:
+                fix += f", or give it an '{threads}' argument if it holds the parallel loop"
+            elif private_implementation:
+                fix += (f", or make it public, with an '{threads}' argument, if it holds the "
+                        "parallel loop")
         return (
-            f"{pure} is the purity of {a_root}: pure without OpenMP and impure with it, where "
-            f"its parallel loop runs. Anywhere else it builds without OpenMP and fails only "
-            f"with it; {fix}"
+            f"{pure} is the purity of {a_root}: pure without OpenMP and impure with OpenMP, "
+            f"where its parallel loop runs. Anywhere else the macro builds without OpenMP and "
+            f"fails only with OpenMP; {fix}"
         )
     fix = "move the loop into a root"
     if becomes_a_root:
-        fix = f"give '{procedure.name}' an '{threads}' argument to make it a root, or {fix}"
-    elif use.procedure is not None and procedure is None:
-        fix = f"'{use.procedure}' is private, so it cannot be one: {fix}"
+        fix = f"give '{name}' an '{threads}' argument to make it a root, or {fix}"
+    elif private_implementation:
+        fix = (f"'{name}' is private, and only an implementation the module publishes can be "
+               f"one: make it public, with an '{threads}' argument, or {fix}")
+    elif private:
+        fix = f"'{name}' is private, so it cannot be one: {fix}"
     return (
         f"a parallel loop belongs only in {a_root}: that count bounds the team and sizes the "
         f"per-thread work arrays. Anywhere else the loop builds without OpenMP and fails, or "
-        f"races, only with it; {fix}"
+        f"races, only with OpenMP; {fix}"
     )
 
 
@@ -1138,6 +1154,21 @@ class _Validator:
                 return f"'{directive.procedure}', which computes '{argument.name}'"
         return None
 
+    def _is_a_roots_thread_count(self, argument: Argument) -> bool:
+        """A root's `n_omp_threads`, on a wrapper synthesised from the root.
+
+        Its declaration is held where the root writes it, with the one declaration that fits
+        (`_check_omp_threads_declaration`, which refuses it optional or anything but
+        intent(in)). A generic rule about optional or written arguments would only stand in
+        front of that error here, with a fix that rule refuses, so those rules leave it be.
+        """
+        implementation = self.procedure.implementation
+        return (
+            implementation is not None
+            and is_omp_root(implementation, self.conventions)
+            and self.conventions.is_omp_threads_arg(argument.name)
+        )
+
     def _check_optional_inout(self, argument: Argument) -> None:
         """An optional argument that is modified in place cannot be bound.
 
@@ -1148,6 +1179,8 @@ class _Validator:
         -- the same reason an optional output is refused.
         """
         if argument.intent is not Intent.INOUT or not argument.optional:
+            return
+        if self._is_a_roots_thread_count(argument):
             return
         self.error(
             f"argument '{argument.name}' is optional and intent(inout)",
@@ -1416,10 +1449,7 @@ class _Validator:
         if roles is None or not roles.is_extent:
             return
         owners = ", ".join(f"'{owner.name}'" for owner in roles.extent_of)
-        # A root's thread count is refused optional or written where the root declares it,
-        # with the one declaration that fits (`_check_omp_threads_declaration`); these two
-        # would only stand in front of that, saying nothing it does not
-        declared_by_its_root = roles.is_omp_threads and self.procedure.implementation is not None
+        declared_by_its_root = self._is_a_roots_thread_count(argument)
         if argument.optional and not declared_by_its_root:
             self.error(
                 f"extent argument '{argument.name}' is optional, but {owners} needs it",
