@@ -35,6 +35,7 @@ program main
     use mod_test_binary_search, only: get_all_tests_binary_search
     use mod_test_root_mean_sq_normalization, only: get_all_tests_root_mean_sq_normalization
     use mod_test_tail_probability, only: get_all_tests_tail_probability
+    use mod_test_openmp, only: get_all_tests_openmp
     implicit none
 
     integer :: nargs
@@ -75,6 +76,7 @@ program main
     call add_suite("binary_search", get_all_tests_binary_search)
     call add_suite("tail_probability", get_all_tests_tail_probability)
     call add_suite("root_mean_sq_normalization", get_all_tests_root_mean_sq_normalization)
+    call add_suite("openmp", get_all_tests_openmp)
 
     nargs = command_argument_count()
 

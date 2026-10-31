@@ -56,6 +56,9 @@ from .f42_kd_tree import (
     build_kd_index,
     build_spherical_kd,
 )
+from .f42_openmp import (
+    max_omp_threads,
+)
 from .f42_serde_arrays_deserialize_char import (
     deserialize_char_helper,
 )
@@ -344,6 +347,7 @@ __all__ = [
     "log2_transformation",
     "mask_check_state",
     "mask_chunk_count",
+    "max_omp_threads",
     "mean_vector",
     "normalization_pipeline",
     "normalize_all_trajectories",

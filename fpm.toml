@@ -15,16 +15,32 @@ include-dir = ["."]
 [features]
 unknown-compiler.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
 gfortran.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
-ifx.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip", "iomp5"]
+ifx.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
+
+# OpenMP, off by default: `./build.sh --openmp`. fpm's OpenMP metapackage puts each compiler's own
+# flag (-fopenmp, -qopenmp, -mp) on the compile, the C compile and the link of the shared library;
+# the sources key on the `_OPENMP` that flag defines (see src/macros.h). A flag in a profile below
+# would reach the compile but not that link, which then lacks the runtime -- so none of them has one.
+openmp.dependencies.openmp = "*"
 
 optimization.ifx.flags = "-xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul"
-optimization.nvfortran.flags = "-Mconcur -fopenmp -stdpar=multicore"
-optimization.gfortran.flags = "-march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize"
+optimization.gfortran.flags = "-march=native -mtune=native -funroll-loops -ftree-vectorize"
 
 diagnostics.ifx.flags = "-g -traceback -check all -warn all -diag-enable=all -stand f23"
 diagnostics.gfortran.flags = "-g -fbacktrace -fcheck=all -Wall -Wextra -Warray-temporaries -Wrealloc-lhs-all -std=f2023 -pedantic"
 
 default.linux.flags = "-fPIC"
+
+# Above -O0, ifx reassociates floating-point expressions by default, across parentheses too. Code
+# whose accuracy depends on evaluation order then silently loses it: f42's log1p came out as the
+# naive log(1 + x). So every ifx build respects parentheses, as the Fortran standard asks and as
+# gfortran does by default. -fp-model precise also rules out the other value-changing rewrites
+# (reordered sums, division by a rounded reciprocal), so ifx results match gfortran's instead of
+# differing by a few ulps. Measured on 10 workloads: no cost on 9, k-means 2.2x slower (its
+# 12-dimension sum of squares may no longer be split for vectorization).
+# With OpenMP it also keeps a result independent of the thread count: without it, ifx vectorised a
+# sum differently in a root's serial path (1 thread) than in its parallel body.
+default.ifx.flags = "-assume protect_parens -fp-model precise"
 
 [[test]]
 name = "run_tests"

@@ -47,6 +47,10 @@ FORTRAN_FLAGS = ["-cpp", "-I.", "-std=f2018", "-ffree-line-length-none", "-fPIC"
                  "-fcheck=all"]
 DEPENDENCY_FLAGS = [flag for flag in FORTRAN_FLAGS if flag != "-std=f2018"]
 
+#: What an OpenMP build adds, on every compile line and on the link line: without it there, the
+#: library has the runtime's symbols undefined and does not name libgomp as a dependency
+OPENMP_FLAGS = ["-fopenmp"]
+
 
 def _generate(out: Path, impl_dir: Path = REPO_ROOT / FIXTURE_IMPL) -> None:
     """Generate every target from `impl_dir` into `out`, cleaning first as a real run does."""
@@ -85,14 +89,18 @@ def _compile_fortran(source: Path, out: Path, flags=FORTRAN_FLAGS) -> str:
     return str(obj)
 
 
-def _build(out: Path, impl_dir: Path = REPO_ROOT / FIXTURE_IMPL) -> Path:
+def _build(out: Path, impl_dir: Path = REPO_ROOT / FIXTURE_IMPL, extra_flags=()) -> Path:
+    """Build the library from what `_generate` wrote; `extra_flags` go on every line, the link's
+    included (`OPENMP_FLAGS`)."""
     (out / "obj").mkdir()
     dependencies = [REPO_ROOT / d for d in DEPENDENCIES]
-    objects = [_compile_fortran(source, out, DEPENDENCY_FLAGS) for source in dependencies]
+    objects = [_compile_fortran(source, out, [*DEPENDENCY_FLAGS, *extra_flags])
+               for source in dependencies]
     sources = sorted(impl_dir.glob("*_impl.F90"))
     sources += sorted((out / "fortran").rglob("*.F90"))   # the wrappers before their C wrappers
     sources += sorted((out / "c").glob("*.F90"))
-    objects += [_compile_fortran(source, out) for source in sources]
+    objects += [_compile_fortran(source, out, [*FORTRAN_FLAGS, *extra_flags])
+                for source in sources]
 
     # the R shims go into the same library, as fpm bundles them into libtensor_omics.so
     cflags = ["-fPIC", f"-I{out / 'shim'}", *_r_cppflags()]
@@ -104,7 +112,7 @@ def _build(out: Path, impl_dir: Path = REPO_ROOT / FIXTURE_IMPL) -> Path:
         objects.append(str(obj))
 
     library = out / "libtensor_omics.so"
-    result = subprocess.run([GFORTRAN, "-shared", "-o", str(library), *objects],
+    result = subprocess.run([GFORTRAN, "-shared", *extra_flags, "-o", str(library), *objects],
                             cwd=REPO_ROOT, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     return library
@@ -115,6 +123,15 @@ def built(tmp_path_factory):
     out = tmp_path_factory.mktemp("e2e_impl")
     _generate(out)
     _build(out)
+    return out
+
+
+@pytest.fixture(scope="session")
+def built_with_openmp(tmp_path_factory):
+    """The same library built with OpenMP, as `./build.sh --openmp` builds the real one."""
+    out = tmp_path_factory.mktemp("e2e_impl_openmp")
+    _generate(out)
+    _build(out, extra_flags=OPENMP_FLAGS)
     return out
 
 
@@ -544,6 +561,88 @@ class TestFunctions:
             p <- fx_parts(3-4i); cat(p$re, p$im, format(fx_offset(1, -2)), format(fx_offset(1, -2, 1i)),
                                     format(fx_twice(3-4i)))
         """) == ["3", "-4", "1-2i", "1-1i", "6-8i"]
+
+
+class TestAnOpenMPRoot:
+    """#218: `fx_omp_impl`'s roots, built without OpenMP and with it.
+
+    The plain wrapper sizes the per-thread work array with `M_OMP_N_THREADS(n_omp_threads)` --
+    one column without OpenMP -- and hands the implementation the same count, which the fixture
+    reports back as `n_work_columns`. Below 1 the count is refused in both builds, by both tiers.
+    Whether 1, 2 and 4 threads give identical results is a probe, not a test here (#218 DECIDED 9).
+    """
+
+    #: a 3 x 5 matrix, column-major; its column sums and maxima
+    VALUES = "np.asfortranarray(np.arange(1.0, 16.0).reshape(3, 5, order='F'))"
+    SUMS = [6.0, 15.0, 24.0, 33.0, 42.0]
+    MAXIMA = [3.0, 6.0, 9.0, 12.0, 15.0]
+
+    def test_the_wrappers_carry_the_macros_not_their_expansions(self, built):
+        text = (built / "fortran" / "fx_omp.F90").read_text()
+
+        assert text.count("M_OMP_PURE subroutine") == 3
+        assert "M_ALLOCATE(tmp_column(n_rows, M_OMP_N_THREADS(n_omp_threads)))" in text
+        assert "n_omp_threads = M_OMP_N_THREADS(n_omp_threads)" in text
+        assert "pure subroutine" not in text.replace("M_OMP_PURE subroutine", "")
+
+    @pytest.mark.parametrize("build, columns", [("built", 1), ("built_with_openmp", 4)])
+    def test_python_gets_the_known_answer_at_four_threads(self, build, columns, request):
+        out = run_python(request.getfixturevalue(build), f"""
+            values = {self.VALUES}
+            result = tox.fx_column_sums(values, 4)
+            print(json.dumps([list(result["sums"]), int(result["n_work_columns"]),
+                              list(tox.fx_column_maxima(values, 4))]))
+        """)
+
+        # one column without OpenMP, whatever the caller asks for
+        assert out == [self.SUMS, columns, self.MAXIMA]
+
+    @pytest.mark.parametrize("build, columns", [("built", "1"), ("built_with_openmp", "4")])
+    def test_r_gets_the_known_answer_at_four_threads(self, build, columns, request):
+        out = run_r(request.getfixturevalue(build), """
+            values <- matrix(as.double(1:15), 3)
+            r <- fx_column_sums(values, 4L)
+            cat(r$sums, r$n_work_columns, fx_column_maxima(values, 4L))
+        """)
+
+        assert out == [*(f"{v:g}" for v in self.SUMS), columns, *(f"{v:g}" for v in self.MAXIMA)]
+
+    @pytest.mark.parametrize("build", ["built", "built_with_openmp"])
+    def test_zero_threads_is_refused_by_the_plain_wrappers(self, build, request):
+        out = run_python(request.getfixturevalue(build), _PY_REFUSED + f"""
+            values = {self.VALUES}
+            print(json.dumps([refused(lambda: tox.fx_column_sums(values, 0)),
+                              refused(lambda: tox.fx_column_maxima(values, 0))]))
+        """)
+
+        # ERR_INVALID_INPUT (201) from the Fortran wrapper, at n_omp_threads' position
+        for name, code, argument, _ in out:
+            assert (code, argument) == (201, "n_omp_threads"), out
+        assert out[0][0] != "ToxArgumentError"   # the wrapper's check, not the binding's
+
+    @pytest.mark.parametrize("build", ["built", "built_with_openmp"])
+    def test_zero_threads_is_refused_by_the_expert_tier(self, build, request):
+        # by position, as a C caller passes it: the expert tier is Fortran and C only. The
+        # code packs n_omp_threads' position, 5: 5 * 10000 + ERR_INVALID_INPUT
+        out = run_python(request.getfixturevalue(build), """
+            import ctypes, os
+            library = ctypes.CDLL(os.environ["TENSOR_OMICS_LIBRARY"])
+            n_rows, n_cols, threads = ctypes.c_int(3), ctypes.c_int(5), ctypes.c_int(0)
+            values = (ctypes.c_double * 15)(*range(1, 16))
+            sums, work = (ctypes.c_double * 5)(), (ctypes.c_double * 3)()
+            columns, ierr = ctypes.c_int(-1), ctypes.c_int(-1)
+            library.fx_column_sums_expert_c(
+                ctypes.byref(n_rows), ctypes.byref(n_cols), values, sums, ctypes.byref(threads),
+                ctypes.byref(columns), work, ctypes.byref(ierr))
+            refused = ierr.value
+            threads.value = 1
+            library.fx_column_sums_expert_c(
+                ctypes.byref(n_rows), ctypes.byref(n_cols), values, sums, ctypes.byref(threads),
+                ctypes.byref(columns), work, ctypes.byref(ierr))
+            print(json.dumps([refused, ierr.value, list(sums), columns.value]))
+        """)
+
+        assert out == [50201, 0, self.SUMS, 1]
 
 
 #: Where `_generate` writes the Fortran wrappers, the C wrappers, the R shims, Python and R

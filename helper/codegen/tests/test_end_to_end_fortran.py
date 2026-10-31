@@ -333,3 +333,60 @@ class TestFunctions:
 
         assert "pure subroutine fx_total(" in text
         assert "\n    subroutine fx_share(" in text  # it has an intent(out) `ierr`
+
+
+#: The probe for `fx_omp_impl`: OpenMP roots, compiled here without OpenMP. `in_pure` calls the
+#: plain wrapper from a pure procedure, which compiles only while the wrapper is pure
+_OMP_PROBE = """\
+program probe
+    use, intrinsic :: iso_fortran_env, only: real64, int32
+    use fx_omp, only: fx_column_sums, fx_column_sums_expert, fx_column_maxima
+    implicit none
+    real(real64) :: values(2, 3) = reshape([1, 2, 3, 4, 5, 6] * 1.0_real64, [2, 3])
+    real(real64) :: sums(3), maxima(3), work(2, 4)
+    integer(int32) :: columns, ierr
+
+{body}
+contains
+    pure subroutine in_pure(values, sums, columns, ierr)
+        real(real64), intent(in) :: values(2, 3)
+        real(real64), intent(out) :: sums(3)
+        integer(int32), intent(out) :: columns, ierr
+        call fx_column_sums(2_int32, 3_int32, values, sums, 4_int32, columns, ierr)
+    end subroutine in_pure
+end program probe
+"""
+
+
+class TestAnOpenMPRootWithoutOpenMP:
+    """#218: a root's wrappers, built without OpenMP. The plain one allocates one thread column
+    whatever the caller asks for, and is pure; both tiers refuse a count below 1."""
+
+    def test_the_plain_wrapper_allocates_one_column_and_is_pure(self, built, tmp_path):
+        out = run_fortran(built, tmp_path, """
+            call in_pure(values, sums, columns, ierr)
+            print '(i0, 1x, i0, 3(1x, f6.2))', ierr, columns, sums
+        """, probe=_OMP_PROBE)
+
+        assert out == ["0", "1", "3.00", "7.00", "11.00"]
+
+    def test_the_expert_tier_takes_the_caller_s_columns(self, built, tmp_path):
+        out = run_fortran(built, tmp_path, """
+            call fx_column_sums_expert(2_int32, 3_int32, values, sums, 4_int32, columns, work, ierr)
+            print '(i0, 1x, i0, 3(1x, f6.2))', ierr, columns, sums
+        """, probe=_OMP_PROBE)
+
+        assert out == ["0", "4", "3.00", "7.00", "11.00"]
+
+    def test_zero_threads_is_refused_by_every_tier(self, built, tmp_path):
+        # ERR_INVALID_INPUT (201) at n_omp_threads' position, 5, in each wrapper
+        out = run_fortran(built, tmp_path, """
+            call fx_column_sums(2_int32, 3_int32, values, sums, 0_int32, columns, ierr)
+            print '(i0)', ierr
+            call fx_column_sums_expert(2_int32, 3_int32, values, sums, 0_int32, columns, work, ierr)
+            print '(i0)', ierr
+            call fx_column_maxima(2_int32, 3_int32, values, maxima, 0_int32, ierr)
+            print '(i0)', ierr
+        """, probe=_OMP_PROBE)
+
+        assert out == ["50201", "50201", "50201"]

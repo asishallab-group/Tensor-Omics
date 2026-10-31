@@ -28,7 +28,11 @@
   backgroundcolor=\color{codegray},
   frame=single,
   breaklines=true,
-  tabsize=2
+  tabsize=2,
+  % Spaces as typed and none added between characters, so text copied from a listing compiles:
+  % fixed columns turned `!$ use` into `! $ use`, which is no longer an OpenMP sentinel.
+  columns=fullflexible,
+  keepspaces=true
 }
 
 \title{Tensor Omics: Team Coding Guidelines}
@@ -46,7 +50,7 @@
 \section{Compiler: Always Use the Latest gfortran}
 % =============================================================================
 
-Always use \texttt{gfortran} 15 or newer. Newer compiler versions bring improved standard compliance, better auto-vectorization, and improved \texttt{do concurrent} support.
+Always use \texttt{gfortran} 15 or newer. Newer compiler versions bring improved standard compliance and better auto-vectorization.
 
 \subsection{Using Docker (Recommended)}
 
@@ -273,7 +277,7 @@ may be edited by hand; a change belongs in the implementation or in its annotati
 is the whole contract. \texttt{codegen\_guide.md} in the repository root works through it case by
 case, with an example for each.
 
-\subsection{The Implementation}
+\subsection{The Implementation}\label{sec:impl}
 
 \begin{itemize}
   \item Name it \texttt{foo\_impl}, in a module whose name ends \texttt{\_impl}. That module name
@@ -284,8 +288,9 @@ case, with an example for each.
         still report a genuine \emph{runtime} error through \texttt{ierr} (a division by zero, a
         failed external fit); validation is not its job.
   \item Accept \emph{everything} as explicit arguments: inputs, outputs, and any work arrays.
-        Declare it \texttt{pure} unless the algorithm genuinely cannot be. Purity is derived, not
-        declared, for everything above it.
+        Declare it \texttt{pure} unless the algorithm genuinely cannot be; an implementation that
+        holds a parallel loop is declared \texttt{M\_OMP\_PURE} instead
+        (Section~\ref{sec:openmp-root}). Purity is derived, not declared, for everything above it.
   \item An argument named \texttt{tmp\_<name>} is a \textbf{work array}: the allocating entry point
         allocates it and drops it from the signature the caller sees.
   \item An argument named \texttt{<base>\_perm} is a \textbf{sorting permutation} for \texttt{<base>}:
@@ -483,7 +488,7 @@ Do not ignore \texttt{ierr}. If a callee sets an error, the caller must either p
   \item It creates non-local control flow that is impossible to follow, making error paths untraceable.
   \item It defeats the structured error model built around \texttt{ierr} and early returns.
   \item It prevents the compiler from performing flow analysis, blocking optimizations and \texttt{pure} qualification.
-  \item It is incompatible with \texttt{do concurrent}, which requires structured concurrency regions.
+  \item It cannot leave an OpenMP parallel loop (Section~\ref{sec:openmp}): a branch out of one is a compile error.
 \end{itemize}
 
 \textbf{How to replace \texttt{GOTO} correctly:}
@@ -535,11 +540,12 @@ All \emph{helper} and core subroutines must be declared \texttt{pure}. A \texttt
 
 \begin{itemize}
   \item Has no side effects (no I/O, no global state changes).
-  \item Is eligible for auto-vectorization and threading by the compiler.
+  \item Is eligible for auto-vectorization by the compiler.
   \item Allows the compiler to schedule calls more aggressively.
+  \item Is safe to call from a parallel loop: with no side effects, it cannot race through global state.
 \end{itemize}
 
-Remove \texttt{pure} only when truly necessary (e.g., I/O, or an impure external library). Allocation is not a reason: \texttt{allocate(..., stat=)} is legal in a pure procedure.
+Remove \texttt{pure} only when truly necessary (e.g., I/O, or an impure external library). Allocation is not a reason: \texttt{allocate(..., stat=)} is legal in a pure procedure. The one exception is the procedure that holds a parallel loop, which is declared \texttt{M\_OMP\_PURE} (Section~\ref{sec:openmp-root}).
 
 \subsection{Optional Arguments}
 
@@ -560,60 +566,210 @@ subroutine my_routine(data, n, span, degree)
 \textbf{Never} use optional arguments in C wrappers; \texttt{bind(C)} is incompatible with them.
 
 % =============================================================================
-\section{Parallelisation: \texttt{do concurrent}}
+\section{Parallelisation: OpenMP}\label{sec:openmp}
 % =============================================================================
 
-Prefer \texttt{do concurrent} over plain \texttt{do} loops whenever the iterations are independent. This is the primary parallelisation mechanism in this project. Do not use OpenMP pragma loops — let the compiler exploit \texttt{do concurrent} through its own vectorisation and threading back-ends.
+OpenMP is a build option, off by default: \texttt{./build.sh --openmp}. The compiler's OpenMP flag
+defines \texttt{\_OPENMP}, and that is the one switch the sources key on. There is no project macro
+such as \texttt{USE\_OPENMP}, and no build profile carries an OpenMP flag: the comment in
+\texttt{fpm.toml} says why, and the README's build options say what \texttt{--openmp} does not
+combine with. Without it every loop runs serially, and every OpenMP line below is a comment.
 
-\subsection{Locality Specifications}
+Parallelism is written, never left to the compiler, with the macros of \texttt{src/macros.h}. Code
+written on other branches before these rules adopts them when it merges.
 
-Every variable used inside a \texttt{do concurrent} loop \textbf{must} carry an explicit locality specification. Do not rely on the compiler's assumption — leaving it implicit makes the intent ambiguous and can produce incorrect results with aggressive optimisers.
+\subsection{No \texttt{do concurrent}}
 
-\begin{tabular}{lp{9cm}}
-\toprule
-Specification & Meaning \\
-\midrule
-\texttt{shared(\ldots vars)} & All iterations read/write the \emph{same} instance of the variable. Use for arrays being filled element-wise or for read-only scalars. \\
-\texttt{local(\ldots vars)} & Each iteration gets its own \emph{private} copy, uninitialised at entry. Use for loop-local temporaries. \\
-\texttt{local\_init(\ldots vars)} & Like \texttt{local}, but each copy is initialised to the value the variable had before the loop. \\
-\texttt{reduce(op:\ldots vars)} & Each iteration contributes to a scalar accumulator via \texttt{op}. The final result is the reduction of all per-iteration contributions. \\
-\bottomrule
-\end{tabular}
+Write a plain \texttt{do}; CI refuses a \texttt{do concurrent} statement in \texttt{src/}. gfortran
+never threads one, while ifx threads every one once OpenMP is on, unasked: with no bound on its
+team, in places a parallel loop must not be (below), and in loops whose iterations turned out not
+to be independent. A loop worth threading is the parallel loop of a root.
 
-\vspace{0.5em}
-\noindent Supported \texttt{reduce} operators: \texttt{+}, \texttt{*}, \texttt{max}, \texttt{min}, \texttt{iand}, \texttt{ieor}, \texttt{ior}, \texttt{.and.}, \texttt{.or.}, \texttt{.eqv.}, \texttt{.neqv.}
+\subsection{The root}\label{sec:openmp-root}
+
+A \emph{root} is the outermost procedure of a method, and the only one that holds a parallel loop.
+Nothing it calls opens another: one parallel region per call stack, never nested. Parallelise the outermost
+loop whose iterations are independent (over families, points, samples), not an inner one. This is a
+guideline for the author and the reviewer; the generator does not check it.
+
+A root is an implementation (Section~\ref{sec:impl}) with five parts:
 
 \begin{lstlisting}[language=Fortran]
-! Element-wise: array filled in parallel, scalar read-only
-do concurrent (i_dim = 1:n_dims) shared(vector, vector_norm)
-  vector(i_dim) = vector(i_dim) / vector_norm
-end do
+M_OMP_PURE subroutine column_sums_impl(n_rows, n_cols, values, sums, &
+                                       n_omp_threads, tmp_col)
+    !$ use omp_lib, only: omp_get_thread_num
+    integer(int32), intent(in) :: n_rows
+        !! rows of the matrix
+    integer(int32), intent(in) :: n_cols
+        !! columns of the matrix
+    real(real64), intent(in) :: values(n_rows, n_cols)
+        !! the matrix
+    real(real64), intent(out) :: sums(n_cols)
+        !! the sum of every column
+    integer(int32), intent(in) :: n_omp_threads
+    real(real64), intent(out) :: tmp_col(n_rows, n_omp_threads)
+        !! one column of scratch per thread
+    integer(int32) :: i_col, i_thread
 
-! Reduction: accumulate a sum over independent iterations
-means_sum = 0.0_real64
-do concurrent (i_gene = 1:n_genes) shared(gene_means) reduce(+:means_sum)
-  means_sum = means_sum + gene_means(i_gene)
-end do
-
-! Local temporary: each iteration owns its own scratch variable
-do concurrent (i_vec = 1:n_vectors) shared(mat, norms) local(tmp_norm)
-  tmp_norm = norm2(mat(:, i_vec))
-  norms(i_vec) = tmp_norm
-end do
+    !M_OMP_PARALLEL(n_cols > 1) shared(n_rows, n_cols, values, sums, tmp_col) private(i_thread)
+    do i_col = 1, n_cols
+        i_thread = 1
+        !$ i_thread = omp_get_thread_num() + 1
+        tmp_col(:, i_thread) = values(:, i_col)  ! reset in this iteration
+        sums(i_col) = sum(tmp_col(:, i_thread))  ! one output slot per iteration
+    end do
+end subroutine column_sums_impl
 \end{lstlisting}
 
-\textbf{When to use \texttt{do concurrent}:}
 \begin{itemize}
-  \item Element-wise array operations.
-  \item Independent distance or dot-product computations over gene/axis indices.
-  \item Any loop where iteration order does not affect correctness.
+  \item \textbf{\texttt{M\_OMP\_PURE}} where \texttt{pure} would be. An OpenMP directive is not
+        allowed in a pure procedure, so the macro is \texttt{pure} without OpenMP and
+        \texttt{impure} with it. The generator refuses a root declared plain \texttt{pure}, and
+        writes \texttt{M\_OMP\_PURE} onto its wrappers.
+  \item \textbf{A required \texttt{n\_omp\_threads}}, \texttt{integer(int32), intent(in)}, with no
+        \texttt{!!} and no \texttt{DM\_} macro: the generator writes its documentation and checks
+        that it is at least 1. It caps the team, and it is how the generator recognises a root.
+  \item \textbf{Per-thread work arrays with the thread axis last},
+        \texttt{tmp\_<name>(\ldots, n\_omp\_threads)}, in every build. Without OpenMP the
+        allocating \texttt{foo} allocates one column of each (through \texttt{M\_OMP\_N\_THREADS},
+        which only the generator writes); a caller of \texttt{foo\_expert} sizes them.
+  \item \textbf{The loop}, under \texttt{!M\_OMP\_PARALLEL(CONDITION)} on the line directly above
+        the \texttt{do}, with the \texttt{!} in the source and the locality clauses after it on the
+        same line. With OpenMP it expands to this, followed by your clauses, and without OpenMP to
+        a comment:
+\begin{lstlisting}[language=Fortran]
+!$omp parallel do default(none) num_threads(n_omp_threads) if(n_omp_threads > 1 .and. (CONDITION)) schedule(dynamic)
+\end{lstlisting}
+        \texttt{default(none)} makes every
+        variable the loop touches, except its index, need a clause: \texttt{shared} for what every iteration reads and
+        for the outputs, \texttt{private} for \texttt{i\_thread} and other per-iteration scalars,
+        \texttt{firstprivate} for a private copy that starts from the value before the loop.
+        \texttt{CONDITION} says when the loop has enough work to share: starting and joining a team
+        costs time, so choose its threshold by measuring, and name it as a \texttt{CM\_} constant
+        (Section~\ref{sec:cm-macros}).
+  \item \textbf{The thread index}, 1-based: the first two statements of the loop body are
+        \texttt{i\_thread = 1} and \texttt{!\$ i\_thread = omp\_get\_thread\_num() + 1}, with
+        \texttt{!\$ use omp\_lib, only: omp\_get\_thread\_num} at the top of the procedure. A
+        \texttt{!\$} line is compiled only with OpenMP, so a procedure needs no \texttt{\#ifdef}.
 \end{itemize}
 
-\textbf{When NOT to use \texttt{do concurrent}:}
+\texttt{src/macros.h} must define all three macros, with and without \texttt{\_OPENMP}; the
+generator stops with a \texttt{MissingMacroError} otherwise. \texttt{codegen\_guide.md} Section~5.17
+shows what the generator makes of a root, and Section~8 what it refuses.
+
+\subsection{Who writes where}\label{sec:openmp-data}
+
+The iterations of a root's loop run in an order, and on threads, that change from run to run. The
+results stay the same only if:
+
 \begin{itemize}
-  \item Loops with data-dependent control flow across iterations (e.g., early-exit on error found inside a loop — in that case, validate before the loop).
-  \item Sequential algorithms like merge steps of merge-sort.
+  \item \textbf{Every output has its own place per iteration}, allocated before the loop and
+        addressed by the \emph{iteration} index: \texttt{sums(i\_col)}, a column of a matrix. No
+        appends: a shared counter such as \texttt{n\_found = n\_found + 1} races.
+  \item \textbf{The thread index addresses only the per-thread work arrays}, never an output.
+  \item \textbf{A work array is reset inside the iteration}, before it is read. Which iterations a
+        thread ran before this one depends on the schedule, so whatever its column still holds
+        comes from an unknown iteration.
+  \item \textbf{No floating-point sum across the iterations}: no floating-point
+        \texttt{reduction} clause, no shared accumulator. The order of the additions would depend on
+        the team, and with it the rounding. Write each iteration's part to its own slot, and add the
+        slots after the loop if a total is needed. An integer \texttt{reduction}, such as a count,
+        is exact and fine.
 \end{itemize}
+
+Kept to, these give the same output at 1 thread and at several. On ifx that also takes the
+precise floating-point model, which every ifx build of the profiles carries (\texttt{-assume
+protect\_parens -fp-model precise} in \texttt{fpm.toml}; \texttt{--override-flags} replaces it): without it, ifx \texttt{--max-performance --openmp}
+vectorised a root's serial path, which runs at 1 thread, differently from its parallel body, and 1551
+of 3000 column sums differed between 1 and 2--4 threads. With it, none did. Keep the flags.
+
+\subsection{Errors in a root}\label{sec:openmp-errors}
+
+No \texttt{return}, \texttt{exit} or \texttt{goto} may leave a parallel loop (each is a compile
+error), and one \texttt{ierr} written by several threads would race. So:
+
+\begin{itemize}
+  \item \textbf{A procedure called per item in the loop takes no \texttt{ierr}.} Whatever can be
+        validated is validated before the loop: the generated wrapper does that from the
+        \texttt{DM\_} macros.
+  \item \textbf{A condition of one item is information about that item}, and goes into a
+        \emph{status array} indexed like the iteration, one code per item, such as the
+        \texttt{status} of \texttt{normalize\_all\_trajectories}.
+  \item \textbf{The root's own \texttt{ierr} is set only outside the loop}, before or after it.
+\end{itemize}
+
+\subsection{What a parallel loop must not reach}
+
+\begin{itemize}
+  \item \textbf{LOESS}, until its rewrite (\#200). The netlib code under
+        \texttt{external/loess\_netlib} keeps state in \texttt{save} variables (\texttt{save
+        machin,execnt} in \texttt{loessf.f}), which threads would race on. Nothing called from a
+        root may reach \texttt{tox\_loess\_impl}, the module through which the library calls it,
+        nor its wrapper \texttt{tox\_loess}.
+  \item \textbf{\texttt{matmul}}, while ifx's \texttt{--max-performance} profile carries
+        \texttt{-qopt-matmul}. That flag turns \texttt{matmul} into a call to Intel's threaded
+        library, which asks for a team of its own inside the parallel region: at the runtimes'
+        default nesting level it gets one thread and only costs time, and if the host allows
+        nesting it oversubscribes the processors.
+  \item \textbf{Tasks} (\texttt{!\$omp task}, \texttt{taskloop}). A task can be suspended while
+        another runs on its thread, or resume on a different thread, so the thread index no longer
+        names a column that only it uses.
+  \item \textbf{Another parallel region} (Section~\ref{sec:openmp-root}).
+  \item \textbf{Random numbers}: a loop that draws them stays serial until reproducible random
+        streams exist.
+\end{itemize}
+
+\subsection{Hand-written OpenMP directives}
+
+They are allowed, and the generator does not check them. Prefer the macro: it writes the three
+clauses a root's directive needs, and a hand-written one has to carry them itself.
+
+\begin{itemize}
+  \item \textbf{\texttt{num\_threads(n\_omp\_threads)}}. Without it the team is as large as
+        \texttt{OMP\_NUM\_THREADS} or the processor count, while \texttt{foo} allocated
+        \texttt{n\_omp\_threads} columns of every per-thread work array, so the extra threads write
+        past them. With 2 columns and \texttt{OMP\_NUM\_THREADS=8}, \texttt{-fcheck=bounds} stops
+        at the first column past 2 that a thread reaches; without the check, memory is silently
+        overwritten.
+  \item \textbf{\texttt{default(none)}}, so no variable is shared by accident.
+  \item \textbf{\texttt{if(n\_omp\_threads > 1 .and. (\ldots))}}. A caller who passes 1 must have the
+        loop run on its own thread alone: that is what lets a forked worker process call the procedure
+        (Section~\ref{sec:openmp-callers}).
+\end{itemize}
+
+It also keeps every other rule of this section: it stands in a root, declared
+\texttt{M\_OMP\_PURE}, with the thread index as above. The generator refuses
+\texttt{!M\_OMP\_PARALLEL(} outside a root, but it does not see a hand-written directive, so nothing
+catches a misplaced one.
+
+\subsection{Nothing checks that the loop runs in parallel}
+
+A root without a recognised \texttt{!M\_OMP\_PARALLEL(} line runs serially in every build, and no
+diagnostic says so: the line was forgotten, or misspelled (a blank after the \texttt{!}, lower case,
+a typo) and stays a comment. The results are right; only the speed-up is lost. So check it: in an
+\texttt{--openmp} build, call the root above its threshold and see more than one thread work. A
+test of that needs enough work per iteration: with 64 trivial items under
+\texttt{schedule(dynamic)}, one thread ran them all.
+
+\subsection{Callers and their thread count}\label{sec:openmp-callers}
+
+\texttt{n\_omp\_threads} is the caller's choice. It is at least 1 in every build, and the team never
+has more threads, whatever \texttt{OMP\_NUM\_THREADS} says. Through \texttt{foo}, a build without
+OpenMP uses one work-array column whatever is passed. A caller of \texttt{foo\_expert} allocates
+\texttt{n\_omp\_threads} columns itself; how to choose the count with the build query
+\texttt{max\_omp\_threads()} is on the API page. Pass 1:
+
+\begin{itemize}
+  \item \textbf{when you parallelise around the call yourself}: the root would otherwise ask for a
+        team of its own under each of your threads;
+  \item \textbf{in a forked worker process} (R's \texttt{parallel::mclapply}, Python's
+        \texttt{multiprocessing} with the \texttt{fork} start method). After the parent has run a
+        parallel region, a forked child that starts one hangs under gfortran's OpenMP runtime. With
+        1 the \texttt{if} clause keeps the loop on the calling thread, and the child runs.
+\end{itemize}
+
+Everything else about calling a root, from Fortran included, is documented once, on the API
+page (\texttt{concise\_project\_info.md}).
 
 % =============================================================================
 \section{Memory Model: No Copies, No Allocations in Cores}
@@ -691,6 +847,9 @@ integer(int32), intent(out) :: tmp_perm(n_genes)
 real(real64),   intent(out) :: tmp_loess_y(n_genes)
 \end{lstlisting}
 
+A work array that each thread of a parallel loop needs its own copy of takes the thread axis last,
+\texttt{tmp\_<name>(\ldots, n\_omp\_threads)} (Section~\ref{sec:openmp-root}).
+
 \subsection{Reusing Output Buffers as Work Arrays (Pointer Reshaping)}
 
 When a routine has already been handed a large enough output (or other pre-allocated) buffer, reuse it as scratch space via Fortran pointer bounds-remapping instead of allocating a separate temporary. This is a zero-copy \emph{reshape} of contiguous storage: the pointer sees the same memory under new bounds.
@@ -738,11 +897,14 @@ Macro & Purpose \\
 \texttt{M\_POS\_INF} & IEEE positive infinity (double) \\
 \texttt{M\_GENE\_TO\_FAM\_SENTINEL} & The \texttt{gene\_to\_fam} value of a gene in no family \\
 \texttt{M\_GENE\_TO\_FAM\_DOC(ARG)} & The standard doc sentence for a \texttt{gene\_to\_fam} argument \\
+\texttt{M\_OMP\_PURE} & \texttt{pure} without OpenMP, \texttt{impure} with it; an OpenMP root's purity \\
+\texttt{!M\_OMP\_PARALLEL(CONDITION)} & An OpenMP root's parallel loop, with its locality clauses after it \\
 \bottomrule
 \end{tabular}
 
 The \texttt{M\_CHECK\_*} null checks in \texttt{macros.h} are not listed: the generator emits them
-into the C wrappers, and no hand-written code uses them.
+into the C wrappers, and no hand-written code uses them. Nor is \texttt{M\_OMP\_N\_THREADS}, which
+only the generated allocating wrapper of an OpenMP root uses (Section~\ref{sec:openmp-root}).
 
 \subsection{Module-Local Constants via \texttt{\#define} (\texttt{CM\_} prefix)}\label{sec:cm-macros}
 
@@ -1085,8 +1247,8 @@ Use this checklist when reviewing or submitting any Fortran code contribution:
   \item \texttt{\#include <src/macros.h>} is present, and the module declares \texttt{M\_IMPLICIT\_NONE} rather than a bare \texttt{implicit none}.
   \item All \texttt{real} variables use \texttt{real(real64)}; all constants carry \texttt{\_real64}.
   \item Every argument has \texttt{intent(in|out|inout)}.
-  \item The implementation is named \texttt{foo\_impl}, in a module ending \texttt{\_impl}, and is declared \texttt{pure}.
-  \item \texttt{do concurrent} is used for independent loops.
+  \item The implementation is named \texttt{foo\_impl}, in a module ending \texttt{\_impl}, and is declared \texttt{pure} (\texttt{M\_OMP\_PURE} if it holds a parallel loop).
+  \item No \texttt{do concurrent}. A parallel loop stands only in a root, under \texttt{!M\_OMP\_PARALLEL(...)} (or a hand-written directive with the same clauses), with a required \texttt{n\_omp\_threads}, per-thread work arrays with the thread axis last and reset in each iteration, outputs addressed by the iteration index, no \texttt{ierr} and no floating-point sum across iterations, and nothing below it that is parallel, LOESS, \texttt{matmul}, a task or random (Section~\ref{sec:openmp}).
   \item No \texttt{GOTO} anywhere.
   \item The implementation validates nothing and allocates nothing; where it does report a runtime error, \texttt{ierr} is initialised with \texttt{set\_ok(ierr)} and every failure path returns immediately.
   \item Every constraint is stated as a \texttt{DM\_} macro on the argument it constrains, and every work array is named \texttt{tmp\_}.

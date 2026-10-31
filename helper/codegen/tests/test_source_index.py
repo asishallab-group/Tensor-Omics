@@ -115,6 +115,102 @@ class TestProcedureSpans:
         assert source.procedure_span("nope") is None
 
 
+class TestStatementPrefixes:
+    """What a statement says before `subroutine`/`function`, as written -- macros unexpanded."""
+
+    SOURCE = """\
+module tox_roots_impl
+contains
+    M_OMP_PURE subroutine root_impl(n_omp_threads)
+        integer(int32), intent(in) :: n_omp_threads
+        !M_OMP_PARALLEL(n > 1) shared(x)
+        do i = 1, n
+        end do
+    end subroutine root_impl
+    pure integer(int32) function count_impl(n) result(total)
+        ! M_OMP_PURE in a comment is no use of it
+        total = n  ! nor in a trailing one: M_OMP_PURE
+    end function count_impl
+    subroutine plain(n)
+    end subroutine plain
+    pure &
+        subroutine split(n)
+    end subroutine split
+end module tox_roots_impl
+"""
+
+    @pytest.fixture
+    def roots(self):
+        return SourceFile(Path("src/tox/tox_roots_impl.F90"), self.SOURCE)
+
+    @pytest.mark.parametrize("name, prefix", [
+        ("root_impl", "M_OMP_PURE"), ("count_impl", "pure integer(int32)"), ("plain", ""),
+    ])
+    def test_the_prefix_as_written(self, roots, name, prefix):
+        assert roots.procedure_prefix(name) == prefix
+
+    def test_a_statement_continued_from_the_line_above_has_none(self, roots):
+        # the line found holds only part of the statement, and the part before it may say pure
+        assert roots.procedure_prefix("split") is None
+
+    def test_an_absent_procedure_has_none(self, roots):
+        assert roots.procedure_prefix("nope") is None
+
+    def test_a_statement_starts_on_the_first_line_it_is_continued_from(self, roots):
+        assert roots.statement_start(16) == 15  # `pure &` above `subroutine split(n)`
+        assert roots.statement_start(13) == 13  # `subroutine plain(n)`, whole on its line
+
+    def test_a_macro_is_found_in_code_only(self, roots):
+        assert roots.macro_lines("M_OMP_PURE") == [3]
+
+    def test_a_directive_macro_is_found_on_its_comment_line(self, roots):
+        assert roots.comment_macro_lines("M_OMP_PARALLEL") == [5]
+
+    def test_both_keep_to_the_span_they_are_given(self, roots):
+        assert roots.macro_lines("M_OMP_PURE", (4, 18)) == []
+        assert roots.comment_macro_lines("M_OMP_PARALLEL", (6, 18)) == []
+
+    def test_a_module_span_runs_from_its_statement_to_its_end(self, roots):
+        assert roots.module_span("tox_roots_impl") == (1, 18)
+
+
+class TestNamesakes:
+    """A procedure contained in another may share a module procedure's name."""
+
+    SOURCE = """\
+module tox_namesakes_impl
+contains
+    subroutine first()
+        call inner()
+    contains
+        pure subroutine inner()
+        end subroutine inner
+    end subroutine first
+    M_OMP_PURE subroutine inner(n)
+        integer, intent(in) :: n
+    end subroutine inner
+    subroutine second()
+    contains
+        subroutine only_contained()
+        end subroutine only_contained
+    end subroutine second
+end module tox_namesakes_impl
+"""
+
+    @pytest.fixture
+    def namesakes(self):
+        return SourceFile(Path("src/tox/tox_namesakes_impl.F90"), self.SOURCE)
+
+    def test_the_module_procedure_is_found_not_the_contained_one(self, namesakes):
+        assert namesakes.procedure_line("inner") == 9
+        assert namesakes.procedure_span("inner") == (9, 11)
+        assert namesakes.procedure_prefix("inner") == "M_OMP_PURE"
+        assert namesakes.argument_line("inner", "n") == 10
+
+    def test_a_name_only_a_contained_procedure_has_is_still_found(self, namesakes):
+        assert namesakes.procedure_line("only_contained") == 14
+
+
 class TestArguments:
     @pytest.mark.parametrize(
         "argument, declaration",
@@ -313,6 +409,17 @@ class TestAgainstRealSources:
         unlocatable = [name for name in names if source.procedure_line(name) is None]
 
         assert unlocatable == [], f"{path.name}: cannot locate {unlocatable}"
+
+    @pytest.mark.parametrize("path", REAL_SOURCES, ids=lambda p: p.name)
+    def test_every_procedure_in_every_source_has_a_readable_prefix(self, path):
+        # an OpenMP root whose prefix cannot be read is refused, so the real sources must
+        # not write a statement the reader cannot take apart
+        source = SourceFile(path)
+        names = self._declared_names(path.read_text(errors="replace"))
+
+        unreadable = [name for name in names if source.procedure_prefix(name) is None]
+
+        assert unreadable == [], f"{path.name}: cannot read the prefix of {unreadable}"
 
     @pytest.mark.parametrize("path", REAL_SOURCES, ids=lambda p: p.name)
     def test_a_located_line_really_declares_the_procedure(self, path):

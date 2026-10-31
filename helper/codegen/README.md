@@ -258,6 +258,7 @@ the wrappers, and the export path, where you write the whole procedure and mark 
 | work arrays, permutations, recommend sizing | guide Sections 5.7–5.9 |
 | modes, per-mode procedures | guide Sections 5.10–5.12 |
 | prologues, runtime errors, split families | guide Sections 5.13–5.15 |
+| a parallel loop (an OpenMP root) | guide Section 5.17; which loops qualify and how their data is laid out: the coding guide's section "Parallelisation: OpenMP" ([`misc/Fortran_Coding_Guides.pdf`](../../misc/Fortran_Coding_Guides.pdf)) |
 | exporting a hand-written procedure | guide Section 6 |
 | every `DM_` macro, with its contract in a comment | [`src/macros.h`](../../src/macros.h) |
 
@@ -274,6 +275,31 @@ The parts a source author does not need, and a generator maintainer does:
   marker and what the generator looks for therefore cannot disagree — change the macro and both
   the sources and the generator follow. Only tagged procedures are wrapped; everything else is
   held to none of the rules.
+- **The OpenMP macros `M_OMP_PURE`, `M_OMP_N_THREADS` and `M_OMP_PARALLEL` are known by name
+  only** (`Conventions.omp_pure_macro`, `Conventions.omp_n_threads_macro`,
+  `Conventions.omp_parallel_macro`). The bodies of the first two depend on the build:
+  `src/macros.h` defines them in both branches of an `#ifdef _OPENMP`, and pcpp reads only the
+  branch without OpenMP. So the frontend reads the header a second time with `_OPENMP` defined
+  and raises `MissingMacroError` when either branch lacks one of the three
+  (`frontend.require_omp_macros`) — a definition missing from the OpenMP branch would otherwise
+  surface only as a compile error in an `--openmp` build. `M_OMP_PARALLEL` is defined once, for
+  both; without it every `!M_OMP_PARALLEL(` line stays a comment, and each root runs serially in
+  every build without a word.
+- **An OpenMP root's wrappers are written from `n_omp_threads`** (#218). A root is an
+  implementation that takes `n_omp_threads` (`Conventions.omp_threads_arg`, the role
+  `is_omp_threads`) and holds the parallel loop. Every Fortran tier of it carries `M_OMP_PURE`
+  where it would carry `pure` (`fortran_wrapper._signature`; the C wrapper stays impure).
+  `synthesize.published_arguments` publishes the argument with the generator's documentation
+  (`_OMP_THREADS_DOC`, one text in all four languages) and an injected `DM_MIN(1_int32)`, so both
+  tiers check it with `validate_in_range_int` -- inside `NO_INPUT_VALIDATION`, like every check of
+  a value the caller knows (FES, 2026-10-30). The allocating `foo` allocates the last extent of each
+  per-thread work array as `M_OMP_N_THREADS(n_omp_threads)` and hands the implementation the same,
+  one column without OpenMP; `foo_expert` and a lone wrapper pass the caller's value on. Two limits
+  follow, and are documented rather than checked: `foo_expert`'s caller sizes the thread axis, and
+  C does not check it (it null-checks the array, as for every array whose extents are plain
+  names). Purity and the macros are read off the *unpreprocessed* source
+  (`Procedure.statement_prefix`, `Module.macro_uses`, found by `frontend/source_index.py`), since
+  after pcpp `M_OMP_PURE` is `pure` and `!M_OMP_PARALLEL(...)` a plain comment.
 - **The plain name goes to the entry point a caller should reach for first**, which is why the
   suffix is never the author's to choose (`synthesize._wrappers_for`). Where the implementation
   has something to take over — a `tmp_` work array, a `<base>_perm` permutation, a
@@ -519,6 +545,11 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
   synthesised tiers, of an implementation. Every published signature ends in the error code; the C
   ABI checks its own order too (`c_abi._Builder._check_error_is_last`), a function included, whose
   result goes before it
+- **`n_omp_threads` on a hand-written export** -- an argument or a function result of an
+  `M_EXPORT_C` procedure, a recommend routine included. Only an implementation's wrappers check it,
+  document it and carry `M_OMP_PURE`; a `DM_OUTPUT_FROM` producer taking it would also hand its
+  consumer's wrapper a plain `pure`, which does not compile with OpenMP. A generated wrapper is told
+  apart by `Procedure.implementation`
 - a **function without a `result(...)` clause**, an implementation or an export -- its result is
   published under its own name, which is then the function's, and the wrapper that calls the
   function names it too: gfortran says "Symbol ... conflicts", ifx error #6401. A result **named
@@ -627,9 +658,47 @@ dropping the fixed directory they used to be scoped to:
   still invisible. The generated wrappers are exempt — their `use` list is the emitter's, and
   `emit/fortran_wrapper` writes it.
 
+An OpenMP root -- an implementation that takes `n_omp_threads` -- is checked for what its wrappers
+rely on (`validate._check_omp_threads`):
+
+- its **`n_omp_threads` is a required, scalar `integer(int32)`, `intent(in)`** -- it sizes the
+  per-thread work arrays, and the allocating wrapper passes `M_OMP_N_THREADS(...)`, a `1_int32`
+  without OpenMP, in its place. An implementation function's result of that name is refused too:
+  it would be published as an output. Where it sizes a work array it is an extent as well, but on
+  a root's wrappers the extent rule and the optional-and-`intent(inout)` rule leave an optional or
+  written one to this rule (`_Validator._is_a_roots_thread_count`), so the one error is the one
+  that names the declaration to write. Any other `n_omp_threads` -- a prologue's, an export's --
+  still gets them
+- it **sizes nothing but the last extent of a `tmp_` array, as the bare name**. The word is looked
+  for in every extent and character length, because the extent roles record a bare name only, and
+  `tmp_w(n, 2*n_omp_threads)` or `out(n_omp_threads + 1)` would size one thing in the wrapper and
+  another for the caller
+- it carries **no `!!` and no `DM_` directive**: the generator writes both, so one of the author's
+  would be replaced, and is refused rather than dropped
+- the root is **declared `M_OMP_PURE` or impure, never plain `pure`**, nor `elemental` without
+  `impure`: an OpenMP directive is not allowed in a pure procedure. Read from the statement as
+  written (`SourceFile.procedure_prefix`); a statement it cannot read on one line is an error, not
+  a pass
+
+And in **every module**, not only implementation modules (`validate._check_omp_macros`):
+`M_OMP_PURE` only on a root's own statement and `!M_OMP_PARALLEL(` only inside a root. Elsewhere
+either builds without OpenMP and fails, or races, only with it -- the export path above, a helper,
+a hand-written module alike. Both are found in the unpreprocessed file within the module's lines
+and placed in the innermost module procedure that holds them, published or private, counted from
+the first line of its statement (`SourceFile.statement_start`). A module procedure's statement is
+the first of its name that no other procedure holds (`SourceFile.procedure_line`), since a
+contained procedure may share its name; what a contained procedure holds is its host's. A private
+one is no root, so anything there is refused, but the error names it; and an `M_OMP_PURE &` above a
+root's `subroutine` is the root's, so the one error is that its statement could not be read. Each
+error says what to write instead, naming the procedure: `pure` (or impure) for `M_OMP_PURE`, the
+loop moved into a root for `!M_OMP_PARALLEL(`; on an implementation that is no root, an
+`n_omp_threads` that makes it one; on a private implementation, to publish it with one.
+
 A `DM_PROLOGUE` is checked too, having had no analysis or validation at all before:
 
 - the named procedure must exist
+- it may not take **`n_omp_threads`**: it does no parallel work, and would be handed the caller's
+  count where the root gets `M_OMP_N_THREADS(...)`
 - it must declare a scalar `logical, intent(out) :: handled` — the wrapper returns early on it
   regardless, so without it that branch reads an undefined value. A default `logical`: the wrapper
   declares its flag so (`emit/fortran_wrapper._prologue_local`) and passes it, and it never

@@ -29,6 +29,14 @@ jobs:
       matrix:
         compiler: [ifx, gfortran]
         max_performance_flag: [--max-performance, --diagnostics]
+        # OpenMP beside the four serial legs, which stay: purity differs between the two builds.
+        # gfortran's -fcheck=all catches a per-thread index out of bounds, ifx runs optimised
+        # code on real threads.
+        include:
+          - compiler: gfortran
+            max_performance_flag: --diagnostics --openmp
+          - compiler: ifx
+            max_performance_flag: --max-performance --openmp
     uses: ./.github/workflows/run_tests.yml
     with:
       compiler: ${{ matrix.compiler }}

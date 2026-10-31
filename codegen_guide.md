@@ -53,6 +53,7 @@ Related reading, once this is not enough:
   - [5.14 A genuine runtime error](#514-a-genuine-runtime-error)
   - [5.15 A family too big for one file](#515-a-family-too-big-for-one-file)
   - [5.16 A function](#516-a-function)
+  - [5.17 A parallel loop: an OpenMP root](#517-a-parallel-loop-an-openmp-root)
 
 **Part II — the export path** (IO, infrastructure, and everything else)
 
@@ -171,7 +172,7 @@ each is addressed at a different caller.
 | Name | Who it is for | What it does |
 |---|---|---|
 | `foo_impl` | **nobody** — it is never exported | the implementation. No validation, no `ierr`. Reached only through a wrapper |
-| `foo` | almost everyone | validates, calls the recommend routines, allocates the work arrays, seeds and heapsorts the permutations, runs the prologue, then calls `foo_impl` |
+| `foo` | almost everyone | validates, calls the recommend routines, allocates the work arrays (a per-thread one with one column without OpenMP, Section 5.17), seeds and heapsorts the permutations, runs the prologue, then calls `foo_impl` |
 | `foo_expert` | a caller who wants control over what reaches the implementation | validates and calls `foo_impl` with what you supply. Allocates nothing, prepares nothing |
 
 A wrapper is **`pure` exactly when everything it calls is** — the implementation, the
@@ -180,7 +181,10 @@ A wrapper is **`pure` exactly when everything it calls is** — the implementati
 pure procedure, so the allocating tier is no less eligible than the expert one. You declare
 nothing: write `pure` on the implementation and the wrapper follows. `elemental` counts as
 pure, `impure elemental` does not. That is what lets a
-caller reach a validated entry point from `do concurrent` instead of reaching past it.
+caller's own pure procedure, which may call only pure ones, reach a validated entry point instead of
+reaching past it.
+An OpenMP root (Section 5.17) is the one exception: it is declared `M_OMP_PURE`, pure without
+OpenMP and impure with it, and its wrappers carry `M_OMP_PURE` where they would carry `pure`.
 
 **The plain name always goes to the entry point a caller should reach for first**, and it is the
 same name in Fortran, C, Python and R: nothing is renamed on the way out, and the Fortran source
@@ -627,6 +631,9 @@ prologue asking for arguments of its own (Section 5.13) — generates only `foo`
 > A `tmp_` argument that is `intent(in)` is an error. A work array is an output or an in-out;
 > nothing else makes sense.
 
+A work array that each thread of a parallel loop needs a copy of takes the thread axis last,
+sized `n_omp_threads` (Section 5.17): `foo` allocates one column of it without OpenMP.
+
 This is the *only* way an implementation module gets scratch space: an `allocatable` local
 anywhere in it is refused (Section 4). A buffer whose size is not an expression over the other
 arguments is still a `tmp_` argument — `DM_OUTPUT_FROM(..., AUTO)` (Section 5.9) names the routine
@@ -1029,6 +1036,83 @@ An **`elemental`** function is wrapped like an elemental subroutine, with scalar
 an `intent(out)` argument — its own `ierr`, a `tmp_` work array — cannot be `pure`, so neither are
 its wrappers.
 
+### 5.17 A parallel loop: an OpenMP root
+
+**When** the outermost loop of a method runs independent iterations worth sharing between
+threads, in the outermost procedure of that method -- one parallel region per call stack. Which
+loops qualify, and how their data must be laid out, is the coding guide's; this is what the
+generator needs.
+
+**Write** a required `n_omp_threads`, declare the procedure `M_OMP_PURE` where it would say
+`pure`, give every work array a thread needs a copy of the thread axis last, and write the loop
+with `!M_OMP_PARALLEL(<condition>)` and its locality clauses on the same line:
+
+```fortran
+!> summary: The sum of every column
+!| AUTHOR_A_N_AUTHOR
+M_OMP_PURE subroutine column_sums_impl(n_rows, n_cols, values, sums, n_omp_threads, tmp_column)
+    !$ use omp_lib, only: omp_get_thread_num
+    integer(int32), intent(in) :: n_rows
+        !! rows of the matrix
+    integer(int32), intent(in) :: n_cols
+        !! columns of the matrix
+    real(real64), intent(in) :: values(n_rows, n_cols)
+        !! the matrix
+    real(real64), intent(out) :: sums(n_cols)
+        !! the sum of every column
+    integer(int32), intent(in) :: n_omp_threads
+    real(real64), intent(out) :: tmp_column(n_rows, n_omp_threads)
+        !! one column of scratch per thread
+    integer(int32) :: i_col, i_thread
+
+    !M_OMP_PARALLEL(n_cols > 1) shared(n_rows, n_cols, values, sums, tmp_column) private(i_thread)
+    do i_col = 1, n_cols
+        i_thread = 1
+        !$ i_thread = omp_get_thread_num() + 1
+        tmp_column(:, i_thread) = values(:, i_col)
+        sums(i_col) = sum(tmp_column(:, i_thread))
+    end do
+end subroutine column_sums_impl
+```
+
+`n_omp_threads` carries no `!!` and no `DM_` directive: the generator writes both. Put it after the
+other required arguments and before the optional ones -- that is guidance, not checked. Do not name
+the macros in a doc comment: it is preprocessed, so `M_OMP_PURE` would read `pure` there.
+
+**You get**, on every tier:
+
+- **`M_OMP_PURE`** where the wrapper would be `pure`; a root declared impure gets impure wrappers.
+  The C wrapper is never pure.
+- **`n_omp_threads` in every signature**, in your order and required in every language -- Python
+  and R give it no default.
+- **A check that it is at least 1**, as if you had written `DM_MIN(1_int32)`:
+  `ERR_INVALID_INPUT` at its position, in both tiers. `--directive=NO_INPUT_VALIDATION` compiles
+  it out with every other check of a value.
+- **The generator's documentation**: what it caps, what it sizes, that it must be at least 1 in
+  every build, and to pass 1 when you parallelize around the call yourself or call it in a forked
+  worker process -- the same text in all four languages.
+
+`foo` allocates the thread axis as `tmp_column(n_rows, M_OMP_N_THREADS(n_omp_threads))` and hands
+the implementation `M_OMP_N_THREADS(n_omp_threads)`: the caller's count with OpenMP, 1 without, so
+a serial build allocates one column whatever is asked. `foo_expert` passes the caller's count on,
+so **its caller sizes the thread axis** -- `max_omp_threads()` gives OpenMP's default team size (1 in a
+serial build), not a limit.
+**C does not check the thread axis**: it null-checks the array, as it does every array whose
+extents are plain names, and the caller is responsible for its size. A root with no work arrays
+gets one wrapper, which passes the count on.
+
+Refused (Section 8): `n_omp_threads` anywhere but on an implementation -- an `M_EXPORT_C`
+procedure's argument or result, a recommend routine's, a prologue's -- since only an
+implementation's wrappers check it, document it and carry `M_OMP_PURE`; declared other than
+`integer(int32), intent(in)`, scalar and required; in any extent but the last of a `tmp_` array, as
+the bare name (`tmp_w(n, 2*n_omp_threads)` and `out(n_omp_threads + 1)` are refused, and so is a
+character length); with a `!!` or a `DM_` directive of yours. A root declared plain `pure` (an
+OpenMP directive is not allowed in a pure procedure, so it would compile only without OpenMP) or
+`elemental` without `impure`, or one whose statement the generator cannot read on one line
+(`M_OMP_PURE &` above `subroutine ...`). And in any module, `M_OMP_PURE` anywhere but on a root's
+own statement and `!M_OMP_PARALLEL(` anywhere but inside a root: elsewhere either builds without
+OpenMP and fails, or races, only with it.
+
 ---
 
 # Part II — the export path
@@ -1379,6 +1463,11 @@ source and carries a note saying what to write instead.
 | a prologue producing something the setup above it reads | the name resolves either way, so it would compile and compute rubbish (Section 5.13) |
 | a procedure or module named, ignoring case, like an export of the error module (`check_err_code`, `ERR_OK`, `ToxInputError`, `ARG_POS_FACTOR`), a submodule of the Python package (`library`, `error_handling`), or another module | `tensor_omics` binds all of them at its top level, so one would hide the other; a module called `error_handling` would overwrite the error module's file (Section 7) |
 | a Ford `[[...]]` link naming a module, or a name in it, that does not exist | it silently stops being a link in all four languages, and nothing downstream can tell (Section 7) |
+| `n_omp_threads` on anything but an implementation: an argument or result of an `M_EXPORT_C` procedure, a prologue's dummy, an implementation function's result | only an implementation's wrappers check it, document it and carry `M_OMP_PURE` (Section 5.17) |
+| an implementation's `n_omp_threads` that is not a required, scalar `integer(int32), intent(in)`, or that carries a `!!` or a `DM_` directive | it sizes the per-thread work arrays and `M_OMP_N_THREADS` stands in for it; its documentation and its minimum are the generator's (Section 5.17) |
+| `n_omp_threads` in an extent other than the last of a `tmp_` array as the bare name, or in a character length | the allocating wrapper allocates that axis with one column without OpenMP, so anything else it sized would differ between the wrapper and the caller (Section 5.17) |
+| an OpenMP root declared plain `pure`, or `elemental` without `impure`, or whose statement the generator cannot read on one line | an OpenMP directive is not allowed in a pure procedure: it would compile only without OpenMP (Section 5.17) |
+| `M_OMP_PURE` anywhere but on an OpenMP root's own statement, `!M_OMP_PARALLEL(` anywhere but inside an OpenMP root, in any module | elsewhere either builds without OpenMP and fails, or races, only with it (Section 5.17) |
 
 Warnings never stop generation; errors write nothing. A few things are warnings rather than
 errors, and the house bar is **zero warnings**, so treat them as errors anyway:
@@ -1475,6 +1564,8 @@ Two things that will bite when you convert an existing procedure to an implement
 - [ ] No validation in the implementation; no `ierr` unless it reports a genuine runtime failure.
 - [ ] The generated wrapper was read once, and validates what you expected it to — and where two
       were generated, the plain one prepares what you meant it to.
+- [ ] An OpenMP root: `M_OMP_PURE`, a required `n_omp_threads` with no `!!`, every per-thread work
+      array with the thread axis last (Section 5.17).
 
 **Part II — a hand-written export**
 
