@@ -274,13 +274,16 @@ The parts a source author does not need, and a generator maintainer does:
   marker and what the generator looks for therefore cannot disagree — change the macro and both
   the sources and the generator follow. Only tagged procedures are wrapped; everything else is
   held to none of the rules.
-- **The OpenMP macros `M_OMP_PURE` and `M_OMP_N_THREADS` are known by name only**
-  (`Conventions.omp_pure_macro`, `Conventions.omp_n_threads_macro`), because their bodies
-  depend on the build: `src/macros.h` defines them in both branches of an `#ifdef _OPENMP`,
-  and pcpp reads only the branch without OpenMP. So the frontend reads the header a second
-  time with `_OPENMP` defined and raises `MissingMacroError` when either branch lacks one of
-  them (`frontend.require_omp_macros`) — a definition missing from the OpenMP branch would
-  otherwise surface only as a compile error in an `--openmp` build.
+- **The OpenMP macros `M_OMP_PURE`, `M_OMP_N_THREADS` and `M_OMP_PARALLEL` are known by name
+  only** (`Conventions.omp_pure_macro`, `Conventions.omp_n_threads_macro`,
+  `Conventions.omp_parallel_macro`). The bodies of the first two depend on the build:
+  `src/macros.h` defines them in both branches of an `#ifdef _OPENMP`, and pcpp reads only the
+  branch without OpenMP. So the frontend reads the header a second time with `_OPENMP` defined
+  and raises `MissingMacroError` when either branch lacks one of the three
+  (`frontend.require_omp_macros`) — a definition missing from the OpenMP branch would otherwise
+  surface only as a compile error in an `--openmp` build. `M_OMP_PARALLEL` is defined once, for
+  both; without it every `!M_OMP_PARALLEL(` line stays a comment, and each root runs serially in
+  every build without a word.
 - **An OpenMP root's wrappers are written from `n_omp_threads`** (#218). A root is an
   implementation that takes `n_omp_threads` (`Conventions.omp_threads_arg`, the role
   `is_omp_threads`) and holds the parallel loop. Every Fortran tier of it carries `M_OMP_PURE`

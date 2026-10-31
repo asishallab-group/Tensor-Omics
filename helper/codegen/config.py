@@ -46,8 +46,9 @@ class Conventions:
     #: with: the caller's count with OpenMP, one without.
     omp_n_threads_macro: str = "M_OMP_N_THREADS"
     #: The macro a root writes its parallel loop with, as the comment line
-    #: `!M_OMP_PARALLEL(CONDITION) <clauses>`. Defined once, outside the `#ifdef`, so the
-    #: frontend does not require it; the generator only looks for where it is written
+    #: `!M_OMP_PARALLEL(CONDITION) <clauses>`. Defined once, outside the `#ifdef`; the frontend
+    #: requires it all the same (`frontend.require_omp_macros`), since without it the line stays
+    #: a comment and the loop serial. The generator otherwise only looks for where it is written
     #: (`validate._check_omp_macros`).
     omp_parallel_macro: str = "M_OMP_PARALLEL"
     #: The argument an OpenMP root takes: the most threads its parallel loop may use, and the

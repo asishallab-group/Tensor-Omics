@@ -180,12 +180,18 @@ OPENMP_SWITCH = "_OPENMP"
 def require_omp_macros(macros: MacroTable, conventions: Conventions = CONVENTIONS) -> None:
     """Refuse a header that lacks an OpenMP macro the generator relies on.
 
-    The header defines them differently with and without OpenMP, so both branches are
-    checked: pcpp, like the generator and Ford, reads the header without `_OPENMP`, and a
-    macro missing only from the other branch would surface as nothing more than a compile
-    error in an OpenMP build.
+    The header defines `M_OMP_PURE` and `M_OMP_N_THREADS` differently with and without OpenMP,
+    so both branches are checked: pcpp, like the generator and Ford, reads the header without
+    `_OPENMP`, and a macro missing only from the other branch would surface as nothing more
+    than a compile error in an OpenMP build. `M_OMP_PARALLEL` is defined once, for both; without
+    it every `!M_OMP_PARALLEL(` line stays a comment, and each root runs serially in every
+    build without a word.
     """
-    names = (conventions.omp_pure_macro, conventions.omp_n_threads_macro)
+    names = (
+        conventions.omp_pure_macro,
+        conventions.omp_n_threads_macro,
+        conventions.omp_parallel_macro,
+    )
     with_openmp = MacroTable(macros.header, macros.include_paths, defines=(OPENMP_SWITCH,))
     for table, branch in ((macros, "without"), (with_openmp, "with")):
         missing = [name for name in names if name not in table]

@@ -234,18 +234,26 @@ def with_openmp():
     )
 
 
-def header_without(tmp_path, name, branches):
-    """The real header without the definitions of `name` in `branches` (0: with OpenMP, 1: without)."""
+def header_without(tmp_path, name, branches=None):
+    """The real header without the definitions of `name` in `branches` (0: with OpenMP, 1: without),
+    or without every definition of it."""
     lines = (REPO_ROOT / "src/macros.h").read_text().splitlines(keepends=True)
     definitions = [i for i, line in enumerate(lines) if line.startswith(f"#define {name}")]
-    assert len(definitions) == 2, "one definition per branch of #ifdef _OPENMP"
-    dropped = {definitions[branch] for branch in branches}
+    if branches is None:
+        dropped = set(definitions)
+    else:
+        assert len(definitions) == 2, "one definition per branch of #ifdef _OPENMP"
+        dropped = {definitions[branch] for branch in branches}
+    assert dropped, f"the header defines {name}"
     header = tmp_path / "macros.h"
     header.write_text("".join(line for i, line in enumerate(lines) if i not in dropped))
     return MacroTable(header, include_paths=(REPO_ROOT,))
 
 
-OMP_MACRO_NAMES = [CONVENTIONS.omp_pure_macro, CONVENTIONS.omp_n_threads_macro]
+#: Defined in each branch of the header's `#ifdef _OPENMP`, differently
+OMP_BRANCH_MACRO_NAMES = [CONVENTIONS.omp_pure_macro, CONVENTIONS.omp_n_threads_macro]
+#: Every OpenMP macro the generator requires: those, and the parallel loop's, defined once
+OMP_MACRO_NAMES = OMP_BRANCH_MACRO_NAMES + [CONVENTIONS.omp_parallel_macro]
 
 
 class TestOmpMacros:
@@ -277,16 +285,30 @@ class TestOmpMacros:
     @pytest.mark.parametrize("name", OMP_MACRO_NAMES)
     def test_a_header_without_one_is_reported(self, tmp_path, name):
         with pytest.raises(MissingMacroError, match=rf"{name} without {OPENMP_SWITCH}"):
-            require_omp_macros(header_without(tmp_path, name, branches=(0, 1)))
+            require_omp_macros(header_without(tmp_path, name))
 
-    @pytest.mark.parametrize("name", OMP_MACRO_NAMES)
+    @pytest.mark.parametrize("name", OMP_BRANCH_MACRO_NAMES)
     def test_one_missing_only_with_openmp_is_reported(self, tmp_path, name):
         with pytest.raises(MissingMacroError, match=rf"{name} with {OPENMP_SWITCH}"):
             require_omp_macros(header_without(tmp_path, name, branches=(0,)))
 
+    def test_the_parallel_loop_defined_only_without_openmp_is_reported(self, tmp_path):
+        # defined once in the real header, but a header that moves it into one branch is
+        # checked in both, like the other two
+        name = CONVENTIONS.omp_parallel_macro
+        text = (REPO_ROOT / "src/macros.h").read_text()
+        definition = next(line for line in text.splitlines(keepends=True)
+                          if line.startswith(f"#define {name}"))
+        text = text.replace(definition, "").replace("#else\n", f"#else\n{definition}", 1)
+        header = tmp_path / "macros.h"
+        header.write_text(text)
+
+        with pytest.raises(MissingMacroError, match=rf"{name} with {OPENMP_SWITCH}"):
+            require_omp_macros(MacroTable(header, include_paths=(REPO_ROOT,)))
+
     @pytest.mark.parametrize("name", OMP_MACRO_NAMES)
     def test_the_generator_refuses_such_a_header(self, tmp_path, name):
-        header = header_without(tmp_path, name, branches=(0, 1))
+        header = header_without(tmp_path, name)
 
         with pytest.raises(MissingMacroError, match=name):
             FordFrontend(Paths(root=REPO_ROOT, macros_header=header.header))
