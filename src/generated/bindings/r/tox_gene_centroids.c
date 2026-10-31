@@ -7,8 +7,8 @@
 
 // the Fortran C-ABI symbols this module calls
 void mean_vector_c(const double*, const int*, const int*, const int*, const int*, double*, int*);
-void group_centroid_orthologs_c(const double*, const int*, const int*, const int*, const int*, double*, const unsigned char*, int*);
-void group_centroid_all_c(const double*, const int*, const int*, const int*, const int*, double*, int*);
+void group_centroid_orthologs_c(const double*, const int*, const int*, const int*, const int*, double*, const int*, const unsigned char*, int*);
+void group_centroid_all_c(const double*, const int*, const int*, const int*, const int*, double*, const int*, int*);
 
 SEXP mean_vector_call(SEXP expression_vectors, SEXP gene_indices) {
     int _nprot = 0;
@@ -45,7 +45,7 @@ SEXP mean_vector_call(SEXP expression_vectors, SEXP gene_indices) {
     return _out;
 }
 
-SEXP group_centroid_orthologs_call(SEXP expression_vectors, SEXP gene_to_family, SEXP n_families, SEXP ortholog_set) {
+SEXP group_centroid_orthologs_call(SEXP expression_vectors, SEXP gene_to_family, SEXP n_families, SEXP n_omp_threads, SEXP ortholog_set) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_axes = INTEGER(Rf_getAttrib(expression_vectors, R_DimSymbol))[0];
@@ -53,6 +53,7 @@ SEXP group_centroid_orthologs_call(SEXP expression_vectors, SEXP gene_to_family,
 
     // scalar inputs, pulled from their length-1 vectors
     int _v_n_families = Rf_asInteger(n_families);
+    int _v_n_omp_threads = Rf_asInteger(n_omp_threads);
 
     // convert what Fortran cannot take from R directly
     const int* _c_gene_to_family = tox_int_in(gene_to_family, "gene_to_family");
@@ -70,6 +71,7 @@ SEXP group_centroid_orthologs_call(SEXP expression_vectors, SEXP gene_to_family,
         _c_gene_to_family,
         &_v_n_families,
         REAL(centroid_matrix),
+        &_v_n_omp_threads,
         _c_ortholog_set,
         &ierr
     );
@@ -85,7 +87,7 @@ SEXP group_centroid_orthologs_call(SEXP expression_vectors, SEXP gene_to_family,
     return _out;
 }
 
-SEXP group_centroid_all_call(SEXP expression_vectors, SEXP gene_to_family, SEXP n_families) {
+SEXP group_centroid_all_call(SEXP expression_vectors, SEXP gene_to_family, SEXP n_families, SEXP n_omp_threads) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_axes = INTEGER(Rf_getAttrib(expression_vectors, R_DimSymbol))[0];
@@ -93,6 +95,7 @@ SEXP group_centroid_all_call(SEXP expression_vectors, SEXP gene_to_family, SEXP 
 
     // scalar inputs, pulled from their length-1 vectors
     int _v_n_families = Rf_asInteger(n_families);
+    int _v_n_omp_threads = Rf_asInteger(n_omp_threads);
 
     // convert what Fortran cannot take from R directly
     const int* _c_gene_to_family = tox_int_in(gene_to_family, "gene_to_family");
@@ -109,6 +112,7 @@ SEXP group_centroid_all_call(SEXP expression_vectors, SEXP gene_to_family, SEXP 
         _c_gene_to_family,
         &_v_n_families,
         REAL(centroid_matrix),
+        &_v_n_omp_threads,
         &ierr
     );
 
