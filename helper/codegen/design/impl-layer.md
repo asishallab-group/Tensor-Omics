@@ -161,9 +161,9 @@ Nothing else needs checking — every validator in `tox_errors`, `set_ok`, `is_e
 `sort_array_heapsort` specifics are `pure` or `elemental` already, and `allocate(..., stat=)`
 is permitted in a pure procedure, so the allocating tier is as eligible as the expert one.
 
-The point is that a caller wanting a pure procedure — to use it in `do concurrent`, or from
-their own pure code — would otherwise have to reach past the wrapper to the implementation,
-giving up validation to get it. 71 of the 87 wrappers the tox tree generates are pure; the
+The point is that a caller wanting a pure procedure — to call it from their own pure code,
+which may call only pure procedures — would otherwise have to reach past the wrapper to the
+implementation, giving up validation to get it. 71 of the 87 wrappers the tox tree generates are pure; the
 16 that are not trace to four impure implementations (LOESS, which calls netlib externals,
 and the two permutation tests, which draw random numbers) and to one impure recommend routine.
 

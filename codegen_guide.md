@@ -181,7 +181,8 @@ A wrapper is **`pure` exactly when everything it calls is** — the implementati
 pure procedure, so the allocating tier is no less eligible than the expert one. You declare
 nothing: write `pure` on the implementation and the wrapper follows. `elemental` counts as
 pure, `impure elemental` does not. That is what lets a
-caller reach a validated entry point from `do concurrent` instead of reaching past it.
+caller's own pure procedure, which may call only pure ones, reach a validated entry point instead of
+reaching past it.
 An OpenMP root (Section 5.17) is the one exception: it is declared `M_OMP_PURE`, pure without
 OpenMP and impure with it, and its wrappers carry `M_OMP_PURE` where they would carry `pure`.
 

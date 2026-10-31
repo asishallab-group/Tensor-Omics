@@ -44,9 +44,9 @@ stopifnot(requireNamespace("Rcpp",  quietly = TRUE),
           requireNamespace("cpp11", quietly = TRUE))
 
 ## ---- link both shims against the (Intel-built) Fortran lib -------------------
-# Just -ltensor_omics: the Fortran runtime (Intel iomp5/ifcore) is pulled in via
-# the .so's own NEEDED entries, so no -lgfortran here. Path is quoted: the repo
-# path contains a space.
+# Just -ltensor_omics: the Fortran runtime (Intel ifcore, plus the OpenMP runtime
+# iomp5 in a --openmp build) is pulled in via the .so's own NEEDED entries, so no
+# -lgfortran here. Path is quoted: the repo path contains a space.
 pkg_libs <- sprintf("-L%s -Wl,-rpath,%s -ltensor_omics",
                     shQuote(build_dir), shQuote(build_dir))
 Sys.setenv(PKG_LIBS = pkg_libs)

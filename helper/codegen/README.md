@@ -258,6 +258,7 @@ the wrappers, and the export path, where you write the whole procedure and mark 
 | work arrays, permutations, recommend sizing | guide Sections 5.7–5.9 |
 | modes, per-mode procedures | guide Sections 5.10–5.12 |
 | prologues, runtime errors, split families | guide Sections 5.13–5.15 |
+| a parallel loop (an OpenMP root) | guide Section 5.17; which loops qualify and how their data is laid out: the coding guide's section "Parallelisation: OpenMP" ([`misc/Fortran_Coding_Guides.pdf`](../../misc/Fortran_Coding_Guides.pdf)) |
 | exporting a hand-written procedure | guide Section 6 |
 | every `DM_` macro, with its contract in a comment | [`src/macros.h`](../../src/macros.h) |
 
