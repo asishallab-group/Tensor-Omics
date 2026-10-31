@@ -9,7 +9,7 @@ module mod_test_data_integration
     use tox_errors
     use f42_math_impl, only: above, below
     use f42_random_impl, only: init_random, shuffle_vector
-    use test_suite, only: test_case
+    use test_suite, only: test_case, TEST_N_OMP_THREADS
 
     implicit none
 
@@ -1117,8 +1117,8 @@ contains
         real(real64) :: x_star(n_points)
         real(real64) :: mean_S(n_genes_S)
         real(real64) :: resid_S(n_reps_S, n_genes_S)
-        real(real64) :: tmp_distances(n_genes_S)
-        integer(int32) :: tmp_distances_perm(n_genes_S)
+        real(real64) :: tmp_distances(n_genes_S, TEST_N_OMP_THREADS)
+        integer(int32) :: tmp_distances_perm(n_genes_S, TEST_N_OMP_THREADS)
         real(real64) :: neighborhood_residuals(n_reps_S, n_neighbors, n_points)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points)
         integer(int32) :: expected_indices(n_neighbors)
@@ -1142,7 +1142,7 @@ contains
             n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
             tmp_distances, tmp_distances_perm, &
             neighborhood_residuals, neighborhood_indices, &
-            n_neighbors, ierr)
+            n_neighbors, TEST_N_OMP_THREADS, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr must be ERR_OK")
 
@@ -1186,7 +1186,7 @@ contains
             0_int32, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
             tmp_distances, tmp_distances_perm, &
             neighborhood_residuals, neighborhood_indices, &
-            n_neighbors, ierr)
+            n_neighbors, TEST_N_OMP_THREADS, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "ierr must be ERR_EMPTY_INPUT")
 
@@ -1194,7 +1194,7 @@ contains
             n_points, x_star, 0_int32, mean_S, n_reps_S, resid_S, &
             tmp_distances, tmp_distances_perm, &
             neighborhood_residuals, neighborhood_indices, &
-            n_neighbors, ierr)
+            n_neighbors, TEST_N_OMP_THREADS, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "ierr must be ERR_EMPTY_INPUT")
 
@@ -1202,7 +1202,7 @@ contains
             n_points, x_star, n_genes_S, mean_S, 0_int32, resid_S, &
             tmp_distances, tmp_distances_perm, &
             neighborhood_residuals, neighborhood_indices, &
-            n_neighbors, ierr)
+            n_neighbors, TEST_N_OMP_THREADS, ierr)
 
         call assert_err(ierr, ERR_EMPTY_INPUT, "ierr must be ERR_EMPTY_INPUT", arg_pos=5_int32)
 
@@ -1210,7 +1210,7 @@ contains
             n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
             tmp_distances, tmp_distances_perm, &
             neighborhood_residuals, neighborhood_indices, &
-            0_int32, ierr)
+            0_int32, TEST_N_OMP_THREADS, ierr)
 
         ! `n_neighbors` carries a documented floor rather than being an extent of an input, so
         ! asking for none is reported as out of range, not as an empty input
@@ -1228,8 +1228,8 @@ contains
         real(real64) :: x_star(n_points)
         real(real64) :: mean_S(n_genes_S)
         real(real64) :: resid_S(n_reps_S, n_genes_S)
-        real(real64) :: tmp_distances(n_genes_S)
-        integer(int32) :: tmp_distances_perm(n_genes_S)
+        real(real64) :: tmp_distances(n_genes_S, TEST_N_OMP_THREADS)
+        integer(int32) :: tmp_distances_perm(n_genes_S, TEST_N_OMP_THREADS)
         real(real64) :: neighborhood_residuals(n_reps_S, n_neighbors, n_points)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points)
         integer(int32) :: expected_indices(n_neighbors)
@@ -1246,7 +1246,7 @@ contains
             n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
             tmp_distances, tmp_distances_perm, &
             neighborhood_residuals, neighborhood_indices, &
-            n_neighbors, ierr)
+            n_neighbors, TEST_N_OMP_THREADS, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr must be ERR_OK")
 

@@ -16,6 +16,11 @@ module tox_data_integration_preprocessing_impl
     use f42_stats_impl, only: calc_quantile_impl
     M_IMPLICIT_NONE
 
+! The fewest reference points construct_neighborhoods_impl shares between threads. Each point sorts
+! every gene, so two already pay for starting the team: measured (#218) with 2000 and 20000 genes,
+! gfortran and ifx --max-performance.
+#define CM_CONSTRUCT_NEIGHBORHOODS_MIN_PARALLEL 2_int32
+
 contains
 
     !> summary: Compute per-gene mean expression, ignoring NaN values
@@ -230,9 +235,11 @@ contains
 
     !> summary: Construct neighborhood-based residual sets (kNN)
     !| AUTHOR_FRANZ_ERIC_SILL
-    pure subroutine construct_neighborhoods_impl(n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
+    M_OMP_PURE subroutine construct_neighborhoods_impl(n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
                                                    tmp_distances, tmp_distances_perm, &
-                                                   neighborhood_residuals, neighborhood_indices, n_neighbors)
+                                                   neighborhood_residuals, neighborhood_indices, n_neighbors, &
+                                                   n_omp_threads)
+        !$ use omp_lib, only: omp_get_thread_num
         integer(int32), intent(in) :: n_points
             !! Number of reference points
         integer(int32), intent(in) :: n_genes_S
@@ -255,38 +262,41 @@ contains
         real(real64), intent(in) :: resid_S(n_reps_S, n_genes_S)
             !! Matrix of signed residuals
             !! DM_ALLOW_NAN
-        real(real64), intent(out) :: tmp_distances(n_genes_S)
-            !! Distances work array
-        integer(int32), intent(out) :: tmp_distances_perm(n_genes_S)
-            !! Work array for the permutation that sorts `tmp_distances`
+        integer(int32), intent(in) :: n_omp_threads
+        real(real64), intent(out) :: tmp_distances(n_genes_S, n_omp_threads)
+            !! Distances work array, one column per thread
+        integer(int32), intent(out) :: tmp_distances_perm(n_genes_S, n_omp_threads)
+            !! Work array for the permutation that sorts `tmp_distances`, one column per thread
         real(real64), intent(out) :: neighborhood_residuals(n_reps_S, n_neighbors, n_points)
             !! Collection of residual vectors for each neighborhood
         integer(int32), intent(out) :: neighborhood_indices(n_neighbors, n_points)
             !! Indices of selected neighborhood genes
 
-        integer(int32) :: i_point, i_gene, gene_idx
+        integer(int32) :: i_point, i_gene, gene_idx, i_thread
 
         ! Process each reference point
-        !TODO optimize: the kNN search per reference point is embarrassingly parallel (each i_point is independent), but this is a plain sequential `do` because `tmp_distances`/`tmp_distances_perm` are single shared scratch buffers reused/sorted in-place across iterations. Sizing them `(n_genes_S, n_points)` would let this loop, likely the hottest in the preprocessing pipeline, run in parallel.
+        !M_OMP_PARALLEL(n_points >= CM_CONSTRUCT_NEIGHBORHOODS_MIN_PARALLEL) shared(n_points, x_star, n_genes_S, mean_S, resid_S, tmp_distances, tmp_distances_perm, neighborhood_residuals, neighborhood_indices, n_neighbors) private(i_gene, gene_idx, i_thread)
         do i_point = 1, n_points
+            i_thread = 1
+            !$ i_thread = omp_get_thread_num() + 1
 
             ! Calculate distances.
             do i_gene = 1, n_genes_S
-                tmp_distances(i_gene) = abs(mean_S(i_gene) - x_star(i_point))
+                tmp_distances(i_gene, i_thread) = abs(mean_S(i_gene) - x_star(i_point))
 
                 ! Initialize perm
-                tmp_distances_perm(i_gene) = i_gene
+                tmp_distances_perm(i_gene, i_thread) = i_gene
             end do
 
             ! Sort distances using heapsort
             ! sort_array_heapsort will reorder tmp_distances_perm so that tmp_distances(tmp_distances_perm(1:n_genes_S)) is sorted
             ! the `n_neighbors` upper bound guarantees that the NaN `mean_S` indices are not included after sorting (they come after tmp_distances_perm(:n_neighbors))
-            call sort_array_heapsort(tmp_distances, tmp_distances_perm)
+            call sort_array_heapsort(tmp_distances(:, i_thread), tmp_distances_perm(:, i_thread))
 
             ! Store the n_neighbors nearest neighbor indices
             ! tmp_distances_perm(1:n_neighbors) now contain indices of genes with smallest distances
             do i_gene = 1, n_neighbors
-                gene_idx = tmp_distances_perm(i_gene)  ! Get the actual gene index from the permutation vector
+                gene_idx = tmp_distances_perm(i_gene, i_thread)  ! Get the actual gene index from the permutation vector
 
                 neighborhood_indices(i_gene, i_point) = gene_idx
 
