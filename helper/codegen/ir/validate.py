@@ -17,7 +17,7 @@ from ..config import CONVENTIONS, Conventions
 from ..diagnostics import DiagnosticBag
 from .constants import KIND_VALUES
 from .doc import EXTERNAL_PREFIX
-from .entities import Argument, Module, Procedure, Project
+from .entities import Argument, MacroUse, Module, Procedure, Project
 from .types import BaseType, FortranType, Intent, split_top_level
 
 #: Attributes on a dummy argument that have no C interoperable form
@@ -704,13 +704,20 @@ def _check_taken_over_is_not_an_output(impl: Procedure, diagnostics: DiagnosticB
 
 def is_omp_root(procedure: Procedure, conventions: Conventions = CONVENTIONS) -> bool:
     """An implementation in an implementation module that takes `n_omp_threads`."""
+    return (
+        _is_implementation(procedure, conventions)
+        and procedure.argument(conventions.omp_threads_arg) is not None
+    )
+
+
+def _is_implementation(procedure: Procedure, conventions: Conventions) -> bool:
+    """An `_impl` procedure in an `_impl` module: what a root is, before its `n_omp_threads`."""
     module = procedure.module
     suffix = conventions.impl_suffix
     return (
         module is not None
         and module.name.lower().endswith(suffix)
         and procedure.name.lower().endswith(suffix)
-        and procedure.argument(conventions.omp_threads_arg) is not None
     )
 
 
@@ -910,13 +917,17 @@ def _check_omp_macros(module: Module, diagnostics: DiagnosticBag,
     build without OpenMP and fail, or race, only with it -- `M_OMP_PURE` gives a wrapper a
     plain `pure` it cannot keep, and a parallel loop outside a root has no `n_omp_threads` to
     bound it and no work arrays sized for its threads.
+
+    A use is held by the module procedure whose lines hold it (`MacroUse.procedure`); a private
+    one is not in the IR, so it is no root, but it is named all the same.
     """
     for use in module.macro_uses:
         procedure = module.procedure(use.procedure) if use.procedure else None
         root = procedure if procedure is not None and is_omp_root(procedure, conventions) else None
         if use.macro == conventions.omp_pure_macro:
-            # on the root's own statement, which is where `procedure.location` points
-            if root is not None and use.location.line == root.location.line:
+            # on the root's own statement: the line `procedure.location` points at, or one
+            # that statement is continued from, which `_check_omp_root_purity` reports
+            if root is not None and _on_the_statement_of(root, use):
                 continue
             written = use.macro
         elif root is not None:
@@ -930,13 +941,45 @@ def _check_omp_macros(module: Module, diagnostics: DiagnosticBag,
             f"{written} is written {where}, and only an OpenMP root may carry it",
             entity=procedure if procedure is not None else module,
             location=use.location,
-            note=(
-                f"only an implementation that takes '{conventions.omp_threads_arg}' holds a "
-                f"parallel loop: it is declared {conventions.omp_pure_macro} and writes its "
-                f"loop as !{conventions.omp_parallel_macro}(...). Anywhere else the macro "
-                "builds without OpenMP and fails, or races, only with it"
-            ),
+            note=_omp_macro_note(use, procedure, root, conventions),
         )
+
+
+def _on_the_statement_of(root: Procedure, use: MacroUse) -> bool:
+    """Whether `use`, held by `root`, is on its statement: no line of the body comes before it."""
+    statement, line = root.location.line, use.location.line
+    return statement is not None and line is not None and line <= statement
+
+
+def _omp_macro_note(use: MacroUse, procedure: Procedure | None, root: Procedure | None,
+                    conventions: Conventions) -> str:
+    """Why a misplaced OpenMP macro is refused, and what to write instead where it is."""
+    threads = conventions.omp_threads_arg
+    pure = conventions.omp_pure_macro
+    a_root = f"an OpenMP root, an implementation that takes '{threads}'"
+    # an implementation that is no root yet becomes one by taking the count
+    becomes_a_root = root is None and procedure is not None and _is_implementation(
+        procedure, conventions)
+    if use.macro == pure:
+        fix = "declare it `pure` (or impure) instead"
+        if becomes_a_root:
+            fix = (f"declare '{procedure.name}' `pure` (or impure) instead, or give it an "
+                   f"'{threads}' argument if it holds the parallel loop")
+        return (
+            f"{pure} is the purity of {a_root}: pure without OpenMP and impure with it, where "
+            f"its parallel loop runs. Anywhere else it builds without OpenMP and fails only "
+            f"with it; {fix}"
+        )
+    fix = "move the loop into a root"
+    if becomes_a_root:
+        fix = f"give '{procedure.name}' an '{threads}' argument to make it a root, or {fix}"
+    elif use.procedure is not None and procedure is None:
+        fix = f"'{use.procedure}' is private, so it cannot be one: {fix}"
+    return (
+        f"a parallel loop belongs only in {a_root}: that count bounds the team and sizes the "
+        f"per-thread work arrays. Anywhere else the loop builds without OpenMP and fails, or "
+        f"races, only with it; {fix}"
+    )
 
 
 def _what(argument: Argument) -> str:
@@ -1373,13 +1416,18 @@ class _Validator:
         if roles is None or not roles.is_extent:
             return
         owners = ", ".join(f"'{owner.name}'" for owner in roles.extent_of)
-        if argument.optional:
+        # A root's thread count is refused optional or written where the root declares it,
+        # with the one declaration that fits (`_check_omp_threads_declaration`); these two
+        # would only stand in front of that, saying nothing it does not
+        declared_by_its_root = roles.is_omp_threads and self.procedure.implementation is not None
+        if argument.optional and not declared_by_its_root:
             self.error(
                 f"extent argument '{argument.name}' is optional, but {owners} needs it",
                 argument,
                 note=_NON_OPTIONAL_NOTE,
             )
-        if argument.intent is not None and argument.intent is not Intent.IN:
+        if (argument.intent is not None and argument.intent is not Intent.IN
+                and not declared_by_its_root):
             # Python and R read it off the arrays it sizes and pass that value; an extent the
             # procedure also writes is neither theirs to read nor theirs to return.
             self.error(

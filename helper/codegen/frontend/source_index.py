@@ -95,21 +95,27 @@ class SourceFile:
         this line does not hold: a rule reading the prefix must not take a part for the whole.
         """
         number = self.procedure_line(name)
-        if number is None:
+        if number is None or self.statement_start(number) != number:
             return None
-        for previous in range(number - 1, 0, -1):
-            line = self.lines[previous - 1]
-            if not line.strip() or _COMMENT_RE.match(line):
-                continue
-            if line.split("!")[0].rstrip().endswith("&"):
-                return None
-            break
         match = re.match(
             rf"^\s*(?P<prefix>{_PROCEDURE_PREFIX})\b(?:subroutine|function)\s+{_word(name)}",
             self.lines[number - 1],
             re.IGNORECASE,
         )
         return None if match is None else match.group("prefix").strip()
+
+    def statement_start(self, number: int) -> int:
+        """The first line of the statement on line `number`: the earliest of the lines above it,
+        each ending in `&`, that it continues. Blank and comment lines in between are skipped."""
+        start = number
+        for previous in range(number - 1, 0, -1):
+            line = self.lines[previous - 1]
+            if not line.strip() or _COMMENT_RE.match(line):
+                continue
+            if not line.split("!")[0].rstrip().endswith("&"):
+                break
+            start = previous
+        return start
 
     def module_span(self, name: str) -> tuple[int, int] | None:
         """The inclusive line range of a module, from its statement to its `end`."""

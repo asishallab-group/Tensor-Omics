@@ -268,26 +268,35 @@ class FordFrontend:
             meta=self._meta(ford_module),
             location=location,
             uses=self._uses_of(ford_module),
-            macro_uses=self._omp_macro_uses(path, name, procedures),
+            macro_uses=self._omp_macro_uses(path, ford_module, procedures),
         )
 
-    def _omp_macro_uses(self, path: Path, module: str, procedures) -> list[MacroUse]:
+    def _omp_macro_uses(self, path: Path, ford_module, procedures) -> list[MacroUse]:
         """Where the module's source writes `M_OMP_PURE` and `!M_OMP_PARALLEL(`.
 
         Ford cannot say: it reads the preprocessed text, where the one is already `pure` and the
         other a plain comment. So they are found in the file the author edits, within the
-        module's own lines, and each is put in the innermost procedure whose lines hold it --
-        of those the module publishes, which are the only ones that can be a root.
+        module's own lines, and each is put in the innermost module procedure whose lines hold
+        it: one it publishes, which may be a root, or a private one, which cannot but is named
+        all the same. Those lines start where its statement does, so a prefix on a line the
+        statement is continued from (`M_OMP_PURE &`) is the procedure's too. A procedure
+        contained in another is not one of them: what it holds is its host's.
         """
         source = self.index.file(path)
         if source is None:
             return []
-        span = source.module_span(module)
-        spans = [
-            (found, procedure.name)
-            for procedure in procedures
-            if (found := source.procedure_span(procedure.name)) is not None
-        ]
+        span = source.module_span(ford_module.name)
+        # by Fortran's name: `all_procs` holds the private ones, the routines read above also
+        # those split into a submodule
+        names = {procedure.name.lower(): procedure.name
+                 for procedure in self._own_procedures(ford_module)}
+        names.update((procedure.name.lower(), procedure.name) for procedure in procedures)
+        spans = []
+        for name in names.values():
+            found = source.procedure_span(name)
+            if found is not None:
+                start, end = found
+                spans.append(((source.statement_start(start), end), name))
 
         def holder(line: int) -> str | None:
             holding = [(start, name) for (start, end), name in spans if start <= line <= end]
@@ -305,6 +314,17 @@ class FordFrontend:
             for macro, line in sorted(found, key=lambda use: use[1])
         ]
 
+    @staticmethod
+    def _own_procedures(ford_module):
+        """Every procedure the module holds itself, public or private.
+
+        Ford's `all_procs` holds them all, where the module's routines leave the private ones
+        out, but also those reached through a `use` or from a parent module, which are not its.
+        """
+        for procedure in (getattr(ford_module, "all_procs", {}) or {}).values():
+            if getattr(procedure, "parent", None) is ford_module:
+                yield procedure
+
     def _check_no_private_export(self, ford_module, path: Path) -> None:
         """An `M_EXPORT_C` on a private procedure is an error, not a silent no-op.
 
@@ -314,9 +334,7 @@ class FordFrontend:
         `all_procs` holds every one, public or not), which is the only place it can be seen.
         """
         category = self.conventions.c_binding_category.lower()
-        for procedure in (getattr(ford_module, "all_procs", {}) or {}).values():
-            if getattr(procedure, "parent", None) is not ford_module:
-                continue  # reached through a `use`, or from a parent module
+        for procedure in self._own_procedures(ford_module):
             if getattr(procedure, "permission", "public") != "private":
                 continue
             meta = getattr(procedure, "meta", None)

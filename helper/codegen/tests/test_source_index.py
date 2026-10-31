@@ -156,6 +156,10 @@ end module tox_roots_impl
     def test_an_absent_procedure_has_none(self, roots):
         assert roots.procedure_prefix("nope") is None
 
+    def test_a_statement_starts_on_the_first_line_it_is_continued_from(self, roots):
+        assert roots.statement_start(16) == 15  # `pure &` above `subroutine split(n)`
+        assert roots.statement_start(13) == 13  # `subroutine plain(n)`, whole on its line
+
     def test_a_macro_is_found_in_code_only(self, roots):
         assert roots.macro_lines("M_OMP_PURE") == [3]
 

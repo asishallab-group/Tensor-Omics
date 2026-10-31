@@ -1004,7 +1004,10 @@ write the wrappers from it and to refuse what they could not honour. Six rules:
 - **R5 -- purity is read from the unpreprocessed source.** A root is `M_OMP_PURE` or impure, never
   plain `pure` (an OpenMP directive is not allowed in a pure procedure) and not `elemental` without
   `impure`; and in every module `M_OMP_PURE` sits only on a root's own statement and
-  `!M_OMP_PARALLEL(` only inside a root.
+  `!M_OMP_PARALLEL(` only inside a root. Each use is placed in the module procedure that holds
+  it, private ones included, from the first line of its statement: so a refusal names the
+  procedure, and `M_OMP_PURE &` above a root's `subroutine` is reported once, as the statement it
+  cannot read.
 - **R6 -- at least 1 in every build, implied.** Synthesis injects `DM_MIN(1_int32)`, so both
   tiers emit `validate_in_range_int(..., min=1_int32)` -- `ERR_INVALID_INPUT` at its position, where
   `foo_expert`'s extent check would have said `ERR_EMPTY_INPUT` -- and the documentation carries the

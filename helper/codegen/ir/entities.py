@@ -253,8 +253,9 @@ class MacroUse:
 
     macro: str
     location: SourceLocation
-    #: the procedure whose lines hold it, innermost, of the ones the module publishes; None
-    #: outside all of them (between procedures, or in a private one, which Ford does not list)
+    #: the module procedure whose lines hold it, innermost, from the first line of its
+    #: statement: one the module publishes, or a private one, which `Module.procedure` does not
+    #: find and which can be no root; None outside all of them
     procedure: str | None = None
 
 

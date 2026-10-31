@@ -97,6 +97,12 @@ def errors(*modules):
     return [d.message for d in bag.errors]
 
 
+def notes(*modules):
+    """Each error's note, where `errors` gives its message."""
+    _, bag = pipeline(*modules)
+    return [d.note for d in bag.errors]
+
+
 def emitted(*modules, generated="tox_demo"):
     synthesis, bag = pipeline(*modules)
     assert bag.errors == (), bag.render()
@@ -424,6 +430,27 @@ class TestItsDeclaration:
     def test_anything_else_is_refused(self, argument, problem):
         assert f"'n_omp_threads' is {problem}" in errors(impl_module(lone_root(argument)))
 
+    @pytest.mark.parametrize("argument, problem", [
+        (omp_threads(optional=True), "optional"),
+        (omp_threads(intent=Intent.INOUT), "intent(inout)"),
+    ])
+    def test_sizing_a_work_array_it_is_refused_once_with_the_declaration_to_write(
+            self, argument, problem):
+        # an extent's own rule would refuse it too, on the expert wrapper and first, with a
+        # note that does not fit a thread count
+        source = impl_module(root(
+            b.integer("n", Intent.IN, doc="rows"),
+            b.real("values", Intent.IN, "(n)", doc="the data"),
+            b.real("tmp_w", Intent.OUT, "(n, n_omp_threads)", doc="scratch per thread"),
+            b.real("total", Intent.OUT, doc="their sum"),
+            argument,
+        ))
+
+        assert errors(source) == [f"'n_omp_threads' is {problem}"]
+        assert notes(source)[0].startswith(
+            "declare it `integer(int32), intent(in) :: n_omp_threads`"
+        )
+
 
 class TestWhatItMaySize:
     """R3: only the last extent of a `tmp_` array, as the bare name."""
@@ -497,6 +524,15 @@ class TestItsPurity:
             "the statement of 'sums_impl' could not be read"
         ]
 
+    def test_its_macro_on_the_line_the_statement_is_continued_from_is_not_refused_again(self):
+        # `M_OMP_PURE &` above `subroutine sums_impl(`: the prefix is the root's, and the one
+        # error says to write the statement on one line
+        uses = (MacroUse("M_OMP_PURE", SourceLocation(None, _STATEMENT_LINE - 1), "sums_impl"),)
+        source = impl_module(root(prefix=None), macro_uses=uses)
+
+        assert errors(source) == ["the statement of 'sums_impl' could not be read"]
+        assert notes(source)[0].endswith("write `M_OMP_PURE subroutine sums_impl(` on one line")
+
 
 class TestWhereTheMacrosMayBeWritten:
     """R5: `M_OMP_PURE` on a root's statement, `!M_OMP_PARALLEL(` inside a root -- nowhere else."""
@@ -511,24 +547,54 @@ class TestWhereTheMacrosMayBeWritten:
 
     def test_m_omp_pure_on_an_implementation_without_the_argument(self):
         uses = (MacroUse("M_OMP_PURE", SourceLocation(None, 30), "scale_impl"),)
+        source = impl_module(root(), self.plain_impl(), macro_uses=uses)
 
-        assert errors(impl_module(root(), self.plain_impl(), macro_uses=uses)) == [
+        assert errors(source) == [
             "M_OMP_PURE is written in 'scale_impl', and only an OpenMP root may carry it"
         ]
+        # what to write instead, as a plain implementation or as a root
+        assert notes(source)[0].endswith(
+            "declare 'scale_impl' `pure` (or impure) instead, or give it an 'n_omp_threads' "
+            "argument if it holds the parallel loop"
+        )
 
     def test_a_parallel_loop_in_an_implementation_without_the_argument(self):
         uses = (MacroUse("M_OMP_PARALLEL", SourceLocation(None, 35), "scale_impl"),)
+        source = impl_module(root(), self.plain_impl(), macro_uses=uses)
 
-        assert errors(impl_module(root(), self.plain_impl(), macro_uses=uses)) == [
+        assert errors(source) == [
             "!M_OMP_PARALLEL(...) is written in 'scale_impl', and only an OpenMP root may carry it"
         ]
+        assert notes(source)[0].endswith(
+            "give 'scale_impl' an 'n_omp_threads' argument to make it a root, or move the loop "
+            "into a root"
+        )
+
+    def test_a_parallel_loop_in_a_private_procedure_names_it(self):
+        # the IR holds only what the module publishes, so a private helper is no root, but the
+        # frontend still places the loop in it
+        uses = (MacroUse("M_OMP_PARALLEL", SourceLocation(None, 45), "sum_helper"),)
+        source = impl_module(root(), macro_uses=uses)
+
+        assert errors(source) == [
+            "!M_OMP_PARALLEL(...) is written in 'sum_helper', and only an OpenMP root may carry it"
+        ]
+        assert notes(source)[0].startswith(
+            "a parallel loop belongs only in an OpenMP root, an implementation that takes "
+            "'n_omp_threads'"
+        )
+        assert notes(source)[0].endswith(
+            "'sum_helper' is private, so it cannot be one: move the loop into a root"
+        )
 
     def test_m_omp_pure_in_the_body_of_a_root(self):
         uses = (MacroUse("M_OMP_PURE", SourceLocation(None, _STATEMENT_LINE + 3), "sums_impl"),)
+        source = impl_module(macro_uses=uses)
 
-        assert errors(impl_module(macro_uses=uses)) == [
+        assert errors(source) == [
             "M_OMP_PURE is written in the body of 'sums_impl', and only an OpenMP root may carry it"
         ]
+        assert notes(source)[0].endswith("declare it `pure` (or impure) instead")
 
     def test_outside_every_procedure(self):
         uses = (MacroUse("M_OMP_PARALLEL", SourceLocation(None, 3), None),)
@@ -538,10 +604,11 @@ class TestWhereTheMacrosMayBeWritten:
             "may carry it"
         ]
 
-    @pytest.mark.parametrize("macro, written", [
-        ("M_OMP_PURE", "M_OMP_PURE"), ("M_OMP_PARALLEL", "!M_OMP_PARALLEL(...)"),
+    @pytest.mark.parametrize("macro, written, fix", [
+        ("M_OMP_PURE", "M_OMP_PURE", "; declare it `pure` (or impure) instead"),
+        ("M_OMP_PARALLEL", "!M_OMP_PARALLEL(...)", "; move the loop into a root"),
     ])
-    def test_in_a_module_that_is_not_an_implementation_module(self, macro, written):
+    def test_in_a_module_that_is_not_an_implementation_module(self, macro, written, fix):
         export = b.module("tox_plain", b.procedure(
             "hand_written", b.integer("n", Intent.IN, doc="rows"), b.ierr(),
             location=SourceLocation(None, 5),
@@ -551,6 +618,8 @@ class TestWhereTheMacrosMayBeWritten:
         assert errors(export) == [
             f"{written} is written in 'hand_written', and only an OpenMP root may carry it"
         ]
+        # an export cannot become a root, so nothing says to give it the count
+        assert notes(export)[0].endswith(fix)
 
 
 # -- the frontend reads both from the source the author edits ---------------------------
@@ -582,3 +651,114 @@ class TestTheFrontend:
         ]
         statement = fixture_impls.procedure("fx_omp_impl", "fx_column_sums_impl").location
         assert uses[0].location == statement
+
+    def test_a_loop_in_a_private_procedure_is_placed_in_it(self, misplaced):
+        use = misplaced.project.module("fx_helper_impl").macro_uses[-1]
+
+        assert (use.macro, use.procedure) == ("M_OMP_PARALLEL", "fx_helper")
+
+    def test_a_prefix_the_statement_is_continued_from_is_the_root_s(self, misplaced):
+        use = misplaced.project.module("fx_split_impl").macro_uses[0]
+
+        assert (use.macro, use.procedure) == ("M_OMP_PURE", "fx_split_impl")
+        assert use.location.line == misplaced.split_line
+
+    def test_each_is_refused_once_where_it_is(self, misplaced):
+        # the continued statement: one error, which says how to write it, and none that says
+        # its macro is outside every procedure
+        assert sorted(misplaced.errors) == [
+            "!M_OMP_PARALLEL(...) is written in 'fx_helper', and only an OpenMP root may carry it",
+            "the statement of 'fx_split_impl' could not be read",
+        ]
+
+
+#: A root as an author writes it, with its parallel loop; `{prefix}` is its statement's prefix,
+#: `{name}` its name, and `{more}` what the module holds after it
+_ROOT_SOURCE = """\
+#include <src/macros.h>
+
+!> summary: Roots whose macros are misplaced
+!| author: A Developer
+!| What the frontend makes of them.
+module {module}
+    use, intrinsic :: iso_fortran_env, only: real64, int32
+    M_IMPLICIT_NONE
+    private
+
+    public :: {name}
+
+contains
+
+    !> summary: The sum of every column
+    !| author: A Developer
+    !| Through a per-thread work array.
+    {prefix}subroutine {name}(n_rows, n_cols, values, sums, n_omp_threads, tmp_column)
+        !$ use omp_lib, only: omp_get_thread_num
+        integer(int32), intent(in) :: n_rows
+            !! rows of the matrix
+        integer(int32), intent(in) :: n_cols
+            !! columns of the matrix
+        real(real64), intent(in) :: values(n_rows, n_cols)
+            !! the matrix
+        real(real64), intent(out) :: sums(n_cols)
+            !! the sum of every column
+        integer(int32), intent(in) :: n_omp_threads
+        real(real64), intent(out) :: tmp_column(n_rows, n_omp_threads)
+            !! one column of scratch per thread
+        integer(int32) :: i_col, i_thread
+
+        !M_OMP_PARALLEL(n_cols > 1) shared(n_rows, n_cols, values, sums, tmp_column) private(i_thread)
+        do i_col = 1, n_cols
+            i_thread = 1
+            !$ i_thread = omp_get_thread_num() + 1
+            tmp_column(:, i_thread) = values(:, i_col)
+            sums(i_col) = sum(tmp_column(:, i_thread))
+        end do
+    end subroutine {name}
+{more}
+end module {module}
+"""
+
+_PRIVATE_HELPER = """
+    pure subroutine fx_helper(n, values, total)
+        integer(int32), intent(in) :: n
+        real(real64), intent(in) :: values(n)
+        real(real64), intent(out) :: total
+        integer(int32) :: i
+        total = 0
+        !M_OMP_PARALLEL(n > 1) shared(values) reduction(+:total)
+        do i = 1, n
+            total = total + values(i)
+        end do
+    end subroutine fx_helper
+"""
+
+
+@pytest.fixture(scope="module")
+def misplaced(tmp_path_factory):
+    """Two modules, read by Ford and validated: a root beside a private helper holding a parallel
+    loop, and a root whose `M_OMP_PURE &` continues onto the next line."""
+    src = tmp_path_factory.mktemp("misplaced")
+    (src / "fx_helper_impl.F90").write_text(_ROOT_SOURCE.format(
+        module="fx_helper_impl", name="fx_sums_impl", prefix="M_OMP_PURE ",
+        more=_PRIVATE_HELPER,
+    ))
+    split = _ROOT_SOURCE.format(
+        module="fx_split_impl", name="fx_split_impl", prefix="M_OMP_PURE &\n    ", more="",
+    )
+    (src / "fx_split_impl.F90").write_text(split)
+
+    bag = DiagnosticBag()
+    parsed = FordFrontend(Paths(root=REPO_ROOT, src_dir=src), bag).parse()
+    assert bag.render() == ""
+    synthesis = synthesize_wrappers(parsed.project, CONVENTIONS, bag)
+    analyse_project(synthesis.project, bag)
+    validate_project(synthesis.project, bag)
+
+    class Misplaced:
+        project = parsed.project
+        errors = [d.message for d in bag.errors]
+        split_line = split.splitlines().index("    M_OMP_PURE &") + 1
+
+    return Misplaced
+
