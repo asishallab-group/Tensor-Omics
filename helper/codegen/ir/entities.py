@@ -180,8 +180,8 @@ class Procedure(Entity):
         self.uses = tuple(uses)
         #: whether the procedure is `pure` (or `elemental`, which implies it). Read so a
         #: generated wrapper can be pure exactly when everything it calls is -- a caller
-        #: who wants one inside `do concurrent` should not have to reach past the wrapper
-        #: to get it. Defaults to False: assuming purity that is not there would be a
+        #: whose own pure code calls it should not have to reach past the wrapper to get
+        #: one. Defaults to False: assuming purity that is not there would be a
         #: compile error in generated code, while missing it only costs the caller.
         self.is_pure = is_pure
         #: what the procedure statement says before `subroutine`/`function`, as written in the

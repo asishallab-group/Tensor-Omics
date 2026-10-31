@@ -4,7 +4,7 @@ What this build of the library does with OpenMP.
 
 OpenMP is a build option (`./build.sh --openmp`), so whether a call runs on several threads
 is decided when the library is built, not by the caller. A procedure that can run on several
-threads takes their number as an argument; this module answers how many a build can use.
+threads takes their number as an argument; this module answers how many a build uses by default.
 
 Python binding, generated from f42_openmp. Do not edit.
 """
@@ -31,17 +31,19 @@ _MAX_OMP_THREADS_ARGUMENTS = ()
 
 def max_omp_threads(
 ):
-    r"""The number of threads a parallel loop of this build can use: 1 without OpenMP.
+    r"""The number of threads OpenMP gives a parallel loop by default: 1 without OpenMP.
 
     A build with OpenMP answers the OpenMP runtime's `omp_get_max_threads()`, which follows
     the environment variable `OMP_NUM_THREADS` and is otherwise the runtime's own choice,
     usually the number of processors.
+    It is a default, not a limit: a procedure's `n_omp_threads` sets the threads of its loop,
+    and may ask for more.
     A serial build answers 1, as one thread runs every loop there.
 
     Returns
     -------
     max_threads : int
-        The number of threads a parallel loop can use; 1 without OpenMP
+        The default number of threads of a parallel loop; 1 without OpenMP
 
     Raises
     ------

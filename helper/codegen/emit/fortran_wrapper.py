@@ -478,8 +478,8 @@ class FortranWrapperEmitter:
     def _is_pure(self, procedure: Procedure, module: Module) -> bool:
         """Whether this wrapper can be `pure`: everything it calls has to be.
 
-        A caller who wants a `pure` procedure -- to call it from `do concurrent`, or from
-        their own pure code -- should not have to reach past the wrapper to the
+        A caller who wants a `pure` procedure -- to call it from their own pure code, which
+        may call only pure procedures -- should not have to reach past the wrapper to the
         implementation to get one. The wrapper is pure exactly when the implementation is
         and so is everything the wrapper adds, so the property is derived rather than
         declared: `tox_errors`' validators and `set_ok`/`is_err` are pure, and so are

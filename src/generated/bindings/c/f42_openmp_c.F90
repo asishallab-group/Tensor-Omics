@@ -6,7 +6,7 @@
 !|
 !| OpenMP is a build option (`./build.sh --openmp`), so whether a call runs on several threads
 !| is decided when the library is built, not by the caller. A procedure that can run on several
-!| threads takes their number as an argument; this module answers how many a build can use.
+!| threads takes their number as an argument; this module answers how many a build uses by default.
 module f42_openmp_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_int, c_loc
@@ -22,6 +22,8 @@ contains
     !| A build with OpenMP answers the OpenMP runtime's `omp_get_max_threads()`, which follows
     !| the environment variable `OMP_NUM_THREADS` and is otherwise the runtime's own choice,
     !| usually the number of processors.
+    !| It is a default, not a limit: a procedure's `n_omp_threads` sets the threads of its loop,
+    !| and may ask for more.
     !| A serial build answers 1, as one thread runs every loop there.
     subroutine max_omp_threads_c(&
             max_threads,&
@@ -30,7 +32,7 @@ contains
         use f42_openmp, only: max_omp_threads
 
         integer(c_int), intent(out), target :: max_threads
-            !! The number of threads a parallel loop can use; 1 without OpenMP
+            !! The default number of threads of a parallel loop; 1 without OpenMP
         integer(c_int), intent(out), target :: ierr
             !! Error code
 

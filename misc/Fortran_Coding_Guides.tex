@@ -28,7 +28,11 @@
   backgroundcolor=\color{codegray},
   frame=single,
   breaklines=true,
-  tabsize=2
+  tabsize=2,
+  % Spaces as typed and none added between characters, so text copied from a listing compiles:
+  % fixed columns turned `!$ use` into `! $ use`, which is no longer an OpenMP sentinel.
+  columns=fullflexible,
+  keepspaces=true
 }
 
 \title{Tensor Omics: Team Coding Guidelines}
@@ -541,7 +545,7 @@ All \emph{helper} and core subroutines must be declared \texttt{pure}. A \texttt
   \item Is safe to call from a parallel loop: with no side effects, it cannot race through global state.
 \end{itemize}
 
-Remove \texttt{pure} only when truly necessary (e.g., I/O, or an impure external library). Allocation is not a reason: \texttt{allocate(..., stat=)} is legal in a pure procedure. One procedure is not plain \texttt{pure} on purpose: the one that holds a parallel loop. An OpenMP directive is not allowed in a pure procedure, so it is declared \texttt{M\_OMP\_PURE}, pure without OpenMP and impure with it (Section~\ref{sec:openmp-root}).
+Remove \texttt{pure} only when truly necessary (e.g., I/O, or an impure external library). Allocation is not a reason: \texttt{allocate(..., stat=)} is legal in a pure procedure. The one exception is the procedure that holds a parallel loop, which is declared \texttt{M\_OMP\_PURE} (Section~\ref{sec:openmp-root}).
 
 \subsection{Optional Arguments}
 
@@ -567,13 +571,12 @@ subroutine my_routine(data, n, span, degree)
 
 OpenMP is a build option, off by default: \texttt{./build.sh --openmp}. The compiler's OpenMP flag
 defines \texttt{\_OPENMP}, and that is the one switch the sources key on. There is no project macro
-of its own, and no build profile carries an OpenMP flag; the README's build options say why, and
-what \texttt{--openmp} does not combine with. Without it every loop runs serially, and every OpenMP
-line below is a comment.
+such as \texttt{USE\_OPENMP}, and no build profile carries an OpenMP flag: the comment in
+\texttt{fpm.toml} says why, and the README's build options say what \texttt{--openmp} does not
+combine with. Without it every loop runs serially, and every OpenMP line below is a comment.
 
-Parallelism is written, never left to the compiler: one parallel loop per method, in the procedure
-that starts the method, with the macros of \texttt{src/macros.h}. Code written on other branches
-before these rules adopts them when it merges.
+Parallelism is written, never left to the compiler, with the macros of \texttt{src/macros.h}. Code
+written on other branches before these rules adopts them when it merges.
 
 \subsection{No \texttt{do concurrent}}
 
@@ -582,17 +585,18 @@ never threads one, while ifx threads every one once OpenMP is on, unasked: with 
 team, in places a parallel loop must not be (below), and in loops whose iterations turned out not
 to be independent. A loop worth threading is the parallel loop of a root.
 
-\subsection{The root: one parallel loop per call stack}\label{sec:openmp-root}
+\subsection{The root}\label{sec:openmp-root}
 
-Only the outermost procedure of a method, its \emph{root}, holds a parallel loop, and nothing it
-calls opens another: one parallel region per call stack, never nested. Parallelise the outermost
+A \emph{root} is the outermost procedure of a method, and the only one that holds a parallel loop.
+Nothing it calls opens another: one parallel region per call stack, never nested. Parallelise the outermost
 loop whose iterations are independent (over families, points, samples), not an inner one. This is a
 guideline for the author and the reviewer; the generator does not check it.
 
 A root is an implementation (Section~\ref{sec:impl}) with five parts:
 
 \begin{lstlisting}[language=Fortran]
-M_OMP_PURE subroutine column_sums_impl(n_rows, n_cols, values, sums, n_omp_threads, tmp_column)
+M_OMP_PURE subroutine column_sums_impl(n_rows, n_cols, values, sums, &
+                                       n_omp_threads, tmp_col)
     !$ use omp_lib, only: omp_get_thread_num
     integer(int32), intent(in) :: n_rows
         !! rows of the matrix
@@ -603,16 +607,16 @@ M_OMP_PURE subroutine column_sums_impl(n_rows, n_cols, values, sums, n_omp_threa
     real(real64), intent(out) :: sums(n_cols)
         !! the sum of every column
     integer(int32), intent(in) :: n_omp_threads
-    real(real64), intent(out) :: tmp_column(n_rows, n_omp_threads)
+    real(real64), intent(out) :: tmp_col(n_rows, n_omp_threads)
         !! one column of scratch per thread
     integer(int32) :: i_col, i_thread
 
-    !M_OMP_PARALLEL(n_cols > 1) shared(n_rows, n_cols, values, sums, tmp_column) private(i_thread)
+    !M_OMP_PARALLEL(n_cols > 1) shared(n_rows, n_cols, values, sums, tmp_col) private(i_thread)
     do i_col = 1, n_cols
         i_thread = 1
         !$ i_thread = omp_get_thread_num() + 1
-        tmp_column(:, i_thread) = values(:, i_col)  ! reset in this iteration
-        sums(i_col) = sum(tmp_column(:, i_thread))   ! one output slot per iteration
+        tmp_col(:, i_thread) = values(:, i_col)  ! reset in this iteration
+        sums(i_col) = sum(tmp_col(:, i_thread))  ! one output slot per iteration
     end do
 end subroutine column_sums_impl
 \end{lstlisting}
@@ -624,7 +628,7 @@ end subroutine column_sums_impl
         writes \texttt{M\_OMP\_PURE} onto its wrappers.
   \item \textbf{A required \texttt{n\_omp\_threads}}, \texttt{integer(int32), intent(in)}, with no
         \texttt{!!} and no \texttt{DM\_} macro: the generator writes its documentation and checks
-        that it is at least 1. It caps the team, and it is what makes the procedure a root.
+        that it is at least 1. It caps the team, and it is how the generator recognises a root.
   \item \textbf{Per-thread work arrays with the thread axis last},
         \texttt{tmp\_<name>(\ldots, n\_omp\_threads)}, in every build. Without OpenMP the
         allocating \texttt{foo} allocates one column of each (through \texttt{M\_OMP\_N\_THREADS},
@@ -637,7 +641,7 @@ end subroutine column_sums_impl
 !$omp parallel do default(none) num_threads(n_omp_threads) if(n_omp_threads > 1 .and. (CONDITION)) schedule(dynamic)
 \end{lstlisting}
         \texttt{default(none)} makes every
-        variable the loop touches need a clause: \texttt{shared} for what every iteration reads and
+        variable the loop touches, except its index, need a clause: \texttt{shared} for what every iteration reads and
         for the outputs, \texttt{private} for \texttt{i\_thread} and other per-iteration scalars,
         \texttt{firstprivate} for a private copy that starts from the value before the loop.
         \texttt{CONDITION} says when the loop has enough work to share: starting and joining a team
@@ -666,15 +670,16 @@ results stay the same only if:
   \item \textbf{A work array is reset inside the iteration}, before it is read. Which iterations a
         thread ran before this one depends on the schedule, so whatever its column still holds
         comes from an unknown iteration.
-  \item \textbf{No floating-point sum across the iterations}: no \texttt{reduction} clause, no
-        shared accumulator. The order of the additions would depend on the team, and with it the
-        rounding. Write each iteration's part to its own slot, and add the slots after the loop if
-        a total is needed.
+  \item \textbf{No floating-point sum across the iterations}: no floating-point
+        \texttt{reduction} clause, no shared accumulator. The order of the additions would depend on
+        the team, and with it the rounding. Write each iteration's part to its own slot, and add the
+        slots after the loop if a total is needed. An integer \texttt{reduction}, such as a count,
+        is exact and fine.
 \end{itemize}
 
 Kept to, these give the same output at 1 thread and at several. On ifx that also takes the
-precise floating-point model, which every ifx build carries (\texttt{-assume protect\_parens
--fp-model precise} in \texttt{fpm.toml}): without it, ifx \texttt{--max-performance --openmp}
+precise floating-point model, which every ifx build of the profiles carries (\texttt{-assume
+protect\_parens -fp-model precise} in \texttt{fpm.toml}; \texttt{--override-flags} replaces it): without it, ifx \texttt{--max-performance --openmp}
 vectorised a root's serial path, which runs at 1 thread, differently from its parallel body, and 1551
 of 3000 column sums differed between 1 and 2--4 threads. With it, none did. Keep the flags.
 
@@ -699,16 +704,19 @@ error), and one \texttt{ierr} written by several threads would race. So:
   \item \textbf{LOESS}, until its rewrite (\#200). The netlib code under
         \texttt{external/loess\_netlib} keeps state in \texttt{save} variables (\texttt{save
         machin,execnt} in \texttt{loessf.f}), which threads would race on. Nothing called from a
-        root may reach \texttt{tox\_loess}.
+        root may reach \texttt{tox\_loess\_impl}, the module through which the library calls it,
+        nor its wrapper \texttt{tox\_loess}.
   \item \textbf{\texttt{matmul}}, while ifx's \texttt{--max-performance} profile carries
         \texttt{-qopt-matmul}. That flag turns \texttt{matmul} into a call to Intel's threaded
-        library, which starts a team of its own inside the parallel region.
+        library, which asks for a team of its own inside the parallel region: at the runtimes'
+        default nesting level it gets one thread and only costs time, and if the host allows
+        nesting it oversubscribes the processors.
   \item \textbf{Tasks} (\texttt{!\$omp task}, \texttt{taskloop}). A task can be suspended while
         another runs on its thread, or resume on a different thread, so the thread index no longer
         names a column that only it uses.
-  \item \textbf{Another parallel region}: one per call stack, as above.
-  \item \textbf{Random numbers}: a loop that draws them stays serial. There are no per-iteration
-        reproducible random streams yet.
+  \item \textbf{Another parallel region} (Section~\ref{sec:openmp-root}).
+  \item \textbf{Random numbers}: a loop that draws them stays serial until reproducible random
+        streams exist.
 \end{itemize}
 
 \subsection{Hand-written OpenMP directives}
@@ -721,7 +729,8 @@ clauses a root's directive needs, and a hand-written one has to carry them itsel
         \texttt{OMP\_NUM\_THREADS} or the processor count, while \texttt{foo} allocated
         \texttt{n\_omp\_threads} columns of every per-thread work array, so the extra threads write
         past them. With 2 columns and \texttt{OMP\_NUM\_THREADS=8}, \texttt{-fcheck=bounds} stops
-        at column 7; without the check, memory is silently overwritten.
+        at the first column past 2 that a thread reaches; without the check, memory is silently
+        overwritten.
   \item \textbf{\texttt{default(none)}}, so no variable is shared by accident.
   \item \textbf{\texttt{if(n\_omp\_threads > 1 .and. (\ldots))}}. A caller who passes 1 must have the
         loop run on its own thread alone: that is what lets a forked worker process call the procedure
@@ -747,8 +756,12 @@ test of that needs enough work per iteration: with 64 trivial items under
 \texttt{n\_omp\_threads} is the caller's choice. It is at least 1 in every build, and the team never
 has more threads, whatever \texttt{OMP\_NUM\_THREADS} says. Through \texttt{foo}, a build without
 OpenMP uses one work-array column whatever is passed. A caller of \texttt{foo\_expert} allocates
-\texttt{n\_omp\_threads} columns itself; to allocate no more than the build can use, it passes
-\texttt{min(n, max\_omp\_threads())}, the build query of \texttt{f42\_openmp}. Pass 1:
+\texttt{n\_omp\_threads} columns itself. The build query \texttt{max\_omp\_threads()} of
+\texttt{f42\_openmp} answers the team size OpenMP picks by default (\texttt{OMP\_NUM\_THREADS}, else
+the runtime's choice; 1 in a serial build). It is not a limit, since \texttt{num\_threads} may ask
+for more, but passing \texttt{min(threads\_wanted, max\_omp\_threads())}, where
+\texttt{threads\_wanted} is the most threads the caller wants, follows \texttt{OMP\_NUM\_THREADS}
+and allocates a single column in a serial build. Pass 1:
 
 \begin{itemize}
   \item \textbf{when you parallelise around the call yourself}: the root would otherwise ask for a
@@ -759,10 +772,8 @@ OpenMP uses one work-array column whatever is passed. A caller of \texttt{foo\_e
         1 the \texttt{if} clause keeps the loop on the calling thread, and the child runs.
 \end{itemize}
 
-Fortran code that calls a root from a procedure of its own declares that procedure
-\texttt{M\_OMP\_PURE} rather than \texttt{pure}, since a pure procedure cannot call it in an OpenMP
-build, and compiles with the library's OpenMP setting. The API page
-(\texttt{concise\_project\_info.md}) tells users all of this.
+How a library user calls a root, from Fortran included, is the API page's
+(\texttt{concise\_project\_info.md}), the one place that documents it.
 
 % =============================================================================
 \section{Memory Model: No Copies, No Allocations in Cores}
@@ -891,7 +902,7 @@ Macro & Purpose \\
 \texttt{M\_GENE\_TO\_FAM\_SENTINEL} & The \texttt{gene\_to\_fam} value of a gene in no family \\
 \texttt{M\_GENE\_TO\_FAM\_DOC(ARG)} & The standard doc sentence for a \texttt{gene\_to\_fam} argument \\
 \texttt{M\_OMP\_PURE} & \texttt{pure} without OpenMP, \texttt{impure} with it; an OpenMP root's purity \\
-\texttt{!M\_OMP\_PARALLEL(COND)} & An OpenMP root's parallel loop, with its locality clauses after it \\
+\texttt{!M\_OMP\_PARALLEL(CONDITION)} & An OpenMP root's parallel loop, with its locality clauses after it \\
 \bottomrule
 \end{tabular}
 
