@@ -127,7 +127,7 @@ run_real_data_example <- function() {
   d <- nrow(gene_expr_matrix)
   
   # Call distance_to_centroid wrapper function directly from tensor_omics.R
-  distances <- distance_to_centroid(gene_expr_matrix, centroids_matrix, mapping_data$gene_to_family)
+  distances <- distance_to_centroid(gene_expr_matrix, centroids_matrix, mapping_data$gene_to_family, TEST_N_OMP_THREADS)
   
   # Create results dataframe
   results_df <- data.frame(

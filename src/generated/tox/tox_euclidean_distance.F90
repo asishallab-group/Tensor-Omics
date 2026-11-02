@@ -11,7 +11,7 @@ module tox_euclidean_distance
     use tox_euclidean_distance_impl, only: distance_to_centroid_impl, euclidean_distance_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, validate_all_in_range_int, validate_all_in_range_real
-    use tox_errors, only: validate_dimension_size
+    use tox_errors, only: validate_dimension_size, validate_in_range_int
     M_IMPLICIT_NONE
     private
 
@@ -58,7 +58,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_euclidean_distance_impl(module):distance_to_centroid_impl]].
     !| For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.
-    pure subroutine distance_to_centroid(&
+    M_OMP_PURE subroutine distance_to_centroid(&
             n_genes,&
             n_families,&
             genes,&
@@ -66,6 +66,7 @@ contains
             gene_to_fam,&
             distances,&
             n_tissues,&
+            n_omp_threads,&
             ierr&
         )
         integer(int32), intent(in) :: n_genes
@@ -85,6 +86,12 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(real64), dimension(n_genes), intent(out) :: distances
             !! Output distances array
+        integer(int32), intent(in) :: n_omp_threads
+            !! The most threads the parallel loop may use (OpenMP): it caps the team size.
+            !! It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+            !! It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+            !! Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+            !! The minimum valid value is `1_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -93,6 +100,7 @@ contains
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_tissues, ierr, arg_pos=7_int32)
+        call validate_in_range_int(n_omp_threads, ierr, arg_pos=8_int32, min=1_int32)
         call validate_all_in_range_real(genes, n_tissues * n_genes, ierr, arg_pos=3_int32)
         call validate_all_in_range_real(centroids, n_tissues * n_families, ierr, arg_pos=4_int32)
         call validate_all_in_range_int(gene_to_fam, n_genes, ierr, arg_pos=5_int32, min=1_int32, max=n_families, sentinel=0_int32)
@@ -106,7 +114,8 @@ contains
             centroids = centroids,&
             gene_to_fam = gene_to_fam,&
             distances = distances,&
-            n_tissues = n_tissues&
+            n_tissues = n_tissues,&
+            n_omp_threads = n_omp_threads&
         )
     end subroutine distance_to_centroid
 

@@ -38,20 +38,26 @@ euclidean_distance <- function(vec1, vec2) {
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_families`.
 #'   The value `0` is additionally accepted.
+#' @param n_omp_threads a integer scalar. The most threads the parallel loop may use (OpenMP): it caps the team size.
+#'   It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+#'   It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+#'   Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+#'   The minimum valid value is `1`.
 #' @return a numeric vector. Output distances array
 #' @export
-distance_to_centroid <- function(genes, centroids, gene_to_fam) {
+distance_to_centroid <- function(genes, centroids, gene_to_fam, n_omp_threads) {
     genes <- .tox_as_double_matrix(genes, "genes")
     centroids <- .tox_as_double_matrix(centroids, "centroids")
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
+    n_omp_threads <- .tox_as_integer_scalar(n_omp_threads, "n_omp_threads")
     if (dim(centroids)[1] != dim(genes)[1])
         .tox_shape_error("centroids", 1L, dim(centroids)[1], "'genes' implies n_tissues == ", dim(genes)[1], "n_tissues, n_families")
     if (length(gene_to_fam) != dim(genes)[2])
         .tox_shape_error("gene_to_fam", 1L, length(gene_to_fam), "'genes' implies n_genes == ", dim(genes)[2], "n_genes")
 
-    .result <- .Call("distance_to_centroid_call", genes, centroids, gene_to_fam)
-    .arguments <- c("n_genes", "n_families", "genes", "centroids", "gene_to_fam", "distances", "n_tissues", "ierr")
-    .sources <- c("genes", "centroids", NA_character_, NA_character_, NA_character_, NA_character_, "genes", NA_character_)
+    .result <- .Call("distance_to_centroid_call", genes, centroids, gene_to_fam, n_omp_threads)
+    .arguments <- c("n_genes", "n_families", "genes", "centroids", "gene_to_fam", "distances", "n_tissues", "n_omp_threads", "ierr")
+    .sources <- c("genes", "centroids", NA_character_, NA_character_, NA_character_, NA_character_, "genes", NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$distances

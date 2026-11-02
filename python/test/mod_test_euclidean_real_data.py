@@ -13,7 +13,7 @@ from pathlib import Path
 # Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import euclidean_distance, distance_to_centroid
-from test_helpers import run_all_tests
+from test_helpers import run_all_tests, TEST_N_OMP_THREADS
 
 
 def generate_gene_to_family_mapping(orthogroups_file, centroids_file, gene_expression_file,
@@ -137,7 +137,8 @@ def test_real_data_example():
     distances = distance_to_centroid(
         gene_expr_matrix,
         centroids_matrix,
-        mapping_data['gene_to_family']
+        mapping_data['gene_to_family'],
+        TEST_N_OMP_THREADS
     )
 
     # Create results dataframe

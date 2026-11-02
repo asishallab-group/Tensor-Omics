@@ -120,7 +120,7 @@ SEXP validate_shift_vectors_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP validate_string_array_uniqueness_call(SEXP);
 SEXP validate_all_data_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP euclidean_distance_call(SEXP, SEXP);
-SEXP distance_to_centroid_call(SEXP, SEXP, SEXP);
+SEXP distance_to_centroid_call(SEXP, SEXP, SEXP, SEXP);
 SEXP mean_vector_call(SEXP, SEXP);
 SEXP group_centroid_orthologs_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP group_centroid_all_call(SEXP, SEXP, SEXP, SEXP);
@@ -231,7 +231,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"validate_string_array_uniqueness_call", (DL_FUNC) &validate_string_array_uniqueness_call, 1},
     {"validate_all_data_call", (DL_FUNC) &validate_all_data_call, 11},
     {"euclidean_distance_call", (DL_FUNC) &euclidean_distance_call, 2},
-    {"distance_to_centroid_call", (DL_FUNC) &distance_to_centroid_call, 3},
+    {"distance_to_centroid_call", (DL_FUNC) &distance_to_centroid_call, 4},
     {"mean_vector_call", (DL_FUNC) &mean_vector_call, 2},
     {"group_centroid_orthologs_call", (DL_FUNC) &group_centroid_orthologs_call, 5},
     {"group_centroid_all_call", (DL_FUNC) &group_centroid_all_call, 4},

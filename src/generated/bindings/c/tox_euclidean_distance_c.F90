@@ -67,6 +67,7 @@ contains
             gene_to_fam,&
             distances,&
             n_tissues,&
+            n_omp_threads,&
             ierr&
         ) bind(C, name="distance_to_centroid_c")
         use tox_euclidean_distance, only: distance_to_centroid
@@ -88,6 +89,12 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(c_double), dimension(n_genes), intent(out), target :: distances
             !! Output distances array
+        integer(c_int), intent(in), target :: n_omp_threads
+            !! The most threads the parallel loop may use (OpenMP): it caps the team size.
+            !! It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+            !! It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+            !! Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+            !! The minimum valid value is `1_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -96,6 +103,7 @@ contains
         M_CHECK_NON_NULL(n_genes)
         M_CHECK_NON_NULL(n_families)
         M_CHECK_NON_NULL(n_tissues)
+        M_CHECK_NON_NULL(n_omp_threads)
         M_CHECK_ARRAY_NON_NULL(genes, n_tissues * n_genes)
         M_CHECK_ARRAY_NON_NULL(centroids, n_tissues * n_families)
         M_CHECK_ARRAY_NON_NULL(gene_to_fam, n_genes)
@@ -109,6 +117,7 @@ contains
             gene_to_fam = gene_to_fam,&
             distances = distances,&
             n_tissues = n_tissues,&
+            n_omp_threads = n_omp_threads,&
             ierr = ierr&
         )
     end subroutine distance_to_centroid_c
