@@ -594,7 +594,7 @@ guideline for the author and the reviewer; the generator does not check it.
 
 A root is an implementation (Section~\ref{sec:impl}) with five parts:
 
-\begin{lstlisting}[language=Fortran]
+\begin{lstlisting}[language=Fortran,basicstyle=\ttfamily\footnotesize]
 M_OMP_PURE subroutine column_sums_impl(n_rows, n_cols, values, sums, &
                                        n_omp_threads, tmp_col)
     !$ use omp_lib, only: omp_get_thread_num
@@ -611,7 +611,7 @@ M_OMP_PURE subroutine column_sums_impl(n_rows, n_cols, values, sums, &
         !! one column of scratch per thread
     integer(int32) :: i_col, i_thread
 
-    !M_OMP_PARALLEL(n_cols > 1) shared(n_rows, n_cols, values, sums, tmp_col) private(i_thread)
+    !M_OMP_PARALLEL(n_cols > 1) schedule(static) shared(n_cols, values, sums, tmp_col) private(i_thread)
     do i_col = 1, n_cols
         i_thread = 1
         !$ i_thread = omp_get_thread_num() + 1
@@ -634,11 +634,11 @@ end subroutine column_sums_impl
         allocating \texttt{foo} allocates one column of each (through \texttt{M\_OMP\_N\_THREADS},
         which only the generator writes); a caller of \texttt{foo\_expert} sizes them.
   \item \textbf{The loop}, under \texttt{!M\_OMP\_PARALLEL(CONDITION)} on the line directly above
-        the \texttt{do}, with the \texttt{!} in the source and the locality clauses after it on the
+        the \texttt{do}, with the \texttt{!} in the source and the loop's own clauses after it on the
         same line. With OpenMP it expands to this, followed by your clauses, and without OpenMP to
         a comment:
-\begin{lstlisting}[language=Fortran]
-!$omp parallel do default(none) num_threads(n_omp_threads) if(n_omp_threads > 1 .and. (CONDITION)) schedule(dynamic)
+\begin{lstlisting}[language=Fortran,basicstyle=\ttfamily\footnotesize]
+!$omp parallel do default(none) num_threads(n_omp_threads) if(n_omp_threads > 1 .and. (CONDITION))
 \end{lstlisting}
         \texttt{default(none)} makes every
         variable the loop touches, except its index, need a clause: \texttt{shared} for what every iteration reads and
@@ -647,6 +647,13 @@ end subroutine column_sums_impl
         \texttt{CONDITION} says when the loop has enough work to share: starting and joining a team
         costs time, so choose its threshold by measuring, and name it as a \texttt{CM\_} constant
         (Section~\ref{sec:cm-macros}).
+
+        \textbf{Write the \texttt{schedule} with these clauses}, because the right one depends on
+        the loop's items: \texttt{schedule(dynamic)} for items of uneven cost,
+        \texttt{schedule(static)} for tiny, equal ones. \texttt{dynamic} without a chunk fetches
+        work once per iteration, and on tiny iterations that costs more than the work. A missing
+        clause gives the compiler's default, which can only be slower, never wrong, because
+        outputs go by iteration index; so nothing checks that it is there.
   \item \textbf{The thread index}, 1-based: the first two statements of the loop body are
         \texttt{i\_thread = 1} and \texttt{!\$ i\_thread = omp\_get\_thread\_num() + 1}, with
         \texttt{!\$ use omp\_lib, only: omp\_get\_thread\_num} at the top of the procedure. A
