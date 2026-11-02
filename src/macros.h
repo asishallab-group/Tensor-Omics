@@ -74,15 +74,17 @@
 #define M_OMP_N_THREADS(N) 1_int32
 #endif
 
-! The parallel loop of a root procedure, so no clause is forgotten. Written as a comment line
-! directly above the `do`, with the `!` in the source and the loop's locality clauses after it
-! on the same line, e.g. `!M_OMP_PARALLEL(n_items > 1) shared(values, sums) private(i_thread)`.
+! The parallel loop of a root procedure, so no clause every root needs is forgotten. Written as a
+! comment line directly above the `do`, with the `!` in the source and the loop's own clauses, its
+! `schedule` and its locality, after it on the same line, e.g.
+! `!M_OMP_PARALLEL(n_items > 1) schedule(static) shared(values, sums) private(i_thread)`.
 ! It expands to an OpenMP directive, which a build without OpenMP reads as a comment. Threads
 ! run only when the caller allows more than one (`n_omp_threads`, an argument of the root) and
 ! the loop has enough to share (`CONDITION`); `default(none)` makes every variable the loop
-! touches need a clause. The `!` cannot move into the body: ifx's preprocessor reads it as the
-! start of a comment, and the macro expands to nothing.
-#define M_OMP_PARALLEL(CONDITION) $omp parallel do default(none) num_threads(n_omp_threads) if(n_omp_threads > 1 .and. (CONDITION)) schedule(dynamic)
+! touches need a clause. The schedule is not here because the right one depends on the loop's
+! items. The `!` cannot move into the body: ifx's preprocessor reads it as the start of a comment,
+! and the macro expands to nothing.
+#define M_OMP_PARALLEL(CONDITION) $omp parallel do default(none) num_threads(n_omp_threads) if(n_omp_threads > 1 .and. (CONDITION))
 
 ! not using is_err here, as our error code encoding might lead to unexpected behavior. The ISO standard defines success value as zero.
 #define M_CHECK_IO_ERR(ERR_CODE) if (ierr /= 0) then; call set_err(ierr, ERR_CODE); close(unit); return; end if

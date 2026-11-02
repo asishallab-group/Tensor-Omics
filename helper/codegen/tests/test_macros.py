@@ -273,11 +273,11 @@ class TestOmpMacros:
 
     def test_the_parallel_loop_is_one_directive_in_both_builds(self, macros, with_openmp):
         # the `!` stays in the source line, so the expansion is a comment without OpenMP
-        line = "!M_OMP_PARALLEL(n_items > 1) shared(values) private(i_thread)"
+        line = "!M_OMP_PARALLEL(n_items > 1) schedule(static) shared(values) private(i_thread)"
         directive = (
             "!$omp parallel do default(none) num_threads(n_omp_threads)"
-            " if(n_omp_threads > 1 .and. (n_items > 1)) schedule(dynamic)"
-            " shared(values) private(i_thread)"
+            " if(n_omp_threads > 1 .and. (n_items > 1))"
+            " schedule(static) shared(values) private(i_thread)"
         )
         assert macros.expand(line) == directive
         assert with_openmp.expand(line) == directive

@@ -1045,7 +1045,7 @@ generator needs.
 
 **Write** a required `n_omp_threads`, declare the procedure `M_OMP_PURE` where it would say
 `pure`, give every work array a thread needs a copy of the thread axis last, and write the loop
-with `!M_OMP_PARALLEL(<condition>)` and its locality clauses on the same line:
+with `!M_OMP_PARALLEL(<condition>)`, and its `schedule` and locality clauses on the same line:
 
 ```fortran
 !> summary: The sum of every column
@@ -1065,7 +1065,7 @@ M_OMP_PURE subroutine column_sums_impl(n_rows, n_cols, values, sums, n_omp_threa
         !! one column of scratch per thread
     integer(int32) :: i_col, i_thread
 
-    !M_OMP_PARALLEL(n_cols > 1) shared(n_rows, n_cols, values, sums, tmp_column) private(i_thread)
+    !M_OMP_PARALLEL(n_cols > 1) schedule(static) shared(n_rows, n_cols, values, sums, tmp_column) private(i_thread)
     do i_col = 1, n_cols
         i_thread = 1
         !$ i_thread = omp_get_thread_num() + 1
@@ -1075,7 +1075,9 @@ M_OMP_PURE subroutine column_sums_impl(n_rows, n_cols, values, sums, n_omp_threa
 end subroutine column_sums_impl
 ```
 
-`n_omp_threads` carries no `!!` and no `DM_` directive: the generator writes both. Put it after the
+The schedule is the loop's own, and the generator does not check it: `dynamic` for items of uneven
+cost, `static` for tiny, equal ones (the coding guide says why). `n_omp_threads` carries no `!!` and
+no `DM_` directive: the generator writes both. Put it after the
 other required arguments and before the optional ones -- that is guidance, not checked. Do not name
 the macros in a doc comment: it is preprocessed, so `M_OMP_PURE` would read `pure` there.
 
