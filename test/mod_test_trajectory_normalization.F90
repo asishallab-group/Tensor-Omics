@@ -4,7 +4,7 @@ module mod_test_trajectory_normalization
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_trajectory_normalization
     use tox_errors
-    use test_suite, only: test_case, TEST_N_OMP_THREADS
+    use test_suite, only: test_case
     implicit none
 
     real(real64), parameter :: TOL = 1.0e-10_real64
@@ -14,11 +14,10 @@ contains
     function get_all_tests_trajectory_normalization() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(4))
+        allocate (all_tests(3))
         all_tests(1) = test_case("test_normalize_variable_timeseries", test_normalize_variable_timeseries)
         all_tests(2) = test_case("test_normalize_single_trajectory", test_normalize_single_trajectory)
         all_tests(3) = test_case("test_normalize_all_trajectories", test_normalize_all_trajectories)
-        all_tests(4) = test_case("test_normalize_all_trajectories_many_series", test_normalize_all_trajectories_many_series)
     end function get_all_tests_trajectory_normalization
 
     !> Test the normalization of variable timeseries.
@@ -68,8 +67,7 @@ contains
         trajectories(1, 2, :) = [5.0_real64, 6.0_real64, 7.0_real64, 8.0_real64]
         trajectories(2, 2, :) = [2.0_real64, 4.0_real64, 6.0_real64, 8.0_real64]
 
-        call normalize_all_trajectories(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, status, &
-                                        TEST_N_OMP_THREADS, ierr)
+        call normalize_all_trajectories(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, status, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_all_trajectories: ierr")
         do i_sample = 1, n_samples
@@ -80,45 +78,5 @@ contains
             end do
         end do
     end subroutine test_normalize_all_trajectories
-
-    !> Enough series for the parallel loop to run in an `--openmp` build: every series but those of
-    !> the first factor is a ramp, whatever its slope normalized to the same values, and the first
-    !> factor is constant, which its status says in every sample.
-    subroutine test_normalize_all_trajectories_many_series()
-        integer(int32), parameter :: n_factors = 80, n_samples = 100, n_timepoints = 4
-        real(real64), allocatable :: trajectories(:, :, :), trajectories_norm(:, :, :)
-        integer(int32), allocatable :: status(:, :)
-        integer(int32) :: ierr, i_factor, i_sample, i_timepoint
-        real(real64) :: expected
-
-        allocate (trajectories(n_factors, n_samples, n_timepoints), trajectories_norm(n_factors, n_samples, n_timepoints))
-        allocate (status(n_factors, n_samples))
-        do i_timepoint = 1, n_timepoints
-            do i_sample = 1, n_samples
-                trajectories(1, i_sample, i_timepoint) = 7.0_real64
-                do i_factor = 2, n_factors
-                    trajectories(i_factor, i_sample, i_timepoint) = real((i_factor + i_sample)*i_timepoint, real64)
-                end do
-            end do
-        end do
-
-        call normalize_all_trajectories(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, status, &
-                                        TEST_N_OMP_THREADS, ierr)
-
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_all_trajectories_many_series: ierr")
-        do i_sample = 1, n_samples
-            call assert_equal_int(get_err_code(status(1, i_sample)), ERR_DIVISION_BY_ZERO, "test_normalize_all_trajectories_many_series: status of a constant series")
-            do i_factor = 2, n_factors
-                call assert_equal_int(get_err_code(status(i_factor, i_sample)), ERR_OK, "test_normalize_all_trajectories_many_series: status of a ramp")
-            end do
-            do i_timepoint = 1, n_timepoints
-                expected = real(i_timepoint - 1, real64)/real(n_timepoints - 1, real64)
-                call assert_equal_real(trajectories_norm(1, i_sample, i_timepoint), 0.0_real64, TOL, "test_normalize_all_trajectories_many_series: a constant series")
-                do i_factor = 2, n_factors
-                    call assert_equal_real(trajectories_norm(i_factor, i_sample, i_timepoint), expected, TOL, "test_normalize_all_trajectories_many_series: a ramp")
-                end do
-            end do
-        end do
-    end subroutine test_normalize_all_trajectories_many_series
 
 end module mod_test_trajectory_normalization

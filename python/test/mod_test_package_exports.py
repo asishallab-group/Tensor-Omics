@@ -17,7 +17,7 @@ from tensor_omics import (
     ToxArgumentError,
     normalize_all_trajectories,
 )
-from test_helpers import run_all_tests, TEST_N_OMP_THREADS
+from test_helpers import run_all_tests
 
 
 def test_the_status_decodes_with_the_names_the_package_exports():
@@ -25,7 +25,7 @@ def test_the_status_decodes_with_the_names_the_package_exports():
     trajectories = np.ones((3, 4, 5), dtype=np.float64) * 7.0
     trajectories[1, :, :] = np.arange(5).reshape(1, 1, 5)  # only factor 1 varies
 
-    status = normalize_all_trajectories(trajectories, TEST_N_OMP_THREADS)["status"]
+    status = normalize_all_trajectories(trajectories)["status"]
 
     codes = status % ARG_POS_FACTOR
     assert np.all(codes[[0, 2], :] == ERR_DIVISION_BY_ZERO), "a constant factor cannot be scaled"
@@ -34,7 +34,7 @@ def test_the_status_decodes_with_the_names_the_package_exports():
 
 def test_the_binding_s_own_refusal_is_an_exported_class():
     try:
-        normalize_all_trajectories("not an array", TEST_N_OMP_THREADS)
+        normalize_all_trajectories("not an array")
     except ToxArgumentError:
         pass
     else:

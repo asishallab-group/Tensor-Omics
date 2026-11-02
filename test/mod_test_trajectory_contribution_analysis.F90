@@ -11,7 +11,7 @@ module mod_test_trajectory_contribution_analysis
     use tox_errors
     use f42_random_impl, only: init_random, rand_range
     use tox_trajectory_normalization
-    use test_suite, only: test_case, TEST_N_OMP_THREADS
+    use test_suite, only: test_case
     implicit none
 
     real(real64), parameter :: TOL = 1e-12_real64
@@ -828,7 +828,7 @@ contains
         end do
 
         call normalize_all_trajectories(trajectories, trajectories_norm, &
-                                              n_factors, n_samples, n_timepoints, status, TEST_N_OMP_THREADS, ierr)
+                                              n_factors, n_samples, n_timepoints, status, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_all_trajectories: should succeed")
 
         ! Check: For each (factor, sample), values should be normalized across time

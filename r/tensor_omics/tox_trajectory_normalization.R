@@ -54,21 +54,15 @@ normalize_single_trajectory <- function(trajectory) {
 #' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. Original trajectories
-#' @param n_omp_threads a integer scalar. The most threads the parallel loop may use (OpenMP): it caps the team size.
-#'   It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
-#'   It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
-#'   Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
-#'   The minimum valid value is `1`.
 #' @return a named list with elements:
 #'   \item{trajectories_norm}{a numeric array of rank 3. Normalized trajectories}
 #'   \item{status}{a integer matrix. Status code for specific warnings, one per factor per sample}
 #' @export
-normalize_all_trajectories <- function(trajectories, n_omp_threads) {
+normalize_all_trajectories <- function(trajectories) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
-    n_omp_threads <- .tox_as_integer_scalar(n_omp_threads, "n_omp_threads")
-    .result <- .Call("normalize_all_trajectories_call", trajectories, n_omp_threads)
-    .arguments <- c("trajectories", "trajectories_norm", "n_factors", "n_samples", "n_timepoints", "status", "n_omp_threads", "ierr")
-    .sources <- c(NA_character_, NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, NA_character_, NA_character_)
+    .result <- .Call("normalize_all_trajectories_call", trajectories)
+    .arguments <- c("trajectories", "trajectories_norm", "n_factors", "n_samples", "n_timepoints", "status", "ierr")
+    .sources <- c(NA_character_, NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
