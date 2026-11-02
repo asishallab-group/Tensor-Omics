@@ -101,7 +101,7 @@ contains
 
         integer(int32) :: i_gene, i_family, n_selected, i_thread
 
-        !M_OMP_PARALLEL(n_families >= CM_GROUP_CENTROID_MIN_PARALLEL) shared(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, mode, tmp_group_indices, ortholog_set) private(i_gene, n_selected, i_thread)
+        !M_OMP_PARALLEL(n_families >= CM_GROUP_CENTROID_MIN_PARALLEL) schedule(dynamic) shared(expression_vectors, n_axes, n_genes, gene_to_family, n_families, centroid_matrix, mode, tmp_group_indices, ortholog_set) private(i_gene, n_selected, i_thread)
         do i_family = 1, n_families
             i_thread = 1
             !$ i_thread = omp_get_thread_num() + 1

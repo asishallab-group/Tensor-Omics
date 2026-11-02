@@ -275,7 +275,7 @@ contains
         integer(int32) :: i_point, i_gene, gene_idx, i_thread
 
         ! Process each reference point
-        !M_OMP_PARALLEL(n_points >= CM_CONSTRUCT_NEIGHBORHOODS_MIN_PARALLEL) shared(n_points, x_star, n_genes_S, mean_S, resid_S, tmp_distances, tmp_distances_perm, neighborhood_residuals, neighborhood_indices, n_neighbors) private(i_gene, gene_idx, i_thread)
+        !M_OMP_PARALLEL(n_points >= CM_CONSTRUCT_NEIGHBORHOODS_MIN_PARALLEL) schedule(dynamic) shared(n_points, x_star, n_genes_S, mean_S, resid_S, tmp_distances, tmp_distances_perm, neighborhood_residuals, neighborhood_indices, n_neighbors) private(i_gene, gene_idx, i_thread)
         do i_point = 1, n_points
             i_thread = 1
             !$ i_thread = omp_get_thread_num() + 1
