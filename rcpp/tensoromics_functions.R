@@ -3721,101 +3721,151 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
 }
 
 
-#' Compute variance-matched noise-model p-values (implementation notes A and B)
+#' Compute variance-aware noise-model p-values (implementation notes A and F)
 #'
-#' The exact model (\code{\link{tox_compute_noise_pvalues_pipeline_exact}}) with a
-#' different NEIGHBOURHOOD: each gene's null is built from the \code{k} nearest genes
-#' in mean expression whose matching variable \code{u} lies within
-#' \code{+/- tau_var} of the gene's own (a two-sided variance band). The null
-#' itself -- pairwise differences of the neighbours' per-side \code{1/sqrt(n)}
-#' scaled residuals, exact tail count -- is unchanged, and so are the observed
-#' statistic, \code{log2fc}, \code{delta_hat} and \code{beta_centre}.
-#'
-#' \code{u} is computed inside the model from the replicates, on
-#' \code{L = log2(max(x,0) + 1)} (whatever \code{norm_method} is): pooled
-#' within-group variance \code{s2} (\code{d = n_case + n_control - 2} df),
-#' \code{l = log(s2 + 1e-8)}, detrended against a LOESS over
-#' \code{m = log2(mean + 1)}.
+#' The exact model (\code{\link{tox_compute_noise_pvalues_pipeline_exact}}) with three
+#' orthogonal switches (note F section 1):
 #' \describe{
-#'   \item{\code{variance_mode = "band"} (note A)}{\code{u = l - S(m)}, the raw
-#'     detrended log-variance; \code{tau_var = c_tau * sqrt(trigamma(d/2))}.}
-#'   \item{\code{variance_mode = "shrunk"} (note B)}{\code{u = log(s2m / s0sq)}, the
-#'     limma-style moderated variance over the trend prior, with prior df
-#'     \code{d0} estimated by moment matching; \code{tau_var = c_tau * w *
-#'     sqrt(trigamma(d/2))}, \code{w = d/(d + d0)}. Without noise heterogeneity
-#'     beyond sampling error, \code{d0 = Inf}, \code{u = 0} and the model reduces
-#'     exactly to the plain exact model at fixed \code{k}.}
+#'   \item{\code{variance_mode} (which genes enter the pools)}{\code{"mean"}: the
+#'     plain mean-matched kNN of the exact model (\code{k_start}, \code{k_step},
+#'     \code{k_max}, \code{tau}); with \code{scaling = "none"} identical to
+#'     \code{tox_compute_noise_pvalues_pipeline_exact}. \code{"band"} (note A): the
+#'     \code{k} nearest-in-mean genes whose matching variable \code{u} lies within
+#'     \code{+/- tau_var}. \code{"adaptive"} (note F section 5): growth in blocks of
+#'     \code{block_size} candidates inside the growth radius \code{r_max} (log2 mean
+#'     units), the same band, a two-sided stability stop (\code{tau_stab}, once
+#'     \code{k_min} genes are in) and an acceptance-rate stop (\code{a_min} over
+#'     \code{w_blocks} blocks); at most \code{k} genes.}
+#'   \item{\code{match_variable} (band / adaptive)}{\code{"raw"} (note A):
+#'     detrended log2-variance, \code{tau_var = c_tau * sqrt(trigamma(d/2))}.
+#'     \code{"js"}: \code{u = log(s2s / T)} of the James-Stein-shrunk variance,
+#'     \code{tau_var = c_js * MAD(u)}.}
+#'   \item{\code{scaling} (null construction)}{\code{"none"}: as the exact model.
+#'     \code{"xfit_js"}: each neighbour's case residuals divided by the sqrt of its
+#'     shrunk CONTROL variance and vice versa, the statistic by the gene's shrunk
+#'     pooled variance (cross-fitting; note F section 3). \code{"xfit_raw"}: the
+#'     same with raw variances (lambda = 0). \code{"same_group"}: benchmark-only
+#'     negative control (both pools scaled by the neighbour's own pooled shrunk
+#'     variance; internally studentised, anti-conservative by design).}
 #' }
+#' Shrinkage (note F section 2) is moment-based and assumes no distribution: on the
+#' scale the model tests on, the cross-group contrast of the group variances gives
+#' unbiased sampling variances, \code{lambda = clip(sum w Vhat / sum w (s2 - T)^2, 0, 1)}
+#' with \code{w = 1/T^2} (\code{lambda_scale = "relative"}) or 1, towards the target
+#' \code{T} = the median of the pooled variances or their LOESS on
+#' \code{m = log2(mean + 1)}; the same \code{T} for the pooled and both group
+#' variances. Equal group variances are assumed for the scaling (not for the null's
+#' shape).
 #'
 #' @param case_replicates,control_replicates Numeric matrices (samples x genes),
 #'   pre-log, same gene columns in the same order.
-#' @param variance_mode \code{"band"} (note A) or \code{"shrunk"} (note B), or the
-#'   integer codes 1 / 2.
+#' @param variance_mode \code{"mean"}, \code{"band"} or \code{"adaptive"} (integer
+#'   codes 0, 1, 3; 2 was note B's shrunk band, removed).
+#' @param match_variable \code{"raw"} or \code{"js"}.
+#' @param scaling \code{"none"}, \code{"xfit_raw"}, \code{"xfit_js"} or
+#'   \code{"same_group"}.
+#' @param shrink_target \code{"median"} or \code{"loess"}.
+#' @param lambda_scale \code{"relative"} or \code{"absolute"}.
 #' @param valid_genes_own Integer vector (1 = test this gene); \code{NULL} tests all.
-#' @param beta_centre 0 / 1, median centring of the observed statistic (as in the
-#'   other scalar models).
-#' @param norm_method 1 = log2 (default), 0 = linear (statistic and null only).
-#' @param k Fixed number of neighbour GENES per pool (notes: 50).
-#' @param c_tau Band constant; \code{NULL} takes the notes' primary value, 1.5 for
-#'   \code{"band"} and 1.0 for \code{"shrunk"}.
-#' @param loess_span,loess_degree,loess_robust Trend LOESS controls (notes: 0.3,
-#'   1, robust/\code{family = "symmetric"}).
-#' @param robust_var \code{"shrunk"} only: \code{TRUE} = MAD-based scatter
-#'   (default), \code{FALSE} = sample variance.
+#' @param beta_centre 0 / 1, median centring of the observed statistic.
+#' @param norm_method 1 = log2 (default), 0 = linear (statistic, null, variances).
+#' @param k_start,k_step,k_max,tau Mean-mode neighbourhood (exact model).
+#' @param k Band: fixed accepted genes; adaptive: maximum accepted genes.
+#' @param c_tau Raw band constant (note A).
+#' @param c_js James-Stein band constant.
+#' @param block_size,k_min,r_max,tau_stab,w_blocks,a_min Adaptive growth (note F
+#'   section 5 defaults: 5, 20, 0.5, 0.10, 2, 0.2).
+#' @param loess_span,loess_degree LOESS controls (note A trend and LOESS target).
+#' @param loess_robust Robust note-A trend LOESS (\code{family = "symmetric"}).
+#' @param shrink_loess_robust Robust LOESS shrinkage target (default non-robust).
 #' @param max_pool_size Integer maximum residual pool size.
 #'
-#' @return A list with \code{pvalues_own}, \code{obs_own}, \code{log2fc},
-#'   \code{delta_hat}, \code{n_success}, \code{neighborhood_size_own_case} /
-#'   \code{_control} (residuals; \code{-1} if not computed),
-#'   \code{n_scanned_own_case} / \code{_control} (candidate genes examined),
-#'   \code{match_u}, \code{tau_var}, \code{d0} (\code{"shrunk"}; \code{Inf} = no
-#'   excess scatter; \code{-1} in \code{"band"}), \code{w}, \code{scatter},
-#'   \code{n_floored} and \code{ierr}. A gene whose band pool holds fewer than 10
-#'   genes gets \code{pvalues_own = -1}.
+#' @return A list with \code{pvalues_own} (-1 = not computed), \code{obs_own} (the
+#'   UNSCALED statistic; the tested one is \code{obs_own / sqrt(s2s_pool)} under a
+#'   scaling), \code{log2fc}, \code{delta_hat}, \code{n_success},
+#'   \code{neighborhood_size_own_case} / \code{_control} (residuals),
+#'   \code{n_scanned_own_*}, \code{n_accepted_own_*} (band / adaptive),
+#'   \code{radius_own_*} and \code{stop_own_*} (adaptive: 1 k reached, 2 radius,
+#'   3 stability, 4 acceptance rate, 5 scan cap, 6 exhausted), \code{match_u},
+#'   \code{s2s_pool}, \code{tau_var}, \code{scatter}, \code{lambda_pool},
+#'   \code{lambda_case}, \code{lambda_control} (as used; \code{xfit_raw} uses 0 but
+#'   reports the estimates), their \code{*_unclipped} ratios, \code{p_hat}
+#'   (effective dimension), \code{participation_ratio}, \code{n_floored} and
+#'   \code{ierr}.
 #' @export
 tox_compute_noise_pvalues_pipeline_variance <- function(
     case_replicates,
     control_replicates,
-    variance_mode = c("band", "shrunk"),
+    variance_mode = c("mean", "band", "adaptive"),
+    match_variable = c("raw", "js"),
+    scaling = c("none", "xfit_raw", "xfit_js", "same_group"),
+    shrink_target = c("median", "loess"),
+    lambda_scale = c("relative", "absolute"),
     valid_genes_own = NULL,
     beta_centre = 0L,
     norm_method = 1L,
+    k_start = 20L,
+    k_step = 1L,
+    k_max = 50L,
+    tau = 0.1,
     k = 50L,
-    c_tau = NULL,
+    c_tau = 1.5,
+    c_js = 1.0,
+    block_size = 5L,
+    k_min = 20L,
+    r_max = 0.5,
+    tau_stab = 0.10,
+    w_blocks = 2L,
+    a_min = 0.2,
     loess_span = 0.3,
     loess_degree = 1L,
     loess_robust = TRUE,
-    robust_var = TRUE,
+    shrink_loess_robust = FALSE,
     max_pool_size
 ) {
-    if (is.character(variance_mode)) {
-        variance_mode <- match.arg(variance_mode)
-        mode_int <- if (variance_mode == "band") 1L else 2L
-    } else {
-        mode_int <- as.integer(variance_mode)
+    code <- function(x, levels, codes) {
+        if (is.character(x)) codes[match(match.arg(x, levels), levels)] else as.integer(x)
     }
-    if (is.null(c_tau)) c_tau <- if (mode_int == 1L) 1.5 else 1.0
+    mode_int    <- code(variance_mode, c("mean", "band", "adaptive"), c(0L, 1L, 3L))
+    match_int   <- code(match_variable, c("raw", "js"), 0:1)
+    scaling_int <- code(scaling, c("none", "xfit_raw", "xfit_js", "same_group"), 0:3)
+    target_int  <- code(shrink_target, c("median", "loess"), 0:1)
+    lscale_int  <- code(lambda_scale, c("relative", "absolute"), 0:1)
 
     case_replicates <- as.matrix(case_replicates)
     control_replicates <- as.matrix(control_replicates)
     if (is.null(valid_genes_own)) valid_genes_own <- rep(1L, ncol(case_replicates))
 
-    result <- tox_compute_noise_pvalues_pipeline_variance_rcpp(
+    tox_compute_noise_pvalues_pipeline_variance_rcpp(
         case_replicates = case_replicates,
         control_replicates = control_replicates,
         valid_genes_own = as.integer(valid_genes_own),
         beta_centre = as.integer(beta_centre),
         norm_method = as.integer(norm_method),
         variance_mode = mode_int,
+        match_variable = match_int,
+        scaling = scaling_int,
+        shrink_target = target_int,
+        lambda_scale = lscale_int,
+        k_start = as.integer(k_start),
+        k_step = as.integer(k_step),
+        k_max = as.integer(k_max),
+        tau = as.numeric(tau),
         k = as.integer(k),
         c_tau = as.numeric(c_tau),
+        c_js = as.numeric(c_js),
+        block_size = as.integer(block_size),
+        k_min = as.integer(k_min),
+        r_max = as.numeric(r_max),
+        tau_stab = as.numeric(tau_stab),
+        w_blocks = as.integer(w_blocks),
+        a_min = as.numeric(a_min),
         loess_span = as.numeric(loess_span),
         loess_degree = as.integer(loess_degree),
         loess_robust = as.integer(as.logical(loess_robust)),
-        robust_var = as.integer(as.logical(robust_var)),
+        shrink_loess_robust = as.integer(as.logical(shrink_loess_robust)),
         max_pool_size = as.integer(max_pool_size)
     )
-    return(result)
 }
 
 

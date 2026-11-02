@@ -77,7 +77,7 @@
 
         \subsubsection{Setting and assumption}
 
-            A gene is now measured on $d$ axes $a = 1,\ldots,d$ (e.g.\ tissues), each with its own case and control groups of sizes $n^{+}_a$ and $n^{-}_a$. The question is whether the gene responds anywhere, i.e.\ whether its whole vector of effects is larger than noise. The axes are treated as \emph{independent}: no sample, individual or batch may appear on more than one axis. This is a property of the study design and is checked through the sample identifiers, which cannot detect a shared individual under different identifiers.
+            A gene is now measured on $d$ axes $a = 1,\ldots,d$ (e.g.\ tissues), each with its own case and control groups of sizes $n^{+}_a$ and $n^{-}_a$. The question is whether the response across axes, taken together as one vector of effects, is larger than noise. Under the null all per-axis effects are zero, so a rejection indicates a response on at least one axis, but not on which one; a response on a single axis is diluted by the noise of the others. The axes are treated as \emph{independent}: no sample, individual or batch may appear on more than one axis. This is a property of the study design and is checked through the sample identifiers, which cannot detect a shared individual under different identifiers.
 
         \subsubsection{Statistic}
 

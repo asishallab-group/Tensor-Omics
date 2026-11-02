@@ -1,0 +1,187 @@
+\contentsline {section}{\numberline {1}Overview}{6}{section.1}%
+\contentsline {section}{\numberline {2}Multi Omics Data Integration: Jensen--Shannon-Divergence based compatibility test of two sets of biological replicates from different studies}{8}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Motivation and Scope}{8}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Overview of the Jensen--Shannon-Divergence based compatibility test}{9}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Basic concept of the JSD-Comp-Test}{9}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Mathematical Setup and Notation (Global Variant)}{9}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}Global Jensen--Shannon-Divergence Compatibility Test (gJCT)}{10}{subsection.2.5}%
+\contentsline {subsubsection}{\numberline {2.5.1}Conditioning on Mean Expression Levels}{10}{subsubsection.2.5.1}%
+\contentsline {subsubsection}{\numberline {2.5.2}Residual Histograms and Probability Mass Functions}{11}{subsubsection.2.5.2}%
+\contentsline {subsubsection}{\numberline {2.5.3}Choice and Validation of Histogram Resolution}{11}{subsubsection.2.5.3}%
+\contentsline {subsubsection}{\numberline {2.5.4}Jensen--Shannon Divergence Between Conditional Residual Distributions}{11}{subsubsection.2.5.4}%
+\contentsline {subsubsection}{\numberline {2.5.5}Permutation-Based Null Hypothesis Test}{12}{subsubsection.2.5.5}%
+\contentsline {subsubsection}{\numberline {2.5.6}Interpretation and Visualization}{13}{subsubsection.2.5.6}%
+\contentsline {subsubsection}{\numberline {2.5.7}Extension to Multiple Studies}{13}{subsubsection.2.5.7}%
+\contentsline {paragraph}{\numberline {2.5.7.1}Pooled studies global JSD-Comp-Test}{13}{paragraph.2.5.7.1}%
+\contentsline {paragraph}{\numberline {2.5.7.2}Visualizations of multi-study global JSC-Comp-Tests}{14}{paragraph.2.5.7.2}%
+\contentsline {subsection}{\numberline {2.6}Family-Conditioned Jensen--Shannon Compatibility Test (fJCT)}{14}{subsection.2.6}%
+\contentsline {subsubsection}{\numberline {2.6.1}Motivation}{14}{subsubsection.2.6.1}%
+\contentsline {subsubsection}{\numberline {2.6.2}Gene Family Annotation Requirement}{14}{subsubsection.2.6.2}%
+\contentsline {subsubsection}{\numberline {2.6.3}Residual Construction and Conditioning}{15}{subsubsection.2.6.3}%
+\contentsline {subsubsection}{\numberline {2.6.4}Minimum Family Size and Filtering}{16}{subsubsection.2.6.4}%
+\contentsline {subsubsection}{\numberline {2.6.5}Family-Level Jensen--Shannon Divergence}{16}{subsubsection.2.6.5}%
+\contentsline {subsubsection}{\numberline {2.6.6}Family Contribution to Global Divergence}{16}{subsubsection.2.6.6}%
+\contentsline {subsubsection}{\numberline {2.6.7}Interpretation}{16}{subsubsection.2.6.7}%
+\contentsline {section}{\numberline {3}From Raw Data to Expression Vectors}{16}{section.3}%
+\contentsline {section}{\numberline {4}Normalization of Expression Values}{17}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Variance (Standard Deviation) Stabilization for Scaling}{17}{subsection.4.1}%
+\contentsline {subsubsection}{\numberline {4.1.1}LOESS Estimation of Gene-wise Standard Deviation}{18}{subsubsection.4.1.1}%
+\contentsline {section}{\numberline {5}Construction of Expression Vector Space}{18}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Vector Space Storage in Fortran}{19}{subsection.5.1}%
+\contentsline {section}{\numberline {6}Gene Family Grouping and Centroid Estimation}{19}{section.6}%
+\contentsline {section}{\numberline {7}Space Interpolation and Smoothing}{19}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Grid Step Size Estimation}{19}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Gaussian Kernel Interpolation}{19}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Gaussian Kernel Smoothing}{20}{subsection.7.3}%
+\contentsline {section}{\numberline {8}Empirical Distribution Estimation}{20}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Relative Distance Index (RDI)}{21}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}Relative Angle Index (RAI)}{21}{subsection.8.2}%
+\contentsline {subsection}{\numberline {8.3}Relative Axis Signal (RAS)}{21}{subsection.8.3}%
+\contentsline {subsection}{\numberline {8.4}Rank-normalized Signal Index (RSI)}{22}{subsection.8.4}%
+\contentsline {subsection}{\numberline {8.5}Relative Frobenius Index (RFI)}{22}{subsection.8.5}%
+\contentsline {section}{\numberline {9}Outlier Detection and Shift Vector Calculation}{22}{section.9}%
+\contentsline {section}{\numberline {10}Empirical Noise-Based Significance of Distances}{23}{section.10}%
+\contentsline {subsection}{\numberline {10.1}Goal and Motivation}{23}{subsection.10.1}%
+\contentsline {subsection}{\numberline {10.2}Overview}{23}{subsection.10.2}%
+\contentsline {subsection}{\numberline {10.3}Empirical Noise Model per Axis}{23}{subsection.10.3}%
+\contentsline {subsection}{\numberline {10.4}Local k-Nearest-Neighbor Noise Sampling}{24}{subsection.10.4}%
+\contentsline {subsection}{\numberline {10.5}Noise-Only Distance for Two Genes}{24}{subsection.10.5}%
+\contentsline {subsection}{\numberline {10.6}Empirical P-Value}{25}{subsection.10.6}%
+\contentsline {subsubsection}{\numberline {10.6.1}Noise distribution quantile}{25}{subsubsection.10.6.1}%
+\contentsline {subsection}{\numberline {10.7}Diagnostic Plots for Empirical Noise Calibration}{25}{subsection.10.7}%
+\contentsline {subsubsection}{\numberline {10.7.1}Plot 1: Mean Expression vs Biological Replicate Values (Scatterplot)}{25}{subsubsection.10.7.1}%
+\contentsline {paragraph}{\numberline {10.7.1.1}Why we plot it.}{25}{paragraph.10.7.1.1}%
+\contentsline {paragraph}{\numberline {10.7.1.2}How we generate it.}{25}{paragraph.10.7.1.2}%
+\contentsline {paragraph}{\numberline {10.7.1.3}What the plot shows and informs about.}{25}{paragraph.10.7.1.3}%
+\contentsline {subsubsection}{\numberline {10.7.2}Plot 2: Mean Expression vs Signed Residuals (Residual Cloud Plot)}{26}{subsubsection.10.7.2}%
+\contentsline {paragraph}{\numberline {10.7.2.1}Why we plot it.}{26}{paragraph.10.7.2.1}%
+\contentsline {paragraph}{\numberline {10.7.2.2}How we generate it.}{26}{paragraph.10.7.2.2}%
+\contentsline {paragraph}{\numberline {10.7.2.3}What the plot shows and informs about.}{26}{paragraph.10.7.2.3}%
+\contentsline {subsubsection}{\numberline {10.7.3}Plot 3: Observed Distance vs Noise-Only Null Distance Distribution}{26}{subsubsection.10.7.3}%
+\contentsline {paragraph}{\numberline {10.7.3.1}Why we plot it.}{26}{paragraph.10.7.3.1}%
+\contentsline {paragraph}{\numberline {10.7.3.2}How we generate it.}{26}{paragraph.10.7.3.2}%
+\contentsline {paragraph}{\numberline {10.7.3.3}What the plot shows and informs about.}{27}{paragraph.10.7.3.3}%
+\contentsline {subsubsection}{\numberline {10.7.4}Plot 4: Observed Distance vs Noise Percentile (Global Scatterplot)}{27}{subsubsection.10.7.4}%
+\contentsline {paragraph}{\numberline {10.7.4.1}Why we plot it.}{27}{paragraph.10.7.4.1}%
+\contentsline {paragraph}{\numberline {10.7.4.2}How we generate it.}{27}{paragraph.10.7.4.2}%
+\contentsline {paragraph}{\numberline {10.7.4.3}What the plot shows and informs about.}{27}{paragraph.10.7.4.3}%
+\contentsline {subsection}{\numberline {10.8}Adjustment for Log-Transformed Expression Coordinates}{27}{subsection.10.8}%
+\contentsline {paragraph}{\numberline {10.8.0.1}Residual definition.}{28}{paragraph.10.8.0.1}%
+\contentsline {paragraph}{\numberline {10.8.0.2}Noise propagation through the log transform.}{28}{paragraph.10.8.0.2}%
+\contentsline {paragraph}{\numberline {10.8.0.3}Null distance generation.}{28}{paragraph.10.8.0.3}%
+\contentsline {paragraph}{\numberline {10.8.0.4}Interpretation.}{28}{paragraph.10.8.0.4}%
+\contentsline {subsection}{\numberline {10.9}Adjustment for Angular Statistics under Different Normalization Regimes}{29}{subsection.10.9}%
+\contentsline {paragraph}{\numberline {10.9.0.1}Monte Carlo noise sampling.}{29}{paragraph.10.9.0.1}%
+\contentsline {paragraph}{\numberline {10.9.0.2}Mapping into the analysis coordinate system.}{29}{paragraph.10.9.0.2}%
+\contentsline {paragraph}{\numberline {10.9.0.3}Null angle generation.}{29}{paragraph.10.9.0.3}%
+\contentsline {paragraph}{\numberline {10.9.0.4}Empirical angular p-value.}{29}{paragraph.10.9.0.4}%
+\contentsline {paragraph}{\numberline {10.9.0.5}Interpretation.}{30}{paragraph.10.9.0.5}%
+\contentsline {section}{\numberline {11}Detection of Differential Gene Expression with the Empirical Noise Model}{30}{section.11}%
+\contentsline {paragraph}{\numberline {11.0.0.1}Status: work in progress.}{30}{paragraph.11.0.0.1}%
+\contentsline {subsection}{\numberline {11.1}Goal}{30}{subsection.11.1}%
+\contentsline {subsection}{\numberline {11.2}One Axis (1-D)}{30}{subsection.11.2}%
+\contentsline {subsubsection}{\numberline {11.2.1}Notation and observed statistic}{30}{subsubsection.11.2.1}%
+\contentsline {subsubsection}{\numberline {11.2.2}Residuals}{30}{subsubsection.11.2.2}%
+\contentsline {subsubsection}{\numberline {11.2.3}Neighbourhood: genes with similar mean and similar noise (default)}{31}{subsubsection.11.2.3}%
+\contentsline {subsubsection}{\numberline {11.2.4}Null distribution and p-value}{31}{subsubsection.11.2.4}%
+\contentsline {subsubsection}{\numberline {11.2.5}In development: shrinkage of the noise level}{32}{subsubsection.11.2.5}%
+\contentsline {subsection}{\numberline {11.3}Several Axes (Multi-Dimensional)}{32}{subsection.11.3}%
+\contentsline {subsubsection}{\numberline {11.3.1}Setting and assumption}{32}{subsubsection.11.3.1}%
+\contentsline {subsubsection}{\numberline {11.3.2}Statistic}{32}{subsubsection.11.3.2}%
+\contentsline {subsubsection}{\numberline {11.3.3}Null distribution}{32}{subsubsection.11.3.3}%
+\contentsline {subsubsection}{\numberline {11.3.4}p-value}{33}{subsubsection.11.3.4}%
+\contentsline {subsubsection}{\numberline {11.3.5}Open questions}{33}{subsubsection.11.3.5}%
+\contentsline {section}{\numberline {12}Tissue Versatility Calculation}{33}{section.12}%
+\contentsline {section}{\numberline {13}Clock Plot Projection and Rotation Angle Computation}{33}{section.13}%
+\contentsline {subsection}{\numberline {13.1}Efficient Vector Lookup Using K-D Trees}{34}{subsection.13.1}%
+\contentsline {section}{\numberline {14}Geometric Tools for Semantic Interpretation}{34}{section.14}%
+\contentsline {subsection}{\numberline {14.1}Direction-Based Subfield Collector}{34}{subsection.14.1}%
+\contentsline {subsubsection}{\numberline {14.1.1}When to Normalize (Direction-Only Interpretation)}{34}{subsubsection.14.1.1}%
+\contentsline {subsubsection}{\numberline {14.1.2}When Not to Normalize (Magnitude Matters)}{35}{subsubsection.14.1.2}%
+\contentsline {subsubsection}{\numberline {14.1.3}Selection of Directional Subfield}{35}{subsubsection.14.1.3}%
+\contentsline {subsection}{\numberline {14.2}Signal-Based Subfield Detection}{35}{subsection.14.2}%
+\contentsline {subsubsection}{\numberline {14.2.1}Vector Collection}{35}{subsubsection.14.2.1}%
+\contentsline {subsubsection}{\numberline {14.2.2}Magnitude Distribution and Noise Filtering}{36}{subsubsection.14.2.2}%
+\contentsline {subsubsection}{\numberline {14.2.3}Region Growing}{36}{subsubsection.14.2.3}%
+\contentsline {subsubsection}{\numberline {14.2.4}Region Marking and Continuation}{36}{subsubsection.14.2.4}%
+\contentsline {subsubsection}{\numberline {14.2.5}Interpretation}{36}{subsubsection.14.2.5}%
+\contentsline {subsection}{\numberline {14.3}Workbench for Interactive Exploration}{36}{subsection.14.3}%
+\contentsline {section}{\numberline {15}Time Series Analysis}{37}{section.15}%
+\contentsline {subsection}{\numberline {15.1}Stage 1: Per-Gene Trajectory Interpolation}{37}{subsection.15.1}%
+\contentsline {subsection}{\numberline {15.2}Stage 2: Contextual Smoothing Across Gene Families}{37}{subsection.15.2}%
+\contentsline {subsection}{\numberline {15.3}Adaptive Kernel Width}{37}{subsection.15.3}%
+\contentsline {subsection}{\numberline {15.4}Shift Vector Construction}{38}{subsection.15.4}%
+\contentsline {subsection}{\numberline {15.5}Angular Projection and Clock Plot Modes}{38}{subsection.15.5}%
+\contentsline {subsection}{\numberline {15.6}Clock Plot Visualization Modes}{38}{subsection.15.6}%
+\contentsline {subsection}{\numberline {15.7}Angular Shift Velocity (ASV)}{38}{subsection.15.7}%
+\contentsline {subsection}{\numberline {15.8}Mjölnir's Handle — Canonical Axis Reconstruction for Eitri Surface Extraction}{39}{subsection.15.8}%
+\contentsline {subsection}{\numberline {15.9}Instantaneous Acceleration (Future Extension)}{40}{subsection.15.9}%
+\contentsline {subsection}{\numberline {15.10}Biological Interpretation}{40}{subsection.15.10}%
+\contentsline {subsection}{\numberline {15.11}Implementation Notes}{40}{subsection.15.11}%
+\contentsline {section}{\numberline {16}Gilgamesh Learning: Semantic Field-Aware Pattern Classification}{40}{section.16}%
+\contentsline {subsection}{\numberline {16.1}Overview}{40}{subsection.16.1}%
+\contentsline {subsection}{\numberline {16.2}Motivation and Biological Context}{40}{subsection.16.2}%
+\contentsline {subsection}{\numberline {16.3}Method}{40}{subsection.16.3}%
+\contentsline {subsubsection}{\numberline {16.3.1}Cylindrical Binning Along Mj\"olnir’s Handle}{41}{subsubsection.16.3.1}%
+\contentsline {subsubsection}{\numberline {16.3.2}Canonical Descriptors}{41}{subsubsection.16.3.2}%
+\contentsline {subsubsection}{\numberline {16.3.3}Training and Classification}{41}{subsubsection.16.3.3}%
+\contentsline {subsection}{\numberline {16.4}Explainability}{41}{subsection.16.4}%
+\contentsline {subsection}{\numberline {16.5}Semantic Alignment and Orientation of Subfields}{42}{subsection.16.5}%
+\contentsline {subsection}{\numberline {16.6}Glyph Description via Lexical Metadata}{42}{subsection.16.6}%
+\contentsline {subsection}{\numberline {16.7}Biological Applications}{42}{subsection.16.7}%
+\contentsline {subsection}{\numberline {16.8}Advantages Over Conventional ML}{42}{subsection.16.8}%
+\contentsline {subsection}{\numberline {16.9}Example Pseudocode (Sketch)}{43}{subsection.16.9}%
+\contentsline {section}{\numberline {17}Shape truthful clustering -- TECA Version}{43}{section.17}%
+\contentsline {subsection}{\numberline {17.1}Summary}{43}{subsection.17.1}%
+\contentsline {subsection}{\numberline {17.2}Interpretation by Vector Type}{43}{subsection.17.2}%
+\contentsline {paragraph}{\numberline {17.2.0.1}Expression vector fields (use spheres):}{43}{paragraph.17.2.0.1}%
+\contentsline {paragraph}{\numberline {17.2.0.2}Shift vector fields (use cones):}{43}{paragraph.17.2.0.2}%
+\contentsline {subsection}{\numberline {17.3}Verdict}{44}{subsection.17.3}%
+\contentsline {subsection}{\numberline {17.4}Note}{44}{subsection.17.4}%
+\contentsline {section}{\numberline {18}Shape truthful clustering -- main Version -- Density-Based Bobito Variant: Spherical and Conical Accretion}{44}{section.18}%
+\contentsline {subsection}{\numberline {18.1}Summary}{44}{subsection.18.1}%
+\contentsline {subsection}{\numberline {18.2}Interpretation by Vector Type}{44}{subsection.18.2}%
+\contentsline {paragraph}{\numberline {18.2.0.1}Expression vector fields (use spheres):}{44}{paragraph.18.2.0.1}%
+\contentsline {paragraph}{\numberline {18.2.0.2}Shift vector fields (use cones):}{44}{paragraph.18.2.0.2}%
+\contentsline {subsection}{\numberline {18.3}Verdict}{45}{subsection.18.3}%
+\contentsline {subsection}{\numberline {18.4}Note}{45}{subsection.18.4}%
+\contentsline {section}{\numberline {19}Detection of Subfunctionalization and Dosage Effects via Dynamic Programming}{45}{section.19}%
+\contentsline {subsection}{\numberline {19.1}Overview}{45}{subsection.19.1}%
+\contentsline {subsection}{\numberline {19.2}Data Structures}{45}{subsection.19.2}%
+\contentsline {subsection}{\numberline {19.3}Algorithm Steps}{45}{subsection.19.3}%
+\contentsline {paragraph}{\numberline {19.3.0.1}Initialization}{45}{paragraph.19.3.0.1}%
+\contentsline {paragraph}{\numberline {19.3.0.2}Dynamic Programming Iteration}{46}{paragraph.19.3.0.2}%
+\contentsline {paragraph}{\numberline {19.3.0.3}Final Filtering}{46}{paragraph.19.3.0.3}%
+\contentsline {subsection}{\numberline {19.4}Notes on Implementation}{46}{subsection.19.4}%
+\contentsline {subsection}{\numberline {19.5}Pseudocode}{47}{subsection.19.5}%
+\contentsline {section}{\numberline {20}Trajectory-Based Signed Contribution Analysis}{47}{section.20}%
+\contentsline {subsection}{\numberline {20.1}World Bank Example Dataset}{47}{subsection.20.1}%
+\contentsline {subsection}{\numberline {20.2}Trajectory related scientific questions}{47}{subsection.20.2}%
+\contentsline {subsection}{\numberline {20.3}Covariance-Based Contribution Decomposition}{48}{subsection.20.3}%
+\contentsline {subsection}{\numberline {20.4}Linear Combinations of Factors and Dependents}{48}{subsection.20.4}%
+\contentsline {subsection}{\numberline {20.5}Baseline Modes}{48}{subsection.20.5}%
+\contentsline {subsubsection}{\numberline {20.5.1}Raw Contributions}{48}{subsubsection.20.5.1}%
+\contentsline {subsubsection}{\numberline {20.5.2}Minimum-Centred Contributions}{48}{subsubsection.20.5.2}%
+\contentsline {subsubsection}{\numberline {20.5.3}Mean-Centred Contributions}{49}{subsubsection.20.5.3}%
+\contentsline {subsection}{\numberline {20.6}Optional Inter-Trajectory Normalisation}{49}{subsection.20.6}%
+\contentsline {subsection}{\numberline {20.7}Permutation Tests}{49}{subsection.20.7}%
+\contentsline {subsection}{\numberline {20.8}Comparisons Between Groups of Trajectories}{49}{subsection.20.8}%
+\contentsline {subsection}{\numberline {20.9}Visualisation Strategies}{49}{subsection.20.9}%
+\contentsline {subsection}{\numberline {20.10}Discussion}{50}{subsection.20.10}%
+\contentsline {subsection}{\numberline {20.11}Velocity- and Acceleration-Based Contribution Analysis}{50}{subsection.20.11}%
+\contentsline {subsubsection}{\numberline {20.11.1}Velocity Contributions}{50}{subsubsection.20.11.1}%
+\contentsline {subsubsection}{\numberline {20.11.2}Acceleration Contributions}{50}{subsubsection.20.11.2}%
+\contentsline {subsection}{\numberline {20.12}RAP-Based Trajectory Contributions}{51}{subsection.20.12}%
+\contentsline {subsection}{\numberline {20.13}Group-Level Trajectory Field Descriptors}{51}{subsection.20.13}%
+\contentsline {section}{\numberline {21}Tensor Omics Module Descriptors (TOXMD)}{52}{section.21}%
+\contentsline {subsection}{\numberline {21.1}Concept of Modules in Semantic Vector Spaces}{52}{subsection.21.1}%
+\contentsline {subsection}{\numberline {21.2}Canonical Descriptors of a Module}{52}{subsection.21.2}%
+\contentsline {subsection}{\numberline {21.3}Vector Sets versus Vector Fields}{54}{subsection.21.3}%
+\contentsline {subsection}{\numberline {21.4}Tracing a Module along its Semantic Axis}{54}{subsection.21.4}%
+\contentsline {subsection}{\numberline {21.5}Interpretation and Scientific Questions}{54}{subsection.21.5}%
+\contentsline {section}{\numberline {22}Field Surface and Volume Inference (FiSure, ``Eitri'')}{55}{section.22}%
+\contentsline {subsection}{\numberline {22.1}Motivation and Concept}{55}{subsection.22.1}%
+\contentsline {subsection}{\numberline {22.2}Algorithmic Outline}{55}{subsection.22.2}%
+\contentsline {subsection}{\numberline {22.3}Interpretation of FiSure Quantities}{56}{subsection.22.3}%
+\contentsline {subsection}{\numberline {22.4}Applications and Interpretation}{56}{subsection.22.4}%
+\contentsline {subsection}{\numberline {22.5}Summary}{56}{subsection.22.5}%

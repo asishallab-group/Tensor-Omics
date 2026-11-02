@@ -1228,8 +1228,9 @@ void compute_noise_pvalues_pipeline_exact_c(
   int* ierr
 );
 
-// Variance-matched noise model (implementation notes A/B): the exact model with a
-// variance-band neighbourhood. Separate entry point; see tox_noise_model_variance.F90.
+// Variance-aware noise model (implementation notes A and F): the exact model with
+// mean / band / adaptive neighbourhoods and an optional cross-fitted, James-Stein
+// scaling. Separate entry point; see tox_noise_model_variance.F90.
 void compute_noise_pvalues_pipeline_variance_c(
   const double* replicates_case,
   const int* n_genes_case,
@@ -1242,12 +1243,27 @@ void compute_noise_pvalues_pipeline_variance_c(
   const int* n_genes,
   const int* norm_method,
   const int* variance_mode,
+  const int* match_variable,
+  const int* scaling,
+  const int* shrink_target,
+  const int* lambda_scale,
+  const int* k_start,
+  const int* k_step,
+  const int* k_max,
+  const double* tau,
   const int* k,
   const double* c_tau,
+  const double* c_js,
+  const int* block_size,
+  const int* k_min,
+  const double* r_max,
+  const double* tau_stab,
+  const int* w_blocks,
+  const double* a_min,
   const double* loess_span,
   const int* loess_degree,
   const int* loess_robust,
-  const int* robust_var,
+  const int* shrink_loess_robust,
   const int* max_pool_size,
   double* pvalues_own,
   double* observed_statistic_own,
@@ -1258,11 +1274,17 @@ void compute_noise_pvalues_pipeline_variance_c(
   int* neighborhood_size_own_control,
   int* n_scanned_own_case,
   int* n_scanned_own_control,
+  int* n_accepted_own_case,
+  int* n_accepted_own_control,
+  double* radius_own_case,
+  double* radius_own_control,
+  int* stop_own_case,
+  int* stop_own_control,
   double* match_u,
+  double* s2s_pool,
   double* tau_var,
-  double* d0,
-  double* w,
   double* scatter,
+  double* shrink_diag,
   int* n_floored,
   int* ierr
 );
@@ -4987,32 +5009,35 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
 
 
 
-//' Compute variance-matched noise-model p-values (implementation notes A/B)
+//' Compute variance-aware noise-model p-values (implementation notes A and F)
 //'
-//' The exact model with a variance-band neighbourhood: each gene's null is built
-//' from the k nearest-in-mean genes whose matching variable u lies within
-//' +/- tau_var of the gene's own. The null itself (per-side 1/sqrt(n) scaled
-//' residual pools, exact pairwise tail count) is unchanged. u and tau_var are
-//' computed in Fortran from the replicates.
+//' The exact model with a mean / band / adaptive neighbourhood and an optional
+//' cross-fitted (James-Stein-shrunk or raw) scaling of the null. All switches are
+//' integer codes; the R wrapper tox_compute_noise_pvalues_pipeline_variance()
+//' translates the named values.
 //'
 //' @param case_replicates NumericMatrix (case samples x genes), pre-log
 //' @param control_replicates NumericMatrix (control samples x genes), pre-log
 //' @param valid_genes_own IntegerVector (length n_genes), 1 = test this gene
 //' @param beta_centre Integer 0/1, median centring of the observed statistic
-//' @param norm_method Integer 0 = linear, non-zero = log2 (statistic and null)
-//' @param variance_mode Integer 1 = band on the raw detrended log-variance (note A),
-//'   2 = band on the shrunk log-variance (note B)
-//' @param k Integer fixed neighbour-gene count
-//' @param c_tau Double band constant
-//' @param loess_span Double trend LOESS span
-//' @param loess_degree Integer trend LOESS degree
-//' @param loess_robust Integer 1 = robust (symmetric) trend LOESS
-//' @param robust_var Integer (mode 2) 1 = MAD scatter, 0 = sample variance
+//' @param norm_method Integer 0 = linear, non-zero = log2
+//' @param variance_mode Integer 0 = mean kNN, 1 = band, 3 = adaptive
+//' @param match_variable Integer 0 = raw (note A), 1 = James-Stein
+//' @param scaling Integer 0 = none, 1 = cross-fit raw, 2 = cross-fit JS, 3 = same group
+//' @param shrink_target Integer 0 = median, 1 = LOESS
+//' @param lambda_scale Integer 0 = relative weights, 1 = absolute
+//' @param k_start,k_step,k_max,tau Mean-mode neighbourhood (exact model)
+//' @param k Integer band: fixed accepted genes; adaptive: maximum accepted genes
+//' @param c_tau Double raw band constant
+//' @param c_js Double JS band constant
+//' @param block_size,k_min,r_max,tau_stab,w_blocks,a_min Adaptive growth settings
+//' @param loess_span,loess_degree LOESS settings (note A trend and LOESS target)
+//' @param loess_robust Integer 1 = robust note-A trend LOESS
+//' @param shrink_loess_robust Integer 1 = robust LOESS shrinkage target
 //' @param max_pool_size Integer maximum residual pool size
 //'
-//' @return List with pvalues_own, obs_own, log2fc, delta_hat, n_success,
-//'   neighborhood_size_own_case / _control, n_scanned_own_case / _control,
-//'   match_u, tau_var, d0, w, scatter, n_floored and ierr.
+//' @return List with the p-values, statistic, effect size, pool and band
+//'   diagnostics, the shrinkage diagnostics and ierr.
 // [[Rcpp::export]]
 Rcpp::List tox_compute_noise_pvalues_pipeline_variance_rcpp(
     Rcpp::NumericMatrix case_replicates,
@@ -5021,12 +5046,27 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_variance_rcpp(
     int beta_centre,
     int norm_method,
     int variance_mode,
+    int match_variable,
+    int scaling,
+    int shrink_target,
+    int lambda_scale,
+    int k_start,
+    int k_step,
+    int k_max,
+    double tau,
     int k,
     double c_tau,
+    double c_js,
+    int block_size,
+    int k_min,
+    double r_max,
+    double tau_stab,
+    int w_blocks,
+    double a_min,
     double loess_span,
     int loess_degree,
     int loess_robust,
-    int robust_var,
+    int shrink_loess_robust,
     int max_pool_size) {
 
     int case_n_samples = case_replicates.nrow();
@@ -5039,22 +5079,29 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_variance_rcpp(
         Rcpp::stop("valid_genes_own has length %d, expected %d (one entry per gene column).",
                    (int)valid_genes_own.size(), n_genes);
 
-    Rcpp::NumericVector pvalues_own(n_genes), obs_own(n_genes), log2fc(n_genes), match_u(n_genes);
-    Rcpp::IntegerVector nb_case(n_genes), nb_control(n_genes), scan_case(n_genes), scan_control(n_genes);
-    double delta_hat = 0.0, tau_var = 0.0, d0 = 0.0, w = 0.0, scatter = 0.0;
+    Rcpp::NumericVector pvalues_own(n_genes), obs_own(n_genes), log2fc(n_genes), match_u(n_genes),
+        s2s_pool(n_genes), radius_case(n_genes), radius_control(n_genes), shrink_diag(8);
+    Rcpp::IntegerVector nb_case(n_genes), nb_control(n_genes), scan_case(n_genes), scan_control(n_genes),
+        acc_case(n_genes), acc_control(n_genes), stop_case(n_genes), stop_control(n_genes);
+    double delta_hat = 0.0, tau_var = 0.0, scatter = 0.0;
     int n_success = 0, n_floored = 0, ierr = 0;
 
     compute_noise_pvalues_pipeline_variance_c(
         case_replicates.begin(), &case_n_genes, &case_n_samples,
         control_replicates.begin(), &control_n_genes, &control_n_samples,
-        valid_genes_own.begin(), &beta_centre,
-        &n_genes, &norm_method, &variance_mode, &k, &c_tau,
-        &loess_span, &loess_degree, &loess_robust, &robust_var, &max_pool_size,
+        valid_genes_own.begin(), &beta_centre, &n_genes, &norm_method,
+        &variance_mode, &match_variable, &scaling, &shrink_target, &lambda_scale,
+        &k_start, &k_step, &k_max, &tau, &k, &c_tau, &c_js,
+        &block_size, &k_min, &r_max, &tau_stab, &w_blocks, &a_min,
+        &loess_span, &loess_degree, &loess_robust, &shrink_loess_robust, &max_pool_size,
         pvalues_own.begin(), obs_own.begin(), log2fc.begin(), &delta_hat, &n_success,
         nb_case.begin(), nb_control.begin(), scan_case.begin(), scan_control.begin(),
-        match_u.begin(), &tau_var, &d0, &w, &scatter, &n_floored, &ierr);
+        acc_case.begin(), acc_control.begin(), radius_case.begin(), radius_control.begin(),
+        stop_case.begin(), stop_control.begin(),
+        match_u.begin(), s2s_pool.begin(), &tau_var, &scatter, shrink_diag.begin(), &n_floored, &ierr);
 
-    return Rcpp::List::create(
+    // List::create takes at most 20 entries: build in two parts.
+    Rcpp::List out = Rcpp::List::create(
         Rcpp::Named("pvalues_own") = pvalues_own,
         Rcpp::Named("obs_own") = obs_own,
         Rcpp::Named("log2fc") = log2fc,
@@ -5064,13 +5111,27 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_variance_rcpp(
         Rcpp::Named("neighborhood_size_own_control") = nb_control,
         Rcpp::Named("n_scanned_own_case") = scan_case,
         Rcpp::Named("n_scanned_own_control") = scan_control,
+        Rcpp::Named("n_accepted_own_case") = acc_case,
+        Rcpp::Named("n_accepted_own_control") = acc_control,
+        Rcpp::Named("radius_own_case") = radius_case,
+        Rcpp::Named("radius_own_control") = radius_control,
+        Rcpp::Named("stop_own_case") = stop_case,
+        Rcpp::Named("stop_own_control") = stop_control,
         Rcpp::Named("match_u") = match_u,
+        Rcpp::Named("s2s_pool") = s2s_pool,
         Rcpp::Named("tau_var") = tau_var,
-        Rcpp::Named("d0") = d0,
-        Rcpp::Named("w") = w,
-        Rcpp::Named("scatter") = scatter,
-        Rcpp::Named("n_floored") = n_floored,
-        Rcpp::Named("ierr") = ierr);
+        Rcpp::Named("scatter") = scatter);
+    out["lambda_pool"] = shrink_diag[0];
+    out["lambda_case"] = shrink_diag[1];
+    out["lambda_control"] = shrink_diag[2];
+    out["lambda_pool_unclipped"] = shrink_diag[3];
+    out["lambda_case_unclipped"] = shrink_diag[4];
+    out["lambda_control_unclipped"] = shrink_diag[5];
+    out["p_hat"] = shrink_diag[6];
+    out["participation_ratio"] = shrink_diag[7];
+    out["n_floored"] = n_floored;
+    out["ierr"] = ierr;
+    return out;
 }
 
 
