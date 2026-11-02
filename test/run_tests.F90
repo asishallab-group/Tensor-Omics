@@ -36,6 +36,7 @@ program main
     use mod_test_root_mean_sq_normalization, only: get_all_tests_root_mean_sq_normalization
     use mod_test_tail_probability, only: get_all_tests_tail_probability
     use mod_test_openmp, only: get_all_tests_openmp
+    use mod_test_tox_errors, only: get_all_tests_tox_errors
     implicit none
 
     integer :: nargs
@@ -77,6 +78,7 @@ program main
     call add_suite("tail_probability", get_all_tests_tail_probability)
     call add_suite("root_mean_sq_normalization", get_all_tests_root_mean_sq_normalization)
     call add_suite("openmp", get_all_tests_openmp)
+    call add_suite("tox_errors", get_all_tests_tox_errors)
 
     nargs = command_argument_count()
 

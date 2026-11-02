@@ -312,9 +312,27 @@ contains
         integer(int32), intent(in), optional :: sentinel
             !! Optional sentinel value to allow additionally
 
-        integer(int32) :: i_element
+        integer(int32) :: i_element, lower, upper
+        logical :: all_in_range, reaches_lower, within_upper
 
         if (present(array)) then
+            ! The common case, a clean array and no sentinel, in one scan. It only ever says "all fine":
+            ! anything else falls through to the loop below, which decides `ierr` and is the only code
+            ! that does. The comparisons are separate statements because gfortran does not vectorise
+            ! a single `all_in_range .and. array(i) >= lower .and. array(i) <= upper`: it short-circuits.
+            if (.not. present(sentinel)) then
+                M_DEFAULT_VAL(min, lower, -huge(1_int32))
+                M_DEFAULT_VAL(max, upper, huge(1_int32))
+                all_in_range = .true.
+                do i_element = 1, n_elements
+                    reaches_lower = array(i_element) >= lower
+                    within_upper = array(i_element) <= upper
+                    all_in_range = all_in_range .and. reaches_lower
+                    all_in_range = all_in_range .and. within_upper
+                end do
+                if (all_in_range) return
+            end if
+
             ! NOTE: kept as a plain sequential loop (not `do concurrent`) because `ierr` is a shared
             ! scalar read-modify-written via set_err_once on the (rare/exceptional) error path --
             ! writing it from concurrent iterations would be an unsynchronized data race.
@@ -409,8 +427,33 @@ contains
             !! Permit +/-infinity, opting out of the default finiteness check. Default `.false.`
 
         integer(int32) :: i_element
+        real(real64) :: lower, upper
+        logical :: all_in_range, reaches_lower, within_upper
 
         if (present(array)) then
+            ! The common case, a clean array and no opt-outs, in one scan. It only ever says "all fine":
+            ! anything else falls through to the loop below, which decides `ierr` and is the only code
+            ! that does. The scan must never accept what that loop refuses:
+            ! - NaN fails both comparisons.
+            ! - Infinity is refused even under an infinite bound, hence the clamp to the finite range.
+            ! - A NaN bound fails every comparison, so the loop decides (it lets finite values pass).
+            ! The two comparisons are separate statements because gfortran does not vectorise a single
+            ! `all_in_range .and. array(i) >= lower .and. array(i) <= upper`: it short-circuits.
+            if (.not. (present(sentinel) .or. present(allow_nan) .or. present(allow_infinite))) then
+                M_DEFAULT_VAL(min, lower, -huge(1.0_real64))
+                M_DEFAULT_VAL(max, upper, huge(1.0_real64))
+                if (lower < -huge(1.0_real64)) lower = -huge(1.0_real64)
+                if (upper > huge(1.0_real64)) upper = huge(1.0_real64)
+                all_in_range = .true.
+                do i_element = 1, n_elements
+                    reaches_lower = array(i_element) >= lower
+                    within_upper = array(i_element) <= upper
+                    all_in_range = all_in_range .and. reaches_lower
+                    all_in_range = all_in_range .and. within_upper
+                end do
+                if (all_in_range) return
+            end if
+
             ! NOTE: kept as a plain sequential loop (not `do concurrent`) because `ierr` is a shared
             ! scalar read-modify-written via set_err_once on the (rare/exceptional) error path --
             ! writing it from concurrent iterations would be an unsynchronized data race.
