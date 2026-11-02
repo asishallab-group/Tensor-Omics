@@ -15,8 +15,8 @@ from tensor_omics import (
     normalize_single_trajectory,
     normalize_all_trajectories
 )
-from test_helpers import run_all_tests, assert_error
-from tensor_omics.error_handling import ERR_EMPTY_INPUT, ERR_NAN_INF
+from test_helpers import run_all_tests, assert_error, TEST_N_OMP_THREADS
+from tensor_omics.error_handling import ARG_POS_FACTOR, ERR_DIVISION_BY_ZERO, ERR_EMPTY_INPUT, ERR_NAN_INF, ERR_OK
 
 TOL = 1e-12
 
@@ -136,7 +136,7 @@ def test_normalize_all_trajectories():
                               [211.0, 212.0, 213.0]]], # Factor 1, Sample 1
                             dtype=np.float64, order='F')
 
-    result = normalize_all_trajectories(trajectories)["trajectories_norm"]
+    result = normalize_all_trajectories(trajectories, TEST_N_OMP_THREADS)["trajectories_norm"]
 
     # Check normalization for each (factor, sample) pair
     for i in range(trajectories.shape[0]):  # factors
@@ -153,7 +153,7 @@ def test_normalize_all_trajectories():
     trajectories = np.random.randn(5, 10, 20).astype(np.float64) * 100 + 500
     trajectories = np.ascontiguousarray(trajectories)
 
-    result = normalize_all_trajectories(trajectories)["trajectories_norm"]
+    result = normalize_all_trajectories(trajectories, TEST_N_OMP_THREADS)["trajectories_norm"]
 
     # Verify all values in [0,1]
     assert np.all(result >= 0.0 - TOL), "All values should be >= 0"
@@ -175,7 +175,7 @@ def test_normalize_all_trajectories():
     trajectories = np.ones((3, 4, 5), dtype=np.float64) * 7.0
     trajectories[1, :, :] = np.arange(5).reshape(1, 1, 5)  # Make factor 1 vary
 
-    result = normalize_all_trajectories(trajectories)["trajectories_norm"]
+    result = normalize_all_trajectories(trajectories, TEST_N_OMP_THREADS)["trajectories_norm"]
 
     # Factor 0 and 2 should be all zeros (constant)
     assert np.all(np.abs(result[0, :, :]) < TOL), "Constant factor 0 should be all zeros"
@@ -185,6 +185,23 @@ def test_normalize_all_trajectories():
     for j in range(trajectories.shape[1]):
         assert np.abs(np.min(result[1, j, :])) < TOL, f"Factor 1, Sample {j}: min should be 0"
         assert np.abs(np.max(result[1, j, :]) - 1.0) < TOL, f"Factor 1, Sample {j}: max should be 1"
+
+    # -------------------------------
+    # Case 4: enough series for the parallel loop to run in an --openmp build
+    # -------------------------------
+    n_factors, n_samples, n_timepoints = 80, 100, 4
+    slopes = np.arange(n_factors).reshape(-1, 1, 1) + np.arange(1, n_samples + 1).reshape(1, -1, 1)
+    trajectories = (slopes * np.arange(1, n_timepoints + 1).reshape(1, 1, -1)).astype(np.float64)
+    trajectories[0, :, :] = 7.0  # factor 0 is constant
+
+    result = normalize_all_trajectories(trajectories, TEST_N_OMP_THREADS)
+
+    ramp = np.arange(n_timepoints) / (n_timepoints - 1)
+    assert np.all(np.abs(result["trajectories_norm"][1:, :, :] - ramp) < TOL), "Every ramp normalizes to the same values"
+    assert np.all(result["trajectories_norm"][0, :, :] == 0.0), "A constant factor is all zeros"
+    codes = result["status"] % ARG_POS_FACTOR
+    assert np.all(codes[0, :] == ERR_DIVISION_BY_ZERO), "A constant factor's status says so"
+    assert np.all(codes[1:, :] == ERR_OK), "A ramp's status is OK"
 
 
 def test_error_handling():

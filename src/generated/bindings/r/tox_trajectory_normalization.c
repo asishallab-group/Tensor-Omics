@@ -8,7 +8,7 @@
 // the Fortran C-ABI symbols this module calls
 void normalize_variable_timeseries_c(const double*, double*, const int*, int*, int*);
 void normalize_single_trajectory_c(const double*, double*, const int*, const int*, int*, int*);
-void normalize_all_trajectories_c(const double*, double*, const int*, const int*, const int*, int*, int*);
+void normalize_all_trajectories_c(const double*, double*, const int*, const int*, const int*, int*, const int*, int*);
 
 SEXP normalize_variable_timeseries_call(SEXP v) {
     int _nprot = 0;
@@ -75,12 +75,15 @@ SEXP normalize_single_trajectory_call(SEXP trajectory) {
     return _out;
 }
 
-SEXP normalize_all_trajectories_call(SEXP trajectories) {
+SEXP normalize_all_trajectories_call(SEXP trajectories, SEXP n_omp_threads) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_factors = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[0];
     int n_samples = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[1];
     int n_timepoints = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[2];
+
+    // scalar inputs, pulled from their length-1 vectors
+    int _v_n_omp_threads = Rf_asInteger(n_omp_threads);
 
     // outputs and work space
     SEXP trajectories_norm = PROTECT(Rf_allocVector(REALSXP, n_factors * n_samples * n_timepoints)); _nprot++;
@@ -96,6 +99,7 @@ SEXP normalize_all_trajectories_call(SEXP trajectories) {
         &n_samples,
         &n_timepoints,
         INTEGER(status),
+        &_v_n_omp_threads,
         &ierr
     );
 

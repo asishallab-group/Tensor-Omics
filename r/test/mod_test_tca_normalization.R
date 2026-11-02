@@ -44,7 +44,7 @@ test_normalize_all_trajectories <- function() {
   trajectories[1, 2, ] <- c(5, 6, 7, 8)
   trajectories[2, 2, ] <- c(2, 4, 6, 8)
 
-  res <- normalize_all_trajectories(trajectories)
+  res <- normalize_all_trajectories(trajectories, TEST_N_OMP_THREADS)
 
   assert_true(all(dim(res$trajectories_norm) == dim(trajectories)))
 
@@ -56,6 +56,23 @@ test_normalize_all_trajectories <- function() {
     }
   }
 
+  # enough series for the parallel loop to run in an --openmp build
+  n_factors <- 80L; n_samples <- 100L; n_timepoints <- 4L
+  trajectories <- array(0, dim = c(n_factors, n_samples, n_timepoints))
+  for (i_timepoint in 1:n_timepoints) {
+    trajectories[, , i_timepoint] <- outer(1:n_factors, 1:n_samples, "+") * i_timepoint
+  }
+  trajectories[1, , ] <- 7  # factor 1 is constant
+
+  res <- normalize_all_trajectories(trajectories, TEST_N_OMP_THREADS)
+
+  ramp <- (0:(n_timepoints - 1)) / (n_timepoints - 1)
+  for (i_timepoint in 1:n_timepoints) {
+    assert_true(all(abs(res$trajectories_norm[-1, , i_timepoint] - ramp[i_timepoint]) < TOL))
+    assert_true(all(res$trajectories_norm[1, , i_timepoint] == 0))
+  }
+  assert_true(all(res$status[1, ] %% ARG_POS_FACTOR == ERR_DIVISION_BY_ZERO))
+  assert_true(all(res$status[-1, ] %% ARG_POS_FACTOR == ERR_OK))
 }
 
 run_all_tests()

@@ -11,7 +11,7 @@ module tox_trajectory_normalization
     use tox_trajectory_normalization_impl, only: normalize_all_trajectories_impl, normalize_single_trajectory_impl, normalize_variable_timeseries_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
-    use tox_errors, only: validate_all_in_range_real, validate_dimension_size
+    use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int
     M_IMPLICIT_NONE
     private
 
@@ -97,13 +97,14 @@ contains
 
     !> summary: Validates its inputs, prepares what [[tox_trajectory_normalization_impl(module):normalize_all_trajectories_impl]] needs, then calls it. The entry point to reach for first; see [[tox_trajectory_normalization(module):normalize_all_trajectories_expert]] to prepare it yourself.
     !| independently across time for each sample.
-    pure subroutine normalize_all_trajectories(&
+    M_OMP_PURE subroutine normalize_all_trajectories(&
             trajectories,&
             trajectories_norm,&
             n_factors,&
             n_samples,&
             n_timepoints,&
             status,&
+            n_omp_threads,&
             ierr&
         )
         integer(int32), intent(in) :: n_factors
@@ -118,22 +119,29 @@ contains
             !! Normalized trajectories
         integer(int32), dimension(n_factors, n_samples), intent(out) :: status
             !! Status code for specific warnings, one per factor per sample
+        integer(int32), intent(in) :: n_omp_threads
+            !! The most threads the parallel loop may use (OpenMP): it caps the team size.
+            !! It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+            !! It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+            !! Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+            !! The minimum valid value is `1_int32`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
-        real(real64), dimension(:), allocatable :: tmp_series
-        real(real64), dimension(:), allocatable :: tmp_series_norm
+        real(real64), dimension(:, :), allocatable :: tmp_series
+        real(real64), dimension(:, :), allocatable :: tmp_series_norm
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=5_int32)
+        call validate_in_range_int(n_omp_threads, ierr, arg_pos=7_int32, min=1_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
 #endif
 
-        M_ALLOCATE(tmp_series(n_timepoints))
-        M_ALLOCATE(tmp_series_norm(n_timepoints))
+        M_ALLOCATE(tmp_series(n_timepoints, M_OMP_N_THREADS(n_omp_threads)))
+        M_ALLOCATE(tmp_series_norm(n_timepoints, M_OMP_N_THREADS(n_omp_threads)))
 
         call normalize_all_trajectories_impl(&
             trajectories = trajectories,&
@@ -143,13 +151,14 @@ contains
             n_timepoints = n_timepoints,&
             tmp_series = tmp_series,&
             tmp_series_norm = tmp_series_norm,&
-            status = status&
+            status = status,&
+            n_omp_threads = M_OMP_N_THREADS(n_omp_threads)&
         )
     end subroutine normalize_all_trajectories
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_normalization_impl(module):normalize_all_trajectories_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_trajectory_normalization(module):normalize_all_trajectories]] does both.
     !| independently across time for each sample.
-    pure subroutine normalize_all_trajectories_expert(&
+    M_OMP_PURE subroutine normalize_all_trajectories_expert(&
             trajectories,&
             trajectories_norm,&
             n_factors,&
@@ -158,6 +167,7 @@ contains
             tmp_series,&
             tmp_series_norm,&
             status,&
+            n_omp_threads,&
             ierr&
         )
         integer(int32), intent(in) :: n_factors
@@ -166,14 +176,20 @@ contains
             !! Number of samples/entities
         integer(int32), intent(in) :: n_timepoints
             !! Number of time points
+        integer(int32), intent(in) :: n_omp_threads
+            !! The most threads the parallel loop may use (OpenMP): it caps the team size.
+            !! It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+            !! It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+            !! Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+            !! The minimum valid value is `1_int32`.
         real(real64), dimension(n_factors, n_samples, n_timepoints), intent(in) :: trajectories
             !! Original trajectories
         real(real64), dimension(n_factors, n_samples, n_timepoints), intent(out) :: trajectories_norm
             !! Normalized trajectories
-        real(real64), dimension(n_timepoints), intent(out) :: tmp_series
-            !! Work array: one factor's time series, gathered contiguously
-        real(real64), dimension(n_timepoints), intent(out) :: tmp_series_norm
-            !! Work array: the normalized time series
+        real(real64), dimension(n_timepoints, n_omp_threads), intent(out) :: tmp_series
+            !! Work array: one factor's time series, gathered contiguously, one column per thread
+        real(real64), dimension(n_timepoints, n_omp_threads), intent(out) :: tmp_series_norm
+            !! Work array: the normalized time series, one column per thread
         integer(int32), dimension(n_factors, n_samples), intent(out) :: status
             !! Status code for specific warnings, one per factor per sample
         integer(int32), intent(out) :: ierr
@@ -184,6 +200,7 @@ contains
         call validate_dimension_size(n_factors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=5_int32)
+        call validate_in_range_int(n_omp_threads, ierr, arg_pos=9_int32, min=1_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
 #endif
@@ -196,7 +213,8 @@ contains
             n_timepoints = n_timepoints,&
             tmp_series = tmp_series,&
             tmp_series_norm = tmp_series_norm,&
-            status = status&
+            status = status,&
+            n_omp_threads = n_omp_threads&
         )
     end subroutine normalize_all_trajectories_expert
 

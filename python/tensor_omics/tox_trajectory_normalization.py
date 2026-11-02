@@ -58,12 +58,13 @@ _lib.normalize_all_trajectories_c.argtypes = (
     _ctypes.POINTER(_ctypes.c_int),
     _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
     _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_NORMALIZE_ALL_TRAJECTORIES_ARGUMENTS = ("trajectories", "trajectories_norm", "n_factors", "n_samples", "n_timepoints", "status", "ierr",)
+_NORMALIZE_ALL_TRAJECTORIES_ARGUMENTS = ("trajectories", "trajectories_norm", "n_factors", "n_samples", "n_timepoints", "status", "n_omp_threads", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_NORMALIZE_ALL_TRAJECTORIES_ARGUMENT_SOURCES = (None, None, "trajectories", "trajectories", "trajectories", None, None,)
+_NORMALIZE_ALL_TRAJECTORIES_ARGUMENT_SOURCES = (None, None, "trajectories", "trajectories", "trajectories", None, None, None,)
 
 def normalize_variable_timeseries(
         v,
@@ -197,6 +198,7 @@ def normalize_single_trajectory(
 
 def normalize_all_trajectories(
         trajectories,
+        n_omp_threads,
 ):
     r"""Normalize all trajectories across multiple entities
 
@@ -206,6 +208,12 @@ def normalize_all_trajectories(
     ----------
     trajectories : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints,), column-major (order='F')
         Original trajectories
+    n_omp_threads : int
+        The most threads the parallel loop may use (OpenMP): it caps the team size.
+        It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
+        It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
+        Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
+        The minimum valid value is `1`.
 
     Returns
     -------
@@ -234,6 +242,7 @@ def normalize_all_trajectories(
     """
     # check every input by the input contract, converting only when C needs it
     trajectories = _contract.reals(trajectories, "trajectories", ndim=3, order="F")
+    n_omp_threads = _contract.integer(n_omp_threads, "n_omp_threads")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]
@@ -252,6 +261,7 @@ def normalize_all_trajectories(
         _ctypes.byref(_ctypes.c_int(n_samples)),
         _ctypes.byref(_ctypes.c_int(n_timepoints)),
         status,
+        _ctypes.byref(_ctypes.c_int(n_omp_threads)),
         _ctypes.byref(ierr),
     )
 
