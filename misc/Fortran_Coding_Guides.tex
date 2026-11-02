@@ -684,6 +684,10 @@ results stay the same only if:
         is exact and fine.
 \end{itemize}
 
+Per-thread work columns shorter than a cache line false-share: neighbouring threads write to the
+same line, which can eat the whole speed-up (with columns of 5 doubles, a loop ran slower on 4
+threads than serially). Measure before migrating a root with short columns.
+
 Kept to, these give the same output at 1 thread and at several. On ifx that also takes the
 precise floating-point model, which every ifx build of the profiles carries (\texttt{-assume
 protect\_parens -fp-model precise} in \texttt{fpm.toml}; \texttt{--override-flags} replaces it): without it, ifx \texttt{--max-performance --openmp}
