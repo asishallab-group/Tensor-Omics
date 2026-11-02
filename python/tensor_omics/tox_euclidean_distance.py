@@ -44,13 +44,12 @@ _lib.distance_to_centroid_c.argtypes = (
     _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
     _ctypes.POINTER(_ctypes.c_int),
     _ctypes.POINTER(_ctypes.c_int),
-    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_DISTANCE_TO_CENTROID_ARGUMENTS = ("n_genes", "n_families", "genes", "centroids", "gene_to_fam", "distances", "n_tissues", "n_omp_threads", "ierr",)
+_DISTANCE_TO_CENTROID_ARGUMENTS = ("n_genes", "n_families", "genes", "centroids", "gene_to_fam", "distances", "n_tissues", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_DISTANCE_TO_CENTROID_ARGUMENT_SOURCES = ("genes", "centroids", None, None, None, None, "genes", None, None,)
+_DISTANCE_TO_CENTROID_ARGUMENT_SOURCES = ("genes", "centroids", None, None, None, None, "genes", None,)
 
 def euclidean_distance(
         vec1,
@@ -116,7 +115,6 @@ def distance_to_centroid(
         genes,
         centroids,
         gene_to_fam,
-        n_omp_threads,
 ):
     r"""Compute distance from each gene to its corresponding family centroid.
 
@@ -133,12 +131,6 @@ def distance_to_centroid(
         The minimum valid value is `1`.
         The maximum valid value is `n_families`.
         The value `0` is additionally accepted.
-    n_omp_threads : int
-        The most threads the parallel loop may use (OpenMP): it caps the team size.
-        It also sizes the per-thread work arrays, where there are any, as their last extent: the plain entry point allocates that many columns, one in a build without OpenMP, and the expert one takes arrays with that many.
-        It must be at least 1 in every build; without OpenMP the loop runs on one thread whatever is passed.
-        Pass 1 when you parallelize around this call yourself, or call it in a forked worker process.
-        The minimum valid value is `1`.
 
     Returns
     -------
@@ -163,7 +155,6 @@ def distance_to_centroid(
     genes = _contract.reals(genes, "genes", ndim=2, order="F")
     centroids = _contract.reals(centroids, "centroids", ndim=2, order="F")
     gene_to_fam = _contract.integers(gene_to_fam, "gene_to_fam", ndim=1)
-    n_omp_threads = _contract.integer(n_omp_threads, "n_omp_threads")
 
     # what the inputs already say, rather than asking for it again
     n_genes = genes.shape[1]
@@ -188,7 +179,6 @@ def distance_to_centroid(
         gene_to_fam,
         distances,
         _ctypes.byref(_ctypes.c_int(n_tissues)),
-        _ctypes.byref(_ctypes.c_int(n_omp_threads)),
         _ctypes.byref(ierr),
     )
 

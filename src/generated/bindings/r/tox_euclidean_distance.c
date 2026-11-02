@@ -7,7 +7,7 @@
 
 // the Fortran C-ABI symbols this module calls
 void euclidean_distance_c(const double*, const double*, const int*, double*, int*);
-void distance_to_centroid_c(const int*, const int*, const double*, const double*, const int*, double*, const int*, const int*, int*);
+void distance_to_centroid_c(const int*, const int*, const double*, const double*, const int*, double*, const int*, int*);
 
 SEXP euclidean_distance_call(SEXP vec1, SEXP vec2) {
     int _nprot = 0;
@@ -37,15 +37,12 @@ SEXP euclidean_distance_call(SEXP vec1, SEXP vec2) {
     return _out;
 }
 
-SEXP distance_to_centroid_call(SEXP genes, SEXP centroids, SEXP gene_to_fam, SEXP n_omp_threads) {
+SEXP distance_to_centroid_call(SEXP genes, SEXP centroids, SEXP gene_to_fam) {
     int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_genes = INTEGER(Rf_getAttrib(genes, R_DimSymbol))[1];
     int n_families = INTEGER(Rf_getAttrib(centroids, R_DimSymbol))[1];
     int n_tissues = INTEGER(Rf_getAttrib(genes, R_DimSymbol))[0];
-
-    // scalar inputs, pulled from their length-1 vectors
-    int _v_n_omp_threads = Rf_asInteger(n_omp_threads);
 
     // convert what Fortran cannot take from R directly
     const int* _c_gene_to_fam = tox_int_in(gene_to_fam, "gene_to_fam");
@@ -62,7 +59,6 @@ SEXP distance_to_centroid_call(SEXP genes, SEXP centroids, SEXP gene_to_fam, SEX
         _c_gene_to_fam,
         REAL(distances),
         &n_tissues,
-        &_v_n_omp_threads,
         &ierr
     );
 

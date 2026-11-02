@@ -3,7 +3,7 @@ module mod_test_euclidean_distance
     use asserts
     use tox_euclidean_distance
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use test_suite, only: test_case, TEST_N_OMP_THREADS
+    use test_suite, only: test_case
     use tox_errors
     implicit none
     public
@@ -194,7 +194,7 @@ contains
 
         ! Compute distances
         call distance_to_centroid(n_genes, n_families, genes, centroids, &
-                                  gene_to_fam, distances, d, TEST_N_OMP_THREADS, ierr)
+                                  gene_to_fam, distances, d, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
 
         ! Verify results
@@ -217,7 +217,7 @@ contains
         gene_to_fam(1) = 1
 
         call distance_to_centroid(n_genes, n_families, genes, centroids, &
-                                  gene_to_fam, distances, d, TEST_N_OMP_THREADS, ierr)
+                                  gene_to_fam, distances, d, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
 
         call assert_equal_real(distances(1), 0.0_real64, 1e-15_real64, "Single gene/family")
@@ -243,7 +243,7 @@ contains
         gene_to_fam = [1, 1, 1]
 
         call distance_to_centroid(n_genes, n_families, genes, centroids, &
-                                  gene_to_fam, distances, d, TEST_N_OMP_THREADS, ierr)
+                                  gene_to_fam, distances, d, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
 
         call assert_equal_real(distances(1), sqrt(real(d, real64)), 1e-10_real64, "High-dim gene 1")
@@ -270,13 +270,13 @@ contains
         gene_to_fam = [1, 3, 0]  ! family 3 out of bounds
 
         call distance_to_centroid(n_genes, n_families, genes, centroids, &
-                                  gene_to_fam, distances, d, TEST_N_OMP_THREADS, ierr)
+                                  gene_to_fam, distances, d, ierr)
         call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=5_int32), "Expected invalid input error")
 
         gene_to_fam = [1, 0, 0]
 
         call distance_to_centroid(n_genes, n_families, genes, centroids, &
-                                  gene_to_fam, distances, d, TEST_N_OMP_THREADS, ierr)
+                                  gene_to_fam, distances, d, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
 
         ! Check that valid gene has proper distance
@@ -338,7 +338,7 @@ contains
         end do
 
         call distance_to_centroid(n_genes, n_families, genes, centroids, &
-                                  gene_to_fam, distances, d, TEST_N_OMP_THREADS, ierr)
+                                  gene_to_fam, distances, d, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
 
         ! Verify some results are computed
@@ -366,7 +366,7 @@ contains
         gene_to_fam = [1, 1, 2]
 
         call distance_to_centroid(n_genes, n_families, genes, centroids, &
-                                  gene_to_fam, distances, d, TEST_N_OMP_THREADS, ierr)
+                                  gene_to_fam, distances, d, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
 
         ! Verify the pattern gives expected results

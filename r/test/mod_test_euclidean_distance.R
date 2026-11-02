@@ -99,7 +99,7 @@ test_distance_to_centroid_basic <- function() {
   # Gene-to-family mapping (1-based)
   gene_to_fam <- c(1L, 1L, 2L, 2L)
   
-  result <- distance_to_centroid(genes, centroids, gene_to_fam, TEST_N_OMP_THREADS)
+  result <- distance_to_centroid(genes, centroids, gene_to_fam)
   
   # Expected distances
   # Gene 1: [1,0,0] vs [0.5,0.5,0] = sqrt(0.5^2 + 0.5^2) ≈ 0.707
@@ -130,7 +130,7 @@ test_distance_to_centroid_invalid_families <- function() {
   # Mixed family assignments: valid (1), invalid (3), no family (0)
   gene_to_fam <- c(1L, 0L, 0L)  # family 0 = no assignment
   
-  result <- distance_to_centroid(genes, centroids, gene_to_fam, TEST_N_OMP_THREADS)
+  result <- distance_to_centroid(genes, centroids, gene_to_fam)
   
   
   # Verify handling of invalid indices
@@ -156,7 +156,7 @@ test_distance_to_centroid_performance <- function() {
   # Time the operation
   start_time <- Sys.time()
   
-  result <- distance_to_centroid(genes, centroids, gene_to_fam, TEST_N_OMP_THREADS)
+  result <- distance_to_centroid(genes, centroids, gene_to_fam)
   
   end_time <- Sys.time()
   elapsed <- as.numeric(end_time - start_time, units = "secs")
@@ -178,10 +178,10 @@ test_distance_to_centroid_input_validation <- function() {
   centroids <- matrix(c(1, 2), nrow = 2, ncol = 1)
 
   # Test gene_to_fam length mismatch: 3 entries for 2 genes
-  assert_error(distance_to_centroid(genes, centroids, c(1, 2, 3), TEST_N_OMP_THREADS), "wrong gene_to_fam length")
+  assert_error(distance_to_centroid(genes, centroids, c(1, 2, 3)), "wrong gene_to_fam length")
 
   # Test negative family indices (should throw error)
-  assert_error(distance_to_centroid(genes, centroids, c(1, -1), TEST_N_OMP_THREADS), "negative family index", ERR_INVALID_INPUT)
+  assert_error(distance_to_centroid(genes, centroids, c(1, -1)), "negative family index", ERR_INVALID_INPUT)
 }
 
 # Test 10: Single-dimensional vectors

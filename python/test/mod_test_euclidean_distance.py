@@ -11,7 +11,7 @@ import os
 # Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import euclidean_distance, distance_to_centroid
-from test_helpers import run_all_tests, assert_error, TEST_N_OMP_THREADS
+from test_helpers import run_all_tests, assert_error
 from tensor_omics.error_handling import ERR_EMPTY_INPUT, ERR_INVALID_INPUT
 
 
@@ -116,7 +116,7 @@ def test_distance_to_centroid_basic():
     # Gene-to-family mapping (1-based)
     gene_to_fam = np.array([1, 1, 2, 2], dtype=np.int32)
 
-    result = distance_to_centroid(genes, centroids, gene_to_fam, TEST_N_OMP_THREADS)
+    result = distance_to_centroid(genes, centroids, gene_to_fam)
 
     # Expected distances
     # Gene 1: [1,0,0] vs [0.5,0.5,0] = sqrt(0.5^2 + 0.5^2) ≈ 0.707
@@ -147,7 +147,7 @@ def test_distance_to_centroid_invalid_families():
     # Mixed family assignments: valid (1), invalid (3), no family (0)
     gene_to_fam = np.array([1, 0, 0], dtype=np.int32)  # family 0 = no assignment
 
-    result = distance_to_centroid(genes, centroids, gene_to_fam, TEST_N_OMP_THREADS)
+    result = distance_to_centroid(genes, centroids, gene_to_fam)
 
     expected = [np.sqrt(sum((genes[:, 0] - centroids[:, 0]) ** 2)), -1, -1]
     assert all(np.isclose(result, expected)), "Expected distances mismatch"
@@ -170,7 +170,7 @@ def test_distance_to_centroid_performance():
     import time
     start_time = time.time()
 
-    result = distance_to_centroid(genes, centroids, gene_to_fam, TEST_N_OMP_THREADS)
+    result = distance_to_centroid(genes, centroids, gene_to_fam)
 
     end_time = time.time()
     elapsed = end_time - start_time
@@ -199,7 +199,7 @@ def test_distance_to_centroid_input_validation():
 
     gene_to_fam = np.array([1, 0, 0], dtype=np.int32)  # family 0 = no assignment
 
-    assert_error(lambda: distance_to_centroid(genes, centroids, -gene_to_fam, TEST_N_OMP_THREADS), "Expected error", ERR_INVALID_INPUT)
+    assert_error(lambda: distance_to_centroid(genes, centroids, -gene_to_fam), "Expected error", ERR_INVALID_INPUT)
 
 
 if __name__ == "__main__":

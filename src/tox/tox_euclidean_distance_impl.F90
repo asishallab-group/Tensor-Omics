@@ -10,10 +10,6 @@ module tox_euclidean_distance_impl
     M_IMPLICIT_NONE
 
 #define CM_DISTANCE_SENTINEL -1.0_real64
-! The fewest genes distance_to_centroid_impl shares between threads: from 500 on, the team pays for
-! its start (#218, measured against the serial build with 5 and 30 tissues, gfortran and ifx
-! --max-performance).
-#define CM_DISTANCE_TO_CENTROID_MIN_PARALLEL 500_int32
 
 contains
 
@@ -43,8 +39,8 @@ contains
     !> summary: Compute distance from each gene to its corresponding family centroid.
     !| AUTHOR_VIVIAN_BASS
     !| For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.
-    M_OMP_PURE subroutine distance_to_centroid_impl(n_genes, n_families, genes, centroids, &
-                                         gene_to_fam, distances, n_tissues, n_omp_threads)
+    pure subroutine distance_to_centroid_impl(n_genes, n_families, genes, centroids, &
+                                         gene_to_fam, distances, n_tissues)
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
         integer(int32), intent(in) :: n_families
@@ -62,11 +58,9 @@ contains
             !! DM_SENTINEL(M_GENE_TO_FAM_SENTINEL)
         real(real64), dimension(n_genes), intent(out) :: distances
             !! Output distances array
-        integer(int32), intent(in) :: n_omp_threads
 
         integer(int32) :: i_gene, family_idx
 
-        !M_OMP_PARALLEL(n_genes >= CM_DISTANCE_TO_CENTROID_MIN_PARALLEL) schedule(static) shared(n_genes, n_families, genes, centroids, gene_to_fam, distances, n_tissues) private(family_idx)
         do i_gene = 1, n_genes
             family_idx = gene_to_fam(i_gene)
             if (family_idx < 1 .or. family_idx > n_families) then
