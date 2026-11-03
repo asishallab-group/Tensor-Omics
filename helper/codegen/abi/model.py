@@ -12,7 +12,8 @@ it, and nothing downstream may modify it.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import re
+from dataclasses import dataclass, field, replace
 from enum import Enum
 
 from ..ir.doc import Doc
@@ -81,10 +82,23 @@ class CArgument:
     #: Whether a default was documented, which `default is None` cannot say -- the
     #: default may legitimately be None-like
     has_default: bool = False
+    #: The extents as the author declared them, which the documentation shows: a module
+    #: constant by its name, an axis C is given the actual extent of (`checked_against`) by its
+    #: expression. `dimension` holds what C sees, and the binding languages see it with every
+    #: constant evaluated. Empty for an argument the C ABI invented.
+    declared_extents: tuple[str, ...] = ()
+    #: For an EXTENT passed for an input axis that the declaration computes (`sum(reps)`,
+    #: `n + 1`): that expression, which the C wrapper compares the passed extent with
+    checked_against: str | None = None
 
     @property
     def rank(self) -> int:
         return self.dimension.rank
+
+    @property
+    def shown_extents(self) -> tuple[str, ...]:
+        """The extents a reader is shown: as declared, or as C sees them where nothing was."""
+        return self.declared_extents or self.dimension.extents
 
     @property
     def is_scalar(self) -> bool:
@@ -128,6 +142,37 @@ class CArgument:
 
 
 @dataclass(frozen=True)
+class SizeCheck:
+    """A comparison the C wrapper makes before the call, reporting ERR_SIZE_MISMATCH (#221).
+
+    One place says which arrays the C wrapper compares, so the wrapper that compares them and the
+    bindings that explain the error (`CWrapper.size_checks`) cannot disagree.
+    """
+
+    array: CArgument
+    #: the extent C passed for an axis the declaration computes, compared with its expression;
+    #: None for a shaped array, whose element count `product(<x>_shape)` is compared
+    extent: CArgument | None
+    #: the declared extents of a shaped array, which its element count must be the product of
+    declared: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class SizeConstant:
+    """A module constant an extent or a character length names (`x(N_AXES, n)`)."""
+
+    #: The module that defines it, which the Fortran C wrapper imports it from
+    module: str
+    name: str
+    #: Its evaluated value, which the binding languages write in its place
+    value: int
+
+
+#: An identifier in an extent, not one following a word character (a kind suffix `0_int32`)
+_EXTENT_NAME_RE = re.compile(r"(?<!\w)[A-Za-z]\w*")
+
+
+@dataclass(frozen=True)
 class CWrapper:
     """A procedure as C sees it."""
 
@@ -138,6 +183,58 @@ class CWrapper:
     #: The procedure being wrapped
     procedure: Procedure
     arguments: tuple[CArgument, ...]
+    #: The module constants the declarations are sized by (`x(N_FIXED, n)`). The Fortran C
+    #: wrapper redeclares every argument, so it imports them; Python and R have no such
+    #: names and use their values (`with_constant_sizes_evaluated`)
+    size_constants: tuple[SizeConstant, ...] = ()
+
+    def with_constant_sizes_evaluated(self) -> CWrapper:
+        """This wrapper with every module constant in an extent replaced by its value.
+
+        What the binding languages read: Python and the R shim allocate outputs, size
+        strings and compare shapes from these extents, and neither can name a Fortran
+        module constant. `points(N_AXES, n)` reaches them as `points(2, n)`, exactly as if
+        the author had written the literal, and a character's `len=MAX_LEN` as `len=8`.
+        The Fortran C wrapper keeps the names and imports them.
+        """
+        if not self.size_constants:
+            return self
+        values = {constant.name.lower(): str(constant.value) for constant in self.size_constants}
+
+        def evaluated(extent: str) -> str:
+            return _EXTENT_NAME_RE.sub(
+                lambda match: values.get(match.group(0).lower(), match.group(0)), extent
+            )
+
+        arguments = tuple(
+            replace(
+                argument,
+                dimension=argument.dimension.with_extents(
+                    evaluated(extent) for extent in argument.dimension.extents
+                ),
+                size_extents=tuple(evaluated(extent) for extent in argument.size_extents),
+            )
+            for argument in self.arguments
+        )
+        return replace(self, arguments=arguments)
+
+    @property
+    def size_checks(self) -> tuple[SizeCheck, ...]:
+        """What the C wrapper compares with the callee's declaration, in argument order.
+
+        An axis the declaration computes, whose actual extent C passes (`checked_against`); and
+        an array whose shape travels in a shape argument while its declaration counts it too
+        (`arr(n_strings)` beside `arr_shape`), whose view holds `product(arr_shape)` elements.
+        """
+        checks = []
+        for argument in self.arguments:
+            if argument.origin is Origin.EXTENT and argument.checked_against is not None:
+                checks.append(SizeCheck(self.argument(argument.sizes), argument))
+            elif argument.shape_arg is not None and argument.source is not None:
+                declared = tuple(argument.source.dimension.extents)
+                if declared and all(extent not in (":", "*") for extent in declared):
+                    checks.append(SizeCheck(argument, None, declared))
+        return tuple(checks)
 
     @property
     def module_name(self) -> str:
@@ -224,6 +321,12 @@ class CWrapperModule:
     @property
     def doc(self) -> Doc:
         return self.module.doc
+
+    def with_constant_sizes_evaluated(self) -> CWrapperModule:
+        """Every wrapper as the binding languages read it (`CWrapper.with_constant_sizes_evaluated`)."""
+        return replace(
+            self, wrappers=tuple(w.with_constant_sizes_evaluated() for w in self.wrappers)
+        )
 
     def __iter__(self):
         return iter(self.wrappers)

@@ -253,13 +253,14 @@ def test_determine_bin_count_stone():
     assert result_expert["selected_n_bins"] == result["selected_n_bins"], \
         "expert entry point should agree with the plain one given the same sorted permutation"
 
-    # An unknown mode string, and the occupancy mode (not a Stone mode), are rejected by the C layer.
+    # An unknown mode string, and the occupancy mode (not a Stone mode), are rejected by the binding
+    # before the library is called (ToxArgumentError, no tox code), as in the R suite.
     assert_error(lambda: determine_bin_count_stone(residuals, residual_to_study, n_studies=3, max_n_reps_all_studies=1,
                                                    n_neighbors=1, bin_count_mode="bin_count_occupancy"),
-                 "expected the occupancy mode to be rejected", ERR_INVALID_INPUT)
+                 "expected the occupancy mode to be rejected")
     assert_error(lambda: determine_bin_count_stone(residuals, residual_to_study, n_studies=3, max_n_reps_all_studies=1,
                                                    n_neighbors=1, bin_count_mode="nonsense"),
-                 "expected an unknown mode string to be rejected", ERR_INVALID_INPUT)
+                 "expected an unknown mode string to be rejected")
     # A study label outside [1, n_studies] is invalid input.
     assert_error(lambda: determine_bin_count_stone(residuals, residual_to_study, n_studies=2, max_n_reps_all_studies=1,
                                                    n_neighbors=1),
@@ -841,7 +842,7 @@ def test_run_js_comp_test_two_studies_hand_traceable():
     assert_error(lambda: run_js_comp_test(n_neighbors=1, gene_means=gene_means,
                                           residuals=residuals, x_star=x_star, n_permutations=0,
                                           bin_count_mode="nonsense"),
-                 "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
+                 "expected an unknown bin_count_mode string to be rejected before Fortran")
 
 
 def test_run_js_comp_test_zero_permutations_gives_nan_p_values():
@@ -1080,7 +1081,7 @@ def test_run_js_comp_test_parameter_search():
                                                            max_n_points_candidate=bounds_2["max_n_points_candidate"],
                                                            max_n_neighbors_candidate=bounds_2["max_n_neighbors_candidate"],
                                                            bin_count_mode="nonsense"),
-                 "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
+                 "expected an unknown bin_count_mode string to be rejected before Fortran")
 
 
 def test_run_js_comp_test_parameter_search_rejects_undersized_bounds():
@@ -1302,7 +1303,7 @@ def test_run_js_comp_test_adaptive():
         assert result_mode["global_js_divergence"].shape == (n_studies,), f"{mode}: global_js_divergence shape"
     assert_error(lambda: run_js_comp_test_adaptive(gene_means, residuals, ranges, n_permutations=0,
                                                    bin_count_mode="nonsense"),
-                 "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
+                 "expected an unknown bin_count_mode string to be rejected before Fortran")
 
     reversed_ranges = ranges.copy()
     reversed_ranges[:, 0] = [2, 1]
@@ -1404,7 +1405,7 @@ def test_run_js_comp_test_adaptive_parameter_search():
                                                                     join_method='join_min',
                                                                     max_n_points_candidate=capacity,
                                                                     bin_count_mode="nonsense"),
-                 "expected an unknown bin_count_mode string to be rejected", ERR_INVALID_INPUT)
+                 "expected an unknown bin_count_mode string to be rejected before Fortran")
 
 
 def main():

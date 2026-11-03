@@ -26,23 +26,24 @@ The admissibility gates are
 Python binding, generated from tox_data_integration_js_comp_test_search. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.check_neighborhood_overlaps_c.restype = None
 _lib.check_neighborhood_overlaps_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -52,13 +53,13 @@ _CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENT_SOURCES = (None, "neighborhood_range", Non
 
 _lib.check_mean_pmf_min_counts_c.restype = None
 _lib.check_mean_pmf_min_counts_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -68,17 +69,17 @@ _CHECK_MEAN_PMF_MIN_COUNTS_ARGUMENT_SOURCES = (None, "mean_pmf_counts", None, "m
 
 _lib.check_plateau_condition_c.restype = None
 _lib.check_plateau_condition_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -88,20 +89,20 @@ _CHECK_PLATEAU_CONDITION_ARGUMENT_SOURCES = (None, None, "confidence_interval", 
 
 _lib.check_effect_size_plateau_condition_c.restype = None
 _lib.check_effect_size_plateau_condition_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -141,6 +142,9 @@ def check_neighborhood_overlaps(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -149,30 +153,30 @@ def check_neighborhood_overlaps(
     Generated from the Fortran procedure `tox_data_integration_js_comp_test_search::check_neighborhood_overlaps`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        neighborhood_range = np.asfortranarray(neighborhood_range, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_range' must be an array of np.int32: {error}") from None
-    if neighborhood_range.ndim != 2:
-        raise ValueError(f"'neighborhood_range' must have 2 dimensions, but has {neighborhood_range.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    neighborhood_range = _contract.integers(neighborhood_range, "neighborhood_range", ndim=2, order="F")
+    min_neighbor_overlap = _contract.real(min_neighbor_overlap, "min_neighbor_overlap")
 
     # what the inputs already say, rather than asking for it again
     n_points = neighborhood_range.shape[1]
 
+    # Fortran cannot check that an array has the shape it is declared with; this can
+    if neighborhood_range.shape[0] != 2:
+        raise _ToxArgumentError(f"'neighborhood_range' has {neighborhood_range.shape[0]} along axis 0, but its declared shape fixes it at {2}; 'neighborhood_range' is declared with shape (2, n_points)", argument="neighborhood_range")
+
     # outputs and work arrays, which the caller never sees
-    all_have_min_neighbor_overlap = ctypes.c_bool(0)
-    ierr = ctypes.c_int(0)
+    all_have_min_neighbor_overlap = _ctypes.c_bool(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.check_neighborhood_overlaps_c(
         neighborhood_range,
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_double(min_neighbor_overlap)),
-        ctypes.byref(all_have_min_neighbor_overlap),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_double(min_neighbor_overlap)),
+        _ctypes.byref(all_have_min_neighbor_overlap),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENTS, _CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENTS, _CHECK_NEIGHBORHOOD_OVERLAPS_ARGUMENT_SOURCES)
 
     return all_have_min_neighbor_overlap.value
 
@@ -210,6 +214,9 @@ def check_mean_pmf_min_counts(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -218,45 +225,34 @@ def check_mean_pmf_min_counts(
     Generated from the Fortran procedure `tox_data_integration_js_comp_test_search::check_mean_pmf_min_counts`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        mean_pmf_counts = np.asfortranarray(mean_pmf_counts, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'mean_pmf_counts' must be an array of np.int32: {error}") from None
-    if mean_pmf_counts.ndim != 2:
-        raise ValueError(f"'mean_pmf_counts' must have 2 dimensions, but has {mean_pmf_counts.ndim}")
-    try:
-        n_bins_per_point = np.ascontiguousarray(n_bins_per_point, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'n_bins_per_point' must be an array of np.int32: {error}") from None
-    if n_bins_per_point.ndim != 1:
-        raise ValueError(f"'n_bins_per_point' must have 1 dimension, but has {n_bins_per_point.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    mean_pmf_counts = _contract.integers(mean_pmf_counts, "mean_pmf_counts", ndim=2, order="F")
+    n_bins_per_point = _contract.integers(n_bins_per_point, "n_bins_per_point", ndim=1)
+    min_count = _contract.integer(min_count, "min_count")
 
     # what the inputs already say, rather than asking for it again
     n_bins = mean_pmf_counts.shape[1]
     n_points = mean_pmf_counts.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if n_bins_per_point.shape[0] != n_points:
-        raise ValueError(f"'n_bins_per_point' has {n_bins_per_point.shape[0]} along axis 0, but "
-            f"'mean_pmf_counts' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'n_bins_per_point' has {n_bins_per_point.shape[0]} along axis 0, but 'mean_pmf_counts' implies n_points == {n_points}; 'n_bins_per_point' is declared with shape (n_points)", argument="n_bins_per_point")
 
     # outputs and work arrays, which the caller never sees
-    all_bins_have_min_count = ctypes.c_bool(0)
-    ierr = ctypes.c_int(0)
+    all_bins_have_min_count = _ctypes.c_bool(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.check_mean_pmf_min_counts_c(
         mean_pmf_counts,
-        ctypes.byref(ctypes.c_int(n_bins)),
+        _ctypes.byref(_ctypes.c_int(n_bins)),
         n_bins_per_point,
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_int(min_count)),
-        ctypes.byref(all_bins_have_min_count),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(min_count)),
+        _ctypes.byref(all_bins_have_min_count),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CHECK_MEAN_PMF_MIN_COUNTS_ARGUMENTS, _CHECK_MEAN_PMF_MIN_COUNTS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CHECK_MEAN_PMF_MIN_COUNTS_ARGUMENTS, _CHECK_MEAN_PMF_MIN_COUNTS_ARGUMENT_SOURCES)
 
     return all_bins_have_min_count.value
 
@@ -297,7 +293,7 @@ def check_plateau_condition(
     join_method : str, one of 'join_min' | 'join_max' | 'join_median'
         How the studies' overlaps are joined into the plateau condition; the median method
         requires `count > (n_studies - 1) / 2`
-
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     succeeding_ci_overlap : float
         Minimum fractional overlap with the best candidate's interval for a study to pass
         The minimum valid value is `0.0`.
@@ -326,6 +322,9 @@ def check_plateau_condition(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -334,52 +333,51 @@ def check_plateau_condition(
     Generated from the Fortran procedure `tox_data_integration_js_comp_test_search::check_plateau_condition`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        confidence_interval = np.asfortranarray(confidence_interval, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'confidence_interval' must be an array of np.float64: {error}") from None
-    if confidence_interval.ndim != 2:
-        raise ValueError(f"'confidence_interval' must have 2 dimensions, but has {confidence_interval.ndim}")
-    if not isinstance(best_candidate_pair_confidence_interval, np.ndarray) or best_candidate_pair_confidence_interval.dtype != np.float64:
-        raise TypeError("'best_candidate_pair_confidence_interval' is modified in place, so it must already be a numpy array of {}".format(np.float64))
+    # check every input by the input contract, converting only when C needs it
+    confidence_interval = _contract.reals(confidence_interval, "confidence_interval", ndim=2, order="F")
+    if not isinstance(best_candidate_pair_confidence_interval, _np.ndarray) or best_candidate_pair_confidence_interval.dtype != _np.float64:
+        raise _ToxArgumentError("'best_candidate_pair_confidence_interval' is modified in place, so it must already be a numpy array of {}".format(_np.float64), argument="best_candidate_pair_confidence_interval")
     if best_candidate_pair_confidence_interval.ndim != 2:
-        raise ValueError(f"'best_candidate_pair_confidence_interval' must have 2 dimensions, but has {best_candidate_pair_confidence_interval.ndim}")
+        raise _ToxArgumentError(f"'best_candidate_pair_confidence_interval' must have 2 dimensions, but has {best_candidate_pair_confidence_interval.ndim}", argument="best_candidate_pair_confidence_interval")
     if not best_candidate_pair_confidence_interval.flags.f_contiguous:
-        raise ValueError("'best_candidate_pair_confidence_interval' is modified in place, so it must already be column-major (order='F')")
-    best_candidate_index = ctypes.c_int(best_candidate_index)
-    best_exceeded_ci_overlap_count = ctypes.c_int(best_exceeded_ci_overlap_count)
-    join_method = np.array([str(join_method).lower().encode().ljust(11)], dtype="S11")
+        raise _ToxArgumentError("'best_candidate_pair_confidence_interval' is modified in place, so it must already be column-major (order='F')", argument="best_candidate_pair_confidence_interval")
+    best_candidate_index = _ctypes.c_int(_contract.integer(best_candidate_index, "best_candidate_index"))
+    best_exceeded_ci_overlap_count = _ctypes.c_int(_contract.integer(best_exceeded_ci_overlap_count, "best_exceeded_ci_overlap_count"))
+    candidate_index = _contract.integer(candidate_index, "candidate_index")
+    join_method = _np.array([_contract.mode(join_method, "join_method", ("join_min", "join_max", "join_median",)).ljust(11)], dtype="S11")
+    succeeding_ci_overlap = _contract.real(succeeding_ci_overlap, "succeeding_ci_overlap")
 
     # what the inputs already say, rather than asking for it again
     n_studies = confidence_interval.shape[1]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
+    if confidence_interval.shape[0] != 2:
+        raise _ToxArgumentError(f"'confidence_interval' has {confidence_interval.shape[0]} along axis 0, but its declared shape fixes it at {2}; 'confidence_interval' is declared with shape (2, n_studies)", argument="confidence_interval")
+    if best_candidate_pair_confidence_interval.shape[0] != 2:
+        raise _ToxArgumentError(f"'best_candidate_pair_confidence_interval' has {best_candidate_pair_confidence_interval.shape[0]} along axis 0, but its declared shape fixes it at {2}; 'best_candidate_pair_confidence_interval' is declared with shape (2, n_studies)", argument="best_candidate_pair_confidence_interval")
     if best_candidate_pair_confidence_interval.shape[1] != n_studies:
-        raise ValueError(f"'best_candidate_pair_confidence_interval' has {best_candidate_pair_confidence_interval.shape[1]} along axis 1, but "
-            f"'confidence_interval' implies n_studies == {n_studies}"
-        )
+        raise _ToxArgumentError(f"'best_candidate_pair_confidence_interval' has {best_candidate_pair_confidence_interval.shape[1]} along axis 1, but 'confidence_interval' implies n_studies == {n_studies}; 'best_candidate_pair_confidence_interval' is declared with shape (2, n_studies)", argument="best_candidate_pair_confidence_interval")
 
     # outputs and work arrays, which the caller never sees
-    ci_overlap = np.empty((n_studies,), dtype=np.float64, order='C')
-    plateau_found = ctypes.c_bool(0)
-    ierr = ctypes.c_int(0)
+    ci_overlap = _np.empty((n_studies,), dtype=_np.float64, order='C')
+    plateau_found = _ctypes.c_bool(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.check_plateau_condition_c(
         confidence_interval,
         best_candidate_pair_confidence_interval,
-        ctypes.byref(ctypes.c_int(n_studies)),
-        ctypes.byref(best_candidate_index),
-        ctypes.byref(best_exceeded_ci_overlap_count),
-        ctypes.byref(ctypes.c_int(candidate_index)),
+        _ctypes.byref(_ctypes.c_int(n_studies)),
+        _ctypes.byref(best_candidate_index),
+        _ctypes.byref(best_exceeded_ci_overlap_count),
+        _ctypes.byref(_ctypes.c_int(candidate_index)),
         join_method,
-        ctypes.byref(ctypes.c_double(succeeding_ci_overlap)),
+        _ctypes.byref(_ctypes.c_double(succeeding_ci_overlap)),
         ci_overlap,
-        ctypes.byref(plateau_found),
-        ctypes.byref(ierr),
+        _ctypes.byref(plateau_found),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CHECK_PLATEAU_CONDITION_ARGUMENTS, _CHECK_PLATEAU_CONDITION_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CHECK_PLATEAU_CONDITION_ARGUMENTS, _CHECK_PLATEAU_CONDITION_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     ci_overlap.flags.writeable = False
@@ -466,6 +464,9 @@ def check_effect_size_plateau_condition(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -474,55 +475,48 @@ def check_effect_size_plateau_condition(
     Generated from the Fortran procedure `tox_data_integration_js_comp_test_search::check_effect_size_plateau_condition`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        global_js_divergence = np.ascontiguousarray(global_js_divergence, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'global_js_divergence' must be an array of np.float64: {error}") from None
-    if global_js_divergence.ndim != 1:
-        raise ValueError(f"'global_js_divergence' must have 1 dimension, but has {global_js_divergence.ndim}")
-    try:
-        prev_global_js_divergence = np.ascontiguousarray(prev_global_js_divergence, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'prev_global_js_divergence' must be an array of np.float64: {error}") from None
-    if prev_global_js_divergence.ndim != 1:
-        raise ValueError(f"'prev_global_js_divergence' must have 1 dimension, but has {prev_global_js_divergence.ndim}")
-    n_consecutive_ok = ctypes.c_int(n_consecutive_ok)
+    # check every input by the input contract, converting only when C needs it
+    global_js_divergence = _contract.reals(global_js_divergence, "global_js_divergence", ndim=1)
+    prev_global_js_divergence = _contract.reals(prev_global_js_divergence, "prev_global_js_divergence", ndim=1)
+    has_previous = _contract.logical(has_previous, "has_previous")
+    delta_median_threshold = _contract.real(delta_median_threshold, "delta_median_threshold")
+    delta_max_threshold = _contract.real(delta_max_threshold, "delta_max_threshold")
+    delta_epsilon = _contract.real(delta_epsilon, "delta_epsilon")
+    delta_min_consecutive_transitions = _contract.integer(delta_min_consecutive_transitions, "delta_min_consecutive_transitions")
+    n_consecutive_ok = _ctypes.c_int(_contract.integer(n_consecutive_ok, "n_consecutive_ok"))
 
     # what the inputs already say, rather than asking for it again
     n_studies = global_js_divergence.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if prev_global_js_divergence.shape[0] != n_studies:
-        raise ValueError(f"'prev_global_js_divergence' has {prev_global_js_divergence.shape[0]} along axis 0, but "
-            f"'global_js_divergence' implies n_studies == {n_studies}"
-        )
+        raise _ToxArgumentError(f"'prev_global_js_divergence' has {prev_global_js_divergence.shape[0]} along axis 0, but 'global_js_divergence' implies n_studies == {n_studies}; 'prev_global_js_divergence' is declared with shape (n_studies)", argument="prev_global_js_divergence")
 
     # outputs and work arrays, which the caller never sees
-    delta = np.empty((n_studies,), dtype=np.float64, order='C')
-    delta_median = ctypes.c_double(0)
-    delta_max = ctypes.c_double(0)
-    plateau_found = ctypes.c_bool(0)
-    ierr = ctypes.c_int(0)
+    delta = _np.empty((n_studies,), dtype=_np.float64, order='C')
+    delta_median = _ctypes.c_double(0)
+    delta_max = _ctypes.c_double(0)
+    plateau_found = _ctypes.c_bool(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.check_effect_size_plateau_condition_c(
         global_js_divergence,
         prev_global_js_divergence,
-        ctypes.byref(ctypes.c_int(n_studies)),
-        ctypes.byref(ctypes.c_bool(has_previous)),
-        ctypes.byref(ctypes.c_double(delta_median_threshold)),
-        ctypes.byref(ctypes.c_double(delta_max_threshold)),
-        ctypes.byref(ctypes.c_double(delta_epsilon)),
-        ctypes.byref(ctypes.c_int(delta_min_consecutive_transitions)),
-        ctypes.byref(n_consecutive_ok),
+        _ctypes.byref(_ctypes.c_int(n_studies)),
+        _ctypes.byref(_ctypes.c_bool(has_previous)),
+        _ctypes.byref(_ctypes.c_double(delta_median_threshold)),
+        _ctypes.byref(_ctypes.c_double(delta_max_threshold)),
+        _ctypes.byref(_ctypes.c_double(delta_epsilon)),
+        _ctypes.byref(_ctypes.c_int(delta_min_consecutive_transitions)),
+        _ctypes.byref(n_consecutive_ok),
         delta,
-        ctypes.byref(delta_median),
-        ctypes.byref(delta_max),
-        ctypes.byref(plateau_found),
-        ctypes.byref(ierr),
+        _ctypes.byref(delta_median),
+        _ctypes.byref(delta_max),
+        _ctypes.byref(plateau_found),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CHECK_EFFECT_SIZE_PLATEAU_CONDITION_ARGUMENTS, _CHECK_EFFECT_SIZE_PLATEAU_CONDITION_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CHECK_EFFECT_SIZE_PLATEAU_CONDITION_ARGUMENTS, _CHECK_EFFECT_SIZE_PLATEAU_CONDITION_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     delta.flags.writeable = False

@@ -16,22 +16,23 @@ have reached a plateau, by the criteria of
 Python binding, generated from tox_data_integration_js_comp_test_fixed_k_search. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.calc_js_comp_test_candidate_bounds_c.restype = None
 _lib.calc_js_comp_test_candidate_bounds_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -39,10 +40,10 @@ _CALC_JS_COMP_TEST_CANDIDATE_BOUNDS_ARGUMENTS = ("max_n_genes_all_studies", "max
 
 _lib.generate_js_comp_test_candidates_c.restype = None
 _lib.generate_js_comp_test_candidates_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -50,61 +51,61 @@ _GENERATE_JS_COMP_TEST_CANDIDATES_ARGUMENTS = ("max_n_genes_all_studies", "candi
 
 _lib.run_js_comp_test_parameter_search_c.restype = None
 _lib.run_js_comp_test_parameter_search_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -140,6 +141,9 @@ def calc_js_comp_test_candidate_bounds(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -148,19 +152,22 @@ def calc_js_comp_test_candidate_bounds(
     Generated from the Fortran procedure `tox_data_integration_js_comp_test_fixed_k_search::calc_js_comp_test_candidate_bounds`, whose argument names are
     the ones an error message reports.
     """
+    # check every input by the input contract, converting only when C needs it
+    max_n_genes_all_studies = _contract.integer(max_n_genes_all_studies, "max_n_genes_all_studies")
+
     # outputs and work arrays, which the caller never sees
-    max_n_points_candidate = ctypes.c_int(0)
-    max_n_neighbors_candidate = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    max_n_points_candidate = _ctypes.c_int(0)
+    max_n_neighbors_candidate = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.calc_js_comp_test_candidate_bounds_c(
-        ctypes.byref(ctypes.c_int(max_n_genes_all_studies)),
-        ctypes.byref(max_n_points_candidate),
-        ctypes.byref(max_n_neighbors_candidate),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(max_n_genes_all_studies)),
+        _ctypes.byref(max_n_points_candidate),
+        _ctypes.byref(max_n_neighbors_candidate),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_JS_COMP_TEST_CANDIDATE_BOUNDS_ARGUMENTS)
+    _check_err_code(ierr.value, _CALC_JS_COMP_TEST_CANDIDATE_BOUNDS_ARGUMENTS)
 
     return {
         "max_n_points_candidate": max_n_points_candidate.value,
@@ -194,6 +201,9 @@ def generate_js_comp_test_candidates(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -202,19 +212,22 @@ def generate_js_comp_test_candidates(
     Generated from the Fortran procedure `tox_data_integration_js_comp_test_fixed_k_search::generate_js_comp_test_candidates`, whose argument names are
     the ones an error message reports.
     """
+    # check every input by the input contract, converting only when C needs it
+    max_n_genes_all_studies = _contract.integer(max_n_genes_all_studies, "max_n_genes_all_studies")
+
     # outputs and work arrays, which the caller never sees
-    candidates_n_points_n_neighbors = np.empty((2, 16,), dtype=np.int32, order='F')
-    n_candidates = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    candidates_n_points_n_neighbors = _np.empty((2, 16,), dtype=_np.int32, order='F')
+    n_candidates = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.generate_js_comp_test_candidates_c(
-        ctypes.byref(ctypes.c_int(max_n_genes_all_studies)),
+        _ctypes.byref(_ctypes.c_int(max_n_genes_all_studies)),
         candidates_n_points_n_neighbors,
-        ctypes.byref(n_candidates),
-        ctypes.byref(ierr),
+        _ctypes.byref(n_candidates),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _GENERATE_JS_COMP_TEST_CANDIDATES_ARGUMENTS)
+    _check_err_code(ierr.value, _GENERATE_JS_COMP_TEST_CANDIDATES_ARGUMENTS)
 
     # a result is a value: modify a copy, not this
     candidates_n_points_n_neighbors.flags.writeable = False
@@ -297,7 +310,7 @@ def run_js_comp_test_parameter_search(
         The minimum valid value is `1`.
     join_method : str, one of 'join_min' | 'join_max' | 'join_median'
         How the studies' confidence-interval overlaps are joined into the plateau condition
-
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     max_n_points_candidate : int
         Upper bound on the grid's `n_points` candidates, which sizes the per-point outputs;
         at least what `calc_js_comp_test_candidate_bounds` returns, else invalid input
@@ -329,6 +342,7 @@ def run_js_comp_test_parameter_search(
         Which plateau criterion decides when the search stops
 
         The default value is `'plateau_ci_overlap'`.
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     delta_median_threshold : float, optional, default 0.05
         Upper bound on the median relative JSD change for a transition to qualify
         The minimum valid value is `above(0.0)`.
@@ -385,6 +399,7 @@ def run_js_comp_test_parameter_search(
         with `min_residuals_per_bin` as the floor
 
         The default value is `'bin_count_occupancy'`.
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
 
     Returns
     -------
@@ -521,6 +536,9 @@ def run_js_comp_test_parameter_search(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -529,88 +547,91 @@ def run_js_comp_test_parameter_search(
     Generated from the Fortran procedure `tox_data_integration_js_comp_test_fixed_k_search::run_js_comp_test_parameter_search`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        gene_means = np.asfortranarray(gene_means, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_means' must be an array of np.float64: {error}") from None
-    if gene_means.ndim != 2:
-        raise ValueError(f"'gene_means' must have 2 dimensions, but has {gene_means.ndim}")
-    try:
-        residuals = np.asfortranarray(residuals, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'residuals' must be an array of np.float64: {error}") from None
-    if residuals.ndim != 3:
-        raise ValueError(f"'residuals' must have 3 dimensions, but has {residuals.ndim}")
-    join_method = np.array([str(join_method).lower().encode().ljust(11)], dtype="S11")
-    plateau_mode = np.array([str(plateau_mode).lower().encode().ljust(19)], dtype="S19")
-    bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
+    # check every input by the input contract, converting only when C needs it
+    gene_means = _contract.reals(gene_means, "gene_means", ndim=2, order="F")
+    residuals = _contract.reals(residuals, "residuals", ndim=3, order="F")
+    n_bootstraps = _contract.integer(n_bootstraps, "n_bootstraps")
+    join_method = _np.array([_contract.mode(join_method, "join_method", ("join_min", "join_max", "join_median",)).ljust(11)], dtype="S11")
+    max_n_points_candidate = _contract.integer(max_n_points_candidate, "max_n_points_candidate")
+    max_n_neighbors_candidate = _contract.integer(max_n_neighbors_candidate, "max_n_neighbors_candidate")
+    min_residuals_per_bin = _contract.integer(min_residuals_per_bin, "min_residuals_per_bin")
+    min_neighbor_overlap = _contract.real(min_neighbor_overlap, "min_neighbor_overlap")
+    succeeding_ci_overlap = _contract.real(succeeding_ci_overlap, "succeeding_ci_overlap")
+    plateau_mode = _np.array([_contract.mode(plateau_mode, "plateau_mode", ("plateau_ci_overlap", "plateau_effect_size", "plateau_both",)).ljust(19)], dtype="S19")
+    delta_median_threshold = _contract.real(delta_median_threshold, "delta_median_threshold")
+    delta_max_threshold = _contract.real(delta_max_threshold, "delta_max_threshold")
+    delta_epsilon = _contract.real(delta_epsilon, "delta_epsilon")
+    delta_min_consecutive_transitions = _contract.integer(delta_min_consecutive_transitions, "delta_min_consecutive_transitions")
+    m_min = _contract.integer(m_min, "m_min")
+    m_max = _contract.integer(m_max, "m_max")
+    gamma_occupancy = _contract.real(gamma_occupancy, "gamma_occupancy")
+    lower_residual_range_quantile = _contract.real(lower_residual_range_quantile, "lower_residual_range_quantile")
+    upper_residual_range_quantile = _contract.real(upper_residual_range_quantile, "upper_residual_range_quantile")
+    two_sided_bootstrapping_significance_level = _contract.real(two_sided_bootstrapping_significance_level, "two_sided_bootstrapping_significance_level")
+    random_seed = _contract.integer(random_seed, "random_seed")
+    bin_count_mode = _np.array([_contract.mode(bin_count_mode, "bin_count_mode", ("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled",)).ljust(29)], dtype="S29")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
     max_n_genes_all_studies = gene_means.shape[0]
     max_n_reps_all_studies = residuals.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
-    if residuals.shape[2] != n_studies:
-        raise ValueError(f"'residuals' has {residuals.shape[2]} along axis 2, but "
-            f"'gene_means' implies n_studies == {n_studies}"
-        )
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if residuals.shape[1] != max_n_genes_all_studies:
-        raise ValueError(f"'residuals' has {residuals.shape[1]} along axis 1, but "
-            f"'gene_means' implies max_n_genes_all_studies == {max_n_genes_all_studies}"
-        )
+        raise _ToxArgumentError(f"'residuals' has {residuals.shape[1]} along axis 1, but 'gene_means' implies max_n_genes_all_studies == {max_n_genes_all_studies}; 'residuals' is declared with shape (max_n_reps_all_studies, max_n_genes_all_studies, n_studies)", argument="residuals")
+    if residuals.shape[2] != n_studies:
+        raise _ToxArgumentError(f"'residuals' has {residuals.shape[2]} along axis 2, but 'gene_means' implies n_studies == {n_studies}; 'residuals' is declared with shape (max_n_reps_all_studies, max_n_genes_all_studies, n_studies)", argument="residuals")
 
     # outputs and work arrays, which the caller never sees
-    n_points = ctypes.c_int(0)
-    n_neighbors = ctypes.c_int(0)
-    n_bins_per_point = np.empty((max_n_points_candidate,), dtype=np.int32, order='C')
-    shared_residual_range_low = np.empty((max_n_points_candidate,), dtype=np.float64, order='C')
-    shared_residual_range_high = np.empty((max_n_points_candidate,), dtype=np.float64, order='C')
-    best_candidate_pair_confidence_interval = np.empty((2, n_studies,), dtype=np.float64, order='F')
-    plateau_established = ctypes.c_bool(0)
-    n_admissible_evaluated = ctypes.c_int(0)
-    trace_n_points = np.empty((16,), dtype=np.int32, order='C')
-    trace_n_neighbors = np.empty((16,), dtype=np.int32, order='C')
-    trace_global_js_divergence = np.empty((n_studies, 16,), dtype=np.float64, order='F')
-    trace_ci_lower = np.empty((n_studies, 16,), dtype=np.float64, order='F')
-    trace_ci_upper = np.empty((n_studies, 16,), dtype=np.float64, order='F')
-    trace_ci_width = np.empty((n_studies, 16,), dtype=np.float64, order='F')
-    trace_ci_width_relative = np.empty((n_studies, 16,), dtype=np.float64, order='F')
-    trace_ci_overlap = np.empty((n_studies, 16,), dtype=np.float64, order='F')
-    trace_delta = np.empty((n_studies, 16,), dtype=np.float64, order='F')
-    trace_delta_median = np.empty((16,), dtype=np.float64, order='C')
-    trace_delta_max = np.empty((16,), dtype=np.float64, order='C')
-    trace_selected_n_bins = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
-    trace_occupancy_failed = np.empty((max_n_points_candidate, 16,), dtype=np.bool_, order='F')
-    trace_n_pooled_residuals = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
-    trace_min_bin_occupancy = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
-    trace_mean_bin_occupancy = np.empty((max_n_points_candidate, 16,), dtype=np.float64, order='F')
-    trace_max_bin_occupancy = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
-    trace_sturges_bins = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
-    trace_fd_bins = np.empty((max_n_points_candidate, 16,), dtype=np.int32, order='F')
-    trace_shared_residual_range_low = np.empty((max_n_points_candidate, 16,), dtype=np.float64, order='F')
-    trace_shared_residual_range_high = np.empty((max_n_points_candidate, 16,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    n_points = _ctypes.c_int(0)
+    n_neighbors = _ctypes.c_int(0)
+    n_bins_per_point = _np.empty((max_n_points_candidate,), dtype=_np.int32, order='C')
+    shared_residual_range_low = _np.empty((max_n_points_candidate,), dtype=_np.float64, order='C')
+    shared_residual_range_high = _np.empty((max_n_points_candidate,), dtype=_np.float64, order='C')
+    best_candidate_pair_confidence_interval = _np.empty((2, n_studies,), dtype=_np.float64, order='F')
+    plateau_established = _ctypes.c_bool(0)
+    n_admissible_evaluated = _ctypes.c_int(0)
+    trace_n_points = _np.empty((16,), dtype=_np.int32, order='C')
+    trace_n_neighbors = _np.empty((16,), dtype=_np.int32, order='C')
+    trace_global_js_divergence = _np.empty((n_studies, 16,), dtype=_np.float64, order='F')
+    trace_ci_lower = _np.empty((n_studies, 16,), dtype=_np.float64, order='F')
+    trace_ci_upper = _np.empty((n_studies, 16,), dtype=_np.float64, order='F')
+    trace_ci_width = _np.empty((n_studies, 16,), dtype=_np.float64, order='F')
+    trace_ci_width_relative = _np.empty((n_studies, 16,), dtype=_np.float64, order='F')
+    trace_ci_overlap = _np.empty((n_studies, 16,), dtype=_np.float64, order='F')
+    trace_delta = _np.empty((n_studies, 16,), dtype=_np.float64, order='F')
+    trace_delta_median = _np.empty((16,), dtype=_np.float64, order='C')
+    trace_delta_max = _np.empty((16,), dtype=_np.float64, order='C')
+    trace_selected_n_bins = _np.empty((max_n_points_candidate, 16,), dtype=_np.int32, order='F')
+    trace_occupancy_failed = _np.empty((max_n_points_candidate, 16,), dtype=_np.bool_, order='F')
+    trace_n_pooled_residuals = _np.empty((max_n_points_candidate, 16,), dtype=_np.int32, order='F')
+    trace_min_bin_occupancy = _np.empty((max_n_points_candidate, 16,), dtype=_np.int32, order='F')
+    trace_mean_bin_occupancy = _np.empty((max_n_points_candidate, 16,), dtype=_np.float64, order='F')
+    trace_max_bin_occupancy = _np.empty((max_n_points_candidate, 16,), dtype=_np.int32, order='F')
+    trace_sturges_bins = _np.empty((max_n_points_candidate, 16,), dtype=_np.int32, order='F')
+    trace_fd_bins = _np.empty((max_n_points_candidate, 16,), dtype=_np.int32, order='F')
+    trace_shared_residual_range_low = _np.empty((max_n_points_candidate, 16,), dtype=_np.float64, order='F')
+    trace_shared_residual_range_high = _np.empty((max_n_points_candidate, 16,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.run_js_comp_test_parameter_search_c(
-        ctypes.byref(ctypes.c_int(n_studies)),
-        ctypes.byref(ctypes.c_int(max_n_genes_all_studies)),
-        ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
+        _ctypes.byref(_ctypes.c_int(n_studies)),
+        _ctypes.byref(_ctypes.c_int(max_n_genes_all_studies)),
+        _ctypes.byref(_ctypes.c_int(max_n_reps_all_studies)),
         gene_means,
         residuals,
-        ctypes.byref(ctypes.c_int(n_bootstraps)),
+        _ctypes.byref(_ctypes.c_int(n_bootstraps)),
         join_method,
-        ctypes.byref(ctypes.c_int(max_n_points_candidate)),
-        ctypes.byref(ctypes.c_int(max_n_neighbors_candidate)),
-        ctypes.byref(n_points),
-        ctypes.byref(n_neighbors),
+        _ctypes.byref(_ctypes.c_int(max_n_points_candidate)),
+        _ctypes.byref(_ctypes.c_int(max_n_neighbors_candidate)),
+        _ctypes.byref(n_points),
+        _ctypes.byref(n_neighbors),
         n_bins_per_point,
         shared_residual_range_low,
         shared_residual_range_high,
         best_candidate_pair_confidence_interval,
-        ctypes.byref(plateau_established),
-        ctypes.byref(n_admissible_evaluated),
+        _ctypes.byref(plateau_established),
+        _ctypes.byref(n_admissible_evaluated),
         trace_n_points,
         trace_n_neighbors,
         trace_global_js_divergence,
@@ -632,26 +653,26 @@ def run_js_comp_test_parameter_search(
         trace_fd_bins,
         trace_shared_residual_range_low,
         trace_shared_residual_range_high,
-        ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
-        ctypes.byref(ctypes.c_double(min_neighbor_overlap)),
-        ctypes.byref(ctypes.c_double(succeeding_ci_overlap)),
+        _ctypes.byref(_ctypes.c_int(min_residuals_per_bin)),
+        _ctypes.byref(_ctypes.c_double(min_neighbor_overlap)),
+        _ctypes.byref(_ctypes.c_double(succeeding_ci_overlap)),
         plateau_mode,
-        ctypes.byref(ctypes.c_double(delta_median_threshold)),
-        ctypes.byref(ctypes.c_double(delta_max_threshold)),
-        ctypes.byref(ctypes.c_double(delta_epsilon)),
-        ctypes.byref(ctypes.c_int(delta_min_consecutive_transitions)),
-        ctypes.byref(ctypes.c_int(m_min)),
-        ctypes.byref(ctypes.c_int(m_max)),
-        ctypes.byref(ctypes.c_double(gamma_occupancy)),
-        ctypes.byref(ctypes.c_double(lower_residual_range_quantile)),
-        ctypes.byref(ctypes.c_double(upper_residual_range_quantile)),
-        ctypes.byref(ctypes.c_double(two_sided_bootstrapping_significance_level)),
-        ctypes.byref(ctypes.c_int(random_seed)),
+        _ctypes.byref(_ctypes.c_double(delta_median_threshold)),
+        _ctypes.byref(_ctypes.c_double(delta_max_threshold)),
+        _ctypes.byref(_ctypes.c_double(delta_epsilon)),
+        _ctypes.byref(_ctypes.c_int(delta_min_consecutive_transitions)),
+        _ctypes.byref(_ctypes.c_int(m_min)),
+        _ctypes.byref(_ctypes.c_int(m_max)),
+        _ctypes.byref(_ctypes.c_double(gamma_occupancy)),
+        _ctypes.byref(_ctypes.c_double(lower_residual_range_quantile)),
+        _ctypes.byref(_ctypes.c_double(upper_residual_range_quantile)),
+        _ctypes.byref(_ctypes.c_double(two_sided_bootstrapping_significance_level)),
+        _ctypes.byref(_ctypes.c_int(random_seed)),
         bin_count_mode,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS, _RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS, _RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     n_bins_per_point.flags.writeable = False

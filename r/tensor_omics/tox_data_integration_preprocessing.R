@@ -36,7 +36,7 @@ compute_residuals <- function(expr, means) {
     expr <- .tox_as_double_matrix(expr, "expr")
     means <- .tox_as_double_vector(means, "means")
     if (length(means) != dim(expr)[2])
-        .tox_shape_error("means", length(means), "expr", dim(expr)[2])
+        .tox_shape_error("means", 1L, length(means), "'expr' implies n_genes == ", dim(expr)[2], "n_genes")
 
     .result <- .Call("compute_residuals_call", expr, means)
     .arguments <- c("n_genes", "n_reps", "expr", "means", "resid", "ierr")
@@ -106,7 +106,7 @@ pool_means_expert <- function(pooled_means, pooled_means_perm, n_points) {
     pooled_means_perm <- .tox_as_integer_vector(pooled_means_perm, "pooled_means_perm")
     n_points <- .tox_as_integer_scalar(n_points, "n_points")
     if (length(pooled_means_perm) != length(pooled_means))
-        .tox_shape_error("pooled_means_perm", length(pooled_means_perm), "pooled_means", length(pooled_means))
+        .tox_shape_error("pooled_means_perm", 1L, length(pooled_means_perm), "'pooled_means' implies pool_size == ", length(pooled_means), "pool_size")
 
     .result <- .Call("pool_means_expert_call", pooled_means, pooled_means_perm, n_points)
     .arguments <- c("pooled_means", "pooled_means_perm", "pool_size", "n_points", "n_pool", "x_star", "ierr")
@@ -179,7 +179,7 @@ construct_neighborhoods <- function(x_star, mean_S, resid_S, n_neighbors) {
     resid_S <- .tox_as_double_matrix(resid_S, "resid_S")
     n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
     if (dim(resid_S)[2] != length(mean_S))
-        .tox_shape_error("resid_S", dim(resid_S)[2], "mean_S", length(mean_S))
+        .tox_shape_error("resid_S", 2L, dim(resid_S)[2], "'mean_S' implies n_genes_S == ", length(mean_S), "n_reps_S, n_genes_S")
 
     .result <- .Call("construct_neighborhoods_call", x_star, mean_S, resid_S, n_neighbors)
     .arguments <- c("n_points", "x_star", "n_genes_S", "mean_S", "n_reps_S", "resid_S", "neighborhood_residuals", "neighborhood_indices", "n_neighbors", "ierr")
@@ -288,7 +288,7 @@ construct_neighborhoods_ranged_expert <- function(x_star, mean_S, mean_S_perm, n
     mean_S_perm <- .tox_as_integer_vector(mean_S_perm, "mean_S_perm")
     n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
     if (length(mean_S_perm) != length(mean_S))
-        .tox_shape_error("mean_S_perm", length(mean_S_perm), "mean_S", length(mean_S))
+        .tox_shape_error("mean_S_perm", 1L, length(mean_S_perm), "'mean_S' implies n_genes_S == ", length(mean_S), "n_genes_S")
 
     .result <- .Call("construct_neighborhoods_ranged_expert_call", x_star, mean_S, mean_S_perm, n_neighbors)
     .arguments <- c("n_points", "x_star", "n_genes_S", "mean_S", "mean_S_perm", "n_neighbors", "neighborhood_indices", "neighborhood_range", "ierr")
@@ -330,7 +330,7 @@ gather_pooled_neighborhood_residuals <- function(residuals, neighborhood_indices
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
     neighborhood_indices_point <- .tox_as_integer_matrix(neighborhood_indices_point, "neighborhood_indices_point")
     if (dim(neighborhood_indices_point)[2] != dim(residuals)[3])
-        .tox_shape_error("neighborhood_indices_point", dim(neighborhood_indices_point)[2], "residuals", dim(residuals)[3])
+        .tox_shape_error("neighborhood_indices_point", 2L, dim(neighborhood_indices_point)[2], "'residuals' implies n_studies == ", dim(residuals)[3], "n_neighbors, n_studies")
 
     .result <- .Call("gather_pooled_neighborhood_residuals_call", residuals, neighborhood_indices_point)
     .arguments <- c("residuals", "max_n_reps_all_studies", "max_n_genes_all_studies", "n_neighbors", "n_studies", "neighborhood_indices_point", "pooled_residuals", "ierr")
@@ -458,10 +458,10 @@ construct_adaptive_neighborhoods <- function(gene_means, residuals, k_start, k_s
     mad_distance_factor <- .tox_as_double_scalar(mad_distance_factor, "mad_distance_factor")
     max_pooled_residuals <- .tox_as_integer_scalar(max_pooled_residuals, "max_pooled_residuals")
     min_study_neighbors <- .tox_as_integer_scalar(min_study_neighbors, "min_study_neighbors")
-    if (dim(residuals)[3] != dim(gene_means)[2])
-        .tox_shape_error("residuals", dim(residuals)[3], "gene_means", dim(gene_means)[2])
     if (dim(residuals)[2] != dim(gene_means)[1])
-        .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
+        .tox_shape_error("residuals", 2L, dim(residuals)[2], "'gene_means' implies max_n_genes_all_studies == ", dim(gene_means)[1], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
+    if (dim(residuals)[3] != dim(gene_means)[2])
+        .tox_shape_error("residuals", 3L, dim(residuals)[3], "'gene_means' implies n_studies == ", dim(gene_means)[2], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
 
     .result <- .Call("construct_adaptive_neighborhoods_call", gene_means, residuals, k_start, k_step, k_max, tau, mad_distance_factor, max_pooled_residuals, min_study_neighbors)
     .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "k_start", "k_step", "k_max", "n_points", "x_star", "pooled_neighborhood_range", "n_neighbors_per_point", "stop_reason", "neighborhood_dispersion", "neighborhood_mad", "max_n_neighbors", "construction_status", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "ierr")

@@ -18,30 +18,31 @@ routines themselves are not re-documented beyond their calling convention.
 Python binding, generated from tox_loess. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.loess_fit_plain_c.restype = None
 _lib.loess_fit_plain_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_bool),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -51,19 +52,19 @@ _LOESS_FIT_PLAIN_ARGUMENT_SOURCES = ("x", None, None, None, None, None, None, No
 
 _lib.loess_fit_robust_c.restype = None
 _lib.loess_fit_robust_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -124,6 +125,9 @@ def loess_fit_plain(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -132,69 +136,50 @@ def loess_fit_plain(
     Generated from the Fortran procedure `tox_loess::loess_fit_plain`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        x = np.ascontiguousarray(x, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'x' must be an array of np.float64: {error}") from None
-    if x.ndim != 1:
-        raise ValueError(f"'x' must have 1 dimension, but has {x.ndim}")
-    try:
-        y = np.ascontiguousarray(y, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'y' must be an array of np.float64: {error}") from None
-    if y.ndim != 1:
-        raise ValueError(f"'y' must have 1 dimension, but has {y.ndim}")
-    try:
-        weights = np.ascontiguousarray(weights, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'weights' must be an array of np.float64: {error}") from None
-    if weights.ndim != 1:
-        raise ValueError(f"'weights' must have 1 dimension, but has {weights.ndim}")
-    try:
-        eval_points = np.asfortranarray(eval_points, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'eval_points' must be an array of np.float64: {error}") from None
-    if eval_points.ndim != 2:
-        raise ValueError(f"'eval_points' must have 2 dimensions, but has {eval_points.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    x = _contract.reals(x, "x", ndim=1)
+    y = _contract.reals(y, "y", ndim=1)
+    weights = _contract.reals(weights, "weights", ndim=1)
+    eval_points = _contract.reals(eval_points, "eval_points", ndim=2, order="F")
+    span = _contract.real(span, "span")
+    degree = _contract.integer(degree, "degree")
+    max_neighborhood_size = _contract.integer(max_neighborhood_size, "max_neighborhood_size")
+    compute_influence = _contract.logical(compute_influence, "compute_influence")
+    save_factorization = _contract.logical(save_factorization, "save_factorization")
 
     # what the inputs already say, rather than asking for it again
     n = x.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if y.shape[0] != n:
-        raise ValueError(f"'y' has {y.shape[0]} along axis 0, but "
-            f"'x' implies n == {n}"
-        )
+        raise _ToxArgumentError(f"'y' has {y.shape[0]} along axis 0, but 'x' implies n == {n}; 'y' is declared with shape (n)", argument="y")
     if weights.shape[0] != n:
-        raise ValueError(f"'weights' has {weights.shape[0]} along axis 0, but "
-            f"'x' implies n == {n}"
-        )
+        raise _ToxArgumentError(f"'weights' has {weights.shape[0]} along axis 0, but 'x' implies n == {n}; 'weights' is declared with shape (n)", argument="weights")
     if eval_points.shape[0] != n:
-        raise ValueError(f"'eval_points' has {eval_points.shape[0]} along axis 0, but "
-            f"'x' implies n == {n}"
-        )
+        raise _ToxArgumentError(f"'eval_points' has {eval_points.shape[0]} along axis 0, but 'x' implies n == {n}; 'eval_points' is declared with shape (n, 1)", argument="eval_points")
+    if eval_points.shape[1] != 1:
+        raise _ToxArgumentError(f"'eval_points' has {eval_points.shape[1]} along axis 1, but its declared shape fixes it at {1}; 'eval_points' is declared with shape (n, 1)", argument="eval_points")
 
     # outputs and work arrays, which the caller never sees
-    fitted_values = np.empty((n,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    fitted_values = _np.empty((n,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.loess_fit_plain_c(
-        ctypes.byref(ctypes.c_int(n)),
+        _ctypes.byref(_ctypes.c_int(n)),
         x,
         y,
         weights,
         eval_points,
-        ctypes.byref(ctypes.c_double(span)),
-        ctypes.byref(ctypes.c_int(degree)),
-        ctypes.byref(ctypes.c_int(max_neighborhood_size)),
-        ctypes.byref(ctypes.c_bool(compute_influence)),
-        ctypes.byref(ctypes.c_bool(save_factorization)),
+        _ctypes.byref(_ctypes.c_double(span)),
+        _ctypes.byref(_ctypes.c_int(degree)),
+        _ctypes.byref(_ctypes.c_int(max_neighborhood_size)),
+        _ctypes.byref(_ctypes.c_bool(compute_influence)),
+        _ctypes.byref(_ctypes.c_bool(save_factorization)),
         fitted_values,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _LOESS_FIT_PLAIN_ARGUMENTS, _LOESS_FIT_PLAIN_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _LOESS_FIT_PLAIN_ARGUMENTS, _LOESS_FIT_PLAIN_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     fitted_values.flags.writeable = False
@@ -263,6 +248,9 @@ def loess_fit_robust(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -271,70 +259,52 @@ def loess_fit_robust(
     Generated from the Fortran procedure `tox_loess::loess_fit_robust`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        x = np.ascontiguousarray(x, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'x' must be an array of np.float64: {error}") from None
-    if x.ndim != 1:
-        raise ValueError(f"'x' must have 1 dimension, but has {x.ndim}")
-    try:
-        y = np.ascontiguousarray(y, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'y' must be an array of np.float64: {error}") from None
-    if y.ndim != 1:
-        raise ValueError(f"'y' must have 1 dimension, but has {y.ndim}")
-    try:
-        weights = np.ascontiguousarray(weights, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'weights' must be an array of np.float64: {error}") from None
-    if weights.ndim != 1:
-        raise ValueError(f"'weights' must have 1 dimension, but has {weights.ndim}")
-    try:
-        eval_points = np.asfortranarray(eval_points, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'eval_points' must be an array of np.float64: {error}") from None
-    if eval_points.ndim != 2:
-        raise ValueError(f"'eval_points' must have 2 dimensions, but has {eval_points.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    x = _contract.reals(x, "x", ndim=1)
+    y = _contract.reals(y, "y", ndim=1)
+    weights = _contract.reals(weights, "weights", ndim=1)
+    eval_points = _contract.reals(eval_points, "eval_points", ndim=2, order="F")
+    span = _contract.real(span, "span")
+    degree = _contract.integer(degree, "degree")
+    max_neighborhood_size = _contract.integer(max_neighborhood_size, "max_neighborhood_size")
+    compute_influence = _contract.logical(compute_influence, "compute_influence")
+    save_factorization = _contract.logical(save_factorization, "save_factorization")
+    n_iters = _contract.integer(n_iters, "n_iters")
 
     # what the inputs already say, rather than asking for it again
     n = x.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if y.shape[0] != n:
-        raise ValueError(f"'y' has {y.shape[0]} along axis 0, but "
-            f"'x' implies n == {n}"
-        )
+        raise _ToxArgumentError(f"'y' has {y.shape[0]} along axis 0, but 'x' implies n == {n}; 'y' is declared with shape (n)", argument="y")
     if weights.shape[0] != n:
-        raise ValueError(f"'weights' has {weights.shape[0]} along axis 0, but "
-            f"'x' implies n == {n}"
-        )
+        raise _ToxArgumentError(f"'weights' has {weights.shape[0]} along axis 0, but 'x' implies n == {n}; 'weights' is declared with shape (n)", argument="weights")
     if eval_points.shape[0] != n:
-        raise ValueError(f"'eval_points' has {eval_points.shape[0]} along axis 0, but "
-            f"'x' implies n == {n}"
-        )
+        raise _ToxArgumentError(f"'eval_points' has {eval_points.shape[0]} along axis 0, but 'x' implies n == {n}; 'eval_points' is declared with shape (n, 1)", argument="eval_points")
+    if eval_points.shape[1] != 1:
+        raise _ToxArgumentError(f"'eval_points' has {eval_points.shape[1]} along axis 1, but its declared shape fixes it at {1}; 'eval_points' is declared with shape (n, 1)", argument="eval_points")
 
     # outputs and work arrays, which the caller never sees
-    fitted_values = np.empty((n,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    fitted_values = _np.empty((n,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.loess_fit_robust_c(
-        ctypes.byref(ctypes.c_int(n)),
+        _ctypes.byref(_ctypes.c_int(n)),
         x,
         y,
         weights,
         eval_points,
-        ctypes.byref(ctypes.c_double(span)),
-        ctypes.byref(ctypes.c_int(degree)),
-        ctypes.byref(ctypes.c_int(max_neighborhood_size)),
-        ctypes.byref(ctypes.c_bool(compute_influence)),
-        ctypes.byref(ctypes.c_bool(save_factorization)),
-        ctypes.byref(ctypes.c_int(n_iters)),
+        _ctypes.byref(_ctypes.c_double(span)),
+        _ctypes.byref(_ctypes.c_int(degree)),
+        _ctypes.byref(_ctypes.c_int(max_neighborhood_size)),
+        _ctypes.byref(_ctypes.c_bool(compute_influence)),
+        _ctypes.byref(_ctypes.c_bool(save_factorization)),
+        _ctypes.byref(_ctypes.c_int(n_iters)),
         fitted_values,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _LOESS_FIT_ROBUST_ARGUMENTS, _LOESS_FIT_ROBUST_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _LOESS_FIT_ROBUST_ARGUMENTS, _LOESS_FIT_ROBUST_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     fitted_values.flags.writeable = False

@@ -171,6 +171,7 @@ generate_adaptive_js_comp_test_candidates <- function(max_n_genes_all_studies, n
 #' @param n_bootstraps a integer scalar. Number of bootstraps to perform for a candidate
 #'   The minimum valid value is `1`.
 #' @param join_method a string, one of "join_min", "join_max", "join_median". How the studies' confidence-interval overlaps are joined into the plateau condition
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param max_n_points_candidate a integer scalar. Most reference points a candidate may emerge with; a candidate with more is rejected
 #'   with the capacity status. The per-point outputs and traces below are sized by it, so
 #'   the caller has to know it up front
@@ -193,6 +194,7 @@ generate_adaptive_js_comp_test_candidates <- function(max_n_genes_all_studies, n
 #' @param plateau_mode a string, one of "plateau_ci_overlap", "plateau_effect_size", "plateau_both". Which plateau criterion decides when the search stops
 #'
 #'   The default value is `"plateau_ci_overlap"`.
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param delta_median_threshold a numeric scalar. Upper bound on the median relative JSD change for a transition to qualify
 #'   The minimum valid value is `above(0.0)`.
 #'   The default value is `0.05`.
@@ -250,6 +252,7 @@ generate_adaptive_js_comp_test_candidates <- function(max_n_genes_all_studies, n
 #'   with `min_residuals_per_bin` as the floor
 #'
 #'   The default value is `"bin_count_occupancy"`.
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{k_start}{a integer scalar. The finally chosen candidate's `k_start`}
 #'   \item{k_step}{a integer scalar. The finally chosen candidate's `k_step`}
@@ -369,10 +372,10 @@ run_js_comp_test_adaptive_parameter_search <- function(gene_means, residuals, n_
     max_pooled_residuals <- .tox_as_integer_scalar(max_pooled_residuals, "max_pooled_residuals")
     min_study_neighbors <- .tox_as_integer_scalar(min_study_neighbors, "min_study_neighbors")
     bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
-    if (dim(residuals)[3] != dim(gene_means)[2])
-        .tox_shape_error("residuals", dim(residuals)[3], "gene_means", dim(gene_means)[2])
     if (dim(residuals)[2] != dim(gene_means)[1])
-        .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
+        .tox_shape_error("residuals", 2L, dim(residuals)[2], "'gene_means' implies max_n_genes_all_studies == ", dim(gene_means)[1], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
+    if (dim(residuals)[3] != dim(gene_means)[2])
+        .tox_shape_error("residuals", 3L, dim(residuals)[3], "'gene_means' implies n_studies == ", dim(gene_means)[2], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
 
     .result <- .Call("run_js_comp_test_adaptive_parameter_search_call", gene_means, residuals, n_bootstraps, join_method, max_n_points_candidate, min_residuals_per_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, two_sided_bootstrapping_significance_level, random_seed, tau, mad_distance_factor, max_pooled_residuals, min_study_neighbors, bin_count_mode)
     .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "n_bootstraps", "join_method", "max_n_points_candidate", "k_start", "k_step", "k_max", "n_points", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "best_candidate_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_k_start", "trace_k_step", "trace_k_max", "trace_n_points", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_ci_overlap", "trace_delta", "trace_delta_median", "trace_delta_max", "trace_selected_n_bins", "trace_occupancy_failed", "trace_n_pooled_residuals", "trace_min_bin_occupancy", "trace_mean_bin_occupancy", "trace_max_bin_occupancy", "trace_sturges_bins", "trace_fd_bins", "trace_shared_residual_range_low", "trace_shared_residual_range_high", "n_candidates_tried", "candidate_k_start", "candidate_n_points", "candidate_status", "min_residuals_per_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "two_sided_bootstrapping_significance_level", "random_seed", "tau", "mad_distance_factor", "max_pooled_residuals", "min_study_neighbors", "bin_count_mode", "ierr")

@@ -18,27 +18,28 @@ the Sturges/Freedman-Diaconis rule-of-thumb estimate. Every bin count is at most
 Python binding, generated from tox_data_integration_js_comp_test_binning. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.estimate_bin_count_c.restype = None
 _lib.estimate_bin_count_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -48,16 +49,16 @@ _ESTIMATE_BIN_COUNT_ARGUMENT_SOURCES = (None, "residuals", None, None, None, Non
 
 _lib.estimate_bin_count_expert_c.restype = None
 _lib.estimate_bin_count_expert_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -67,27 +68,27 @@ _ESTIMATE_BIN_COUNT_EXPERT_ARGUMENT_SOURCES = (None, None, "residuals", None, No
 
 _lib.determine_bin_count_occupancy_c.restype = None
 _lib.determine_bin_count_occupancy_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -97,29 +98,29 @@ _DETERMINE_BIN_COUNT_OCCUPANCY_ARGUMENT_SOURCES = (None, "pooled_residuals", Non
 
 _lib.determine_bin_count_occupancy_expert_c.restype = None
 _lib.determine_bin_count_occupancy_expert_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -129,20 +130,20 @@ _DETERMINE_BIN_COUNT_OCCUPANCY_EXPERT_ARGUMENT_SOURCES = (None, None, "pooled_re
 
 _lib.determine_bin_count_occupancy_exhaustive_c.restype = None
 _lib.determine_bin_count_occupancy_exhaustive_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -152,21 +153,21 @@ _DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_ARGUMENT_SOURCES = (None, "pooled_resi
 
 _lib.determine_bin_count_occupancy_exhaustive_expert_c.restype = None
 _lib.determine_bin_count_occupancy_exhaustive_expert_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -176,29 +177,29 @@ _DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_EXPERT_ARGUMENT_SOURCES = (None, None,
 
 _lib.determine_bin_count_stone_c.restype = None
 _lib.determine_bin_count_stone_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -208,33 +209,33 @@ _DETERMINE_BIN_COUNT_STONE_ARGUMENT_SOURCES = (None, "pooled_residuals", None, N
 
 _lib.determine_bin_count_stone_expert_c.restype = None
 _lib.determine_bin_count_stone_expert_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_bool),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(ndim=1),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_bool),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(ndim=1),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -288,6 +289,9 @@ def estimate_bin_count(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -299,36 +303,34 @@ def estimate_bin_count(
     This entry point seeds `residuals_perm` and sorts it by `residuals`.
     Call `estimate_bin_count_expert` to do that yourself.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        residuals = np.ascontiguousarray(residuals, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'residuals' must be an array of np.float64: {error}") from None
-    if residuals.ndim != 1:
-        raise ValueError(f"'residuals' must have 1 dimension, but has {residuals.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    residuals = _contract.reals(residuals, "residuals", ndim=1)
+    max_n_reps_all_studies = _contract.integer(max_n_reps_all_studies, "max_n_reps_all_studies")
+    n_neighbors = _contract.integer(n_neighbors, "n_neighbors")
+    shared_residual_range = _contract.real(shared_residual_range, "shared_residual_range")
 
     # what the inputs already say, rather than asking for it again
     n_residuals = residuals.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    n_bins = ctypes.c_int(0)
-    sturges_bins = ctypes.c_int(0)
-    fd_bins = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    n_bins = _ctypes.c_int(0)
+    sturges_bins = _ctypes.c_int(0)
+    fd_bins = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.estimate_bin_count_c(
         residuals,
-        ctypes.byref(ctypes.c_int(n_residuals)),
-        ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ctypes.c_double(shared_residual_range)),
-        ctypes.byref(n_bins),
-        ctypes.byref(sturges_bins),
-        ctypes.byref(fd_bins),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_residuals)),
+        _ctypes.byref(_ctypes.c_int(max_n_reps_all_studies)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(_ctypes.c_double(shared_residual_range)),
+        _ctypes.byref(n_bins),
+        _ctypes.byref(sturges_bins),
+        _ctypes.byref(fd_bins),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _ESTIMATE_BIN_COUNT_ARGUMENTS, _ESTIMATE_BIN_COUNT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _ESTIMATE_BIN_COUNT_ARGUMENTS, _ESTIMATE_BIN_COUNT_ARGUMENT_SOURCES)
 
     return {
         "n_bins": n_bins.value,
@@ -387,6 +389,9 @@ def estimate_bin_count_expert(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -398,49 +403,40 @@ def estimate_bin_count_expert(
     The expert entry point: you supply `residuals_perm` yourself.
     `estimate_bin_count` seeds `residuals_perm` and sorts it by `residuals`.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        residuals = np.ascontiguousarray(residuals, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'residuals' must be an array of np.float64: {error}") from None
-    if residuals.ndim != 1:
-        raise ValueError(f"'residuals' must have 1 dimension, but has {residuals.ndim}")
-    try:
-        residuals_perm = np.ascontiguousarray(residuals_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'residuals_perm' must be an array of np.int32: {error}") from None
-    if residuals_perm.ndim != 1:
-        raise ValueError(f"'residuals_perm' must have 1 dimension, but has {residuals_perm.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    residuals = _contract.reals(residuals, "residuals", ndim=1)
+    residuals_perm = _contract.integers(residuals_perm, "residuals_perm", ndim=1)
+    max_n_reps_all_studies = _contract.integer(max_n_reps_all_studies, "max_n_reps_all_studies")
+    n_neighbors = _contract.integer(n_neighbors, "n_neighbors")
+    shared_residual_range = _contract.real(shared_residual_range, "shared_residual_range")
 
     # what the inputs already say, rather than asking for it again
     n_residuals = residuals.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if residuals_perm.shape[0] != n_residuals:
-        raise ValueError(f"'residuals_perm' has {residuals_perm.shape[0]} along axis 0, but "
-            f"'residuals' implies n_residuals == {n_residuals}"
-        )
+        raise _ToxArgumentError(f"'residuals_perm' has {residuals_perm.shape[0]} along axis 0, but 'residuals' implies n_residuals == {n_residuals}; 'residuals_perm' is declared with shape (n_residuals)", argument="residuals_perm")
 
     # outputs and work arrays, which the caller never sees
-    n_bins = ctypes.c_int(0)
-    sturges_bins = ctypes.c_int(0)
-    fd_bins = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    n_bins = _ctypes.c_int(0)
+    sturges_bins = _ctypes.c_int(0)
+    fd_bins = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.estimate_bin_count_expert_c(
         residuals,
         residuals_perm,
-        ctypes.byref(ctypes.c_int(n_residuals)),
-        ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ctypes.c_double(shared_residual_range)),
-        ctypes.byref(n_bins),
-        ctypes.byref(sturges_bins),
-        ctypes.byref(fd_bins),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_residuals)),
+        _ctypes.byref(_ctypes.c_int(max_n_reps_all_studies)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(_ctypes.c_double(shared_residual_range)),
+        _ctypes.byref(n_bins),
+        _ctypes.byref(sturges_bins),
+        _ctypes.byref(fd_bins),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _ESTIMATE_BIN_COUNT_EXPERT_ARGUMENTS, _ESTIMATE_BIN_COUNT_EXPERT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _ESTIMATE_BIN_COUNT_EXPERT_ARGUMENTS, _ESTIMATE_BIN_COUNT_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "n_bins": n_bins.value,
@@ -554,6 +550,9 @@ def determine_bin_count_occupancy(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -565,55 +564,58 @@ def determine_bin_count_occupancy(
     This entry point seeds `pooled_residuals_perm` and sorts it by `pooled_residuals` and computes `tmp_bin_counts` for you.
     Call `determine_bin_count_occupancy_expert` to do that yourself.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        pooled_residuals = np.ascontiguousarray(pooled_residuals, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pooled_residuals' must be an array of np.float64: {error}") from None
-    if pooled_residuals.ndim != 1:
-        raise ValueError(f"'pooled_residuals' must have 1 dimension, but has {pooled_residuals.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    pooled_residuals = _contract.reals(pooled_residuals, "pooled_residuals", ndim=1)
+    max_n_reps_all_studies = _contract.integer(max_n_reps_all_studies, "max_n_reps_all_studies")
+    n_neighbors = _contract.integer(n_neighbors, "n_neighbors")
+    m_min = _contract.integer(m_min, "m_min")
+    m_max = _contract.integer(m_max, "m_max")
+    min_residuals_per_bin = _contract.integer(min_residuals_per_bin, "min_residuals_per_bin")
+    gamma_occupancy = _contract.real(gamma_occupancy, "gamma_occupancy")
+    lower_residual_range_quantile = _contract.real(lower_residual_range_quantile, "lower_residual_range_quantile")
+    upper_residual_range_quantile = _contract.real(upper_residual_range_quantile, "upper_residual_range_quantile")
 
     # what the inputs already say, rather than asking for it again
     n_residuals = pooled_residuals.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    selected_n_bins = ctypes.c_int(0)
-    occupancy_failed = ctypes.c_bool(0)
-    shared_residual_range_low = ctypes.c_double(0)
-    shared_residual_range_high = ctypes.c_double(0)
-    n_pooled_residuals = ctypes.c_int(0)
-    min_bin_occupancy = ctypes.c_int(0)
-    mean_bin_occupancy = ctypes.c_double(0)
-    max_bin_occupancy = ctypes.c_int(0)
-    sturges_bins = ctypes.c_int(0)
-    fd_bins = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    selected_n_bins = _ctypes.c_int(0)
+    occupancy_failed = _ctypes.c_bool(0)
+    shared_residual_range_low = _ctypes.c_double(0)
+    shared_residual_range_high = _ctypes.c_double(0)
+    n_pooled_residuals = _ctypes.c_int(0)
+    min_bin_occupancy = _ctypes.c_int(0)
+    mean_bin_occupancy = _ctypes.c_double(0)
+    max_bin_occupancy = _ctypes.c_int(0)
+    sturges_bins = _ctypes.c_int(0)
+    fd_bins = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.determine_bin_count_occupancy_c(
         pooled_residuals,
-        ctypes.byref(ctypes.c_int(n_residuals)),
-        ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(selected_n_bins),
-        ctypes.byref(occupancy_failed),
-        ctypes.byref(shared_residual_range_low),
-        ctypes.byref(shared_residual_range_high),
-        ctypes.byref(n_pooled_residuals),
-        ctypes.byref(min_bin_occupancy),
-        ctypes.byref(mean_bin_occupancy),
-        ctypes.byref(max_bin_occupancy),
-        ctypes.byref(sturges_bins),
-        ctypes.byref(fd_bins),
-        ctypes.byref(ctypes.c_int(m_min)),
-        ctypes.byref(ctypes.c_int(m_max)),
-        ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
-        ctypes.byref(ctypes.c_double(gamma_occupancy)),
-        ctypes.byref(ctypes.c_double(lower_residual_range_quantile)),
-        ctypes.byref(ctypes.c_double(upper_residual_range_quantile)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_residuals)),
+        _ctypes.byref(_ctypes.c_int(max_n_reps_all_studies)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(selected_n_bins),
+        _ctypes.byref(occupancy_failed),
+        _ctypes.byref(shared_residual_range_low),
+        _ctypes.byref(shared_residual_range_high),
+        _ctypes.byref(n_pooled_residuals),
+        _ctypes.byref(min_bin_occupancy),
+        _ctypes.byref(mean_bin_occupancy),
+        _ctypes.byref(max_bin_occupancy),
+        _ctypes.byref(sturges_bins),
+        _ctypes.byref(fd_bins),
+        _ctypes.byref(_ctypes.c_int(m_min)),
+        _ctypes.byref(_ctypes.c_int(m_max)),
+        _ctypes.byref(_ctypes.c_int(min_residuals_per_bin)),
+        _ctypes.byref(_ctypes.c_double(gamma_occupancy)),
+        _ctypes.byref(_ctypes.c_double(lower_residual_range_quantile)),
+        _ctypes.byref(_ctypes.c_double(upper_residual_range_quantile)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETERMINE_BIN_COUNT_OCCUPANCY_ARGUMENTS, _DETERMINE_BIN_COUNT_OCCUPANCY_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETERMINE_BIN_COUNT_OCCUPANCY_ARGUMENTS, _DETERMINE_BIN_COUNT_OCCUPANCY_ARGUMENT_SOURCES)
 
     return {
         "selected_n_bins": selected_n_bins.value,
@@ -739,6 +741,9 @@ def determine_bin_count_occupancy_expert(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -750,70 +755,66 @@ def determine_bin_count_occupancy_expert(
     The expert entry point: you supply `pooled_residuals_perm` and `tmp_bin_counts` yourself.
     `determine_bin_count_occupancy` seeds `pooled_residuals_perm` and sorts it by `pooled_residuals` and computes `tmp_bin_counts` for you.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        pooled_residuals = np.ascontiguousarray(pooled_residuals, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pooled_residuals' must be an array of np.float64: {error}") from None
-    if pooled_residuals.ndim != 1:
-        raise ValueError(f"'pooled_residuals' must have 1 dimension, but has {pooled_residuals.ndim}")
-    try:
-        pooled_residuals_perm = np.ascontiguousarray(pooled_residuals_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pooled_residuals_perm' must be an array of np.int32: {error}") from None
-    if pooled_residuals_perm.ndim != 1:
-        raise ValueError(f"'pooled_residuals_perm' must have 1 dimension, but has {pooled_residuals_perm.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    pooled_residuals = _contract.reals(pooled_residuals, "pooled_residuals", ndim=1)
+    pooled_residuals_perm = _contract.integers(pooled_residuals_perm, "pooled_residuals_perm", ndim=1)
+    max_n_reps_all_studies = _contract.integer(max_n_reps_all_studies, "max_n_reps_all_studies")
+    n_neighbors = _contract.integer(n_neighbors, "n_neighbors")
+    m_min = _contract.integer(m_min, "m_min")
+    m_max = _contract.integer(m_max, "m_max")
+    min_residuals_per_bin = _contract.integer(min_residuals_per_bin, "min_residuals_per_bin")
+    gamma_occupancy = _contract.real(gamma_occupancy, "gamma_occupancy")
+    lower_residual_range_quantile = _contract.real(lower_residual_range_quantile, "lower_residual_range_quantile")
+    upper_residual_range_quantile = _contract.real(upper_residual_range_quantile, "upper_residual_range_quantile")
 
     # what the inputs already say, rather than asking for it again
     n_residuals = pooled_residuals.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if pooled_residuals_perm.shape[0] != n_residuals:
-        raise ValueError(f"'pooled_residuals_perm' has {pooled_residuals_perm.shape[0]} along axis 0, but "
-            f"'pooled_residuals' implies n_residuals == {n_residuals}"
-        )
+        raise _ToxArgumentError(f"'pooled_residuals_perm' has {pooled_residuals_perm.shape[0]} along axis 0, but 'pooled_residuals' implies n_residuals == {n_residuals}; 'pooled_residuals_perm' is declared with shape (n_residuals)", argument="pooled_residuals_perm")
 
     # outputs and work arrays, which the caller never sees
-    selected_n_bins = ctypes.c_int(0)
-    occupancy_failed = ctypes.c_bool(0)
-    shared_residual_range_low = ctypes.c_double(0)
-    shared_residual_range_high = ctypes.c_double(0)
-    n_pooled_residuals = ctypes.c_int(0)
-    min_bin_occupancy = ctypes.c_int(0)
-    mean_bin_occupancy = ctypes.c_double(0)
-    max_bin_occupancy = ctypes.c_int(0)
-    sturges_bins = ctypes.c_int(0)
-    fd_bins = ctypes.c_int(0)
-    tmp_bin_counts = np.empty((256,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    selected_n_bins = _ctypes.c_int(0)
+    occupancy_failed = _ctypes.c_bool(0)
+    shared_residual_range_low = _ctypes.c_double(0)
+    shared_residual_range_high = _ctypes.c_double(0)
+    n_pooled_residuals = _ctypes.c_int(0)
+    min_bin_occupancy = _ctypes.c_int(0)
+    mean_bin_occupancy = _ctypes.c_double(0)
+    max_bin_occupancy = _ctypes.c_int(0)
+    sturges_bins = _ctypes.c_int(0)
+    fd_bins = _ctypes.c_int(0)
+    tmp_bin_counts = _np.empty((256,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.determine_bin_count_occupancy_expert_c(
         pooled_residuals,
         pooled_residuals_perm,
-        ctypes.byref(ctypes.c_int(n_residuals)),
-        ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(selected_n_bins),
-        ctypes.byref(occupancy_failed),
-        ctypes.byref(shared_residual_range_low),
-        ctypes.byref(shared_residual_range_high),
-        ctypes.byref(n_pooled_residuals),
-        ctypes.byref(min_bin_occupancy),
-        ctypes.byref(mean_bin_occupancy),
-        ctypes.byref(max_bin_occupancy),
-        ctypes.byref(sturges_bins),
-        ctypes.byref(fd_bins),
+        _ctypes.byref(_ctypes.c_int(n_residuals)),
+        _ctypes.byref(_ctypes.c_int(max_n_reps_all_studies)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(selected_n_bins),
+        _ctypes.byref(occupancy_failed),
+        _ctypes.byref(shared_residual_range_low),
+        _ctypes.byref(shared_residual_range_high),
+        _ctypes.byref(n_pooled_residuals),
+        _ctypes.byref(min_bin_occupancy),
+        _ctypes.byref(mean_bin_occupancy),
+        _ctypes.byref(max_bin_occupancy),
+        _ctypes.byref(sturges_bins),
+        _ctypes.byref(fd_bins),
         tmp_bin_counts,
-        ctypes.byref(ctypes.c_int(m_min)),
-        ctypes.byref(ctypes.c_int(m_max)),
-        ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
-        ctypes.byref(ctypes.c_double(gamma_occupancy)),
-        ctypes.byref(ctypes.c_double(lower_residual_range_quantile)),
-        ctypes.byref(ctypes.c_double(upper_residual_range_quantile)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(m_min)),
+        _ctypes.byref(_ctypes.c_int(m_max)),
+        _ctypes.byref(_ctypes.c_int(min_residuals_per_bin)),
+        _ctypes.byref(_ctypes.c_double(gamma_occupancy)),
+        _ctypes.byref(_ctypes.c_double(lower_residual_range_quantile)),
+        _ctypes.byref(_ctypes.c_double(upper_residual_range_quantile)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETERMINE_BIN_COUNT_OCCUPANCY_EXPERT_ARGUMENTS, _DETERMINE_BIN_COUNT_OCCUPANCY_EXPERT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETERMINE_BIN_COUNT_OCCUPANCY_EXPERT_ARGUMENTS, _DETERMINE_BIN_COUNT_OCCUPANCY_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "selected_n_bins": selected_n_bins.value,
@@ -899,6 +900,9 @@ def determine_bin_count_occupancy_exhaustive(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -910,43 +914,44 @@ def determine_bin_count_occupancy_exhaustive(
     This entry point seeds `pooled_residuals_perm` and sorts it by `pooled_residuals`.
     Call `determine_bin_count_occupancy_exhaustive_expert` to do that yourself.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        pooled_residuals = np.ascontiguousarray(pooled_residuals, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pooled_residuals' must be an array of np.float64: {error}") from None
-    if pooled_residuals.ndim != 1:
-        raise ValueError(f"'pooled_residuals' must have 1 dimension, but has {pooled_residuals.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    pooled_residuals = _contract.reals(pooled_residuals, "pooled_residuals", ndim=1)
+    n_pooled_residuals = _contract.integer(n_pooled_residuals, "n_pooled_residuals")
+    shared_residual_range_low = _contract.real(shared_residual_range_low, "shared_residual_range_low")
+    shared_residual_range_high = _contract.real(shared_residual_range_high, "shared_residual_range_high")
+    m_min = _contract.integer(m_min, "m_min")
+    m_max = _contract.integer(m_max, "m_max")
+    min_residuals_per_bin = _contract.integer(min_residuals_per_bin, "min_residuals_per_bin")
 
     # what the inputs already say, rather than asking for it again
     n_residuals = pooled_residuals.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    selected_n_bins = ctypes.c_int(0)
-    occupancy_failed = ctypes.c_bool(0)
-    min_bin_occupancy = ctypes.c_int(0)
-    mean_bin_occupancy = ctypes.c_double(0)
-    max_bin_occupancy = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    selected_n_bins = _ctypes.c_int(0)
+    occupancy_failed = _ctypes.c_bool(0)
+    min_bin_occupancy = _ctypes.c_int(0)
+    mean_bin_occupancy = _ctypes.c_double(0)
+    max_bin_occupancy = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.determine_bin_count_occupancy_exhaustive_c(
         pooled_residuals,
-        ctypes.byref(ctypes.c_int(n_residuals)),
-        ctypes.byref(ctypes.c_int(n_pooled_residuals)),
-        ctypes.byref(ctypes.c_double(shared_residual_range_low)),
-        ctypes.byref(ctypes.c_double(shared_residual_range_high)),
-        ctypes.byref(selected_n_bins),
-        ctypes.byref(occupancy_failed),
-        ctypes.byref(min_bin_occupancy),
-        ctypes.byref(mean_bin_occupancy),
-        ctypes.byref(max_bin_occupancy),
-        ctypes.byref(ctypes.c_int(m_min)),
-        ctypes.byref(ctypes.c_int(m_max)),
-        ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_residuals)),
+        _ctypes.byref(_ctypes.c_int(n_pooled_residuals)),
+        _ctypes.byref(_ctypes.c_double(shared_residual_range_low)),
+        _ctypes.byref(_ctypes.c_double(shared_residual_range_high)),
+        _ctypes.byref(selected_n_bins),
+        _ctypes.byref(occupancy_failed),
+        _ctypes.byref(min_bin_occupancy),
+        _ctypes.byref(mean_bin_occupancy),
+        _ctypes.byref(max_bin_occupancy),
+        _ctypes.byref(_ctypes.c_int(m_min)),
+        _ctypes.byref(_ctypes.c_int(m_max)),
+        _ctypes.byref(_ctypes.c_int(min_residuals_per_bin)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_ARGUMENTS, _DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_ARGUMENTS, _DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_ARGUMENT_SOURCES)
 
     return {
         "selected_n_bins": selected_n_bins.value,
@@ -1032,6 +1037,9 @@ def determine_bin_count_occupancy_exhaustive_expert(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -1043,56 +1051,50 @@ def determine_bin_count_occupancy_exhaustive_expert(
     The expert entry point: you supply `pooled_residuals_perm` yourself.
     `determine_bin_count_occupancy_exhaustive` seeds `pooled_residuals_perm` and sorts it by `pooled_residuals`.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        pooled_residuals = np.ascontiguousarray(pooled_residuals, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pooled_residuals' must be an array of np.float64: {error}") from None
-    if pooled_residuals.ndim != 1:
-        raise ValueError(f"'pooled_residuals' must have 1 dimension, but has {pooled_residuals.ndim}")
-    try:
-        pooled_residuals_perm = np.ascontiguousarray(pooled_residuals_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pooled_residuals_perm' must be an array of np.int32: {error}") from None
-    if pooled_residuals_perm.ndim != 1:
-        raise ValueError(f"'pooled_residuals_perm' must have 1 dimension, but has {pooled_residuals_perm.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    pooled_residuals = _contract.reals(pooled_residuals, "pooled_residuals", ndim=1)
+    pooled_residuals_perm = _contract.integers(pooled_residuals_perm, "pooled_residuals_perm", ndim=1)
+    n_pooled_residuals = _contract.integer(n_pooled_residuals, "n_pooled_residuals")
+    shared_residual_range_low = _contract.real(shared_residual_range_low, "shared_residual_range_low")
+    shared_residual_range_high = _contract.real(shared_residual_range_high, "shared_residual_range_high")
+    m_min = _contract.integer(m_min, "m_min")
+    m_max = _contract.integer(m_max, "m_max")
+    min_residuals_per_bin = _contract.integer(min_residuals_per_bin, "min_residuals_per_bin")
 
     # what the inputs already say, rather than asking for it again
     n_residuals = pooled_residuals.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if pooled_residuals_perm.shape[0] != n_residuals:
-        raise ValueError(f"'pooled_residuals_perm' has {pooled_residuals_perm.shape[0]} along axis 0, but "
-            f"'pooled_residuals' implies n_residuals == {n_residuals}"
-        )
+        raise _ToxArgumentError(f"'pooled_residuals_perm' has {pooled_residuals_perm.shape[0]} along axis 0, but 'pooled_residuals' implies n_residuals == {n_residuals}; 'pooled_residuals_perm' is declared with shape (n_residuals)", argument="pooled_residuals_perm")
 
     # outputs and work arrays, which the caller never sees
-    selected_n_bins = ctypes.c_int(0)
-    occupancy_failed = ctypes.c_bool(0)
-    min_bin_occupancy = ctypes.c_int(0)
-    mean_bin_occupancy = ctypes.c_double(0)
-    max_bin_occupancy = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    selected_n_bins = _ctypes.c_int(0)
+    occupancy_failed = _ctypes.c_bool(0)
+    min_bin_occupancy = _ctypes.c_int(0)
+    mean_bin_occupancy = _ctypes.c_double(0)
+    max_bin_occupancy = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.determine_bin_count_occupancy_exhaustive_expert_c(
         pooled_residuals,
         pooled_residuals_perm,
-        ctypes.byref(ctypes.c_int(n_residuals)),
-        ctypes.byref(ctypes.c_int(n_pooled_residuals)),
-        ctypes.byref(ctypes.c_double(shared_residual_range_low)),
-        ctypes.byref(ctypes.c_double(shared_residual_range_high)),
-        ctypes.byref(selected_n_bins),
-        ctypes.byref(occupancy_failed),
-        ctypes.byref(min_bin_occupancy),
-        ctypes.byref(mean_bin_occupancy),
-        ctypes.byref(max_bin_occupancy),
-        ctypes.byref(ctypes.c_int(m_min)),
-        ctypes.byref(ctypes.c_int(m_max)),
-        ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_residuals)),
+        _ctypes.byref(_ctypes.c_int(n_pooled_residuals)),
+        _ctypes.byref(_ctypes.c_double(shared_residual_range_low)),
+        _ctypes.byref(_ctypes.c_double(shared_residual_range_high)),
+        _ctypes.byref(selected_n_bins),
+        _ctypes.byref(occupancy_failed),
+        _ctypes.byref(min_bin_occupancy),
+        _ctypes.byref(mean_bin_occupancy),
+        _ctypes.byref(max_bin_occupancy),
+        _ctypes.byref(_ctypes.c_int(m_min)),
+        _ctypes.byref(_ctypes.c_int(m_max)),
+        _ctypes.byref(_ctypes.c_int(min_residuals_per_bin)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_EXPERT_ARGUMENTS, _DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_EXPERT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_EXPERT_ARGUMENTS, _DETERMINE_BIN_COUNT_OCCUPANCY_EXHAUSTIVE_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "selected_n_bins": selected_n_bins.value,
@@ -1174,6 +1176,7 @@ def determine_bin_count_stone(
         How the studies' scores are combined into one bin count
 
         The default value is `'bin_count_stone_equal'`.
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     m_min : int, optional, default 3
         Smallest candidate bin count tested (M_min)
         The minimum valid value is `1`.
@@ -1234,6 +1237,9 @@ def determine_bin_count_stone(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -1245,70 +1251,66 @@ def determine_bin_count_stone(
     This entry point seeds `pooled_residuals_perm` and sorts it by `pooled_residuals` and computes `tmp_bin_counts`, `tmp_residual_to_study_perm` and `tmp_study_block_sizes` for you.
     Call `determine_bin_count_stone_expert` to do that yourself.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        pooled_residuals = np.ascontiguousarray(pooled_residuals, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pooled_residuals' must be an array of np.float64: {error}") from None
-    if pooled_residuals.ndim != 1:
-        raise ValueError(f"'pooled_residuals' must have 1 dimension, but has {pooled_residuals.ndim}")
-    try:
-        residual_to_study = np.ascontiguousarray(residual_to_study, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'residual_to_study' must be an array of np.int32: {error}") from None
-    if residual_to_study.ndim != 1:
-        raise ValueError(f"'residual_to_study' must have 1 dimension, but has {residual_to_study.ndim}")
-    bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
+    # check every input by the input contract, converting only when C needs it
+    pooled_residuals = _contract.reals(pooled_residuals, "pooled_residuals", ndim=1)
+    residual_to_study = _contract.integers(residual_to_study, "residual_to_study", ndim=1)
+    n_studies = _contract.integer(n_studies, "n_studies")
+    max_n_reps_all_studies = _contract.integer(max_n_reps_all_studies, "max_n_reps_all_studies")
+    n_neighbors = _contract.integer(n_neighbors, "n_neighbors")
+    bin_count_mode = _np.array([_contract.mode(bin_count_mode, "bin_count_mode", ("bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled",)).ljust(29)], dtype="S29")
+    m_min = _contract.integer(m_min, "m_min")
+    m_max = _contract.integer(m_max, "m_max")
+    min_residuals_per_bin = _contract.integer(min_residuals_per_bin, "min_residuals_per_bin")
+    lower_residual_range_quantile = _contract.real(lower_residual_range_quantile, "lower_residual_range_quantile")
+    upper_residual_range_quantile = _contract.real(upper_residual_range_quantile, "upper_residual_range_quantile")
 
     # what the inputs already say, rather than asking for it again
     n_residuals = pooled_residuals.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if residual_to_study.shape[0] != n_residuals:
-        raise ValueError(f"'residual_to_study' has {residual_to_study.shape[0]} along axis 0, but "
-            f"'pooled_residuals' implies n_residuals == {n_residuals}"
-        )
+        raise _ToxArgumentError(f"'residual_to_study' has {residual_to_study.shape[0]} along axis 0, but 'pooled_residuals' implies n_residuals == {n_residuals}; 'residual_to_study' is declared with shape (n_residuals)", argument="residual_to_study")
 
     # outputs and work arrays, which the caller never sees
-    selected_n_bins = ctypes.c_int(0)
-    stone_failed = ctypes.c_bool(0)
-    shared_residual_range_low = ctypes.c_double(0)
-    shared_residual_range_high = ctypes.c_double(0)
-    n_pooled_residuals = ctypes.c_int(0)
-    min_bin_occupancy = ctypes.c_int(0)
-    mean_bin_occupancy = ctypes.c_double(0)
-    max_bin_occupancy = ctypes.c_int(0)
-    sturges_bins = ctypes.c_int(0)
-    fd_bins = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    selected_n_bins = _ctypes.c_int(0)
+    stone_failed = _ctypes.c_bool(0)
+    shared_residual_range_low = _ctypes.c_double(0)
+    shared_residual_range_high = _ctypes.c_double(0)
+    n_pooled_residuals = _ctypes.c_int(0)
+    min_bin_occupancy = _ctypes.c_int(0)
+    mean_bin_occupancy = _ctypes.c_double(0)
+    max_bin_occupancy = _ctypes.c_int(0)
+    sturges_bins = _ctypes.c_int(0)
+    fd_bins = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.determine_bin_count_stone_c(
         pooled_residuals,
-        ctypes.byref(ctypes.c_int(n_residuals)),
+        _ctypes.byref(_ctypes.c_int(n_residuals)),
         residual_to_study,
-        ctypes.byref(ctypes.c_int(n_studies)),
-        ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(selected_n_bins),
-        ctypes.byref(stone_failed),
-        ctypes.byref(shared_residual_range_low),
-        ctypes.byref(shared_residual_range_high),
-        ctypes.byref(n_pooled_residuals),
-        ctypes.byref(min_bin_occupancy),
-        ctypes.byref(mean_bin_occupancy),
-        ctypes.byref(max_bin_occupancy),
-        ctypes.byref(sturges_bins),
-        ctypes.byref(fd_bins),
+        _ctypes.byref(_ctypes.c_int(n_studies)),
+        _ctypes.byref(_ctypes.c_int(max_n_reps_all_studies)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(selected_n_bins),
+        _ctypes.byref(stone_failed),
+        _ctypes.byref(shared_residual_range_low),
+        _ctypes.byref(shared_residual_range_high),
+        _ctypes.byref(n_pooled_residuals),
+        _ctypes.byref(min_bin_occupancy),
+        _ctypes.byref(mean_bin_occupancy),
+        _ctypes.byref(max_bin_occupancy),
+        _ctypes.byref(sturges_bins),
+        _ctypes.byref(fd_bins),
         bin_count_mode,
-        ctypes.byref(ctypes.c_int(m_min)),
-        ctypes.byref(ctypes.c_int(m_max)),
-        ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
-        ctypes.byref(ctypes.c_double(lower_residual_range_quantile)),
-        ctypes.byref(ctypes.c_double(upper_residual_range_quantile)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(m_min)),
+        _ctypes.byref(_ctypes.c_int(m_max)),
+        _ctypes.byref(_ctypes.c_int(min_residuals_per_bin)),
+        _ctypes.byref(_ctypes.c_double(lower_residual_range_quantile)),
+        _ctypes.byref(_ctypes.c_double(upper_residual_range_quantile)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETERMINE_BIN_COUNT_STONE_ARGUMENTS, _DETERMINE_BIN_COUNT_STONE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETERMINE_BIN_COUNT_STONE_ARGUMENTS, _DETERMINE_BIN_COUNT_STONE_ARGUMENT_SOURCES)
 
     return {
         "selected_n_bins": selected_n_bins.value,
@@ -1400,6 +1402,7 @@ def determine_bin_count_stone_expert(
         How the studies' scores are combined into one bin count
 
         The default value is `'bin_count_stone_equal'`.
+        Trailing blanks are not part of the value, as in Fortran: they are dropped.
     m_min : int, optional, default 3
         Smallest candidate bin count tested (M_min)
         The minimum valid value is `1`.
@@ -1460,6 +1463,9 @@ def determine_bin_count_stone_expert(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -1471,87 +1477,76 @@ def determine_bin_count_stone_expert(
     The expert entry point: you supply `pooled_residuals_perm`, `tmp_bin_counts`, `tmp_residual_to_study_perm` and `tmp_study_block_sizes` yourself.
     `determine_bin_count_stone` seeds `pooled_residuals_perm` and sorts it by `pooled_residuals` and computes `tmp_bin_counts`, `tmp_residual_to_study_perm` and `tmp_study_block_sizes` for you.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        pooled_residuals = np.ascontiguousarray(pooled_residuals, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pooled_residuals' must be an array of np.float64: {error}") from None
-    if pooled_residuals.ndim != 1:
-        raise ValueError(f"'pooled_residuals' must have 1 dimension, but has {pooled_residuals.ndim}")
-    try:
-        pooled_residuals_perm = np.ascontiguousarray(pooled_residuals_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pooled_residuals_perm' must be an array of np.int32: {error}") from None
-    if pooled_residuals_perm.ndim != 1:
-        raise ValueError(f"'pooled_residuals_perm' must have 1 dimension, but has {pooled_residuals_perm.ndim}")
-    try:
-        residual_to_study = np.ascontiguousarray(residual_to_study, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'residual_to_study' must be an array of np.int32: {error}") from None
-    if residual_to_study.ndim != 1:
-        raise ValueError(f"'residual_to_study' must have 1 dimension, but has {residual_to_study.ndim}")
-    bin_count_mode = np.array([str(bin_count_mode).lower().encode().ljust(29)], dtype="S29")
+    # check every input by the input contract, converting only when C needs it
+    pooled_residuals = _contract.reals(pooled_residuals, "pooled_residuals", ndim=1)
+    pooled_residuals_perm = _contract.integers(pooled_residuals_perm, "pooled_residuals_perm", ndim=1)
+    residual_to_study = _contract.integers(residual_to_study, "residual_to_study", ndim=1)
+    n_studies = _contract.integer(n_studies, "n_studies")
+    max_n_reps_all_studies = _contract.integer(max_n_reps_all_studies, "max_n_reps_all_studies")
+    n_neighbors = _contract.integer(n_neighbors, "n_neighbors")
+    bin_count_mode = _np.array([_contract.mode(bin_count_mode, "bin_count_mode", ("bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled",)).ljust(29)], dtype="S29")
+    m_min = _contract.integer(m_min, "m_min")
+    m_max = _contract.integer(m_max, "m_max")
+    min_residuals_per_bin = _contract.integer(min_residuals_per_bin, "min_residuals_per_bin")
+    lower_residual_range_quantile = _contract.real(lower_residual_range_quantile, "lower_residual_range_quantile")
+    upper_residual_range_quantile = _contract.real(upper_residual_range_quantile, "upper_residual_range_quantile")
 
     # what the inputs already say, rather than asking for it again
     n_residuals = pooled_residuals.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if pooled_residuals_perm.shape[0] != n_residuals:
-        raise ValueError(f"'pooled_residuals_perm' has {pooled_residuals_perm.shape[0]} along axis 0, but "
-            f"'pooled_residuals' implies n_residuals == {n_residuals}"
-        )
+        raise _ToxArgumentError(f"'pooled_residuals_perm' has {pooled_residuals_perm.shape[0]} along axis 0, but 'pooled_residuals' implies n_residuals == {n_residuals}; 'pooled_residuals_perm' is declared with shape (n_residuals)", argument="pooled_residuals_perm")
     if residual_to_study.shape[0] != n_residuals:
-        raise ValueError(f"'residual_to_study' has {residual_to_study.shape[0]} along axis 0, but "
-            f"'pooled_residuals' implies n_residuals == {n_residuals}"
-        )
+        raise _ToxArgumentError(f"'residual_to_study' has {residual_to_study.shape[0]} along axis 0, but 'pooled_residuals' implies n_residuals == {n_residuals}; 'residual_to_study' is declared with shape (n_residuals)", argument="residual_to_study")
 
     # outputs and work arrays, which the caller never sees
-    selected_n_bins = ctypes.c_int(0)
-    stone_failed = ctypes.c_bool(0)
-    shared_residual_range_low = ctypes.c_double(0)
-    shared_residual_range_high = ctypes.c_double(0)
-    n_pooled_residuals = ctypes.c_int(0)
-    min_bin_occupancy = ctypes.c_int(0)
-    mean_bin_occupancy = ctypes.c_double(0)
-    max_bin_occupancy = ctypes.c_int(0)
-    sturges_bins = ctypes.c_int(0)
-    fd_bins = ctypes.c_int(0)
-    tmp_bin_counts = np.empty((256,), dtype=np.int32, order='C')
-    tmp_residual_to_study_perm = np.empty((n_residuals,), dtype=np.int32, order='C')
-    tmp_study_block_sizes = np.empty((n_studies,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    selected_n_bins = _ctypes.c_int(0)
+    stone_failed = _ctypes.c_bool(0)
+    shared_residual_range_low = _ctypes.c_double(0)
+    shared_residual_range_high = _ctypes.c_double(0)
+    n_pooled_residuals = _ctypes.c_int(0)
+    min_bin_occupancy = _ctypes.c_int(0)
+    mean_bin_occupancy = _ctypes.c_double(0)
+    max_bin_occupancy = _ctypes.c_int(0)
+    sturges_bins = _ctypes.c_int(0)
+    fd_bins = _ctypes.c_int(0)
+    tmp_bin_counts = _np.empty((256,), dtype=_np.int32, order='C')
+    tmp_residual_to_study_perm = _np.empty((n_residuals,), dtype=_np.int32, order='C')
+    tmp_study_block_sizes = _np.empty((n_studies,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.determine_bin_count_stone_expert_c(
         pooled_residuals,
         pooled_residuals_perm,
-        ctypes.byref(ctypes.c_int(n_residuals)),
+        _ctypes.byref(_ctypes.c_int(n_residuals)),
         residual_to_study,
-        ctypes.byref(ctypes.c_int(n_studies)),
-        ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(selected_n_bins),
-        ctypes.byref(stone_failed),
-        ctypes.byref(shared_residual_range_low),
-        ctypes.byref(shared_residual_range_high),
-        ctypes.byref(n_pooled_residuals),
-        ctypes.byref(min_bin_occupancy),
-        ctypes.byref(mean_bin_occupancy),
-        ctypes.byref(max_bin_occupancy),
-        ctypes.byref(sturges_bins),
-        ctypes.byref(fd_bins),
+        _ctypes.byref(_ctypes.c_int(n_studies)),
+        _ctypes.byref(_ctypes.c_int(max_n_reps_all_studies)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(selected_n_bins),
+        _ctypes.byref(stone_failed),
+        _ctypes.byref(shared_residual_range_low),
+        _ctypes.byref(shared_residual_range_high),
+        _ctypes.byref(n_pooled_residuals),
+        _ctypes.byref(min_bin_occupancy),
+        _ctypes.byref(mean_bin_occupancy),
+        _ctypes.byref(max_bin_occupancy),
+        _ctypes.byref(sturges_bins),
+        _ctypes.byref(fd_bins),
         tmp_bin_counts,
         tmp_residual_to_study_perm,
         tmp_study_block_sizes,
         bin_count_mode,
-        ctypes.byref(ctypes.c_int(m_min)),
-        ctypes.byref(ctypes.c_int(m_max)),
-        ctypes.byref(ctypes.c_int(min_residuals_per_bin)),
-        ctypes.byref(ctypes.c_double(lower_residual_range_quantile)),
-        ctypes.byref(ctypes.c_double(upper_residual_range_quantile)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(m_min)),
+        _ctypes.byref(_ctypes.c_int(m_max)),
+        _ctypes.byref(_ctypes.c_int(min_residuals_per_bin)),
+        _ctypes.byref(_ctypes.c_double(lower_residual_range_quantile)),
+        _ctypes.byref(_ctypes.c_double(upper_residual_range_quantile)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETERMINE_BIN_COUNT_STONE_EXPERT_ARGUMENTS, _DETERMINE_BIN_COUNT_STONE_EXPERT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETERMINE_BIN_COUNT_STONE_EXPERT_ARGUMENTS, _DETERMINE_BIN_COUNT_STONE_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "selected_n_bins": selected_n_bins.value,

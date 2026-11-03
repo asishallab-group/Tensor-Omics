@@ -87,7 +87,7 @@ estimate_bin_count_expert <- function(residuals, residuals_perm, max_n_reps_all_
     n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
     shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
     if (length(residuals_perm) != length(residuals))
-        .tox_shape_error("residuals_perm", length(residuals_perm), "residuals", length(residuals))
+        .tox_shape_error("residuals_perm", 1L, length(residuals_perm), "'residuals' implies n_residuals == ", length(residuals), "n_residuals")
 
     .result <- .Call("estimate_bin_count_expert_call", residuals, residuals_perm, max_n_reps_all_studies, n_neighbors, shared_residual_range)
     .arguments <- c("residuals", "residuals_perm", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "shared_residual_range", "n_bins", "sturges_bins", "fd_bins", "ierr")
@@ -291,7 +291,7 @@ determine_bin_count_occupancy_expert <- function(pooled_residuals, pooled_residu
     lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
     upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
     if (length(pooled_residuals_perm) != length(pooled_residuals))
-        .tox_shape_error("pooled_residuals_perm", length(pooled_residuals_perm), "pooled_residuals", length(pooled_residuals))
+        .tox_shape_error("pooled_residuals_perm", 1L, length(pooled_residuals_perm), "'pooled_residuals' implies n_residuals == ", length(pooled_residuals), "n_residuals")
 
     .result <- .Call("determine_bin_count_occupancy_expert_call", pooled_residuals, pooled_residuals_perm, max_n_reps_all_studies, n_neighbors, m_min, m_max, min_residuals_per_bin, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile)
     .arguments <- c("pooled_residuals", "pooled_residuals_perm", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "selected_n_bins", "occupancy_failed", "shared_residual_range_low", "shared_residual_range_high", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "tmp_bin_counts", "m_min", "m_max", "min_residuals_per_bin", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr")
@@ -441,7 +441,7 @@ determine_bin_count_occupancy_exhaustive_expert <- function(pooled_residuals, po
     m_max <- .tox_as_integer_scalar(m_max, "m_max")
     min_residuals_per_bin <- .tox_as_integer_scalar(min_residuals_per_bin, "min_residuals_per_bin")
     if (length(pooled_residuals_perm) != length(pooled_residuals))
-        .tox_shape_error("pooled_residuals_perm", length(pooled_residuals_perm), "pooled_residuals", length(pooled_residuals))
+        .tox_shape_error("pooled_residuals_perm", 1L, length(pooled_residuals_perm), "'pooled_residuals' implies n_residuals == ", length(pooled_residuals), "n_residuals")
 
     .result <- .Call("determine_bin_count_occupancy_exhaustive_expert_call", pooled_residuals, pooled_residuals_perm, n_pooled_residuals, shared_residual_range_low, shared_residual_range_high, m_min, m_max, min_residuals_per_bin)
     .arguments <- c("pooled_residuals", "pooled_residuals_perm", "n_residuals", "n_pooled_residuals", "shared_residual_range_low", "shared_residual_range_high", "selected_n_bins", "occupancy_failed", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "m_min", "m_max", "min_residuals_per_bin", "ierr")
@@ -514,6 +514,7 @@ determine_bin_count_occupancy_exhaustive_expert <- function(pooled_residuals, po
 #' @param bin_count_mode a string, one of "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled". How the studies' scores are combined into one bin count
 #'
 #'   The default value is `"bin_count_stone_equal"`.
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param m_min a integer scalar. Smallest candidate bin count tested (M_min)
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `MAX_N_BINS`.
@@ -565,7 +566,7 @@ determine_bin_count_stone <- function(pooled_residuals, residual_to_study, n_stu
     lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
     upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
     if (length(residual_to_study) != length(pooled_residuals))
-        .tox_shape_error("residual_to_study", length(residual_to_study), "pooled_residuals", length(pooled_residuals))
+        .tox_shape_error("residual_to_study", 1L, length(residual_to_study), "'pooled_residuals' implies n_residuals == ", length(pooled_residuals), "n_residuals")
 
     .result <- .Call("determine_bin_count_stone_call", pooled_residuals, residual_to_study, n_studies, max_n_reps_all_studies, n_neighbors, bin_count_mode, m_min, m_max, min_residuals_per_bin, lower_residual_range_quantile, upper_residual_range_quantile)
     .arguments <- c("pooled_residuals", "n_residuals", "residual_to_study", "n_studies", "max_n_reps_all_studies", "n_neighbors", "selected_n_bins", "stone_failed", "shared_residual_range_low", "shared_residual_range_high", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "bin_count_mode", "m_min", "m_max", "min_residuals_per_bin", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr")
@@ -646,6 +647,7 @@ determine_bin_count_stone <- function(pooled_residuals, residual_to_study, n_stu
 #' @param bin_count_mode a string, one of "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled". How the studies' scores are combined into one bin count
 #'
 #'   The default value is `"bin_count_stone_equal"`.
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param m_min a integer scalar. Smallest candidate bin count tested (M_min)
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `MAX_N_BINS`.
@@ -698,9 +700,9 @@ determine_bin_count_stone_expert <- function(pooled_residuals, pooled_residuals_
     lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
     upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
     if (length(pooled_residuals_perm) != length(pooled_residuals))
-        .tox_shape_error("pooled_residuals_perm", length(pooled_residuals_perm), "pooled_residuals", length(pooled_residuals))
+        .tox_shape_error("pooled_residuals_perm", 1L, length(pooled_residuals_perm), "'pooled_residuals' implies n_residuals == ", length(pooled_residuals), "n_residuals")
     if (length(residual_to_study) != length(pooled_residuals))
-        .tox_shape_error("residual_to_study", length(residual_to_study), "pooled_residuals", length(pooled_residuals))
+        .tox_shape_error("residual_to_study", 1L, length(residual_to_study), "'pooled_residuals' implies n_residuals == ", length(pooled_residuals), "n_residuals")
 
     .result <- .Call("determine_bin_count_stone_expert_call", pooled_residuals, pooled_residuals_perm, residual_to_study, n_studies, max_n_reps_all_studies, n_neighbors, bin_count_mode, m_min, m_max, min_residuals_per_bin, lower_residual_range_quantile, upper_residual_range_quantile)
     .arguments <- c("pooled_residuals", "pooled_residuals_perm", "n_residuals", "residual_to_study", "n_studies", "max_n_reps_all_studies", "n_neighbors", "selected_n_bins", "stone_failed", "shared_residual_range_low", "shared_residual_range_high", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "tmp_bin_counts", "tmp_residual_to_study_perm", "tmp_study_block_sizes", "bin_count_mode", "m_min", "m_max", "min_residuals_per_bin", "lower_residual_range_quantile", "upper_residual_range_quantile", "ierr")

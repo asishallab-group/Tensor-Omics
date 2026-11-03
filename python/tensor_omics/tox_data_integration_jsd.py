@@ -13,23 +13,24 @@ counts) or :func:`tensor_omics.create_mean_pmf_only`.
 Python binding, generated from tox_data_integration_jsd. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.determine_shared_residual_range_c.restype = None
 _lib.determine_shared_residual_range_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -39,12 +40,12 @@ _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES = (None, "abs_residual_pool", 
 
 _lib.determine_shared_residual_range_expert_c.restype = None
 _lib.determine_shared_residual_range_expert_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -54,15 +55,15 @@ _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENT_SOURCES = (None, None, "abs_res
 
 _lib.determine_study_shared_residual_range_c.restype = None
 _lib.determine_study_shared_residual_range_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -72,19 +73,19 @@ _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES = (None, None, "neighbor
 
 _lib.build_residual_histograms_c.restype = None
 _lib.build_residual_histograms_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    nullable(np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS')),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _nullable(_np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS')),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -94,12 +95,12 @@ _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENT_SOURCES = (None, "neighborhood_residuals", "
 
 _lib.calc_pmf_c.restype = None
 _lib.calc_pmf_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -109,12 +110,12 @@ _CALC_PMF_ARGUMENT_SOURCES = (None, None, "counts", "counts", None, None,)
 
 _lib.compute_divergence_per_reference_point_c.restype = None
 _lib.compute_divergence_per_reference_point_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -124,13 +125,13 @@ _COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENT_SOURCES = (None, None, "pmf_S1"
 
 _lib.compute_weighted_global_divergence_c.restype = None
 _lib.compute_weighted_global_divergence_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -140,24 +141,24 @@ _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENT_SOURCES = (None, "js_divergences", 
 
 _lib.jct_compute_jsd_pipeline_c.restype = None
 _lib.jct_compute_jsd_pipeline_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    nullable(np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS')),
-    nullable(np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS')),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_double),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _nullable(_np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS')),
+    _nullable(_np.ctypeslib.ndpointer(dtype=_np.bool_, ndim=2, flags='F_CONTIGUOUS')),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -167,16 +168,16 @@ _JCT_COMPUTE_JSD_PIPELINE_ARGUMENT_SOURCES = (None, None, "neighborhood_residual
 
 _lib.create_mean_pmf_c.restype = None
 _lib.create_mean_pmf_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -186,12 +187,12 @@ _CREATE_MEAN_PMF_ARGUMENT_SOURCES = (None, None, "pmfs", "pmfs", "pmfs", None, N
 
 _lib.create_mean_pmf_only_c.restype = None
 _lib.create_mean_pmf_only_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -226,6 +227,9 @@ def determine_shared_residual_range(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -237,30 +241,26 @@ def determine_shared_residual_range(
     This entry point seeds `abs_residual_pool_perm` and sorts it by `abs_residual_pool`.
     Call `determine_shared_residual_range_expert` to do that yourself.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        abs_residual_pool = np.ascontiguousarray(abs_residual_pool, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'abs_residual_pool' must be an array of np.float64: {error}") from None
-    if abs_residual_pool.ndim != 1:
-        raise ValueError(f"'abs_residual_pool' must have 1 dimension, but has {abs_residual_pool.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    abs_residual_pool = _contract.reals(abs_residual_pool, "abs_residual_pool", ndim=1)
+    residual_range_quantile_level = _contract.real(residual_range_quantile_level, "residual_range_quantile_level")
 
     # what the inputs already say, rather than asking for it again
     pool_size = abs_residual_pool.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    shared_residual_range = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    shared_residual_range = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.determine_shared_residual_range_c(
         abs_residual_pool,
-        ctypes.byref(ctypes.c_int(pool_size)),
-        ctypes.byref(shared_residual_range),
-        ctypes.byref(ctypes.c_double(residual_range_quantile_level)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(pool_size)),
+        _ctypes.byref(shared_residual_range),
+        _ctypes.byref(_ctypes.c_double(residual_range_quantile_level)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENTS, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENTS, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES)
 
     return shared_residual_range.value
 
@@ -296,6 +296,9 @@ def determine_shared_residual_range_expert(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -307,43 +310,32 @@ def determine_shared_residual_range_expert(
     The expert entry point: you supply `abs_residual_pool_perm` yourself.
     `determine_shared_residual_range` seeds `abs_residual_pool_perm` and sorts it by `abs_residual_pool`.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        abs_residual_pool = np.ascontiguousarray(abs_residual_pool, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'abs_residual_pool' must be an array of np.float64: {error}") from None
-    if abs_residual_pool.ndim != 1:
-        raise ValueError(f"'abs_residual_pool' must have 1 dimension, but has {abs_residual_pool.ndim}")
-    try:
-        abs_residual_pool_perm = np.ascontiguousarray(abs_residual_pool_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'abs_residual_pool_perm' must be an array of np.int32: {error}") from None
-    if abs_residual_pool_perm.ndim != 1:
-        raise ValueError(f"'abs_residual_pool_perm' must have 1 dimension, but has {abs_residual_pool_perm.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    abs_residual_pool = _contract.reals(abs_residual_pool, "abs_residual_pool", ndim=1)
+    abs_residual_pool_perm = _contract.integers(abs_residual_pool_perm, "abs_residual_pool_perm", ndim=1)
+    residual_range_quantile_level = _contract.real(residual_range_quantile_level, "residual_range_quantile_level")
 
     # what the inputs already say, rather than asking for it again
     pool_size = abs_residual_pool.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if abs_residual_pool_perm.shape[0] != pool_size:
-        raise ValueError(f"'abs_residual_pool_perm' has {abs_residual_pool_perm.shape[0]} along axis 0, but "
-            f"'abs_residual_pool' implies pool_size == {pool_size}"
-        )
+        raise _ToxArgumentError(f"'abs_residual_pool_perm' has {abs_residual_pool_perm.shape[0]} along axis 0, but 'abs_residual_pool' implies pool_size == {pool_size}; 'abs_residual_pool_perm' is declared with shape (pool_size)", argument="abs_residual_pool_perm")
 
     # outputs and work arrays, which the caller never sees
-    shared_residual_range = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    shared_residual_range = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.determine_shared_residual_range_expert_c(
         abs_residual_pool,
         abs_residual_pool_perm,
-        ctypes.byref(ctypes.c_int(pool_size)),
-        ctypes.byref(shared_residual_range),
-        ctypes.byref(ctypes.c_double(residual_range_quantile_level)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(pool_size)),
+        _ctypes.byref(shared_residual_range),
+        _ctypes.byref(_ctypes.c_double(residual_range_quantile_level)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENTS, _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENTS, _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENT_SOURCES)
 
     return shared_residual_range.value
 
@@ -378,6 +370,9 @@ def determine_study_shared_residual_range(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -386,19 +381,10 @@ def determine_study_shared_residual_range(
     Generated from the Fortran procedure `tox_data_integration_jsd::determine_study_shared_residual_range`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        neighborhood_residuals_S1 = np.asfortranarray(neighborhood_residuals_S1, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals_S1' must be an array of np.float64: {error}") from None
-    if neighborhood_residuals_S1.ndim != 3:
-        raise ValueError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}")
-    try:
-        neighborhood_residuals_S2 = np.asfortranarray(neighborhood_residuals_S2, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals_S2' must be an array of np.float64: {error}") from None
-    if neighborhood_residuals_S2.ndim != 3:
-        raise ValueError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    neighborhood_residuals_S1 = _contract.reals(neighborhood_residuals_S1, "neighborhood_residuals_S1", ndim=3, order="F")
+    neighborhood_residuals_S2 = _contract.reals(neighborhood_residuals_S2, "neighborhood_residuals_S2", ndim=3, order="F")
+    residual_range_quantile_level = _contract.real(residual_range_quantile_level, "residual_range_quantile_level")
 
     # what the inputs already say, rather than asking for it again
     n_reps_S1 = neighborhood_residuals_S1.shape[0]
@@ -406,33 +392,29 @@ def determine_study_shared_residual_range(
     n_neighbors = neighborhood_residuals_S1.shape[1]
     n_points = neighborhood_residuals_S1.shape[2]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if neighborhood_residuals_S2.shape[1] != n_neighbors:
-        raise ValueError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but "
-            f"'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighborhood_residuals_S2' is declared with shape (n_reps_S2, n_neighbors, n_points)", argument="neighborhood_residuals_S2")
     if neighborhood_residuals_S2.shape[2] != n_points:
-        raise ValueError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but "
-            f"'neighborhood_residuals_S1' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighborhood_residuals_S2' is declared with shape (n_reps_S2, n_neighbors, n_points)", argument="neighborhood_residuals_S2")
 
     # outputs and work arrays, which the caller never sees
-    shared_residual_range = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
+    shared_residual_range = _ctypes.c_double(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.determine_study_shared_residual_range_c(
         neighborhood_residuals_S1,
         neighborhood_residuals_S2,
-        ctypes.byref(ctypes.c_int(n_reps_S1)),
-        ctypes.byref(ctypes.c_int(n_reps_S2)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(shared_residual_range),
-        ctypes.byref(ctypes.c_double(residual_range_quantile_level)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_reps_S1)),
+        _ctypes.byref(_ctypes.c_int(n_reps_S2)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(shared_residual_range),
+        _ctypes.byref(_ctypes.c_double(residual_range_quantile_level)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENTS, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENTS, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES)
 
     return shared_residual_range.value
 
@@ -492,6 +474,9 @@ def build_residual_histograms(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -500,81 +485,55 @@ def build_residual_histograms(
     Generated from the Fortran procedure `tox_data_integration_jsd::build_residual_histograms`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        neighborhood_residuals = np.asfortranarray(neighborhood_residuals, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals' must be an array of np.float64: {error}") from None
-    if neighborhood_residuals.ndim != 3:
-        raise ValueError(f"'neighborhood_residuals' must have 3 dimensions, but has {neighborhood_residuals.ndim}")
-    try:
-        shared_residual_range_low = np.ascontiguousarray(shared_residual_range_low, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'shared_residual_range_low' must be an array of np.float64: {error}") from None
-    if shared_residual_range_low.ndim != 1:
-        raise ValueError(f"'shared_residual_range_low' must have 1 dimension, but has {shared_residual_range_low.ndim}")
-    try:
-        shared_residual_range_high = np.ascontiguousarray(shared_residual_range_high, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'shared_residual_range_high' must be an array of np.float64: {error}") from None
-    if shared_residual_range_high.ndim != 1:
-        raise ValueError(f"'shared_residual_range_high' must have 1 dimension, but has {shared_residual_range_high.ndim}")
-    try:
-        n_bins_per_point = np.ascontiguousarray(n_bins_per_point, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'n_bins_per_point' must be an array of np.int32: {error}") from None
-    if n_bins_per_point.ndim != 1:
-        raise ValueError(f"'n_bins_per_point' must have 1 dimension, but has {n_bins_per_point.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    neighborhood_residuals = _contract.reals(neighborhood_residuals, "neighborhood_residuals", ndim=3, order="F")
+    shared_residual_range_low = _contract.reals(shared_residual_range_low, "shared_residual_range_low", ndim=1)
+    shared_residual_range_high = _contract.reals(shared_residual_range_high, "shared_residual_range_high", ndim=1)
+    max_n_bins = _contract.integer(max_n_bins, "max_n_bins")
+    n_bins_per_point = _contract.integers(n_bins_per_point, "n_bins_per_point", ndim=1)
     if neighbor_mask is not None:
-        try:
-            neighbor_mask = np.asfortranarray(neighbor_mask, dtype=np.bool_)
-        except (TypeError, ValueError) as error:
-            raise TypeError(f"'neighbor_mask' must be an array of np.bool_: {error}") from None
-        if neighbor_mask.ndim != 2:
-            raise ValueError(f"'neighbor_mask' must have 2 dimensions, but has {neighbor_mask.ndim}")
+        neighbor_mask = _contract.logicals(neighbor_mask, "neighbor_mask", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_reps = neighborhood_residuals.shape[0]
     n_neighbors = neighborhood_residuals.shape[1]
     n_points = neighborhood_residuals.shape[2]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if shared_residual_range_low.shape[0] != n_points:
-        raise ValueError(f"'shared_residual_range_low' has {shared_residual_range_low.shape[0]} along axis 0, but "
-            f"'neighborhood_residuals' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'shared_residual_range_low' has {shared_residual_range_low.shape[0]} along axis 0, but 'neighborhood_residuals' implies n_points == {n_points}; 'shared_residual_range_low' is declared with shape (n_points)", argument="shared_residual_range_low")
     if shared_residual_range_high.shape[0] != n_points:
-        raise ValueError(f"'shared_residual_range_high' has {shared_residual_range_high.shape[0]} along axis 0, but "
-            f"'neighborhood_residuals' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'shared_residual_range_high' has {shared_residual_range_high.shape[0]} along axis 0, but 'neighborhood_residuals' implies n_points == {n_points}; 'shared_residual_range_high' is declared with shape (n_points)", argument="shared_residual_range_high")
     if n_bins_per_point.shape[0] != n_points:
-        raise ValueError(f"'n_bins_per_point' has {n_bins_per_point.shape[0]} along axis 0, but "
-            f"'neighborhood_residuals' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'n_bins_per_point' has {n_bins_per_point.shape[0]} along axis 0, but 'neighborhood_residuals' implies n_points == {n_points}; 'n_bins_per_point' is declared with shape (n_points)", argument="n_bins_per_point")
+    if neighbor_mask is not None and neighbor_mask.shape[0] != n_neighbors:
+        raise _ToxArgumentError(f"'neighbor_mask' has {neighbor_mask.shape[0]} along axis 0, but 'neighborhood_residuals' implies n_neighbors == {n_neighbors}; 'neighbor_mask' is declared with shape (n_neighbors, n_points)", argument="neighbor_mask")
+    if neighbor_mask is not None and neighbor_mask.shape[1] != n_points:
+        raise _ToxArgumentError(f"'neighbor_mask' has {neighbor_mask.shape[1]} along axis 1, but 'neighborhood_residuals' implies n_points == {n_points}; 'neighbor_mask' is declared with shape (n_neighbors, n_points)", argument="neighbor_mask")
 
     # outputs and work arrays, which the caller never sees
-    counts = np.empty((n_points, max_n_bins,), dtype=np.int32, order='F')
-    pmf = np.empty((n_points, max_n_bins,), dtype=np.float64, order='F')
-    included_n_reps = np.empty((n_points,), dtype=np.int32, order='C')
-    ierr = ctypes.c_int(0)
+    counts = _np.empty((n_points, max_n_bins,), dtype=_np.int32, order='F')
+    pmf = _np.empty((n_points, max_n_bins,), dtype=_np.float64, order='F')
+    included_n_reps = _np.empty((n_points,), dtype=_np.int32, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.build_residual_histograms_c(
         neighborhood_residuals,
-        ctypes.byref(ctypes.c_int(n_reps)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_reps)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
         shared_residual_range_low,
         shared_residual_range_high,
-        ctypes.byref(ctypes.c_int(max_n_bins)),
+        _ctypes.byref(_ctypes.c_int(max_n_bins)),
         n_bins_per_point,
         counts,
         pmf,
         included_n_reps,
         neighbor_mask,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENTS, _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENTS, _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     counts.flags.writeable = False
@@ -614,6 +573,9 @@ def calc_pmf(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -622,44 +584,32 @@ def calc_pmf(
     Generated from the Fortran procedure `tox_data_integration_jsd::calc_pmf`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        counts = np.asfortranarray(counts, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'counts' must be an array of np.int32: {error}") from None
-    if counts.ndim != 2:
-        raise ValueError(f"'counts' must have 2 dimensions, but has {counts.ndim}")
-    try:
-        included_n_reps = np.ascontiguousarray(included_n_reps, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'included_n_reps' must be an array of np.int32: {error}") from None
-    if included_n_reps.ndim != 1:
-        raise ValueError(f"'included_n_reps' must have 1 dimension, but has {included_n_reps.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    counts = _contract.integers(counts, "counts", ndim=2, order="F")
+    included_n_reps = _contract.integers(included_n_reps, "included_n_reps", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_points = counts.shape[0]
     n_bins = counts.shape[1]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if included_n_reps.shape[0] != n_points:
-        raise ValueError(f"'included_n_reps' has {included_n_reps.shape[0]} along axis 0, but "
-            f"'counts' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'included_n_reps' has {included_n_reps.shape[0]} along axis 0, but 'counts' implies n_points == {n_points}; 'included_n_reps' is declared with shape (n_points)", argument="included_n_reps")
 
     # outputs and work arrays, which the caller never sees
-    pmf = np.empty((n_points, n_bins,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    pmf = _np.empty((n_points, n_bins,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.calc_pmf_c(
         counts,
         included_n_reps,
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_int(n_bins)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_bins)),
         pmf,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_PMF_ARGUMENTS, _CALC_PMF_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CALC_PMF_ARGUMENTS, _CALC_PMF_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     pmf.flags.writeable = False
@@ -696,6 +646,9 @@ def compute_divergence_per_reference_point(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -704,48 +657,34 @@ def compute_divergence_per_reference_point(
     Generated from the Fortran procedure `tox_data_integration_jsd::compute_divergence_per_reference_point`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        pmf_S1 = np.asfortranarray(pmf_S1, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pmf_S1' must be an array of np.float64: {error}") from None
-    if pmf_S1.ndim != 2:
-        raise ValueError(f"'pmf_S1' must have 2 dimensions, but has {pmf_S1.ndim}")
-    try:
-        pmf_S2 = np.asfortranarray(pmf_S2, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pmf_S2' must be an array of np.float64: {error}") from None
-    if pmf_S2.ndim != 2:
-        raise ValueError(f"'pmf_S2' must have 2 dimensions, but has {pmf_S2.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    pmf_S1 = _contract.reals(pmf_S1, "pmf_S1", ndim=2, order="F")
+    pmf_S2 = _contract.reals(pmf_S2, "pmf_S2", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_points = pmf_S1.shape[0]
     n_bins = pmf_S1.shape[1]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if pmf_S2.shape[0] != n_points:
-        raise ValueError(f"'pmf_S2' has {pmf_S2.shape[0]} along axis 0, but "
-            f"'pmf_S1' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'pmf_S2' has {pmf_S2.shape[0]} along axis 0, but 'pmf_S1' implies n_points == {n_points}; 'pmf_S2' is declared with shape (n_points, n_bins)", argument="pmf_S2")
     if pmf_S2.shape[1] != n_bins:
-        raise ValueError(f"'pmf_S2' has {pmf_S2.shape[1]} along axis 1, but "
-            f"'pmf_S1' implies n_bins == {n_bins}"
-        )
+        raise _ToxArgumentError(f"'pmf_S2' has {pmf_S2.shape[1]} along axis 1, but 'pmf_S1' implies n_bins == {n_bins}; 'pmf_S2' is declared with shape (n_points, n_bins)", argument="pmf_S2")
 
     # outputs and work arrays, which the caller never sees
-    js_divergences = np.empty((n_points,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    js_divergences = _np.empty((n_points,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_divergence_per_reference_point_c(
         pmf_S1,
         pmf_S2,
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_int(n_bins)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_bins)),
         js_divergences,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENTS, _COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENTS, _COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     js_divergences.flags.writeable = False
@@ -786,6 +725,9 @@ def compute_weighted_global_divergence(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -794,55 +736,36 @@ def compute_weighted_global_divergence(
     Generated from the Fortran procedure `tox_data_integration_jsd::compute_weighted_global_divergence`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        js_divergences = np.ascontiguousarray(js_divergences, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'js_divergences' must be an array of np.float64: {error}") from None
-    if js_divergences.ndim != 1:
-        raise ValueError(f"'js_divergences' must have 1 dimension, but has {js_divergences.ndim}")
-    try:
-        included_n_reps_S1 = np.ascontiguousarray(included_n_reps_S1, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'included_n_reps_S1' must be an array of np.int32: {error}") from None
-    if included_n_reps_S1.ndim != 1:
-        raise ValueError(f"'included_n_reps_S1' must have 1 dimension, but has {included_n_reps_S1.ndim}")
-    try:
-        included_n_reps_S2 = np.ascontiguousarray(included_n_reps_S2, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'included_n_reps_S2' must be an array of np.int32: {error}") from None
-    if included_n_reps_S2.ndim != 1:
-        raise ValueError(f"'included_n_reps_S2' must have 1 dimension, but has {included_n_reps_S2.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    js_divergences = _contract.reals(js_divergences, "js_divergences", ndim=1)
+    included_n_reps_S1 = _contract.integers(included_n_reps_S1, "included_n_reps_S1", ndim=1)
+    included_n_reps_S2 = _contract.integers(included_n_reps_S2, "included_n_reps_S2", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_points = js_divergences.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if included_n_reps_S1.shape[0] != n_points:
-        raise ValueError(f"'included_n_reps_S1' has {included_n_reps_S1.shape[0]} along axis 0, but "
-            f"'js_divergences' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'included_n_reps_S1' has {included_n_reps_S1.shape[0]} along axis 0, but 'js_divergences' implies n_points == {n_points}; 'included_n_reps_S1' is declared with shape (n_points)", argument="included_n_reps_S1")
     if included_n_reps_S2.shape[0] != n_points:
-        raise ValueError(f"'included_n_reps_S2' has {included_n_reps_S2.shape[0]} along axis 0, but "
-            f"'js_divergences' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'included_n_reps_S2' has {included_n_reps_S2.shape[0]} along axis 0, but 'js_divergences' implies n_points == {n_points}; 'included_n_reps_S2' is declared with shape (n_points)", argument="included_n_reps_S2")
 
     # outputs and work arrays, which the caller never sees
-    global_js_divergence = ctypes.c_double(0)
-    weights = np.empty((n_points,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    global_js_divergence = _ctypes.c_double(0)
+    weights = _np.empty((n_points,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_weighted_global_divergence_c(
         js_divergences,
-        ctypes.byref(ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
         included_n_reps_S1,
         included_n_reps_S2,
-        ctypes.byref(global_js_divergence),
+        _ctypes.byref(global_js_divergence),
         weights,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENTS, _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENTS, _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     weights.flags.writeable = False
@@ -914,6 +837,9 @@ def jct_compute_jsd_pipeline(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -922,33 +848,15 @@ def jct_compute_jsd_pipeline(
     Generated from the Fortran procedure `tox_data_integration_jsd::jct_compute_jsd_pipeline`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        neighborhood_residuals_S1 = np.asfortranarray(neighborhood_residuals_S1, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals_S1' must be an array of np.float64: {error}") from None
-    if neighborhood_residuals_S1.ndim != 3:
-        raise ValueError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}")
-    try:
-        neighborhood_residuals_S2 = np.asfortranarray(neighborhood_residuals_S2, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals_S2' must be an array of np.float64: {error}") from None
-    if neighborhood_residuals_S2.ndim != 3:
-        raise ValueError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    neighborhood_residuals_S1 = _contract.reals(neighborhood_residuals_S1, "neighborhood_residuals_S1", ndim=3, order="F")
+    neighborhood_residuals_S2 = _contract.reals(neighborhood_residuals_S2, "neighborhood_residuals_S2", ndim=3, order="F")
+    n_bins = _contract.integer(n_bins, "n_bins")
+    shared_residual_range = _contract.real(shared_residual_range, "shared_residual_range")
     if neighbor_mask_S1 is not None:
-        try:
-            neighbor_mask_S1 = np.asfortranarray(neighbor_mask_S1, dtype=np.bool_)
-        except (TypeError, ValueError) as error:
-            raise TypeError(f"'neighbor_mask_S1' must be an array of np.bool_: {error}") from None
-        if neighbor_mask_S1.ndim != 2:
-            raise ValueError(f"'neighbor_mask_S1' must have 2 dimensions, but has {neighbor_mask_S1.ndim}")
+        neighbor_mask_S1 = _contract.logicals(neighbor_mask_S1, "neighbor_mask_S1", ndim=2, order="F")
     if neighbor_mask_S2 is not None:
-        try:
-            neighbor_mask_S2 = np.asfortranarray(neighbor_mask_S2, dtype=np.bool_)
-        except (TypeError, ValueError) as error:
-            raise TypeError(f"'neighbor_mask_S2' must be an array of np.bool_: {error}") from None
-        if neighbor_mask_S2.ndim != 2:
-            raise ValueError(f"'neighbor_mask_S2' must have 2 dimensions, but has {neighbor_mask_S2.ndim}")
+        neighbor_mask_S2 = _contract.logicals(neighbor_mask_S2, "neighbor_mask_S2", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_reps_S1 = neighborhood_residuals_S1.shape[0]
@@ -956,48 +864,52 @@ def jct_compute_jsd_pipeline(
     n_neighbors = neighborhood_residuals_S1.shape[1]
     n_points = neighborhood_residuals_S1.shape[2]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if neighborhood_residuals_S2.shape[1] != n_neighbors:
-        raise ValueError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but "
-            f"'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighborhood_residuals_S2' is declared with shape (n_reps_S2, n_neighbors, n_points)", argument="neighborhood_residuals_S2")
     if neighborhood_residuals_S2.shape[2] != n_points:
-        raise ValueError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but "
-            f"'neighborhood_residuals_S1' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighborhood_residuals_S2' is declared with shape (n_reps_S2, n_neighbors, n_points)", argument="neighborhood_residuals_S2")
+    if neighbor_mask_S1 is not None and neighbor_mask_S1.shape[0] != n_neighbors:
+        raise _ToxArgumentError(f"'neighbor_mask_S1' has {neighbor_mask_S1.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighbor_mask_S1' is declared with shape (n_neighbors, n_points)", argument="neighbor_mask_S1")
+    if neighbor_mask_S1 is not None and neighbor_mask_S1.shape[1] != n_points:
+        raise _ToxArgumentError(f"'neighbor_mask_S1' has {neighbor_mask_S1.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighbor_mask_S1' is declared with shape (n_neighbors, n_points)", argument="neighbor_mask_S1")
+    if neighbor_mask_S2 is not None and neighbor_mask_S2.shape[0] != n_neighbors:
+        raise _ToxArgumentError(f"'neighbor_mask_S2' has {neighbor_mask_S2.shape[0]} along axis 0, but 'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}; 'neighbor_mask_S2' is declared with shape (n_neighbors, n_points)", argument="neighbor_mask_S2")
+    if neighbor_mask_S2 is not None and neighbor_mask_S2.shape[1] != n_points:
+        raise _ToxArgumentError(f"'neighbor_mask_S2' has {neighbor_mask_S2.shape[1]} along axis 1, but 'neighborhood_residuals_S1' implies n_points == {n_points}; 'neighbor_mask_S2' is declared with shape (n_neighbors, n_points)", argument="neighbor_mask_S2")
 
     # outputs and work arrays, which the caller never sees
-    js_divergences = np.empty((n_points,), dtype=np.float64, order='C')
-    included_n_reps_S1 = np.empty((n_points,), dtype=np.int32, order='C')
-    included_n_reps_S2 = np.empty((n_points,), dtype=np.int32, order='C')
-    global_js_divergence = ctypes.c_double(0)
-    weights = np.empty((n_points,), dtype=np.float64, order='C')
-    pmf_S1 = np.empty((n_points, n_bins,), dtype=np.float64, order='F')
-    pmf_S2 = np.empty((n_points, n_bins,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    js_divergences = _np.empty((n_points,), dtype=_np.float64, order='C')
+    included_n_reps_S1 = _np.empty((n_points,), dtype=_np.int32, order='C')
+    included_n_reps_S2 = _np.empty((n_points,), dtype=_np.int32, order='C')
+    global_js_divergence = _ctypes.c_double(0)
+    weights = _np.empty((n_points,), dtype=_np.float64, order='C')
+    pmf_S1 = _np.empty((n_points, n_bins,), dtype=_np.float64, order='F')
+    pmf_S2 = _np.empty((n_points, n_bins,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.jct_compute_jsd_pipeline_c(
         neighborhood_residuals_S1,
         neighborhood_residuals_S2,
-        ctypes.byref(ctypes.c_int(n_reps_S1)),
-        ctypes.byref(ctypes.c_int(n_reps_S2)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_int(n_bins)),
-        ctypes.byref(ctypes.c_double(shared_residual_range)),
+        _ctypes.byref(_ctypes.c_int(n_reps_S1)),
+        _ctypes.byref(_ctypes.c_int(n_reps_S2)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_bins)),
+        _ctypes.byref(_ctypes.c_double(shared_residual_range)),
         js_divergences,
         included_n_reps_S1,
         included_n_reps_S2,
-        ctypes.byref(global_js_divergence),
+        _ctypes.byref(global_js_divergence),
         weights,
         pmf_S1,
         pmf_S2,
         neighbor_mask_S1,
         neighbor_mask_S2,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _JCT_COMPUTE_JSD_PIPELINE_ARGUMENTS, _JCT_COMPUTE_JSD_PIPELINE_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _JCT_COMPUTE_JSD_PIPELINE_ARGUMENTS, _JCT_COMPUTE_JSD_PIPELINE_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     js_divergences.flags.writeable = False
@@ -1060,6 +972,9 @@ def create_mean_pmf(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -1068,73 +983,48 @@ def create_mean_pmf(
     Generated from the Fortran procedure `tox_data_integration_jsd::create_mean_pmf`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        pmfs = np.asfortranarray(pmfs, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pmfs' must be an array of np.float64: {error}") from None
-    if pmfs.ndim != 3:
-        raise ValueError(f"'pmfs' must have 3 dimensions, but has {pmfs.ndim}")
-    try:
-        counts = np.asfortranarray(counts, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'counts' must be an array of np.int32: {error}") from None
-    if counts.ndim != 3:
-        raise ValueError(f"'counts' must have 3 dimensions, but has {counts.ndim}")
-    try:
-        included_n_reps = np.asfortranarray(included_n_reps, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'included_n_reps' must be an array of np.int32: {error}") from None
-    if included_n_reps.ndim != 2:
-        raise ValueError(f"'included_n_reps' must have 2 dimensions, but has {included_n_reps.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    pmfs = _contract.reals(pmfs, "pmfs", ndim=3, order="F")
+    counts = _contract.integers(counts, "counts", ndim=3, order="F")
+    included_n_reps = _contract.integers(included_n_reps, "included_n_reps", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_bins = pmfs.shape[1]
     n_points = pmfs.shape[0]
     n_studies = pmfs.shape[2]
 
-    # Fortran cannot check that shared extents agree; this can
-    if counts.shape[1] != n_bins:
-        raise ValueError(f"'counts' has {counts.shape[1]} along axis 1, but "
-            f"'pmfs' implies n_bins == {n_bins}"
-        )
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if counts.shape[0] != n_points:
-        raise ValueError(f"'counts' has {counts.shape[0]} along axis 0, but "
-            f"'pmfs' implies n_points == {n_points}"
-        )
-    if included_n_reps.shape[0] != n_points:
-        raise ValueError(f"'included_n_reps' has {included_n_reps.shape[0]} along axis 0, but "
-            f"'pmfs' implies n_points == {n_points}"
-        )
+        raise _ToxArgumentError(f"'counts' has {counts.shape[0]} along axis 0, but 'pmfs' implies n_points == {n_points}; 'counts' is declared with shape (n_points, n_bins, n_studies)", argument="counts")
+    if counts.shape[1] != n_bins:
+        raise _ToxArgumentError(f"'counts' has {counts.shape[1]} along axis 1, but 'pmfs' implies n_bins == {n_bins}; 'counts' is declared with shape (n_points, n_bins, n_studies)", argument="counts")
     if counts.shape[2] != n_studies:
-        raise ValueError(f"'counts' has {counts.shape[2]} along axis 2, but "
-            f"'pmfs' implies n_studies == {n_studies}"
-        )
+        raise _ToxArgumentError(f"'counts' has {counts.shape[2]} along axis 2, but 'pmfs' implies n_studies == {n_studies}; 'counts' is declared with shape (n_points, n_bins, n_studies)", argument="counts")
+    if included_n_reps.shape[0] != n_points:
+        raise _ToxArgumentError(f"'included_n_reps' has {included_n_reps.shape[0]} along axis 0, but 'pmfs' implies n_points == {n_points}; 'included_n_reps' is declared with shape (n_points, n_studies)", argument="included_n_reps")
     if included_n_reps.shape[1] != n_studies:
-        raise ValueError(f"'included_n_reps' has {included_n_reps.shape[1]} along axis 1, but "
-            f"'pmfs' implies n_studies == {n_studies}"
-        )
+        raise _ToxArgumentError(f"'included_n_reps' has {included_n_reps.shape[1]} along axis 1, but 'pmfs' implies n_studies == {n_studies}; 'included_n_reps' is declared with shape (n_points, n_studies)", argument="included_n_reps")
 
     # outputs and work arrays, which the caller never sees
-    mean_pmf = np.empty((n_points, n_bins,), dtype=np.float64, order='F')
-    mean_pmf_included_n_reps = np.empty((n_points,), dtype=np.int32, order='C')
-    mean_pmf_counts = np.empty((n_points, n_bins,), dtype=np.int32, order='F')
-    ierr = ctypes.c_int(0)
+    mean_pmf = _np.empty((n_points, n_bins,), dtype=_np.float64, order='F')
+    mean_pmf_included_n_reps = _np.empty((n_points,), dtype=_np.int32, order='C')
+    mean_pmf_counts = _np.empty((n_points, n_bins,), dtype=_np.int32, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.create_mean_pmf_c(
         pmfs,
         counts,
-        ctypes.byref(ctypes.c_int(n_bins)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_int(n_studies)),
+        _ctypes.byref(_ctypes.c_int(n_bins)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_studies)),
         included_n_reps,
         mean_pmf,
         mean_pmf_included_n_reps,
         mean_pmf_counts,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CREATE_MEAN_PMF_ARGUMENTS, _CREATE_MEAN_PMF_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CREATE_MEAN_PMF_ARGUMENTS, _CREATE_MEAN_PMF_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     mean_pmf.flags.writeable = False
@@ -1172,6 +1062,9 @@ def create_mean_pmf_only(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -1180,13 +1073,8 @@ def create_mean_pmf_only(
     Generated from the Fortran procedure `tox_data_integration_jsd::create_mean_pmf_only`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        pmfs = np.asfortranarray(pmfs, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pmfs' must be an array of np.float64: {error}") from None
-    if pmfs.ndim != 3:
-        raise ValueError(f"'pmfs' must have 3 dimensions, but has {pmfs.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    pmfs = _contract.reals(pmfs, "pmfs", ndim=3, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_bins = pmfs.shape[1]
@@ -1194,19 +1082,19 @@ def create_mean_pmf_only(
     n_studies = pmfs.shape[2]
 
     # outputs and work arrays, which the caller never sees
-    mean_pmf = np.empty((n_points, n_bins,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    mean_pmf = _np.empty((n_points, n_bins,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.create_mean_pmf_only_c(
         pmfs,
-        ctypes.byref(ctypes.c_int(n_bins)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(ctypes.c_int(n_studies)),
+        _ctypes.byref(_ctypes.c_int(n_bins)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_studies)),
         mean_pmf,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CREATE_MEAN_PMF_ONLY_ARGUMENTS, _CREATE_MEAN_PMF_ONLY_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CREATE_MEAN_PMF_ONLY_ARGUMENTS, _CREATE_MEAN_PMF_ONLY_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     mean_pmf.flags.writeable = False

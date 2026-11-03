@@ -17,23 +17,24 @@ grows each reference point's neighborhood while its residual dispersion stays st
 Python binding, generated from tox_data_integration_preprocessing. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.compute_gene_means_c.restype = None
 _lib.compute_gene_means_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -43,12 +44,12 @@ _COMPUTE_GENE_MEANS_ARGUMENT_SOURCES = ("expr", "expr", None, None, None,)
 
 _lib.compute_residuals_c.restype = None
 _lib.compute_residuals_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -58,12 +59,12 @@ _COMPUTE_RESIDUALS_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, None,)
 
 _lib.pool_means_c.restype = None
 _lib.pool_means_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -73,13 +74,13 @@ _POOL_MEANS_ARGUMENT_SOURCES = (None, "pooled_means", "x_star", None, None, None
 
 _lib.pool_means_expert_c.restype = None
 _lib.pool_means_expert_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -89,14 +90,14 @@ _POOL_MEANS_EXPERT_ARGUMENT_SOURCES = (None, None, "pooled_means", "x_star", Non
 
 _lib.pool_study_means_c.restype = None
 _lib.pool_study_means_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -106,16 +107,16 @@ _POOL_STUDY_MEANS_ARGUMENT_SOURCES = ("mean_S1", None, "mean_S2", None, "x_star"
 
 _lib.construct_neighborhoods_c.restype = None
 _lib.construct_neighborhoods_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -125,14 +126,14 @@ _CONSTRUCT_NEIGHBORHOODS_ARGUMENT_SOURCES = ("x_star", None, "mean_S", None, "re
 
 _lib.construct_neighborhoods_ranged_c.restype = None
 _lib.construct_neighborhoods_ranged_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -142,15 +143,15 @@ _CONSTRUCT_NEIGHBORHOODS_RANGED_ARGUMENT_SOURCES = ("x_star", None, "mean_S", No
 
 _lib.construct_neighborhoods_ranged_expert_c.restype = None
 _lib.construct_neighborhoods_ranged_expert_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -160,14 +161,14 @@ _CONSTRUCT_NEIGHBORHOODS_RANGED_EXPERT_ARGUMENT_SOURCES = ("x_star", None, "mean
 
 _lib.gather_pooled_neighborhood_residuals_c.restype = None
 _lib.gather_pooled_neighborhood_residuals_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -177,28 +178,28 @@ _GATHER_POOLED_NEIGHBORHOOD_RESIDUALS_ARGUMENT_SOURCES = (None, "residuals", "re
 
 _lib.construct_adaptive_neighborhoods_c.restype = None
 _lib.construct_adaptive_neighborhoods_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _np.ctypeslib.ndpointer(dtype=_np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -226,6 +227,9 @@ def compute_gene_means(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -234,31 +238,26 @@ def compute_gene_means(
     Generated from the Fortran procedure `tox_data_integration_preprocessing::compute_gene_means`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expr = np.asfortranarray(expr, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expr' must be an array of np.float64: {error}") from None
-    if expr.ndim != 2:
-        raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    expr = _contract.reals(expr, "expr", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
     n_reps = expr.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    means = np.empty((n_genes,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    means = _np.empty((n_genes,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_gene_means_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_reps)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_reps)),
         expr,
         means,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_GENE_MEANS_ARGUMENTS, _COMPUTE_GENE_MEANS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_GENE_MEANS_ARGUMENTS, _COMPUTE_GENE_MEANS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     means.flags.writeable = False
@@ -289,6 +288,9 @@ def compute_residuals(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -297,44 +299,32 @@ def compute_residuals(
     Generated from the Fortran procedure `tox_data_integration_preprocessing::compute_residuals`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        expr = np.asfortranarray(expr, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'expr' must be an array of np.float64: {error}") from None
-    if expr.ndim != 2:
-        raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
-    try:
-        means = np.ascontiguousarray(means, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'means' must be an array of np.float64: {error}") from None
-    if means.ndim != 1:
-        raise ValueError(f"'means' must have 1 dimension, but has {means.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    expr = _contract.reals(expr, "expr", ndim=2, order="F")
+    means = _contract.reals(means, "means", ndim=1)
 
     # what the inputs already say, rather than asking for it again
     n_genes = expr.shape[1]
     n_reps = expr.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if means.shape[0] != n_genes:
-        raise ValueError(f"'means' has {means.shape[0]} along axis 0, but "
-            f"'expr' implies n_genes == {n_genes}"
-        )
+        raise _ToxArgumentError(f"'means' has {means.shape[0]} along axis 0, but 'expr' implies n_genes == {n_genes}; 'means' is declared with shape (n_genes)", argument="means")
 
     # outputs and work arrays, which the caller never sees
-    resid = np.empty((n_reps, n_genes,), dtype=np.float64, order='F')
-    ierr = ctypes.c_int(0)
+    resid = _np.empty((n_reps, n_genes,), dtype=_np.float64, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.compute_residuals_c(
-        ctypes.byref(ctypes.c_int(n_genes)),
-        ctypes.byref(ctypes.c_int(n_reps)),
+        _ctypes.byref(_ctypes.c_int(n_genes)),
+        _ctypes.byref(_ctypes.c_int(n_reps)),
         expr,
         means,
         resid,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_RESIDUALS_ARGUMENTS, _COMPUTE_RESIDUALS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _COMPUTE_RESIDUALS_ARGUMENTS, _COMPUTE_RESIDUALS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     resid.flags.writeable = False
@@ -372,6 +362,9 @@ def pool_means(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -383,32 +376,28 @@ def pool_means(
     This entry point seeds `pooled_means_perm` and sorts it by `pooled_means`.
     Call `pool_means_expert` to do that yourself.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        pooled_means = np.ascontiguousarray(pooled_means, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pooled_means' must be an array of np.float64: {error}") from None
-    if pooled_means.ndim != 1:
-        raise ValueError(f"'pooled_means' must have 1 dimension, but has {pooled_means.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    pooled_means = _contract.reals(pooled_means, "pooled_means", ndim=1)
+    n_points = _contract.integer(n_points, "n_points")
 
     # what the inputs already say, rather than asking for it again
     pool_size = pooled_means.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    n_pool = ctypes.c_int(0)
-    x_star = np.empty((n_points,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    n_pool = _ctypes.c_int(0)
+    x_star = _np.empty((n_points,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.pool_means_c(
         pooled_means,
-        ctypes.byref(ctypes.c_int(pool_size)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(n_pool),
+        _ctypes.byref(_ctypes.c_int(pool_size)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(n_pool),
         x_star,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _POOL_MEANS_ARGUMENTS, _POOL_MEANS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _POOL_MEANS_ARGUMENTS, _POOL_MEANS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     x_star.flags.writeable = False
@@ -454,6 +443,9 @@ def pool_means_expert(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -465,45 +457,34 @@ def pool_means_expert(
     The expert entry point: you supply `pooled_means_perm` yourself.
     `pool_means` seeds `pooled_means_perm` and sorts it by `pooled_means`.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        pooled_means = np.ascontiguousarray(pooled_means, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pooled_means' must be an array of np.float64: {error}") from None
-    if pooled_means.ndim != 1:
-        raise ValueError(f"'pooled_means' must have 1 dimension, but has {pooled_means.ndim}")
-    try:
-        pooled_means_perm = np.ascontiguousarray(pooled_means_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pooled_means_perm' must be an array of np.int32: {error}") from None
-    if pooled_means_perm.ndim != 1:
-        raise ValueError(f"'pooled_means_perm' must have 1 dimension, but has {pooled_means_perm.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    pooled_means = _contract.reals(pooled_means, "pooled_means", ndim=1)
+    pooled_means_perm = _contract.integers(pooled_means_perm, "pooled_means_perm", ndim=1)
+    n_points = _contract.integer(n_points, "n_points")
 
     # what the inputs already say, rather than asking for it again
     pool_size = pooled_means.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if pooled_means_perm.shape[0] != pool_size:
-        raise ValueError(f"'pooled_means_perm' has {pooled_means_perm.shape[0]} along axis 0, but "
-            f"'pooled_means' implies pool_size == {pool_size}"
-        )
+        raise _ToxArgumentError(f"'pooled_means_perm' has {pooled_means_perm.shape[0]} along axis 0, but 'pooled_means' implies pool_size == {pool_size}; 'pooled_means_perm' is declared with shape (pool_size)", argument="pooled_means_perm")
 
     # outputs and work arrays, which the caller never sees
-    n_pool = ctypes.c_int(0)
-    x_star = np.empty((n_points,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    n_pool = _ctypes.c_int(0)
+    x_star = _np.empty((n_points,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.pool_means_expert_c(
         pooled_means,
         pooled_means_perm,
-        ctypes.byref(ctypes.c_int(pool_size)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(n_pool),
+        _ctypes.byref(_ctypes.c_int(pool_size)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(n_pool),
         x_star,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _POOL_MEANS_EXPERT_ARGUMENTS, _POOL_MEANS_EXPERT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _POOL_MEANS_EXPERT_ARGUMENTS, _POOL_MEANS_EXPERT_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     x_star.flags.writeable = False
@@ -548,6 +529,9 @@ def pool_study_means(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -556,41 +540,32 @@ def pool_study_means(
     Generated from the Fortran procedure `tox_data_integration_preprocessing::pool_study_means`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        mean_S1 = np.ascontiguousarray(mean_S1, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'mean_S1' must be an array of np.float64: {error}") from None
-    if mean_S1.ndim != 1:
-        raise ValueError(f"'mean_S1' must have 1 dimension, but has {mean_S1.ndim}")
-    try:
-        mean_S2 = np.ascontiguousarray(mean_S2, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'mean_S2' must be an array of np.float64: {error}") from None
-    if mean_S2.ndim != 1:
-        raise ValueError(f"'mean_S2' must have 1 dimension, but has {mean_S2.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    mean_S1 = _contract.reals(mean_S1, "mean_S1", ndim=1)
+    mean_S2 = _contract.reals(mean_S2, "mean_S2", ndim=1)
+    n_points = _contract.integer(n_points, "n_points")
 
     # what the inputs already say, rather than asking for it again
     n_genes_S1 = mean_S1.shape[0]
     n_genes_S2 = mean_S2.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    n_pool = ctypes.c_int(0)
-    x_star = np.empty((n_points,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    n_pool = _ctypes.c_int(0)
+    x_star = _np.empty((n_points,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.pool_study_means_c(
-        ctypes.byref(ctypes.c_int(n_genes_S1)),
+        _ctypes.byref(_ctypes.c_int(n_genes_S1)),
         mean_S1,
-        ctypes.byref(ctypes.c_int(n_genes_S2)),
+        _ctypes.byref(_ctypes.c_int(n_genes_S2)),
         mean_S2,
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(n_pool),
+        _ctypes.byref(_ctypes.c_int(n_points)),
+        _ctypes.byref(n_pool),
         x_star,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _POOL_STUDY_MEANS_ARGUMENTS, _POOL_STUDY_MEANS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _POOL_STUDY_MEANS_ARGUMENTS, _POOL_STUDY_MEANS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     x_star.flags.writeable = False
@@ -641,6 +616,9 @@ def construct_neighborhoods(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -649,56 +627,40 @@ def construct_neighborhoods(
     Generated from the Fortran procedure `tox_data_integration_preprocessing::construct_neighborhoods`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        x_star = np.ascontiguousarray(x_star, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'x_star' must be an array of np.float64: {error}") from None
-    if x_star.ndim != 1:
-        raise ValueError(f"'x_star' must have 1 dimension, but has {x_star.ndim}")
-    try:
-        mean_S = np.ascontiguousarray(mean_S, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'mean_S' must be an array of np.float64: {error}") from None
-    if mean_S.ndim != 1:
-        raise ValueError(f"'mean_S' must have 1 dimension, but has {mean_S.ndim}")
-    try:
-        resid_S = np.asfortranarray(resid_S, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'resid_S' must be an array of np.float64: {error}") from None
-    if resid_S.ndim != 2:
-        raise ValueError(f"'resid_S' must have 2 dimensions, but has {resid_S.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    x_star = _contract.reals(x_star, "x_star", ndim=1)
+    mean_S = _contract.reals(mean_S, "mean_S", ndim=1)
+    resid_S = _contract.reals(resid_S, "resid_S", ndim=2, order="F")
+    n_neighbors = _contract.integer(n_neighbors, "n_neighbors")
 
     # what the inputs already say, rather than asking for it again
     n_points = x_star.shape[0]
     n_genes_S = mean_S.shape[0]
     n_reps_S = resid_S.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if resid_S.shape[1] != n_genes_S:
-        raise ValueError(f"'resid_S' has {resid_S.shape[1]} along axis 1, but "
-            f"'mean_S' implies n_genes_S == {n_genes_S}"
-        )
+        raise _ToxArgumentError(f"'resid_S' has {resid_S.shape[1]} along axis 1, but 'mean_S' implies n_genes_S == {n_genes_S}; 'resid_S' is declared with shape (n_reps_S, n_genes_S)", argument="resid_S")
 
     # outputs and work arrays, which the caller never sees
-    neighborhood_residuals = np.empty((n_reps_S, n_neighbors, n_points,), dtype=np.float64, order='F')
-    neighborhood_indices = np.empty((n_neighbors, n_points,), dtype=np.int32, order='F')
-    ierr = ctypes.c_int(0)
+    neighborhood_residuals = _np.empty((n_reps_S, n_neighbors, n_points,), dtype=_np.float64, order='F')
+    neighborhood_indices = _np.empty((n_neighbors, n_points,), dtype=_np.int32, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.construct_neighborhoods_c(
-        ctypes.byref(ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
         x_star,
-        ctypes.byref(ctypes.c_int(n_genes_S)),
+        _ctypes.byref(_ctypes.c_int(n_genes_S)),
         mean_S,
-        ctypes.byref(ctypes.c_int(n_reps_S)),
+        _ctypes.byref(_ctypes.c_int(n_reps_S)),
         resid_S,
         neighborhood_residuals,
         neighborhood_indices,
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CONSTRUCT_NEIGHBORHOODS_ARGUMENTS, _CONSTRUCT_NEIGHBORHOODS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CONSTRUCT_NEIGHBORHOODS_ARGUMENTS, _CONSTRUCT_NEIGHBORHOODS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     neighborhood_residuals.flags.writeable = False
@@ -760,6 +722,9 @@ def construct_neighborhoods_ranged(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -771,41 +736,32 @@ def construct_neighborhoods_ranged(
     This entry point seeds `mean_S_perm` and sorts it by `mean_S`.
     Call `construct_neighborhoods_ranged_expert` to do that yourself.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        x_star = np.ascontiguousarray(x_star, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'x_star' must be an array of np.float64: {error}") from None
-    if x_star.ndim != 1:
-        raise ValueError(f"'x_star' must have 1 dimension, but has {x_star.ndim}")
-    try:
-        mean_S = np.ascontiguousarray(mean_S, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'mean_S' must be an array of np.float64: {error}") from None
-    if mean_S.ndim != 1:
-        raise ValueError(f"'mean_S' must have 1 dimension, but has {mean_S.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    x_star = _contract.reals(x_star, "x_star", ndim=1)
+    mean_S = _contract.reals(mean_S, "mean_S", ndim=1)
+    n_neighbors = _contract.integer(n_neighbors, "n_neighbors")
 
     # what the inputs already say, rather than asking for it again
     n_points = x_star.shape[0]
     n_genes_S = mean_S.shape[0]
 
     # outputs and work arrays, which the caller never sees
-    neighborhood_indices = np.empty((n_neighbors, n_points,), dtype=np.int32, order='F')
-    neighborhood_range = np.empty((2, n_points,), dtype=np.int32, order='F')
-    ierr = ctypes.c_int(0)
+    neighborhood_indices = _np.empty((n_neighbors, n_points,), dtype=_np.int32, order='F')
+    neighborhood_range = _np.empty((2, n_points,), dtype=_np.int32, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.construct_neighborhoods_ranged_c(
-        ctypes.byref(ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
         x_star,
-        ctypes.byref(ctypes.c_int(n_genes_S)),
+        _ctypes.byref(_ctypes.c_int(n_genes_S)),
         mean_S,
-        ctypes.byref(ctypes.c_int(n_neighbors)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
         neighborhood_indices,
         neighborhood_range,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CONSTRUCT_NEIGHBORHOODS_RANGED_ARGUMENTS, _CONSTRUCT_NEIGHBORHOODS_RANGED_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CONSTRUCT_NEIGHBORHOODS_RANGED_ARGUMENTS, _CONSTRUCT_NEIGHBORHOODS_RANGED_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     neighborhood_indices.flags.writeable = False
@@ -872,6 +828,9 @@ def construct_neighborhoods_ranged_expert(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -883,54 +842,38 @@ def construct_neighborhoods_ranged_expert(
     The expert entry point: you supply `mean_S_perm` yourself.
     `construct_neighborhoods_ranged` seeds `mean_S_perm` and sorts it by `mean_S`.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        x_star = np.ascontiguousarray(x_star, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'x_star' must be an array of np.float64: {error}") from None
-    if x_star.ndim != 1:
-        raise ValueError(f"'x_star' must have 1 dimension, but has {x_star.ndim}")
-    try:
-        mean_S = np.ascontiguousarray(mean_S, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'mean_S' must be an array of np.float64: {error}") from None
-    if mean_S.ndim != 1:
-        raise ValueError(f"'mean_S' must have 1 dimension, but has {mean_S.ndim}")
-    try:
-        mean_S_perm = np.ascontiguousarray(mean_S_perm, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'mean_S_perm' must be an array of np.int32: {error}") from None
-    if mean_S_perm.ndim != 1:
-        raise ValueError(f"'mean_S_perm' must have 1 dimension, but has {mean_S_perm.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    x_star = _contract.reals(x_star, "x_star", ndim=1)
+    mean_S = _contract.reals(mean_S, "mean_S", ndim=1)
+    mean_S_perm = _contract.integers(mean_S_perm, "mean_S_perm", ndim=1)
+    n_neighbors = _contract.integer(n_neighbors, "n_neighbors")
 
     # what the inputs already say, rather than asking for it again
     n_points = x_star.shape[0]
     n_genes_S = mean_S.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if mean_S_perm.shape[0] != n_genes_S:
-        raise ValueError(f"'mean_S_perm' has {mean_S_perm.shape[0]} along axis 0, but "
-            f"'mean_S' implies n_genes_S == {n_genes_S}"
-        )
+        raise _ToxArgumentError(f"'mean_S_perm' has {mean_S_perm.shape[0]} along axis 0, but 'mean_S' implies n_genes_S == {n_genes_S}; 'mean_S_perm' is declared with shape (n_genes_S)", argument="mean_S_perm")
 
     # outputs and work arrays, which the caller never sees
-    neighborhood_indices = np.empty((n_neighbors, n_points,), dtype=np.int32, order='F')
-    neighborhood_range = np.empty((2, n_points,), dtype=np.int32, order='F')
-    ierr = ctypes.c_int(0)
+    neighborhood_indices = _np.empty((n_neighbors, n_points,), dtype=_np.int32, order='F')
+    neighborhood_range = _np.empty((2, n_points,), dtype=_np.int32, order='F')
+    ierr = _ctypes.c_int(0)
 
     _lib.construct_neighborhoods_ranged_expert_c(
-        ctypes.byref(ctypes.c_int(n_points)),
+        _ctypes.byref(_ctypes.c_int(n_points)),
         x_star,
-        ctypes.byref(ctypes.c_int(n_genes_S)),
+        _ctypes.byref(_ctypes.c_int(n_genes_S)),
         mean_S,
         mean_S_perm,
-        ctypes.byref(ctypes.c_int(n_neighbors)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
         neighborhood_indices,
         neighborhood_range,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CONSTRUCT_NEIGHBORHOODS_RANGED_EXPERT_ARGUMENTS, _CONSTRUCT_NEIGHBORHOODS_RANGED_EXPERT_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CONSTRUCT_NEIGHBORHOODS_RANGED_EXPERT_ARGUMENTS, _CONSTRUCT_NEIGHBORHOODS_RANGED_EXPERT_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     neighborhood_indices.flags.writeable = False
@@ -978,6 +921,9 @@ def gather_pooled_neighborhood_residuals(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -986,19 +932,9 @@ def gather_pooled_neighborhood_residuals(
     Generated from the Fortran procedure `tox_data_integration_preprocessing::gather_pooled_neighborhood_residuals`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        residuals = np.asfortranarray(residuals, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'residuals' must be an array of np.float64: {error}") from None
-    if residuals.ndim != 3:
-        raise ValueError(f"'residuals' must have 3 dimensions, but has {residuals.ndim}")
-    try:
-        neighborhood_indices_point = np.asfortranarray(neighborhood_indices_point, dtype=np.int32)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_indices_point' must be an array of np.int32: {error}") from None
-    if neighborhood_indices_point.ndim != 2:
-        raise ValueError(f"'neighborhood_indices_point' must have 2 dimensions, but has {neighborhood_indices_point.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    residuals = _contract.reals(residuals, "residuals", ndim=3, order="F")
+    neighborhood_indices_point = _contract.integers(neighborhood_indices_point, "neighborhood_indices_point", ndim=2, order="F")
 
     # what the inputs already say, rather than asking for it again
     max_n_reps_all_studies = residuals.shape[0]
@@ -1006,28 +942,26 @@ def gather_pooled_neighborhood_residuals(
     n_neighbors = neighborhood_indices_point.shape[0]
     n_studies = residuals.shape[2]
 
-    # Fortran cannot check that shared extents agree; this can
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if neighborhood_indices_point.shape[1] != n_studies:
-        raise ValueError(f"'neighborhood_indices_point' has {neighborhood_indices_point.shape[1]} along axis 1, but "
-            f"'residuals' implies n_studies == {n_studies}"
-        )
+        raise _ToxArgumentError(f"'neighborhood_indices_point' has {neighborhood_indices_point.shape[1]} along axis 1, but 'residuals' implies n_studies == {n_studies}; 'neighborhood_indices_point' is declared with shape (n_neighbors, n_studies)", argument="neighborhood_indices_point")
 
     # outputs and work arrays, which the caller never sees
-    pooled_residuals = np.empty((max_n_reps_all_studies*n_neighbors*n_studies,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
+    pooled_residuals = _np.empty((max_n_reps_all_studies * n_neighbors * n_studies,), dtype=_np.float64, order='C')
+    ierr = _ctypes.c_int(0)
 
     _lib.gather_pooled_neighborhood_residuals_c(
         residuals,
-        ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
-        ctypes.byref(ctypes.c_int(max_n_genes_all_studies)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ctypes.c_int(n_studies)),
+        _ctypes.byref(_ctypes.c_int(max_n_reps_all_studies)),
+        _ctypes.byref(_ctypes.c_int(max_n_genes_all_studies)),
+        _ctypes.byref(_ctypes.c_int(n_neighbors)),
+        _ctypes.byref(_ctypes.c_int(n_studies)),
         neighborhood_indices_point,
         pooled_residuals,
-        ctypes.byref(ierr),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _GATHER_POOLED_NEIGHBORHOOD_RESIDUALS_ARGUMENTS, _GATHER_POOLED_NEIGHBORHOOD_RESIDUALS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _GATHER_POOLED_NEIGHBORHOOD_RESIDUALS_ARGUMENTS, _GATHER_POOLED_NEIGHBORHOOD_RESIDUALS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     pooled_residuals.flags.writeable = False
@@ -1182,6 +1116,9 @@ def construct_adaptive_neighborhoods(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -1190,73 +1127,66 @@ def construct_adaptive_neighborhoods(
     Generated from the Fortran procedure `tox_data_integration_preprocessing::construct_adaptive_neighborhoods`, whose argument names are
     the ones an error message reports.
     """
-    # accept anything array-like, converting only when C needs it
-    try:
-        gene_means = np.asfortranarray(gene_means, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'gene_means' must be an array of np.float64: {error}") from None
-    if gene_means.ndim != 2:
-        raise ValueError(f"'gene_means' must have 2 dimensions, but has {gene_means.ndim}")
-    try:
-        residuals = np.asfortranarray(residuals, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'residuals' must be an array of np.float64: {error}") from None
-    if residuals.ndim != 3:
-        raise ValueError(f"'residuals' must have 3 dimensions, but has {residuals.ndim}")
+    # check every input by the input contract, converting only when C needs it
+    gene_means = _contract.reals(gene_means, "gene_means", ndim=2, order="F")
+    residuals = _contract.reals(residuals, "residuals", ndim=3, order="F")
+    k_start = _contract.integer(k_start, "k_start")
+    k_step = _contract.integer(k_step, "k_step")
+    k_max = _contract.integer(k_max, "k_max")
+    tau = _contract.real(tau, "tau")
+    mad_distance_factor = _contract.real(mad_distance_factor, "mad_distance_factor")
+    max_pooled_residuals = _contract.integer(max_pooled_residuals, "max_pooled_residuals")
+    min_study_neighbors = _contract.integer(min_study_neighbors, "min_study_neighbors")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
     max_n_genes_all_studies = gene_means.shape[0]
     max_n_reps_all_studies = residuals.shape[0]
 
-    # Fortran cannot check that shared extents agree; this can
-    if residuals.shape[2] != n_studies:
-        raise ValueError(f"'residuals' has {residuals.shape[2]} along axis 2, but "
-            f"'gene_means' implies n_studies == {n_studies}"
-        )
+    # Fortran cannot check that an array has the shape it is declared with; this can
     if residuals.shape[1] != max_n_genes_all_studies:
-        raise ValueError(f"'residuals' has {residuals.shape[1]} along axis 1, but "
-            f"'gene_means' implies max_n_genes_all_studies == {max_n_genes_all_studies}"
-        )
+        raise _ToxArgumentError(f"'residuals' has {residuals.shape[1]} along axis 1, but 'gene_means' implies max_n_genes_all_studies == {max_n_genes_all_studies}; 'residuals' is declared with shape (max_n_reps_all_studies, max_n_genes_all_studies, n_studies)", argument="residuals")
+    if residuals.shape[2] != n_studies:
+        raise _ToxArgumentError(f"'residuals' has {residuals.shape[2]} along axis 2, but 'gene_means' implies n_studies == {n_studies}; 'residuals' is declared with shape (max_n_reps_all_studies, max_n_genes_all_studies, n_studies)", argument="residuals")
 
     # outputs and work arrays, which the caller never sees
-    n_points = ctypes.c_int(0)
-    x_star = np.empty((max_n_genes_all_studies*n_studies,), dtype=np.float64, order='C')
-    pooled_neighborhood_range = np.empty((2, max_n_genes_all_studies*n_studies,), dtype=np.int32, order='F')
-    n_neighbors_per_point = np.empty((n_studies, max_n_genes_all_studies*n_studies,), dtype=np.int32, order='F')
-    stop_reason = np.empty((max_n_genes_all_studies*n_studies,), dtype=np.int32, order='C')
-    neighborhood_dispersion = np.empty((max_n_genes_all_studies*n_studies,), dtype=np.float64, order='C')
-    neighborhood_mad = np.empty((max_n_genes_all_studies*n_studies,), dtype=np.float64, order='C')
-    max_n_neighbors = ctypes.c_int(0)
-    construction_status = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    n_points = _ctypes.c_int(0)
+    x_star = _np.empty((max_n_genes_all_studies * n_studies,), dtype=_np.float64, order='C')
+    pooled_neighborhood_range = _np.empty((2, max_n_genes_all_studies * n_studies,), dtype=_np.int32, order='F')
+    n_neighbors_per_point = _np.empty((n_studies, max_n_genes_all_studies * n_studies,), dtype=_np.int32, order='F')
+    stop_reason = _np.empty((max_n_genes_all_studies * n_studies,), dtype=_np.int32, order='C')
+    neighborhood_dispersion = _np.empty((max_n_genes_all_studies * n_studies,), dtype=_np.float64, order='C')
+    neighborhood_mad = _np.empty((max_n_genes_all_studies * n_studies,), dtype=_np.float64, order='C')
+    max_n_neighbors = _ctypes.c_int(0)
+    construction_status = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.construct_adaptive_neighborhoods_c(
-        ctypes.byref(ctypes.c_int(n_studies)),
-        ctypes.byref(ctypes.c_int(max_n_genes_all_studies)),
-        ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
+        _ctypes.byref(_ctypes.c_int(n_studies)),
+        _ctypes.byref(_ctypes.c_int(max_n_genes_all_studies)),
+        _ctypes.byref(_ctypes.c_int(max_n_reps_all_studies)),
         gene_means,
         residuals,
-        ctypes.byref(ctypes.c_int(k_start)),
-        ctypes.byref(ctypes.c_int(k_step)),
-        ctypes.byref(ctypes.c_int(k_max)),
-        ctypes.byref(n_points),
+        _ctypes.byref(_ctypes.c_int(k_start)),
+        _ctypes.byref(_ctypes.c_int(k_step)),
+        _ctypes.byref(_ctypes.c_int(k_max)),
+        _ctypes.byref(n_points),
         x_star,
         pooled_neighborhood_range,
         n_neighbors_per_point,
         stop_reason,
         neighborhood_dispersion,
         neighborhood_mad,
-        ctypes.byref(max_n_neighbors),
-        ctypes.byref(construction_status),
-        ctypes.byref(ctypes.c_double(tau)),
-        ctypes.byref(ctypes.c_double(mad_distance_factor)),
-        ctypes.byref(ctypes.c_int(max_pooled_residuals)),
-        ctypes.byref(ctypes.c_int(min_study_neighbors)),
-        ctypes.byref(ierr),
+        _ctypes.byref(max_n_neighbors),
+        _ctypes.byref(construction_status),
+        _ctypes.byref(_ctypes.c_double(tau)),
+        _ctypes.byref(_ctypes.c_double(mad_distance_factor)),
+        _ctypes.byref(_ctypes.c_int(max_pooled_residuals)),
+        _ctypes.byref(_ctypes.c_int(min_study_neighbors)),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CONSTRUCT_ADAPTIVE_NEIGHBORHOODS_ARGUMENTS, _CONSTRUCT_ADAPTIVE_NEIGHBORHOODS_ARGUMENT_SOURCES)
+    _check_err_code(ierr.value, _CONSTRUCT_ADAPTIVE_NEIGHBORHOODS_ARGUMENTS, _CONSTRUCT_ADAPTIVE_NEIGHBORHOODS_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
     x_star.flags.writeable = False

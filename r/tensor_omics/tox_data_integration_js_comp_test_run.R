@@ -97,6 +97,7 @@
 #'   with `min_residuals_per_bin` as the floor
 #'
 #'   The default value is `"bin_count_occupancy"`.
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{neighborhood_indices}{a integer array of rank 3. Gene indices of the selected neighborhood, per reference point, per study}
 #'   \item{neighborhood_range}{a integer array of rank 3. For each reference point and study, the `[min_idx, max_idx]` neighborhood span}
@@ -142,10 +143,10 @@ run_js_comp_test <- function(n_neighbors, gene_means, residuals, x_star, n_permu
     lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
     upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
     bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
-    if (dim(residuals)[3] != dim(gene_means)[2])
-        .tox_shape_error("residuals", dim(residuals)[3], "gene_means", dim(gene_means)[2])
     if (dim(residuals)[2] != dim(gene_means)[1])
-        .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
+        .tox_shape_error("residuals", 2L, dim(residuals)[2], "'gene_means' implies max_n_genes_all_studies == ", dim(gene_means)[1], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
+    if (dim(residuals)[3] != dim(gene_means)[2])
+        .tox_shape_error("residuals", 3L, dim(residuals)[3], "'gene_means' implies n_studies == ", dim(gene_means)[2], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
 
     .result <- .Call("run_js_comp_test_call", n_neighbors, gene_means, residuals, x_star, n_permutations, random_seed, min_residuals_per_bin, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, bin_count_mode)
     .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "ierr")
@@ -283,6 +284,7 @@ run_js_comp_test <- function(n_neighbors, gene_means, residuals, x_star, n_permu
 #'   with `min_residuals_per_bin` as the floor
 #'
 #'   The default value is `"bin_count_occupancy"`.
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{neighborhood_indices}{a integer array of rank 3. Gene indices of the selected neighborhood, per reference point, per study}
 #'   \item{neighborhood_range}{a integer array of rank 3. For each reference point and study, the `[min_idx, max_idx]` neighborhood span}
@@ -329,14 +331,14 @@ run_js_comp_test_expert <- function(n_neighbors, gene_means, gene_means_perms, r
     lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
     upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
     bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
-    if (dim(gene_means_perms)[2] != dim(gene_means)[2])
-        .tox_shape_error("gene_means_perms", dim(gene_means_perms)[2], "gene_means", dim(gene_means)[2])
-    if (dim(residuals)[3] != dim(gene_means)[2])
-        .tox_shape_error("residuals", dim(residuals)[3], "gene_means", dim(gene_means)[2])
     if (dim(gene_means_perms)[1] != dim(gene_means)[1])
-        .tox_shape_error("gene_means_perms", dim(gene_means_perms)[1], "gene_means", dim(gene_means)[1])
+        .tox_shape_error("gene_means_perms", 1L, dim(gene_means_perms)[1], "'gene_means' implies max_n_genes_all_studies == ", dim(gene_means)[1], "max_n_genes_all_studies, n_studies")
+    if (dim(gene_means_perms)[2] != dim(gene_means)[2])
+        .tox_shape_error("gene_means_perms", 2L, dim(gene_means_perms)[2], "'gene_means' implies n_studies == ", dim(gene_means)[2], "max_n_genes_all_studies, n_studies")
     if (dim(residuals)[2] != dim(gene_means)[1])
-        .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
+        .tox_shape_error("residuals", 2L, dim(residuals)[2], "'gene_means' implies max_n_genes_all_studies == ", dim(gene_means)[1], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
+    if (dim(residuals)[3] != dim(gene_means)[2])
+        .tox_shape_error("residuals", 3L, dim(residuals)[3], "'gene_means' implies n_studies == ", dim(gene_means)[2], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
 
     .result <- .Call("run_js_comp_test_expert_call", n_neighbors, gene_means, gene_means_perms, residuals, x_star, n_permutations, random_seed, min_residuals_per_bin, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, bin_count_mode)
     .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "tmp_neighborhood_residuals_gathered", "tmp_permutation_mean_pmf", "tmp_permutation_point_pool", "tmp_permutation_point_draw", "tmp_pooled_residuals", "tmp_pooled_residuals_perm", "tmp_bin_counts_search", "tmp_residual_to_study_perm", "tmp_study_block_ends", "tmp_study_block_sizes", "tmp_point_n_neighbors", "tmp_permutation_mean_pmf_counts", "tmp_permutation_counts", "tmp_permutation_pmfs", "tmp_permutation_js_divergences", "tmp_permutation_weights", "tmp_permutation_global_js_divergence", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "ierr")
@@ -442,6 +444,7 @@ run_js_comp_test_expert <- function(n_neighbors, gene_means, gene_means_perms, r
 #'   with `min_residuals_per_bin` as the floor
 #'
 #'   The default value is `"bin_count_occupancy"`.
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @return a named list with elements:
 #'   \item{n_neighbors_per_point}{a integer matrix. For each neighborhood, how many of its genes belong to each study (at least 1 each)}
 #'   \item{n_bins_per_point}{a integer vector. Each reference point's selected histogram bin count, from the bin-count search}
@@ -485,10 +488,12 @@ run_js_comp_test_adaptive <- function(gene_means, residuals, pooled_neighborhood
     lower_residual_range_quantile <- .tox_as_double_scalar(lower_residual_range_quantile, "lower_residual_range_quantile")
     upper_residual_range_quantile <- .tox_as_double_scalar(upper_residual_range_quantile, "upper_residual_range_quantile")
     bin_count_mode <- .tox_as_mode(bin_count_mode, "bin_count_mode", c("bin_count_occupancy", "bin_count_stone_equal", "bin_count_stone_size_weighted", "bin_count_stone_pooled"))
-    if (dim(residuals)[3] != dim(gene_means)[2])
-        .tox_shape_error("residuals", dim(residuals)[3], "gene_means", dim(gene_means)[2])
     if (dim(residuals)[2] != dim(gene_means)[1])
-        .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
+        .tox_shape_error("residuals", 2L, dim(residuals)[2], "'gene_means' implies max_n_genes_all_studies == ", dim(gene_means)[1], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
+    if (dim(residuals)[3] != dim(gene_means)[2])
+        .tox_shape_error("residuals", 3L, dim(residuals)[3], "'gene_means' implies n_studies == ", dim(gene_means)[2], "max_n_reps_all_studies, max_n_genes_all_studies, n_studies")
+    if (dim(pooled_neighborhood_range)[1] != 2L)
+        .tox_shape_error("pooled_neighborhood_range", 1L, dim(pooled_neighborhood_range)[1], "its declared shape fixes it at ", 2L, "2, n_points")
 
     .result <- .Call("run_js_comp_test_adaptive_call", gene_means, residuals, pooled_neighborhood_range, n_permutations, random_seed, min_residuals_per_bin, m_min, m_max, gamma_occupancy, lower_residual_range_quantile, upper_residual_range_quantile, bin_count_mode)
     .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "gene_means", "residuals", "pooled_neighborhood_range", "n_neighbors_per_point", "n_bins_per_point", "shared_residual_range_low", "shared_residual_range_high", "max_n_bins_per_point", "occupancy_failed", "n_pooled_residuals", "min_bin_occupancy", "mean_bin_occupancy", "max_bin_occupancy", "sturges_bins", "fd_bins", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "p_values_observed_consensus", "n_permutations", "random_seed", "min_residuals_per_bin", "m_min", "m_max", "gamma_occupancy", "lower_residual_range_quantile", "upper_residual_range_quantile", "bin_count_mode", "ierr")

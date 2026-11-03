@@ -313,7 +313,7 @@ contains
     !> M_EXPORT_C
     !| summary: An optional with no default, which C may pass a null pointer for
     !| author: A Developer
-    subroutine fx_nullable(values, n_values, mode, ortholog_set, n_orthologs, ierr)
+    subroutine fx_nullable(values, n_values, mode, ortholog_set, ierr)
         integer(int32), intent(in) :: n_values
             !! elements of `values`
         real(real64), dimension(n_values), intent(in) :: values
@@ -325,14 +325,71 @@ contains
             !! |------|-------|
             !! | group by ortholog set | [[fx_edges(module):MODE_GROUP_ORTHOLOGS(variable)]] |
             !! | do not group at all | [[fx_edges(module):MODE_UNGROUPED(variable)]] |
-        integer(int32), intent(in) :: n_orthologs
-            !! elements of `ortholog_set`
-        integer(int32), dimension(n_orthologs), intent(in), optional :: ortholog_set
+        integer(int32), dimension(n_values), intent(in), optional :: ortholog_set
             !! which ortholog set each value belongs to.
             !! DM_REQUIRED_IF_MODE(mode, fx_edges, MODE_GROUP_ORTHOLOGS)
         integer(int32), intent(out) :: ierr
             !! Error code
     end subroutine fx_nullable
+
+    !> M_EXPORT_C
+    !| summary: Two arrays in one declaration, the second with its own extent
+    !| author: A Developer
+    !| An edge case: the entity's array-spec `b(m)` overrides the statement's `dimension(n)`,
+    !| so `b` has `m` elements in every layer.
+    subroutine fx_two_lengths(n, m, a, b, total, ierr)
+        integer(int32), intent(in) :: n
+            !! elements of `a`
+        integer(int32), intent(in) :: m
+            !! elements of `b`
+        real(real64), dimension(n), intent(in) :: a, b(m)
+            !! the two vectors
+        real(real64), intent(out) :: total
+            !! `sum(a) + 100 * sum(b)`
+        integer(int32), intent(out) :: ierr
+            !! Error code
+        call set_ok(ierr)
+        total = sum(a) + 100.0_real64 * sum(b)
+    end subroutine fx_two_lengths
+
+    !> M_EXPORT_C
+    !| summary: An extent spelled in a different case from its declaration
+    !| author: A Developer
+    !| An edge case: `N_Values` sizes `values(n_values)` in Fortran, which is case-insensitive;
+    !| the binding languages are not, and see one name.
+    subroutine fx_case_mix(N_Values, values, doubled, ierr)
+        integer(int32), intent(in) :: N_Values
+            !! elements of `values`
+        real(real64), dimension(n_values), intent(in) :: values
+            !! the values
+        real(real64), dimension(N_VALUES), intent(out) :: doubled
+            !! twice the values
+        integer(int32), intent(out) :: ierr
+            !! Error code
+        call set_ok(ierr)
+        doubled = 2.0_real64 * values
+    end subroutine fx_case_mix
+
+    !> M_EXPORT_C
+    !| summary: A logical default written with its kind, as a `c_bool` literal needs
+    !| author: A Developer
+    subroutine fx_kinded_default(value, negate, signed_value, ierr)
+        real(real64), intent(in) :: value
+            !! the value
+        logical(c_bool), intent(in), optional :: negate
+            !! whether to negate `value`
+            !! DM_DEFAULT(.true._c_bool)
+        real(real64), intent(out) :: signed_value
+            !! `value`, negated when `negate` is true
+        integer(int32), intent(out) :: ierr
+            !! Error code
+        logical(c_bool) :: actual_negate
+        call set_ok(ierr)
+        actual_negate = .true._c_bool
+        if (present(negate)) actual_negate = negate
+        signed_value = value
+        if (actual_negate) signed_value = -value
+    end subroutine fx_kinded_default
 
     !> M_EXPORT_C
     !| summary: A procedure that reports no errors of its own

@@ -24,6 +24,9 @@
 check_neighborhood_overlaps <- function(neighborhood_range, min_neighbor_overlap) {
     neighborhood_range <- .tox_as_integer_matrix(neighborhood_range, "neighborhood_range")
     min_neighbor_overlap <- .tox_as_double_scalar(min_neighbor_overlap, "min_neighbor_overlap")
+    if (dim(neighborhood_range)[1] != 2L)
+        .tox_shape_error("neighborhood_range", 1L, dim(neighborhood_range)[1], "its declared shape fixes it at ", 2L, "2, n_points")
+
     .result <- .Call("check_neighborhood_overlaps_call", neighborhood_range, min_neighbor_overlap)
     .arguments <- c("neighborhood_range", "n_points", "min_neighbor_overlap", "all_have_min_neighbor_overlap", "ierr")
     .sources <- c(NA_character_, "neighborhood_range", NA_character_, NA_character_, NA_character_)
@@ -58,7 +61,7 @@ check_mean_pmf_min_counts <- function(mean_pmf_counts, n_bins_per_point, min_cou
     n_bins_per_point <- .tox_as_integer_vector(n_bins_per_point, "n_bins_per_point")
     min_count <- .tox_as_integer_scalar(min_count, "min_count")
     if (length(n_bins_per_point) != dim(mean_pmf_counts)[1])
-        .tox_shape_error("n_bins_per_point", length(n_bins_per_point), "mean_pmf_counts", dim(mean_pmf_counts)[1])
+        .tox_shape_error("n_bins_per_point", 1L, length(n_bins_per_point), "'mean_pmf_counts' implies n_points == ", dim(mean_pmf_counts)[1], "n_points")
 
     .result <- .Call("check_mean_pmf_min_counts_call", mean_pmf_counts, n_bins_per_point, min_count)
     .arguments <- c("mean_pmf_counts", "n_bins", "n_bins_per_point", "n_points", "min_count", "all_bins_have_min_count", "ierr")
@@ -91,6 +94,7 @@ check_mean_pmf_min_counts <- function(mean_pmf_counts, n_bins_per_point, min_cou
 #'   The minimum valid value is `1`.
 #' @param join_method a string, one of "join_min", "join_max", "join_median". How the studies' overlaps are joined into the plateau condition; the median method
 #'   requires `count > (n_studies - 1) / 2`
+#'   Trailing blanks are not part of the value, as in Fortran: they are dropped.
 #' @param succeeding_ci_overlap a numeric scalar. Minimum fractional overlap with the best candidate's interval for a study to pass
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
@@ -116,8 +120,12 @@ check_plateau_condition <- function(confidence_interval, best_candidate_pair_con
     candidate_index <- .tox_as_integer_scalar(candidate_index, "candidate_index")
     join_method <- .tox_as_mode(join_method, "join_method", c("join_min", "join_max", "join_median"))
     succeeding_ci_overlap <- .tox_as_double_scalar(succeeding_ci_overlap, "succeeding_ci_overlap")
+    if (dim(confidence_interval)[1] != 2L)
+        .tox_shape_error("confidence_interval", 1L, dim(confidence_interval)[1], "its declared shape fixes it at ", 2L, "2, n_studies")
+    if (dim(best_candidate_pair_confidence_interval)[1] != 2L)
+        .tox_shape_error("best_candidate_pair_confidence_interval", 1L, dim(best_candidate_pair_confidence_interval)[1], "its declared shape fixes it at ", 2L, "2, n_studies")
     if (dim(best_candidate_pair_confidence_interval)[2] != dim(confidence_interval)[2])
-        .tox_shape_error("best_candidate_pair_confidence_interval", dim(best_candidate_pair_confidence_interval)[2], "confidence_interval", dim(confidence_interval)[2])
+        .tox_shape_error("best_candidate_pair_confidence_interval", 2L, dim(best_candidate_pair_confidence_interval)[2], "'confidence_interval' implies n_studies == ", dim(confidence_interval)[2], "2, n_studies")
 
     .result <- .Call("check_plateau_condition_call", confidence_interval, best_candidate_pair_confidence_interval, best_candidate_index, best_exceeded_ci_overlap_count, candidate_index, join_method, succeeding_ci_overlap)
     .arguments <- c("confidence_interval", "best_candidate_pair_confidence_interval", "n_studies", "best_candidate_index", "best_exceeded_ci_overlap_count", "candidate_index", "join_method", "succeeding_ci_overlap", "ci_overlap", "plateau_found", "ierr")
@@ -188,7 +196,7 @@ check_effect_size_plateau_condition <- function(global_js_divergence, prev_globa
     delta_min_consecutive_transitions <- .tox_as_integer_scalar(delta_min_consecutive_transitions, "delta_min_consecutive_transitions")
     n_consecutive_ok <- .tox_as_integer_scalar(n_consecutive_ok, "n_consecutive_ok")
     if (length(prev_global_js_divergence) != length(global_js_divergence))
-        .tox_shape_error("prev_global_js_divergence", length(prev_global_js_divergence), "global_js_divergence", length(global_js_divergence))
+        .tox_shape_error("prev_global_js_divergence", 1L, length(prev_global_js_divergence), "'global_js_divergence' implies n_studies == ", length(global_js_divergence), "n_studies")
 
     .result <- .Call("check_effect_size_plateau_condition_call", global_js_divergence, prev_global_js_divergence, has_previous, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, n_consecutive_ok)
     .arguments <- c("global_js_divergence", "prev_global_js_divergence", "n_studies", "has_previous", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "n_consecutive_ok", "delta", "delta_median", "delta_max", "plateau_found", "ierr")

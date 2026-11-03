@@ -204,7 +204,7 @@ test_tox_build_residual_histograms <- function() {
     filtered <- function(E, R_low, R_high, n_bins, n_bins_per_point) {
         build_residual_histograms(
             E, R_low, R_high, n_bins, n_bins_per_point,
-            neighbor_mask = matrix(TRUE, nrow = dim(E)[3], ncol=dim(E)[2], byrow=TRUE)
+            neighbor_mask = matrix(TRUE, nrow = dim(E)[2], ncol = dim(E)[3])
         )
     }
 
@@ -532,5 +532,22 @@ test_jct_compute_jsd_pipeline <- function() {
 # consensus-based version (see tox_data_integration_js_comp_test) -- the old 2-study test that
 # lived in this file was removed rather than adapted, since the signature is unrelated. Its own
 # direct test coverage now lives in mod_test_data_integration_stats.R.
+
+# an optional mask was compared with nothing, and a 1x1 one read past (#221 attack-shape F1);
+# adapted to this branch's signatures: build_residual_histograms takes the range bounds and the
+# per-point bin counts, and the 2-study gjct_permutation_test is gone, so its two masks are
+# checked through jct_compute_jsd_pipeline, which takes the same two optional masks
+test_a_mask_smaller_than_its_neighbourhoods_is_refused <- function() {
+  small <- matrix(TRUE, 1, 1)
+  assert_error(build_residual_histograms(array(0, dim = c(1L, 2L, 4L)), rep(-2.0, 4L), rep(2.0, 4L), 4L,
+                                         rep(4L, 4L), neighbor_mask = small),
+               "a 1x1 mask for 2x4 neighbourhoods must be refused")
+  S1 <- array(0, dim = c(4L, 1L, 2L))
+  S2 <- array(0, dim = c(3L, 1L, 2L))
+  assert_error(jct_compute_jsd_pipeline(S1, S2, 4L, 10.0, neighbor_mask_S1 = small),
+               "neighbor_mask_S1 of 1x1 for 1x2 neighbourhoods must be refused")
+  assert_error(jct_compute_jsd_pipeline(S1, S2, 4L, 10.0, neighbor_mask_S2 = small),
+               "neighbor_mask_S2 of 1x1 for 1x2 neighbourhoods must be refused")
+}
 
 run_all_tests()

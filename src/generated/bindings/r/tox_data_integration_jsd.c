@@ -3,7 +3,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "tox_marshal.h"
-// tox_marshal.h 0e1e7c507a726932 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
+// tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
 void determine_shared_residual_range_c(const double*, const int*, double*, const double*, int*);
@@ -18,12 +18,12 @@ void create_mean_pmf_c(const double*, const int*, const int*, const int*, const 
 void create_mean_pmf_only_c(const double*, const int*, const int*, const int*, double*, int*);
 
 SEXP determine_shared_residual_range_call(SEXP abs_residual_pool, SEXP residual_range_quantile_level) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int pool_size = (int) Rf_length(abs_residual_pool);
 
     // scalar inputs, pulled from their length-1 vectors
-    double residual_range_quantile_level_v = Rf_asReal(residual_range_quantile_level);
+    double _v_residual_range_quantile_level = Rf_asReal(residual_range_quantile_level);
 
     // outputs and work space
     double shared_residual_range = 0;
@@ -33,28 +33,31 @@ SEXP determine_shared_residual_range_call(SEXP abs_residual_pool, SEXP residual_
         REAL(abs_residual_pool),
         &pool_size,
         &shared_residual_range,
-        &residual_range_quantile_level_v,
+        &_v_residual_range_quantile_level,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, Rf_ScalarReal(shared_residual_range));
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("shared_residual_range"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 
 SEXP determine_shared_residual_range_expert_call(SEXP abs_residual_pool, SEXP abs_residual_pool_perm, SEXP residual_range_quantile_level) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int pool_size = (int) Rf_length(abs_residual_pool);
 
     // scalar inputs, pulled from their length-1 vectors
-    double residual_range_quantile_level_v = Rf_asReal(residual_range_quantile_level);
+    double _v_residual_range_quantile_level = Rf_asReal(residual_range_quantile_level);
+
+    // convert what Fortran cannot take from R directly
+    const int* _c_abs_residual_pool_perm = tox_int_in(abs_residual_pool_perm, "abs_residual_pool_perm");
 
     // outputs and work space
     double shared_residual_range = 0;
@@ -62,26 +65,26 @@ SEXP determine_shared_residual_range_expert_call(SEXP abs_residual_pool, SEXP ab
 
     determine_shared_residual_range_expert_c(
         REAL(abs_residual_pool),
-        INTEGER(abs_residual_pool_perm),
+        _c_abs_residual_pool_perm,
         &pool_size,
         &shared_residual_range,
-        &residual_range_quantile_level_v,
+        &_v_residual_range_quantile_level,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, Rf_ScalarReal(shared_residual_range));
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("shared_residual_range"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 
 SEXP determine_study_shared_residual_range_call(SEXP neighborhood_residuals_S1, SEXP neighborhood_residuals_S2, SEXP residual_range_quantile_level) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_reps_S1 = INTEGER(Rf_getAttrib(neighborhood_residuals_S1, R_DimSymbol))[0];
     int n_reps_S2 = INTEGER(Rf_getAttrib(neighborhood_residuals_S2, R_DimSymbol))[0];
@@ -89,7 +92,7 @@ SEXP determine_study_shared_residual_range_call(SEXP neighborhood_residuals_S1, 
     int n_points = INTEGER(Rf_getAttrib(neighborhood_residuals_S1, R_DimSymbol))[2];
 
     // scalar inputs, pulled from their length-1 vectors
-    double residual_range_quantile_level_v = Rf_asReal(residual_range_quantile_level);
+    double _v_residual_range_quantile_level = Rf_asReal(residual_range_quantile_level);
 
     // outputs and work space
     double shared_residual_range = 0;
@@ -103,31 +106,31 @@ SEXP determine_study_shared_residual_range_call(SEXP neighborhood_residuals_S1, 
         &n_neighbors,
         &n_points,
         &shared_residual_range,
-        &residual_range_quantile_level_v,
+        &_v_residual_range_quantile_level,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, Rf_ScalarReal(shared_residual_range));
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("shared_residual_range"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 
 SEXP build_residual_histograms_call(SEXP neighborhood_residuals, SEXP shared_residual_range_low, SEXP shared_residual_range_high, SEXP max_n_bins, SEXP n_bins_per_point, SEXP neighbor_mask) {
-    int nprot = 0;
+    int _nprot = 0;
     // optionals: a null pointer and size 0 when the caller omits them
-    int neighbor_mask_size = 0;
-    int neighbor_mask_dim[2]; for (int i = 0; i < 2; ++i) neighbor_mask_dim[i] = 0;
+    int _size_neighbor_mask = 0;
+    int _dim_neighbor_mask[2]; for (int _i = 0; _i < 2; ++_i) _dim_neighbor_mask[_i] = 0;
     if (neighbor_mask != R_NilValue) {
-        neighbor_mask_size = (int) Rf_length(neighbor_mask);
-        SEXP neighbor_mask_d = Rf_getAttrib(neighbor_mask, R_DimSymbol);
-        if (neighbor_mask_d != R_NilValue) {
-            for (int i = 0; i < 2 && i < (int) Rf_length(neighbor_mask_d); ++i) neighbor_mask_dim[i] = INTEGER(neighbor_mask_d)[i];
+        _size_neighbor_mask = (int) Rf_length(neighbor_mask);
+        SEXP _d_neighbor_mask = Rf_getAttrib(neighbor_mask, R_DimSymbol);
+        if (_d_neighbor_mask != R_NilValue) {
+            for (int _i = 0; _i < 2 && _i < (int) Rf_length(_d_neighbor_mask); ++_i) _dim_neighbor_mask[_i] = INTEGER(_d_neighbor_mask)[_i];
         }
     }
 
@@ -137,17 +140,18 @@ SEXP build_residual_histograms_call(SEXP neighborhood_residuals, SEXP shared_res
     int n_points = INTEGER(Rf_getAttrib(neighborhood_residuals, R_DimSymbol))[2];
 
     // scalar inputs, pulled from their length-1 vectors
-    int max_n_bins_v = Rf_asInteger(max_n_bins);
+    int _v_max_n_bins = Rf_asInteger(max_n_bins);
 
     // convert what Fortran cannot take from R directly
-    unsigned char* neighbor_mask_c = tox_bool_in(neighbor_mask);
+    const int* _c_n_bins_per_point = tox_int_in(n_bins_per_point, "n_bins_per_point");
+    unsigned char* _c_neighbor_mask = tox_bool_in(neighbor_mask, "neighbor_mask");
 
     // outputs and work space
-    SEXP counts = PROTECT(Rf_allocVector(INTSXP, n_points * max_n_bins_v)); nprot++;
-    { SEXP counts_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(counts_dim)[0] = n_points; INTEGER(counts_dim)[1] = max_n_bins_v; Rf_setAttrib(counts, R_DimSymbol, counts_dim); UNPROTECT(1); }
-    SEXP pmf = PROTECT(Rf_allocVector(REALSXP, n_points * max_n_bins_v)); nprot++;
-    { SEXP pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(pmf_dim)[0] = n_points; INTEGER(pmf_dim)[1] = max_n_bins_v; Rf_setAttrib(pmf, R_DimSymbol, pmf_dim); UNPROTECT(1); }
-    SEXP included_n_reps = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
+    SEXP counts = PROTECT(Rf_allocVector(INTSXP, n_points * _v_max_n_bins)); _nprot++;
+    { SEXP _dim_counts = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_counts)[0] = n_points; INTEGER(_dim_counts)[1] = _v_max_n_bins; Rf_setAttrib(counts, R_DimSymbol, _dim_counts); UNPROTECT(1); }
+    SEXP pmf = PROTECT(Rf_allocVector(REALSXP, n_points * _v_max_n_bins)); _nprot++;
+    { SEXP _dim_pmf = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_pmf)[0] = n_points; INTEGER(_dim_pmf)[1] = _v_max_n_bins; Rf_setAttrib(pmf, R_DimSymbol, _dim_pmf); UNPROTECT(1); }
+    SEXP included_n_reps = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
     int ierr = 0;
 
     build_residual_histograms_c(
@@ -157,69 +161,73 @@ SEXP build_residual_histograms_call(SEXP neighborhood_residuals, SEXP shared_res
         &n_points,
         REAL(shared_residual_range_low),
         REAL(shared_residual_range_high),
-        &max_n_bins_v,
-        INTEGER(n_bins_per_point),
+        &_v_max_n_bins,
+        _c_n_bins_per_point,
         INTEGER(counts),
         REAL(pmf),
         INTEGER(included_n_reps),
-        neighbor_mask != R_NilValue ? neighbor_mask_c : NULL,
+        neighbor_mask != R_NilValue ? _c_neighbor_mask : NULL,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); _nprot++;
     SET_VECTOR_ELT(_out, 0, counts);
     SET_VECTOR_ELT(_out, 1, pmf);
     SET_VECTOR_ELT(_out, 2, included_n_reps);
     SET_VECTOR_ELT(_out, 3, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("counts"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("pmf"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("included_n_reps"));
     SET_STRING_ELT(_nms, 3, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 
 SEXP calc_pmf_call(SEXP counts, SEXP included_n_reps) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_points = INTEGER(Rf_getAttrib(counts, R_DimSymbol))[0];
     int n_bins = INTEGER(Rf_getAttrib(counts, R_DimSymbol))[1];
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_counts = tox_int_in(counts, "counts");
+    const int* _c_included_n_reps = tox_int_in(included_n_reps, "included_n_reps");
+
     // outputs and work space
-    SEXP pmf = PROTECT(Rf_allocVector(REALSXP, n_points * n_bins)); nprot++;
-    { SEXP pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(pmf_dim)[0] = n_points; INTEGER(pmf_dim)[1] = n_bins; Rf_setAttrib(pmf, R_DimSymbol, pmf_dim); UNPROTECT(1); }
+    SEXP pmf = PROTECT(Rf_allocVector(REALSXP, n_points * n_bins)); _nprot++;
+    { SEXP _dim_pmf = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_pmf)[0] = n_points; INTEGER(_dim_pmf)[1] = n_bins; Rf_setAttrib(pmf, R_DimSymbol, _dim_pmf); UNPROTECT(1); }
     int ierr = 0;
 
     calc_pmf_c(
-        INTEGER(counts),
-        INTEGER(included_n_reps),
+        _c_counts,
+        _c_included_n_reps,
         &n_points,
         &n_bins,
         REAL(pmf),
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, pmf);
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("pmf"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 
 SEXP compute_divergence_per_reference_point_call(SEXP pmf_S1, SEXP pmf_S2) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_points = INTEGER(Rf_getAttrib(pmf_S1, R_DimSymbol))[0];
     int n_bins = INTEGER(Rf_getAttrib(pmf_S1, R_DimSymbol))[1];
 
     // outputs and work space
-    SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, n_points)); nprot++;
+    SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
     int ierr = 0;
 
     compute_divergence_per_reference_point_c(
@@ -231,69 +239,73 @@ SEXP compute_divergence_per_reference_point_call(SEXP pmf_S1, SEXP pmf_S2) {
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, js_divergences);
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("js_divergences"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 
 SEXP compute_weighted_global_divergence_call(SEXP js_divergences, SEXP included_n_reps_S1, SEXP included_n_reps_S2) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_points = (int) Rf_length(js_divergences);
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_included_n_reps_S1 = tox_int_in(included_n_reps_S1, "included_n_reps_S1");
+    const int* _c_included_n_reps_S2 = tox_int_in(included_n_reps_S2, "included_n_reps_S2");
+
     // outputs and work space
     double global_js_divergence = 0;
-    SEXP weights = PROTECT(Rf_allocVector(REALSXP, n_points)); nprot++;
+    SEXP weights = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
     int ierr = 0;
 
     compute_weighted_global_divergence_c(
         REAL(js_divergences),
         &n_points,
-        INTEGER(included_n_reps_S1),
-        INTEGER(included_n_reps_S2),
+        _c_included_n_reps_S1,
+        _c_included_n_reps_S2,
         &global_js_divergence,
         REAL(weights),
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); _nprot++;
     SET_VECTOR_ELT(_out, 0, Rf_ScalarReal(global_js_divergence));
     SET_VECTOR_ELT(_out, 1, weights);
     SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 3)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 3)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("global_js_divergence"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("weights"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 
 SEXP jct_compute_jsd_pipeline_call(SEXP neighborhood_residuals_S1, SEXP neighborhood_residuals_S2, SEXP n_bins, SEXP shared_residual_range, SEXP neighbor_mask_S1, SEXP neighbor_mask_S2) {
-    int nprot = 0;
+    int _nprot = 0;
     // optionals: a null pointer and size 0 when the caller omits them
-    int neighbor_mask_S1_size = 0;
-    int neighbor_mask_S1_dim[2]; for (int i = 0; i < 2; ++i) neighbor_mask_S1_dim[i] = 0;
+    int _size_neighbor_mask_S1 = 0;
+    int _dim_neighbor_mask_S1[2]; for (int _i = 0; _i < 2; ++_i) _dim_neighbor_mask_S1[_i] = 0;
     if (neighbor_mask_S1 != R_NilValue) {
-        neighbor_mask_S1_size = (int) Rf_length(neighbor_mask_S1);
-        SEXP neighbor_mask_S1_d = Rf_getAttrib(neighbor_mask_S1, R_DimSymbol);
-        if (neighbor_mask_S1_d != R_NilValue) {
-            for (int i = 0; i < 2 && i < (int) Rf_length(neighbor_mask_S1_d); ++i) neighbor_mask_S1_dim[i] = INTEGER(neighbor_mask_S1_d)[i];
+        _size_neighbor_mask_S1 = (int) Rf_length(neighbor_mask_S1);
+        SEXP _d_neighbor_mask_S1 = Rf_getAttrib(neighbor_mask_S1, R_DimSymbol);
+        if (_d_neighbor_mask_S1 != R_NilValue) {
+            for (int _i = 0; _i < 2 && _i < (int) Rf_length(_d_neighbor_mask_S1); ++_i) _dim_neighbor_mask_S1[_i] = INTEGER(_d_neighbor_mask_S1)[_i];
         }
     }
-    int neighbor_mask_S2_size = 0;
-    int neighbor_mask_S2_dim[2]; for (int i = 0; i < 2; ++i) neighbor_mask_S2_dim[i] = 0;
+    int _size_neighbor_mask_S2 = 0;
+    int _dim_neighbor_mask_S2[2]; for (int _i = 0; _i < 2; ++_i) _dim_neighbor_mask_S2[_i] = 0;
     if (neighbor_mask_S2 != R_NilValue) {
-        neighbor_mask_S2_size = (int) Rf_length(neighbor_mask_S2);
-        SEXP neighbor_mask_S2_d = Rf_getAttrib(neighbor_mask_S2, R_DimSymbol);
-        if (neighbor_mask_S2_d != R_NilValue) {
-            for (int i = 0; i < 2 && i < (int) Rf_length(neighbor_mask_S2_d); ++i) neighbor_mask_S2_dim[i] = INTEGER(neighbor_mask_S2_d)[i];
+        _size_neighbor_mask_S2 = (int) Rf_length(neighbor_mask_S2);
+        SEXP _d_neighbor_mask_S2 = Rf_getAttrib(neighbor_mask_S2, R_DimSymbol);
+        if (_d_neighbor_mask_S2 != R_NilValue) {
+            for (int _i = 0; _i < 2 && _i < (int) Rf_length(_d_neighbor_mask_S2); ++_i) _dim_neighbor_mask_S2[_i] = INTEGER(_d_neighbor_mask_S2)[_i];
         }
     }
 
@@ -304,23 +316,23 @@ SEXP jct_compute_jsd_pipeline_call(SEXP neighborhood_residuals_S1, SEXP neighbor
     int n_points = INTEGER(Rf_getAttrib(neighborhood_residuals_S1, R_DimSymbol))[2];
 
     // scalar inputs, pulled from their length-1 vectors
-    int n_bins_v = Rf_asInteger(n_bins);
-    double shared_residual_range_v = Rf_asReal(shared_residual_range);
+    int _v_n_bins = Rf_asInteger(n_bins);
+    double _v_shared_residual_range = Rf_asReal(shared_residual_range);
 
     // convert what Fortran cannot take from R directly
-    unsigned char* neighbor_mask_S1_c = tox_bool_in(neighbor_mask_S1);
-    unsigned char* neighbor_mask_S2_c = tox_bool_in(neighbor_mask_S2);
+    unsigned char* _c_neighbor_mask_S1 = tox_bool_in(neighbor_mask_S1, "neighbor_mask_S1");
+    unsigned char* _c_neighbor_mask_S2 = tox_bool_in(neighbor_mask_S2, "neighbor_mask_S2");
 
     // outputs and work space
-    SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, n_points)); nprot++;
-    SEXP included_n_reps_S1 = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
-    SEXP included_n_reps_S2 = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
+    SEXP js_divergences = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
+    SEXP included_n_reps_S1 = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
+    SEXP included_n_reps_S2 = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
     double global_js_divergence = 0;
-    SEXP weights = PROTECT(Rf_allocVector(REALSXP, n_points)); nprot++;
-    SEXP pmf_S1 = PROTECT(Rf_allocVector(REALSXP, n_points * n_bins_v)); nprot++;
-    { SEXP pmf_S1_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(pmf_S1_dim)[0] = n_points; INTEGER(pmf_S1_dim)[1] = n_bins_v; Rf_setAttrib(pmf_S1, R_DimSymbol, pmf_S1_dim); UNPROTECT(1); }
-    SEXP pmf_S2 = PROTECT(Rf_allocVector(REALSXP, n_points * n_bins_v)); nprot++;
-    { SEXP pmf_S2_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(pmf_S2_dim)[0] = n_points; INTEGER(pmf_S2_dim)[1] = n_bins_v; Rf_setAttrib(pmf_S2, R_DimSymbol, pmf_S2_dim); UNPROTECT(1); }
+    SEXP weights = PROTECT(Rf_allocVector(REALSXP, n_points)); _nprot++;
+    SEXP pmf_S1 = PROTECT(Rf_allocVector(REALSXP, n_points * _v_n_bins)); _nprot++;
+    { SEXP _dim_pmf_S1 = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_pmf_S1)[0] = n_points; INTEGER(_dim_pmf_S1)[1] = _v_n_bins; Rf_setAttrib(pmf_S1, R_DimSymbol, _dim_pmf_S1); UNPROTECT(1); }
+    SEXP pmf_S2 = PROTECT(Rf_allocVector(REALSXP, n_points * _v_n_bins)); _nprot++;
+    { SEXP _dim_pmf_S2 = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_pmf_S2)[0] = n_points; INTEGER(_dim_pmf_S2)[1] = _v_n_bins; Rf_setAttrib(pmf_S2, R_DimSymbol, _dim_pmf_S2); UNPROTECT(1); }
     int ierr = 0;
 
     jct_compute_jsd_pipeline_c(
@@ -330,8 +342,8 @@ SEXP jct_compute_jsd_pipeline_call(SEXP neighborhood_residuals_S1, SEXP neighbor
         &n_reps_S2,
         &n_neighbors,
         &n_points,
-        &n_bins_v,
-        &shared_residual_range_v,
+        &_v_n_bins,
+        &_v_shared_residual_range,
         REAL(js_divergences),
         INTEGER(included_n_reps_S1),
         INTEGER(included_n_reps_S2),
@@ -339,12 +351,12 @@ SEXP jct_compute_jsd_pipeline_call(SEXP neighborhood_residuals_S1, SEXP neighbor
         REAL(weights),
         REAL(pmf_S1),
         REAL(pmf_S2),
-        neighbor_mask_S1 != R_NilValue ? neighbor_mask_S1_c : NULL,
-        neighbor_mask_S2 != R_NilValue ? neighbor_mask_S2_c : NULL,
+        neighbor_mask_S1 != R_NilValue ? _c_neighbor_mask_S1 : NULL,
+        neighbor_mask_S2 != R_NilValue ? _c_neighbor_mask_S2 : NULL,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 8)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 8)); _nprot++;
     SET_VECTOR_ELT(_out, 0, js_divergences);
     SET_VECTOR_ELT(_out, 1, included_n_reps_S1);
     SET_VECTOR_ELT(_out, 2, included_n_reps_S2);
@@ -353,7 +365,7 @@ SEXP jct_compute_jsd_pipeline_call(SEXP neighborhood_residuals_S1, SEXP neighbor
     SET_VECTOR_ELT(_out, 5, pmf_S1);
     SET_VECTOR_ELT(_out, 6, pmf_S2);
     SET_VECTOR_ELT(_out, 7, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 8)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 8)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("js_divergences"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("included_n_reps_S1"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("included_n_reps_S2"));
@@ -363,63 +375,67 @@ SEXP jct_compute_jsd_pipeline_call(SEXP neighborhood_residuals_S1, SEXP neighbor
     SET_STRING_ELT(_nms, 6, Rf_mkChar("pmf_S2"));
     SET_STRING_ELT(_nms, 7, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 
 SEXP create_mean_pmf_call(SEXP pmfs, SEXP counts, SEXP included_n_reps) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_bins = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[1];
     int n_points = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[0];
     int n_studies = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[2];
 
+    // convert what Fortran cannot take from R directly
+    const int* _c_counts = tox_int_in(counts, "counts");
+    const int* _c_included_n_reps = tox_int_in(included_n_reps, "included_n_reps");
+
     // outputs and work space
-    SEXP mean_pmf = PROTECT(Rf_allocVector(REALSXP, n_points * n_bins)); nprot++;
-    { SEXP mean_pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_dim)[0] = n_points; INTEGER(mean_pmf_dim)[1] = n_bins; Rf_setAttrib(mean_pmf, R_DimSymbol, mean_pmf_dim); UNPROTECT(1); }
-    SEXP mean_pmf_included_n_reps = PROTECT(Rf_allocVector(INTSXP, n_points)); nprot++;
-    SEXP mean_pmf_counts = PROTECT(Rf_allocVector(INTSXP, n_points * n_bins)); nprot++;
-    { SEXP mean_pmf_counts_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_counts_dim)[0] = n_points; INTEGER(mean_pmf_counts_dim)[1] = n_bins; Rf_setAttrib(mean_pmf_counts, R_DimSymbol, mean_pmf_counts_dim); UNPROTECT(1); }
+    SEXP mean_pmf = PROTECT(Rf_allocVector(REALSXP, n_points * n_bins)); _nprot++;
+    { SEXP _dim_mean_pmf = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_mean_pmf)[0] = n_points; INTEGER(_dim_mean_pmf)[1] = n_bins; Rf_setAttrib(mean_pmf, R_DimSymbol, _dim_mean_pmf); UNPROTECT(1); }
+    SEXP mean_pmf_included_n_reps = PROTECT(Rf_allocVector(INTSXP, n_points)); _nprot++;
+    SEXP mean_pmf_counts = PROTECT(Rf_allocVector(INTSXP, n_points * n_bins)); _nprot++;
+    { SEXP _dim_mean_pmf_counts = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_mean_pmf_counts)[0] = n_points; INTEGER(_dim_mean_pmf_counts)[1] = n_bins; Rf_setAttrib(mean_pmf_counts, R_DimSymbol, _dim_mean_pmf_counts); UNPROTECT(1); }
     int ierr = 0;
 
     create_mean_pmf_c(
         REAL(pmfs),
-        INTEGER(counts),
+        _c_counts,
         &n_bins,
         &n_points,
         &n_studies,
-        INTEGER(included_n_reps),
+        _c_included_n_reps,
         REAL(mean_pmf),
         INTEGER(mean_pmf_included_n_reps),
         INTEGER(mean_pmf_counts),
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); _nprot++;
     SET_VECTOR_ELT(_out, 0, mean_pmf);
     SET_VECTOR_ELT(_out, 1, mean_pmf_included_n_reps);
     SET_VECTOR_ELT(_out, 2, mean_pmf_counts);
     SET_VECTOR_ELT(_out, 3, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("mean_pmf"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("mean_pmf_included_n_reps"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("mean_pmf_counts"));
     SET_STRING_ELT(_nms, 3, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 
 SEXP create_mean_pmf_only_call(SEXP pmfs) {
-    int nprot = 0;
+    int _nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_bins = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[1];
     int n_points = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[0];
     int n_studies = INTEGER(Rf_getAttrib(pmfs, R_DimSymbol))[2];
 
     // outputs and work space
-    SEXP mean_pmf = PROTECT(Rf_allocVector(REALSXP, n_points * n_bins)); nprot++;
-    { SEXP mean_pmf_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(mean_pmf_dim)[0] = n_points; INTEGER(mean_pmf_dim)[1] = n_bins; Rf_setAttrib(mean_pmf, R_DimSymbol, mean_pmf_dim); UNPROTECT(1); }
+    SEXP mean_pmf = PROTECT(Rf_allocVector(REALSXP, n_points * n_bins)); _nprot++;
+    { SEXP _dim_mean_pmf = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(_dim_mean_pmf)[0] = n_points; INTEGER(_dim_mean_pmf)[1] = n_bins; Rf_setAttrib(mean_pmf, R_DimSymbol, _dim_mean_pmf); UNPROTECT(1); }
     int ierr = 0;
 
     create_mean_pmf_only_c(
@@ -431,14 +447,14 @@ SEXP create_mean_pmf_only_call(SEXP pmfs) {
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
     SET_VECTOR_ELT(_out, 0, mean_pmf);
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); _nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("mean_pmf"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
+    UNPROTECT(_nprot);
     return _out;
 }
 

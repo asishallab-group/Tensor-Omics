@@ -619,5 +619,25 @@ def main():
     run_all_tests(globals().values())
 
 
+def test_a_mask_smaller_than_its_neighbourhoods_is_refused():
+    """An optional mask was compared with nothing, and a 1x1 one read past (#221 attack-shape F1).
+
+    On this branch build_residual_histograms takes the range bounds and the per-point bin counts,
+    and the 2-study gjct_permutation_test is gone, so its two masks are checked through
+    jct_compute_jsd_pipeline, which takes the same two optional masks."""
+    E = np.zeros((1, 2, 4), dtype=np.float64, order="F")
+    S1 = np.zeros((4, 1, 2), dtype=np.float64, order="F")
+    S2 = np.zeros((3, 1, 2), dtype=np.float64, order="F")
+    small = np.full((1, 1), True, order="F")
+    R_low, R_high = np.full(4, -2.0), np.full(4, 2.0)
+    n_bins_per_point = np.full(4, 4, dtype=np.int32)
+
+    assert_error(lambda: build_residual_histograms(E, R_low, R_high, 4, n_bins_per_point, neighbor_mask=small),
+                 "a 1x1 mask for 2x4 neighbourhoods must be refused")
+    for masks in ({"neighbor_mask_S1": small}, {"neighbor_mask_S2": small}):
+        assert_error(lambda: jct_compute_jsd_pipeline(S1, S2, 4, 10.0, **masks),
+                     f"{next(iter(masks))} of 1x1 for 1x2 neighbourhoods must be refused")
+
+
 if __name__ == "__main__":
     main()

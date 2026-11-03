@@ -18,22 +18,23 @@ heaps for a caller that allocates its own.
 Python binding, generated from tox_data_integration_stats_impl. Do not edit.
 """
 
-import ctypes
-import os
+import ctypes as _ctypes
+import os as _os
 
-import numpy as np
+import numpy as _np
 
-from .error_handling import check_err_code
-from .library import load_library, nullable
+from . import _contract as _contract
+from .error_handling import ToxArgumentError as _ToxArgumentError, check_err_code as _check_err_code
+from .library import load_library as _load_library, nullable as _nullable
 
-_lib = load_library()
+_lib = _load_library()
 
 _lib.calc_js_comp_test_n_top_k_jsds_c.restype = None
 _lib.calc_js_comp_test_n_top_k_jsds_c.argtypes = (
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_double),
+    _ctypes.POINTER(_ctypes.c_int),
+    _ctypes.POINTER(_ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
@@ -72,6 +73,9 @@ def calc_js_comp_test_n_top_k_jsds(
 
     Raises
     ------
+    ToxArgumentError
+        If an argument is refused before the library is called: its shape, type
+        or value. A ToxInputError without a code, and a TypeError and a ValueError.
     ToxError
         If the underlying Fortran reports an error.
 
@@ -80,17 +84,21 @@ def calc_js_comp_test_n_top_k_jsds(
     Generated from the Fortran procedure `tox_data_integration_stats_impl::calc_js_comp_test_n_top_k_jsds`, whose argument names are
     the ones an error message reports.
     """
+    # check every input by the input contract, converting only when C needs it
+    n_bootstraps = _contract.integer(n_bootstraps, "n_bootstraps")
+    two_sided_bootstrapping_significance_level = _contract.real(two_sided_bootstrapping_significance_level, "two_sided_bootstrapping_significance_level")
+
     # outputs and work arrays, which the caller never sees
-    n_top_k = ctypes.c_int(0)
-    ierr = ctypes.c_int(0)
+    n_top_k = _ctypes.c_int(0)
+    ierr = _ctypes.c_int(0)
 
     _lib.calc_js_comp_test_n_top_k_jsds_c(
-        ctypes.byref(ctypes.c_int(n_bootstraps)),
-        ctypes.byref(ctypes.c_double(two_sided_bootstrapping_significance_level)),
-        ctypes.byref(n_top_k),
-        ctypes.byref(ierr),
+        _ctypes.byref(_ctypes.c_int(n_bootstraps)),
+        _ctypes.byref(_ctypes.c_double(two_sided_bootstrapping_significance_level)),
+        _ctypes.byref(n_top_k),
+        _ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_JS_COMP_TEST_N_TOP_K_JSDS_ARGUMENTS)
+    _check_err_code(ierr.value, _CALC_JS_COMP_TEST_N_TOP_K_JSDS_ARGUMENTS)
 
     return n_top_k.value
