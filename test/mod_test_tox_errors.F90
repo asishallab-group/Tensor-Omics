@@ -219,6 +219,13 @@ contains
     call assert_equal_int(n_wrong_real(-1.0_real64, ERR_OK, min=0.0_real64, sentinel=-1.0_real64), 0_int32, "finite sentinel")
     call assert_equal_int(n_wrong_real(-2.0_real64, create_err_code(ERR_INVALID_INPUT, ARG_POS), min=0.0_real64, &
                                        sentinel=-1.0_real64), 0_int32, "another value than the sentinel")
+    call assert_equal_int(n_wrong_real(5.0_real64, create_err_code(ERR_INVALID_INPUT, ARG_POS), max=2.0_real64, &
+                                       sentinel=-5.0_real64), 0_int32, "the sentinel's sign counts")
+    ! a NaN sentinel matches only NaN, not the number whose key it happens to share (0.0's is 0)
+    call assert_equal_int(n_wrong_real(0.0_real64, create_err_code(ERR_INVALID_INPUT, ARG_POS), min=0.5_real64, &
+                                       sentinel=nan), 0_int32, "0.0 below the bound, NaN sentinel")
+    call assert_equal_int(n_wrong_real(0.0_real64, create_err_code(ERR_INVALID_INPUT, ARG_POS), min=0.5_real64, &
+                                       sentinel=SIGNALLING_NAN), 0_int32, "0.0 below the bound, sNaN sentinel")
   end subroutine test_real_opt_outs_at_every_position
 
   subroutine test_real_edge_calls()
@@ -269,6 +276,8 @@ contains
     call assert_equal_int(n_wrong_int(-1_int32, ERR_OK, min=0_int32, sentinel=-1_int32), 0_int32, "the sentinel")
     call assert_equal_int(n_wrong_int(-2_int32, create_err_code(ERR_INVALID_INPUT, ARG_POS), min=0_int32, sentinel=-1_int32), &
                           0_int32, "another value than the sentinel")
+    call assert_equal_int(n_wrong_int(3_int32, create_err_code(ERR_INVALID_INPUT, ARG_POS), max=2_int32, sentinel=-1_int32), &
+                          0_int32, "above the upper bound, with a sentinel")
   end subroutine test_int_sentinel_at_every_position
 
   subroutine test_int_edge_calls()
@@ -367,7 +376,10 @@ contains
     call assert_equal_int(n_wrong_real(pos_inf, create_err_code(ERR_NAN_INF, ARG_POS), min=SIGNALLING_NAN, max=nan), 0_int32, &
                           "+Inf value, NaN bounds")
     call assert_equal_int(n_wrong_real(-1e300_real64, ERR_OK, min=nan, allow_nan=.true._c_bool), 0_int32, &
-                          "finite value, NaN bound, per-element path")
+                          "finite value, NaN bound, allow_nan")
+    ! the infinity fails the scan, so the per-element path decides, with NaN bounds and an opt-out
+    call assert_equal_int(n_wrong_real(pos_inf, create_err_code(ERR_NAN_INF, ARG_POS), min=nan, max=SIGNALLING_NAN, &
+                                       allow_nan=.true._c_bool), 0_int32, "+Inf value, NaN bounds, allow_nan, per-element path")
   end subroutine test_real_nan_bounds_raise_no_flag
 
   !> The scalar validator, which the array one falls back on: no flag for any NaN or infinity, as value, bound or sentinel.

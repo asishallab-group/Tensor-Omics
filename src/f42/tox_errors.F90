@@ -369,8 +369,9 @@ contains
     !| exactly when their keys are equal: -0.0 and +0.0 both get 0. A NaN gets a key beyond those of +/-infinity.
     !|
     !| The validators compare through these keys because they must never raise an IEEE flag, whatever
-    !| they are given (#218). Comparing the reals does: `<` and `>=` raise invalid on a quiet NaN, every
-    !| comparison raises it on a signalling NaN, and on gfortran so do `ieee_is_nan` and `ieee_is_finite`.
+    !| they are given (#218). Comparing the reals does: every comparison raises invalid on a signalling NaN,
+    !| on gfortran `<` and `>=` raise it on a quiet NaN too (ifx compiles them to quiet comparisons), and on
+    !| gfortran so do `ieee_is_nan` and `ieee_is_finite` on a signalling NaN.
     !| A host that halts on invalid would stop inside the validator instead of getting `ierr` back.
     elemental integer(int64) function ordered_key(x)
         real(real64), intent(in) :: x
@@ -515,7 +516,7 @@ contains
             !   where `val < NaN` is false.
             ! - A NaN under allow_nan or a NaN sentinel, an infinity under allow_infinite, and any value
             !   equal to a sentinel that is not NaN.
-            ! Without opt-outs only the range counts, and a scan of it alone takes a third of the time.
+            ! Without opt-outs only the range counts, and a scan of it alone is 1.6-2x faster (measured).
             ! Each test is its own statement because gfortran does not vectorise a chain of `.and.` and
             ! `.or.` over comparisons: it short-circuits.
             M_DEFAULT_VAL(allow_nan, nan_ok, .false.)
