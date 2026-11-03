@@ -13,9 +13,9 @@ type = "shared"
 include-dir = ["."]
 
 [features]
-unknown-compiler.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
-gfortran.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
-ifx.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip", "iomp5"]
+unknown-compiler.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip", "gsl"]
+gfortran.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip", "gsl"]
+ifx.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip", "iomp5", "gsl"]
 
 optimization.ifx.flags = "-xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul"
 optimization.nvfortran.flags = "-Mconcur -fopenmp -stdpar=multicore"

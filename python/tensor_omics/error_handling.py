@@ -120,6 +120,34 @@ ERR_ALLOC_FAIL = 301
 #: memory allocation failed
 ERR_POINTER_NULL = 302
 #: null pointer dereference
+STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED = 401
+#: adaptive candidate: neighborhood construction reported too few means or too few residuals
+STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY = 402
+#: adaptive candidate: a study neighborhood below the minimum size, or a study without residuals at a point
+STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED = 403
+#: adaptive candidate: more reference points emerged than the point capacity
+STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED = 404
+#: adaptive candidate: two consecutive neighborhoods overlap too little
+STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED = 405
+#: adaptive candidate: a consensus-pmf bin holds too few residuals
+STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS = 411
+#: adaptive construction: fewer non-NaN pooled means than k_start, no neighborhood built
+STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD = 412
+#: adaptive construction: a neighborhood has too few entries of some study
+STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS = 413
+#: adaptive construction: a neighborhood stopped with too few residuals
+STAT_ADAPTIVE_STOP_TAU = 421
+#: adaptive neighborhood stopped: the next round would have raised the dispersion by more than tau
+STAT_ADAPTIVE_STOP_K_MAX = 422
+#: adaptive neighborhood stopped: it reached k_max pooled entries
+STAT_ADAPTIVE_STOP_RESIDUAL_CAP = 423
+#: adaptive neighborhood stopped: the next entry would have exceeded the pooled-residual cap
+STAT_ADAPTIVE_STOP_EXHAUSTED = 424
+#: adaptive neighborhood stopped: no pooled entry left on either side
+STAT_ADAPTIVE_STOP_ZERO_DISPERSION = 425
+#: adaptive neighborhood stopped: the k_start entries' residuals are all zero
+STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS = 426
+#: adaptive neighborhood stopped: too few non-NaN residuals after the k_start phase
 ERR_UNIT_NOT_CONNECTED = 5002
 #: Fortran runtime error: unit not connected
 ERR_INTERNAL = 9001
@@ -234,6 +262,20 @@ _EXCEPTIONS = {
 
 #: Status codes are outcomes, not failures, and never raise
 _STATUSES = {
+    401: "STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED",
+    402: "STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY",
+    403: "STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED",
+    404: "STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED",
+    405: "STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED",
+    411: "STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS",
+    412: "STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD",
+    413: "STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS",
+    421: "STAT_ADAPTIVE_STOP_TAU",
+    422: "STAT_ADAPTIVE_STOP_K_MAX",
+    423: "STAT_ADAPTIVE_STOP_RESIDUAL_CAP",
+    424: "STAT_ADAPTIVE_STOP_EXHAUSTED",
+    425: "STAT_ADAPTIVE_STOP_ZERO_DISPERSION",
+    426: "STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS",
 }
 
 def check_err_code(ierr, arguments=(), sources=(), shapes=()):

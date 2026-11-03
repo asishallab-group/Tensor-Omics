@@ -87,6 +87,38 @@ module tox_errors
         !! null pointer dereference
 
     !------------------------------
+    ! 4xx: Status codes (outcomes, not failures; never raised)
+    !------------------------------
+    integer(int32), parameter :: STAT_ADAPTIVE_CANDIDATE_CONSTRUCTION_FAILED = 401
+        !! adaptive candidate: neighborhood construction reported too few means or too few residuals
+    integer(int32), parameter :: STAT_ADAPTIVE_CANDIDATE_EMPTY_STUDY = 402
+        !! adaptive candidate: a study neighborhood below the minimum size, or a study without residuals at a point
+    integer(int32), parameter :: STAT_ADAPTIVE_CANDIDATE_CAPACITY_EXCEEDED = 403
+        !! adaptive candidate: more reference points emerged than the point capacity
+    integer(int32), parameter :: STAT_ADAPTIVE_CANDIDATE_OVERLAP_FAILED = 404
+        !! adaptive candidate: two consecutive neighborhoods overlap too little
+    integer(int32), parameter :: STAT_ADAPTIVE_CANDIDATE_MIN_COUNT_FAILED = 405
+        !! adaptive candidate: a consensus-pmf bin holds too few residuals
+    integer(int32), parameter :: STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_MEANS = 411
+        !! adaptive construction: fewer non-NaN pooled means than k_start, no neighborhood built
+    integer(int32), parameter :: STAT_ADAPTIVE_CONSTRUCTION_EMPTY_STUDY_NEIGHBORHOOD = 412
+        !! adaptive construction: a neighborhood has too few entries of some study
+    integer(int32), parameter :: STAT_ADAPTIVE_CONSTRUCTION_TOO_FEW_RESIDUALS = 413
+        !! adaptive construction: a neighborhood stopped with too few residuals
+    integer(int32), parameter :: STAT_ADAPTIVE_STOP_TAU = 421
+        !! adaptive neighborhood stopped: the next round would have raised the dispersion by more than tau
+    integer(int32), parameter :: STAT_ADAPTIVE_STOP_K_MAX = 422
+        !! adaptive neighborhood stopped: it reached k_max pooled entries
+    integer(int32), parameter :: STAT_ADAPTIVE_STOP_RESIDUAL_CAP = 423
+        !! adaptive neighborhood stopped: the next entry would have exceeded the pooled-residual cap
+    integer(int32), parameter :: STAT_ADAPTIVE_STOP_EXHAUSTED = 424
+        !! adaptive neighborhood stopped: no pooled entry left on either side
+    integer(int32), parameter :: STAT_ADAPTIVE_STOP_ZERO_DISPERSION = 425
+        !! adaptive neighborhood stopped: the k_start entries' residuals are all zero
+    integer(int32), parameter :: STAT_ADAPTIVE_STOP_TOO_FEW_RESIDUALS = 426
+        !! adaptive neighborhood stopped: too few non-NaN residuals after the k_start phase
+
+    !------------------------------
     ! 5xxx: Fortran runtime / Unit state
     ! (Keep 5002 for compatibility with existing R mapping)
     !------------------------------

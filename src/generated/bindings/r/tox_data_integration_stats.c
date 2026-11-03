@@ -6,84 +6,102 @@
 // tox_marshal.h 0e5d25b7db337126 -- its hash, so that fpm, which only hashes this file, recompiles it when the header changes
 
 // the Fortran C-ABI symbols this module calls
-void gjct_permutation_test_c(const double*, const double*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const int*, double*, double*, const int*, const unsigned char*, const unsigned char*, int*);
+void gjct_permutation_test_c(const int*, const int*, const int*, const int*, const int*, const double*, const int*, const int*, const double*, double*, double*, const int*, int*);
+void bootstrap_histogram_c(const int*, const int*, const int*, const int*, const int*, const int*, const int*, double*, const double*, const int*, int*);
 
-SEXP gjct_permutation_test_call(SEXP neighborhood_residuals_S1, SEXP neighborhood_residuals_S2, SEXP global_jsd_observed, SEXP n_bins, SEXP shared_residual_range, SEXP n_permutations, SEXP random_seed, SEXP neighbor_mask_S1, SEXP neighbor_mask_S2) {
+SEXP gjct_permutation_test_call(SEXP n_permutations, SEXP mean_pmf_counts, SEXP mean_pmf, SEXP mean_pmf_included_n_reps, SEXP included_n_reps, SEXP global_jsd_observed, SEXP random_seed) {
     int _nprot = 0;
-    // optionals: a null pointer and size 0 when the caller omits them
-    const int* _p_random_seed = NULL;
-    int _size_random_seed = 0;
-    if (random_seed != R_NilValue) {
-        _size_random_seed = (int) Rf_length(random_seed);
-        _p_random_seed = INTEGER(random_seed);
-    }
-    int _size_neighbor_mask_S1 = 0;
-    int _dim_neighbor_mask_S1[2]; for (int _i = 0; _i < 2; ++_i) _dim_neighbor_mask_S1[_i] = 0;
-    if (neighbor_mask_S1 != R_NilValue) {
-        _size_neighbor_mask_S1 = (int) Rf_length(neighbor_mask_S1);
-        SEXP _d_neighbor_mask_S1 = Rf_getAttrib(neighbor_mask_S1, R_DimSymbol);
-        if (_d_neighbor_mask_S1 != R_NilValue) {
-            for (int _i = 0; _i < 2 && _i < (int) Rf_length(_d_neighbor_mask_S1); ++_i) _dim_neighbor_mask_S1[_i] = INTEGER(_d_neighbor_mask_S1)[_i];
-        }
-    }
-    int _size_neighbor_mask_S2 = 0;
-    int _dim_neighbor_mask_S2[2]; for (int _i = 0; _i < 2; ++_i) _dim_neighbor_mask_S2[_i] = 0;
-    if (neighbor_mask_S2 != R_NilValue) {
-        _size_neighbor_mask_S2 = (int) Rf_length(neighbor_mask_S2);
-        SEXP _d_neighbor_mask_S2 = Rf_getAttrib(neighbor_mask_S2, R_DimSymbol);
-        if (_d_neighbor_mask_S2 != R_NilValue) {
-            for (int _i = 0; _i < 2 && _i < (int) Rf_length(_d_neighbor_mask_S2); ++_i) _dim_neighbor_mask_S2[_i] = INTEGER(_d_neighbor_mask_S2)[_i];
-        }
-    }
-
     // derived from the inputs, not asked of the caller
-    int n_reps_S1 = INTEGER(Rf_getAttrib(neighborhood_residuals_S1, R_DimSymbol))[0];
-    int n_reps_S2 = INTEGER(Rf_getAttrib(neighborhood_residuals_S2, R_DimSymbol))[0];
-    int n_neighbors = INTEGER(Rf_getAttrib(neighborhood_residuals_S1, R_DimSymbol))[1];
-    int n_points = INTEGER(Rf_getAttrib(neighborhood_residuals_S1, R_DimSymbol))[2];
+    int n_bins = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[1];
+    int n_points = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[0];
+    int n_studies = INTEGER(Rf_getAttrib(included_n_reps, R_DimSymbol))[1];
 
     // scalar inputs, pulled from their length-1 vectors
-    double _v_global_jsd_observed = Rf_asReal(global_jsd_observed);
-    int _v_n_bins = Rf_asInteger(n_bins);
-    double _v_shared_residual_range = Rf_asReal(shared_residual_range);
     int _v_n_permutations = Rf_asInteger(n_permutations);
+    int _v_random_seed = Rf_asInteger(random_seed);
 
     // convert what Fortran cannot take from R directly
-    unsigned char* _c_neighbor_mask_S1 = tox_bool_in(neighbor_mask_S1, "neighbor_mask_S1");
-    unsigned char* _c_neighbor_mask_S2 = tox_bool_in(neighbor_mask_S2, "neighbor_mask_S2");
+    const int* _c_mean_pmf_counts = tox_int_in(mean_pmf_counts, "mean_pmf_counts");
+    const int* _c_mean_pmf_included_n_reps = tox_int_in(mean_pmf_included_n_reps, "mean_pmf_included_n_reps");
+    const int* _c_included_n_reps = tox_int_in(included_n_reps, "included_n_reps");
 
     // outputs and work space
-    SEXP jsd_null = PROTECT(Rf_allocVector(REALSXP, _v_n_permutations)); _nprot++;
-    double p_value = 0;
+    SEXP p_values = PROTECT(Rf_allocVector(REALSXP, n_studies)); _nprot++;
+    SEXP p_values_observed_consensus = PROTECT(Rf_allocVector(REALSXP, n_studies)); _nprot++;
     int ierr = 0;
 
     gjct_permutation_test_c(
-        REAL(neighborhood_residuals_S1),
-        REAL(neighborhood_residuals_S2),
-        &n_reps_S1,
-        &n_reps_S2,
-        &n_neighbors,
-        &n_points,
-        &_v_global_jsd_observed,
-        &_v_n_bins,
-        &_v_shared_residual_range,
         &_v_n_permutations,
-        REAL(jsd_null),
-        &p_value,
-        _p_random_seed,
-        neighbor_mask_S1 != R_NilValue ? _c_neighbor_mask_S1 : NULL,
-        neighbor_mask_S2 != R_NilValue ? _c_neighbor_mask_S2 : NULL,
+        &n_bins,
+        &n_points,
+        &n_studies,
+        _c_mean_pmf_counts,
+        REAL(mean_pmf),
+        _c_mean_pmf_included_n_reps,
+        _c_included_n_reps,
+        REAL(global_jsd_observed),
+        REAL(p_values),
+        REAL(p_values_observed_consensus),
+        &_v_random_seed,
         &ierr
     );
 
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); _nprot++;
-    SET_VECTOR_ELT(_out, 0, jsd_null);
-    SET_VECTOR_ELT(_out, 1, Rf_ScalarReal(p_value));
+    SET_VECTOR_ELT(_out, 0, p_values);
+    SET_VECTOR_ELT(_out, 1, p_values_observed_consensus);
     SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(ierr));
     SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 3)); _nprot++;
-    SET_STRING_ELT(_nms, 0, Rf_mkChar("jsd_null"));
-    SET_STRING_ELT(_nms, 1, Rf_mkChar("p_value"));
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("p_values"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("p_values_observed_consensus"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(_nprot);
+    return _out;
+}
+
+SEXP bootstrap_histogram_call(SEXP n_bootstraps, SEXP mean_pmf_counts, SEXP mean_pmf_included_n_reps, SEXP included_n_reps, SEXP confidence_interval, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed) {
+    int _nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_bins = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[1];
+    int n_points = INTEGER(Rf_getAttrib(mean_pmf_counts, R_DimSymbol))[0];
+    int n_studies = INTEGER(Rf_getAttrib(included_n_reps, R_DimSymbol))[1];
+
+    // scalar inputs, pulled from their length-1 vectors
+    int _v_n_bootstraps = Rf_asInteger(n_bootstraps);
+    double _v_two_sided_bootstrapping_significance_level = Rf_asReal(two_sided_bootstrapping_significance_level);
+    int _v_random_seed = Rf_asInteger(random_seed);
+
+    // copy what is modified in place, so the caller's stays intact
+    SEXP _out_confidence_interval = PROTECT(Rf_duplicate(confidence_interval)); _nprot++;
+
+    // convert what Fortran cannot take from R directly
+    const int* _c_mean_pmf_counts = tox_int_in(mean_pmf_counts, "mean_pmf_counts");
+    const int* _c_mean_pmf_included_n_reps = tox_int_in(mean_pmf_included_n_reps, "mean_pmf_included_n_reps");
+    const int* _c_included_n_reps = tox_int_in(included_n_reps, "included_n_reps");
+
+    // outputs and work space
+    int ierr = 0;
+
+    bootstrap_histogram_c(
+        &_v_n_bootstraps,
+        &n_bins,
+        &n_points,
+        &n_studies,
+        _c_mean_pmf_counts,
+        _c_mean_pmf_included_n_reps,
+        _c_included_n_reps,
+        REAL(_out_confidence_interval),
+        &_v_two_sided_bootstrapping_significance_level,
+        &_v_random_seed,
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); _nprot++;
+    SET_VECTOR_ELT(_out, 0, _out_confidence_interval);
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); _nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("confidence_interval"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(_nprot);
     return _out;

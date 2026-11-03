@@ -137,7 +137,7 @@ def test_fjct():
     expected_js_divergences = np.array([
         0.0,
         0.0,
-        0.5 * np.log(2.0)
+        (0.5 * np.log(2.0)) / np.log(2.0)  # rescaled onto 0..1 by dividing through LOG_2 = log(2): 0.5*log(2)/log(2) = 0.5
     ], dtype=np.float64)
 
     expected_weights = np.array([0.0, 0.0, 1.0], dtype=np.float64)

@@ -7,7 +7,12 @@ consumes: gene-wise means, the signed deviation of each replicate from them, and
 neighborhoods of reference points those residuals are grouped into so the comparison is
 conditioned on expression level rather than pooled across it.
 
-`calc_neighborhood_size` sizes a neighborhood for a caller that allocates its own.
+Besides neighborhoods of a fixed size, the adaptive construction
+:func:`tensor_omics.construct_adaptive_neighborhoods`
+grows each reference point's neighborhood while its residual dispersion stays stable.
+
+`calc_neighborhood_size` sizes a neighborhood for a caller that allocates its own, and
+`gather_pooled_neighborhood_residuals` gathers a neighborhood's residuals of all studies.
 
 Python binding, generated from tox_data_integration_preprocessing_impl. Do not edit.
 """

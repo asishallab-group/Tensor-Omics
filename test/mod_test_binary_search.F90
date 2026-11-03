@@ -15,10 +15,11 @@ contains
     !> Get array of all available tests.
     function get_all_tests_binary_search() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(2))
+        allocate (all_tests(3))
 
         all_tests(1) = test_case("test_binary_search_insertion", test_binary_search_insertion)
         all_tests(2) = test_case("test_binary_search", test_binary_search)
+        all_tests(3) = test_case("test_binary_search_insertion_no_perm", test_binary_search_insertion_no_perm)
     end function get_all_tests_binary_search
 
     subroutine test_binary_search_insertion()
@@ -109,4 +110,35 @@ contains
         call assert_equal_int(idx, size(perm, kind=int32), "test_binary_search: Search non-NaN in all-NaN array")
 
     end subroutine test_binary_search
+
+    !> binary_search_insertion_no_perm on the ascending array `[3, 3, 4, 8, 8]` (with duplicates):
+    !| every value 1..8 lands on the first position whose element reaches it, so a duplicate is
+    !| never chosen over its first occurrence (values 1..3 land on position 1, value 4 on position
+    !| 3, value 8 on position 4 rather than 5). The first and last value exercise both ends of the
+    !| search; a single element holds everything. A value above the last element gives
+    !| `n_elements + 1`, and an empty array gives 1, as for binary_search_insertion.
+    subroutine test_binary_search_insertion_no_perm()
+        character(len=*), parameter :: name = "test_binary_search_insertion_no_perm: "
+        integer(int32), parameter :: arr(5) = [3_int32, 3_int32, 4_int32, 8_int32, 8_int32]
+        integer(int32), parameter :: expected(8) = [1_int32, 1_int32, 1_int32, 3_int32, 4_int32, 4_int32, 4_int32, &
+                                                    4_int32]
+        integer(int32) :: value, got(8)
+
+        do value = 1, 8
+            got(value) = binary_search_insertion_no_perm(arr, 5_int32, value)
+        end do
+        call assert_equal_array_int(got, expected, 8_int32, name//"five elements with duplicates")
+
+        call assert_equal_int(binary_search_insertion_no_perm([6_int32], 1_int32, 1_int32), 1_int32, &
+                              name//"one element, smallest value")
+        call assert_equal_int(binary_search_insertion_no_perm([6_int32], 1_int32, 6_int32), 1_int32, &
+                              name//"one element, equal value")
+        call assert_equal_int(binary_search_insertion_no_perm([1_int32, 2_int32], 2_int32, 2_int32), 2_int32, &
+                              name//"two elements, second")
+        call assert_equal_int(binary_search_insertion_no_perm(arr, 5_int32, 9_int32), 6_int32, &
+                              name//"above the last element")
+        call assert_equal_int(binary_search_insertion_no_perm([6_int32], 1_int32, 7_int32), 2_int32, &
+                              name//"one element, above it")
+        call assert_equal_int(binary_search_insertion_no_perm(arr, 0_int32, 4_int32), 1_int32, name//"empty")
+    end subroutine test_binary_search_insertion_no_perm
 end module mod_test_binary_search

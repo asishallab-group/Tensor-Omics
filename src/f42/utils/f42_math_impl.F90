@@ -42,6 +42,8 @@ module f42_math_impl
         !! Machine epsilon for `real64`, the base tolerance used by [[f42_math_impl(module):is_close(interface)]].
     real(real64), parameter :: LOG_2 = log(2.0_real64)
         !! Natural logarithm of 2, used to compute base-2 logarithms in [[f42_math_impl(module):logx(subroutine)]].
+    real(real64), parameter :: IS_CLOSE_ABS_TOL = 1.0e-12_real64
+        !! Absolute floor of the tolerance of [[f42_math_impl(module):is_close(interface)]], for operands near zero.
 
 contains
 
@@ -190,7 +192,7 @@ contains
     end function above
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Checks if two values are close to eachother, using a tolerance of `max(1d-12, EPS*max(abs(a), abs(b)))` with `EPS=CM_EPS`
+    !| Checks if two values are close to eachother, using a tolerance of `max(IS_CLOSE_ABS_TOL, EPS*max(abs(a), abs(b)))` with `EPS=CM_EPS`
     pure logical function is_close_default(a, b)
         real(real64), intent(in) :: a
             !! First variable of comparison `a==b`
@@ -215,7 +217,7 @@ contains
             ! The absolute floor keeps the comparison meaningful where both operands are
             ! near zero and the relative term collapses with them.
             rel_tolerance = eps*max(abs(a), abs(b))
-            is_close_within = abs(a - b) <= max(rel_tolerance, 1d-12)
+            is_close_within = abs(a - b) <= max(rel_tolerance, IS_CLOSE_ABS_TOL)
         else
             is_close_within = a == b
         end if

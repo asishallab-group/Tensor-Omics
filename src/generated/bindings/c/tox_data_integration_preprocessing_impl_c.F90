@@ -9,7 +9,12 @@
 !| neighborhoods of reference points those residuals are grouped into so the comparison is
 !| conditioned on expression level rather than pooled across it.
 !|
-!| `calc_neighborhood_size` sizes a neighborhood for a caller that allocates its own.
+!| Besides neighborhoods of a fixed size, the adaptive construction
+!| [[tox_data_integration_preprocessing_impl(module):construct_adaptive_neighborhoods_impl(interface)]]
+!| grows each reference point's neighborhood while its residual dispersion stays stable.
+!|
+!| `calc_neighborhood_size` sizes a neighborhood for a caller that allocates its own, and
+!| `gather_pooled_neighborhood_residuals` gathers a neighborhood's residuals of all studies.
 module tox_data_integration_preprocessing_impl_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc
@@ -46,7 +51,7 @@ contains
             !! NaN is permitted for this value.
         integer(c_int), intent(in), target :: desired_size
             !! Optional desired neighborhood size
-            !! The default value is `1000`.
+            !! The default value is `1000_int32`.
         integer(c_int), intent(out), target :: n_neighbors
             !! Calculated neighborhood size
         integer(c_int), intent(out), target :: ierr
