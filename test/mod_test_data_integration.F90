@@ -2,7 +2,7 @@
 module mod_test_data_integration
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_is_nan
     use tox_data_integration
     ! an internal helper of the permutation test, so it stays in the kernel module
     use tox_data_integration_stats_impl, only: shuffle_reference_point_helper

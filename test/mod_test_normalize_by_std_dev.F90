@@ -3,6 +3,7 @@ module mod_test_normalize_by_std_dev
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: iso_c_binding, only: c_bool
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
   use tox_normalization
   ! the tox_normalization module used to re-export it; it is f42 infrastructure
   use f42_math_impl, only: std_dev

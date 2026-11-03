@@ -8,8 +8,6 @@ module tox_errors
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, int64, real64
     use, intrinsic :: iso_c_binding, only: c_bool
-    ! not used here any more (see ordered_key), but other modules take these two from this one
-    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite
     M_IMPLICIT_NONE
     public   ! <-- expose all names (constants + procedures)
     private :: ordered_key, is_nan_bitwise, is_finite_bitwise, is_less_bitwise, is_equal_bitwise
@@ -417,6 +415,9 @@ contains
 
     !> Validates min<=e<=max AND e/=NaN for all elements e of an array.
     !|
+    !| Values are judged by their bits, so a subnormal counts as itself even where the CPU flushes
+    !| subnormals to zero.
+    !|
     !| @note
     !| This validation is inclusive: `min<=val<=max`<br>
     !| To achieve exclusive bounds, use above/below from f42_math_impl,
@@ -479,6 +480,9 @@ contains
     end subroutine validate_in_range_real
 
     !> Validates min<=e<=max AND e/=NaN for all elements e of an array
+    !|
+    !| Values are judged by their bits, so a subnormal counts as itself even where the CPU flushes
+    !| subnormals to zero.
     pure subroutine validate_all_in_range_real(array, n_elements, ierr, arg_pos, min, max, sentinel, &
                                                allow_nan, allow_infinite)
         integer(int32), intent(in) :: n_elements
